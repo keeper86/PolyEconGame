@@ -15,7 +15,7 @@ const BASE_SPEED_PX_PER_SEC = 80;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
 const MIN_SPEED_PX_PER_SEC = 30;
-const MAX_SPEED_PX_PER_SEC = 500;
+const MAX_SPEED_PX_PER_SEC = 240;
 
 type DisplayedEvent = { id: number; event: TickerEvent; duration: number; startX: number };
 

@@ -10,16 +10,21 @@ function nextLoanId(): string {
     return `${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}`;
 }
 
-export type LoanType =
-    | 'starter'
-    | 'discretionary'
-    | 'wageCoverage'
-    | 'bufferCoverage'
-    | 'claimCoverage'
-    | 'shipPenaltyCoverage'
-    | 'licenseBootstrap'
-    | 'forexWorkingCapital'
-    | 'shipbuilderBootstrap';
+export const LOAN_TYPES = [
+    'starter',
+    'discretionary',
+    'wageCoverage',
+    'rollover',
+    'bufferCoverage',
+    'claimCoverage',
+    'shipPenaltyCoverage',
+    'licenseBootstrap',
+    'forexWorkingCapital',
+    'shipbuilderBootstrap',
+    'consolidated',
+] as const;
+
+export type LoanType = (typeof LOAN_TYPES)[number];
 
 export type Loan = {
     id: string;
@@ -36,17 +41,20 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     starter: TICKS_PER_YEAR * 10,
     discretionary: TICKS_PER_YEAR,
     wageCoverage: TICKS_PER_YEAR,
+    rollover: TICKS_PER_YEAR,
     bufferCoverage: TICKS_PER_YEAR,
     claimCoverage: TICKS_PER_YEAR,
     shipPenaltyCoverage: TICKS_PER_YEAR,
     licenseBootstrap: TICKS_PER_YEAR,
     forexWorkingCapital: TICKS_PER_YEAR * 1000,
     shipbuilderBootstrap: TICKS_PER_YEAR * 1000,
+    consolidated: TICKS_PER_YEAR,
 } as const;
 
 const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     starter: true,
     discretionary: true,
+    rollover: false,
     wageCoverage: false,
     bufferCoverage: false,
     claimCoverage: false,
@@ -54,6 +62,7 @@ const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     licenseBootstrap: false,
     forexWorkingCapital: false,
     shipbuilderBootstrap: false,
+    consolidated: false,
 };
 
 export function makeLoan(
@@ -76,6 +85,38 @@ export function makeLoan(
     };
 }
 
+export function consolidateLoans(assets: AgentPlanetAssets, bank: Bank, tick: number): Loan | null {
+    if (assets.activeLoans.length <= 1) {
+        return null;
+    }
+
+    const totalPrincipal = assets.activeLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
+    if (totalPrincipal <= 0) {
+        return null;
+    }
+
+    // Weighted average interest rate
+    const weightedRate =
+        assets.activeLoans.reduce((sum, l) => sum + l.annualInterestRate * l.remainingPrincipal, 0) / totalPrincipal;
+
+    // Weighted average maturity (only for loans with maturityTick > 0)
+    const loansWithMaturity = assets.activeLoans.filter((l) => l.maturityTick > 0);
+    const avgMaturity =
+        loansWithMaturity.length > 0
+            ? Math.round(
+                  loansWithMaturity.reduce((sum, l) => sum + l.maturityTick * l.remainingPrincipal, 0) /
+                      loansWithMaturity.reduce((sum, l) => sum + l.remainingPrincipal, 0),
+              )
+            : 0;
+
+    const consolidated = makeLoan('consolidated', totalPrincipal, weightedRate, tick, avgMaturity, true);
+
+    // Replace all existing loans with the consolidated one — bank totals unchanged
+    assets.activeLoans = [consolidated];
+
+    return consolidated;
+}
+
 export function grantLoan(
     assets: AgentPlanetAssets,
     bank: Bank,
@@ -84,10 +125,7 @@ export function grantLoan(
     tick: number,
 ): Loan {
     if (assets.activeLoans.length >= LOAN_LIMIT) {
-        throw new Error(
-            `Loan limit exceeded: cannot have more than ${LOAN_LIMIT} active loans
-                (currently has ${assets.activeLoans.length}): ${assets.activeLoans.map((l) => l.type).join(', ')}`,
-        );
+        consolidateLoans(assets, bank, tick);
     }
     const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
     const earlyRepaymentAllowed = LOAN_EARLY_REPAYMENT[purpose];

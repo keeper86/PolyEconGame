@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { automaticPricing } from './automaticPricing';
-import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
+import { machineryFactory } from '../planet/productionFacilities';
 import {
     electronicsResourceType,
     ironOreResourceType,
-    machineryResourceType,
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
-import { INPUT_BUFFER_TARGET_TICKS } from '../constants';
+import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { automaticPricing } from './automaticPricing';
 
 const PLANET_ID = 'p';
 
@@ -19,11 +19,6 @@ const PLASTIC_PRICE = 2.0;
 
 const IRON_SMELTER_IRON_ORE_QTY = 150;
 const IRON_SMELTER_OUTPUT_QTY = 100;
-
-const MACHINERY_FACTORY_STEEL_QTY = 80;
-const MACHINERY_FACTORY_ELEC_QTY = 10;
-const MACHINERY_FACTORY_PLASTIC_QTY = 20;
-const MACHINERY_FACTORY_OUTPUT_QTY = 50;
 
 function makeIronSmelterAgent(id: string) {
     const facility = makeProductionFacility({ none: 1 }, { id: `${id}-smelter`, scale: 1 });
@@ -40,14 +35,7 @@ function makeIronSmelterAgent(id: string) {
 }
 
 function makeMachineryAgent(id: string) {
-    const facility = makeProductionFacility({ none: 1 }, { id: `${id}-machinery`, scale: 1 });
-    facility.needs = [
-        { resource: steelResourceType, quantity: MACHINERY_FACTORY_STEEL_QTY },
-        { resource: electronicsResourceType, quantity: MACHINERY_FACTORY_ELEC_QTY },
-        { resource: plasticResourceType, quantity: MACHINERY_FACTORY_PLASTIC_QTY },
-    ];
-    facility.produces = [{ resource: machineryResourceType, quantity: MACHINERY_FACTORY_OUTPUT_QTY }];
-
+    const facility = machineryFactory(PLANET_ID, `${id}-machinery`);
     const storage = makeStorageFacility({ planetId: PLANET_ID, id: `storage-${id}` });
 
     const agent = makeAgent(id, PLANET_ID);
@@ -124,12 +112,18 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         });
 
         const factory = makeMachineryAgent('machinery');
+        const facility = factory.assets[PLANET_ID].productionFacilities[0]!;
+        const steelNeed = facility.needs.find((n) => n.resource.name === steelResourceType.name)!;
+        const rawTarget = steelNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+
         automaticPricing(new Map([['machinery', factory]]), planet);
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        const expectedStorageTarget = MACHINERY_FACTORY_STEEL_QTY * 1 * INPUT_BUFFER_TARGET_TICKS;
-        expect(steelBid!.bidStorageTarget).toBe(expectedStorageTarget);
+        // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
+        const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
     it('two-tier chain: iron smelter produces steel that machinery factory bids for', () => {

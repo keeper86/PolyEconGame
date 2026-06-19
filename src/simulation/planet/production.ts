@@ -1,6 +1,7 @@
 import assert from 'assert';
 import {
     EXPERT_EFFICIENCY,
+    INPUT_BUFFER_TARGET_TICKS_SERVICES,
     NOVICE_EFFICIENCY,
     NOTICE_PERIOD_MONTHS,
     PRICE_CEIL,
@@ -54,6 +55,9 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 }
 
 const RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE = 1e-4;
+
+const SERVICE_DEPRECIATION_COST_MULTIPLIER =
+    1 / Math.pow(1 - SERVICE_DEPRECIATION_RATE_PER_TICK, INPUT_BUFFER_TARGET_TICKS_SERVICES);
 
 const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
     const assets = agent.assets[planet.id];
@@ -347,7 +351,9 @@ function accumulateTheoreticalCostFloor(
         const pricePerUnit =
             need.resource.form === 'landBoundResource'
                 ? (planet.landBoundCostPerUnit[need.resource.name] ?? 0)
-                : (planet.marketPrices[need.resource.name] ?? 0);
+                : need.resource.form === 'services'
+                  ? (planet.marketPrices[need.resource.name] ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER
+                  : (planet.marketPrices[need.resource.name] ?? 0);
         inputCostPerUnit += need.quantity * pricePerUnit;
     }
 
@@ -371,9 +377,15 @@ function accumulateTheoreticalCostFloor(
         if (qty <= 0) {
             continue;
         }
-        const costForOutput = totalCostPerUnit * (qty / totalOutputQty);
 
-        costAccum.set(output.resource.name, (costAccum.get(output.resource.name) ?? 0) + costForOutput);
+        const costForOutput = totalCostPerUnit * (qty / totalOutputQty);
+        const outputDepreciationMultiplier =
+            output.resource.form === 'services' ? SERVICE_DEPRECIATION_COST_MULTIPLIER : 1.0;
+
+        costAccum.set(
+            output.resource.name,
+            (costAccum.get(output.resource.name) ?? 0) + costForOutput * outputDepreciationMultiplier,
+        );
         outputAccum.set(output.resource.name, (outputAccum.get(output.resource.name) ?? 0) + qty);
     }
 }
@@ -390,6 +402,7 @@ export function updateProductionCostFloors(planet: Planet): void {
 
     for (const [resource, totalCost] of costAccum) {
         const totalQty = outputAccum.get(resource) ?? 0;
+
         if (totalQty > 0) {
             planet.lastProductionCostFloors[resource] = Math.min(
                 PRICE_CEIL,

@@ -56,6 +56,14 @@ export interface InsertPlanetPopulation {
     tick: number;
     planet_id: string;
     population: number;
+    grocery_buffer: number;
+    healthcare_buffer: number;
+    logistics_buffer: number;
+    education_buffer: number;
+    retail_buffer: number;
+    construction_buffer: number;
+    maintenance_buffer: number;
+    administration_buffer: number;
 }
 
 export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanetPopulation[]): Promise<void> {
@@ -67,6 +75,14 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
             tick: String(r.tick),
             planet_id: r.planet_id,
             population: String(Math.round(r.population)),
+            grocery_buffer: r.grocery_buffer,
+            healthcare_buffer: r.healthcare_buffer,
+            logistics_buffer: r.logistics_buffer,
+            education_buffer: r.education_buffer,
+            retail_buffer: r.retail_buffer,
+            construction_buffer: r.construction_buffer,
+            maintenance_buffer: r.maintenance_buffer,
+            administration_buffer: r.administration_buffer,
         })),
     );
 }
@@ -224,6 +240,52 @@ export interface PopulationBucket {
     bucket: string;
     planet_id: string;
     avg_population: number;
+}
+
+export interface BufferBucket {
+    bucket: string;
+    planet_id: string;
+    avg_population: number;
+    avg_grocery_buffer: number;
+    avg_healthcare_buffer: number;
+    avg_logistics_buffer: number;
+    avg_education_buffer: number;
+    avg_retail_buffer: number;
+    avg_construction_buffer: number;
+    avg_maintenance_buffer: number;
+    avg_administration_buffer: number;
+}
+
+export async function getPlanetBufferHistory(
+    db: Knex,
+    planetId: string,
+    granularity: HistoryGranularity = 'monthly',
+    limit: number = 100,
+): Promise<BufferBucket[]> {
+    const view =
+        granularity === 'decade'
+            ? 'planet_population_decade'
+            : granularity === 'yearly'
+              ? 'planet_population_yearly'
+              : 'planet_population_monthly';
+
+    return db(view)
+        .where({ planet_id: planetId })
+        .orderBy('bucket', 'desc')
+        .limit(limit)
+        .select(
+            'bucket',
+            'planet_id',
+            'avg_population',
+            'avg_grocery_buffer',
+            'avg_healthcare_buffer',
+            'avg_logistics_buffer',
+            'avg_education_buffer',
+            'avg_retail_buffer',
+            'avg_construction_buffer',
+            'avg_maintenance_buffer',
+            'avg_administration_buffer',
+        );
 }
 
 export async function getPlanetPopulationHistoryAggregated(

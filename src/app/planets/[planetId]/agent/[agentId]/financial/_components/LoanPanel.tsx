@@ -23,12 +23,14 @@ const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
     starter: 'Starter',
     discretionary: 'Discretionary',
     wageCoverage: 'Wage coverage',
+    rollover: 'Rollover',
     bufferCoverage: 'Buffer coverage',
     claimCoverage: 'Claim coverage',
     shipPenaltyCoverage: 'Ship penalty',
     licenseBootstrap: 'License bootstrap',
     forexWorkingCapital: 'Forex working capital',
     shipbuilderBootstrap: 'Shipbuilder bootstrap',
+    consolidated: 'Consolidated',
 };
 
 function LoanRow({

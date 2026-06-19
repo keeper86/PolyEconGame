@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
+import {
+    makeAgent,
+    makeAgentPlanetAssets,
+    makePlanet,
+    makePopulationByEducation,
+    makeProductionFacility,
+} from '../utils/testHelper';
 import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, MarketResult, Planet } from './planet';
-import { produceResourceType, crudeOilResourceType, naturalGasResourceType } from './resources';
+import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -66,6 +72,40 @@ function makeSetup(
     });
 
     return { agents: new Map([[agent.id, agent]]), facility };
+}
+
+/** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
+ * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */
+function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: number): Planet {
+    const planet = makePlanet({
+        lastMarketResult: {
+            [RESOURCE_NAME]: {
+                resourceName: RESOURCE_NAME,
+                clearingPrice,
+                totalVolume: 100,
+                totalDemand: 100,
+                totalSupply: 100,
+                unfilledDemand: 80,
+                unsoldSupply: 0,
+            },
+        },
+        avgMarketResult: {
+            [RESOURCE_NAME]: {
+                resourceName: RESOURCE_NAME,
+                clearingPrice,
+                totalVolume: 100,
+                totalDemand: 100,
+                totalSupply: 100,
+                unfilledDemand: 80,
+                unsoldSupply: 0,
+            },
+        },
+        // Provide enough unemployed workers so hasSufficientUnemployedWorkers passes
+        population: makePopulationByEducation({ none: 10_000 }),
+        // Set cost floor so price/cost ratio = clearingPrice / costFloor stays reasonable
+        lastProductionCostFloors: { [RESOURCE_NAME]: costFloor },
+    });
+    return planet;
 }
 
 describe('updateAgentProductionScale', () => {
@@ -201,13 +241,15 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('initiates capacity expansion when scale == maxScale, integral >= threshold, and agent has sufficient deposits', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
 
             pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            // Need a worker requirement so hasSufficientUnemployedWorkers passes
+            workerRequirement: { none: 1 },
         });
 
         const agent = agents.values().next().value as Agent;
@@ -222,8 +264,8 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('does NOT initiate capacity expansion when integral < threshold (not enough sustained pressure)', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
-        const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10 });
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, { scale: 10, maxScale: 10, workerRequirement: { none: 1 } });
         const agent = agents.values().next().value as Agent;
         agent.assets[planet.id].deposits = 1_000_000;
 
@@ -235,11 +277,12 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('does NOT initiate capacity expansion when agent lacks sufficient deposits (integral is sufficient)', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
             pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            workerRequirement: { none: 1 },
         });
 
         expect(facility.construction).toBeNull();
@@ -507,11 +550,12 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('expansion integral resets to 0 after a successful expansion', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
             pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            workerRequirement: { none: 1 },
         });
         const agent = agents.values().next().value as Agent;
         agent.assets[planet.id].deposits = 1_000_000;

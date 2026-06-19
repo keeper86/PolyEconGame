@@ -18,6 +18,7 @@ import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
 
 import PlanetDemography from './_components/PlanetDemography';
+import PlanetBufferChart from './_components/PlanetBufferChart';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
 import TransferChart from './_components/TransferChart';
@@ -360,6 +361,7 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         {occupationCards}
                         <PlanetDemography rows={rows} group={group} />
+                        <PlanetBufferChart planetId={planetId} currentTick={data.tick} />
                     </AccordionContent>
                 </AccordionItem>
 

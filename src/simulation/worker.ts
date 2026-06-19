@@ -120,6 +120,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 tick: 0,
                 planet_id: planet.id,
                 population: computePopulationTotal(planet),
+                grocery_buffer: 0,
+                healthcare_buffer: 0,
+                logistics_buffer: 0,
+                education_buffer: 0,
+                retail_buffer: 0,
+                construction_buffer: 0,
+                maintenance_buffer: 0,
+                administration_buffer: 0,
             }));
             void insertPlanetPopulationHistory(db, seedRows)
                 .then(() => refreshContinuousAggregates(db, TICKS_PER_MONTH, 'monthly'))
@@ -323,6 +331,28 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
+    function computeAvgServiceBuffer(
+        planet: import('./planet/planet').Planet,
+        serviceName: import('./population/population').ServiceName,
+    ): number {
+        let sum = 0;
+        let totalPop = 0;
+        for (const cohort of planet.population.demography) {
+            for (const occ of ['education', 'employed', 'unoccupied', 'unableToWork'] as const) {
+                for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+                    for (const skill of ['novice', 'professional', 'expert'] as const) {
+                        const cat = cohort[occ][edu][skill];
+                        if (cat.total > 0) {
+                            sum += cat.services[serviceName].buffer * cat.total;
+                            totalPop += cat.total;
+                        }
+                    }
+                }
+            }
+        }
+        return totalPop > 0 ? sum / totalPop : 0;
+    }
+
     function flushPopulationHistory(gs: GameStateRecord, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
@@ -332,6 +362,14 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             tick,
             planet_id: planet.id,
             population: computePopulationTotal(planet.data),
+            grocery_buffer: computeAvgServiceBuffer(planet.data, 'grocery'),
+            healthcare_buffer: computeAvgServiceBuffer(planet.data, 'healthcare'),
+            logistics_buffer: computeAvgServiceBuffer(planet.data, 'logistics'),
+            education_buffer: computeAvgServiceBuffer(planet.data, 'education'),
+            retail_buffer: computeAvgServiceBuffer(planet.data, 'retail'),
+            construction_buffer: computeAvgServiceBuffer(planet.data, 'construction'),
+            maintenance_buffer: computeAvgServiceBuffer(planet.data, 'maintenance'),
+            administration_buffer: computeAvgServiceBuffer(planet.data, 'administration'),
         }));
         if (rows.length === 0) {
             return Promise.resolve();
