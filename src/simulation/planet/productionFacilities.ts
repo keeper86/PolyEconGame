@@ -664,7 +664,6 @@ export const intensiveFarmFacility = (planetId: string, id: string): ProductionF
         { resource: arableLandResourceType, quantity: 30 },
         { resource: waterResourceType, quantity: 100 },
         { resource: pesticideResourceType, quantity: 10 },
-        { resource: chemicalResourceType, quantity: 20 },
     ],
     produces: [{ resource: produceResourceType, quantity: 120 }],
 });

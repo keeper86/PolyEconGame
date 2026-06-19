@@ -1,13 +1,11 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
-import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
 import { SERVICE_DEFINITIONS } from '@/simulation/market/serviceDefinitions';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
 const BUFFER_LABELS: Record<string, string> = {
@@ -376,11 +374,11 @@ function BufferAreaChart({
 type Props = {
     planetId: string;
     currentTick: number;
+    granularity: 'monthly' | 'yearly' | 'decade';
 };
 
-export default function PlanetBufferChart({ planetId, currentTick }: Props): React.ReactElement {
+export default function PlanetBufferChart({ planetId, currentTick, granularity }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
@@ -451,59 +449,42 @@ export default function PlanetBufferChart({ planetId, currentTick }: Props): Rea
     }, [yearlyChartData]);
 
     return (
-        <Card className='mt-3'>
-            <CardContent className='px-3 pt-3 pb-2'>
-                <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
-                    <div className='flex gap-1 mb-2 items-center'>
-                        Service Buffers:
-                        <GranularityButtonGroup
-                            granularity={granularity}
-                            onChange={setGranularity}
-                            currentTick={currentTick}
-                        />
-                    </div>
-                    {granularity === 'monthly' &&
-                        (monthlyChartData.length > 0 ? (
-                            <BufferAreaChart
-                                data={monthlyChartData}
-                                ghostData={ghostData}
-                                xKey='monthIdx'
-                                xDomain={[0, 12]}
-                                xTicks={MONTHLY_X_TICKS}
-                                xFormatter={xFormatter}
-                                gridVertical={true}
-                                gridValues={MONTHLY_GRID_VALUES}
-                            />
-                        ) : (
-                            <EmptyChart />
-                        ))}
-                    {granularity === 'yearly' &&
-                        (yearlyChartData.length > 0 ? (
-                            <BufferAreaChart
-                                data={yearlyChartData}
-                                xKey='year'
-                                xDomain={yearXDomain}
-                                xTicks={yearTicks}
-                                xFormatter={xFormatter}
-                                gridVertical={true}
-                                gridValues={yearGridValues}
-                            />
-                        ) : (
-                            <EmptyChart />
-                        ))}
-                    {granularity === 'decade' &&
-                        (decadeChartData.length > 0 ? (
-                            <BufferAreaChart
-                                data={decadeChartData}
-                                xKey='year'
-                                xFormatter={xFormatter}
-                                gridVertical={false}
-                            />
-                        ) : (
-                            <EmptyChart />
-                        ))}
-                </div>
-            </CardContent>
-        </Card>
+        <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
+            {granularity === 'monthly' &&
+                (monthlyChartData.length > 0 ? (
+                    <BufferAreaChart
+                        data={monthlyChartData}
+                        ghostData={ghostData}
+                        xKey='monthIdx'
+                        xDomain={[0, 12]}
+                        xTicks={MONTHLY_X_TICKS}
+                        xFormatter={xFormatter}
+                        gridVertical={true}
+                        gridValues={MONTHLY_GRID_VALUES}
+                    />
+                ) : (
+                    <EmptyChart />
+                ))}
+            {granularity === 'yearly' &&
+                (yearlyChartData.length > 0 ? (
+                    <BufferAreaChart
+                        data={yearlyChartData}
+                        xKey='year'
+                        xDomain={yearXDomain}
+                        xTicks={yearTicks}
+                        xFormatter={xFormatter}
+                        gridVertical={true}
+                        gridValues={yearGridValues}
+                    />
+                ) : (
+                    <EmptyChart />
+                ))}
+            {granularity === 'decade' &&
+                (decadeChartData.length > 0 ? (
+                    <BufferAreaChart data={decadeChartData} xKey='year' xFormatter={xFormatter} gridVertical={false} />
+                ) : (
+                    <EmptyChart />
+                ))}
+        </div>
     );
 }
