@@ -1,14 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, OUTPUT_BUFFER_MAX_TICKS, PRICE_CEIL as PRICE_CEIL } from '../constants';
+import {
+    INPUT_BUFFER_TARGET_TICKS,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    OUTPUT_BUFFER_MAX_TICKS,
+    PRICE_CEIL,
+} from '../constants';
+import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, Planet } from '../planet/planet';
-import { produceResourceType, coalResourceType, steelResourceType } from '../planet/resources';
-import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
+import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
+import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
-import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
 
 const COAL = coalResourceType.name;
 const FOOD = produceResourceType.name;
@@ -85,7 +90,7 @@ describe('automaticPricing — buy side', () => {
     it('sets bidStorageTarget proportional to the input buffer target when storage is empty', () => {
         const buyer = makeSteelProducer();
         const facility = buyer.assets.p.productionFacilities[0]!;
-        const coalNeed = facility.needs.find(n => n.resource.name === COAL)!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
         const rawTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
         automaticPricing(agentMap(buyer), planet);
@@ -102,7 +107,7 @@ describe('automaticPricing — buy side', () => {
     it('keeps bidStorageTarget proportional when storage has some inventory', () => {
         const buyer = makeSteelProducer();
         const facility = buyer.assets.p.productionFacilities[0]!;
-        const coalNeed = facility.needs.find(n => n.resource.name === COAL)!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
         const rawTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
         putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, 500);

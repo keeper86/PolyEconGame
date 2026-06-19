@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { automaticPricing } from './automaticPricing';
-import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
+import { machineryFactory } from '../planet/productionFacilities';
 import {
     electronicsResourceType,
     ironOreResourceType,
-    machineryResourceType,
     plasticResourceType,
     steelResourceType,
 } from '../planet/resources';
-import { INPUT_BUFFER_TARGET_TICKS } from '../constants';
-import { machineryFactory } from '../planet/productionFacilities';
+import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { automaticPricing } from './automaticPricing';
 
 const PLANET_ID = 'p';
 
@@ -114,14 +113,17 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const factory = makeMachineryAgent('machinery');
         const facility = factory.assets[PLANET_ID].productionFacilities[0]!;
-        const steelNeed = facility.needs.find(n => n.resource.name === steelResourceType.name)!;
-        const expectedStorageTarget = steelNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+        const steelNeed = facility.needs.find((n) => n.resource.name === steelResourceType.name)!;
+        const rawTarget = steelNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
         automaticPricing(new Map([['machinery', factory]]), planet);
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        expect(steelBid!.bidStorageTarget).toBe(expectedStorageTarget);
+        // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
+        const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
     it('two-tier chain: iron smelter produces steel that machinery factory bids for', () => {

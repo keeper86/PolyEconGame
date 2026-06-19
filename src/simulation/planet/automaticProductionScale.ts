@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -131,6 +131,11 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
         state.integral = 0;
     }
 
+    // Decay the integral when the error signal is near zero so the derivative term can brake effectively
+    if (Math.abs(signal) < EPSILON) {
+        state.integral *= 0.5;
+    }
+
     const tentativeOutput = P + state.integral + D;
     const outSat = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, tentativeOutput));
     const saturated = Math.abs(outSat) >= PID_OUT_MAX;
@@ -254,10 +259,18 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 (o) => planet.lastMarketResult[o.resource.name] !== undefined,
             );
             if (!hasAnyMarketData) {
-                continue;
+                // Fallback: if there are open buy orders in the order book, treat it as a positive signal
+                // to avoid stalling when no market has cleared yet but demand is visible.
+                const hasOpenBids = facility.produces.some((o) => {
+                    const book = planet.orderBooks?.[o.resource.name];
+                    return book && book.bids.length > 0;
+                });
+                if (!hasOpenBids) {
+                    continue;
+                }
             }
 
-            const signal = computeFacilitySignal(facility, assets, planet);
+            const signal = hasAnyMarketData ? computeFacilitySignal(facility, assets, planet) : 0.01; // small positive signal from order book bids
             assert(signal >= -1, 'Signal should be positive due to earlier check for market data, but got' + signal);
             assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
 
