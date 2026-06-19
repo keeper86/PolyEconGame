@@ -518,7 +518,7 @@ describe('updateAgentProductionScale', () => {
         facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
 
         for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(agents, facility.pidState ? planetDemand : planetDemand);
+            updateAgentProductionScale(agents, planetDemand);
         }
         const scaleAfterBuild = facility.scale;
 

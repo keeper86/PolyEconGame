@@ -504,7 +504,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
 
     return (
         <Card>
-            <CardContent className='px-3 pt-2 pb-2'>
+            <CardContent className='px-4 pt-2 pb-4'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <div className='flex justify-between gap-1 my-1 mb-3 items-center'>
                         <span className='text-md text-slate-400'>

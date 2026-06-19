@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, TICKS_PER_MONTH } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, TICKS_PER_MONTH } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
@@ -34,8 +34,6 @@ export const EXPANSION_INTEGRAL_DECAY = 0.5;
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
-
-export const DEPRECIATION_COST_WEIGHT = 1.0;
 
 function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
@@ -164,6 +162,14 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     const D = PID_KD * (state.filteredError - state.prevError);
     state.prevError = state.filteredError;
 
+    if (signal > 0 && state.integral < 0) {
+        state.integral = 0;
+    }
+
+    if (Math.abs(signal) < EPSILON) {
+        state.integral *= 0.5;
+    }
+
     const tentativeOutput = P + state.integral + D;
     const outSat = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, tentativeOutput));
     const saturated = Math.abs(outSat) >= PID_OUT_MAX;
@@ -290,8 +296,8 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 continue;
             }
 
-            const signal = computeFacilitySignal(facility, assets, planet); // small positive signal from order book bids
-            assert(signal >= -1, 'Signal should be positive due to earlier check for market data, but got' + signal);
+            const signal = computeFacilitySignal(facility, assets, planet); // weighted market demand/supply signal
+            assert(signal >= -1, 'Signal should be >= -1, but got ' + signal);
             assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
