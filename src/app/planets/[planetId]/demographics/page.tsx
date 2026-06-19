@@ -1,38 +1,29 @@
 'use client';
 
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import type { Skill } from '@/simulation/population/population';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
 import { educationLevelKeys } from '@/simulation/population/education';
+import { OCCUPATIONS } from '@/simulation/population/population';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
 import type { GroupMode } from './_components/demographicsTypes';
 import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
 
-import PlanetDemography from './_components/PlanetDemography';
-import PlanetBufferChart from './_components/PlanetBufferChart';
-import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
-import WealthDistributionChart from './_components/WealthDistributionChart';
-import TransferChart from './_components/TransferChart';
 import { Page } from '@/components/client/Page';
 import { ProductIcon } from '@/components/client/ProductIcon';
-import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
-
-const SKILL_LABELS: Record<Skill, string> = { novice: 'Novice', professional: 'Pro', expert: 'Expert' };
-const SKILL_COLORS: Record<Skill, string> = {
-    novice: '#94a3b8',
-    professional: '#60a5fa',
-    expert: '#f59e0b',
-};
+import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
+import PlanetDemography from './_components/PlanetDemography';
+import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
+import TransferChart from './_components/TransferChart';
+import WealthDistributionChart from './_components/WealthDistributionChart';
 
 export default function PlanetDemographicsPage() {
     const params = useParams();
@@ -42,29 +33,14 @@ export default function PlanetDemographicsPage() {
     const isSmallScreen = useIsSmallScreen();
 
     const [group, setGroup] = useState<GroupMode>('occupation');
-    const [activeSkills, setActiveSkills] = useState<Set<Skill>>(new Set(SKILL));
 
     const { openItem: accordionItem, onValueChange: handleAccordionChange } = useHashAccordion();
-
-    const toggleSkill = (skill: Skill) => {
-        setActiveSkills((prev) => {
-            const next = new Set(prev);
-            if (next.has(skill)) {
-                if (next.size > 1) {
-                    next.delete(skill);
-                }
-            } else {
-                next.add(skill);
-            }
-            return next;
-        });
-    };
 
     const { data } = useSimulationQuery(
         trpc.simulation.getPlanetDemographicsFull.queryOptions({
             planetId,
             groupMode: group,
-            activeSkills: [...activeSkills],
+            activeSkills: ['novice', 'professional', 'expert'],
         }),
     );
 
@@ -123,8 +99,6 @@ export default function PlanetDemographicsPage() {
     }
     const totalAbsoluteTransfer = transferTotals.reduce((s, v) => s + Math.abs(v), 0);
 
-    const allSkillsSelected = SKILL.every((s) => activeSkills.has(s));
-
     const groupTabs = (
         <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
             <TabsList className='h-7'>
@@ -136,39 +110,6 @@ export default function PlanetDemographicsPage() {
                 </TabsTrigger>
             </TabsList>
         </Tabs>
-    );
-
-    const skillFilter = (
-        <div className='flex items-center gap-1'>
-            <button
-                className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-muted text-muted-foreground hover:bg-muted/80'
-                disabled={allSkillsSelected}
-                onClick={() => setActiveSkills(new Set(SKILL))}
-            >
-                All
-            </button>
-            {SKILL.map((skill) => {
-                const active = activeSkills.has(skill);
-                return (
-                    <button
-                        key={skill}
-                        onClick={() => toggleSkill(skill)}
-                        className='h-6 px-1.5 rounded text-[10px] font-medium border transition-colors'
-                        style={
-                            active
-                                ? { background: SKILL_COLORS[skill], borderColor: SKILL_COLORS[skill], color: '#fff' }
-                                : {
-                                      background: 'transparent',
-                                      borderColor: 'transparent',
-                                      color: 'var(--muted-foreground)',
-                                  }
-                        }
-                    >
-                        {SKILL_LABELS[skill]}
-                    </button>
-                );
-            })}
-        </div>
     );
 
     const occupationCards = isSmallScreen ? (
@@ -322,35 +263,15 @@ export default function PlanetDemographicsPage() {
     );
 
     return (
-        <Page
-            title={planetName}
-            headerComponent={
-                populationTotal !== undefined && (
-                    <span className='text-sm text-muted-foreground self-end'>{`Total population: ${formatNumberWithUnit(populationTotal, 'persons')}`}</span>
-                )
-            }
-        >
+        <Page title={planetName}>
             <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
 
-            <div className='my-3 border-t' />
-
-            <h4 className='text-sm font-semibold mb-2'>Detailed Demographics</h4>
-
-            {}
-            <div className='flex flex-wrap items-center gap-2 mb-3'>
+            <div className='flex justify-between gap-1 my-3 pt-3 items-center'>
+                <span className='text-md text-slate-400'>Detailed Demographics</span>
                 {groupTabs}
-                {skillFilter}
             </div>
 
-            {}
-
-            <Accordion
-                type='single'
-                collapsible
-                className='mt-1'
-                value={accordionItem}
-                onValueChange={handleAccordionChange}
-            >
+            <Accordion type='single' collapsible value={accordionItem} onValueChange={handleAccordionChange}>
                 <AccordionItem value='overview' id='overview'>
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
@@ -361,7 +282,6 @@ export default function PlanetDemographicsPage() {
                     <AccordionContent>
                         {occupationCards}
                         <PlanetDemography rows={rows} group={group} />
-                        <PlanetBufferChart planetId={planetId} currentTick={data.tick} />
                     </AccordionContent>
                 </AccordionItem>
 

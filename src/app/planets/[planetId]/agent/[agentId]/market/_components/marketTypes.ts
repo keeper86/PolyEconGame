@@ -65,28 +65,34 @@ export type Props = {
     allPlanetDeposits?: Record<string, number>;
 };
 
-export type MarketStatus = 'balanced' | 'mostly' | 'partial-shortage' | 'shortage' | 'oversupply' | 'no-demand';
-
-export const MARKET_STATUS_CONFIG: Record<MarketStatus, { label: string; className: string }> = {
-    'balanced': { label: 'Full', className: 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30' },
-    'mostly': {
-        label: 'Mostly',
-        className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
-    },
-    'partial-shortage': {
-        label: 'Partial',
+export const BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST = [
+    { limit: 0.85, label: 'depressed', className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30' },
+    {
+        limit: 0.95,
+        label: 'lossy',
         className: 'bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/30',
     },
-    'shortage': { label: 'Shortage', className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30' },
-    'oversupply': {
-        label: 'Oversupply',
+    {
+        limit: 1.3333,
+        label: 'marginal',
+        className: 'bg-lime-500/20 text-lime-700 dark:text-lime-400 border-lime-500/30',
+    },
+    {
+        limit: 2.0,
+        label: 'profitable',
+        className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+    },
+    {
+        limit: 4.0,
+        label: 'exceptional',
         className: 'bg-blue-500/20 text-blue-700 dark:text-blue-400 border-blue-500/30',
     },
-    'no-demand': {
-        label: 'No demand',
-        className: 'bg-slate-500/20 text-slate-500 dark:text-slate-400 border-slate-500/30',
+    {
+        limit: Number.MAX_SAFE_INTEGER,
+        label: 'insane',
+        className: 'bg-purple-500/20 text-purple-700 dark:text-purple-400 border-purple-500/30',
     },
-};
+] as const;
 
 export type ResourceTriggerProps = {
     name: string;

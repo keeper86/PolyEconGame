@@ -1,11 +1,10 @@
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
-import type { MarketBidEntry, MarketOfferEntry, MarketStatus } from './marketTypes';
-import type { MarketOverviewRow } from '@/server/controller/planet';
+import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
-import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
@@ -75,28 +74,6 @@ export function slugToResourceName(slug: string): string | undefined {
         return CURRENCY_RESOURCE_PREFIX + slug.slice(CURRENCY_RESOURCE_PREFIX.length);
     }
     return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
-}
-
-const OVERSUPPLY_RATIO_THRESHOLD = 2;
-
-export function classifyMarket(row: MarketOverviewRow): MarketStatus {
-    const { totalSupply, totalDemand, fillRatio } = row;
-    if (totalDemand === 0 && totalSupply > 0) {
-        return 'no-demand';
-    }
-    if (totalDemand > 0 && totalSupply / totalDemand >= OVERSUPPLY_RATIO_THRESHOLD) {
-        return 'oversupply';
-    }
-    if (fillRatio >= 0.999) {
-        return 'balanced';
-    }
-    if (fillRatio >= 0.8) {
-        return 'mostly';
-    }
-    if (fillRatio >= 0.5) {
-        return 'partial-shortage';
-    }
-    return 'shortage';
 }
 
 export function buildResourceList(

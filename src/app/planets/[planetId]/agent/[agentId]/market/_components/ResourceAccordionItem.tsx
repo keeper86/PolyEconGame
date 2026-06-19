@@ -5,7 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/currencyResources';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
@@ -18,9 +18,9 @@ import MarketDetailsSection from './MarketDetailsSection';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 import ResourceTrigger from './ResourceTrigger';
 import SellSection from './SellSection';
-import { classifyMarket, getResourceByName, resourceNameToSlug } from './marketHelpers';
+import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
-import { MARKET_STATUS_CONFIG, TTL_FEEDBACK } from './marketTypes';
+import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST, TTL_FEEDBACK } from './marketTypes';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -50,9 +50,20 @@ export default function ResourceAccordionItem({
 
     const droppedColumns = MARKET_COLUMNS.filter((col) => col.enabled && !visibleColumns.some((v) => v.id === col.id));
 
+    const getPriceCostRatioBand = (
+        ratio: number,
+    ): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] => {
+        for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
+            if (ratio <= band.limit) {
+                return band;
+            }
+        }
+        return BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST[
+            BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST.length - 1
+        ];
+    };
+
     const getDroppedColumnValue = (columnId: string): React.ReactNode => {
-        const marketStatus = overviewRow ? classifyMarket(overviewRow) : undefined;
-        const statusConfig = marketStatus ? MARKET_STATUS_CONFIG[marketStatus] : undefined;
         switch (columnId) {
             case 'currentStorage': {
                 const resource = getResourceByName(resourceName);
@@ -95,14 +106,18 @@ export default function ResourceAccordionItem({
                     resource ? resourceFormToUnit(resource.form) : 'units',
                 );
             }
-            case 'marketFill':
-                return statusConfig ? (
-                    <Badge variant='outline' className={cn('text-[9px] px-1.5 py-0 h-5', statusConfig.className)}>
-                        {statusConfig.label}
+            case 'priceCostRatio': {
+                if (!overviewRow) {
+                    return '—';
+                }
+                const ratio = overviewRow.priceCostRatio;
+                const band = getPriceCostRatioBand(ratio);
+                return (
+                    <Badge variant='outline' className={`text-[9px] px-1.5 py-0 h-5 ${band.className}`}>
+                        {band.label}
                     </Badge>
-                ) : (
-                    '—'
                 );
+            }
             default:
                 return '—';
         }

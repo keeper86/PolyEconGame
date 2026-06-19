@@ -273,7 +273,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const baseRateConsumption = storageTarget / bufferTargetTicks;
         let smoothedShortfall = shortfall;
         let smoothedTarget = storageTarget;
-        if (baseRateConsumption > EPSILON && storageTarget > EPSILON && shortfall > EPSILON) {
+        if (
+            baseRateConsumption > EPSILON &&
+            storageTarget > EPSILON &&
+            shortfall > EPSILON &&
+            resource.form !== 'services'
+        ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
             const smoothedDemand = baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * (1 - fillRatio));
             smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);

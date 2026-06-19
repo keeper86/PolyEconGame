@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { LayoutGroup, motion } from 'motion/react';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -253,8 +254,8 @@ export default function MarketPanel({
                 return overviewRows[resourceName]?.totalDemand ?? 0;
             case 'totalSold':
                 return overviewRows[resourceName]?.totalSold ?? 0;
-            case 'marketFill':
-                return overviewRows[resourceName]?.fillRatio ?? 0;
+            case 'priceCostRatio':
+                return overviewRows[resourceName]?.priceCostRatio ?? 0;
             case 'name':
                 return resourceName;
             default:
@@ -343,42 +344,45 @@ export default function MarketPanel({
                                         </div>
                                         <div className='w-4 shrink-0' />
                                     </div>
-                                    <Accordion
-                                        type='single'
-                                        collapsible
-                                        value={openItem}
-                                        onValueChange={handleOpenChange}
-                                        className='w-full'
-                                    >
-                                        {(sortConfig.column === null
-                                            ? levelResources
-                                            : [...levelResources].sort((a, b) => {
-                                                  const aVal = getSortValue(a.name, sortConfig.column!);
-                                                  const bVal = getSortValue(b.name, sortConfig.column!);
-                                                  const cmp =
-                                                      typeof aVal === 'string' && typeof bVal === 'string'
-                                                          ? aVal.localeCompare(bVal)
-                                                          : (aVal as number) - (bVal as number);
-                                                  return sortConfig.direction === 'asc' ? cmp : -cmp;
-                                              })
-                                        ).map(({ name }) => (
-                                            <ResourceAccordionItem
-                                                key={name}
-                                                resourceName={name}
-                                                agentId={agentId}
-                                                assets={assets}
-                                                local={
-                                                    localStates[name] ??
-                                                    buildInitialState([{ name }], buyBids, sellOffers)[name]
-                                                }
-                                                onLocalChange={handleLocalChange}
-                                                isOpen={openItem === name}
-                                                overviewRow={overviewRows[name]}
-                                                visibleColumns={visibleColumns}
-                                                allPlanetDeposits={allPlanetDeposits}
-                                            />
-                                        ))}
-                                    </Accordion>{' '}
+                                    <LayoutGroup>
+                                        <Accordion
+                                            type='single'
+                                            collapsible
+                                            value={openItem}
+                                            onValueChange={handleOpenChange}
+                                            className='w-full'
+                                        >
+                                            {(sortConfig.column === null
+                                                ? levelResources
+                                                : [...levelResources].sort((a, b) => {
+                                                      const aVal = getSortValue(a.name, sortConfig.column!);
+                                                      const bVal = getSortValue(b.name, sortConfig.column!);
+                                                      const cmp =
+                                                          typeof aVal === 'string' && typeof bVal === 'string'
+                                                              ? aVal.localeCompare(bVal)
+                                                              : (aVal as number) - (bVal as number);
+                                                      return sortConfig.direction === 'asc' ? cmp : -cmp;
+                                                  })
+                                            ).map(({ name }) => (
+                                                <motion.div key={name} layout>
+                                                    <ResourceAccordionItem
+                                                        resourceName={name}
+                                                        agentId={agentId}
+                                                        assets={assets}
+                                                        local={
+                                                            localStates[name] ??
+                                                            buildInitialState([{ name }], buyBids, sellOffers)[name]
+                                                        }
+                                                        onLocalChange={handleLocalChange}
+                                                        isOpen={openItem === name}
+                                                        overviewRow={overviewRows[name]}
+                                                        visibleColumns={visibleColumns}
+                                                        allPlanetDeposits={allPlanetDeposits}
+                                                    />
+                                                </motion.div>
+                                            ))}
+                                        </Accordion>{' '}
+                                    </LayoutGroup>
                                 </>
                             )}{' '}
                         </TabsContent>

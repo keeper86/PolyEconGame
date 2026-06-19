@@ -1,5 +1,7 @@
 import assert from 'assert';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, TICKS_PER_MONTH } from '../constants';
+import { educationLevelKeys } from '../population/education';
+import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -9,21 +11,18 @@ import {
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
-import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
 
-export const OUTPUT_BUFFER_FULL_TICKS = OUTPUT_BUFFER_MAX_TICKS;
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.02;
+export const PID_KP = 0.1;
 
-export const PID_KI = 0.005;
+export const PID_KI = 0.001;
 
-export const PID_KD = 0.01;
+export const PID_KD = 0.05;
 export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.05;
+export const PID_OUT_MAX = 0.5;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
@@ -39,13 +38,13 @@ export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
 }
-
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { lastTickResults, produces, maxScale } = facility;
 
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
     let noData = 0;
+    let depreciationCosts = 0;
 
     const storage = assets.storageFacility;
 
@@ -57,15 +56,13 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
             continue;
         }
 
-        const totalProduced = planet.producedResources[output.resource.name] ?? 0;
-        const totalConsumed = planet.consumedResources[output.resource.name] ?? 0;
-
         const avg = lastResult;
 
         const price = avg.clearingPrice;
-
         assert(isFinite(price) && price > 0, 'Price should be positive and finite, but got' + price);
 
+        const totalDemand = avg.totalDemand;
+        const totalSupply = avg.totalSupply;
         const ownSupply = queryStorageFacility(storage, output.resource.name);
 
         assert(
@@ -78,15 +75,53 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
         assert(isFinite(buffer) && buffer >= 0, 'Buffer should be non-negative and finite, but got' + buffer);
 
-        // we do not smooth service inventory. We must take depreciation into account as we should target more supply as demand on average
-        let balance = avg.unfilledDemand - avg.unsoldSupply - totalProduced + totalConsumed;
-        if (balance > 0 && buffer >= OUTPUT_BUFFER_FULL_TICKS) {
-            balance = 0;
-        }
-        const maxFlow = Math.max(avg.unfilledDemand, avg.unsoldSupply, totalProduced, totalConsumed);
+        const overfilled =
+            buffer >= OUTPUT_BUFFER_MAX_TICKS ? (buffer / (buffer + OUTPUT_BUFFER_MAX_TICKS) - 0.5) * 2 : 0;
+        assert(
+            overfilled >= -1 && overfilled <= 1,
+            'Overfill signal should be between -1 and 1, but got' +
+                overfilled +
+                ' (buffer=' +
+                buffer +
+                ')' +
+                ', supply=' +
+                ownSupply +
+                ', perTick=' +
+                perTick,
+        );
 
-        weightedOutputSignalSum += (price * balance) / (maxFlow != 0 ? maxFlow : 1);
-        totalWeight += price;
+        const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
+        const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
+        const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
+
+        assert(
+            unfilledFrac >= 0 && unfilledFrac <= 1,
+            'Unfilled fraction should be between 0 and 1, but got' + unfilledFrac,
+        );
+        assert(unsoldFrac >= 0 && unsoldFrac <= 1, 'Unsold fraction should be between 0 and 1, but got' + unsoldFrac);
+        assert(avg.unfilledDemand >= 0, 'Unfilled demand should be non-negative, but got' + avg.unfilledDemand);
+        assert(avg.unsoldSupply >= 0, 'Unsold supply should be non-negative, but got' + JSON.stringify(avg));
+        assert(balance >= -1 && balance <= 1, 'Balance should be between -1 and 1, but got' + balance);
+
+        const WEIGHT_UNFILLED = 1.0;
+        const WEIGHT_UNSOLD = 0.5;
+        const WEIGHT_BALANCE = 2.0;
+        const OVERFILL_PENALTY = 1.0;
+
+        weightedOutputSignalSum +=
+            price *
+            (WEIGHT_UNFILLED * unfilledFrac -
+                WEIGHT_UNSOLD * unsoldFrac -
+                OVERFILL_PENALTY * overfilled +
+                WEIGHT_BALANCE * balance);
+        totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
+
+        if (output.resource.form === 'services') {
+            depreciationCosts +=
+                (assets.lastMonthAcc.depreciatedServices[output.resource.name]
+                    ? assets.lastMonthAcc.depreciatedServices[output.resource.name].value
+                    : 0) / TICKS_PER_MONTH;
+        }
     }
 
     if (totalWeight === 0) {
@@ -98,26 +133,26 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
     let profitSignal: number | undefined = undefined;
     const costs = lastTickResults.inputCosts + lastTickResults.wageCosts;
+    const effectiveCosts = costs + depreciationCosts;
     const hasOperated = costs > 0 || lastTickResults.revenue > 0;
     if (hasOperated && isFinite(costs)) {
-        const margin = costs > 0 ? (lastTickResults.revenue - costs) / Math.max(costs, lastTickResults.revenue) : 1;
+        const margin = effectiveCosts > 0 ? (lastTickResults.revenue - effectiveCosts) / effectiveCosts : 1;
         profitSignal = Math.max(-1, Math.min(1, margin));
     }
 
-    const maxOutputSignal = Math.max(-1, Math.min(1, weightedOutputSignalSum / totalWeight));
+    const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
     assert(
         isFinite(maxOutputSignal) && maxOutputSignal >= -1 && maxOutputSignal <= 1,
         'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
     );
 
-    let signal = profitSignal !== undefined ? (2 * maxOutputSignal + profitSignal) / 3 : maxOutputSignal;
+    let signal = profitSignal !== undefined ? (maxOutputSignal + profitSignal) / 2 : maxOutputSignal;
     if (signal > 0) {
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;
     }
-
-    return Math.max(-1, Math.min(1, signal));
+    return signal;
 }
 
 function computePidDelta(signal: number, state: PidState, maxScale: number): number {
@@ -131,7 +166,6 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
         state.integral = 0;
     }
 
-    // Decay the integral when the error signal is near zero so the derivative term can brake effectively
     if (Math.abs(signal) < EPSILON) {
         state.integral *= 0.5;
     }
@@ -259,25 +293,18 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 (o) => planet.lastMarketResult[o.resource.name] !== undefined,
             );
             if (!hasAnyMarketData) {
-                // Fallback: if there are open buy orders in the order book, treat it as a positive signal
-                // to avoid stalling when no market has cleared yet but demand is visible.
-                const hasOpenBids = facility.produces.some((o) => {
-                    const book = planet.orderBooks?.[o.resource.name];
-                    return book && book.bids.length > 0;
-                });
-                if (!hasOpenBids) {
-                    continue;
-                }
+                continue;
             }
 
-            const signal = hasAnyMarketData ? computeFacilitySignal(facility, assets, planet) : 0.01; // small positive signal from order book bids
-            assert(signal >= -1, 'Signal should be positive due to earlier check for market data, but got' + signal);
+            const signal = computeFacilitySignal(facility, assets, planet); // weighted market demand/supply signal
+            assert(signal >= -1, 'Signal should be >= -1, but got ' + signal);
             assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
             const delta = computePidDelta(signal, state, facility.maxScale);
-            facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+            const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+            facility.scale = newScale;
 
             if (facility.scale === facility.maxScale && signal > 0) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);

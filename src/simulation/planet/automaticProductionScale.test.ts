@@ -206,7 +206,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('scales UP when no lastMarketResult but open buy orders exist in the order book', () => {
+    it('skips facility when no lastMarketResult is available even with open buy orders', () => {
         const planet = makePlanet({
             lastMarketResult: {},
             avgMarketResult: {},
@@ -225,7 +225,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBeGreaterThan(initial);
+        expect(facility.scale).toBe(initial);
     });
 
     it('does not touch a non-automated agent', () => {
@@ -518,7 +518,7 @@ describe('updateAgentProductionScale', () => {
         facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
 
         for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(agents, facility.pidState ? planetDemand : planetDemand);
+            updateAgentProductionScale(agents, planetDemand);
         }
         const scaleAfterBuild = facility.scale;
 

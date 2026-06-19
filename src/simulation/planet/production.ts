@@ -73,13 +73,17 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
         if (storage.currentInStorage[serviceName]) {
             const quantity = storage.currentInStorage[serviceName].quantity;
             const factorToDepreciate = quantity < 0.01 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
-            removeFromStorageFacility(storage, serviceName, factorToDepreciate * quantity);
+            const depreciatedQuantity = factorToDepreciate * quantity;
+            removeFromStorageFacility(storage, serviceName, depreciatedQuantity);
+
+            // Depreciation is kind of resource consumption, at least effectively to be able to infer stock from flow.
+            planet.consumedResources[serviceName] = (planet.consumedResources[serviceName] ?? 0) + depreciatedQuantity;
+
             assets.monthAcc.depreciatedServices[serviceName] = {
-                quantity:
-                    (assets.monthAcc.depreciatedServices[serviceName]?.quantity ?? 0) + factorToDepreciate * quantity,
+                quantity: (assets.monthAcc.depreciatedServices[serviceName]?.quantity ?? 0) + depreciatedQuantity,
                 value:
                     (assets.monthAcc.depreciatedServices[serviceName]?.value ?? 0) +
-                    factorToDepreciate * quantity * (planet.marketPrices[serviceName] ?? 0),
+                    depreciatedQuantity * (planet.marketPrices[serviceName] ?? 0),
             };
         }
     });
