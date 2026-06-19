@@ -18,10 +18,8 @@ import ServiceSection from './_components/ServiceSection';
 
 import { Page } from '@/components/client/Page';
 import { ProductIcon } from '@/components/client/ProductIcon';
-import { Separator } from '@/components/ui/separator';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
 import { getCurrencyResourceName } from '@/simulation/market/currencyResources';
-import { Search } from 'lucide-react';
 import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import TransferChart from './_components/TransferChart';

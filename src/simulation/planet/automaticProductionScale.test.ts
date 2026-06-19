@@ -206,7 +206,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('scales UP when no lastMarketResult but open buy orders exist in the order book', () => {
+    it('skips facility when no lastMarketResult is available even with open buy orders', () => {
         const planet = makePlanet({
             lastMarketResult: {},
             avgMarketResult: {},
@@ -225,7 +225,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(agents, planet);
 
-        expect(facility.scale).toBeGreaterThan(initial);
+        expect(facility.scale).toBe(initial);
     });
 
     it('does not touch a non-automated agent', () => {

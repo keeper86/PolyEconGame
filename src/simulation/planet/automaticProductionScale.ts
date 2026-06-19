@@ -10,7 +10,7 @@ import {
     queryStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
-import { administrativeServiceResourceType, constructionServiceResourceType } from './services';
+import { constructionServiceResourceType } from './services';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
@@ -52,34 +52,15 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
     for (const output of produces) {
         const lastResult = planet.lastMarketResult[output.resource.name];
-        const orderBook = planet.orderBooks[output.resource.name];
 
-        if (!lastResult && !orderBook?.bids.length) {
+        if (!lastResult) {
             noData++;
             continue;
         }
 
-        const avg =
-            lastResult ??
-            (() => {
-                const totalBidQty = orderBook!.bids.reduce((sum, b) => sum + b.quantity, 0);
-                return {
-                    resourceName: output.resource.name,
-                    clearingPrice: 0,
-                    totalVolume: 0,
-                    totalDemand: totalBidQty,
-                    totalSupply: 0,
-                    unfilledDemand: totalBidQty,
-                    unsoldSupply: 0,
-                    productionCost: 0,
-                };
-            })();
+        const avg = lastResult;
 
-        const price =
-            avg.totalSupply > 0
-                ? avg.clearingPrice
-                : (orderBook?.bids[0]?.price ?? planet.marketPrices[output.resource.name] ?? 0);
-
+        const price = avg.clearingPrice;
         assert(isFinite(price) && price > 0, 'Price should be positive and finite, but got' + price);
 
         const totalDemand = avg.totalDemand;
@@ -143,10 +124,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                     ? assets.lastMonthAcc.depreciatedServices[output.resource.name].value
                     : 0) / TICKS_PER_MONTH;
         }
-
-        if (facility.produces.some((o) => o.resource.name === administrativeServiceResourceType.name)) {
-            console.log('production management debug:', price, overfilled, unfilledFrac, unsoldFrac, balance);
-        }
     }
 
     if (totalWeight === 0) {
@@ -177,18 +154,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;
     }
-
-    if (facility.produces.some((o) => o.resource.name === administrativeServiceResourceType.name)) {
-        console.log(
-            'production management debug:',
-            signal,
-            profitSignal,
-            costs,
-            lastTickResults.revenue,
-            maxOutputSignal,
-        );
-    }
-
     return signal;
 }
 
@@ -334,26 +299,6 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             const delta = computePidDelta(signal, state, facility.maxScale);
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
-
-            // Temporary debug log for administrative PID state
-            if (facility.produces.some((o) => o.resource.name === administrativeServiceResourceType.name)) {
-                console.log(
-                    '[ADMIN-PID]' +
-                        JSON.stringify({
-                            agentId: agent.id,
-                            facility: facility.id,
-                            signal,
-                            integral: state.integral,
-                            prevError: state.prevError,
-                            filteredError: state.filteredError,
-                            delta,
-                            oldScale: facility.scale - delta,
-                            newScale,
-                            maxScale: facility.maxScale,
-                            expansionIntegral: state.expansionIntegral,
-                        }),
-                );
-            }
 
             if (facility.scale === facility.maxScale && signal > 0) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);

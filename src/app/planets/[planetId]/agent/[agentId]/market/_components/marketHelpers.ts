@@ -1,11 +1,10 @@
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
-import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
-import type { MarketOverviewRow } from '@/server/controller/planet';
+import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
-import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
@@ -76,7 +75,6 @@ export function slugToResourceName(slug: string): string | undefined {
     }
     return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
 }
-
 
 export function buildResourceList(
     assets: AgentPlanetAssets,

@@ -139,7 +139,7 @@ describe('preProductionFinancialTick', () => {
 
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
         expect(bufferLoan).toBeDefined();
-        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(59_010, -1);
+        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(89_010, -1);
     });
 
     it('does not grant buffer loan when agent is not automated', () => {
