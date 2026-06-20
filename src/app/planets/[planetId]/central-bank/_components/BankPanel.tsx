@@ -85,7 +85,7 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
 
     return (
         <>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2' data-tour='bank-panel'>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Outstanding loans'

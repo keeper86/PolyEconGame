@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi, useCarousel } from '@/components/ui/carousel';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
@@ -14,6 +15,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
+import { useTour } from './TourContext';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
 
@@ -49,9 +51,11 @@ export function FoundingPage() {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const router = useRouter();
+    const { setTourActive } = useTour();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [enableTour, setEnableTour] = useState(false);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
@@ -104,6 +108,7 @@ export function FoundingPage() {
         if (!planetId) {
             return;
         }
+        setTourActive(enableTour);
         createAgentMutation.mutate({ agentName: agentName.trim(), planetId });
     };
 
@@ -279,6 +284,17 @@ export function FoundingPage() {
                             <CarouselNav />
                         </Carousel>
                     )}
+                </div>
+
+                <div className='flex items-center gap-2'>
+                    <Checkbox
+                        id='enable-tour'
+                        checked={enableTour}
+                        onCheckedChange={(checked) => setEnableTour(checked === true)}
+                    />
+                    <Label htmlFor='enable-tour' className='text-sm text-muted-foreground cursor-pointer'>
+                        Show me a guided tour after founding
+                    </Label>
                 </div>
 
                 <Button type='submit' disabled={createAgentMutation.isPending}>

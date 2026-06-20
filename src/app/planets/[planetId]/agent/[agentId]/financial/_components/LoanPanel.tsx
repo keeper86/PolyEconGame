@@ -138,7 +138,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     );
 
     return (
-        <div className='space-y-3'>
+        <div className='space-y-3' data-tour='financial-loan-panel'>
             {}
             {isLoading && <p className='text-xs text-muted-foreground'>Loading credit conditions…</p>}
 

@@ -1,0 +1,188 @@
+'use client';
+
+import type { PageRoute } from '@/lib/tourSteps';
+import { useRouter } from 'next/navigation';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+
+const STORAGE_KEY = 'polyecongame-tour';
+
+type TourStorage = {
+    active: boolean;
+    currentPageIndex: number;
+    completed: boolean;
+};
+
+type TourContextValue = {
+    /** Whether the user opted in for the tour */
+    isTourActive: boolean;
+    /** Set tour opt-in (called from FoundingPage) */
+    setTourActive: (active: boolean) => void;
+    /** The current page index in the tour sequence */
+    currentPageIndex: number;
+    /** Set the current page index */
+    setCurrentPageIndex: (index: number) => void;
+    /** Whether the tour is completed */
+    isCompleted: boolean;
+    /** Mark tour as completed */
+    completeTour: () => void;
+    /** Reset the tour */
+    resetTour: () => void;
+    /** Get the page route for the current index */
+    getCurrentPageRoute: () => PageRoute | null;
+    /** Navigate to the next tour page */
+    goToNextPage: (planetId: string, agentId: string) => void;
+};
+
+const PAGE_ORDER: PageRoute[] = ['central-bank', 'financial', 'workforce', 'claims', 'production', 'storage', 'market', 'ships'];
+
+const defaultStorage: TourStorage = {
+    active: false,
+    currentPageIndex: 0,
+    completed: false,
+};
+
+function loadStorage(): TourStorage {
+    if (typeof window === 'undefined') {
+        return defaultStorage;
+    }
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+            const parsed = JSON.parse(raw) as TourStorage;
+            return { ...defaultStorage, ...parsed };
+        }
+    } catch {
+        // ignore
+    }
+    return defaultStorage;
+}
+
+function saveStorage(storage: TourStorage): void {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
+    } catch {
+        // ignore
+    }
+}
+
+const TourContext = createContext<TourContextValue | null>(null);
+
+export function TourProvider({ children }: { children: ReactNode }) {
+    const [storage, setStorage] = useState<TourStorage>(defaultStorage);
+    const router = useRouter();
+
+    useEffect(() => {
+        setStorage(loadStorage());
+    }, []);
+
+    const persist = useCallback((update: Partial<TourStorage>) => {
+        setStorage((prev) => {
+            const next = { ...prev, ...update };
+            saveStorage(next);
+            return next;
+        });
+    }, []);
+
+    const isTourActive = storage.active;
+    const currentPageIndex = storage.currentPageIndex;
+    const isCompleted = storage.completed;
+
+    const setTourActive = useCallback(
+        (active: boolean) => {
+            persist({ active, currentPageIndex: 0, completed: false });
+        },
+        [persist],
+    );
+
+    const setCurrentPageIndex = useCallback(
+        (index: number) => {
+            persist({ currentPageIndex: index });
+        },
+        [persist],
+    );
+
+    const completeTour = useCallback(() => {
+        persist({ active: false, completed: true });
+    }, [persist]);
+
+    const resetTour = useCallback(() => {
+        persist({ active: true, currentPageIndex: 0, completed: false });
+    }, [persist]);
+
+    const getCurrentPageRoute = useCallback((): PageRoute | null => {
+        if (storage.currentPageIndex >= 0 && storage.currentPageIndex < PAGE_ORDER.length) {
+            return PAGE_ORDER[storage.currentPageIndex];
+        }
+        return null;
+    }, [storage.currentPageIndex]);
+
+    const goToNextPage = useCallback(
+        (planetId: string, agentId: string) => {
+            const nextIndex = storage.currentPageIndex + 1;
+            if (nextIndex >= PAGE_ORDER.length) {
+                completeTour();
+                return;
+            }
+            const nextPage = PAGE_ORDER[nextIndex];
+            const basePath = `/planets/${encodeURIComponent(planetId)}`;
+
+            let path = '';
+            switch (nextPage) {
+                case 'central-bank':
+                    path = `${basePath}/central-bank`;
+                    break;
+                case 'financial':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/financial`;
+                    break;
+                case 'workforce':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/workforce`;
+                    break;
+                case 'claims':
+                    path = `${basePath}/claims`;
+                    break;
+                case 'production':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/production`;
+                    break;
+                case 'storage':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/storage`;
+                    break;
+                case 'market':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/market`;
+                    break;
+                case 'ships':
+                    path = `${basePath}/agent/${encodeURIComponent(agentId)}/ships`;
+                    break;
+            }
+
+            persist({ currentPageIndex: nextIndex });
+            router.push(path as unknown as '/');
+        },
+        [storage.currentPageIndex, completeTour, persist, router],
+    );
+
+    return (
+        <TourContext.Provider
+            value={{
+                isTourActive,
+                setTourActive,
+                currentPageIndex,
+                setCurrentPageIndex,
+                isCompleted,
+                completeTour,
+                resetTour,
+                getCurrentPageRoute,
+                goToNextPage,
+            }}
+        >
+            {children}
+        </TourContext.Provider>
+    );
+}
+
+export function useTour(): TourContextValue {
+    const ctx = useContext(TourContext);
+    if (!ctx) {
+        throw new Error('useTour must be used within a TourProvider');
+    }
+    return ctx;
+}

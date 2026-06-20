@@ -87,7 +87,7 @@ export default function WorkerAllocationPanel({
     const totalTarget = Object.values(targets).reduce((s, v) => s + v, 0);
 
     return (
-        <div className='border rounded-md p-3 space-y-3'>
+        <div className='border rounded-md p-3 space-y-3' data-tour='workforce-allocation'>
             <button
                 type='button'
                 className='w-full flex items-center justify-between gap-2 cursor-pointer'
