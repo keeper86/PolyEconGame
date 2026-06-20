@@ -76,10 +76,10 @@ For services output:
             {}
             {}
             <section id='financial-post'>
-                <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (monthly)</h2>
+                <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (every tick)</h2>
                 <p>
-                    At every month boundary, after the labor market pipeline has advanced, automated agents run a{' '}
-                    <strong>tâtonnement wage adjustment</strong> per education level. Wages rise when there are unfilled
+                    After production, automated agents run a{' '}
+                    <strong>tâtonnement wage adjustment</strong> per education level every tick. Wages rise when there are unfilled
                     vacancies and fall when there is a surplus of idle workers:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
@@ -90,7 +90,7 @@ wage × (1 + WAGE_ADJUSTMENT_RATE)   if vacancyRate  > 0
 wage × (1 − WAGE_ADJUSTMENT_RATE)   if surplusRate  > 0
 
 WAGE_ADJUSTMENT_RATE = 0.02   (±2 % per month)
-MIN_WAGE             = 5.0`}
+MIN_WAGE             = 1.0`}
                 </pre>
                 <p className='mt-2'>
                     Because wages are paid to all active <em>and</em> departing workers, the wage bill can temporarily

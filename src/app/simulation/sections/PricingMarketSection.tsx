@@ -14,8 +14,8 @@ export function PricingMarketSection() {
                 </p>
                 <p>
                     Services and goods use the same tâtonnement logic but with different <strong>buffer targets</strong>
-                    : services target a 3-tick inventory buffer (reflecting their fast 20 %/tick decay), while goods
-                    typically target a 10-tick buffer.
+                    : services target a 5-tick inventory buffer (reflecting their fast 10 %/tick decay), while goods
+                    typically target a 30-tick buffer.
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`TARGET_SELL_THROUGH = 0.90   (aim to sell 90 % of offer per tick)
@@ -28,15 +28,15 @@ factor       = clamp(1 + 0.20 × excessDemand, 0.95, 1.05)
 newPrice     = clamp(price × factor, 0.01, 1_000_000)
 
 Buffer targets:
-  Services  → 3 ticks   (rapid decay means small buffer is optimal)
-  Goods     → 10 ticks  (slower decay tolerates larger buffer)
+  Services  → 5 ticks   (INPUT_BUFFER_TARGET_TICKS_SERVICES)
+  Goods     → 30 ticks  (INPUT_BUFFER_TARGET_TICKS)
 
 offerRetainment = reserved amount for production inputs (calculated from facility needs)`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>Service Depreciation Effect on Pricing</h3>
                 <p>
-                    Because unsold services lose 20 % of their value per tick, agents observe that their effective
+                    Because unsold services lose 10 % of their value per tick, agents observe that their effective
                     sell-through appears high even at moderate prices — the decay forces aggressive pricing. Agents that
                     produce more services than they can sell see inventory shrink quickly regardless of price, which
                     feeds back into the tâtonnement as a high sell-through signal, causing prices to rise until
@@ -124,7 +124,7 @@ sellableQty     = max(0, inventory[r] − inputReserve[r])`}
                 <p>
                     Each agent with a registered sell offer contributes an ask at its current offer price (set by the
                     pricing step above) and its sellable inventory (after input reserve deduction) as quantity. Services
-                    offered are additionally reduced by the 20 %/tick depreciation applied before the market runs.
+                    offered are additionally reduced by the 10 %/tick depreciation applied before the market runs.
                 </p>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>8.2 Bid Orders (Households — services only)</h3>
@@ -136,12 +136,13 @@ sellableQty     = max(0, inventory[r] − inputReserve[r])`}
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`Priority order (household settlement sequence):
   1. Grocery         (survival; drives starvation index S)
-  2. Healthcare      (reducesmortality & disability)
+  2. Healthcare      (reduces mortality & disability)
   3. Logistics       (infrastructure dependency)
   4. Education       (workforce advancement)
   5. Retail          (consumer goods)
   6. Construction    (infrastructure demand side)
   7. Administrative  (bureaucratic overhead)
+  8. Maintenance     (equipment & infrastructure upkeep)
 
 For each cohort cell, for each service in priority order:
   bufferDeficit  = max(0, bufferTarget − currentBuffer)
