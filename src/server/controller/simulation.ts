@@ -4,8 +4,10 @@ import {
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
 } from '@/simulation/constants';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';
@@ -65,6 +67,11 @@ export const getCurrentTick = () =>
             return { tick };
         });
 
+const resourceSummarySchema = z.object({
+    name: z.string(),
+    freeCapacity: z.number(),
+});
+
 const planetSummarySchema = z.object({
     planetId: z.string(),
     name: z.string(),
@@ -74,6 +81,16 @@ const planetSummarySchema = z.object({
         deposits: z.number(),
     }),
     foodPrice: z.number(),
+    gdp: z.number(),
+    moneySupply: z.number(),
+    policyRate: z.number(),
+    costOfLiving: z.number(),
+    costOfLivingRich: z.number(),
+    wageEdu0: z.number(),
+    wageEdu1: z.number(),
+    wageEdu2: z.number(),
+    wageEdu3: z.number(),
+    claims: z.array(resourceSummarySchema),
 });
 
 export type PlanetSummary = z.infer<typeof planetSummarySchema>;
@@ -101,6 +118,27 @@ export const getLatestPlanetSummaries = () =>
                     },
                     foodPrice: p.marketPrices[groceryServiceResourceType.name] ?? 1,
                     name: p.name,
+                    gdp:
+                        Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                            TICKS_PER_YEAR +
+                        (p.monthTransferVolume * 1) / 3,
+                    moneySupply: p.bank.deposits,
+                    policyRate: p.bank.loanRate,
+                    costOfLiving: computeCostOfLiving(p.marketPrices, false),
+                    costOfLivingRich: computeCostOfLiving(p.marketPrices, true),
+                    wageEdu0: p.wagePerEdu.none ?? 0,
+                    wageEdu1: p.wagePerEdu.primary ?? 0,
+                    wageEdu2: p.wagePerEdu.secondary ?? 0,
+                    wageEdu3: p.wagePerEdu.tertiary ?? 0,
+                    claims: Object.entries(p.resources)
+                        .map(([name, entries]) => ({
+                            name,
+                            freeCapacity: entries.reduce(
+                                (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
+                                0,
+                            ),
+                        }))
+                        .sort((a, b) => b.freeCapacity - a.freeCapacity),
                 })),
             };
         });

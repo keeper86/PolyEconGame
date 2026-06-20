@@ -66,3 +66,35 @@ export const waterSourceResourceType: Resource = {
     ...landBoundResourceDefault,
     name: 'Water Source',
 };
+
+export const getLandboundRessourceByName = (name: string): Resource | undefined => {
+    switch (name) {
+        case 'Coal Deposit':
+            return coalDepositResourceType;
+        case 'Oil Reservoir':
+            return oilReservoirResourceType;
+        case 'Natural Gas Field':
+            return naturalGasFieldResourceType;
+        case 'Forest':
+            return forestResourceType;
+        case 'Stone Deposit':
+            return stoneDepositResourceType;
+        case 'Copper Deposit':
+            return copperDepositResourceType;
+        case 'Sand Deposit':
+            return sandDepositResourceType;
+        case 'Limestone Deposit':
+            return limestoneDepositResourceType;
+        case 'Clay Deposit':
+            return clayDepositResourceType;
+        case 'Iron Ore Deposit':
+            return ironOreDepositResourceType;
+        case 'Arable Land':
+            return arableLandResourceType;
+        case 'Water Source':
+            return waterSourceResourceType;
+        default:
+            console.warn(`Unknown landbound resource name: ${name}`);
+            return undefined;
+    }
+};

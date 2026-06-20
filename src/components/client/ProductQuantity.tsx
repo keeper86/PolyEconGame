@@ -25,6 +25,13 @@ export function borderColor(efficiency: number, isLimiting: boolean): string {
     return 'border border-green-500';
 }
 
+function wrapInLink(children: React.ReactNode, href: string | null): React.ReactElement {
+    if (href === null) {
+        return <>{children}</>;
+    }
+    return <Link href={href as never}>{children}</Link>;
+}
+
 export function ProductQuantity({
     resource,
     quantity,
@@ -49,13 +56,14 @@ export function ProductQuantity({
                 return `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`;
             }
         }
-        return '#';
+        return null;
     };
 
     const isUnknown = quantityLabel !== undefined;
-    return (
-        <Link
-            href={getHref() as never}
+    const href = getHref();
+
+    return wrapInLink(
+        <div
             className={`relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all ${borderColor(efficiency, isLimiting)}`}
         >
             {!isUnknown && (
@@ -72,6 +80,7 @@ export function ProductQuantity({
                     formatNumberWithUnit(quantity, 'units')
                 )}
             </span>
-        </Link>
+        </div>,
+        href,
     );
 }

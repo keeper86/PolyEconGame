@@ -1,18 +1,49 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
+import { Carousel, CarouselContent, CarouselItem, type CarouselApi, useCarousel } from '@/components/ui/carousel';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { PLANET_LARGE_IMAGES } from '@/lib/planetAssets';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Page } from './Page';
+import { ProductQuantity } from './ProductQuantity';
+
+function CarouselNav() {
+    const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
+
+    return (
+        <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5  pointer-events-none rounded-b-xl'>
+            <button
+                type='button'
+                onClick={scrollPrev}
+                disabled={!canScrollPrev}
+                className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
+            >
+                <ChevronLeft className='h-4 w-4' />
+                <span className='sr-only'>Previous planet</span>
+            </button>
+
+            <button
+                type='button'
+                onClick={scrollNext}
+                disabled={!canScrollNext}
+                className='pointer-events-auto inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 w-8 disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer'
+            >
+                <ChevronRight className='h-4 w-4' />
+                <span className='sr-only'>Next planet</span>
+            </button>
+        </div>
+    );
+}
 
 export function FoundingPage() {
     const trpc = useTRPC();
@@ -21,8 +52,33 @@ export function FoundingPage() {
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
     const [submitted, setSubmitted] = useState(false);
+    const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+
+    const onCarouselSelect = useCallback(
+        (api: CarouselApi) => {
+            if (!api || !planetsQuery.data) {
+                return;
+            }
+            const index = api.selectedScrollSnap();
+            const planet = planetsQuery.data.planets[index];
+            if (planet) {
+                setPlanetId(planet.planetId);
+            }
+        },
+        [planetsQuery.data],
+    );
+
+    useEffect(() => {
+        if (!carouselApi || !planetsQuery.data) {
+            return;
+        }
+        carouselApi.on('select', onCarouselSelect);
+        return () => {
+            carouselApi.off('select', onCarouselSelect);
+        };
+    }, [carouselApi, onCarouselSelect, planetsQuery.data]);
 
     useEffect(() => {
         if (!planetId && planetsQuery.data?.planets.length) {
@@ -45,7 +101,9 @@ export function FoundingPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!planetId) return;
+        if (!planetId) {
+            return;
+        }
         createAgentMutation.mutate({ agentName: agentName.trim(), planetId });
     };
 
@@ -66,10 +124,8 @@ export function FoundingPage() {
         <Page title='Found your Company'>
             <form onSubmit={handleSubmit} className='grid gap-6 max-w-lg'>
                 <div className='grid gap-2'>
-                    <Label htmlFor='company-name'>Company Name</Label>
                     <Input
-                        id='company-name'
-                        placeholder='e.g. Stellar Enterprises'
+                        placeholder='Your company name'
                         value={agentName}
                         onChange={(e) => setAgentName(e.target.value)}
                         maxLength={64}
@@ -79,18 +135,20 @@ export function FoundingPage() {
                 </div>
 
                 <div className='grid gap-2'>
-                    <Label>Home Planet</Label>
                     {planetsQuery.isLoading ? (
                         <div className='flex items-center gap-2 text-muted-foreground'>
                             <Spinner className='h-4 w-4' />
                             <span className='text-sm'>Loading planets…</span>
                         </div>
                     ) : (
-                        <Carousel className='w-full max-w-md mx-auto'>
+                        <Carousel setApi={setCarouselApi}>
                             <CarouselContent>
                                 {planets.map((p) => {
                                     const isSelected = p.planetId === planetId;
                                     const watermarkSrc = PLANET_LARGE_IMAGES[p.planetId];
+
+                                    const minWage = Math.min(p.wageEdu0, p.wageEdu1, p.wageEdu2, p.wageEdu3);
+                                    const maxWage = Math.max(p.wageEdu0, p.wageEdu1, p.wageEdu2, p.wageEdu3);
 
                                     return (
                                         <CarouselItem key={p.planetId} className='basis-full'>
@@ -115,24 +173,102 @@ export function FoundingPage() {
                                                     />
                                                 )}
 
-                                                <div className='p-5 space-y-3'>
-                                                    <h3 className='text-lg font-semibold'>{p.name}</h3>
+                                                <div className='p-3 sm:p-5 pb-16 space-y-3 min-h-[500px]'>
+                                                    <h3 className='text-xl font-semibold'>{p.name}</h3>
 
-                                                    <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm'>
+                                                    <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-outline-strong'>
                                                         <span className='text-muted-foreground'>Population</span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(p.populationTotal, 'persons')}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Bank Equity</span>
+                                                        <span className='text-muted-foreground'>GDP</span>
                                                         <span className='text-right font-medium'>
-                                                            {formatNumberWithUnit(p.bank.equity, 'currency', planetId)}
+                                                            {formatNumberWithUnit(p.gdp, 'currency', p.planetId)}
                                                         </span>
 
-                                                        <span className='text-muted-foreground'>Bank Deposits</span>
+                                                        <span className='text-muted-foreground'>Money Supply</span>
                                                         <span className='text-right font-medium'>
-                                                            {formatNumberWithUnit(p.bank.deposits, 'currency', planetId)}
+                                                            {formatNumberWithUnit(
+                                                                p.moneySupply,
+                                                                'currency',
+                                                                p.planetId,
+                                                            )}
                                                         </span>
+
+                                                        <span className='text-muted-foreground'>Bank Equity</span>
+                                                        <span className='text-right font-medium'>
+                                                            {formatNumberWithUnit(
+                                                                p.bank.equity,
+                                                                'currency',
+                                                                p.planetId,
+                                                            )}
+                                                        </span>
+
+                                                        <span className='text-muted-foreground'>Interest Rate</span>
+                                                        <span className='text-right font-medium tabular-nums'>
+                                                            {(p.policyRate * 100).toFixed(2)} %
+                                                        </span>
+
+                                                        <span className='text-muted-foreground'>Cost of Living</span>
+                                                        <span className='text-right font-medium'>
+                                                            {formatNumberWithUnit(
+                                                                p.costOfLiving,
+                                                                'currency',
+                                                                p.planetId,
+                                                            )}
+                                                            {' – '}
+                                                            {formatNumberWithUnit(
+                                                                p.costOfLivingRich,
+                                                                'currency',
+                                                                p.planetId,
+                                                            )}
+                                                        </span>
+
+                                                        <span className='text-muted-foreground'>Wages</span>
+                                                        <span className='text-right font-medium'>
+                                                            {formatNumberWithUnit(minWage, 'currency', p.planetId)}
+                                                            {' – '}
+                                                            {formatNumberWithUnit(maxWage, 'currency', p.planetId)}
+                                                        </span>
+                                                    </div>
+
+                                                    <div>
+                                                        <p className='text-xs text-muted-foreground mb-1.5'>
+                                                            Available Resources
+                                                        </p>
+                                                        {p.claims.length > 0 ? (
+                                                            <div className='flex flex-wrap gap-1.5'>
+                                                                {p.claims.map((claim) => {
+                                                                    const resource = getLandboundRessourceByName(
+                                                                        claim.name,
+                                                                    );
+                                                                    if (!resource) {
+                                                                        console.warn(
+                                                                            `Resource not found: ${claim.name}`,
+                                                                        );
+                                                                        return null;
+                                                                    }
+                                                                    return (
+                                                                        <ProductQuantity
+                                                                            key={claim.name}
+                                                                            resource={resource}
+                                                                            quantity={claim.freeCapacity}
+                                                                            planetId={null}
+                                                                            agentId={null}
+                                                                            efficiency={1}
+                                                                            isLimiting={false}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        ) : (
+                                                            <div className='flex flex-wrap gap-1.5' aria-hidden>
+                                                                <span className='opacity-0 select-none pointer-events-none text-xs border border-transparent px-2 py-0.5 rounded-md'>
+                                                                    &nbsp;
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </button>
@@ -140,8 +276,7 @@ export function FoundingPage() {
                                     );
                                 })}
                             </CarouselContent>
-                            <CarouselPrevious type='button' />
-                            <CarouselNext type='button' />
+                            <CarouselNav />
                         </Carousel>
                     )}
                 </div>
