@@ -10,7 +10,7 @@ export default defineConfig({
     testDir: './tests/e2e',
     fullyParallel: true,
     forbidOnly: !!process.env.CI,
-    retries: 2,
+    retries: 1,
     workers: 1,
     reporter: 'html',
     use: {

@@ -47,6 +47,7 @@ export default function CreditButton({
     return (
         <Button
             variant='outline'
+            data-tour='starter-loan'
             className={cn(
                 'w-full flex flex-col gap-0.5 relative overflow-hidden text-outline-strong border',
                 isGreen

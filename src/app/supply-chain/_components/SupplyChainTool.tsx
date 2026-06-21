@@ -17,7 +17,6 @@ import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/
 import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
-
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;

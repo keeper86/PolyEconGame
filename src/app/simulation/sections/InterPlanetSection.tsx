@@ -62,15 +62,15 @@ export function InterPlanetSection() {
 
                 <h4 className='text-lg font-semibold mt-4 mb-2'>Market Makers</h4>
                 <p>
-                    Three automated market-maker (MM) agents are created per planet. At initialisation each MM receives
-                    a working-capital loan from the home bank and seed loans in every foreign currency from the
-                    respective foreign banks:
+                    One automated market-maker (MM) agent is created per planet. At initialisation the MM receives a
+                    working-capital loan from the home bank and seed loans in every foreign currency from the respective
+                    foreign banks:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`FOREX_MM_COUNT         = 3     (per planet)
-FOREX_MM_WORKING_CAPITAL = 100,000  (home currency, funded by home bank loan)
-FOREX_MM_SEED_LOAN     = 100,000  (per foreign currency, funded by that planet's bank)
-FOREX_MM_TARGET_DEPOSIT = 100,000  (inventory reference level)`}
+                    {`FOREX_MM_COUNT         = 1     (per planet)
+FOREX_MM_WORKING_CAPITAL = 1,000,000,000  (home currency, funded by home bank loan)
+FOREX_MM_SEED_LOAN     = 1,000,000,000  (per foreign currency, funded by that planet's bank)
+FOREX_MM_TARGET_DEPOSIT = 10,000,000  (inventory reference level)`}
                 </pre>
 
                 <h4 className='text-lg font-semibold mt-4 mb-2'>Dynamic Spread Pricing</h4>

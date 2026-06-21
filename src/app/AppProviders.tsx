@@ -1,5 +1,6 @@
 'use client';
 
+import { TourProvider } from '@/components/client/TourContext';
 import { trpcClient, TRPCProvider } from '@/lib/trpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session } from 'next-auth';
@@ -56,7 +57,7 @@ export default function AppProviders({ children, session }: { children: React.Re
                 <AttachLoggerToQueryClient queryClient={queryClient} />
                 <SimulationOfflineBanner />
                 <SessionProvider session={session} refetchOnWindowFocus={false}>
-                    {children}
+                    <TourProvider>{children}</TourProvider>
                 </SessionProvider>
             </TRPCProvider>
         </QueryClientProvider>

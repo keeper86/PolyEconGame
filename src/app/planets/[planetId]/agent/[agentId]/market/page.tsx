@@ -31,13 +31,15 @@ export default function MarketPage() {
                 {hasNoAssets ? (
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (
-                    <MarketPanel
-                        agentId={agentId}
-                        planetId={planetId}
-                        assets={assets}
-                        allPlanetDeposits={detail?.allPlanetDeposits}
-                        showAll={showAll}
-                    />
+                    <div data-tour='market-overview'>
+                        <MarketPanel
+                            agentId={agentId}
+                            planetId={planetId}
+                            assets={assets}
+                            allPlanetDeposits={detail?.allPlanetDeposits}
+                            showAll={showAll}
+                        />
+                    </div>
                 ) : (
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}

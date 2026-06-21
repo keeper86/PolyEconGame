@@ -75,45 +75,45 @@ SERVICE_PER_PERSON_PER_TICK = 1 / 30   (1 unit grocery / person / month)`}
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Healthcare</td>
-                                <td className='p-2 border'>Reduces mortality &amp; disability rates</td>
-                                <td className='text-right p-2 border'>4</td>
+                                <td className='p-2 border'>Reduces mortality & disability rates</td>
+                                <td className='text-right p-2 border'>30</td>
                                 <td className='text-right p-2 border'>1/30 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Logistics</td>
                                 <td className='p-2 border'>Material flow; required by many production chains</td>
-                                <td className='text-right p-2 border'>4</td>
+                                <td className='text-right p-2 border'>30</td>
                                 <td className='text-right p-2 border'>1/30 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Education</td>
                                 <td className='p-2 border'>Workforce skill advancement</td>
-                                <td className='text-right p-2 border'>2</td>
-                                <td className='text-right p-2 border'>1/30 per person/tick</td>
+                                <td className='text-right p-2 border'>30</td>
+                                <td className='text-right p-2 border'>1/360 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Retail</td>
                                 <td className='p-2 border'>Consumer goods distribution</td>
-                                <td className='text-right p-2 border'>10</td>
+                                <td className='text-right p-2 border'>30</td>
                                 <td className='text-right p-2 border'>1/30 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Construction</td>
                                 <td className='p-2 border'>Enables facility scale-up (see §8b)</td>
-                                <td className='text-right p-2 border'>2</td>
-                                <td className='text-right p-2 border'>1/60 per person/tick</td>
+                                <td className='text-right p-2 border'>30</td>
+                                <td className='text-right p-2 border'>1/360 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Administrative</td>
                                 <td className='p-2 border'>Bureaucratic overhead for complex operations</td>
-                                <td className='text-right p-2 border'>3</td>
-                                <td className='text-right p-2 border'>1/45 per person/tick</td>
+                                <td className='text-right p-2 border'>360</td>
+                                <td className='text-right p-2 border'>1/360 per person/tick</td>
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Maintenance</td>
-                                <td className='p-2 border'>Equipment &amp; infrastructure upkeep</td>
-                                <td className='text-right p-2 border'>3</td>
-                                <td className='text-right p-2 border'>1/30 per person/tick</td>
+                                <td className='p-2 border'>Equipment & infrastructure upkeep</td>
+                                <td className='text-right p-2 border'>30</td>
+                                <td className='text-right p-2 border'>1/360 per person/tick</td>
                             </tr>
                         </tbody>
                     </table>
@@ -126,11 +126,11 @@ SERVICE_PER_PERSON_PER_TICK = 1 / 30   (1 unit grocery / person / month)`}
                     penalised:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`SERVICE_DEPRECIATION_RATE_PER_TICK = 0.20   (20 % of inventory lost per tick)
+                    {`SERVICE_DEPRECIATION_RATE_PER_TICK = 0.10   (10 % of inventory lost per tick)
 
-effectiveInventory(t+1) = inventory(t) × (1 − 0.20)
+effectiveInventory(t+1) = inventory(t) × (1 − 0.10)
 
-An unsold stockpile halves in ≈ 3 ticks; goods inventories do not decay.`}
+An unsold stockpile halves in ≈ 6.5 ticks; goods inventories do not decay.`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>Service Buffers vs Goods Inventory</h3>

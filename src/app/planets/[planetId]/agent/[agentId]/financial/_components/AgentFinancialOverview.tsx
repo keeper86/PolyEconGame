@@ -49,7 +49,7 @@ export default function AgentFinancialOverview({
     const netPosition = deposits - loans;
 
     return (
-        <div className='space-y-3'>
+        <div className='space-y-3' data-tour='financial-overview'>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat

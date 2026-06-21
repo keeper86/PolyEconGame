@@ -15,13 +15,13 @@ export default function ProductionPage() {
                 {hasNoAssets ? (
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets ? (
-                    <>
+                    <div data-tour='production-facilities'>
                         <ProductionFacilitiesPanel
                             facilities={assets.productionFacilities}
                             agentId={agentId}
                             planetId={planetId}
                         />
-                    </>
+                    </div>
                 ) : (
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}

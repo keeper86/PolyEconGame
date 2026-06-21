@@ -33,7 +33,7 @@ export default function WorkforcePage() {
                     <div className='space-y-6'>
                         <Card>
                             <CardContent className='px-3 pb-3 space-y-3'>
-                                <div className='grid grid-cols-1 gap-x-4 gap-y-0.5'>
+                                <div className='grid grid-cols-1 gap-x-4 gap-y-0.5' data-tour='workforce-wages'>
                                     <div className='flex items-baseline justify-between text-xs gap-2'>
                                         <span className='text-muted-foreground capitalize'>Education</span>
                                         <span className='tabular-nums'>

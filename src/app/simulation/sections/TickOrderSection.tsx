@@ -21,15 +21,12 @@ export function TickOrderSection() {
                     <code>governmentTick</code> — water-fill wealth redistribution to the poorest population cohorts
                 </li>
                 <li>
-                    <code>workforceDemographicTick</code> — voluntary quits, retirement, mortality &amp; disability of
+                    <code>workforceDemographicTick</code> — voluntary quits, retirement, mortality & disability of
                     active workers (produces event accumulator)
                 </li>
                 <li>
                     <code>populationTick</code> — applies workforce events to demography; disability / retirement of
-                    non-workers; grocery service buffer consumption &amp; starvation update; births
-                </li>
-                <li>
-                    <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
+                    non-workers; grocery service buffer consumption & starvation update; births
                 </li>
                 <li>
                     <code>automaticWorkerAllocation</code> — recompute demand targets from last tick results
@@ -44,8 +41,7 @@ export function TickOrderSection() {
                     <code>maturesLoans</code> — call in loans that have reached maturity
                 </li>
                 <li>
-                    <code>preProductionFinancialTick</code> — working-capital loans &amp; wage payment (firm →
-                    households)
+                    <code>preProductionFinancialTick</code> — working-capital loans & wage payment (firm → households)
                 </li>
                 <li>
                     <code>intergenerationalTransfersForPlanet</code> — 5-phase family wealth redistribution (grocery
@@ -56,12 +52,12 @@ export function TickOrderSection() {
                 </li>
                 <li>
                     <code>automaticPricing</code> — tâtonnement sell-price update per resource per agent; input buy
-                    orders with break-even ceiling (services use 3-tick buffer; goods use 10-tick buffer)
+                    orders with break-even ceiling (services use 5-tick buffer; goods use 30-tick buffer)
                 </li>
                 <li>
                     <code>marketTick</code> — unified price-priority order-book clearing;{' '}
                     <code>buildPopulationDemand</code> generates service-only household bids (priority: Grocery →
-                    Healthcare → Logistics → Education → Retail → Construction → Administrative)
+                    Healthcare → Logistics → Education → Retail → Construction → Administrative → Maintenance)
                 </li>
                 <li>
                     <code>accumulatePlanetPrices</code> — EMA update of reference market prices
@@ -75,16 +71,19 @@ export function TickOrderSection() {
                     input consumption, pollution
                 </li>
                 <li>
+                    <code>automaticWageAdjustment</code> — tâtonnement wage adjustment per education level (±2 % based
+                    on vacancy rate; runs every tick)
+                </li>
+                <li>
+                    <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
+                </li>
+                <li>
                     <em>(end of month)</em> <code>postProductionLaborMarketTick</code> — advance notice pipelines;
                     release workers to population
                 </li>
                 <li>
-                    <em>(end of month)</em> <code>automaticAdjustmentWages</code> — tâtonnement wage adjustment per
-                    education level (±2 % based on vacancy rate)
-                </li>
-                <li>
                     <em>(end of year)</em> <code>populationAdvanceYearTick</code> — age all cohorts; education
-                    graduation &amp; dropout
+                    graduation & dropout
                 </li>
                 <li>
                     <em>(end of year)</em> <code>workforceAdvanceYearTick</code> — workforce cohort aging
@@ -126,20 +125,20 @@ export function TickOrderSection() {
                     from both the workforce and the demography in the same tick, avoiding double-counting.
                 </li>
                 <li>
-                    <strong>Transfers before pricing (steps 12 &amp; 14)</strong>: dependents receive family wealth
-                    before the market opens, so their buying power is reflected in demand signals.
+                    <strong>Transfers before pricing (steps 11 & 13)</strong>: dependents receive family wealth before
+                    the market opens, so their buying power is reflected in demand signals.
                 </li>
                 <li>
-                    <strong>Market before production (steps 15–18)</strong>: agents sell last tick&apos;s inventory
-                    first, then produce; this means households receive services the tick after they are produced, and
-                    service depreciation acts on unsold inventory between production and the next clearing.
+                    <strong>Market before production (steps 14–17)</strong>: agents sell last ticks inventory first,
+                    then produce; this means households receive services the tick after they are produced, and service
+                    depreciation acts on unsold inventory between production and the next clearing.
                 </li>
                 <li>
-                    <strong>Construction before production (steps 17–18)</strong>: newly unlocked facility scale becomes
+                    <strong>Construction before production (steps 16–17)</strong>: newly unlocked facility scale becomes
                     available within the same tick that completes the construction, not one tick later.
                 </li>
                 <li>
-                    <strong>Wages before production (step 11)</strong>: firms pay wages before producing, ensuring
+                    <strong>Wages before production (step 10)</strong>: firms pay wages before producing, ensuring
                     households have purchasing power in the same tick that goods hit the market.
                 </li>
                 <li>

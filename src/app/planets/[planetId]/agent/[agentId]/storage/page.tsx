@@ -15,7 +15,9 @@ export default function StoragePage() {
                 {hasNoAssets ? (
                     <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
                 ) : !isLoading && assets?.storageFacility ? (
-                    <StorageOverview storage={assets.storageFacility} />
+                    <div data-tour='storage-overview'>
+                        <StorageOverview storage={assets.storageFacility} />
+                    </div>
                 ) : (
                     <div className='text-sm text-muted-foreground'>Loading…</div>
                 )}
