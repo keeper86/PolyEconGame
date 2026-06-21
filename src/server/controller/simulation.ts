@@ -3,11 +3,11 @@ import {
     ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT,
     ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS,
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
+    TICKS_PER_YEAR,
 } from '@/simulation/constants';
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';

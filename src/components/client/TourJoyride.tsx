@@ -12,20 +12,35 @@ import type { EventHandler, Props } from 'react-joyride';
  * We need to dynamically import Joyride because it's a heavy client-only library
  * that uses DOM APIs. The dynamic import with `ssr: false` prevents SSR issues.
  */
-const Joyride = dynamic(
-    () => import('react-joyride').then((mod) => mod.Joyride),
-    { ssr: false },
-) as React.ComponentType<Props>;
+const Joyride = dynamic(() => import('react-joyride').then((mod) => mod.Joyride), {
+    ssr: false,
+}) as React.ComponentType<Props>;
 
 function pathToPageRoute(pathname: string): PageRoute | null {
-    if (pathname.includes('/central-bank')) return 'central-bank';
-    if (pathname.includes('/financial')) return 'financial';
-    if (pathname.includes('/workforce')) return 'workforce';
-    if (pathname.includes('/claims')) return 'claims';
-    if (pathname.includes('/production')) return 'production';
-    if (pathname.includes('/storage')) return 'storage';
-    if (pathname.includes('/market')) return 'market';
-    if (pathname.includes('/ships')) return 'ships';
+    if (pathname.includes('/central-bank')) {
+        return 'central-bank';
+    }
+    if (pathname.includes('/financial')) {
+        return 'financial';
+    }
+    if (pathname.includes('/workforce')) {
+        return 'workforce';
+    }
+    if (pathname.includes('/claims')) {
+        return 'claims';
+    }
+    if (pathname.includes('/production')) {
+        return 'production';
+    }
+    if (pathname.includes('/storage')) {
+        return 'storage';
+    }
+    if (pathname.includes('/market')) {
+        return 'market';
+    }
+    if (pathname.includes('/ships')) {
+        return 'ships';
+    }
     return null;
 }
 
@@ -81,7 +96,7 @@ export function TourJoyride() {
             setCurrentPageIndex(0);
             // Schedule navigation after React removes joyride from the DOM
             setTimeout(() => {
-                stepWithAfter.after();
+                stepWithAfter.after?.();
             }, 0);
             return;
         }
