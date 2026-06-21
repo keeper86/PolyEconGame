@@ -136,6 +136,8 @@ export function FoundingPage() {
                         maxLength={64}
                         required
                         disabled={createAgentMutation.isPending}
+                        name='company-name'
+                        autoComplete='organization'
                     />
                 </div>
 
