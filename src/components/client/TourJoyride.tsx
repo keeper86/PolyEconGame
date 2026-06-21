@@ -91,17 +91,6 @@ export function TourJoyride() {
         return getStepsForPage(currentPageRoute, planetId, agentId, routerPush);
     }, [currentPageRoute, planetId, agentId, routerPush]);
 
-    // Extract unique non-body target selectors from the current page's steps
-    const targetSelectors = useMemo(() => {
-        const selectors = new Set<string>();
-        for (const step of steps) {
-            if (step.target && step.target !== 'body' && typeof step.target === 'string') {
-                selectors.add(step.target);
-            }
-        }
-        return Array.from(selectors);
-    }, [steps]);
-
     // ── Navigating reset ─────────────────────────────────────────────
     // When the page route changes (inter-page navigation completed),
     // reset navigating and targetsReady so the tour re-appears.
@@ -114,9 +103,19 @@ export function TourJoyride() {
         }
     }, [currentPageRoute]);
 
+    // Get the current step's target selector (only the step we're about to show)
+    const currentStepTarget = useMemo<string | null>(() => {
+        const step = steps[currentPageIndex];
+        if (!step || !step.target || step.target === 'body' || typeof step.target !== 'string') {
+            return null;
+        }
+        return step.target;
+    }, [steps, currentPageIndex]);
+
     // ── MutationObserver for target readiness ─────────────────────────
-    // Waits for all data-tour target selectors to be present in the DOM
-    // before allowing Joyride to render.
+    // Waits only for the current step's target element to be present in the DOM
+    // before allowing Joyride to render. This prevents the overlay from blocking
+    // the page while async data (useSimulationQuery) is still loading.
     useEffect(() => {
         // If tour not active or no steps, no need to wait
         if (!isTourActive || steps.length === 0) {
@@ -124,23 +123,24 @@ export function TourJoyride() {
             return;
         }
 
-        // Body-only steps (navigation steps) have no real targets to wait for
-        if (targetSelectors.length === 0) {
+        // Body-target or no-target steps (e.g. navigation steps) have no real targets to wait for
+        if (!currentStepTarget) {
             setTargetsReady(true);
             return;
         }
 
-        // Quick check — maybe everything is already in the DOM
-        const allExist = targetSelectors.every((sel) => document.querySelector(sel));
-        if (allExist) {
+        // Quick check — maybe the target is already in the DOM
+        if (document.querySelector(currentStepTarget)) {
             setTargetsReady(true);
             return;
         }
 
-        // Observe DOM for target elements to appear
+        // Target doesn't exist yet — hide Joyride until it appears
+        setTargetsReady(false);
+
+        // Observe DOM for the current step's target to appear
         const observer = new MutationObserver(() => {
-            const ready = targetSelectors.every((sel) => document.querySelector(sel));
-            if (ready) {
+            if (document.querySelector(currentStepTarget)) {
                 observer.disconnect();
                 setTargetsReady(true);
             }
@@ -158,7 +158,7 @@ export function TourJoyride() {
             observer.disconnect();
             clearTimeout(timeout);
         };
-    }, [isTourActive, steps, targetSelectors]);
+    }, [isTourActive, steps, currentStepTarget]);
 
     // ── Navigation guard: block accidental navigation away from the tour ────
     // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.

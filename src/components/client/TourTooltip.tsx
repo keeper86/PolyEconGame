@@ -26,6 +26,7 @@ export function TourTooltip({
     return (
         <Card
             {...(tooltipProps as React.HTMLAttributes<HTMLDivElement>)}
+            role='alertdialog'
             className='min-w-[320px] max-w-[420px] shadow-xl border bg-card text-card-foreground'
         >
             {/* Close button */}
@@ -55,7 +56,7 @@ export function TourTooltip({
                     )}
 
                     {/* Skip button */}
-                    <Button {...skipProps} variant='ghost' size='sm' className='text-xs h-7 px-2'>
+                    <Button {...skipProps} data-action='skip' variant='ghost' size='sm' className='text-xs h-7 px-2'>
                         Skip
                     </Button>
                 </div>
@@ -63,13 +64,19 @@ export function TourTooltip({
                 {/* Right side: back / next buttons */}
                 <div className='flex items-center gap-1.5'>
                     {index > 0 && (
-                        <Button {...backProps} variant='outline' size='sm' className='text-xs h-8'>
+                        <Button {...backProps} data-action='back' variant='outline' size='sm' className='text-xs h-8'>
                             Back
                         </Button>
                     )}
 
                     {continuous && (
-                        <Button {...primaryProps} variant='default' size='sm' className='text-xs h-8'>
+                        <Button
+                            {...primaryProps}
+                            data-action='primary'
+                            variant='default'
+                            size='sm'
+                            className='text-xs h-8'
+                        >
                             {isLastStep ? 'Finish' : 'Next'}
                         </Button>
                     )}
