@@ -4,10 +4,6 @@ import type { Step as JoyrideStep } from 'react-joyride';
  * Tour steps grouped by page route.
  * Each page returns the steps relevant to that page.
  * The tour progresses through pages via navigation in step `after` callbacks.
- *
- * Note: joyride v3 Step type = SharedProps & Partial<Options> & { content, target, ... }.
- * Properties like disableBeacon, showSkipButton, showProgress are NOT on Step -
- * they are on the top-level Props instead.
  */
 
 type PageRoute = 'central-bank' | 'financial' | 'workforce' | 'claims' | 'production' | 'storage' | 'market' | 'ships';
@@ -25,14 +21,37 @@ export function getStepsForPage(
 
     switch (page) {
         case 'central-bank':
+            // Step 0: Blocking — user must click the loan button to proceed.
+            // hideOverlay removes the dark overlay so the loan button is clickable.
+            // blockTargetInteraction is set to false to override the global option.
+            // buttons: ['skip'] hides all buttons except skip (no Next button).
+            // data.blocking marks this step for programmatic advancement.
             steps.push({
                 target: '[data-tour="starter-loan"]',
                 content:
-                    'This green button lets you take your first starter loan. It provides initial capital to build your company infrastructure and hire workers.',
-                title: '\uD83C\uDFE6 Starter Loan',
+                    'Click the green button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers.',
+                title: '\uD83C\uDFE6 Now take the loan',
                 placement: 'bottom',
-                hideOverlay: false,
+                hideOverlay: true,
+                blockTargetInteraction: false,
                 spotlightPadding: 8,
+                skipBeacon: true,
+                buttons: ['skip'],
+                locale: {
+                    skip: 'Skip tour',
+                },
+                zIndex: 10000,
+                data: { blocking: true },
+            });
+            // Step 1: Confirmation — shown after loan is taken
+            steps.push({
+                target: 'body',
+                content:
+                    'Your loan has been credited to your account. Now let\u2019s look at the central bank metrics and then move on.',
+                title: '\u2705 Loan taken successfully!',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Next',
                     skip: 'Skip tour',
@@ -46,6 +65,7 @@ export function getStepsForPage(
                     'This panel shows the central bank\u2019s key metrics \u2014 equity, policy rate, and money supply. Keep an eye on these as they affect loan conditions.',
                 title: '\uD83C\uDFDB\uFE0F Central Bank Overview',
                 placement: 'top',
+                skipBeacon: true,
                 locale: {
                     next: 'Next',
                     skip: 'Skip tour',
@@ -60,6 +80,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Financial Overview',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Finances \u2192',
                     skip: 'Skip tour',
@@ -81,6 +102,7 @@ export function getStepsForPage(
                     'This is your Financial Overview. Here you can see your deposits, outstanding loans, and net position. Track your cash flow to ensure you stay profitable.',
                 title: '\uD83D\uDCB0 Financial Overview',
                 placement: 'bottom',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -89,6 +111,7 @@ export function getStepsForPage(
                     'The loan panel lets you request additional loans or repay existing ones. Managing debt wisely is key to growing your company.',
                 title: '\uD83D\uDCB3 Loan Management',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -97,6 +120,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Workforce',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Workforce \u2192',
                     skip: 'Skip tour',
@@ -118,6 +142,7 @@ export function getStepsForPage(
                     'Set wages for each education level to attract workers. Higher wages attract more skilled employees, but also increase your costs.',
                 title: '\uD83D\uDC77 Wage Settings',
                 placement: 'bottom',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -126,6 +151,7 @@ export function getStepsForPage(
                     'Allocate workers to your facilities. You can automate this process with the toggle above so workers are assigned where they are needed most.',
                 title: '\uD83D\uDD04 Worker Allocation',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -134,6 +160,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Land Claims',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Claims \u2192',
                     skip: 'Skip tour',
@@ -153,6 +180,7 @@ export function getStepsForPage(
                     'Lease land claims to access natural resources. Each claim provides raw materials needed for production. Select available resources and lease them to start extraction.',
                 title: '\uD83C\uDF0D Land Claims',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -162,6 +190,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Production',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Production \u2192',
                     skip: 'Skip tour',
@@ -183,6 +212,7 @@ export function getStepsForPage(
                     'Build production facilities to process raw materials into finished goods. Click on a facility card to expand it and see its inputs, outputs, and automation settings.',
                 title: '\uD83C\uDFED Production Facilities',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -191,6 +221,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Storage',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Storage \u2192',
                     skip: 'Skip tour',
@@ -210,6 +241,7 @@ export function getStepsForPage(
                     'This is your storage facility. It shows all the goods you have accumulated \u2014 both raw materials and finished products. Keep an eye on capacity!',
                 title: '\uD83D\uDCE6 Storage Overview',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -218,6 +250,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Market',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Market \u2192',
                     skip: 'Skip tour',
@@ -237,6 +270,7 @@ export function getStepsForPage(
                     'The Market panel shows buy and sell orders for all resources. You can place orders to buy inputs for production or sell your products to earn revenue.',
                 title: '\uD83C\uDFEA Market Overview',
                 placement: 'top',
+                skipBeacon: true,
                 zIndex: 10000,
             });
             steps.push({
@@ -245,6 +279,7 @@ export function getStepsForPage(
                 title: '\u27A1\uFE0F Next: Ships',
                 placement: 'center',
                 hideOverlay: false,
+                skipBeacon: true,
                 locale: {
                     next: 'Go to Ships \u2192',
                     skip: 'Skip tour',
@@ -264,6 +299,7 @@ export function getStepsForPage(
                     'Ships allow you to trade with other planets and expand your business across the solar system. Build ships at shipyards, manage your fleet, and trade on the ship marketplace.',
                 title: '\uD83D\uDE80 Ship Management',
                 placement: 'top',
+                skipBeacon: true,
                 locale: {
                     next: 'Finish',
                     skip: 'Skip tour',
@@ -277,6 +313,7 @@ export function getStepsForPage(
                     '\uD83C\uDF89 Congratulations! You have completed the guided tour. You now know the basics of managing your company. Feel free to explore each section in more detail. Good luck!',
                 title: '\u2705 Tour Complete',
                 placement: 'center',
+                skipBeacon: true,
                 locale: {
                     close: 'Finish Tour',
                     skip: 'Skip',

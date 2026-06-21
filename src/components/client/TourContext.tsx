@@ -2,7 +2,7 @@
 
 import type { PageRoute } from '@/lib/tourSteps';
 import { useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
 const STORAGE_KEY = 'polyecongame-tour';
 
@@ -31,6 +31,10 @@ type TourContextValue = {
     getCurrentPageRoute: () => PageRoute | null;
     /** Navigate to the next tour page */
     goToNextPage: (planetId: string, agentId: string) => void;
+    /** Advance to the next step on the current page (increment currentPageIndex by 1) */
+    advanceToNextStep: () => void;
+    /** Ref that mirrors isTourActive for use in callbacks */
+    isTourActiveRef: React.RefObject<boolean>;
 };
 
 const PAGE_ORDER: PageRoute[] = ['central-bank', 'financial', 'workforce', 'claims', 'production', 'storage', 'market', 'ships'];
@@ -70,10 +74,16 @@ const TourContext = createContext<TourContextValue | null>(null);
 export function TourProvider({ children }: { children: ReactNode }) {
     const [storage, setStorage] = useState<TourStorage>(defaultStorage);
     const router = useRouter();
+    const isTourActiveRef = useRef<boolean>(false);
 
     useEffect(() => {
         setStorage(loadStorage());
     }, []);
+
+    // Keep ref in sync with storage
+    useEffect(() => {
+        isTourActiveRef.current = storage.active;
+    }, [storage.active]);
 
     const persist = useCallback((update: Partial<TourStorage>) => {
         setStorage((prev) => {
@@ -100,6 +110,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
         },
         [persist],
     );
+
+    const advanceToNextStep = useCallback(() => {
+        setStorage((prev) => {
+            const next = { ...prev, currentPageIndex: prev.currentPageIndex + 1 };
+            saveStorage(next);
+            return next;
+        });
+    }, []);
 
     const completeTour = useCallback(() => {
         persist({ active: false, completed: true });
@@ -172,6 +190,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 resetTour,
                 getCurrentPageRoute,
                 goToNextPage,
+                advanceToNextStep,
+                isTourActiveRef,
             }}
         >
             {children}

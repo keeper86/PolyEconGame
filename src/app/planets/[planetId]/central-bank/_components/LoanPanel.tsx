@@ -5,6 +5,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
+import { useTour } from '@/components/client/TourContext';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronDown, HandCoins, Landmark } from 'lucide-react';
 import React from 'react';
@@ -109,6 +110,7 @@ function LoanRow({
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const { currentPageIndex, advanceToNextStep, isTourActiveRef } = useTour();
 
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
@@ -130,6 +132,12 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
+
+                // If the tour is active and we're on step 0 (the blocking "take the loan" step),
+                // advance the tour to the next step (confirmation)
+                if (isTourActiveRef.current && currentPageIndex === 0) {
+                    advanceToNextStep();
+                }
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Loan request failed');

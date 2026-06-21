@@ -8,7 +8,7 @@ const MESSAGE = 'You have unsaved changes.';
 const ACTION_LABEL = 'Leave anyway';
 const TOAST_DURATION_MS = 8_000;
 
-export function useNavigationGuard(isActive: boolean): void {
+export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void): void {
     const router = useRouter();
 
     const dummyStatePushedRef = useRef(false);
@@ -70,6 +70,7 @@ export function useNavigationGuard(isActive: boolean): void {
                         action: {
                             label: ACTION_LABEL,
                             onClick: () => {
+                                onForceLeave?.();
                                 if (isSameOrigin) {
                                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                                     router.push(destination as any);
@@ -102,6 +103,7 @@ export function useNavigationGuard(isActive: boolean): void {
                 action: {
                     label: ACTION_LABEL,
                     onClick: () => {
+                        onForceLeave?.();
                         window.removeEventListener('popstate', popStateHandler);
                         dummyStatePushedRef.current = false;
                         window.history.back();
@@ -116,5 +118,5 @@ export function useNavigationGuard(isActive: boolean): void {
             document.removeEventListener('click', clickHandler, true);
             window.removeEventListener('popstate', popStateHandler);
         };
-    }, [isActive, router]);
+    }, [isActive, router, onForceLeave]);
 }

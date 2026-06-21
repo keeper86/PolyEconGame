@@ -3,6 +3,8 @@
 import { useTour } from '@/components/client/TourContext';
 import { getStepsForPage, type PageRoute } from '@/lib/tourSteps';
 import { useAgentId } from '@/hooks/useAgentId';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
+import { TourTooltip } from '@/components/client/TourTooltip';
 import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -158,6 +160,14 @@ export function TourJoyride() {
         };
     }, [isTourActive, steps, targetSelectors]);
 
+    // ── Navigation guard: block accidental navigation away from the tour ────
+    // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.
+    const handleGuardForceLeave = useCallback(() => {
+        completeTour();
+    }, [completeTour]);
+
+    useNavigationGuard(isTourActive, handleGuardForceLeave);
+
     // If the tour is not active, not mounted yet, or we're not on a tour page, render nothing.
     // Also hide joyride during inter-page navigation or while waiting for DOM targets.
     if (!mounted || !isTourActive || !currentPageRoute || !planetId || navigating || !targetsReady) {
@@ -174,6 +184,11 @@ export function TourJoyride() {
         const stepWithAfter = currentStep as (typeof steps)[number] & { after?: () => void };
         const isNavStep = currentStep?.target === 'body' && typeof stepWithAfter.after === 'function';
 
+        // Steps with data.blocking: true advance programmatically (e.g. via mutation callback),
+        // so we should not auto-advance on "next" click for them.
+        const stepData = (currentStep as { data?: Record<string, unknown> })?.data ?? {};
+        const isBlockingStep = stepData?.blocking === true;
+
         // Navigation steps: before navigating, stop rendering joyride entirely
         // so its overlay is removed. The component will re-mount on the next page.
         if (type === 'step:after' && isNavStep && (action === 'next' || status === 'finished')) {
@@ -186,8 +201,8 @@ export function TourJoyride() {
             return;
         }
 
-        // Regular content step — just advance the index
-        if (type === 'step:after' && action === 'next') {
+        // Regular content step — just advance the index (skip blocking steps that advance programmatically)
+        if (type === 'step:after' && action === 'next' && !isBlockingStep) {
             setCurrentPageIndex(index + 1);
         }
 
@@ -204,39 +219,11 @@ export function TourJoyride() {
             continuous
             stepIndex={currentPageIndex}
             onEvent={handleOnEvent}
+            tooltipComponent={TourTooltip}
             options={{
-                showProgress: true,
                 spotlightPadding: 8,
-                primaryColor: '#22c55e',
-            }}
-            styles={{
-                tooltip: {
-                    borderRadius: '12px',
-                    padding: '20px',
-                    fontSize: '14px',
-                } as React.CSSProperties,
-                tooltipContainer: {
-                    padding: '10px 0',
-                    lineHeight: '1.6',
-                } as React.CSSProperties,
-                buttonPrimary: {
-                    backgroundColor: '#22c55e',
-                    borderRadius: '8px',
-                    padding: '8px 20px',
-                    fontSize: '14px',
-                    fontWeight: 600,
-                } as React.CSSProperties,
-                buttonBack: {
-                    color: '#64748b',
-                    fontSize: '14px',
-                } as React.CSSProperties,
-                buttonSkip: {
-                    color: '#94a3b8',
-                    fontSize: '13px',
-                } as React.CSSProperties,
-                buttonClose: {
-                    color: '#94a3b8',
-                } as React.CSSProperties,
+                overlayClickAction: false,
+                blockTargetInteraction: true,
             }}
             locale={{
                 back: 'Back',
