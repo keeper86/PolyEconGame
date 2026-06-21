@@ -62,9 +62,9 @@ export function InterPlanetSection() {
 
                 <h4 className='text-lg font-semibold mt-4 mb-2'>Market Makers</h4>
                 <p>
-                    One automated market-maker (MM) agent is created per planet. At initialisation the MM receives
-                    a working-capital loan from the home bank and seed loans in every foreign currency from the
-                    respective foreign banks:
+                    One automated market-maker (MM) agent is created per planet. At initialisation the MM receives a
+                    working-capital loan from the home bank and seed loans in every foreign currency from the respective
+                    foreign banks:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`FOREX_MM_COUNT         = 1     (per planet)

@@ -78,9 +78,9 @@ For services output:
             <section id='financial-post'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (every tick)</h2>
                 <p>
-                    After production, automated agents run a{' '}
-                    <strong>tâtonnement wage adjustment</strong> per education level every tick. Wages rise when there are unfilled
-                    vacancies and fall when there is a surplus of idle workers:
+                    After production, automated agents run a <strong>tâtonnement wage adjustment</strong> per education
+                    level every tick. Wages rise when there are unfilled vacancies and fall when there is a surplus of
+                    idle workers:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`vacancyRate  = max(0, allocated[edu] − active[edu]) / allocated[edu]

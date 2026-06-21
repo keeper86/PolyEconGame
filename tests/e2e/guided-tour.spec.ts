@@ -11,10 +11,7 @@ test.describe('Guided Tour E2E', () => {
         // 1. Enable tour via localStorage and navigate to central bank
         // ==================================================================
         await page.evaluate((key: string) => {
-            localStorage.setItem(
-                key,
-                JSON.stringify({ active: true, currentPageIndex: 0, completed: false }),
-            );
+            localStorage.setItem(key, JSON.stringify({ active: true, currentPageIndex: 0, completed: false }));
         }, STORAGE_KEY);
 
         // Navigate to a planet's central-bank page to start the tour
@@ -180,10 +177,7 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForLoadState('networkidle');
 
         await page.evaluate((key: string) => {
-            localStorage.setItem(
-                key,
-                JSON.stringify({ active: true, currentPageIndex: 0, completed: false }),
-            );
+            localStorage.setItem(key, JSON.stringify({ active: true, currentPageIndex: 0, completed: false }));
         }, STORAGE_KEY);
 
         await page.reload();
@@ -210,10 +204,7 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForLoadState('networkidle');
 
         await page.evaluate((key: string) => {
-            localStorage.setItem(
-                key,
-                JSON.stringify({ active: true, currentPageIndex: 0, completed: false }),
-            );
+            localStorage.setItem(key, JSON.stringify({ active: true, currentPageIndex: 0, completed: false }));
         }, STORAGE_KEY);
 
         await page.reload();
@@ -252,10 +243,7 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForLoadState('networkidle');
 
         await page.evaluate((key: string) => {
-            localStorage.setItem(
-                key,
-                JSON.stringify({ active: true, currentPageIndex: 0, completed: false }),
-            );
+            localStorage.setItem(key, JSON.stringify({ active: true, currentPageIndex: 0, completed: false }));
         }, STORAGE_KEY);
 
         await page.reload();

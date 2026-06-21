@@ -41,8 +41,7 @@ export function TickOrderSection() {
                     <code>maturesLoans</code> — call in loans that have reached maturity
                 </li>
                 <li>
-                    <code>preProductionFinancialTick</code> — working-capital loans & wage payment (firm →
-                    households)
+                    <code>preProductionFinancialTick</code> — working-capital loans & wage payment (firm → households)
                 </li>
                 <li>
                     <code>intergenerationalTransfersForPlanet</code> — 5-phase family wealth redistribution (grocery
@@ -126,13 +125,13 @@ export function TickOrderSection() {
                     from both the workforce and the demography in the same tick, avoiding double-counting.
                 </li>
                 <li>
-                    <strong>Transfers before pricing (steps 11 & 13)</strong>: dependents receive family wealth
-                    before the market opens, so their buying power is reflected in demand signals.
+                    <strong>Transfers before pricing (steps 11 & 13)</strong>: dependents receive family wealth before
+                    the market opens, so their buying power is reflected in demand signals.
                 </li>
                 <li>
-                    <strong>Market before production (steps 14–17)</strong>: agents sell last tick's inventory
-                    first, then produce; this means households receive services the tick after they are produced, and
-                    service depreciation acts on unsold inventory between production and the next clearing.
+                    <strong>Market before production (steps 14–17)</strong>: agents sell last ticks inventory first,
+                    then produce; this means households receive services the tick after they are produced, and service
+                    depreciation acts on unsold inventory between production and the next clearing.
                 </li>
                 <li>
                     <strong>Construction before production (steps 16–17)</strong>: newly unlocked facility scale becomes

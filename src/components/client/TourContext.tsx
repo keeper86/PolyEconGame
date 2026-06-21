@@ -37,7 +37,16 @@ type TourContextValue = {
     isTourActiveRef: React.RefObject<boolean>;
 };
 
-const PAGE_ORDER: PageRoute[] = ['central-bank', 'financial', 'workforce', 'claims', 'production', 'storage', 'market', 'ships'];
+const PAGE_ORDER: PageRoute[] = [
+    'central-bank',
+    'financial',
+    'workforce',
+    'claims',
+    'production',
+    'storage',
+    'market',
+    'ships',
+];
 
 const defaultStorage: TourStorage = {
     active: false,

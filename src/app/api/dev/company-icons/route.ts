@@ -1,9 +1,8 @@
 // TEMP-DEV: Company icon classifier - will be removed
-import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { NAMES } from '@/simulation/initialUniverse/preConfiguredCompanies';
+import fs from 'fs';
+import { NextResponse } from 'next/server';
+import path from 'path';
 
 const PUBLIC_DIR = path.join(process.cwd(), 'public');
 const COMPANIES_DIR = path.join(PUBLIC_DIR, 'images', 'companies');
@@ -25,8 +24,14 @@ function buildCategories(): { key: string; label: string; group: 'facility' | 'l
 
     // Also add facility type keys from preConfiguredCompanies that may not be in ALL_FACILITY_ENTRIES
     const extraFacilities = [
-        'bauxite_mine', 'brick_factory', 'fertilizer_plant', 'natural_gas_well',
-        'phosphate_mine', 'potash_mine', 'rare_earth_mine', 'aluminum_smelter',
+        'bauxite_mine',
+        'brick_factory',
+        'fertilizer_plant',
+        'natural_gas_well',
+        'phosphate_mine',
+        'potash_mine',
+        'rare_earth_mine',
+        'aluminum_smelter',
     ];
     for (const k of extraFacilities) {
         const label = k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -53,7 +58,8 @@ export const categories = buildCategories();
 export async function GET() {
     try {
         // List all Gemini files in public/
-        const files = fs.readdirSync(PUBLIC_DIR)
+        const files = fs
+            .readdirSync(PUBLIC_DIR)
             .filter((f) => f.startsWith('Gemini_') && f.endsWith('.webp'))
             .sort();
 

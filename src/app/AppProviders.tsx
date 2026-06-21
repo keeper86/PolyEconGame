@@ -57,9 +57,7 @@ export default function AppProviders({ children, session }: { children: React.Re
                 <AttachLoggerToQueryClient queryClient={queryClient} />
                 <SimulationOfflineBanner />
                 <SessionProvider session={session} refetchOnWindowFocus={false}>
-                    <TourProvider>
-                        {children}
-                    </TourProvider>
+                    <TourProvider>{children}</TourProvider>
                 </SessionProvider>
             </TRPCProvider>
         </QueryClientProvider>

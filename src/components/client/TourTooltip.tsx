@@ -69,12 +69,7 @@ export function TourTooltip({
                     )}
 
                     {continuous && (
-                        <Button
-                            {...primaryProps}
-                            variant='default'
-                            size='sm'
-                            className='text-xs h-8'
-                        >
+                        <Button {...primaryProps} variant='default' size='sm' className='text-xs h-8'>
                             {isLastStep ? 'Finish' : 'Next'}
                         </Button>
                     )}
