@@ -33,6 +33,7 @@ import {
 import { workerQueries } from '../../simulation/workerClient/queries';
 import { db } from '../db';
 import { protectedProcedure } from '../trpcRoot';
+import { getLatestTick } from '../../simulation/workerClient/manager';
 
 const loanSchema = z.object({
     id: z.string(),
@@ -63,8 +64,7 @@ export const getCurrentTick = () =>
         .input(z.void())
         .output(z.object({ tick: z.number() }))
         .query(async () => {
-            const { tick } = await workerQueries.getCurrentTick();
-            return { tick };
+            return { tick: getLatestTick() };
         });
 
 const resourceSummarySchema = z.object({
@@ -262,10 +262,8 @@ export const getAgentDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, agent: null };
             }
@@ -321,10 +319,8 @@ export const getAgentOverview = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, overview: null };
             }
@@ -366,10 +362,8 @@ export const getPlanetDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { planet }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getPlanet(input.planetId),
-            ]);
+            const tick = getLatestTick();
+            const { planet } = await workerQueries.getPlanet(input.planetId);
             if (!planet) {
                 return { tick, planet: null, populationTotal: 0 };
             }
@@ -400,10 +394,8 @@ export const getAgentPlanetDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, detail: null };
             }
@@ -442,6 +434,7 @@ export const getPlanetPopulationHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -455,6 +448,7 @@ export const getPlanetPopulationHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetPopulationHistory(db, input.planetId, input.granularity, input.limit);
             return {
+                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows
@@ -477,6 +471,7 @@ export const getPlanetBufferHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -498,6 +493,7 @@ export const getPlanetBufferHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetBufferHistory(db, input.planetId, input.granularity, input.limit);
             return {
+                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows
@@ -529,6 +525,7 @@ export const getProductPriceHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 planetId: z.string(),
                 productName: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
@@ -551,6 +548,7 @@ export const getProductPriceHistory = () =>
                 input.limit,
             );
             return {
+                tick: getLatestTick(),
                 planetId: input.planetId,
                 productName: input.productName,
                 granularity: input.granularity,
@@ -577,6 +575,7 @@ export const getAgentHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 agentId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 foundedTick: z.number(),
@@ -599,6 +598,7 @@ export const getAgentHistory = () =>
                 dbGetAgentHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
+                tick: getLatestTick(),
                 agentId: input.agentId,
                 granularity: input.granularity,
                 foundedTick: agent?.foundedTick ?? 0,
@@ -628,6 +628,7 @@ export const getAgentFinancialHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 agentId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 foundedTick: z.number(),
@@ -649,6 +650,7 @@ export const getAgentFinancialHistory = () =>
                 dbGetAgentFinancialHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
+                tick: getLatestTick(),
                 agentId: input.agentId,
                 granularity: input.granularity,
                 foundedTick: agent?.foundedTick ?? 0,
@@ -676,6 +678,7 @@ export const getPlanetEconomyHistory = () =>
         )
         .output(
             z.object({
+                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -698,6 +701,7 @@ export const getPlanetEconomyHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetEconomyHistory(db, input.planetId, input.granularity, input.limit);
             return {
+                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows

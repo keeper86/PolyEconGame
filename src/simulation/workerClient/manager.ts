@@ -12,11 +12,19 @@ export type MessageHandler = (msg: OutboundMessage) => void;
 const GLOBAL_KEY_POOL = Symbol.for('__polyecon_worker_pool__');
 const GLOBAL_KEY_PORT = Symbol.for('__polyecon_worker_port__');
 const GLOBAL_KEY_HANDLERS = Symbol.for('__polyecon_message_handlers__');
+const GLOBAL_KEY_TICK = Symbol.for('__polyecon_cached_tick__');
+
+const TICK_UNSET = 0;
+
+export function getLatestTick(): number {
+    return (g as Record<symbol, number | undefined>)[GLOBAL_KEY_TICK] ?? TICK_UNSET;
+}
 
 const g = globalThis as unknown as {
     [GLOBAL_KEY_POOL]?: Piscina | null;
     [GLOBAL_KEY_PORT]?: MessagePort | null;
     [GLOBAL_KEY_HANDLERS]?: Set<MessageHandler>;
+    [GLOBAL_KEY_TICK]?: number;
 };
 
 function getPool(): Piscina | null {
@@ -153,6 +161,13 @@ export function startWorker(): void {
     const { pool, port } = createPool();
     setPool(pool);
     setPort(port);
+
+    // Listen for tick broadcasts from the worker to update the cached tick.
+    onWorkerMessage((msg: OutboundMessage) => {
+        if (msg.type === 'tick') {
+            (g as Record<symbol, number>)[GLOBAL_KEY_TICK] = msg.tick;
+        }
+    });
 }
 
 export function sendToWorker(msg: InboundMessage): void {

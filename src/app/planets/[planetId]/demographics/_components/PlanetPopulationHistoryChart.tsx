@@ -1,8 +1,9 @@
 'use client';
 
-import { Card, CardContent } from '@/components/ui/card';
 import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
+import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -10,7 +11,6 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/consta
 import React, { useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
-import { Separator } from '@/components/ui/separator';
 
 type RawPoint = { bucket: number; avgPopulation: number };
 
@@ -456,7 +456,7 @@ function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
 
 type Props = {
     planetId: string;
-    live?: LiveData;
+    live: LiveData;
 };
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
@@ -487,7 +487,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
         (granularity === 'decade' && (loadingDecade || !decade));
 
-    const currentTick = live?.tick ?? 0;
+    const currentTick = live.tick;
 
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
