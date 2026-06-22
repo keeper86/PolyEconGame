@@ -14,10 +14,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTour } from './TourContext';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -54,7 +55,8 @@ export function FoundingPage() {
     const { setTourActive } = useTour();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
-    const [submitted, setSubmitted] = useState(false);
+    const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
+    const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
     const [enableTour, setEnableTour] = useState(false);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
@@ -90,18 +92,33 @@ export function FoundingPage() {
         }
     }, [planetId, planetsQuery.data]);
 
+    const tick = useSimulationTick();
+    const tickRef = useRef(tick);
+    tickRef.current = tick;
+
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
-            onSuccess: () => {
-                setSubmitted(true);
+            onSuccess: (data) => {
+                setFoundedAtTick(tickRef.current);
+                setCreatedAgentId(data.agentId);
                 void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
-                router.push(`/planets/${encodeURIComponent(planetId)}/central-bank` as unknown as '/');
             },
             onError: (err: unknown) => {
                 console.error(err);
             },
         }),
     );
+
+    useEffect(() => {
+        if (foundedAtTick === null || !createdAgentId) {
+            return;
+        }
+        if (tick > foundedAtTick) {
+            router.push(
+                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
+            );
+        }
+    }, [tick, foundedAtTick, createdAgentId, planetId, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -112,12 +129,12 @@ export function FoundingPage() {
         createAgentMutation.mutate({ agentName: agentName.trim(), planetId });
     };
 
-    if (submitted) {
+    if (foundedAtTick !== null) {
         return (
             <Page title='Found your Company'>
                 <div className='flex items-center gap-3 text-muted-foreground'>
                     <Spinner className='h-5 w-5' />
-                    <span>Redirecting…</span>
+                    <span>Company registered. Waiting for the next tick to take effect…</span>
                 </div>
             </Page>
         );

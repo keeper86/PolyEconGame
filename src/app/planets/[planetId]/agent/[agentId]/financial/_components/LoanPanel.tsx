@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import CreditButton from './CreditButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
+import { useTour } from '@/components/client/TourContext';
 
 type Props = {
     agentId: string;
@@ -109,6 +110,7 @@ function LoanRow({
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const { isTourActive, advanceToNextStep } = useTour();
 
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
@@ -129,6 +131,11 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
+
+                // If the tour is active and this was a starter loan, advance the blocking step
+                if (isTourActive && conditions?.isNewAgent) {
+                    advanceToNextStep();
+                }
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Loan request failed');
@@ -158,17 +165,23 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                             <p className='text-xs text-muted-foreground'>
                                 Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
                             </p>
-                            <CreditButton
-                                variant='starter'
-                                planetId={planetId}
-                                isFull={true}
-                                label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId)}`}
-                                isPending={requestLoanMutation.isPending}
-                                disabled={conditions.maxLoanAmount === 0}
-                                onClick={() => {
-                                    requestLoanMutation.mutate({ agentId, planetId, amount: conditions.maxLoanAmount });
-                                }}
-                            />
+                            <span data-tour='starter-loan'>
+                                <CreditButton
+                                    variant='starter'
+                                    planetId={planetId}
+                                    isFull={true}
+                                    label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId)}`}
+                                    isPending={requestLoanMutation.isPending}
+                                    disabled={conditions.maxLoanAmount === 0}
+                                    onClick={() => {
+                                        requestLoanMutation.mutate({
+                                            agentId,
+                                            planetId,
+                                            amount: conditions.maxLoanAmount,
+                                        });
+                                    }}
+                                />
+                            </span>
                         </>
                     ) : (
                         <>
