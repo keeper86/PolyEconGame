@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -409,8 +409,7 @@ export function AgentMetricChart({ agentId, planetId, granularity, metric, loadi
             { enabled: granularity === 'decade' },
         ),
     );
-    const currentTickData = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
-    const currentTick = currentTickData?.data?.tick ?? 0;
+    const currentTick = useSimulationTick();
 
     const monthlyHistory = useMemo(() => monthlyData?.history ?? [], [monthlyData]);
 

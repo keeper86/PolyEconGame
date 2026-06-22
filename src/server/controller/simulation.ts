@@ -33,6 +33,7 @@ import {
 import { workerQueries } from '../../simulation/workerClient/queries';
 import { db } from '../db';
 import { protectedProcedure } from '../trpcRoot';
+import { getLatestTick } from '../../simulation/workerClient/manager';
 
 const loanSchema = z.object({
     id: z.string(),
@@ -63,8 +64,7 @@ export const getCurrentTick = () =>
         .input(z.void())
         .output(z.object({ tick: z.number() }))
         .query(async () => {
-            const { tick } = await workerQueries.getCurrentTick();
-            return { tick };
+            return { tick: getLatestTick() };
         });
 
 const resourceSummarySchema = z.object({
@@ -262,10 +262,8 @@ export const getAgentDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, agent: null };
             }
@@ -321,10 +319,8 @@ export const getAgentOverview = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, overview: null };
             }
@@ -366,10 +362,8 @@ export const getPlanetDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { planet }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getPlanet(input.planetId),
-            ]);
+            const tick = getLatestTick();
+            const { planet } = await workerQueries.getPlanet(input.planetId);
             if (!planet) {
                 return { tick, planet: null, populationTotal: 0 };
             }
@@ -400,10 +394,8 @@ export const getAgentPlanetDetail = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ tick }, { agent }] = await Promise.all([
-                workerQueries.getCurrentTick(),
-                workerQueries.getAgent(input.agentId),
-            ]);
+            const tick = getLatestTick();
+            const { agent } = await workerQueries.getAgent(input.agentId);
             if (!agent) {
                 return { tick, detail: null };
             }

@@ -1,9 +1,7 @@
 'use client';
 
-import { useTRPC } from '@/lib/trpc';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useSession } from 'next-auth/react';
 
 const MONTH_NAMES = [
     'January',
@@ -38,10 +36,7 @@ export const mapTickToDate = (tick: number): string => {
 };
 
 export default function TickDisplay() {
-    const trpc = useTRPC();
-    const loggedIn = useSession().status === 'authenticated';
-    const { data } = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions(undefined, { enabled: loggedIn }));
-    const tick = data?.tick ?? 0;
+    const tick = useSimulationTick();
 
     return <div>{tick > 0 ? mapTickToDate(tick) : '—'}</div>;
 }

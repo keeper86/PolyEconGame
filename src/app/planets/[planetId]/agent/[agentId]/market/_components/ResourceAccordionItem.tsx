@@ -9,7 +9,7 @@ import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/currencyResources';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
@@ -39,7 +39,6 @@ export default function ResourceAccordionItem({
         ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
         : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
 
     const { planetId } = useParams() as { planetId: string };
 
@@ -285,7 +284,11 @@ export default function ResourceAccordionItem({
             onSuccess: () => {
                 setSellSuccessMsg('Sell offers saved. Changes take effect on the next market tick.');
                 setSellErrorMsg(null);
-                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+                onLocalChange(resourceName, {
+                    savedOfferPrice: local.offerPrice,
+                    savedOfferRetainment: local.offerRetainment,
+                    savedOfferAutomated: local.offerAutomated,
+                });
             },
             onError: (err) => {
                 let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
@@ -303,7 +306,11 @@ export default function ResourceAccordionItem({
             onSuccess: () => {
                 setBuySuccessMsg('Buy bids saved. Changes take effect on the next market tick.');
                 setBuyErrorMsg(null);
-                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+                onLocalChange(resourceName, {
+                    savedBidPrice: local.bidPrice,
+                    savedBidStorageTarget: local.bidStorageTarget,
+                    savedBidAutomated: local.bidAutomated,
+                });
             },
             onError: (err) => {
                 let errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
@@ -321,7 +328,14 @@ export default function ResourceAccordionItem({
             onSuccess: () => {
                 setSellSuccessMsg('Sell offer cancelled.');
                 setSellErrorMsg(null);
-                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+                onLocalChange(resourceName, {
+                    offerPrice: '',
+                    offerRetainment: '',
+                    offerAutomated: false,
+                    savedOfferPrice: '',
+                    savedOfferRetainment: '',
+                    savedOfferAutomated: false,
+                });
             },
             onError: (err) => {
                 setSellErrorMsg(err instanceof Error ? err.message : 'Failed to cancel offer');
@@ -335,7 +349,14 @@ export default function ResourceAccordionItem({
             onSuccess: () => {
                 setBuySuccessMsg('Buy bid cancelled.');
                 setBuyErrorMsg(null);
-                void queryClient.invalidateQueries({ queryKey: trpc.simulation.getAgentPlanetDetail.queryKey() });
+                onLocalChange(resourceName, {
+                    bidPrice: '',
+                    bidStorageTarget: '',
+                    bidAutomated: false,
+                    savedBidPrice: '',
+                    savedBidStorageTarget: '',
+                    savedBidAutomated: false,
+                });
             },
             onError: (err) => {
                 setBuyErrorMsg(err instanceof Error ? err.message : 'Failed to cancel bid');

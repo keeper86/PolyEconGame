@@ -172,9 +172,9 @@ export function FoundingPage() {
                                                     <Image
                                                         src={watermarkSrc}
                                                         alt=''
-                                                        width={600}
-                                                        height={600}
-                                                        className='absolute -top-8 -right-8 -z-10 pointer-events-none select-none w-72 h-72 object-contain opacity-40'
+                                                        width={720}
+                                                        height={720}
+                                                        className='absolute -top-8 -right-8 -z-10 pointer-events-none select-none w-86 h-86 object-contain opacity-40'
                                                         unoptimized
                                                         aria-hidden
                                                     />

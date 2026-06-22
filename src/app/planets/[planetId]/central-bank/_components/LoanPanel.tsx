@@ -1,7 +1,7 @@
 'use client';
 
 import { mapTickToDate } from '@/components/client/TickDisplay';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
@@ -116,8 +116,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
 
-    const { data: currentTickData } = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
-    const currentTick = currentTickData?.tick ?? 0;
+    const currentTick = useSimulationTick();
 
     const conditions = conditionsData?.conditions ?? null;
     const activeLoans = conditionsData?.activeLoans ?? [];

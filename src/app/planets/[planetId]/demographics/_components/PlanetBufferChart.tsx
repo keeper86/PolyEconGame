@@ -75,7 +75,7 @@ function toPercent(bufferValue: number, serviceKey: string): number {
 
 function computeMonthlyData(allPts: RawPoint[], currentTick: number): ChartPoint[] {
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
-    if (pts.length === 0 || currentTick === 0) {
+    if (pts.length === 0 && currentTick === 0) {
         return [];
     }
 
@@ -128,7 +128,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number): ChartPoint
 }
 
 function computeBufferGhostData(allPts: RawPoint[], currentTick: number): ChartPoint[] {
-    if (allPts.length === 0 || currentTick === 0) {
+    if (allPts.length === 0 && currentTick === 0) {
         return [];
     }
 
@@ -382,7 +382,7 @@ export default function PlanetBufferChart({ planetId, currentTick, granularity }
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'monthly', limit: 24 },
+            { planetId, granularity: 'monthly', limit: 13 },
             { enabled: granularity === 'monthly' },
         ),
     );
