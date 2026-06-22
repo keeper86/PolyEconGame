@@ -434,7 +434,6 @@ export const getPlanetPopulationHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -448,7 +447,6 @@ export const getPlanetPopulationHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetPopulationHistory(db, input.planetId, input.granularity, input.limit);
             return {
-                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows
@@ -471,7 +469,6 @@ export const getPlanetBufferHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -493,7 +490,6 @@ export const getPlanetBufferHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetBufferHistory(db, input.planetId, input.granularity, input.limit);
             return {
-                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows
@@ -525,7 +521,6 @@ export const getProductPriceHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 planetId: z.string(),
                 productName: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
@@ -548,7 +543,6 @@ export const getProductPriceHistory = () =>
                 input.limit,
             );
             return {
-                tick: getLatestTick(),
                 planetId: input.planetId,
                 productName: input.productName,
                 granularity: input.granularity,
@@ -575,7 +569,6 @@ export const getAgentHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 agentId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 foundedTick: z.number(),
@@ -598,7 +591,6 @@ export const getAgentHistory = () =>
                 dbGetAgentHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
-                tick: getLatestTick(),
                 agentId: input.agentId,
                 granularity: input.granularity,
                 foundedTick: agent?.foundedTick ?? 0,
@@ -628,7 +620,6 @@ export const getAgentFinancialHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 agentId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 foundedTick: z.number(),
@@ -650,7 +641,6 @@ export const getAgentFinancialHistory = () =>
                 dbGetAgentFinancialHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
             ]);
             return {
-                tick: getLatestTick(),
                 agentId: input.agentId,
                 granularity: input.granularity,
                 foundedTick: agent?.foundedTick ?? 0,
@@ -678,7 +668,6 @@ export const getPlanetEconomyHistory = () =>
         )
         .output(
             z.object({
-                tick: z.number(),
                 planetId: z.string(),
                 granularity: z.enum(['monthly', 'yearly', 'decade']),
                 history: z.array(
@@ -701,7 +690,6 @@ export const getPlanetEconomyHistory = () =>
         .query(async ({ input }) => {
             const rows = await dbGetPlanetEconomyHistory(db, input.planetId, input.granularity, input.limit);
             return {
-                tick: getLatestTick(),
                 planetId: input.planetId,
                 granularity: input.granularity,
                 history: rows
