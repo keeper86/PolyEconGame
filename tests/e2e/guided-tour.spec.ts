@@ -14,7 +14,7 @@ test.use({ trace: 'retain-on-failure' });
 
 test.describe('Guided Tour E2E', () => {
     test.describe.configure({ retries: 0 });
-    test('shows guided tour popups on the central bank page', async ({ page }) => {
+    test('shows guided tour popups on central bank and financial pages', async ({ page }) => {
         // ==================================================================
         // 1. Create a new agent on the founding page
         // ==================================================================
@@ -45,7 +45,25 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForLoadState('networkidle');
 
         // ==================================================================
-        // 2. Central Bank — Step 0: Take the starter loan
+        // 2. Central Bank — Step 0: Bank Overview
+        // ==================================================================
+        await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Central Bank Overview');
+        await page.locator('button[data-action="primary"]').click();
+
+        // ==================================================================
+        // 3. Central Bank — Step 1: Navigate to Financial
+        // ==================================================================
+        await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Next: Financial Overview');
+        await page.locator('button[data-action="primary"]').click();
+
+        // Wait for redirect to the financial page
+        await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 20000 });
+        await page.waitForLoadState('networkidle');
+
+        // ==================================================================
+        // 4. Financial — Step 0: Take the starter loan (blocking step)
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
         await expect(page.locator('[role="alertdialog"]')).toContainText('Now take the loan');
@@ -54,16 +72,16 @@ test.describe('Guided Tour E2E', () => {
         await page.locator('[data-tour="starter-loan"]').click();
 
         // ==================================================================
-        // 3. Central Bank — Step 1: Loan confirmation
+        // 5. Financial — Step 1: Loan confirmation
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
         await expect(page.locator('[role="alertdialog"]')).toContainText('Loan taken successfully');
         await page.locator('button[data-action="primary"]').click();
 
         // ==================================================================
-        // 4. Central Bank — Step 2: Bank Overview
+        // 6. Financial — Step 2: Financial Overview
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Central Bank Overview');
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Financial Overview');
     });
 });

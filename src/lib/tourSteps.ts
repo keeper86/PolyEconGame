@@ -21,11 +21,44 @@ export function getStepsForPage(
 
     switch (page) {
         case 'central-bank':
-            // Step 0: Blocking — user must click the loan button to proceed.
-            // hideOverlay removes the dark overlay so the loan button is clickable.
-            // blockTargetInteraction is set to false to override the global option.
-            // buttons: ['skip'] hides all buttons except skip (no Next button).
-            // data.blocking marks this step for programmatic advancement.
+            steps.push({
+                target: '[data-tour="bank-panel"]',
+                content:
+                    'This panel shows the central bank\u2019s key metrics \u2014 equity, policy rate, and money supply. Keep an eye on these as they affect loan conditions.',
+                title: '\uD83C\uDFDB\uFE0F Central Bank Overview',
+                placement: 'top',
+                skipBeacon: true,
+                locale: {
+                    next: 'Next',
+                    skip: 'Skip tour',
+                    last: 'Finish',
+                },
+                zIndex: 10000,
+            });
+            steps.push({
+                target: 'body',
+                content:
+                    'Now let\u2019s head to your Financial Overview. You can take a starter loan there and see your deposits and cash flow.',
+                title: '\u27A1\uFE0F Next: Financial Overview',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                locale: {
+                    next: 'Go to Finances \u2192',
+                    skip: 'Skip tour',
+                    last: 'Finish',
+                },
+                after: () => {
+                    routerPush(
+                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/financial`,
+                    );
+                },
+                zIndex: 10000,
+            });
+            break;
+
+        case 'financial':
+            // Step 0: Blocking — user must click the starter loan button to proceed.
             steps.push({
                 target: '[data-tour="starter-loan"]',
                 content:
@@ -47,7 +80,7 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'Your loan has been credited to your account. Now let\u2019s look at the central bank metrics and then move on.',
+                    'Your loan has been credited to your account. Now let\u2019s look at your financial overview and then move on.',
                 title: '\u2705 Loan taken successfully!',
                 placement: 'center',
                 hideOverlay: false,
@@ -59,43 +92,6 @@ export function getStepsForPage(
                 },
                 zIndex: 10000,
             });
-            steps.push({
-                target: '[data-tour="bank-panel"]',
-                content:
-                    'This panel shows the central bank\u2019s key metrics \u2014 equity, policy rate, and money supply. Keep an eye on these as they affect loan conditions.',
-                title: '\uD83C\uDFDB\uFE0F Central Bank Overview',
-                placement: 'top',
-                skipBeacon: true,
-                locale: {
-                    next: 'Next',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                zIndex: 10000,
-            });
-            steps.push({
-                target: 'body',
-                content:
-                    'Now let\u2019s head to your Financial Overview to see your deposits and cash flow after taking the loan.',
-                title: '\u27A1\uFE0F Next: Financial Overview',
-                placement: 'center',
-                hideOverlay: false,
-                skipBeacon: true,
-                locale: {
-                    next: 'Go to Finances \u2192',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/financial`,
-                    );
-                },
-                zIndex: 10000,
-            });
-            break;
-
-        case 'financial':
             steps.push({
                 target: '[data-tour="financial-overview"]',
                 content:

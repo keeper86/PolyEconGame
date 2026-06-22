@@ -92,10 +92,12 @@ export function FoundingPage() {
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 setSubmitted(true);
                 void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
-                router.push(`/planets/${encodeURIComponent(planetId)}/central-bank` as unknown as '/');
+                router.push(
+                    `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(data.agentId)}/financial` as unknown as '/',
+                );
             },
             onError: (err: unknown) => {
                 console.error(err);

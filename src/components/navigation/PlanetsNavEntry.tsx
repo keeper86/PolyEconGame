@@ -2,6 +2,7 @@
 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { useAgentId } from '@/hooks/useAgentId';
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -72,6 +73,8 @@ export function PlanetsNavEntry() {
     const pathname = usePathname();
     const activePlanetId = usePlanetId();
     const loggedIn = useSession().status === 'authenticated';
+    const { agentId } = useAgentId();
+    const hasCompany = loggedIn && !!agentId;
 
     const { data } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
     const planets = data?.planets ?? [];
@@ -86,20 +89,20 @@ export function PlanetsNavEntry() {
         }
     };
 
-    const subNavDisabled = !loggedIn || !activePlanetId;
+    const subNavDisabled = !hasCompany || !activePlanetId;
 
     return (
         <SidebarMenuItem>
-            <Collapsible open={open} onOpenChange={(next) => loggedIn && setOpen(next)}>
+            <Collapsible open={open} onOpenChange={(next) => hasCompany && setOpen(next)}>
                 <CollapsibleTrigger asChild>
-                    <SidebarMenuButton size='default' className='text-md w-full' disabled={!loggedIn}>
+                    <SidebarMenuButton size='default' className='text-md w-full' disabled={!hasCompany}>
                         {activePlanet ? (
                             <PlanetIcon planetId={activePlanet.planetId} />
                         ) : (
                             <Globe width={24} height={24} />
                         )}
                         <span>{activePlanet?.name ?? 'Planets'}</span>
-                        {loggedIn && (
+                        {hasCompany && (
                             <ChevronRight
                                 width={14}
                                 height={14}
