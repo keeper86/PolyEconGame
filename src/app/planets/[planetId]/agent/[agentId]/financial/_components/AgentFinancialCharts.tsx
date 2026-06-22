@@ -1,7 +1,7 @@
 'use client';
 
 import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import React, { useMemo, useState } from 'react';
 import { BalanceFlowChart } from './BalanceFlowChart';
@@ -37,9 +37,8 @@ export default function AgentFinancialCharts({ agentId, planetId }: { agentId: s
             { enabled: granularity === 'decade' },
         ),
     );
-    const currentTickData = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
+    const currentTick = useSimulationTick();
 
-    const currentTick = currentTickData?.data?.tick ?? 0;
     const isLoading =
         (granularity === 'monthly' && loadingMonthly) ||
         (granularity === 'yearly' && loadingYearly) ||

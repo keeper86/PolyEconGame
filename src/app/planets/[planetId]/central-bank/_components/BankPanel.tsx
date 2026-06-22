@@ -2,7 +2,7 @@
 
 import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
 import { Separator } from '@/components/ui/separator';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
@@ -50,8 +50,7 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
         trpc.simulation.getPlanetEconomyHistory.queryOptions({ planetId, granularity, limit: 100 }, { enabled: true }),
     );
 
-    const { data: currentTickData } = useSimulationQuery(trpc.simulation.getCurrentTick.queryOptions());
-    const currentTick = currentTickData?.tick ?? 0;
+    const currentTick = useSimulationTick();
 
     const isLoading = loadingEconomy || !economyData;
 

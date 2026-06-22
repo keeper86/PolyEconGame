@@ -208,20 +208,29 @@ export default function MarketPanel({
 
             const updated = { ...current, ...patch };
 
+            // When a saved* field is included in the patch, use the new saved value for comparison.
+            // Otherwise fall back to the old saved value.
+            const newSavedOfferPrice = 'savedOfferPrice' in patch ? patch.savedOfferPrice : current.savedOfferPrice;
+            const newSavedOfferRetainment =
+                'savedOfferRetainment' in patch ? patch.savedOfferRetainment : current.savedOfferRetainment;
+            const newSavedBidPrice = 'savedBidPrice' in patch ? patch.savedBidPrice : current.savedBidPrice;
+            const newSavedBidStorageTarget =
+                'savedBidStorageTarget' in patch ? patch.savedBidStorageTarget : current.savedBidStorageTarget;
+
             const dirtyFields = { ...current.dirtyFields };
 
             if ('offerPrice' in patch) {
-                dirtyFields.offerPrice = patch.offerPrice !== current.savedOfferPrice;
+                dirtyFields.offerPrice = patch.offerPrice !== newSavedOfferPrice;
             }
             if ('offerRetainment' in patch) {
-                dirtyFields.offerRetainment = patch.offerRetainment !== current.savedOfferRetainment;
+                dirtyFields.offerRetainment = patch.offerRetainment !== newSavedOfferRetainment;
             }
 
             if ('bidPrice' in patch) {
-                dirtyFields.bidPrice = patch.bidPrice !== current.savedBidPrice;
+                dirtyFields.bidPrice = patch.bidPrice !== newSavedBidPrice;
             }
             if ('bidStorageTarget' in patch) {
-                dirtyFields.bidStorageTarget = patch.bidStorageTarget !== current.savedBidStorageTarget;
+                dirtyFields.bidStorageTarget = patch.bidStorageTarget !== newSavedBidStorageTarget;
             }
 
             return {

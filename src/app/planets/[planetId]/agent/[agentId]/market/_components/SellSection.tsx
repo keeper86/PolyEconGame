@@ -53,7 +53,9 @@ export default function SellSection({
         inventoryQty > 0 ||
         isFacilityOutput ||
         offer?.offerPrice !== undefined ||
-        offer?.offerRetainment !== undefined;
+        offer?.offerRetainment !== undefined ||
+        local.savedOfferPrice !== '' ||
+        local.savedOfferRetainment !== '';
 
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
