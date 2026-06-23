@@ -50,7 +50,7 @@ export function TourJoyride() {
     const pathname = usePathname();
     const params = useParams();
     const router = useRouter();
-    const { isTourActive, currentPageIndex, completeTour, setCurrentPageIndex } = useTour();
+    const { isTourActive, currentPageIndex, completeTour, setCurrentPageIndex, completedActions } = useTour();
     const { agentId: resolvedAgentId } = useAgentId() as { agentId: string | null };
 
     const [mounted, setMounted] = useState(false);
@@ -88,8 +88,8 @@ export function TourJoyride() {
         if (!currentPageRoute || !planetId) {
             return [];
         }
-        return getStepsForPage(currentPageRoute, planetId, agentId, routerPush);
-    }, [currentPageRoute, planetId, agentId, routerPush]);
+        return getStepsForPage(currentPageRoute, planetId, agentId, routerPush, completedActions);
+    }, [currentPageRoute, planetId, agentId, routerPush, completedActions]);
 
     // ── Navigating reset ─────────────────────────────────────────────
     // When the page route changes (inter-page navigation completed),

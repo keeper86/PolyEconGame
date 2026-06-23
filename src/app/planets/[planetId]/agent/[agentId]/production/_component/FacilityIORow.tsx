@@ -30,6 +30,7 @@ export function FacilityIORow({
                         isLimiting={false}
                         planetId={planetId}
                         agentId={agentId}
+                        neutral={true}
                     />
                 ))}
             </div>
@@ -48,6 +49,7 @@ export function FacilityIORow({
                         isLimiting={false}
                         planetId={planetId}
                         agentId={agentId}
+                        neutral={true}
                     />
                 ))}
             </div>

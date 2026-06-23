@@ -110,7 +110,7 @@ function LoanRow({
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const { isTourActive, advanceToNextStep } = useTour();
+    const { isTourActive, advanceToNextStep, markActionCompleted } = useTour();
 
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
@@ -134,6 +134,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
 
                 // If the tour is active and this was a starter loan, advance the blocking step
                 if (isTourActive && conditions?.isNewAgent) {
+                    markActionCompleted('starter-loan');
                     advanceToNextStep();
                 }
             },

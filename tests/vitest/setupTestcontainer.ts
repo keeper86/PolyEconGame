@@ -17,6 +17,7 @@ export const testUsers: Record<string, UserData> = {
         email: 'test-user@example.com',
         display_name: 'Test User',
         has_assessment_published: false,
+        planet_id: null,
     },
     otherUserUnpublished: {
         user_id: 'other-user-unpublished',
@@ -25,6 +26,7 @@ export const testUsers: Record<string, UserData> = {
         email: 'other-user@example.com',
         display_name: 'Other User',
         has_assessment_published: false,
+        planet_id: null,
     },
     otherUserPublished: {
         user_id: 'other-user-published',
@@ -33,6 +35,7 @@ export const testUsers: Record<string, UserData> = {
         email: 'other-user@example.com',
         display_name: 'Other User',
         has_assessment_published: true,
+        planet_id: null,
     },
 };
 

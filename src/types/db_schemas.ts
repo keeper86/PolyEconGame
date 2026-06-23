@@ -290,4 +290,5 @@ export type UserData = {
     display_name: string | null;
     agent_id: string | null;
     avatar: Buffer | null;
+    planet_id: string | null;
 };

@@ -10,6 +10,7 @@ type TourStorage = {
     active: boolean;
     currentPageIndex: number;
     completed: boolean;
+    completedActions: string[];
 };
 
 type TourContextValue = {
@@ -35,6 +36,10 @@ type TourContextValue = {
     advanceToNextStep: () => void;
     /** Ref that mirrors isTourActive for use in callbacks */
     isTourActiveRef: React.RefObject<boolean>;
+    /** List of action keys that have been completed (e.g. 'starter-loan') */
+    completedActions: string[];
+    /** Mark an action as completed (deduplicates, persists) */
+    markActionCompleted: (action: string) => void;
 };
 
 const PAGE_ORDER: PageRoute[] = [
@@ -52,6 +57,7 @@ const defaultStorage: TourStorage = {
     active: false,
     currentPageIndex: 0,
     completed: false,
+    completedActions: [],
 };
 
 function loadStorage(): TourStorage {
@@ -62,7 +68,7 @@ function loadStorage(): TourStorage {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw) as TourStorage;
-            return { ...defaultStorage, ...parsed };
+            return { ...defaultStorage, ...parsed, completedActions: parsed.completedActions ?? [] };
         }
     } catch {
         // ignore
@@ -105,10 +111,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
     const isTourActive = storage.active;
     const currentPageIndex = storage.currentPageIndex;
     const isCompleted = storage.completed;
+    const completedActions = storage.completedActions;
 
     const setTourActive = useCallback(
         (active: boolean) => {
-            persist({ active, currentPageIndex: 0, completed: false });
+            persist({ active, currentPageIndex: 0, completed: false, completedActions: [] });
         },
         [persist],
     );
@@ -133,8 +140,24 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }, [persist]);
 
     const resetTour = useCallback(() => {
-        persist({ active: true, currentPageIndex: 0, completed: false });
+        // Reset to financial page (index 1), preserving completedActions so
+        // already-completed steps (e.g. starter loan) are skipped.
+        persist({ active: true, currentPageIndex: 1, completed: false });
     }, [persist]);
+
+    const markActionCompleted = useCallback((action: string) => {
+        setStorage((prev) => {
+            if (prev.completedActions.includes(action)) {
+                return prev; // already tracked
+            }
+            const next = {
+                ...prev,
+                completedActions: [...prev.completedActions, action],
+            };
+            saveStorage(next);
+            return next;
+        });
+    }, []);
 
     const getCurrentPageRoute = useCallback((): PageRoute | null => {
         if (storage.currentPageIndex >= 0 && storage.currentPageIndex < PAGE_ORDER.length) {
@@ -201,6 +224,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 goToNextPage,
                 advanceToNextStep,
                 isTourActiveRef,
+                completedActions,
+                markActionCompleted,
             }}
         >
             {children}

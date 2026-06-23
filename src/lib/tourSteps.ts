@@ -10,13 +10,18 @@ type PageRoute = 'central-bank' | 'financial' | 'workforce' | 'claims' | 'produc
 
 /**
  * Get the steps for a given page in the tour.
+ *
+ * @param completedActions - Set of action keys already completed.
+ *   Steps whose `data.actionKey` is in this set will be filtered out.
  */
 export function getStepsForPage(
     page: PageRoute,
     planetId: string,
     agentId: string,
     routerPush: (url: string) => void,
+    completedActions?: string[],
 ): JoyrideStep[] {
+    const completed = new Set(completedActions ?? []);
     const steps: JoyrideStep[] = [];
 
     switch (page) {
@@ -59,39 +64,44 @@ export function getStepsForPage(
 
         case 'financial':
             // Step 0: Blocking — user must click the starter loan button to proceed.
-            steps.push({
-                target: '[data-tour="starter-loan"]',
-                content:
-                    'Click the green button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers.',
-                title: '\uD83C\uDFE6 Now take the loan',
-                placement: 'bottom',
-                hideOverlay: true,
-                blockTargetInteraction: false,
-                spotlightPadding: 8,
-                skipBeacon: true,
-                buttons: ['skip'],
-                locale: {
-                    skip: 'Skip tour',
-                },
-                zIndex: 10000,
-                data: { blocking: true },
-            });
+            if (!completed.has('starter-loan')) {
+                steps.push({
+                    target: '[data-tour="starter-loan"]',
+                    content:
+                        'Click the green button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers.',
+                    title: '\uD83C\uDFE6 Now take the loan',
+                    placement: 'bottom',
+                    hideOverlay: true,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    buttons: ['skip'],
+                    locale: {
+                        skip: 'Skip tour',
+                    },
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'starter-loan' },
+                });
+            }
             // Step 1: Confirmation — shown after loan is taken
-            steps.push({
-                target: 'body',
-                content:
-                    'Your loan has been credited to your account. Now let\u2019s look at your financial overview and then move on.',
-                title: '\u2705 Loan taken successfully!',
-                placement: 'center',
-                hideOverlay: false,
-                skipBeacon: true,
-                locale: {
-                    next: 'Next',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                zIndex: 10000,
-            });
+            if (!completed.has('starter-loan')) {
+                steps.push({
+                    target: 'body',
+                    content:
+                        'Your loan has been credited to your account. Now let\u2019s look at your financial overview and then move on.',
+                    title: '\u2705 Loan taken successfully!',
+                    placement: 'center',
+                    hideOverlay: false,
+                    skipBeacon: true,
+                    locale: {
+                        next: 'Next',
+                        skip: 'Skip tour',
+                        last: 'Finish',
+                    },
+                    zIndex: 10000,
+                    data: { actionKey: 'starter-loan' },
+                });
+            }
             steps.push({
                 target: '[data-tour="financial-overview"]',
                 content:

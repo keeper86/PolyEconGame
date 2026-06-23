@@ -1,24 +1,26 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { Carousel, CarouselContent, CarouselItem, type CarouselApi, useCarousel } from '@/components/ui/carousel';
+import { Carousel, CarouselContent, CarouselItem, useCarousel, type CarouselApi } from '@/components/ui/carousel';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { PLANET_LARGE_IMAGES } from '@/lib/planetAssets';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useTour } from './TourContext';
+import { toast } from 'sonner';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
-import { useSimulationTick } from '@/hooks/useSimulationQuery';
+import { mapTickToDate } from './TickDisplay';
+import { useTour } from './TourContext';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -50,7 +52,6 @@ function CarouselNav() {
 
 export function FoundingPage() {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
     const router = useRouter();
     const { setTourActive } = useTour();
     const [agentName, setAgentName] = useState('');
@@ -58,6 +59,7 @@ export function FoundingPage() {
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
     const [enableTour, setEnableTour] = useState(false);
+    const [agentNameError, setAgentNameError] = useState<string | null>(null);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
@@ -101,10 +103,12 @@ export function FoundingPage() {
             onSuccess: (data) => {
                 setFoundedAtTick(tickRef.current);
                 setCreatedAgentId(data.agentId);
-                void queryClient.invalidateQueries({ queryKey: trpc.getUser.queryKey() });
+                toast.success('Company registered');
             },
             onError: (err: unknown) => {
-                console.error(err);
+                const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+                setAgentNameError(message);
+                toast.error(message);
             },
         }),
     );
@@ -122,6 +126,7 @@ export function FoundingPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setAgentNameError(null);
         if (!planetId) {
             return;
         }
@@ -131,10 +136,11 @@ export function FoundingPage() {
 
     if (foundedAtTick !== null) {
         return (
-            <Page title='Found your Company'>
+            <Page title='Company registered.'>
                 <div className='flex items-center gap-3 text-muted-foreground'>
                     <Spinner className='h-5 w-5' />
-                    <span>Company registered. Waiting for the next tick to take effect…</span>
+                    <span>Waiting for the next tick to take effect…</span>
+                    <span className='text-sm'> {mapTickToDate(foundedAtTick + 1)}</span>
                 </div>
             </Page>
         );
@@ -143,18 +149,24 @@ export function FoundingPage() {
     const planets = planetsQuery.data?.planets ?? [];
 
     return (
-        <Page title='Found your Company'>
+        <Page title='Register your Company'>
             <form onSubmit={handleSubmit} className='grid gap-6 max-w-lg'>
                 <div className='grid gap-2'>
                     <Input
                         placeholder='Your company name'
                         value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
+                        onChange={(e) => {
+                            setAgentName(e.target.value);
+                            if (agentNameError) {
+                                setAgentNameError(null);
+                            }
+                        }}
                         maxLength={64}
                         required
                         disabled={createAgentMutation.isPending}
                         name='company-name'
                         autoComplete='organization'
+                        aria-invalid={agentNameError ? true : undefined}
                     />
                 </div>
 
@@ -320,10 +332,10 @@ export function FoundingPage() {
                     {createAgentMutation.isPending ? (
                         <>
                             <Spinner className='mr-2 h-4 w-4' />
-                            Founding…
+                            Registering…
                         </>
                     ) : (
-                        'Found Company'
+                        'Register new Company'
                     )}
                 </Button>
             </form>
