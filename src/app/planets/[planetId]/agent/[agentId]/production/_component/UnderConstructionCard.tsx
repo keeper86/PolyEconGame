@@ -31,9 +31,10 @@ import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from './FacilityCardShell';
 
-const TICK_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_TICK_INTERVAL_MS);
+let TICK_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_TICK_INTERVAL_MS);
 if (!TICK_INTERVAL_MS) {
-    throw new Error('NEXT_PUBLIC_TICK_INTERVAL_MS is not set');
+    console.error('NEXT_PUBLIC_TICK_INTERVAL_MS is not set');
+    TICK_INTERVAL_MS = 10000;
 }
 
 function formatWallTime(ms: number, short = false): string {
