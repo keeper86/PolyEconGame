@@ -58,15 +58,15 @@ function formatWallTime(ms: number, short = false): string {
         if (short) {
             return `${(totalSeconds / 3600).toFixed(1)}h`;
         }
-        if (minutes > 0) {
-            result += `${minutes}m `;
-            if (short) {
-                return `${(totalSeconds / 60).toFixed(1)}m`;
-            }
-            if (seconds > 0) {
-                result += `${seconds}s `;
-            }
+    }
+    if (minutes > 0) {
+        result += `${minutes}m `;
+        if (short) {
+            return `${(totalSeconds / 60).toFixed(1)}m`;
         }
+    }
+    if (seconds > 0) {
+        result += `${seconds}s `;
     }
     return result.slice(0, -1);
 }
