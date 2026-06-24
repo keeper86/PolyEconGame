@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import CreditButton from './CreditButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
-import { useTour } from '@/components/client/TourContext';
+import { useTour } from '@/components/tour/TourContext';
 
 type Props = {
     agentId: string;
@@ -110,7 +110,7 @@ function LoanRow({
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
-    const { isTourActive, advanceToNextStep } = useTour();
+    const { isTourActive, markActionCompleted } = useTour();
 
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
@@ -132,9 +132,10 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
 
-                // If the tour is active and this was a starter loan, advance the blocking step
+                // Mark the starter loan as completed so the blocking step is removed
+                // and the tour advances to the "Loan taken successfully!" step.
                 if (isTourActive && conditions?.isNewAgent) {
-                    advanceToNextStep();
+                    markActionCompleted('starter-loan');
                 }
             },
             onError: (err) => {

@@ -40,24 +40,6 @@ test.describe('Guided Tour E2E', () => {
         // Submit the founding form
         await page.locator('button[type="submit"]').click();
 
-        // Wait for redirect to central-bank page
-        await page.waitForURL(/\/planets\/[^/]+\/central-bank/, { timeout: 20000 });
-        await page.waitForLoadState('networkidle');
-
-        // ==================================================================
-        // 2. Central Bank — Step 0: Bank Overview
-        // ==================================================================
-        await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Central Bank Overview');
-        await page.locator('button[data-action="primary"]').click();
-
-        // ==================================================================
-        // 3. Central Bank — Step 1: Navigate to Financial
-        // ==================================================================
-        await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Next: Financial Overview');
-        await page.locator('button[data-action="primary"]').click();
-
         // Wait for redirect to the financial page
         await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 20000 });
         await page.waitForLoadState('networkidle');

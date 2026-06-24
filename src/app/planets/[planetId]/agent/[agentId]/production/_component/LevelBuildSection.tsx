@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
-import { formatNumberWithUnit } from '@/lib/utils';
+import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { FacilityCardShell } from './FacilityCardShell';
 import { Separator } from '@/components/ui/separator';
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { FacilityIORow } from './FacilityIORow';
-import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { useTRPC } from '@/lib/trpc';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getFacilityType } from '@/simulation/planet/facility';
-import { PlusCircle, Zap, Users } from 'lucide-react';
+import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { PlusCircle } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { FacilityCardShell } from './FacilityCardShell';
+import { FacilityConstructionPanel } from './FacilityConstructionPanel';
+import { FacilityIORow } from './FacilityIORow';
+import { WorkerBars } from './WorkerBars';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -40,8 +41,6 @@ function BuildCard({
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
     const [previewScale, setPreviewScale] = useState(1);
 
-    const totalWorkers = Object.values(facility.workerRequirement).reduce((s, v) => s + (v ?? 0), 0);
-
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
             onSuccess: () => {
@@ -59,25 +58,26 @@ function BuildCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={
-                <>
-                    <h3 className='font-semibold text-sm leading-tight'>{facility.name}</h3>
-                    <div className='flex items-center gap-3 mt-1 text-xs text-muted-foreground'>
-                        {totalWorkers > 0 && (
-                            <span className='flex items-center gap-1'>
-                                <Users className='h-3 w-3' />
-                                {formatNumberWithUnit(totalWorkers, 'persons')} / scale
-                            </span>
-                        )}
-                        {facility.powerConsumptionPerTick !== 0 && (
-                            <span className='flex items-center gap-1'>
-                                <Zap className='h-3 w-3' />
-                                {facility.powerConsumptionPerTick > 0
-                                    ? `${facility.powerConsumptionPerTick} MW`
-                                    : 'produces power'}
-                            </span>
-                        )}
+                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                    <div className='flex items-center gap-1 flex-col mb-1'>
+                        <h3 className='font-semibold leading-tight '>{facility.name}</h3>
+                        <span className='flex flex-col items-center gap-1'>
+                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                                new
+                            </Badge>
+                        </span>
                     </div>
-                </>
+                    <span className='flex flex-col text-muted-foreground text-xs gap-1'>
+                        Worker Requirement
+                        <WorkerBars
+                            workerRequirement={facility.workerRequirement}
+                            scale={facility.scale}
+                            neutral={true}
+                            workerEfficiency={{}}
+                            globalMin={0}
+                        />
+                    </span>
+                </span>
             }
         >
             <div className='flex-1'>

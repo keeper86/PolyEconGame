@@ -3,80 +3,49 @@ import type { Step as JoyrideStep } from 'react-joyride';
 /**
  * Tour steps grouped by page route.
  * Each page returns the steps relevant to that page.
- * The tour progresses through pages via navigation in step `after` callbacks.
+ * Navigation to the next page is handled externally via goToNextPage.
  */
 
 type PageRoute = 'central-bank' | 'financial' | 'workforce' | 'claims' | 'production' | 'storage' | 'market' | 'ships';
 
 /**
  * Get the steps for a given page in the tour.
+ *
+ * @param completedActions - Set of action keys already completed.
+ *   Steps whose `data.actionKey` is in this set will be filtered out.
  */
 export function getStepsForPage(
     page: PageRoute,
     planetId: string,
     agentId: string,
-    routerPush: (url: string) => void,
+    completedActions?: string[],
 ): JoyrideStep[] {
+    const completed = new Set(completedActions ?? []);
     const steps: JoyrideStep[] = [];
 
     switch (page) {
-        case 'central-bank':
-            steps.push({
-                target: '[data-tour="bank-panel"]',
-                content:
-                    'This panel shows the central bank\u2019s key metrics \u2014 equity, policy rate, and money supply. Keep an eye on these as they affect loan conditions.',
-                title: '\uD83C\uDFDB\uFE0F Central Bank Overview',
-                placement: 'top',
-                skipBeacon: true,
-                locale: {
-                    next: 'Next',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                zIndex: 10000,
-            });
-            steps.push({
-                target: 'body',
-                content:
-                    'Now let\u2019s head to your Financial Overview. You can take a starter loan there and see your deposits and cash flow.',
-                title: '\u27A1\uFE0F Next: Financial Overview',
-                placement: 'center',
-                hideOverlay: false,
-                skipBeacon: true,
-                locale: {
-                    next: 'Go to Finances \u2192',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/financial`,
-                    );
-                },
-                zIndex: 10000,
-            });
-            break;
-
         case 'financial':
             // Step 0: Blocking — user must click the starter loan button to proceed.
-            steps.push({
-                target: '[data-tour="starter-loan"]',
-                content:
-                    'Click the green button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers.',
-                title: '\uD83C\uDFE6 Now take the loan',
-                placement: 'bottom',
-                hideOverlay: true,
-                blockTargetInteraction: false,
-                spotlightPadding: 8,
-                skipBeacon: true,
-                buttons: ['skip'],
-                locale: {
-                    skip: 'Skip tour',
-                },
-                zIndex: 10000,
-                data: { blocking: true },
-            });
-            // Step 1: Confirmation — shown after loan is taken
+            if (!completed.has('starter-loan')) {
+                steps.push({
+                    target: '[data-tour="starter-loan"]',
+                    content:
+                        'Click the green button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers.',
+                    title: '\uD83C\uDFE6 Now take the loan',
+                    placement: 'bottom',
+                    hideOverlay: true,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    buttons: ['skip'],
+                    locale: {
+                        skip: 'Skip tour',
+                    },
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'starter-loan' },
+                });
+            }
+
             steps.push({
                 target: 'body',
                 content:
@@ -92,6 +61,7 @@ export function getStepsForPage(
                 },
                 zIndex: 10000,
             });
+
             steps.push({
                 target: '[data-tour="financial-overview"]',
                 content:
@@ -122,12 +92,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/workforce`,
-                    );
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -162,10 +128,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/claims`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -192,12 +156,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/production`,
-                    );
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -223,10 +183,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/storage`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -252,10 +210,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/market`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -281,10 +237,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/ships`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -316,6 +270,7 @@ export function getStepsForPage(
                     last: 'Finish',
                 },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
     }

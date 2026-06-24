@@ -17,20 +17,20 @@ type Result = {
 };
 
 export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Options = {}): Result {
-    const [hashItem, setHashItem] = useState<string | undefined>(() => {
+    const [hashItem, setHashItem] = useState<string>(() => {
         if (typeof window === 'undefined') {
-            return undefined;
+            return '';
         }
         const slug = window.location.hash.slice(1);
-        return slug ? (fromSlug(slug) ?? undefined) : undefined;
+        return slug ? (fromSlug(slug) ?? '') : '';
     });
 
-    const [openItem, setOpenItem] = useState<string | undefined>(() => {
+    const [openItem, setOpenItem] = useState<string>(() => {
         if (typeof window === 'undefined') {
-            return undefined;
+            return '';
         }
         const slug = window.location.hash.slice(1);
-        return slug ? (fromSlug(slug) ?? undefined) : undefined;
+        return slug ? (fromSlug(slug) ?? '') : '';
     });
 
     useEffect(() => {
@@ -63,8 +63,8 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
     }, [openItem]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const onValueChange = (value: string | undefined) => {
-        setOpenItem(value);
-        setHashItem(undefined);
+        setOpenItem(value ?? '');
+        setHashItem('');
         if (value) {
             window.history.replaceState(null, '', `#${toSlug(value)}`);
         } else {

@@ -50,6 +50,7 @@ const userData = z.object({
 });
 export const userSummary = userId.merge(userData).extend({
     agentId: z.string().nullable().optional(),
+    planetId: z.string().nullable().optional(),
 });
 export type UserSummary = z.infer<typeof userSummary>;
 
@@ -120,6 +121,7 @@ export const getUser = () => {
                 hasAssessmentPublished: row.has_assessment_published,
                 avatar: row.avatar ? row.avatar.toString('base64') : undefined,
                 agentId: row.agent_id ?? null,
+                planetId: row.planet_id ?? null,
             };
 
             logger.debug(
@@ -278,7 +280,7 @@ export const createAgent = () => {
                 planetId: input.planetId,
             });
 
-            await db('user_data').where({ user_id: userId }).update({ agent_id: createdId });
+            await db('user_data').where({ user_id: userId }).update({ agent_id: createdId, planet_id: input.planetId });
 
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 

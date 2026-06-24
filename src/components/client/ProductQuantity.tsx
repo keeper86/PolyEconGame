@@ -5,7 +5,10 @@ import type { ResourceQuantity } from '@/simulation/planet/claims';
 import Link from 'next/link';
 import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 
-export function fillColor(efficiency: number, isLimiting: boolean): string {
+export function fillColor(efficiency: number, isLimiting: boolean, neutral?: boolean): string {
+    if (neutral) {
+        return 'bg-neutral-focus/30';
+    }
     if (isLimiting) {
         return 'bg-red-500/30';
     }
@@ -15,7 +18,10 @@ export function fillColor(efficiency: number, isLimiting: boolean): string {
     return 'bg-green-500/30';
 }
 
-export function borderColor(efficiency: number, isLimiting: boolean): string {
+export function borderColor(efficiency: number, isLimiting: boolean, neutral?: boolean): string {
+    if (neutral) {
+        return 'border border-neutral-focus';
+    }
     if (isLimiting) {
         return 'border border-red-500';
     }
@@ -40,12 +46,14 @@ export function ProductQuantity({
     planetId,
     agentId,
     quantityLabel,
+    neutral,
 }: ResourceQuantity & {
     efficiency: number;
     isLimiting: boolean;
     planetId: string | null;
     agentId: string | null;
     quantityLabel?: string;
+    neutral?: boolean;
 }): React.ReactElement {
     const getHref = () => {
         if (planetId) {
@@ -64,11 +72,11 @@ export function ProductQuantity({
 
     return wrapInLink(
         <div
-            className={`relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all ${borderColor(efficiency, isLimiting)}`}
+            className={`relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all ${borderColor(efficiency, isLimiting, neutral)}`}
         >
             {!isUnknown && (
                 <span
-                    className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting)}  transition-all`}
+                    className={`absolute bottom-0 left-0 right-0 ${fillColor(efficiency, isLimiting, neutral)}  transition-all`}
                     style={{ height: `${Math.round(efficiency * 100)}%` }}
                 />
             )}

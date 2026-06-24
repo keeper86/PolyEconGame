@@ -18,8 +18,9 @@ export function TourTooltip({
     backProps,
     closeProps,
     primaryProps,
-    skipProps,
     tooltipProps,
+    // skipProps is available but unused; we use closeProps for the Close button instead
+    skipProps: _skipProps,
 }: TooltipRenderProps) {
     const { title, content } = step;
 
@@ -54,11 +55,6 @@ export function TourTooltip({
                             {index + 1} of {size}
                         </span>
                     )}
-
-                    {/* Skip button */}
-                    <Button {...skipProps} data-action='skip' variant='ghost' size='sm' className='text-xs h-7 px-2'>
-                        Skip
-                    </Button>
                 </div>
 
                 {/* Right side: back / next buttons */}
