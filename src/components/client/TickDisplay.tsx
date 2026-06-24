@@ -1,22 +1,8 @@
 'use client';
 
+import { format } from 'date-fns';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-
-const MONTH_NAMES = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-];
 
 export const tickToDate = (tick: number): { year: number; monthIndex: number; day: number } => {
     const simTick = tick - 1;
@@ -29,10 +15,11 @@ export const tickToDate = (tick: number): { year: number; monthIndex: number; da
     return { year, monthIndex, day };
 };
 
-export const mapTickToDate = (tick: number): string => {
+export const mapTickToDate = (tick: number, short = false): string => {
     const { year, monthIndex, day } = tickToDate(tick);
 
-    return `${day.toString().padStart(2, '0')}. ${MONTH_NAMES[monthIndex]} ${year}`;
+    const date = new Date(year, monthIndex, day);
+    return format(date, short ? 'MMM yyyy' : 'dd. MMMM yyyy');
 };
 
 export default function TickDisplay() {

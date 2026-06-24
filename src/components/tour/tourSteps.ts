@@ -25,43 +25,6 @@ export function getStepsForPage(
     const steps: JoyrideStep[] = [];
 
     switch (page) {
-        case 'central-bank':
-            steps.push({
-                target: '[data-tour="bank-panel"]',
-                content:
-                    'This panel shows the central bank\u2019s key metrics \u2014 equity, policy rate, and money supply. Keep an eye on these as they affect loan conditions.',
-                title: '\uD83C\uDFDB\uFE0F Central Bank Overview',
-                placement: 'top',
-                skipBeacon: true,
-                locale: {
-                    next: 'Next',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                zIndex: 10000,
-            });
-            steps.push({
-                target: 'body',
-                content:
-                    'Now let\u2019s head to your Financial Overview. You can take a starter loan there and see your deposits and cash flow.',
-                title: '\u27A1\uFE0F Next: Financial Overview',
-                placement: 'center',
-                hideOverlay: false,
-                skipBeacon: true,
-                locale: {
-                    next: 'Go to Finances \u2192',
-                    skip: 'Skip tour',
-                    last: 'Finish',
-                },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/financial`,
-                    );
-                },
-                zIndex: 10000,
-            });
-            break;
-
         case 'financial':
             // Step 0: Blocking — user must click the starter loan button to proceed.
             if (!completed.has('starter-loan')) {
@@ -83,25 +46,23 @@ export function getStepsForPage(
                     data: { blocking: true, actionKey: 'starter-loan' },
                 });
             }
-            // Step 1: Confirmation — shown after loan is taken
-            if (!completed.has('starter-loan')) {
-                steps.push({
-                    target: 'body',
-                    content:
-                        'Your loan has been credited to your account. Now let\u2019s look at your financial overview and then move on.',
-                    title: '\u2705 Loan taken successfully!',
-                    placement: 'center',
-                    hideOverlay: false,
-                    skipBeacon: true,
-                    locale: {
-                        next: 'Next',
-                        skip: 'Skip tour',
-                        last: 'Finish',
-                    },
-                    zIndex: 10000,
-                    data: { actionKey: 'starter-loan' },
-                });
-            }
+
+            steps.push({
+                target: 'body',
+                content:
+                    'Your loan has been credited to your account. Now let\u2019s look at your financial overview and then move on.',
+                title: '\u2705 Loan taken successfully!',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                locale: {
+                    next: 'Next',
+                    skip: 'Skip tour',
+                    last: 'Finish',
+                },
+                zIndex: 10000,
+            });
+
             steps.push({
                 target: '[data-tour="financial-overview"]',
                 content:

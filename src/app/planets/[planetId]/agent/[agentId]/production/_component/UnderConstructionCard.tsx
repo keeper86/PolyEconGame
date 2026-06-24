@@ -2,6 +2,7 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
+import { mapTickToDate } from '@/components/client/TickDisplay';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,15 +18,58 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { HardHat } from 'lucide-react';
+import { Clock, HardHat, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from './FacilityCardShell';
+
+const TICK_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_TICK_INTERVAL_MS);
+if (!TICK_INTERVAL_MS) {
+    throw new Error('NEXT_PUBLIC_TICK_INTERVAL_MS is not set');
+}
+
+function formatWallTime(ms: number, short = false): string {
+    if (ms < 1000) {
+        return '<1s';
+    }
+    const totalSeconds = Math.round(ms / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    let result = '';
+    if (days > 0) {
+        result += `${days}d `;
+        if (short) {
+            return `${(totalSeconds / 86400).toFixed(1)}d`;
+        }
+    }
+    if (hours > 0) {
+        result += `${hours}h `;
+        if (short) {
+            return `${(totalSeconds / 3600).toFixed(1)}h`;
+        }
+        if (minutes > 0) {
+            result += `${minutes}m `;
+            if (short) {
+                return `${(totalSeconds / 60).toFixed(1)}m`;
+            }
+            if (seconds > 0) {
+                result += `${seconds}s `;
+            }
+        }
+    }
+    return result.slice(0, -1);
+}
 
 export function UnderConstructionCard({ facility }: { facility: Facility }): React.ReactElement {
     const cs = facility.construction!;
@@ -70,8 +114,10 @@ export function UnderConstructionCard({ facility }: { facility: Facility }): Rea
 
 export function UnderConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
+    const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const currentTick = useSimulationTick();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
@@ -91,6 +137,51 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
         cs.totalConstructionServiceRequired > 0
             ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
             : 0;
+
+    const remainingServices = cs.totalConstructionServiceRequired - cs.progress;
+
+    const ticksRemaining =
+        cs.lastTickInvestedConstructionServices > 0
+            ? remainingServices / cs.lastTickInvestedConstructionServices
+            : Infinity;
+
+    let estimateDisplay: React.ReactNode = null;
+    if (ticksRemaining > 0 && isFinite(ticksRemaining)) {
+        const wallTimeMs = ticksRemaining * TICK_INTERVAL_MS;
+        const wallTime = formatWallTime(wallTimeMs, smallScreen);
+        const completionDate = mapTickToDate(currentTick + Math.ceil(ticksRemaining), smallScreen);
+        estimateDisplay = (
+            <div className='flex flex-row w-full justify-between text-xs text-muted-foreground'>
+                <span className='flex items-center gap-1'>
+                    <Timer className='h-3 w-3' />
+                    {wallTime}
+                </span>
+
+                <span className='flex items-center gap-1'>
+                    <Clock className='h-3 w-3' />
+                    {completionDate}
+                </span>
+            </div>
+        );
+    } else if (ticksRemaining <= 0) {
+        estimateDisplay = (
+            <div className='flex flex-row w-full justify-center text-xs text-muted-foreground'>
+                <span className='flex items-center gap-1'>
+                    <Spinner className='h-3 w-3' />
+                    Construction finished. Wait for next tick to take effect.
+                </span>
+            </div>
+        );
+    } else {
+        estimateDisplay = (
+            <div className='flex flex-row w-full justify-center text-xs text-muted-foreground'>
+                <span className='flex items-center gap-1'>
+                    <Timer className='h-3 w-3' />
+                    Stalled — no construction services
+                </span>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -114,9 +205,8 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
                             variant='secondary'
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
-                            <HardHat className='h-2.5 w-2.5' />
                             <p className='text-xs text-muted-foreground mt-0.5'>
-                                MaxScale {facility.maxScale} →{' '}
+                                Build {facility.maxScale} →{' '}
                                 <span className='font-medium text-foreground'>{cs.constructionTargetMaxScale}</span>
                             </p>
                         </Badge>
@@ -124,8 +214,10 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
                         <span className='font-medium text-foreground'>{pct.toFixed(0)}%</span>
                     </div>
                     <Progress value={pct} className='h-2.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500' />
+                    {estimateDisplay}
                 </div>
             </div>
+
             <div className='mt-auto space-y-2'>
                 <Separator />
                 <AlertDialog>

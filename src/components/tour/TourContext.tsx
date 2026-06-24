@@ -1,6 +1,6 @@
 'use client';
 
-import type { PageRoute } from '@/lib/tourSteps';
+import type { PageRoute } from '@/components/tour/tourSteps';
 import { useRouter } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 
@@ -71,7 +71,7 @@ function loadStorage(): TourStorage {
             return { ...defaultStorage, ...parsed, completedActions: parsed.completedActions ?? [] };
         }
     } catch {
-        // ignore
+        console.warn('[tour] Failed to load tour storage from localStorage');
     }
     return defaultStorage;
 }
@@ -80,7 +80,7 @@ function saveStorage(storage: TourStorage): void {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
     } catch {
-        // ignore
+        console.warn('[tour] Failed to save tour storage to localStorage');
     }
 }
 

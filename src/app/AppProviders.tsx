@@ -1,6 +1,6 @@
 'use client';
 
-import { TourProvider } from '@/components/client/TourContext';
+import { TourProvider } from '@/components/tour/TourContext';
 import { trpcClient, TRPCProvider } from '@/lib/trpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Session } from 'next-auth';

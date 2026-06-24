@@ -68,6 +68,7 @@ function BuildCard({
                         </span>
                     </div>
                     <span className='flex flex-col text-muted-foreground text-xs gap-1'>
+                        Worker Requirement
                         <WorkerBars
                             workerRequirement={facility.workerRequirement}
                             scale={facility.scale}

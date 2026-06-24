@@ -1,7 +1,7 @@
 'use client';
 import { AvatarUploadDialog } from '@/app/account/AvatarUploadDialog';
 import { Page } from '@/components/client/Page';
-import { useTour } from '@/components/client/TourContext';
+import { useTour } from '@/components/tour/TourContext';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSession } from 'next-auth/react';
 import { Button } from '@/components/ui/button';

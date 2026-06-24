@@ -1,14 +1,14 @@
 'use client';
 
-import { useTour } from '@/components/client/TourContext';
-import { getStepsForPage, type PageRoute } from '@/lib/tourSteps';
+import { useTour } from '@/components/tour/TourContext';
+import { getStepsForPage, type PageRoute } from '@/components/tour/tourSteps';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
-import { TourTooltip } from '@/components/client/TourTooltip';
+import { TourTooltip } from '@/components/tour/TourTooltip';
 import dynamic from 'next/dynamic';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { EventHandler, Props } from 'react-joyride';
+import type { EventHandler, Props, Step } from 'react-joyride';
 
 /**
  * We need to dynamically import Joyride because it's a heavy client-only library
@@ -83,12 +83,35 @@ export function TourJoyride() {
         [router],
     );
 
-    // Compute steps (available even before rendering Joyride, for target checking)
+    // Navigation callbacks extracted from step `after()` hooks.
+    // IMPORTANT: We mutate this Map in-place (clear + set) rather than replacing it
+    // with a new object, because the timeout in handleOnEvent captures the ref's
+    // current value at scheduling time and needs the SAME Map object to still be
+    // alive when the timeout fires.
+    const navCallbacksRef = useRef<Map<number, () => void>>(new Map());
+
+    // Compute steps (available even before rendering Joyride, for target checking).
+    // All `after` callbacks are stripped from the steps passed to Joyride.
+    // Instead, they are stored in navCallbacksRef and called manually from
+    // handleOnEvent on forward navigation only.
     const steps = useMemo(() => {
+        // Clear existing entries but keep the SAME Map object so any closures
+        // that already hold a reference to navCallbacksRef.current still work.
+        navCallbacksRef.current.clear();
         if (!currentPageRoute || !planetId) {
             return [];
         }
-        return getStepsForPage(currentPageRoute, planetId, agentId, routerPush, completedActions);
+        const allSteps = getStepsForPage(currentPageRoute, planetId, agentId, routerPush, completedActions);
+        return allSteps.map((step: Step, i: number) => {
+            if (step.after) {
+                // The after callbacks from tourSteps are navigation-only (() => void),
+                // not full AfterHook ((data: TourData) => void). Cast accordingly.
+                navCallbacksRef.current.set(i, step.after as () => void);
+            }
+            // Return step without `after` — Joyride won't auto-fire it on transitions
+            const { after: _after, ...rest } = step;
+            return rest;
+        });
     }, [currentPageRoute, planetId, agentId, routerPush, completedActions]);
 
     // ── Navigating reset ─────────────────────────────────────────────
@@ -178,25 +201,64 @@ export function TourJoyride() {
         return null;
     }
 
+    // Guard against out-of-bounds stepIndex: if currentPageIndex is beyond the last step,
+    // reset it to the last valid step. This prevents Joyride from rendering an overlay
+    // without a tooltip when the index has drifted (e.g. due to missing prev handling or
+    // other edge cases).
+    const safeStepIndex = Math.min(currentPageIndex, steps.length - 1);
+
     const handleOnEvent: EventHandler = (data) => {
         const { action, index, status, type } = data;
+
         const currentStep = steps[index];
-        const stepWithAfter = currentStep as (typeof steps)[number] & { after?: () => void };
-        const isNavStep = currentStep?.target === 'body' && typeof stepWithAfter.after === 'function';
+        // Detect nav steps by checking our stored callbacks instead of step.after
+        const isNavStep = currentStep?.target === 'body' && navCallbacksRef.current.has(index);
 
         // Steps with data.blocking: true advance programmatically (e.g. via mutation callback),
         // so we should not auto-advance on "next" click for them.
         const stepData = (currentStep as { data?: Record<string, unknown> })?.data ?? {};
         const isBlockingStep = stepData?.blocking === true;
 
+        // Back button: decrement the step index to stay in sync with Joyride's internal index.
+        // In Joyride's step:after event, `index` refers to the step being LEFT (source),
+        // the same semantics as for "next" where we use index + 1.
+        // So for "prev", we need index - 1 to go to the previous step.
+        if (type === 'step:after' && action === 'prev') {
+            setCurrentPageIndex(Math.max(0, index - 1));
+            return;
+        }
+
+        // ── Tour completion / skip / close ──────────────────────────────
+        // Handle these BEFORE any index advancement so the tour ends cleanly
+        // without competing state updates.
+        if (status === 'finished' || status === 'skipped' || action === 'close') {
+            // For nav-step finished: the navigation will handle completion on the next page.
+            // We still need to complete the tour here for non-nav steps (e.g. final "Tour Complete" step).
+            if (status === 'finished' && isNavStep) {
+                // Navigation step finished — navigate first, then tour ends elsewhere
+                const navCallback = navCallbacksRef.current.get(index);
+                setNavigating(true);
+                setCurrentPageIndex(0);
+                setTimeout(() => {
+                    navCallback?.();
+                }, 0);
+                return;
+            }
+
+            // For everything else (e.g. "close" button, "skipped", or normal "finished" on last step)
+            completeTour();
+            return;
+        }
+
         // Navigation steps: before navigating, stop rendering joyride entirely
         // so its overlay is removed. The component will re-mount on the next page.
-        if (type === 'step:after' && isNavStep && (action === 'next' || status === 'finished')) {
+        if (type === 'step:after' && isNavStep && action === 'next') {
+            const navCallback = navCallbacksRef.current.get(index);
             setNavigating(true);
             setCurrentPageIndex(0);
             // Schedule navigation after React removes joyride from the DOM
             setTimeout(() => {
-                stepWithAfter.after?.();
+                navCallback?.();
             }, 0);
             return;
         }
@@ -205,11 +267,6 @@ export function TourJoyride() {
         if (type === 'step:after' && action === 'next' && !isBlockingStep) {
             setCurrentPageIndex(index + 1);
         }
-
-        // Handle tour skip/close or genuine completion (ships final step)
-        if ((status === 'finished' && !isNavStep) || status === 'skipped' || action === 'close') {
-            completeTour();
-        }
     };
 
     return (
@@ -217,7 +274,7 @@ export function TourJoyride() {
             steps={steps}
             run={isTourActive}
             continuous
-            stepIndex={currentPageIndex}
+            stepIndex={safeStepIndex}
             onEvent={handleOnEvent}
             tooltipComponent={TourTooltip}
             options={{
@@ -230,6 +287,7 @@ export function TourJoyride() {
                 close: 'Close',
                 last: 'Finish',
                 next: 'Next',
+                open: 'Open the dialog',
                 skip: 'Skip tour',
             }}
         />

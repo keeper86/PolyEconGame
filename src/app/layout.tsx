@@ -1,6 +1,6 @@
 import Footer from '@/app/Footer';
 import TickDisplay from '@/components/client/TickDisplay';
-import { TourJoyride } from '@/components/client/TourJoyride';
+import { TourJoyride } from '@/components/tour/TourJoyride';
 import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
 import { ThemeProvider } from '@/components/themeProvider';

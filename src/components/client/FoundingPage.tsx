@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
 import { mapTickToDate } from './TickDisplay';
-import { useTour } from './TourContext';
+import { useTour } from '../tour/TourContext';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();

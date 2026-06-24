@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import CreditButton from './CreditButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
-import { useTour } from '@/components/client/TourContext';
+import { useTour } from '@/components/tour/TourContext';
 
 type Props = {
     agentId: string;
