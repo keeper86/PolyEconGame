@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useGameConfig } from '@/components/client/GameConfigContext';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
@@ -30,12 +31,6 @@ import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from './FacilityCardShell';
-
-let TICK_INTERVAL_MS = Number(process.env.NEXT_PUBLIC_TICK_INTERVAL_MS);
-if (!TICK_INTERVAL_MS) {
-    console.error('NEXT_PUBLIC_TICK_INTERVAL_MS is not set');
-    TICK_INTERVAL_MS = 10000;
-}
 
 function formatWallTime(ms: number, short = false): string {
     if (ms < 1000) {
@@ -119,6 +114,7 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const currentTick = useSimulationTick();
+    const { tickIntervalMs } = useGameConfig();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
@@ -148,7 +144,7 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
 
     let estimateDisplay: React.ReactNode = null;
     if (ticksRemaining > 0 && isFinite(ticksRemaining)) {
-        const wallTimeMs = ticksRemaining * TICK_INTERVAL_MS;
+        const wallTimeMs = ticksRemaining * tickIntervalMs;
         const wallTime = formatWallTime(wallTimeMs, smallScreen);
         const completionDate = mapTickToDate(currentTick + Math.ceil(ticksRemaining), smallScreen);
         estimateDisplay = (
@@ -165,20 +161,24 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
             </div>
         );
     } else if (ticksRemaining <= 0) {
+        const finishMessage = smallScreen
+            ? 'Construction finished.'
+            : 'Construction finished. Wait for next tick to take effect.';
         estimateDisplay = (
-            <div className='flex flex-row w-full justify-center text-xs text-muted-foreground'>
-                <span className='flex items-center gap-1'>
+            <div className='flex flex-row w-full justify-center text-xs text-emerald-600 dark:text-emerald-400'>
+                <span className='flex items-center gap-1 '>
                     <Spinner className='h-3 w-3' />
-                    Construction finished. Wait for next tick to take effect.
+                    {finishMessage}
                 </span>
             </div>
         );
     } else {
+        const stalledMessage = smallScreen ? 'No construction!' : 'Stalled — no construction services.';
         estimateDisplay = (
-            <div className='flex flex-row w-full justify-center text-xs text-muted-foreground'>
+            <div className='flex flex-row w-full justify-center text-xs text-amber-600 dark:text-amber-400'>
                 <span className='flex items-center gap-1'>
                     <Timer className='h-3 w-3' />
-                    Stalled — no construction services
+                    {stalledMessage}
                 </span>
             </div>
         );

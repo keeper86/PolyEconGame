@@ -159,7 +159,11 @@ export function TourJoyride() {
         completeTour();
     }, [completeTour]);
 
-    useNavigationGuard(isTourActive, handleGuardForceLeave);
+    useNavigationGuard(isTourActive, handleGuardForceLeave, {
+        message: 'The guided tour is active. Navigating away will end the tutorial.',
+        actionLabel: 'End tutorial & leave',
+        infoStyle: true,
+    });
 
     // If the tour is not active, not mounted yet, or we're not on a tour page, render nothing.
     // Also hide joyride during inter-page navigation or while waiting for DOM targets.

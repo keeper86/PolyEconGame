@@ -4,11 +4,18 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 const TOAST_ID = 'navigation-guard';
-const MESSAGE = 'You have unsaved changes.';
-const ACTION_LABEL = 'Leave anyway';
+const DEFAULT_MESSAGE = 'You have unsaved changes.';
+const DEFAULT_ACTION_LABEL = 'Leave anyway';
 const TOAST_DURATION_MS = 8_000;
 
-export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void): void {
+export type NavigationGuardOptions = {
+    message?: string;
+    actionLabel?: string;
+    /** Use toast.info styling instead of toast.warning */
+    infoStyle?: boolean;
+};
+
+export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void, options?: NavigationGuardOptions): void {
     const router = useRouter();
 
     const dummyStatePushedRef = useRef(false);
@@ -62,24 +69,27 @@ export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void)
                     e.stopPropagation();
                     const isSameOrigin = target.origin === current.origin;
                     const destination = isSameOrigin ? target.pathname + target.search + target.hash : href;
-                    toast.warning(MESSAGE, {
-                        id: TOAST_ID,
-                        position: 'top-center',
-                        duration: TOAST_DURATION_MS,
-                        classNames: { icon: 'text-yellow-500' },
-                        action: {
-                            label: ACTION_LABEL,
-                            onClick: () => {
-                                onForceLeave?.();
-                                if (isSameOrigin) {
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    router.push(destination as any);
-                                } else {
-                                    window.location.href = destination;
-                                }
-                            },
-                        },
-                    });
+            const message = options?.message ?? DEFAULT_MESSAGE;
+            const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
+            const showToast = options?.infoStyle ? toast.info : toast.warning;
+            showToast(message, {
+                id: TOAST_ID,
+                position: 'top-center',
+                duration: TOAST_DURATION_MS,
+                classNames: options?.infoStyle ? { icon: 'text-blue-500' } : { icon: 'text-yellow-500' },
+                action: {
+                    label: actionLabel,
+                    onClick: () => {
+                        onForceLeave?.();
+                        if (isSameOrigin) {
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            router.push(destination as any);
+                        } else {
+                            window.location.href = destination;
+                        }
+                    },
+                },
+            });
                 }
             } catch {
                 // In case of an invalid URL, we don't want to block navigation. So we simply do nothing here.
@@ -95,13 +105,16 @@ export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void)
 
         const popStateHandler = () => {
             window.history.pushState(null, '', window.location.href);
-            toast.warning(MESSAGE, {
+            const message = options?.message ?? DEFAULT_MESSAGE;
+            const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
+            const showToast = options?.infoStyle ? toast.info : toast.warning;
+            showToast(message, {
                 id: TOAST_ID,
                 position: 'top-center',
                 duration: TOAST_DURATION_MS,
-                classNames: { icon: 'text-yellow-500' },
+                classNames: options?.infoStyle ? { icon: 'text-blue-500' } : { icon: 'text-yellow-500' },
                 action: {
-                    label: ACTION_LABEL,
+                    label: actionLabel,
                     onClick: () => {
                         onForceLeave?.();
                         window.removeEventListener('popstate', popStateHandler);
@@ -118,5 +131,5 @@ export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void)
             document.removeEventListener('click', clickHandler, true);
             window.removeEventListener('popstate', popStateHandler);
         };
-    }, [isActive, router, onForceLeave]);
+    }, [isActive, router, onForceLeave, options]);
 }
