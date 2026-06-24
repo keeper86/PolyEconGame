@@ -3,7 +3,7 @@ import type { Step as JoyrideStep } from 'react-joyride';
 /**
  * Tour steps grouped by page route.
  * Each page returns the steps relevant to that page.
- * The tour progresses through pages via navigation in step `after` callbacks.
+ * Navigation to the next page is handled externally via goToNextPage.
  */
 
 type PageRoute = 'central-bank' | 'financial' | 'workforce' | 'claims' | 'production' | 'storage' | 'market' | 'ships';
@@ -18,7 +18,6 @@ export function getStepsForPage(
     page: PageRoute,
     planetId: string,
     agentId: string,
-    routerPush: (url: string) => void,
     completedActions?: string[],
 ): JoyrideStep[] {
     const completed = new Set(completedActions ?? []);
@@ -93,12 +92,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/workforce`,
-                    );
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -133,10 +128,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/claims`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -163,12 +156,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(
-                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/production`,
-                    );
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -194,10 +183,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/storage`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -223,10 +210,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/market`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -252,10 +237,8 @@ export function getStepsForPage(
                     skip: 'Skip tour',
                     last: 'Finish',
                 },
-                after: () => {
-                    routerPush(`/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/ships`);
-                },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
 
@@ -287,6 +270,7 @@ export function getStepsForPage(
                     last: 'Finish',
                 },
                 zIndex: 10000,
+                data: { navStep: true },
             });
             break;
     }

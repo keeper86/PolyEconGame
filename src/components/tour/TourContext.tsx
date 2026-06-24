@@ -18,21 +18,19 @@ type TourContextValue = {
     isTourActive: boolean;
     /** Set tour opt-in (called from FoundingPage) */
     setTourActive: (active: boolean) => void;
-    /** The current page index in the tour sequence */
-    currentPageIndex: number;
-    /** Set the current page index */
-    setCurrentPageIndex: (index: number) => void;
+    /** The current step index within the current page's steps */
+    currentStepIndex: number;
+    /** Set the current step index */
+    setCurrentStepIndex: (index: number) => void;
     /** Whether the tour is completed */
     isCompleted: boolean;
     /** Mark tour as completed */
     completeTour: () => void;
     /** Reset the tour */
     resetTour: () => void;
-    /** Get the page route for the current index */
-    getCurrentPageRoute: () => PageRoute | null;
-    /** Navigate to the next tour page */
-    goToNextPage: (planetId: string, agentId: string) => void;
-    /** Advance to the next step on the current page (increment currentPageIndex by 1) */
+    /** Navigate to the next page in the tour sequence */
+    goToNextPage: (currentPage: PageRoute, planetId: string, agentId: string) => void;
+    /** Advance to the next step on the current page (increment currentStepIndex by 1) */
     advanceToNextStep: () => void;
     /** Ref that mirrors isTourActive for use in callbacks */
     isTourActiveRef: React.RefObject<boolean>;
@@ -109,7 +107,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const isTourActive = storage.active;
-    const currentPageIndex = storage.currentPageIndex;
+    const currentStepIndex = storage.currentPageIndex;
     const isCompleted = storage.completed;
     const completedActions = storage.completedActions;
 
@@ -120,7 +118,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         [persist],
     );
 
-    const setCurrentPageIndex = useCallback(
+    const setCurrentStepIndex = useCallback(
         (index: number) => {
             persist({ currentPageIndex: index });
         },
@@ -159,21 +157,15 @@ export function TourProvider({ children }: { children: ReactNode }) {
         });
     }, []);
 
-    const getCurrentPageRoute = useCallback((): PageRoute | null => {
-        if (storage.currentPageIndex >= 0 && storage.currentPageIndex < PAGE_ORDER.length) {
-            return PAGE_ORDER[storage.currentPageIndex];
-        }
-        return null;
-    }, [storage.currentPageIndex]);
-
     const goToNextPage = useCallback(
-        (planetId: string, agentId: string) => {
-            const nextIndex = storage.currentPageIndex + 1;
-            if (nextIndex >= PAGE_ORDER.length) {
+        (currentPage: PageRoute, planetId: string, agentId: string) => {
+            const currentPageIdx = PAGE_ORDER.indexOf(currentPage);
+            const nextPageIdx = currentPageIdx + 1;
+            if (nextPageIdx >= PAGE_ORDER.length) {
                 completeTour();
                 return;
             }
-            const nextPage = PAGE_ORDER[nextIndex];
+            const nextPage = PAGE_ORDER[nextPageIdx];
             const basePath = `/planets/${encodeURIComponent(planetId)}`;
 
             let path = '';
@@ -204,10 +196,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
                     break;
             }
 
-            persist({ currentPageIndex: nextIndex });
+            // Reset step index to 0 for the new page
+            persist({ currentPageIndex: 0 });
             router.push(path as unknown as '/');
         },
-        [storage.currentPageIndex, completeTour, persist, router],
+        [completeTour, persist, router],
     );
 
     return (
@@ -215,12 +208,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
             value={{
                 isTourActive,
                 setTourActive,
-                currentPageIndex,
-                setCurrentPageIndex,
+                currentStepIndex,
+                setCurrentStepIndex,
                 isCompleted,
                 completeTour,
                 resetTour,
-                getCurrentPageRoute,
                 goToNextPage,
                 advanceToNextStep,
                 isTourActiveRef,

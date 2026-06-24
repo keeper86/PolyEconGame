@@ -72,8 +72,9 @@ function mockQuerySelector(found: boolean) {
 
 // Track mock functions for assertions (avoids calling useTour() in helpers,
 // which would violate react-hooks/rules-of-hooks).
-let mockSetCurrentPageIndex: ReturnType<typeof vi.fn>;
+let mockSetCurrentStepIndex: ReturnType<typeof vi.fn>;
 let mockCompleteTour: ReturnType<typeof vi.fn>;
+let mockGoToNextPage: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
     vi.clearAllMocks();
@@ -90,13 +91,15 @@ beforeEach(() => {
     (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ planetId: 'planet-1' });
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({ push: vi.fn() });
 
-    mockSetCurrentPageIndex = vi.fn();
+    mockSetCurrentStepIndex = vi.fn();
     mockCompleteTour = vi.fn();
+    mockGoToNextPage = vi.fn();
     (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
         isTourActive: true,
-        currentPageIndex: 0,
+        currentStepIndex: 0,
         completeTour: mockCompleteTour,
-        setCurrentPageIndex: mockSetCurrentPageIndex,
+        setCurrentStepIndex: mockSetCurrentStepIndex,
+        goToNextPage: mockGoToNextPage,
         completedActions: [],
     });
 
@@ -110,7 +113,7 @@ beforeEach(() => {
             target: 'body',
             content: 'Navigate',
             title: 'Navigate next',
-            after: vi.fn(),
+            data: { navStep: true },
         },
     ]);
 });
@@ -144,9 +147,10 @@ describe('TourJoyride', () => {
     it('does not render when tour is not active', () => {
         (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
             isTourActive: false,
-            currentPageIndex: 0,
+            currentStepIndex: 0,
             completeTour: vi.fn(),
-            setCurrentPageIndex: vi.fn(),
+            setCurrentStepIndex: vi.fn(),
+            goToNextPage: vi.fn(),
             completedActions: [],
         });
 
@@ -175,13 +179,14 @@ describe('TourJoyride', () => {
 
     // ── handleOnEvent: prev action ─────────────────────────────────────
     it('clicking Back from step 1 goes to step 0', () => {
-        mockSetCurrentPageIndex = vi.fn();
+        mockSetCurrentStepIndex = vi.fn();
         mockCompleteTour = vi.fn();
         (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
             isTourActive: true,
-            currentPageIndex: 1,
+            currentStepIndex: 1,
             completeTour: mockCompleteTour,
-            setCurrentPageIndex: mockSetCurrentPageIndex,
+            setCurrentStepIndex: mockSetCurrentStepIndex,
+            goToNextPage: vi.fn(),
             completedActions: [],
         });
 
@@ -193,17 +198,18 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(0);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
     });
 
     it('clicking Back from step 2 goes to step 1', () => {
-        mockSetCurrentPageIndex = vi.fn();
+        mockSetCurrentStepIndex = vi.fn();
         mockCompleteTour = vi.fn();
         (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
             isTourActive: true,
-            currentPageIndex: 2,
+            currentStepIndex: 2,
             completeTour: mockCompleteTour,
-            setCurrentPageIndex: mockSetCurrentPageIndex,
+            setCurrentStepIndex: mockSetCurrentStepIndex,
+            goToNextPage: vi.fn(),
             completedActions: [],
         });
 
@@ -215,17 +221,18 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(1);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(1);
     });
 
     it('clicking Back from step 0 stays at 0 (cannot go negative)', () => {
-        mockSetCurrentPageIndex = vi.fn();
+        mockSetCurrentStepIndex = vi.fn();
         mockCompleteTour = vi.fn();
         (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
             isTourActive: true,
-            currentPageIndex: 0,
+            currentStepIndex: 0,
             completeTour: mockCompleteTour,
-            setCurrentPageIndex: mockSetCurrentPageIndex,
+            setCurrentStepIndex: mockSetCurrentStepIndex,
+            goToNextPage: vi.fn(),
             completedActions: [],
         });
 
@@ -237,7 +244,7 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(0);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
     });
 
     // ── handleOnEvent: next action (non-nav steps) ────────────────────
@@ -250,7 +257,7 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(1);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(1);
     });
 
     // ── Tour completion: finished (non-nav step) ────────────────────────
@@ -272,7 +279,7 @@ describe('TourJoyride', () => {
         });
 
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
-        expect(mockSetCurrentPageIndex).not.toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
     });
 
     // ── Tour completion: skipped ────────────────────────────────────────
@@ -286,7 +293,7 @@ describe('TourJoyride', () => {
         });
 
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
-        expect(mockSetCurrentPageIndex).not.toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
     });
 
     // ── Tour completion: close action ───────────────────────────────────
@@ -300,11 +307,12 @@ describe('TourJoyride', () => {
         });
 
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
-        expect(mockSetCurrentPageIndex).not.toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
     });
 
     // ── Nav step: "next" triggers navigation, not completeTour ──────────
     it('triggers navigation on nav step with action "next", does not call completeTour', () => {
+        vi.useFakeTimers();
         const { onEvent } = renderTourJoyride();
         simulateEvent(onEvent, {
             action: 'next',
@@ -313,12 +321,17 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(0);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
         expect(mockCompleteTour).not.toHaveBeenCalled();
+        // goToNextPage is called inside setTimeout(0) — flush all pending timers
+        vi.runAllTimers();
+        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        vi.useRealTimers();
     });
 
     // ── Nav step: "finished" triggers navigation, not completeTour ──────
     it('triggers navigation on nav step with status "finished", does not call completeTour', () => {
+        vi.useFakeTimers();
         const { onEvent } = renderTourJoyride();
         simulateEvent(onEvent, {
             action: 'next',
@@ -327,8 +340,12 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).toHaveBeenCalledWith(0);
+        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
         expect(mockCompleteTour).not.toHaveBeenCalled();
+        // goToNextPage is called inside setTimeout(0) — flush all pending timers
+        vi.runAllTimers();
+        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        vi.useRealTimers();
     });
 
     // ── Blocking step: "next" does NOT advance index ────────────────────
@@ -350,7 +367,7 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentPageIndex).not.toHaveBeenCalled();
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
     });
 
     // ── Undefined step guard ────────────────────────────────────────────
@@ -361,19 +378,20 @@ describe('TourJoyride', () => {
         expect(container.innerHTML).toBe('');
     });
 
-    // ── after callbacks are stripped ───────────────────────────────────
-    it('strips after callbacks from steps passed to Joyride', () => {
+    // ── getStepsForPage called correctly ───────────────────────────────
+    it('calls getStepsForPage with correct arguments without routerPush', () => {
         renderTourJoyride();
-        expect(getStepsForPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1', expect.any(Function), []);
+        expect(getStepsForPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1', []);
     });
 
     // ── safeStepIndex clamping ────────────────────────────────────────
-    it('renders without crashing when currentPageIndex >= steps.length', () => {
+    it('renders without crashing when currentStepIndex >= steps.length', () => {
         (useTour as ReturnType<typeof vi.fn>).mockReturnValue({
             isTourActive: true,
-            currentPageIndex: 5,
+            currentStepIndex: 5,
             completeTour: vi.fn(),
-            setCurrentPageIndex: vi.fn(),
+            setCurrentStepIndex: vi.fn(),
+            goToNextPage: vi.fn(),
             completedActions: [],
         });
 
