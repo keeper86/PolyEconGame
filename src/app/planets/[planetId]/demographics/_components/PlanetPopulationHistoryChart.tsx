@@ -1,6 +1,6 @@
 'use client';
 
-import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
+import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -8,7 +8,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
 
@@ -461,7 +461,7 @@ type Props = {
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
+    const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetPopulationHistory.queryOptions(
@@ -487,7 +487,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
         (granularity === 'decade' && (loadingDecade || !decade));
 
-    const currentTick = live.tick;
 
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
@@ -506,17 +505,14 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         <Card>
             <CardContent className='px-4 pt-2 pb-4'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
-                    <div className='flex justify-between gap-1 my-1 mb-3 items-center'>
-                        <span className='text-md text-slate-400'>
-                            Population {formatNumberWithUnit(live?.population, 'persons')}
-                        </span>
-
-                        <GranularityButtonGroup
-                            granularity={granularity}
-                            onChange={setGranularity}
-                            currentTick={currentTick}
-                        />
-                    </div>
+                    <GranularityHeader
+                        title={`Population ${formatNumberWithUnit(live?.population, 'persons')}`}
+                        granularity={granularity}
+                        onGranularityChange={setGranularity}
+                        currentTick={currentTick}
+                        className='my-1 mb-3'
+                        titleClassName='text-md text-slate-400'
+                    />
                     {granularity === 'monthly' && <MonthlyChart monthlyPoints={monthlyPoints} live={live} />}
                     {granularity === 'yearly' &&
                         (yearlyPoints.length > 0 ? <YearlyChart yearlyPoints={yearlyPoints} /> : <EmptyChart />)}

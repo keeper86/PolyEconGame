@@ -48,10 +48,6 @@ export default function FinancialPage() {
                                     agentId={agentId}
                                 />
                                 <Separator />
-                                <p className='text-sm font-semibold flex items-center gap-2'>
-                                    <Search className='h-4 w-4 text-muted-foreground' />
-                                    Details
-                                </p>
                                 <AgentFinancialCharts agentId={agentId} planetId={planetId} />
                                 <ProductResolutionPanel
                                     monthAcc={assets.monthAcc}
@@ -60,8 +56,10 @@ export default function FinancialPage() {
                                     planetId={planetId}
                                     agentId={agentId}
                                 />
-                                <Separator />
-
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className='px-3 py-3 space-y-3'>
                                 <LoanPanel agentId={agentId} planetId={planetId} deposits={assets.deposits ?? 0} />
                             </CardContent>
                         </Card>
