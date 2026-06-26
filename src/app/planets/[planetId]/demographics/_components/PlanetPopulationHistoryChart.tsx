@@ -487,7 +487,6 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
         (granularity === 'decade' && (loadingDecade || !decade));
 
-
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
         [monthly],

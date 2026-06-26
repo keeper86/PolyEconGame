@@ -11,7 +11,6 @@ import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
-import { Search } from 'lucide-react';
 import { LicensePanel } from '../../_component/LicensePanel';
 import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';

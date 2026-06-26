@@ -1,9 +1,17 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
+import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
-    createEmptyDemographicEventCounters,
+    createLastTickResults,
+    type ManagementFacility,
+    type ProductionFacility,
+    type ShipConstructionFacility,
+    type StorageFacility,
+} from '../planet/facility';
+import {
     createEmptyAccumulator,
+    createEmptyDemographicEventCounters,
     type Agent,
     type AgentPlanetAssets,
     type Bank,
@@ -12,15 +20,6 @@ import {
     type Infrastructure,
     type Planet,
 } from '../planet/planet';
-import { makeLoan } from '../financial/loanTypes';
-import {
-    createLastTickResults,
-    type ManagementFacility,
-    type ProductionFacility,
-    type ShipConstructionFacility,
-    type StorageFacility,
-} from '../planet/facility';
-import type { TransportShipType } from '../ships/ships';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type {
@@ -35,8 +34,8 @@ import type {
     Skill,
 } from '../population/population';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
+import type { TransportShipType } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-import { create } from 'node:domain';
 
 export function makeGaussianMoments(overrides?: Partial<GaussianMoments>): GaussianMoments {
     return { mean: 0, variance: 0, ...overrides };

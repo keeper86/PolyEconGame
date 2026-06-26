@@ -2,7 +2,7 @@
 
 import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
 import { Separator } from '@/components/ui/separator';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
