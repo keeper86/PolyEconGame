@@ -98,20 +98,14 @@ export type LastTickResults = {
     wageCosts: number;
     inputCosts: number;
     costBalance: number;
+
+    resourceEfficiency: { [resourceName: string]: number };
+    lastConsumed: { [resourceName: string]: number };
 };
 
 export type LastProductionTickResults = LastTickResults & {
-    resourceEfficiency: { [resourceName: string]: number };
-
     lastProduced: { [resourceName: string]: number };
-    lastConsumed: { [resourceName: string]: number };
     revenue: number;
-};
-
-export type LastManagementTickResults = LastTickResults & {
-    resourceEfficiency: { [resourceName: string]: number };
-
-    lastConsumed: { [resourceName: string]: number };
 };
 
 export type PidState = {
@@ -156,7 +150,7 @@ export type ManagementFacility = FacilityBase & {
     bufferPerTickPerScale: number;
     maxBuffer: number;
     buffer: number;
-    lastTickResults: LastManagementTickResults;
+    lastTickResults: LastTickResults;
 };
 
 export type ShipConstructionFacility = FacilityBase & {
@@ -164,10 +158,23 @@ export type ShipConstructionFacility = FacilityBase & {
     shipName: string;
     produces: ShipType | null;
     progress: number;
-    lastTickResults: LastManagementTickResults;
+    lastTickResults: LastTickResults;
 };
 
 export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipConstructionFacility;
+
+export const createLastTickResults = (): LastTickResults => ({
+    overallEfficiency: 0,
+    workerEfficiency: {},
+    resourceEfficiency: {},
+    overqualifiedWorkers: {},
+    exactUsedByEdu: {},
+    totalUsedByEdu: {},
+    wageCosts: 0,
+    inputCosts: 0,
+    costBalance: 0,
+    lastConsumed: {},
+});
 
 export const putIntoStorageFacility = (
     storage: StorageFacility,
@@ -224,6 +231,7 @@ export const getAvailableStorageCapacity = (storage: StorageFacility, resource: 
     return Math.max(0, Math.min(byVolume, byMass));
 };
 
+// returns the quantity actually removed
 export const removeFromStorageFacility = (
     storage: StorageFacility | undefined,
     resourceName: string,

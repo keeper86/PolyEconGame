@@ -13,11 +13,12 @@ import {
     type Planet,
 } from '../planet/planet';
 import { makeLoan } from '../financial/loanTypes';
-import type {
-    ManagementFacility,
-    ProductionFacility,
-    ShipConstructionFacility,
-    StorageFacility,
+import {
+    createLastTickResults,
+    type ManagementFacility,
+    type ProductionFacility,
+    type ShipConstructionFacility,
+    type StorageFacility,
 } from '../planet/facility';
 import type { TransportShipType } from '../ships/ships';
 import type { EducationLevelType } from '../population/education';
@@ -35,6 +36,7 @@ import type {
 } from '../population/population';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
+import { create } from 'node:domain';
 
 export function makeGaussianMoments(overrides?: Partial<GaussianMoments>): GaussianMoments {
     return { mean: 0, variance: 0, ...overrides };
@@ -218,13 +220,7 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
-        lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-        },
+        lastTickResults: createLastTickResults(),
         ...overrides,
     } as StorageFacility;
 }
@@ -248,18 +244,7 @@ export function makeManagementFacility(
         buffer: 0,
         maxBuffer: 100,
         bufferPerTickPerScale: 10,
-        lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            resourceEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            lastConsumed: {},
-            wageCosts: 0,
-            inputCosts: 0,
-            costBalance: 0,
-        },
+        lastTickResults: createLastTickResults(),
         ...overrides,
     };
 }
@@ -277,18 +262,9 @@ export function makeProductionFacility(
         scale: 1,
         construction: null,
         lastTickResults: {
-            overallEfficiency: 0,
-            overqualifiedWorkers: {},
-            resourceEfficiency: {},
-            workerEfficiency: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
+            ...createLastTickResults(),
             lastProduced: {},
-            lastConsumed: {},
             revenue: 0,
-            wageCosts: 0,
-            inputCosts: 0,
-            costBalance: 0,
         },
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
@@ -326,13 +302,7 @@ export function makeShipConstructionFacility(
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-        },
+        lastTickResults: createLastTickResults(),
         shipName: 'SS Test',
         produces: defaultShipType,
         progress: 0,
@@ -373,6 +343,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
         profitShareBonus: 0,
+        lastDepreciatedPerTick: {},
         monthAcc: {
             depositsAtMonthStart: 0,
             ...createEmptyAccumulator(),

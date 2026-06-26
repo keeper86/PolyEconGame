@@ -291,6 +291,8 @@ export type AgentPlanetAssets = {
 
     profitShareBonus: number;
 
+    lastDepreciatedPerTick: Record<string, number>;
+
     monthAcc: {
         depositsAtMonthStart: number;
     } & MonthAccumulator;
