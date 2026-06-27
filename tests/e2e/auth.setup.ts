@@ -13,7 +13,7 @@ setup('authenticate', async ({ page }) => {
     // Wait for the redirect back to the app (Keycloak OAuth callback -> NextAuth -> app home)
     // This ensures the next-auth.session-token cookie gets set
     await page.waitForURL(/^http:\/\/localhost:3000\//, { timeout: 30000 });
-    await page.waitForSelector('text=Wages', { timeout: 30000 });
+    await page.waitForSelector('text=Population', { timeout: 30000 });
 
     await page.context().storageState({ path: pathToAuthStorage });
 });

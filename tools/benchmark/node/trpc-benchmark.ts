@@ -22,9 +22,10 @@
  */
 
 import { createTRPCProxyClient, httpLink } from '@trpc/client';
-import type { AppRouter } from '../../src/server/router';
+import type { AppRouter } from '../../../src/server/router'; // three .. is correct. Dont touch it! 😉
 import fs from 'fs';
 import path from 'path';
+import { groceryServiceResourceType } from '../../../src/simulation/planet/services';
 
 // =============================================================================
 // Configuration
@@ -424,12 +425,11 @@ function createMixedOperations(client: Client, td: TestData, sem: Semaphore, res
 
         // Heavy operations (25% of traffic)
         { name: 'getPlanetDemographicsFull', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetDemographicsFull', results, () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] })); } },
-        { name: 'getPlanetBufferHistory', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetBufferHistory', results, () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 100 })); } },
-        { name: 'getProductPriceHistory(Produce)', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getProductPriceHistory(Produce)', results, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: 'Produce', granularity: 'monthly', limit: 100 })); } },
-        { name: 'getArbitrageForResources', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getArbitrageForResources', results, () => client.simulation.getArbitrageForResources.query({ resourceNames: ['Produce', 'Iron Ore', 'Steel', 'Machinery', 'Chemical'] })); } },
+        { name: 'getPlanetBufferHistory', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetBufferHistory', results, () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
+        { name: 'getProductPriceHistory(Produce)', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getProductPriceHistory(Produce)', results, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: 'Produce', granularity: 'monthly', limit: 13 })); } },        
         ...(td.agentId ? [
-            { name: 'getAgentHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentHistory', results, () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 100 })); } },
-            { name: 'getAgentFinancialHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentFinancialHistory', results, () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 26 })); } },
+            { name: 'getAgentHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentHistory', results, () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
+            { name: 'getAgentFinancialHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentFinancialHistory', results, () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
             { name: 'getLoanConditions', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getLoanConditions', results, () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet })); } },
             { name: 'getAgentDetail', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentDetail', results, () => client.simulation.getAgentDetail.query({ agentId: td.agentId! })); } },
         ] as MixedOp[] : []),
@@ -506,13 +506,13 @@ async function runHeavy(client: Client, td: TestData, sem: Semaphore, results: B
     const queries: [string, () => Promise<any>][] = [
         ['getPlanetDemographicsFull(occupation)', () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] })],
         ['getPlanetDemographicsFull(education)', () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'education', activeSkills: ['novice', 'professional', 'expert'] })],
-        ['getPlanetBufferHistory', () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 100 })],
-        ...(['Produce', 'Iron Ore', 'Steel', 'Machinery'] as const).map(p => [`getProductPriceHistory(${p})`, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: p, granularity: 'monthly', limit: 100 })] as [string, () => Promise<any>]),        
+        ['getPlanetBufferHistory', () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
+        ...([groceryServiceResourceType.name] as const).map(p => [`getProductPriceHistory(${p})`, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: p, granularity: 'monthly', limit: 13 })] as [string, () => Promise<any>]),        
     ];
     if (td.agentId) {
         queries.push(
-            ['getAgentHistory', () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 100 })],
-            ['getAgentFinancialHistory', () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 26 })],
+            ['getAgentHistory', () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
+            ['getAgentFinancialHistory', () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
             ['getLoanConditions', () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet })],
             ['getAgentDetail', () => client.simulation.getAgentDetail.query({ agentId: td.agentId! })],
         );

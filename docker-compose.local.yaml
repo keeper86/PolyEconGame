@@ -24,8 +24,8 @@ services:
             POSTGRES_DB: polyecongamedb
             DATABASE_URL: postgresql://postgres:password@db:5432/polyecongamedb
             LOG_LEVEL: warn
-            SIM_DEBUG: 1
-            TICK_INTERVAL_MS: 5000
+            SIM_DEBUG: 0
+            TICK_INTERVAL_MS: 10000
         depends_on:
             db:
                 condition: service_healthy
