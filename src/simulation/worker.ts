@@ -13,7 +13,6 @@ import {
     pruneGameSnapshots,
     refreshContinuousAggregates,
 } from './gameSnapshotRepository';
-import { fromImmutableGameState, toImmutableGameState, type GameStateRecord } from './immutableTypes';
 import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
 
@@ -88,7 +87,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     seedRng(42);
 
     let state: GameState;
-    let currentSnapshot: GameStateRecord;
+    let currentSnapshot: GameState;
     let recovered = false;
 
     try {
@@ -96,9 +95,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (db) {
             const latestRow = await getLatestGameSnapshot(db);
             if (latestRow) {
-                const record = deserializeSnapshot(latestRow.snapshot_data);
-                state = fromImmutableGameState(record);
-                currentSnapshot = record;
+                state = deserializeSnapshot(latestRow.snapshot_data);
+                currentSnapshot = state;
                 recovered = true;
                 console.log(
                     `[worker] Recovered from cold snapshot at tick ${state.tick} ` +
@@ -112,7 +110,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     if (!recovered) {
         state = createInitialGameState();
-        currentSnapshot = toImmutableGameState(state);
+        currentSnapshot = state;
 
         if (snapshotDb) {
             const db = snapshotDb;
@@ -280,16 +278,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    function flushAgentMonthlyHistory(gs: GameStateRecord, tick: number): Promise<void> {
+    function flushAgentMonthlyHistory(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
         }
         const rows = [...gs.agents.values()].flatMap((agent) => {
-            if (agent.data.automated) {
+            if (agent.automated) {
                 return [];
             }
-            return Object.entries(agent.data.assets).map(([planetId, assets]) => {
+            return Object.entries(agent.assets).map(([planetId, assets]) => {
                 const netBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
                 const monthlyNetIncome = assets.monthAcc.revenue;
 
@@ -301,7 +299,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 let storageValue = 0;
                 for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
                     if (entry?.quantity) {
-                        const price = planet?.data.marketPrices[entry.resource.name] ?? 0;
+                        const price = planet?.marketPrices[entry.resource.name] ?? 0;
                         storageValue += entry.quantity * price;
                     }
                 }
@@ -353,7 +351,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         return totalPop > 0 ? sum / totalPop : 0;
     }
 
-    function flushPopulationHistory(gs: GameStateRecord, tick: number): Promise<void> {
+    function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
@@ -361,15 +359,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         const rows = [...gs.planets.values()].map((planet) => ({
             tick,
             planet_id: planet.id,
-            population: computePopulationTotal(planet.data),
-            grocery_buffer: computeAvgServiceBuffer(planet.data, 'grocery'),
-            healthcare_buffer: computeAvgServiceBuffer(planet.data, 'healthcare'),
-            logistics_buffer: computeAvgServiceBuffer(planet.data, 'logistics'),
-            education_buffer: computeAvgServiceBuffer(planet.data, 'education'),
-            retail_buffer: computeAvgServiceBuffer(planet.data, 'retail'),
-            construction_buffer: computeAvgServiceBuffer(planet.data, 'construction'),
-            maintenance_buffer: computeAvgServiceBuffer(planet.data, 'maintenance'),
-            administration_buffer: computeAvgServiceBuffer(planet.data, 'administration'),
+            population: computePopulationTotal(planet),
+            grocery_buffer: computeAvgServiceBuffer(planet, 'grocery'),
+            healthcare_buffer: computeAvgServiceBuffer(planet, 'healthcare'),
+            logistics_buffer: computeAvgServiceBuffer(planet, 'logistics'),
+            education_buffer: computeAvgServiceBuffer(planet, 'education'),
+            retail_buffer: computeAvgServiceBuffer(planet, 'retail'),
+            construction_buffer: computeAvgServiceBuffer(planet, 'construction'),
+            maintenance_buffer: computeAvgServiceBuffer(planet, 'maintenance'),
+            administration_buffer: computeAvgServiceBuffer(planet, 'administration'),
         }));
         if (rows.length === 0) {
             return Promise.resolve();
@@ -379,26 +377,25 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    function flushPlanetEconomyHistory(gs: GameStateRecord, tick: number): Promise<void> {
+    function flushPlanetEconomyHistory(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
         }
         const rows = [...gs.planets.values()].map((planet) => {
-            const p = planet.data;
-            const bank = p.bank;
+            const bank = planet.bank;
 
             const gdp =
-                Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
                     TICKS_PER_YEAR +
-                (p.monthTransferVolume * 1) / 3; // assume part of transfer volume is commercial p2p activity
+                (planet.monthTransferVolume * 1) / 3; // assume part of transfer volume is commercial p2p activity
 
-            const costOfLiving = computeCostOfLiving(p.marketPrices, false);
-            const costOfLivingRich = computeCostOfLiving(p.marketPrices, true);
-            const wageEdu0 = p.wagePerEdu.none ?? 0;
-            const wageEdu1 = p.wagePerEdu.primary ?? 0;
-            const wageEdu2 = p.wagePerEdu.secondary ?? 0;
-            const wageEdu3 = p.wagePerEdu.tertiary ?? 0;
+            const costOfLiving = computeCostOfLiving(planet.marketPrices, false);
+            const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true);
+            const wageEdu0 = planet.wagePerEdu.none ?? 0;
+            const wageEdu1 = planet.wagePerEdu.primary ?? 0;
+            const wageEdu2 = planet.wagePerEdu.secondary ?? 0;
+            const wageEdu3 = planet.wagePerEdu.tertiary ?? 0;
 
             const policyRate = bank.loanRate;
             const bankEquity = bank.equity;
@@ -427,7 +424,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    function flushProductPrices(gs: GameStateRecord, tick: number): Promise<void> {
+    function flushProductPrices(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
             return Promise.resolve();
@@ -441,11 +438,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             maxPrice: number;
         }> = [];
         for (const planet of gs.planets.values()) {
-            for (const [productName, spotPrice] of Object.entries(planet.data.marketPrices)) {
+            for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
                 if (typeof spotPrice !== 'number' || !isFinite(spotPrice) || spotPrice <= 0) {
                     continue;
                 }
-                const acc = planet.data.monthPriceAcc[productName];
+                const acc = planet.monthPriceAcc[productName];
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
@@ -471,14 +468,13 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     let snapshotInFlight = false;
 
-    function spawnSnapshotTask(snapshot: GameStateRecord, tick: number): void {
+    function spawnSnapshotTask(snapshot: GameState, tick: number): void {
         if (snapshotInFlight) {
             console.warn(`[worker] Skipping snapshot at tick ${tick} — previous write still in flight`);
             return;
         }
 
         snapshotInFlight = true;
-        const gs = fromImmutableGameState(snapshot);
 
         void (async () => {
             const db = await getSnapshotDb();
@@ -488,7 +484,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             }
             const start = Date.now();
             try {
-                const snapshotData = serializeGameState(gs);
+                const snapshotData = serializeGameState(snapshot);
 
                 await insertGameSnapshot(db, {
                     tick,
@@ -540,7 +536,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.error('[worker] Error while advancing:', err);
             }
 
-            currentSnapshot = toImmutableGameState(state);
+            currentSnapshot = state;
 
             processingTick = false;
 
@@ -605,53 +601,38 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getFullState': {
-                    const planets = snap.planets
-                        .valueSeq()
-                        .map((pr) => pr.data)
-                        .toArray();
-                    const agents = snap.agents
-                        .valueSeq()
-                        .map((ar) => ar.data)
-                        .toArray();
+                    const planets = [...snap.planets.values()];
+                    const agents = [...snap.agents.values()];
                     data = { tick: snap.tick, planets, agents };
                     break;
                 }
                 case 'getPlanet': {
-                    const pr = snap.planets.get(msg.planetId);
-                    data = { planet: pr ? pr.data : null };
+                    data = { planet: snap.planets.get(msg.planetId) ?? null };
                     break;
                 }
                 case 'getAllPlanets': {
-                    const planets = snap.planets
-                        .valueSeq()
-                        .map((pr) => pr.data)
-                        .toArray();
+                    const planets = [...snap.planets.values()];
                     data = { tick: snap.tick, planets };
                     break;
                 }
                 case 'getAgent': {
-                    const ar = snap.agents.get(msg.agentId);
-                    data = { agent: ar ? ar.data : null };
+                    data = { agent: snap.agents.get(msg.agentId) ?? null };
                     break;
                 }
                 case 'getAllAgents': {
-                    const agents = snap.agents
-                        .valueSeq()
-                        .map((ar) => ar.data)
-                        .toArray();
+                    const agents = [...snap.agents.values()];
                     data = { tick: snap.tick, agents };
                     break;
                 }
                 case 'getLoanConditions': {
-                    const agentRecord = snap.agents.get(msg.agentId);
-                    const planetRecord = snap.planets.get(msg.planetId);
-                    if (!agentRecord || !planetRecord) {
+                    const agent = snap.agents.get(msg.agentId);
+                    const planet = snap.planets.get(msg.planetId);
+                    if (!agent || !planet) {
                         data = { conditions: null, activeLoans: [] };
                     } else {
-                        const agentData = agentRecord.data;
                         data = {
-                            conditions: computeLoanConditions(agentData, planetRecord.data),
-                            activeLoans: agentData.assets[msg.planetId]?.activeLoans ?? [],
+                            conditions: computeLoanConditions(agent, planet),
+                            activeLoans: agent.assets[msg.planetId]?.activeLoans ?? [],
                         };
                     }
                     break;
@@ -661,16 +642,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getPlanetWithAgents': {
-                    const pr = snap.planets.get(msg.planetId);
-                    const agents = snap.agents
-                        .valueSeq()
-                        .filter((ar) => ar.data.assets[msg.planetId] !== undefined)
-                        .map((ar) => ar.data)
-                        .toArray();
+                    const planet = snap.planets.get(msg.planetId);
+                    const agents = [...snap.agents.values()].filter((a) => a.assets[msg.planetId] !== undefined);
                     const forexMMs = [...snap.forexMarketMakers.values()].filter(
                         (mm) => mm.assets[msg.planetId] !== undefined,
                     );
-                    data = { tick: snap.tick, planet: pr ? pr.data : null, agents: [...agents, ...forexMMs] };
+                    data = { tick: snap.tick, planet: planet ?? null, agents: [...agents, ...forexMMs] };
                     break;
                 }
                 case 'getTickerEvents': {

@@ -1,8 +1,6 @@
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
 
-import { toImmutableGameState, fromImmutableGameState } from './immutableTypes';
-import type { GameStateRecord } from './immutableTypes';
 import type { Planet, Agent, GameState } from './planet/planet';
 import type { ShipCapitalMarket } from './ships/ships';
 
@@ -84,21 +82,14 @@ function wireToGameState(wire: WireGameState): GameState {
     };
 }
 
-export function serializeSnapshot(record: GameStateRecord): Buffer {
-    const gs = fromImmutableGameState(record);
-    const wire = gameStateToWire(gs);
-    const packed = encode(wire);
-    return gzipSync(Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength));
-}
-
 export function serializeGameState(gs: GameState): Buffer {
     const wire = gameStateToWire(gs);
     const packed = encode(wire);
     return gzipSync(Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength));
 }
 
-export function deserializeSnapshot(data: Buffer): GameStateRecord {
+export function deserializeSnapshot(data: Buffer): GameState {
     const decompressed = gunzipSync(data);
     const wire = decode(decompressed) as WireGameState;
-    return toImmutableGameState(wireToGameState(wire));
+    return wireToGameState(wire);
 }
