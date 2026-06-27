@@ -15,7 +15,11 @@ export type NavigationGuardOptions = {
     infoStyle?: boolean;
 };
 
-export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void, options?: NavigationGuardOptions): void {
+export function useNavigationGuard(
+    isActive: boolean,
+    onForceLeave?: () => void,
+    options?: NavigationGuardOptions,
+): void {
     const router = useRouter();
 
     const dummyStatePushedRef = useRef(false);
@@ -69,27 +73,27 @@ export function useNavigationGuard(isActive: boolean, onForceLeave?: () => void,
                     e.stopPropagation();
                     const isSameOrigin = target.origin === current.origin;
                     const destination = isSameOrigin ? target.pathname + target.search + target.hash : href;
-            const message = options?.message ?? DEFAULT_MESSAGE;
-            const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
-            const showToast = options?.infoStyle ? toast.info : toast.warning;
-            showToast(message, {
-                id: TOAST_ID,
-                position: 'top-center',
-                duration: TOAST_DURATION_MS,
-                classNames: options?.infoStyle ? { icon: 'text-blue-500' } : { icon: 'text-yellow-500' },
-                action: {
-                    label: actionLabel,
-                    onClick: () => {
-                        onForceLeave?.();
-                        if (isSameOrigin) {
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            router.push(destination as any);
-                        } else {
-                            window.location.href = destination;
-                        }
-                    },
-                },
-            });
+                    const message = options?.message ?? DEFAULT_MESSAGE;
+                    const actionLabel = options?.actionLabel ?? DEFAULT_ACTION_LABEL;
+                    const showToast = options?.infoStyle ? toast.info : toast.warning;
+                    showToast(message, {
+                        id: TOAST_ID,
+                        position: 'top-center',
+                        duration: TOAST_DURATION_MS,
+                        classNames: options?.infoStyle ? { icon: 'text-blue-500' } : { icon: 'text-yellow-500' },
+                        action: {
+                            label: actionLabel,
+                            onClick: () => {
+                                onForceLeave?.();
+                                if (isSameOrigin) {
+                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                    router.push(destination as any);
+                                } else {
+                                    window.location.href = destination;
+                                }
+                            },
+                        },
+                    });
                 }
             } catch {
                 // In case of an invalid URL, we don't want to block navigation. So we simply do nothing here.

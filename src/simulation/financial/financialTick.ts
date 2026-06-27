@@ -64,11 +64,20 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                 for (let si = 0; si < SKILL.length; si++) {
                     const skill = SKILL[si];
                     const cat = eduCohort[skill];
-                    const totalWorkers = cat.active +
-                        cat.onboarding[0] + cat.onboarding[1] + cat.onboarding[2] +
-                        cat.voluntaryDeparting[0] + cat.voluntaryDeparting[1] + cat.voluntaryDeparting[2] +
-                        cat.departingFired[0] + cat.departingFired[1] + cat.departingFired[2] +
-                        cat.departingRetired[0] + cat.departingRetired[1] + cat.departingRetired[2];
+                    const totalWorkers =
+                        cat.active +
+                        cat.onboarding[0] +
+                        cat.onboarding[1] +
+                        cat.onboarding[2] +
+                        cat.voluntaryDeparting[0] +
+                        cat.voluntaryDeparting[1] +
+                        cat.voluntaryDeparting[2] +
+                        cat.departingFired[0] +
+                        cat.departingFired[1] +
+                        cat.departingFired[2] +
+                        cat.departingRetired[0] +
+                        cat.departingRetired[1] +
+                        cat.departingRetired[2];
                     if (totalWorkers <= 0) {
                         continue;
                     }
@@ -86,7 +95,10 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
 
         assets.monthAcc.wages += wageBill;
         const totalAgentWorkerCount =
-            totalWorkersForEdu.none + totalWorkersForEdu.primary + totalWorkersForEdu.secondary + totalWorkersForEdu.tertiary;
+            totalWorkersForEdu.none +
+            totalWorkersForEdu.primary +
+            totalWorkersForEdu.secondary +
+            totalWorkersForEdu.tertiary;
         assets.monthAcc.totalWorkersTicks += totalAgentWorkerCount;
 
         if (assets.deposits < wageBill) {
@@ -115,9 +127,14 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                     for (let si = 0; si < SKILL.length; si++) {
                         const skill = SKILL[si];
                         const cat = eduCohort[skill];
-                        const agentWorkersHere = cat.active +
-                            cat.onboarding[0] + cat.onboarding[1] + cat.onboarding[2] +
-                            cat.voluntaryDeparting[0] + cat.voluntaryDeparting[1] + cat.voluntaryDeparting[2];
+                        const agentWorkersHere =
+                            cat.active +
+                            cat.onboarding[0] +
+                            cat.onboarding[1] +
+                            cat.onboarding[2] +
+                            cat.voluntaryDeparting[0] +
+                            cat.voluntaryDeparting[1] +
+                            cat.voluntaryDeparting[2];
                         if (agentWorkersHere <= 0) {
                             continue;
                         }

@@ -22,6 +22,7 @@ import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../p
 import { nextRandom } from '../utils/stochasticRound';
 import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import { allServices, computeTierCost, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
+import type { TickProfiler } from '../TickProfiler';
 
 interface DependentNeed {
     totalNeed: number;
@@ -205,7 +206,7 @@ export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
     return total / maxValue;
 }
 
-export function intergenerationalTransfersForPlanet(planet: Planet): void {
+export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: TickProfiler): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
 
@@ -213,7 +214,15 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
 
     let totalTransferVolume = 0;
     let cumulativeMandatoryCost = 0;
+
+    let t_ig: number = 0;
+    if (profiler?.isEnabled) {
+        t_ig = profiler.mark();
+    }
     let activeCache = buildAggregateCache(demography);
+    if (profiler?.isEnabled) {
+        t_ig = profiler.markAndAccum('igCacheBuild', '  igCacheBuild', t_ig);
+    }
 
     for (let tierIdx = 0; tierIdx < SERVICE_TIERS.length; tierIdx++) {
         const tier = SERVICE_TIERS[tierIdx];
@@ -224,10 +233,26 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         const tierFloor = cumulativeMandatoryCost + (tier.mandatoryForOwnConsumption ? tierCostPerTick : 0);
 
         if (tierIdx > 0) {
+            if (profiler?.isEnabled) {
+                t_ig = profiler.mark();
+            }
             activeCache = buildAggregateCache(demography);
+            if (profiler?.isEnabled) {
+                t_ig = profiler.markAndAccum('igCacheBuild', '  igCacheBuild', t_ig);
+            }
         }
 
+        if (profiler?.isEnabled) {
+            t_ig = profiler.mark();
+        }
         const remaining = computeSurplusSnapshot(activeCache, tierFloor);
+        if (profiler?.isEnabled) {
+            t_ig = profiler.markAndAccum('igSurplus', '  igSurplus', t_ig);
+        }
+
+        if (profiler?.isEnabled) {
+            t_ig = profiler.mark();
+        }
         const tierNeeds = computeDependentNeedsForTier(
             activeCache,
             tier.services,
@@ -235,6 +260,9 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
             tier.coverageFraction,
             cumulativeMandatoryCost,
         );
+        if (profiler?.isEnabled) {
+            t_ig = profiler.markAndAccum('igNeeds', '  igNeeds', t_ig);
+        }
 
         const totalSupply = remaining.reduce((sum, s) => sum + s, 0);
         const totalDemand = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
@@ -244,6 +272,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
         for (let i = ageOrder.length - 1; i > 0; i--) {
             const j = Math.floor(nextRandom() * (i + 1));
             [ageOrder[i], ageOrder[j]] = [ageOrder[j], ageOrder[i]];
+        }
+
+        if (profiler?.isEnabled) {
+            t_ig = profiler.mark();
         }
 
         for (const age of ageOrder) {
@@ -313,6 +345,10 @@ export function intergenerationalTransfersForPlanet(planet: Planet): void {
                 cumulativeMandatoryCost,
                 transferMatrix,
             );
+        }
+
+        if (profiler?.isEnabled) {
+            t_ig = profiler.markAndAccum('igTransfer', '  igTransfer', t_ig);
         }
 
         if (tier.mandatoryForOwnConsumption) {

@@ -102,7 +102,7 @@ export function advanceTick(gameState: GameState) {
         if (profile.isEnabled) {
             t = profile.markAndAccum('workforce', 'workforce', t);
         }
-        hireWorkforce(gameState.agents, planet);
+        hireWorkforce(gameState.agents, planet, profile);
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
         }
@@ -115,11 +115,20 @@ export function advanceTick(gameState: GameState) {
             t = profile.mark();
         }
         claimBillingTick(gameState.agents, planet, gameState.tick);
-        maturesLoans(gameState.agents, planet, gameState.tick);
-        preProductionFinancialTick(gameState.agents, planet, gameState.tick);
-        intergenerationalTransfersForPlanet(planet);
         if (profile.isEnabled) {
-            t = profile.markAndAccum('financeClaims', 'claims + financialTick', t);
+            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
+        }
+        maturesLoans(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
+        }
+        preProductionFinancialTick(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
+        }
+        intergenerationalTransfersForPlanet(planet, profile);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
         }
 
         // ── Market (pricing + clearing) ──

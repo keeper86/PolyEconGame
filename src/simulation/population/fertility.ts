@@ -3,21 +3,6 @@ import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';
 import type { Population } from './population';
-import { forEachPopulationCohort } from './population';
-
-function averageStarvationLevel(population: Population): number {
-    let totalPop = 0;
-    let weightedStarvation = 0;
-    for (const cohort of population.demography) {
-        forEachPopulationCohort(cohort, (cat) => {
-            if (cat.total > 0) {
-                weightedStarvation += cat.services.grocery.starvationLevel * cat.total;
-                totalPop += cat.total;
-            }
-        });
-    }
-    return totalPop > 0 ? weightedStarvation / totalPop : 0;
-}
 
 export const START_FERTILE_AGE = 18;
 

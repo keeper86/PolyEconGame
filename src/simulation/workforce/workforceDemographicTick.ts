@@ -51,6 +51,11 @@ export function workforceDemographicTick(
     const environmentalMortality = computeEnvironmentalMortality(planet.environment);
     const environmentalDisability = computeEnvironmentalDisability(planet.environment);
 
+    let t_cell: number = 0;
+    if (profiler?.isEnabled) {
+        t_cell = profiler.mark();
+    }
+
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
         if (!assets?.workforceDemography) {
@@ -72,9 +77,15 @@ export function workforceDemographicTick(
                     // Inline totalOnboarding + totalDeparting — avoids .reduce() closure allocation
                     const _totalOnboarding = category.onboarding[0] + category.onboarding[1] + category.onboarding[2];
                     const _totalDeparting =
-                        category.voluntaryDeparting[0] + category.voluntaryDeparting[1] + category.voluntaryDeparting[2] +
-                        category.departingFired[0] + category.departingFired[1] + category.departingFired[2] +
-                        category.departingRetired[0] + category.departingRetired[1] + category.departingRetired[2];
+                        category.voluntaryDeparting[0] +
+                        category.voluntaryDeparting[1] +
+                        category.voluntaryDeparting[2] +
+                        category.departingFired[0] +
+                        category.departingFired[1] +
+                        category.departingFired[2] +
+                        category.departingRetired[0] +
+                        category.departingRetired[1] +
+                        category.departingRetired[2];
 
                     const _totalWorkers = category.active + _totalOnboarding + _totalDeparting;
 
@@ -267,6 +278,9 @@ export function workforceDemographicTick(
                 }
             }
         }
+    }
+    if (profiler?.isEnabled) {
+        profiler.markAndAccum('wfDemoCells', '  wfDemo_cells', t_cell);
     }
     return accumulator;
 }

@@ -7,9 +7,6 @@ import { populationBirthsTick } from './fertility';
 import { applyMortalityAndDisability } from './mortalityAndDisability';
 import { consumeServices } from './consumption';
 import { applyRetirement } from './retirement';
-import { OCCUPATIONS, SKILL } from './population';
-import { educationLevelKeys } from './education';
-import { START_FERTILE_AGE, END_FERTILE_AGE } from './fertility';
 
 export function populationTick(
     planet: Planet,
@@ -18,43 +15,21 @@ export function populationTick(
 ): void {
     const { population } = planet;
 
-    // Lightweight population count — avoids reducePopulationCohort overhead (no service merges per category)
-    let populationTotal = 0;
-    let fertileWomen = 0;
-    const demography = population.demography;
-    for (let age = 0; age < demography.length; age++) {
-        let ageTotal = 0;
-        const cohort = demography[age];
-        for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
-            const occ = OCCUPATIONS[oi];
-            const occCohort = cohort[occ];
-            for (let li = 0; li < educationLevelKeys.length; li++) {
-                const l = educationLevelKeys[li];
-                const eduCohort = occCohort[l];
-                for (let si = 0; si < SKILL.length; si++) {
-                    ageTotal += eduCohort[SKILL[si]].total;
-                }
-            }
-        }
-        populationTotal += ageTotal;
-        if (age >= START_FERTILE_AGE && age <= END_FERTILE_AGE) {
-            fertileWomen += ageTotal * 0.5;
-        }
-    }
-
-    if (populationTotal === 0) {
-        return;
-    }
-
     let t: number = 0;
 
-    // Combined mortality + disability pass (previously two separate iterations)
+    // Merged counting + mortality/disability pass
+    // (counts population, fertile women, and weighted starvation in the same
+    //  iteration that applies mortality and disability — saves ~100ms)
     if (profiler?.isEnabled) {
         t = profiler.mark();
     }
-    applyMortalityAndDisability(planet, workforceEvents);
+    const counters = applyMortalityAndDisability(planet, workforceEvents);
     if (profiler?.isEnabled) {
-        t = profiler.markAndAccum('popMortalityAndDisability', '  popMortality + popDisability', t);
+        t = profiler.markAndAccum('popMortalityAndDisability', '  popMortality + popDisability + counting', t);
+    }
+
+    if (counters.populationTotal === 0) {
+        return;
     }
 
     if (profiler?.isEnabled) {
@@ -77,29 +52,9 @@ export function populationTick(
         t = profiler.mark();
     }
 
-    // Compute average starvation for births in a single lightweight pass
-    // (avoiding the separate full iteration that averageStarvationLevel did via forEachPopulationCohort)
-    let weightedStarvation = 0;
-    for (let age = 0; age < demography.length; age++) {
-        const cohort = demography[age];
-        for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
-            const occ = OCCUPATIONS[oi];
-            const occCohort = cohort[occ];
-            for (let li = 0; li < educationLevelKeys.length; li++) {
-                const l = educationLevelKeys[li];
-                const eduCohort = occCohort[l];
-                for (let si = 0; si < SKILL.length; si++) {
-                    const cat = eduCohort[SKILL[si]];
-                    if (cat.total > 0) {
-                        weightedStarvation += cat.services.grocery.starvationLevel * cat.total;
-                    }
-                }
-            }
-        }
-    }
-    const avgStarvation = populationTotal > 0 ? weightedStarvation / populationTotal : 0;
+    const avgStarvation = counters.populationTotal > 0 ? counters.weightedStarvation / counters.populationTotal : 0;
 
-    populationBirthsTick(population, fertileWomen, planet.environment.pollution, avgStarvation);
+    populationBirthsTick(population, counters.fertileWomen, planet.environment.pollution, avgStarvation);
     if (profiler?.isEnabled) {
         profiler.markAndAccum('popBirths', '  popBirths', t);
     }

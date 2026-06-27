@@ -36,7 +36,9 @@ export class TickProfiler {
      * Returns the current `performance.now()` so it can be used as the next `since`.
      */
     markAndAccum(key: string, label: string, since: number): number {
-        if (!this.enabled) return since;
+        if (!this.enabled) {
+            return since;
+        }
         const now = performance.now();
         let p = this.phases.get(key);
         if (!p) {
