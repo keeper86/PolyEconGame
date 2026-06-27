@@ -148,8 +148,11 @@ export function workforceDemographicTick(
                         }
                     }
 
-                    // Apply demographic events to onboarding pipeline workers
+                    // Apply demographic events to all pipeline slots (onboarding + departing) in a single pass
+                    const totalBeforePipeline = _totalWorkers;
+
                     for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+                        // --- Onboarding pipeline ---
                         const onbCount = category.onboarding[month];
                         if (onbCount > 0) {
                             if (mortalityProbabilityPerTick > 0) {
@@ -168,12 +171,8 @@ export function workforceDemographicTick(
                                 }
                             }
                         }
-                    }
 
-                    const totalBeforePipeline = _totalWorkers;
-
-                    // Apply demographic events to pipeline departing slots
-                    for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+                        // --- Departing pipeline (voluntary + fired + retired share the same month) ---
                         const depVol = category.voluntaryDeparting[month];
                         if (depVol > 0) {
                             if (retirementProb > 0) {

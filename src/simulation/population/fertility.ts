@@ -68,7 +68,8 @@ export function populationBirthsTick(
     population: Population,
     fertileWomen: number,
     pollution: Environment['pollution'],
+    avgStarvation: number,
 ): void {
-    const births = computeBirthsThisTick(fertileWomen, averageStarvationLevel(population), pollution);
+    const births = computeBirthsThisTick(fertileWomen, avgStarvation, pollution);
     applyBirths(population, births);
 }

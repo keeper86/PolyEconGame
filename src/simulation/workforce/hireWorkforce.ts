@@ -7,7 +7,7 @@ import { educationLevelKeys } from '../population/education';
 import { SKILL, transferPopulation, type Skill } from '../population/population';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import type { WorkforceCategoryIndex, WorkforceCohort } from './workforce';
+import type { WorkforceCategory, WorkforceCategoryIndex, WorkforceCohort } from './workforce';
 import { nullWorkforceCohortFactory } from './workforce';
 
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
@@ -16,8 +16,10 @@ export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 function countWorkersForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: string): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        const sk = workforce[age][edu as keyof typeof workforce[0]];
-        if (!sk) continue;
+        const sk = workforce[age][edu as keyof (typeof workforce)[0]];
+        if (!sk) {
+            continue;
+        }
         const novice = sk['novice' as Skill];
         total += novice.active + novice.onboarding[0] + novice.onboarding[1] + novice.onboarding[2];
         const prof = sk['professional' as Skill];
@@ -46,9 +48,29 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
             // Pre-fetch demography and market prices for the bucket loop
             const demography = planet.population.demography;
 
+            // Single-pass pre-computation of worker counts for all education levels
+            const currentActiveByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 } as Record<string, number>;
+            for (let age = 0; age < workforce.length; age++) {
+                for (const edu of educationLevelKeys) {
+                    const sk = workforce[age][edu as keyof (typeof workforce)[0]];
+                    if (!sk) {
+                        continue;
+                    }
+                    currentActiveByEdu[edu] +=
+                        sk.novice.active + sk.novice.onboarding[0] + sk.novice.onboarding[1] + sk.novice.onboarding[2];
+                    currentActiveByEdu[edu] +=
+                        sk.professional.active +
+                        sk.professional.onboarding[0] +
+                        sk.professional.onboarding[1] +
+                        sk.professional.onboarding[2];
+                    currentActiveByEdu[edu] +=
+                        sk.expert.active + sk.expert.onboarding[0] + sk.expert.onboarding[1] + sk.expert.onboarding[2];
+                }
+            }
+
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
-                const currentActive = countWorkersForEdu(workforce, edu);
+                const currentActive = currentActiveByEdu[edu];
 
                 const gap = target - currentActive;
 
@@ -62,7 +84,9 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
 
                     for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
                         const unocc = demography[age].unoccupied[edu];
-                        if (!unocc) continue;
+                        if (!unocc) {
+                            continue;
+                        }
                         for (const skill of SKILL) {
                             const avail = unocc[skill].total;
                             if (avail <= 0) {
