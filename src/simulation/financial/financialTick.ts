@@ -96,14 +96,23 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             const perCapitaWage = wageBill / totalAgentWorkerCount;
             for (let age = 0; age < demography.length; age++) {
                 for (const edu of educationLevelKeys) {
+                    const wfEdu = workforce[age]?.[edu];
+                    if (!wfEdu) {
+                        continue;
+                    }
                     for (const skill of SKILL) {
-                        const agentWorkers = workforce[age]?.[edu]?.[skill];
+                        const agentWorkers = wfEdu[skill];
                         if (!agentWorkers) {
                             continue;
                         }
                         const activeWorkers = agentWorkers.active;
-                        const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
-                        const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
+                        // inline .reduce() for the 3-element arrays
+                        const onboardingWorkers =
+                            agentWorkers.onboarding[0] + agentWorkers.onboarding[1] + agentWorkers.onboarding[2];
+                        const departingWorkers =
+                            agentWorkers.voluntaryDeparting[0] +
+                            agentWorkers.voluntaryDeparting[1] +
+                            agentWorkers.voluntaryDeparting[2];
                         const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
                         if (agentWorkersHere <= 0) {
                             continue;

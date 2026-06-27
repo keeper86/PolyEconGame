@@ -9,9 +9,24 @@ import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import type { WorkforceCategoryIndex, WorkforceCohort } from './workforce';
 import { nullWorkforceCohortFactory } from './workforce';
-import { totalWorkingForEdu } from './workforceAggregates';
 
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
+
+/** Inlined version of totalWorkingForEdu for a single education level — avoids closure allocations. */
+function countWorkersForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: string): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        const sk = workforce[age][edu as keyof typeof workforce[0]];
+        if (!sk) continue;
+        const novice = sk['novice' as Skill];
+        total += novice.active + novice.onboarding[0] + novice.onboarding[1] + novice.onboarding[2];
+        const prof = sk['professional' as Skill];
+        total += prof.active + prof.onboarding[0] + prof.onboarding[1] + prof.onboarding[2];
+        const expert = sk['expert' as Skill];
+        total += expert.active + expert.onboarding[0] + expert.onboarding[1] + expert.onboarding[2];
+    }
+    return total;
+}
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void {
     const minimumWageMap = buildCurrentMinimumWageMap(planet);
@@ -28,25 +43,28 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                 continue;
             }
 
+            // Pre-fetch demography and market prices for the bucket loop
+            const demography = planet.population.demography;
+
             for (const edu of educationLevelKeys) {
                 const target = assets.allocatedWorkers[edu] ?? 0;
-                const currentActive = totalWorkingForEdu(workforce, edu);
+                const currentActive = countWorkersForEdu(workforce, edu);
 
                 const gap = target - currentActive;
 
                 if (gap > 0) {
-                    // --- HIRING with reservation wage filtering ---
+                    // --- HIRING ---
                     const wage = assets.wagePerEdu[edu] ?? 0;
 
-                    // Collect eligible buckets: (age, skill, available count)
                     type Bucket = { age: number; skill: Skill; avail: number; probToAccept: number };
                     const buckets: Bucket[] = [];
                     let totalWilling = 0;
 
-                    const demography = planet.population.demography;
                     for (let age = MIN_EMPLOYABLE_AGE; age < workforce.length; age++) {
+                        const unocc = demography[age].unoccupied[edu];
+                        if (!unocc) continue;
                         for (const skill of SKILL) {
-                            const avail = demography[age].unoccupied[edu][skill].total;
+                            const avail = unocc[skill].total;
                             if (avail <= 0) {
                                 continue;
                             }
@@ -83,7 +101,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet): void 
                         }
                     }
                 } else if (gap < -currentActive * ACCEPTABLE_IDLE_FRACTION) {
-                    // --- FIRING (unchanged from hireWorkforce) ---
+                    // --- FIRING ---
                     let toFire = -gap;
 
                     for (let age = 0; age < workforce.length && toFire > 0; age++) {
@@ -119,21 +137,16 @@ export const skillMultiplier: Record<Skill, number> = {
 };
 
 const ageMultiplier: (age: number) => number = (age) => {
-    return 1 + (age - 25) / 100; // starts at 0.8 at age 25, increases by 0.01 per year
+    return 1 + (age - 25) / 100;
 };
 
 const buildCurrentMinimumWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
-    // this is the absolute minimum for every worker (himself and half of dependents -> working poor)
     const costOfLiving = computeCostOfLiving(planet.marketPrices) * 2;
-    // this covers all available services for 10 dependents
     const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true) * 10;
 
     return (category: WorkforceCategoryIndex): number => {
         const baseWage = costOfLiving * skillMultiplier[category.skill] * ageMultiplier(category.age);
-        // We want to ensure that the wage is at least enough to cover the cost of living, even for the poorest workers.
-        // For richer workers, we want to ensure that the wage is at least enough to cover the cost of living with services.
         const requiredWage = Math.max(costOfLiving, baseWage);
-        // The maximum reservation wage is based on the cost of living for a rich household
         const requiredWageRich = Math.max(costOfLivingRich, baseWage) * 5;
 
         const qualificationFactor =

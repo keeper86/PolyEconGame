@@ -10,14 +10,9 @@ import type { EducationLevelType, Skill } from '../population/population';
 import { MAX_AGE, SKILL } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
+import type { TickProfiler } from '../TickProfiler';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
-import {
-    forEachWorkforceCohort,
-    subtractProportionalXP,
-    totalDeparting,
-    totalOnboarding,
-    totalWorkersInCategory,
-} from './workforce';
+import { subtractProportionalXP } from './workforce';
 
 export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003;
 
@@ -45,19 +40,16 @@ export function createWorkforceEventAccumulator(length: number = MAX_AGE + 1): W
     });
 }
 
-function applyVoluntaryQuits(category: WorkforceCategory): void {
-    if (category.active <= 0) {
-        return;
-    }
-    const voluntaryQuitters = stochasticRound(category.active * VOLUNTARY_QUIT_RATE_PER_TICK);
-    if (voluntaryQuitters > 0) {
-        category.active -= voluntaryQuitters;
-        category.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += voluntaryQuitters;
-    }
-}
-
-export function workforceDemographicTick(agents: Map<string, Agent>, planet: Planet): WorkforceEventAccumulator {
+export function workforceDemographicTick(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    profiler?: TickProfiler,
+): WorkforceEventAccumulator {
     const accumulator = createWorkforceEventAccumulator(planet.population.demography.length);
+
+    // Per-planet environmental computations — hoisted once per planet, not per agent
+    const environmentalMortality = computeEnvironmentalMortality(planet.environment);
+    const environmentalDisability = computeEnvironmentalDisability(planet.environment);
 
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
@@ -66,150 +58,215 @@ export function workforceDemographicTick(agents: Map<string, Agent>, planet: Pla
         }
 
         const workforce = assets.workforceDemography;
-        const environmentalMortality = computeEnvironmentalMortality(planet.environment);
-        const environmentalDisability = computeEnvironmentalDisability(planet.environment);
 
         for (let age = 0; age < workforce.length; age++) {
-            forEachWorkforceCohort(workforce[age], (category, edu, skill) => {
-                applyVoluntaryQuits(category);
+            const cohort = workforce[age];
 
-                if (category.active <= 0 && totalDeparting(category) <= 0 && totalOnboarding(category) <= 0) {
-                    return;
-                }
+            for (let li = 0; li < educationLevelKeys.length; li++) {
+                const l = educationLevelKeys[li];
+                const eduCohort = cohort[l];
+                for (let si = 0; si < SKILL.length; si++) {
+                    const s = SKILL[si];
+                    const category = eduCohort[s];
 
-                const retirementProb = perTickRetirement(age);
-                const populationCategory = planet.population.demography[age]?.employed?.[edu]?.[skill];
-                const starvationLevel = populationCategory?.services?.grocery?.starvationLevel ?? 0;
+                    // Inline totalOnboarding + totalDeparting — avoids .reduce() closure allocation
+                    const _totalOnboarding = category.onboarding[0] + category.onboarding[1] + category.onboarding[2];
+                    const _totalDeparting =
+                        category.voluntaryDeparting[0] + category.voluntaryDeparting[1] + category.voluntaryDeparting[2] +
+                        category.departingFired[0] + category.departingFired[1] + category.departingFired[2] +
+                        category.departingRetired[0] + category.departingRetired[1] + category.departingRetired[2];
 
-                if (populationCategory === undefined) {
-                    throw new Error(
-                        `Missing population category for age ${age}, edu ${edu}, skill ${skill} in workforce demographic tick. This should never happen because the workforce category should always be in sync with the population cell.`,
+                    const _totalWorkers = category.active + _totalOnboarding + _totalDeparting;
+
+                    // Quick exit: skip entirely empty categories
+                    if (category.active <= 0 && _totalDeparting <= 0 && _totalOnboarding <= 0) {
+                        continue;
+                    }
+
+                    // applyVoluntaryQuits for non-empty categories
+                    if (category.active > 0) {
+                        const voluntaryQuitters = stochasticRound(category.active * VOLUNTARY_QUIT_RATE_PER_TICK);
+                        if (voluntaryQuitters > 0) {
+                            category.active -= voluntaryQuitters;
+                            category.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += voluntaryQuitters;
+                        }
+                    }
+
+                    const retirementProb = perTickRetirement(age);
+                    const populationCategory = planet.population.demography[age]?.employed?.[l]?.[s];
+                    const starvationLevel = populationCategory?.services?.grocery?.starvationLevel ?? 0;
+
+                    // This should never happen — workforce ↔ population categories are always in sync
+                    if (populationCategory === undefined) {
+                        throw new Error(
+                            `Missing population category for age ${age}, edu ${l}, skill ${s} in workforce demographic tick.`,
+                        );
+                    }
+
+                    const mortalityProbabilityPerTick = computeMortalityProbabilityPerTick(
+                        starvationLevel,
+                        environmentalMortality,
+                        age,
                     );
-                }
 
-                const mortalityProbabilityPerTick = computeMortalityProbabilityPerTick(
-                    starvationLevel,
-                    environmentalMortality,
-                    age,
-                );
-                let deaths = 0;
+                    const disabilityProbabilityPerTick = computeDisabilityProbabilityPerTick(
+                        age,
+                        starvationLevel,
+                        environmentalDisability,
+                    );
 
-                const disabilityProbabilityPerTick = computeDisabilityProbabilityPerTick(
-                    age,
-                    starvationLevel,
-                    environmentalDisability,
-                );
-                let disabilities = 0;
+                    let deaths = 0;
+                    let disabilities = 0;
 
-                if (category.active > 0) {
-                    if (retirementProb > 0) {
-                        const toRetire = stochasticRound(category.active * retirementProb);
-                        if (toRetire > 0) {
-                            category.active -= toRetire;
-                            category.departingRetired[NOTICE_PERIOD_MONTHS - 1] += toRetire;
-                        }
-                    }
-
-                    const totalBeforeActive = totalWorkersInCategory(category);
-
-                    if (mortalityProbabilityPerTick > 0) {
-                        const dead = stochasticRound(category.active * mortalityProbabilityPerTick);
-                        if (dead > 0) {
-                            subtractProportionalXP(category, dead, totalBeforeActive);
-                            category.active -= dead;
-                            deaths += dead;
-                        }
-                    }
-
-                    if (disabilityProbabilityPerTick > 0) {
-                        const disabled = stochasticRound(category.active * disabilityProbabilityPerTick);
-                        if (disabled > 0) {
-                            subtractProportionalXP(category, disabled, totalBeforeActive);
-                            category.active -= disabled;
-                            disabilities += disabled;
-                        }
-                    }
-                }
-
-                // Apply demographic events to onboarding pipeline workers
-                for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
-                    if (category.onboarding[month] > 0) {
-                        // Mortality
-                        if (mortalityProbabilityPerTick > 0) {
-                            const dead = stochasticRound(category.onboarding[month] * mortalityProbabilityPerTick);
-                            if (dead > 0) {
-                                category.onboarding[month] -= dead;
-                                deaths += dead;
+                    if (category.active > 0) {
+                        if (retirementProb > 0) {
+                            const toRetire = stochasticRound(category.active * retirementProb);
+                            if (toRetire > 0) {
+                                category.active -= toRetire;
+                                category.departingRetired[NOTICE_PERIOD_MONTHS - 1] += toRetire;
                             }
                         }
 
-                        // Disability
-                        if (disabilityProbabilityPerTick > 0) {
-                            const disabled = stochasticRound(category.onboarding[month] * disabilityProbabilityPerTick);
-                            if (disabled > 0) {
-                                category.onboarding[month] -= disabled;
-                                disabilities += disabled;
-                            }
-                        }
-                    }
-                }
-
-                const totalBeforePipeline = totalWorkersInCategory(category);
-
-                const applyEventsToPipelineSlot = (
-                    month: number,
-                    departing: number[],
-                    alreadyInRetirement: false | 'alreadyInRetirement' = false,
-                ): void => {
-                    if (departing[month] > 0) {
-                        if (retirementProb > 0 && alreadyInRetirement === false) {
-                            const toRetire = stochasticRound(departing[month] * retirementProb);
-                            category.departingRetired[month] += toRetire;
-                            departing[month] -= toRetire;
-                        }
+                        const totalBeforeActive = _totalWorkers;
 
                         if (mortalityProbabilityPerTick > 0) {
-                            const dead = stochasticRound(departing[month] * mortalityProbabilityPerTick);
+                            const dead = stochasticRound(category.active * mortalityProbabilityPerTick);
                             if (dead > 0) {
-                                subtractProportionalXP(category, dead, totalBeforePipeline);
-                                departing[month] -= dead;
+                                subtractProportionalXP(category, dead, totalBeforeActive);
+                                category.active -= dead;
                                 deaths += dead;
                             }
                         }
 
                         if (disabilityProbabilityPerTick > 0) {
-                            const disabled = stochasticRound(departing[month] * disabilityProbabilityPerTick);
+                            const disabled = stochasticRound(category.active * disabilityProbabilityPerTick);
                             if (disabled > 0) {
-                                subtractProportionalXP(category, disabled, totalBeforePipeline);
-                                departing[month] -= disabled;
+                                subtractProportionalXP(category, disabled, totalBeforeActive);
+                                category.active -= disabled;
                                 disabilities += disabled;
                             }
                         }
                     }
-                };
 
-                for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
-                    applyEventsToPipelineSlot(month, category.voluntaryDeparting);
-                    applyEventsToPipelineSlot(month, category.departingFired);
-                    applyEventsToPipelineSlot(month, category.departingRetired, 'alreadyInRetirement');
-                }
+                    // Apply demographic events to onboarding pipeline workers
+                    for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+                        const onbCount = category.onboarding[month];
+                        if (onbCount > 0) {
+                            if (mortalityProbabilityPerTick > 0) {
+                                const dead = stochasticRound(onbCount * mortalityProbabilityPerTick);
+                                if (dead > 0) {
+                                    category.onboarding[month] -= dead;
+                                    deaths += dead;
+                                }
+                            }
 
-                if (process.env.SIM_DEBUG === '1') {
-                    assertWorkforceCategory(category, age, edu, skill);
-                }
+                            if (disabilityProbabilityPerTick > 0) {
+                                const disabled = stochasticRound(onbCount * disabilityProbabilityPerTick);
+                                if (disabled > 0) {
+                                    category.onboarding[month] -= disabled;
+                                    disabilities += disabled;
+                                }
+                            }
+                        }
+                    }
 
-                accumulator[age][edu][skill].deaths += deaths;
-                accumulator[age][edu][skill].disabilities += disabilities;
+                    const totalBeforePipeline = _totalWorkers;
 
-                if (assets.deaths.thisMonth[edu] === undefined) {
-                    assets.deaths.thisMonth[edu] = 0;
+                    // Apply demographic events to pipeline departing slots
+                    for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
+                        const depVol = category.voluntaryDeparting[month];
+                        if (depVol > 0) {
+                            if (retirementProb > 0) {
+                                const toRetire = stochasticRound(depVol * retirementProb);
+                                category.departingRetired[month] += toRetire;
+                                category.voluntaryDeparting[month] -= toRetire;
+                            }
+
+                            if (mortalityProbabilityPerTick > 0) {
+                                const dead = stochasticRound(depVol * mortalityProbabilityPerTick);
+                                if (dead > 0) {
+                                    subtractProportionalXP(category, dead, totalBeforePipeline);
+                                    category.voluntaryDeparting[month] -= dead;
+                                    deaths += dead;
+                                }
+                            }
+
+                            if (disabilityProbabilityPerTick > 0) {
+                                const disabled = stochasticRound(depVol * disabilityProbabilityPerTick);
+                                if (disabled > 0) {
+                                    subtractProportionalXP(category, disabled, totalBeforePipeline);
+                                    category.voluntaryDeparting[month] -= disabled;
+                                    disabilities += disabled;
+                                }
+                            }
+                        }
+
+                        const depFired = category.departingFired[month];
+                        if (depFired > 0) {
+                            if (retirementProb > 0) {
+                                const toRetire = stochasticRound(depFired * retirementProb);
+                                category.departingRetired[month] += toRetire;
+                                category.departingFired[month] -= toRetire;
+                            }
+
+                            if (mortalityProbabilityPerTick > 0) {
+                                const dead = stochasticRound(depFired * mortalityProbabilityPerTick);
+                                if (dead > 0) {
+                                    subtractProportionalXP(category, dead, totalBeforePipeline);
+                                    category.departingFired[month] -= dead;
+                                    deaths += dead;
+                                }
+                            }
+
+                            if (disabilityProbabilityPerTick > 0) {
+                                const disabled = stochasticRound(depFired * disabilityProbabilityPerTick);
+                                if (disabled > 0) {
+                                    subtractProportionalXP(category, disabled, totalBeforePipeline);
+                                    category.departingFired[month] -= disabled;
+                                    disabilities += disabled;
+                                }
+                            }
+                        }
+
+                        const depRetired = category.departingRetired[month];
+                        if (depRetired > 0) {
+                            if (mortalityProbabilityPerTick > 0) {
+                                const dead = stochasticRound(depRetired * mortalityProbabilityPerTick);
+                                if (dead > 0) {
+                                    subtractProportionalXP(category, dead, totalBeforePipeline);
+                                    category.departingRetired[month] -= dead;
+                                    deaths += dead;
+                                }
+                            }
+
+                            if (disabilityProbabilityPerTick > 0) {
+                                const disabled = stochasticRound(depRetired * disabilityProbabilityPerTick);
+                                if (disabled > 0) {
+                                    subtractProportionalXP(category, disabled, totalBeforePipeline);
+                                    category.departingRetired[month] -= disabled;
+                                    disabilities += disabled;
+                                }
+                            }
+                        }
+                    }
+
+                    if (process.env.SIM_DEBUG === '1') {
+                        assertWorkforceCategory(category, age, l, s);
+                    }
+
+                    accumulator[age][l][s].deaths += deaths;
+                    accumulator[age][l][s].disabilities += disabilities;
+
+                    if (assets.deaths.thisMonth[l] === undefined) {
+                        assets.deaths.thisMonth[l] = 0;
+                    }
+                    if (assets.disabilities.thisMonth[l] === undefined) {
+                        assets.disabilities.thisMonth[l] = 0;
+                    }
+                    assets.deaths.thisMonth[l] += deaths;
+                    assets.disabilities.thisMonth[l] += disabilities;
                 }
-                if (assets.disabilities.thisMonth[edu] === undefined) {
-                    assets.disabilities.thisMonth[edu] = 0;
-                }
-                assets.deaths.thisMonth[edu] += deaths;
-                assets.disabilities.thisMonth[edu] += disabilities;
-            });
+            }
         }
     }
     return accumulator;

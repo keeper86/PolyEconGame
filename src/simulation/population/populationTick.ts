@@ -4,9 +4,8 @@ import type { TickProfiler } from '../TickProfiler';
 
 import { populationAdvanceYear } from './aging';
 import { calculateDemographicStats } from './demographics';
-import { applyDisability } from './disability';
 import { populationBirthsTick } from './fertility';
-import { applyMortality } from './mortality';
+import { applyMortalityAndDisability } from './mortalityAndDisability';
 import { consumeServices } from './consumption';
 import { applyRetirement } from './retirement';
 
@@ -25,20 +24,13 @@ export function populationTick(
 
     let t: number = 0;
 
+    // Combined mortality + disability pass (previously two separate iterations)
     if (profiler?.isEnabled) {
         t = profiler.mark();
     }
-    applyMortality(planet, workforceEvents);
+    applyMortalityAndDisability(planet, workforceEvents);
     if (profiler?.isEnabled) {
-        t = profiler.markAndAccum('popMortality', '  popMortality', t);
-    }
-
-    if (profiler?.isEnabled) {
-        t = profiler.mark();
-    }
-    applyDisability(planet, workforceEvents);
-    if (profiler?.isEnabled) {
-        t = profiler.markAndAccum('popDisability', '  popDisability', t);
+        t = profiler.markAndAccum('popMortalityAndDisability', '  popMortality + popDisability', t);
     }
 
     if (profiler?.isEnabled) {
