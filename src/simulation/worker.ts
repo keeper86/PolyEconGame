@@ -19,9 +19,9 @@ import type { GameState } from './planet/planet';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { createInitialGameState } from './initialUniverse';
 import type { WorkerQueryMessage } from './queries';
-import { deserializeSnapshot, serializeGameState } from './snapshotCompression';
+import { deserializeSnapshot, gameStateToWire, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
-import { computePopulationTotal } from './snapshotRepository';
+import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
 import { handleFinancialAction } from './workerClient/financialActions';
@@ -536,6 +536,18 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.error('[worker] Error while advancing:', err);
             }
 
+            // Pre-compute derived values for O(1) controller lookups — one pass per tick
+            for (const planet of state.planets.values()) {
+                planet._populationTotal = computePopulationTotal(planet);
+                planet._globalStarvation = computeGlobalStarvation(planet);
+                planet._gdp =
+                    Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                        TICKS_PER_YEAR +
+                    (planet.monthTransferVolume * 1) / 3;
+                planet._costOfLiving = computeCostOfLiving(planet.marketPrices, false);
+                planet._costOfLivingRich = computeCostOfLiving(planet.marketPrices, true);
+            }
+
             currentSnapshot = state;
 
             processingTick = false;
@@ -584,7 +596,15 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 console.log(`[worker] Tick ${currentSnapshot.tick} completed in ${elapsedMs}ms`);
             }
 
-            pendingTickMsg = { type: 'tick', tick: state.tick, elapsedMs };
+            // Push the game state wire format directly to the main thread via structured clone,
+            // bypassing msgpack/gzip entirely — the main thread receives it pre-deserialized.
+            pendingTickMsg = {
+                type: 'snapshot',
+                tick: state.tick,
+                data: gameStateToWire(currentSnapshot),
+                elapsedMs,
+                tickerEvents: state.tickerEvents,
+            };
             tryFlushMessages(Date.now());
         }, interval);
     }

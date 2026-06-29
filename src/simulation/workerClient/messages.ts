@@ -1,6 +1,7 @@
 import type { TickerEvent } from 'src/server/controller/simulation';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import type { ResourceQuantity } from '../planet/claims';
+import type { WireGameState } from '../snapshotCompression';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -261,6 +262,7 @@ export type InboundMessage =
 export type OutboundMessage =
     | { type: 'pong'; tick: number }
     | { type: 'tick'; tick: number; elapsedMs: number; tickerEvents?: TickerEvent[] }
+    | { type: 'snapshot'; tick: number; elapsedMs: number; tickerEvents?: TickerEvent[]; data: WireGameState }
     | { type: 'agentCreated'; requestId: string; agentId: string }
     | { type: 'agentCreationFailed'; requestId: string; reason: string }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number }

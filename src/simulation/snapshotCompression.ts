@@ -4,7 +4,7 @@ import { encode, decode } from '@msgpack/msgpack';
 import type { Planet, Agent, GameState } from './planet/planet';
 import type { ShipCapitalMarket } from './ships/ships';
 
-interface WireGameState {
+export interface WireGameState {
     tick: number;
     planets: Planet[];
     agents: Agent[];
@@ -15,7 +15,7 @@ interface WireGameState {
     nextEventId: number;
 }
 
-function gameStateToWire(gs: GameState): WireGameState {
+export function gameStateToWire(gs: GameState): WireGameState {
     return {
         tick: gs.tick,
         planets: [...gs.planets.values()],
@@ -91,5 +91,18 @@ export function serializeGameState(gs: GameState): Buffer {
 export function deserializeSnapshot(data: Buffer): GameState {
     const decompressed = gunzipSync(data);
     const wire = decode(decompressed) as WireGameState;
+    return wireToGameState(wire);
+}
+
+/** msgpack-only encode (no gzip) — used for IPC snapshot push. */
+export function packGameState(gs: GameState): Buffer {
+    const wire = gameStateToWire(gs);
+    const packed = encode(wire);
+    return Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength);
+}
+
+/** msgpack-only decode (no gunzip) — used for IPC snapshot receive. */
+export function unpackGameState(data: Buffer): GameState {
+    const wire = decode(data) as WireGameState;
     return wireToGameState(wire);
 }

@@ -25,5 +25,8 @@ declare module 'next-auth/jwt' {
         accessToken?: string;
         idToken?: string;
         userId?: string;
+        displayName?: string | null;
+        email?: string;
+        hasAssessmentPublished?: boolean;
     }
 }

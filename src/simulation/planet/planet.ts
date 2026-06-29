@@ -153,6 +153,13 @@ export type Planet = {
     lastProductionCostFloors: Record<string, number>;
 
     landBoundCostPerUnit: Record<string, number>;
+
+    // Pre-computed derived values — set by the worker after each tick, used as O(1) cache by controllers
+    _populationTotal?: number;
+    _globalStarvation?: number;
+    _costOfLiving?: number;
+    _costOfLivingRich?: number;
+    _gdp?: number;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
