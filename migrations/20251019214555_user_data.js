@@ -10,7 +10,7 @@ exports.up = function (knex) {
         table.string('display_name').nullable();
         table.string('agent_id').nullable().unique().defaultTo(null);
         table.binary('avatar').nullable().defaultTo(null);
-        table.string('planet_id').nullable().unique().defaultTo(null);
+        table.string('planet_id').nullable().defaultTo(null);
     });
 };
 
