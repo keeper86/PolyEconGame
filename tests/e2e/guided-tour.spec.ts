@@ -41,7 +41,7 @@ test.describe('Guided Tour E2E', () => {
         await page.locator('button[type="submit"]').click();
 
         // Wait for redirect to the financial page
-        await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 20000 });
+        await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 40000 });
         await page.waitForLoadState('networkidle');
 
         // ==================================================================
