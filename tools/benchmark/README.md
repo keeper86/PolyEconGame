@@ -40,10 +40,21 @@ Three authentication methods are tried in order:
 Uses the real `@trpc/client` library — the **exact same** tRPC client used by the frontend.
 No wire-protocol guessing, no Goja engine bugs — real V8 JavaScript with TypeScript type safety.
 
+### Architecture: Continuous Worker Loop
+
+Each VU is an **independent, self-contained loop** that fires a request, waits for
+it to finish, and immediately fires the next one — no batching, no inter-iteration
+sleeps. This gives an accurate representation of the server's throughput under
+continuous load.
+
+- When no `--duration` is specified, the benchmark runs a **10 second continuous burst**.
+- All VU workers are launched simultaneously (no staggered startup).
+- Throughput is reported as wall-clock requests per second.
+
 ### Usage
 
 ```bash
-# Run all scenarios (light + medium + heavy + mixed)
+# Run all scenarios (light + medium + heavy + mixed), 10s continuous burst
 npx tsx tools/benchmark/node/trpc-benchmark.ts
 
 # Single scenario
@@ -70,7 +81,18 @@ npx tsx tools/benchmark/node/trpc-benchmark.ts --ramp --vu=20 --duration=60
 
 ### Advanced Features (NEW)
 
-#### 1. Per-Procedure Ranking Table (`--verbose`)
+#### 1. Continuous Worker Loop (`--vu`, `--duration`)
+
+The default behavior is now a **continuous burst** (10s default, adjustable with
+`--duration`). VU workers fire requests in a tight loop with no artificial gaps,
+providing accurate throughput measurement.
+
+```
+=== WALL-CLOCK THROUGHPUT ===
+  1240 requests in 10.0s = 124.0 req/s
+```
+
+#### 2. Per-Procedure Ranking Table (`--verbose`)
 
 Prints a table of every tRPC procedure ranked by average latency, including count,
 P95, min, max, and success ratio. This surfaces the specific bottlenecks:
@@ -84,7 +106,7 @@ P95, min, max, and success ratio. This surfaces the specific bottlenecks:
   ...
 ```
 
-#### 2. CI Threshold Enforcement (`--ci`)
+#### 3. CI Threshold Enforcement (`--ci`)
 
 Exits with code 1 if any procedure exceeds the defined thresholds:
 
@@ -100,10 +122,10 @@ Useful in CI pipelines:
 npx tsx tools/benchmark/node/trpc-benchmark.ts --ci && echo "PASS"
 ```
 
-#### 3. Step-Load Ramp Test (`--ramp`)
+#### 4. Step-Load Ramp Test (`--ramp`)
 
 Gradually increases VU count in steps (up to 10) over the duration to find the
-system's saturation point. Each step runs for equal time with mixed traffic.
+system's saturation point. Each step runs for equal time with continuous workers.
 
 Outputs a summary table showing how latency and throughput degrade as load increases:
 
@@ -116,18 +138,25 @@ Outputs a summary table showing how latency and throughput degrade as load incre
   ...
 ```
 
-#### 4. Fixed MIXED Scenario
+#### 5. Weighted MIXED Scenario
 
-The `--scenario=mixed` and `all` modes now use a weighted distribution sampler
-(40% light, 35% medium, 25% heavy) with 6 sampled operations per VU iteration,
-providing a statistically balanced traffic mix comparable to other scenarios.
+The `--scenario=mixed` and `all` modes use a weighted distribution sampler
+(40% light, 35% medium, 25% heavy) with random weighted picks per iteration,
+providing a statistically balanced traffic mix. Each VU worker independently
+samples from the distribution.
+
+#### 6. Scenario Group Splitting (`--scenario=all`)
+
+For `--scenario=all`, VUs are **evenly split** across the 4 scenario groups
+(light, medium, heavy, mixed) and run concurrently. Each group uses its own
+operation pool, giving a representative all-scenario load test.
 
 ### CLI Flags Reference
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--vu=N` | 1 | Number of virtual users |
-| `--duration=N` | 0 (single run) | Test duration in seconds |
+| `--duration=N` | 10 (continuous burst) | Test duration in seconds |
 | `--concurrency=N` | 10 | Max concurrent requests per VU |
 | `--scenario=X` | all | light / medium / heavy / mixed / all |
 | `--verbose` | off | Print per-procedure breakdown table |
@@ -150,6 +179,7 @@ npm run benchmark:ramp     # ramp test: 20 VUs, 60s
 ### Results
 
 Results are written to `tools/benchmark/results/node-{scenario}-{timestamp}.json`.
+The JSON output now includes `durationSec`, `wallClockSec`, and `throughput` fields.
 
 ---
 

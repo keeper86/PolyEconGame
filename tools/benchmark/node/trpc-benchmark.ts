@@ -2,11 +2,13 @@
 /**
  * Node.js tRPC benchmark using the real @trpc/client.
  *
- * Unlike k6 (where Goja closure scoping bugs cause intermittent auth/param failures),
- * this uses the exact same createTRPCProxyClient as the frontend, with real V8 JS.
+ * Uses a Continuous Worker Loop pattern: each VU is an independent,
+ * self-contained loop that fires a request, waits for it to finish,
+ * and immediately fires the next one. No batching, no inter-iteration
+ * sleeps — true throughput measurement.
  *
  * Usage:
- *   npx tsx tools/benchmark/node/trpc-benchmark.ts                    # all scenarios
+ *   npx tsx tools/benchmark/node/trpc-benchmark.ts                    # all scenarios, 10s
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --scenario=light   # single scenario
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --vu=20            # 20 virtual users
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --duration=30      # 30 seconds
@@ -14,6 +16,7 @@
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --verbose          # per-procedure breakdown table
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --ci               # exit with code 1 on threshold breach
  *   npx tsx tools/benchmark/node/trpc-benchmark.ts --ramp --vu=20 --duration=60  # step-load ramp test
+ *   npx tsx tools/benchmark/node/trpc-benchmark.ts --timeout=15                   # 15s per-request timeout
  *
  * Auth methods (tried in order):
  *   1. K6_SESSION_COOKIES env var (JSON object of cookie name → value)
@@ -36,6 +39,8 @@ const KEYCLOAK_URL = process.env.KEYCLOAK_URL || 'http://localhost:8080';
 const TEST_USER = process.env.TEST_USER || 'adminuser';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || 'adminpassword';
 const DEFAULT_PLANET_ID = 'earth';
+
+const DEFAULT_DURATION_SEC = 10; // default continuous burst when --duration is not specified
 
 // =============================================================================
 // Thresholds (matching README) — used in --ci mode
@@ -69,6 +74,42 @@ interface PerProcStats {
     max: number;
     successes: number;
     failures: number;
+}
+
+/** A single operation that a VU worker can execute. */
+interface Op {
+    name: string;
+    run: (client: Client, td: TestData) => Promise<void>;
+}
+
+/** Weighted operation for the mixed scenario. */
+interface WeightedOp extends Op {
+    weight: number;
+}
+
+type Client = ReturnType<typeof createBenchmarkClient>;
+
+interface TestData {
+    primaryPlanet: string;
+    planets: string[];
+    agentId: string | null;
+}
+
+interface RampStepMetrics {
+    vuCount: number;
+    durationMs: number;
+    totalRequests: number;
+    successes: number;
+    failures: number;
+    avgLatency: number;
+    p95Latency: number;
+    throughput: number; // req/s
+}
+
+interface ScenarioGroup {
+    scenario: string;
+    ops: Op[];
+    vuCount: number;
 }
 
 // =============================================================================
@@ -290,16 +331,31 @@ async function oauthLoginAsync(): Promise<Record<string, string>> {
 // HTTP request with accurate per-procedure timing, and load spreads naturally.
 // =============================================================================
 
-function createBenchmarkClient(cookies: Record<string, string>) {
+const REQUEST_TIMEOUT_MS = 30_000; // per-request timeout for fetch (prevents hanging)
+
+function createBenchmarkClient(cookies: Record<string, string>, timeoutMs = REQUEST_TIMEOUT_MS) {
     const cookieHeader = Object.entries(cookies)
         .map(([k, v]) => `${k}=${v}`)
         .join('; ');
+
+    // Custom fetch that enforces a per-request timeout via AbortSignal.timeout().
+    // If the caller also provides a signal (e.g. parent AbortController), both are
+    // combined so either can abort the request.
+    const fetchWithTimeout: typeof fetch = (url, init) => {
+        const timeoutSignal = AbortSignal.timeout(timeoutMs);
+        const existingSignal = init?.signal;
+        const combinedSignal = existingSignal
+            ? AbortSignal.any([existingSignal, timeoutSignal])
+            : timeoutSignal;
+        return fetch(url, { ...init, signal: combinedSignal });
+    };
 
     return createTRPCProxyClient<AppRouter>({
         links: [
             httpLink({
                 url: `${BASE_URL}/api/trpc`,
                 headers: { Cookie: cookieHeader },
+                fetch: fetchWithTimeout,
             }),
         ],
     });
@@ -308,12 +364,6 @@ function createBenchmarkClient(cookies: Record<string, string>) {
 // =============================================================================
 // Data discovery
 // =============================================================================
-
-interface TestData {
-    primaryPlanet: string;
-    planets: string[];
-    agentId: string | null;
-}
 
 async function discoverTestData(client: ReturnType<typeof createBenchmarkClient>): Promise<TestData> {
     const tick = await client.simulation.getCurrentTick.query();
@@ -356,170 +406,213 @@ async function discoverTestData(client: ReturnType<typeof createBenchmarkClient>
 }
 
 // =============================================================================
-// Scenario runners (wrap each query call with semaphore + retry)
+// Operation pools — flat arrays of operations for each scenario.
+// A VU worker picks a random operation each iteration.
 // =============================================================================
 
-type Client = ReturnType<typeof createBenchmarkClient>;
+function getLightOps(client: Client): Op[] {
+    return [
+        { name: 'health', run: () => client.health.query() },
+        { name: 'getCurrentTick', run: () => client.simulation.getCurrentTick.query() },
+        { name: 'getLatestPlanetSummaries', run: () => client.simulation.getLatestPlanetSummaries.query() },
+        { name: 'getLatestAgents', run: () => client.simulation.getLatestAgents.query() },
+    ];
+}
+
+function getMediumOps(client: Client, td: TestData): Op[] {
+    const ops: Op[] = [
+        { name: 'getPlanetDetail', run: () => client.simulation.getPlanetDetail.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetEconomy', run: () => client.simulation.getPlanetEconomy.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetDemographics', run: () => client.simulation.getPlanetDemographics.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetMarketOverview', run: () => client.simulation.getPlanetMarketOverview.query({ planetId: td.primaryPlanet, average: false }) },
+        { name: 'getPlanetClaims', run: () => client.simulation.getPlanetClaims.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetPopulationHistory', run: () => client.simulation.getPlanetPopulationHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 12 }) },
+        { name: 'getPlanetEconomyHistory', run: () => client.simulation.getPlanetEconomyHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 12 }) },
+        { name: 'getTickerEvents', run: () => client.simulation.getTickerEvents.query() },
+    ];
+    if (td.agentId) {
+        ops.push(
+            { name: 'getAgentListSummaries', run: () => client.simulation.getAgentListSummaries.query({ planetId: td.primaryPlanet, showAll: false }) },
+            { name: 'getAgentOverview', run: () => client.simulation.getAgentOverview.query({ agentId: td.agentId! }) },
+            { name: 'getAgentPlanetDetail', run: () => client.simulation.getAgentPlanetDetail.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentFinancials', run: () => client.simulation.getAgentFinancials.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentClaims', run: () => client.simulation.getAgentClaims.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+        );
+    }
+    return ops;
+}
+
+function getHeavyOps(client: Client, td: TestData): Op[] {
+    const ops: Op[] = [
+        { name: 'getPlanetDemographicsFull(occupation)', run: () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] }) },
+        { name: 'getPlanetDemographicsFull(education)', run: () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'education', activeSkills: ['novice', 'professional', 'expert'] }) },
+        { name: 'getPlanetBufferHistory', run: () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+        { name: `getProductPriceHistory(${groceryServiceResourceType.name})`, run: () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: groceryServiceResourceType.name, granularity: 'monthly', limit: 13 }) },
+    ];
+    if (td.agentId) {
+        ops.push(
+            { name: 'getAgentHistory', run: () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+            { name: 'getAgentFinancialHistory', run: () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+            { name: 'getLoanConditions', run: () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentDetail', run: () => client.simulation.getAgentDetail.query({ agentId: td.agentId! }) },
+        );
+    }
+    return ops;
+}
+
+/**
+ * Weighted mixed operations that simulate real user traffic (40% light, 35% medium, 25% heavy).
+ * The weight property controls sampling frequency.
+ */
+function getMixedOps(client: Client, td: TestData): WeightedOp[] {
+    const ops: WeightedOp[] = [
+        // Light operations (40% of traffic)
+        { name: 'health', weight: 10, run: () => client.health.query() },
+        { name: 'getCurrentTick', weight: 10, run: () => client.simulation.getCurrentTick.query() },
+        { name: 'getLatestPlanetSummaries', weight: 10, run: () => client.simulation.getLatestPlanetSummaries.query() },
+        { name: 'getLatestAgents', weight: 10, run: () => client.simulation.getLatestAgents.query() },
+
+        // Medium operations (35% of traffic)
+        { name: 'getPlanetDetail', weight: 5, run: () => client.simulation.getPlanetDetail.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetEconomy', weight: 5, run: () => client.simulation.getPlanetEconomy.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetDemographics', weight: 5, run: () => client.simulation.getPlanetDemographics.query({ planetId: td.primaryPlanet }) },
+        { name: 'getPlanetMarketOverview', weight: 5, run: () => client.simulation.getPlanetMarketOverview.query({ planetId: td.primaryPlanet, average: false }) },
+        { name: 'getPlanetClaims', weight: 3, run: () => client.simulation.getPlanetClaims.query({ planetId: td.primaryPlanet }) },
+        { name: 'getTickerEvents', weight: 3, run: () => client.simulation.getTickerEvents.query() },
+        ...(td.agentId ? [
+            { name: 'getAgentListSummaries', weight: 3, run: () => client.simulation.getAgentListSummaries.query({ planetId: td.primaryPlanet, showAll: false }) },
+            { name: 'getAgentOverview', weight: 3, run: () => client.simulation.getAgentOverview.query({ agentId: td.agentId! }) },
+            { name: 'getAgentPlanetDetail', weight: 2, run: () => client.simulation.getAgentPlanetDetail.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentFinancials', weight: 2, run: () => client.simulation.getAgentFinancials.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentClaims', weight: 2, run: () => client.simulation.getAgentClaims.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+        ] as WeightedOp[] : []),
+
+        // Heavy operations (25% of traffic)
+        { name: 'getPlanetDemographicsFull', weight: 3, run: () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] }) },
+        { name: 'getPlanetBufferHistory', weight: 3, run: () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+        { name: 'getProductPriceHistory(Produce)', weight: 3, run: () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: 'Produce', granularity: 'monthly', limit: 13 }) },
+        ...(td.agentId ? [
+            { name: 'getAgentHistory', weight: 2, run: () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+            { name: 'getAgentFinancialHistory', weight: 2, run: () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 }) },
+            { name: 'getLoanConditions', weight: 2, run: () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet }) },
+            { name: 'getAgentDetail', weight: 2, run: () => client.simulation.getAgentDetail.query({ agentId: td.agentId! }) },
+        ] as WeightedOp[] : []),
+    ];
+    return ops;
+}
+
+/**
+ * Sample one operation from a weighted distribution.
+ */
+function pickWeighted(ops: WeightedOp[]): WeightedOp {
+    const totalWeight = ops.reduce((s, o) => s + o.weight, 0);
+    let pick = Math.random() * totalWeight;
+    for (const op of ops) {
+        pick -= op.weight;
+        if (pick <= 0) return op;
+    }
+    return ops[ops.length - 1];
+}
+
+// =============================================================================
+// Measured operation execution helper
+// =============================================================================
 
 function record(start: number, scenario: string, procedure: string, success: boolean, results: BenchmarkResult[], status: number | string, error?: string) {
     results.push({ scenario, procedure, success, durationMs: performance.now() - start, status, error });
 }
 
-/**
- * Run a measured operation inside the semaphore.
- * The timer starts AFTER acquiring the semaphore slot, so queue wait time
- * does NOT inflate latency measurements.
- */
-async function runMeasured<T>(
+async function runMeasured(
     sem: Semaphore,
     scenario: string,
     procedure: string,
     results: BenchmarkResult[],
-    fn: () => Promise<T>,
-    successStatus: number | string = 200
+    fn: () => Promise<unknown>,
 ): Promise<void> {
-    let start = 0;
+    const start = performance.now();
     try {
         await sem.run(async () => {
-            start = performance.now();
             return withRetry(() => fn(), procedure);
         });
-        record(start, scenario, procedure, true, results, successStatus);
+        record(start, scenario, procedure, true, results, 200);
     } catch (e: any) {
         record(start, scenario, procedure, false, results, e.data?.httpStatus || 'error', e.message);
     }
 }
 
 // =============================================================================
-// Mixed scenario — weighted distribution that simulates real user traffic
+// Continuous VU Worker
+//
+// Each VU is an independent loop: pick a random operation → execute → record →
+// immediately pick the next. No sleeping, no batching. Runs until the abort
+// signal is received.
 // =============================================================================
 
-interface MixedOp {
-    name: string;
-    weight: number;
-    run: (client: Client, td: TestData, sem: Semaphore) => Promise<void>;
-}
-
-function createMixedOperations(client: Client, td: TestData, sem: Semaphore, results: BenchmarkResult[]): MixedOp[] {
-    const ops: MixedOp[] = [
-        // Light operations (40% of traffic)
-        { name: 'health', weight: 10, run: async () => { await runMeasured(sem, 'mixed', 'health', results, () => client.health.query()); } },
-        { name: 'getCurrentTick', weight: 10, run: async () => { await runMeasured(sem, 'mixed', 'getCurrentTick', results, () => client.simulation.getCurrentTick.query()); } },
-        { name: 'getLatestPlanetSummaries', weight: 10, run: async () => { await runMeasured(sem, 'mixed', 'getLatestPlanetSummaries', results, () => client.simulation.getLatestPlanetSummaries.query()); } },
-        { name: 'getLatestAgents', weight: 10, run: async () => { await runMeasured(sem, 'mixed', 'getLatestAgents', results, () => client.simulation.getLatestAgents.query()); } },
-
-        // Medium operations (35% of traffic)
-        { name: 'getPlanetDetail', weight: 5, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetDetail', results, () => client.simulation.getPlanetDetail.query({ planetId: td.primaryPlanet })); } },
-        { name: 'getPlanetEconomy', weight: 5, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetEconomy', results, () => client.simulation.getPlanetEconomy.query({ planetId: td.primaryPlanet })); } },
-        { name: 'getPlanetDemographics', weight: 5, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetDemographics', results, () => client.simulation.getPlanetDemographics.query({ planetId: td.primaryPlanet })); } },
-        { name: 'getPlanetMarketOverview', weight: 5, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetMarketOverview', results, () => client.simulation.getPlanetMarketOverview.query({ planetId: td.primaryPlanet, average: false })); } },
-        { name: 'getPlanetClaims', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetClaims', results, () => client.simulation.getPlanetClaims.query({ planetId: td.primaryPlanet })); } },
-        { name: 'getTickerEvents', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getTickerEvents', results, () => client.simulation.getTickerEvents.query()); } },
-        ...(td.agentId ? [
-            { name: 'getAgentListSummaries', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getAgentListSummaries', results, () => client.simulation.getAgentListSummaries.query({ planetId: td.primaryPlanet, showAll: false })); } },
-            { name: 'getAgentOverview', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getAgentOverview', results, () => client.simulation.getAgentOverview.query({ agentId: td.agentId! })); } },
-            { name: 'getAgentPlanetDetail', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentPlanetDetail', results, () => client.simulation.getAgentPlanetDetail.query({ agentId: td.agentId!, planetId: td.primaryPlanet })); } },
-            { name: 'getAgentFinancials', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentFinancials', results, () => client.simulation.getAgentFinancials.query({ agentId: td.agentId!, planetId: td.primaryPlanet })); } },
-            { name: 'getAgentClaims', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentClaims', results, () => client.simulation.getAgentClaims.query({ agentId: td.agentId!, planetId: td.primaryPlanet })); } },
-        ] as MixedOp[] : []),
-
-        // Heavy operations (25% of traffic)
-        { name: 'getPlanetDemographicsFull', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetDemographicsFull', results, () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] })); } },
-        { name: 'getPlanetBufferHistory', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getPlanetBufferHistory', results, () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
-        { name: 'getProductPriceHistory(Produce)', weight: 3, run: async () => { await runMeasured(sem, 'mixed', 'getProductPriceHistory(Produce)', results, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: 'Produce', granularity: 'monthly', limit: 13 })); } },        
-        ...(td.agentId ? [
-            { name: 'getAgentHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentHistory', results, () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
-            { name: 'getAgentFinancialHistory', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentFinancialHistory', results, () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })); } },
-            { name: 'getLoanConditions', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getLoanConditions', results, () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet })); } },
-            { name: 'getAgentDetail', weight: 2, run: async () => { await runMeasured(sem, 'mixed', 'getAgentDetail', results, () => client.simulation.getAgentDetail.query({ agentId: td.agentId! })); } },
-        ] as MixedOp[] : []),
-    ];
-    return ops;
+async function vuWorker(
+    client: Client,
+    td: TestData,
+    sem: Semaphore,
+    ops: Op[],
+    scenario: string,
+    results: BenchmarkResult[],
+    stopSignal: AbortSignal,
+): Promise<void> {
+    while (!stopSignal.aborted) {
+        const op = ops[Math.floor(Math.random() * ops.length)];
+        await runMeasured(sem, scenario, op.name, results, () => op.run(client, td));
+    }
 }
 
 /**
- * Sample N operations from a weighted distribution without replacement.
- * This ensures each VU iteration runs a diverse set of operations.
+ * Mixed VU worker: uses weighted sampling for realistic traffic mix.
  */
-function sampleWeighted(ops: MixedOp[], count: number): MixedOp[] {
-    if (ops.length <= count) return ops;
-    const totalWeight = ops.reduce((s, o) => s + o.weight, 0);
-    const selected: MixedOp[] = [];
-    const available = [...ops];
-    for (let i = 0; i < count; i++) {
-        const availWeight = available.reduce((s, o) => s + o.weight, 0);
-        let pick = Math.random() * availWeight;
-        for (let j = 0; j < available.length; j++) {
-            pick -= available[j].weight;
-            if (pick <= 0) {
-                selected.push(available[j]);
-                available.splice(j, 1);
-                break;
-            }
+async function vuWorkerMixed(
+    client: Client,
+    td: TestData,
+    sem: Semaphore,
+    weightedOps: WeightedOp[],
+    scenario: string,
+    results: BenchmarkResult[],
+    stopSignal: AbortSignal,
+): Promise<void> {
+    while (!stopSignal.aborted) {
+        const op = pickWeighted(weightedOps);
+        await runMeasured(sem, scenario, op.name, results, () => op.run(client, td));
+    }
+}
+
+// =============================================================================
+// Run a group of VU workers for a given duration
+// =============================================================================
+
+async function runWorkerGroup(
+    client: Client,
+    td: TestData,
+    sem: Semaphore,
+    ops: Op[],
+    scenario: string,
+    vuCount: number,
+    durationSec: number,
+    allResults: BenchmarkResult[],
+    isMixed: boolean,
+): Promise<void> {
+    if (vuCount <= 0) return;
+
+    const controller = new AbortController();
+
+    const workers: Promise<void>[] = [];
+    for (let i = 0; i < vuCount; i++) {
+        if (isMixed) {
+            const weightedOps = getMixedOps(client, td);
+            workers.push(vuWorkerMixed(client, td, sem, weightedOps, scenario, allResults, controller.signal));
+        } else {
+            workers.push(vuWorker(client, td, sem, ops, scenario, allResults, controller.signal));
         }
     }
-    return selected;
-}
 
-// =============================================================================
-// Scenario runners
-// =============================================================================
-
-async function runLight(client: Client, td: TestData, sem: Semaphore, results: BenchmarkResult[]) {
-    const queries: [string, () => Promise<any>][] = [
-        ['health', () => client.health.query()],
-        ['simulation.getCurrentTick', () => client.simulation.getCurrentTick.query()],
-        ['simulation.getLatestPlanetSummaries', () => client.simulation.getLatestPlanetSummaries.query()],
-        ['simulation.getLatestAgents', () => client.simulation.getLatestAgents.query()],
-    ];
-    for (const [name, fn] of queries) {
-        await runMeasured(sem, 'light', name, results, fn);
-    }
-}
-
-async function runMedium(client: Client, td: TestData, sem: Semaphore, results: BenchmarkResult[]) {
-    const queries: [string, () => Promise<any>][] = [
-        ['simulation.getPlanetDetail', () => client.simulation.getPlanetDetail.query({ planetId: td.primaryPlanet })],
-        ['simulation.getPlanetEconomy', () => client.simulation.getPlanetEconomy.query({ planetId: td.primaryPlanet })],
-        ['simulation.getPlanetDemographics', () => client.simulation.getPlanetDemographics.query({ planetId: td.primaryPlanet })],
-        ['simulation.getPlanetMarketOverview', () => client.simulation.getPlanetMarketOverview.query({ planetId: td.primaryPlanet, average: false })],
-        ['simulation.getPlanetClaims', () => client.simulation.getPlanetClaims.query({ planetId: td.primaryPlanet })],
-        ['simulation.getPlanetPopulationHistory', () => client.simulation.getPlanetPopulationHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 12 })],
-        ['simulation.getPlanetEconomyHistory', () => client.simulation.getPlanetEconomyHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 12 })],
-        ['simulation.getTickerEvents', () => client.simulation.getTickerEvents.query()],
-    ];
-    if (td.agentId) {
-        queries.push(
-            ['simulation.getAgentListSummaries', () => client.simulation.getAgentListSummaries.query({ planetId: td.primaryPlanet, showAll: false })],
-            ['simulation.getAgentOverview', () => client.simulation.getAgentOverview.query({ agentId: td.agentId! })],
-            ['simulation.getAgentPlanetDetail', () => client.simulation.getAgentPlanetDetail.query({ agentId: td.agentId!, planetId: td.primaryPlanet })],
-            ['simulation.getAgentFinancials', () => client.simulation.getAgentFinancials.query({ agentId: td.agentId!, planetId: td.primaryPlanet })],
-            ['simulation.getAgentClaims', () => client.simulation.getAgentClaims.query({ agentId: td.agentId!, planetId: td.primaryPlanet })],
-        );
-    }
-    for (const [name, fn] of queries) {
-        await runMeasured(sem, 'medium', name, results, fn);
-    }
-}
-
-async function runHeavy(client: Client, td: TestData, sem: Semaphore, results: BenchmarkResult[]) {
-    const queries: [string, () => Promise<any>][] = [
-        ['getPlanetDemographicsFull(occupation)', () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'occupation', activeSkills: ['novice', 'professional', 'expert'] })],
-        ['getPlanetDemographicsFull(education)', () => client.simulation.getPlanetDemographicsFull.query({ planetId: td.primaryPlanet, groupMode: 'education', activeSkills: ['novice', 'professional', 'expert'] })],
-        ['getPlanetBufferHistory', () => client.simulation.getPlanetBufferHistory.query({ planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
-        ...([groceryServiceResourceType.name] as const).map(p => [`getProductPriceHistory(${p})`, () => client.simulation.getProductPriceHistory.query({ planetId: td.primaryPlanet, productName: p, granularity: 'monthly', limit: 13 })] as [string, () => Promise<any>]),        
-    ];
-    if (td.agentId) {
-        queries.push(
-            ['getAgentHistory', () => client.simulation.getAgentHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
-            ['getAgentFinancialHistory', () => client.simulation.getAgentFinancialHistory.query({ agentId: td.agentId!, planetId: td.primaryPlanet, granularity: 'monthly', limit: 13 })],
-            ['getLoanConditions', () => client.simulation.getLoanConditions.query({ agentId: td.agentId!, planetId: td.primaryPlanet })],
-            ['getAgentDetail', () => client.simulation.getAgentDetail.query({ agentId: td.agentId! })],
-        );
-    }
-    for (const [name, fn] of queries) {
-        await runMeasured(sem, 'heavy', name, results, fn);
-    }
+    await new Promise(resolve => setTimeout(resolve, durationSec * 1000));
+    controller.abort();
+    await Promise.all(workers);
 }
 
 // =============================================================================
@@ -661,17 +754,6 @@ function printSummary(results: BenchmarkResult[], label: string) {
 // Ramp test — gradually increase VUs and report per-step metrics
 // =============================================================================
 
-interface RampStepMetrics {
-    vuCount: number;
-    durationMs: number;
-    totalRequests: number;
-    successes: number;
-    failures: number;
-    avgLatency: number;
-    p95Latency: number;
-    throughput: number; // req/s
-}
-
 async function runRampBenchmark(
     client: Client,
     td: TestData,
@@ -679,62 +761,69 @@ async function runRampBenchmark(
     maxVUs: number,
     durationSec: number,
     allResults: BenchmarkResult[],
+    scenario: string,
 ) {
-    const steps = Math.min(maxVUs, 10); // max 10 steps
+    const steps = Math.min(maxVUs, 10);
     const vuPerStep = Math.floor(maxVUs / steps);
     const stepDurationSec = Math.max(Math.floor(durationSec / steps), 5);
     const stepResults: RampStepMetrics[] = [];
 
-    console.log(`\n[ramp] Starting ramp test: ${steps} steps, ${stepDurationSec}s per step, ${vuPerStep} VU per step`);
+    // Determine how to split VUs among scenarios for ramp steps
+    const rampScenario = scenario === 'all' ? 'mixed' : scenario;
+
+    console.log(`\n[ramp] Starting ramp test: ${steps} steps, ${stepDurationSec}s per step, ${vuPerStep} VU per step (scenario: ${rampScenario})`);
 
     for (let step = 0; step < steps; step++) {
         const currentVUs = (step + 1) * vuPerStep;
         const stepStart = performance.now();
-        let stepCount = 0;
-        const stepEnd = Date.now() + stepDurationSec * 1000;
 
         console.log(`\n[ramp] Step ${step + 1}/${steps}: ${currentVUs} VUs for ${stepDurationSec}s`);
 
-        while (Date.now() < stepEnd) {
-            const batch: Promise<void>[] = [];
+        const controller = new AbortController();
+        const stepResultsArr: BenchmarkResult[] = [];
 
-            // Run one iteration with current VU count
+        // Spawn continuous workers for this step
+        const workers: Promise<void>[] = [];
+        if (rampScenario === 'mixed') {
             for (let vu = 0; vu < currentVUs; vu++) {
-                if (vu > 0) await new Promise(r => setTimeout(r, 10));
-                batch.push((async () => {
-                    const r: BenchmarkResult[] = [];
-                    // Mixed traffic per VU per ramp step
-                    const mixedOps = createMixedOperations(client, td, sem, r);
-                    const sampled = sampleWeighted(mixedOps, 4);
-                    await Promise.all(sampled.map(op => op.run(client, td, sem)));
-                    allResults.push(...r);
-                })());
+                const weightedOps = getMixedOps(client, td);
+                workers.push(vuWorkerMixed(client, td, sem, weightedOps, 'mixed', stepResultsArr, controller.signal));
             }
-            await Promise.all(batch);
-            stepCount += currentVUs;
-            if (Date.now() >= stepEnd) break;
-            await new Promise(r => setTimeout(r, 100));
+        } else {
+            let ops: Op[];
+            if (rampScenario === 'light') ops = getLightOps(client);
+            else if (rampScenario === 'medium') ops = getMediumOps(client, td);
+            else if (rampScenario === 'heavy') ops = getHeavyOps(client, td);
+            else ops = getLightOps(client); // fallback
+
+            for (let vu = 0; vu < currentVUs; vu++) {
+                workers.push(vuWorker(client, td, sem, ops, rampScenario, stepResultsArr, controller.signal));
+            }
         }
 
+        await new Promise(resolve => setTimeout(resolve, stepDurationSec * 1000));
+        controller.abort();
+        await Promise.all(workers);
+
+        allResults.push(...stepResultsArr);
+
         const stepElapsed = performance.now() - stepStart;
-        const successes = allResults.filter(r => r.success).length;
-        const stepResultsSlice = allResults.slice(-stepCount);
-        const durs = stepResultsSlice.filter(r => r.success).map(r => r.durationMs).sort((a, b) => a - b);
+        const durs = stepResultsArr.filter(r => r.success).map(r => r.durationMs).sort((a, b) => a - b);
         const avg = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
         const p95 = durs.length ? durs[Math.ceil(durs.length * 0.95) - 1] || durs[durs.length - 1] : 0;
 
         stepResults.push({
             vuCount: currentVUs,
             durationMs: stepElapsed,
-            totalRequests: stepResultsSlice.length,
+            totalRequests: stepResultsArr.length,
             successes: durs.length,
-            failures: stepResultsSlice.length - durs.length,
+            failures: stepResultsArr.length - durs.length,
             avgLatency: avg,
             p95Latency: p95,
-            throughput: stepElapsed > 0 ? (stepResultsSlice.length / (stepElapsed / 1000)) : 0,
+            throughput: stepElapsed > 0 ? (stepResultsArr.length / (stepElapsed / 1000)) : 0,
         });
 
-        console.log(`  → ${stepResultsSlice.length} requests | Avg: ${avg.toFixed(0)}ms | P95: ${p95.toFixed(0)}ms | Throughput: ${(stepElapsed > 0 ? (stepResultsSlice.length / (stepElapsed / 1000)) : 0).toFixed(1)} req/s`);
+        console.log(`  → ${stepResultsArr.length} requests | Avg: ${avg.toFixed(0)}ms | P95: ${p95.toFixed(0)}ms | Throughput: ${(stepElapsed > 0 ? (stepResultsArr.length / (stepElapsed / 1000)) : 0).toFixed(1)} req/s`);
     }
 
     // Print ramp summary table
@@ -757,6 +846,7 @@ async function main() {
     const vuCount = parseInt(args.find(a => a.startsWith('--vu='))?.split('=')[1] || '1', 10);
     const durationSec = parseInt(args.find(a => a.startsWith('--duration='))?.split('=')[1] || '0', 10);
     const concurrency = parseInt(args.find(a => a.startsWith('--concurrency='))?.split('=')[1] || '10', 10);
+    const requestTimeoutSec = parseInt(args.find(a => a.startsWith('--timeout='))?.split('=')[1] || '30', 10);
     const verbose = args.includes('--verbose');
     const ci = args.includes('--ci');
     const ramp = args.includes('--ramp');
@@ -768,14 +858,15 @@ async function main() {
         process.exit(1);
     }
 
+    const actualDurationSec = durationSec || DEFAULT_DURATION_SEC;
     const sem = new Semaphore(concurrency);
 
-    console.log(`PolyEconGame tRPC Benchmark | URL: ${BASE_URL} | Scenario: ${scenario} | VUs: ${vuCount}${durationSec ? ` | Duration: ${durationSec}s` : ' | Single run'} | Concurrency: ${concurrency}${ramp ? ' | RAMP' : ''}${ci ? ' | CI' : ''}${verbose ? ' | VERBOSE' : ''}${baseline ? ' | BASELINE' : ''}`);
+    console.log(`PolyEconGame tRPC Benchmark | URL: ${BASE_URL} | Scenario: ${scenario} | VUs: ${vuCount} | Duration: ${actualDurationSec}s | Concurrency: ${concurrency} | Timeout: ${requestTimeoutSec}s${ramp ? ' | RAMP' : ''}${ci ? ' | CI' : ''}${verbose ? ' | VERBOSE' : ''}${baseline ? ' | BASELINE' : ''}`);
 
     const cookies = await resolveCookiesAsync();
     if (!Object.keys(cookies).length) { console.error('No auth cookies'); process.exit(1); }
 
-    const client = createBenchmarkClient(cookies);
+    const client = createBenchmarkClient(cookies, requestTimeoutSec * 1000);
 
     // Verify
     try {
@@ -793,10 +884,16 @@ async function main() {
     // BASELINE MODE — hit health endpoint only to establish a latency baseline
     // =============================================================================
     if (baseline) {
-        console.log('\n[baseline] Running health endpoint baseline (100 calls)...');
-        for (let i = 0; i < 100; i++) {
-            await runMeasured(sem, 'baseline', 'health', allResults, () => client.health.query());
-        }
+        console.log('\n[baseline] Running health endpoint baseline (continuous for ~10s)...');
+        const healthOps: Op[] = [
+            { name: 'health', run: () => client.health.query() },
+        ];
+        const controller = new AbortController();
+        const worker = vuWorker(client, td, sem, healthOps, 'baseline', allResults, controller.signal);
+        await new Promise(resolve => setTimeout(resolve, 10_000));
+        controller.abort();
+        await worker;
+
         const durs = allResults.filter(r => r.success).map(r => r.durationMs).sort((a, b) => a - b);
         const avg = durs.length ? durs.reduce((a, b) => a + b, 0) / durs.length : 0;
         const p95 = durs.length ? durs[Math.ceil(durs.length * 0.95) - 1] || durs[durs.length - 1] : 0;
@@ -808,11 +905,7 @@ async function main() {
     // RAMP MODE
     // =============================================================================
     if (ramp) {
-        if (!durationSec) {
-            console.error('--ramp requires --duration=N');
-            process.exit(1);
-        }
-        await runRampBenchmark(client, td, sem, vuCount, durationSec, allResults);
+        await runRampBenchmark(client, td, sem, vuCount, actualDurationSec, allResults, scenario);
 
         const outDir = path.resolve('tools/benchmark/results');
         fs.mkdirSync(outDir, { recursive: true });
@@ -833,48 +926,56 @@ async function main() {
     }
 
     // =============================================================================
-    // STANDARD MODE (single run or timed)
+    // STANDARD MODE — continuous workers for actualDurationSec seconds
     // =============================================================================
-    const endTime = durationSec ? Date.now() + durationSec * 1000 : 0;
-    const iterations = durationSec ? Infinity : 1;
-    let iterCount = 0;
 
-    while (iterCount < iterations && (!endTime || Date.now() < endTime)) {
-        iterCount++;
-        const batch: Promise<void>[] = [];
+    // Build scenario groups. For --scenario=all, split VUs evenly across the 4 scenarios.
+    // For single-scenario, just one group.
+    const groups: ScenarioGroup[] = [];
 
-        for (let vu = 0; vu < vuCount; vu++) {
-            // Stagger VU launches by 50ms to avoid thundering-herd startup spike
-            if (vu > 0) await new Promise(r => setTimeout(r, 50));
-
-            batch.push((async () => {
-                const r: BenchmarkResult[] = [];
-
-                if (scenario === 'all' || scenario === 'light') {
-                    await runLight(client, td, sem, r);
-                }
-                if (scenario === 'all' || scenario === 'medium') {
-                    await runMedium(client, td, sem, r);
-                }
-                if (scenario === 'all' || scenario === 'heavy') {
-                    await runHeavy(client, td, sem, r);
-                }
-
-                // MIXED / "all" scenario: run a balanced sample of mixed operations
-                if (scenario === 'all' || scenario === 'mixed') {
-                    const mixedOps = createMixedOperations(client, td, sem, r);
-                    // Run 6 sampled operations per VU iteration for balanced sampling
-                    const sampled = sampleWeighted(mixedOps, 6);
-                    await Promise.all(sampled.map(op => op.run(client, td, sem)));
-                }
-
-                allResults.push(...r);
-            })());
+    if (scenario === 'all') {
+        const vuPerScenario = Math.floor(vuCount / 4);
+        let remainder = vuCount - vuPerScenario * 4;
+        const scenarioOrder = ['light', 'medium', 'heavy', 'mixed'] as const;
+        const opsMap: Record<string, Op[]> = {
+            light: getLightOps(client),
+            medium: getMediumOps(client, td),
+            heavy: getHeavyOps(client, td),
+            mixed: getMixedOps(client, td) as unknown as Op[],
+        };
+        for (const s of scenarioOrder) {
+            const extra = remainder > 0 ? 1 : 0;
+            const vus = vuPerScenario + extra;
+            if (vus > 0) groups.push({ scenario: s, ops: opsMap[s], vuCount: vus });
+            if (remainder > 0) remainder--;
         }
-
-        await Promise.all(batch);
-        if (endTime) await new Promise(r => setTimeout(r, 100));
+    } else {
+        let ops: Op[];
+        if (scenario === 'light') ops = getLightOps(client);
+        else if (scenario === 'medium') ops = getMediumOps(client, td);
+        else if (scenario === 'heavy') ops = getHeavyOps(client, td);
+        else if (scenario === 'mixed') ops = getMixedOps(client, td);
+        else ops = getLightOps(client); // fallback
+        groups.push({ scenario, ops, vuCount });
     }
+
+    // Filter out groups with 0 VUs
+    const activeGroups = groups.filter(g => g.vuCount > 0);
+
+    console.log(`\n[workload] ${activeGroups.length} scenario group(s), ${vuCount} total VUs, ${actualDurationSec}s continuous burst`);
+
+    const startWall = performance.now();
+
+    await Promise.all(activeGroups.map(group =>
+        runWorkerGroup(
+            client, td, sem,
+            group.ops, group.scenario, group.vuCount,
+            actualDurationSec, allResults,
+            group.scenario === 'mixed',
+        )
+    ));
+
+    const wallElapsed = (performance.now() - startWall) / 1000;
 
     // =============================================================================
     // Output
@@ -887,6 +988,11 @@ async function main() {
     } else {
         printSummary(allResults, scenario.toUpperCase());
     }
+
+    // Print wall-clock throughput
+    const totalReqs = allResults.length;
+    console.log(`\n=== WALL-CLOCK THROUGHPUT ===`);
+    console.log(`  ${totalReqs} requests in ${wallElapsed.toFixed(1)}s = ${(totalReqs / wallElapsed).toFixed(1)} req/s`);
 
     // Per-procedure table
     if (verbose) {
@@ -905,16 +1011,19 @@ async function main() {
     const outDir = path.resolve('tools/benchmark/results');
     fs.mkdirSync(outDir, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, '-');
-    const outFile = `node-${scenario}${ramp ? '-ramp' : ''}-${ts}.json`;
+    const outFile = `node-${scenario}-${ts}.json`;
     fs.writeFileSync(path.join(outDir, outFile), JSON.stringify({
         timestamp: new Date().toISOString(),
         scenario,
         baseUrl: BASE_URL,
         virtualUsers: vuCount,
         concurrency,
+        durationSec: actualDurationSec,
+        wallClockSec: wallElapsed,
         totalRequests: allResults.length,
         successes: allResults.filter(r => r.success).length,
         failures: allResults.filter(r => !r.success).length,
+        throughput: totalReqs / wallElapsed,
         results: allResults,
     }, null, 2));
     console.log(`\nResults → tools/benchmark/results/${outFile}`);
