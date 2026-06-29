@@ -35,7 +35,7 @@ export function WorkerBars({
         <div className='flex flex-col gap-2 mb-3'>
             {entries.map(([edu, req]) => {
                 const required = (req ?? 0) * scale;
-                const eff = neutral ? 1 : (workerEfficiency[edu] ?? 0);
+                const eff = (workerEfficiency[edu] ?? neutral) ? 1 : 0;
                 const isLimiting = eff <= globalMin && globalMin < 0.99;
 
                 return (
