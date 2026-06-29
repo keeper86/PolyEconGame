@@ -25,18 +25,6 @@ export const mortalityProbability = (age: number) => {
     return mortalityByThousands[age] / 1000.0;
 };
 
-const expectedLifeExpectancy = () => {
-    let remaining = 1.0;
-    let expectancy = 0;
-    for (let age = 0; age < 100; age++) {
-        expectancy += remaining;
-        remaining *= 1 - mortalityProbability(age);
-    }
-    return expectancy;
-};
-
-console.log('Current life expectancy', expectedLifeExpectancy());
-
 export const MAX_MORTALITY_PER_TICK = 0.8;
 
 export const STARVATION_ACUTE_POWER = 4;

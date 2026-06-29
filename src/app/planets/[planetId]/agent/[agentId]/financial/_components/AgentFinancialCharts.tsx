@@ -1,9 +1,10 @@
 'use client';
 
-import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import React, { useMemo, useState } from 'react';
+import { Search } from 'lucide-react';
+import { useMemo } from 'react';
 import { BalanceFlowChart } from './BalanceFlowChart';
 import { ExpensesRevenueChart } from './ExpensesRevenueChart';
 import {
@@ -11,12 +12,11 @@ import {
     computeFinancialMonthlyData,
     type FinancialChartPoint,
     type FinancialPoint,
-    type Granularity,
 } from './financialChartLogic';
 
 export default function AgentFinancialCharts({ agentId, planetId }: { agentId: string; planetId: string }) {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
@@ -37,7 +37,6 @@ export default function AgentFinancialCharts({ agentId, planetId }: { agentId: s
             { enabled: granularity === 'decade' },
         ),
     );
-    const currentTick = useSimulationTick();
 
     const isLoading =
         (granularity === 'monthly' && loadingMonthly) ||
@@ -62,11 +61,14 @@ export default function AgentFinancialCharts({ agentId, planetId }: { agentId: s
               : (decadeData?.history ?? []);
 
     return (
-        <div className='space-y-4'>
-            <div className='flex gap-1 items-center'>
-                <span className='text-xs text-muted-foreground mr-1'>Granularity:</span>
-                <GranularityButtonGroup granularity={granularity} onChange={setGranularity} currentTick={currentTick} />
-            </div>
+        <div className='space-y-2'>
+            <GranularityHeader
+                title='Details'
+                icon={<Search className='h-4 w-4 text-muted-foreground' />}
+                granularity={granularity}
+                onGranularityChange={setGranularity}
+                currentTick={currentTick}
+            />
             <div
                 className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
             >

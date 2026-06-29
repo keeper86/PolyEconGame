@@ -1,12 +1,12 @@
 'use client';
 
-import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
+import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -473,7 +473,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
 
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
+    const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
@@ -541,14 +541,14 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
         [decade],
     );
 
-    const currentTick = live?.tick ?? 0;
-
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
-            <div className='flex gap-1'>
-                Price:
-                <GranularityButtonGroup granularity={granularity} onChange={setGranularity} currentTick={currentTick} />
-            </div>
+            <GranularityHeader
+                title='Price'
+                granularity={granularity}
+                onGranularityChange={setGranularity}
+                currentTick={currentTick}
+            />
             {granularity === 'monthly' && (
                 <MonthlyChart
                     monthlyPoints={monthlyPoints}

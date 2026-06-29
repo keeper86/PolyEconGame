@@ -9,6 +9,8 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/consta
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
+import type { Granularity } from '@/components/client/GranularityButtonGroup';
+
 export type AgentMetric =
     | 'netBalance'
     | 'monthlyNetIncome'
@@ -16,8 +18,6 @@ export type AgentMetric =
     | 'consumptionValue'
     | 'wages'
     | 'totalWorkers';
-
-export type Granularity = 'monthly' | 'yearly' | 'decade';
 
 type HistoryPoint = {
     bucket: number;

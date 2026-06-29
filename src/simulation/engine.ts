@@ -1,4 +1,5 @@
 import assert from 'assert';
+import { performance } from 'node:perf_hooks';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
@@ -26,12 +27,25 @@ import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
+import { TickProfiler } from './TickProfiler';
 
 export { seedRng };
+export { TickProfiler };
 
 const MAX_TICKER_EVENTS = 200;
 
+// ── Tick profiler ──────────────────────────────────────────────────────────────
+// Activated by process.env.SIM_DEBUG === '1'.  Accumulates per-phase timings
+// across all planets and logs a breakdown every REPORT_INTERVAL ticks.
+
+const REPORT_INTERVAL = 17;
+
+// ── advanceTick ────────────────────────────────────────────────────────────────
+
 export function advanceTick(gameState: GameState) {
+    const tickStart = performance.now();
+    const profile = new TickProfiler(process.env.SIM_DEBUG === '1');
+
     gameState.planets.forEach((planet) => {
         const planetMap = new Map([[planet.id, planet]]);
         planet.producedResources = {};
@@ -45,11 +59,23 @@ export function advanceTick(gameState: GameState) {
             planet.monthTransferVolume = 0;
         }
 
+        let t: number = 0;
+
+        // ── Environment + Government ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         environmentTick(planet);
         const govAgent = gameState.agents.get(planet.governmentId);
         assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
         governmentTick(planet, govAgent);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('envGov', 'environmentTick + governmentTick', t);
+        }
 
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(
                 gameState.agents,
@@ -58,42 +84,92 @@ export function advanceTick(gameState: GameState) {
             );
         }
 
-        const workforceEvents = workforceDemographicTick(gameState.agents, planet);
-        populationTick(planet, workforceEvents);
+        const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
+        }
+
+        populationTick(planet, workforceEvents, profile);
 
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
         }
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('pop', 'populationTick', t);
+        }
 
         automaticWorkerAllocation(gameState.agents, planet);
-        hireWorkforce(gameState.agents, planet);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('workforce', 'workforce', t);
+        }
+        hireWorkforce(gameState.agents, planet, profile);
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
         }
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('hire', ' hire', t);
+        }
 
+        // ── Claims + Financial ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         claimBillingTick(gameState.agents, planet, gameState.tick);
-
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
+        }
         maturesLoans(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
+        }
         preProductionFinancialTick(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
+        }
+        intergenerationalTransfersForPlanet(planet, profile);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
+        }
 
-        intergenerationalTransfersForPlanet(planet);
-
+        // ── Market (pricing + clearing) ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         updateProductionCostFloors(planet);
         automaticPricing(gameState.agents, planet);
-
         marketTick(gameState.agents, planet);
         accumulatePlanetPrices(planet);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
+        }
 
-        constructionTick(gameState, planet);
-
+        // ── Production + Construction ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         productionTick(gameState, planet);
+        constructionTick(gameState, planet);
         automaticWageAdjustment(gameState.agents, planet);
         updateAgentProductionScale(gameState.agents, planet);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
+        }
 
+        // ── Month boundary ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         if (isMonthBoundary(gameState.tick)) {
             postProductionLaborMarketTick(gameState.agents, planet);
         }
+        if (profile.isEnabled) {
+            profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);
+        }
 
+        // ── Year boundary ──
+        if (profile.isEnabled) {
+            t = profile.mark();
+        }
         if (isYearBoundary(gameState.tick)) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
@@ -109,6 +185,10 @@ export function advanceTick(gameState: GameState) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'afterYear');
             }
         }
+        if (profile.isEnabled) {
+            profile.markAndAccum('yearBoundary', 'yearBoundary (advanceYearTick)', t);
+        }
+
         if (process.env.SIM_DEBUG) {
             assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, `${planet.name} end of tick`);
             const wealthBankIssues = checkWealthBankConsistency(planetMap, 'end of tick');
@@ -121,15 +201,42 @@ export function advanceTick(gameState: GameState) {
         }
     });
 
+    // ── Global phases (after per-planet loop) ──
+    let t: number = 0;
+    if (profile.isEnabled) {
+        t = profile.mark();
+    }
     forexMarketMakerPricing(gameState);
     forexTick(gameState);
     forexMMRepaymentTick(gameState);
+    if (profile.isEnabled) {
+        profile.markAndAccum('forexGlobal', 'forexMarketMakerPricing + forexTick + repayment', t);
+    }
 
+    if (profile.isEnabled) {
+        t = profile.mark();
+    }
     shipTick(gameState);
     shipbuilderTick(gameState);
+    if (profile.isEnabled) {
+        profile.markAndAccum('ships', 'shipTick + shipbuilderTick', t);
+    }
+
+    if (profile.isEnabled) {
+        t = profile.mark();
+    }
     arbitrageTraderTick(gameState);
+    if (profile.isEnabled) {
+        profile.markAndAccum('arbitrage', 'arbitrageTraderTick', t);
+    }
 
     if (gameState.tickerEvents.length > MAX_TICKER_EVENTS) {
         gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);
+    }
+
+    // ── Log profile every REPORT_INTERVAL ticks ──
+    const elapsed = performance.now() - tickStart;
+    if (profile.isEnabled && gameState.tick % REPORT_INTERVAL === 0) {
+        profile.logBreakdown(gameState.tick, elapsed);
     }
 }

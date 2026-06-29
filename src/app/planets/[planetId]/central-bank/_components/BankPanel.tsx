@@ -1,13 +1,13 @@
 'use client';
 
-import { GranularityButtonGroup } from '@/components/client/GranularityButtonGroup';
+import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
 import { Separator } from '@/components/ui/separator';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
 import { Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
 
@@ -44,13 +44,11 @@ type Props = {
 
 export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
     const trpc = useTRPC();
-    const [granularity, setGranularity] = useState<'monthly' | 'yearly' | 'decade'>('monthly');
+    const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: economyData, isLoading: loadingEconomy } = useSimulationQuery(
         trpc.simulation.getPlanetEconomyHistory.queryOptions({ planetId, granularity, limit: 100 }, { enabled: true }),
     );
-
-    const currentTick = useSimulationTick();
 
     const isLoading = loadingEconomy || !economyData;
 
@@ -116,20 +114,15 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
             </div>
 
             <Separator />
-            <p className='text-sm font-semibold flex items-center gap-2'>
-                <Search className='h-4 w-4 text-muted-foreground' />
-                Details
-            </p>
+            <GranularityHeader
+                title='Details'
+                icon={<Search className='h-4 w-4 text-muted-foreground' />}
+                granularity={granularity}
+                onGranularityChange={setGranularity}
+                currentTick={currentTick}
+            />
 
-            <div>
-                <div className='flex gap-1 items-center mb-2'>
-                    <span className='text-xs text-muted-foreground mr-1'>Granularity:</span>
-                    <GranularityButtonGroup
-                        granularity={granularity}
-                        onChange={setGranularity}
-                        currentTick={currentTick}
-                    />
-                </div>
+            <div className='mt-2'>
                 <div
                     className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
                 >

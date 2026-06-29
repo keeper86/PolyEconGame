@@ -3,21 +3,6 @@ import type { Environment } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
 import { STARVATION_ACUTE_POWER } from './mortality';
 import type { Population } from './population';
-import { forEachPopulationCohort } from './population';
-
-function averageStarvationLevel(population: Population): number {
-    let totalPop = 0;
-    let weightedStarvation = 0;
-    for (const cohort of population.demography) {
-        forEachPopulationCohort(cohort, (cat) => {
-            if (cat.total > 0) {
-                weightedStarvation += cat.services.grocery.starvationLevel * cat.total;
-                totalPop += cat.total;
-            }
-        });
-    }
-    return totalPop > 0 ? weightedStarvation / totalPop : 0;
-}
 
 export const START_FERTILE_AGE = 18;
 
@@ -68,7 +53,8 @@ export function populationBirthsTick(
     population: Population,
     fertileWomen: number,
     pollution: Environment['pollution'],
+    avgStarvation: number,
 ): void {
-    const births = computeBirthsThisTick(fertileWomen, averageStarvationLevel(population), pollution);
+    const births = computeBirthsThisTick(fertileWomen, avgStarvation, pollution);
     applyBirths(population, births);
 }

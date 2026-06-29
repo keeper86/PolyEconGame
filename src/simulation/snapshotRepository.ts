@@ -3,7 +3,32 @@ import { OCCUPATIONS, SKILL } from './population/population';
 import { educationLevelKeys } from './population/education';
 import { totalOutstandingLoans } from './financial/loanTypes';
 
+const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
+
+function perfStart(_label: string): number {
+    if (!PERF_DEBUG) {
+        return 0;
+    }
+    const now = performance.now();
+    if (now === 0) {
+        return Date.now();
+    }
+    return now;
+}
+
+function perfEnd(label: string, start: number): void {
+    if (!PERF_DEBUG) {
+        return;
+    }
+    const elapsed = (start > 0 ? performance.now() - start : Date.now() - start).toFixed(2);
+    console.log(`[perf] ${label}: ${elapsed}ms`);
+}
+
 export const computePopulationTotal = (planet: Planet): number => {
+    if (planet._populationTotal !== undefined) {
+        return planet._populationTotal;
+    }
+    const start = perfStart('computePopulationTotal');
     let total = 0;
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
@@ -14,32 +39,12 @@ export const computePopulationTotal = (planet: Planet): number => {
             }
         }
     }
+    perfEnd('computePopulationTotal', start);
     return total;
 };
 
-export const computeGlobalStarvation = (planet: Planet): number => {
-    let totalStarvation = 0;
-    let totalPop = 0;
-    for (const cohort of planet.population.demography) {
-        if (!cohort) {
-            continue;
-        }
-        for (const occ of OCCUPATIONS) {
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total > 0) {
-                        totalStarvation += cat.services.grocery.starvationLevel * cat.total;
-                        totalPop += cat.total;
-                    }
-                }
-            }
-        }
-    }
-    return totalPop > 0 ? totalStarvation / totalPop : 0;
-};
-
 export const computeAgentStorage = (agent: Agent): Record<string, number> => {
+    const start = perfStart('computeAgentStorage');
     const storage: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         const stor = planetAssets.storageFacility;
@@ -49,10 +54,12 @@ export const computeAgentStorage = (agent: Agent): Record<string, number> => {
             }
         }
     }
+    perfEnd('computeAgentStorage', start);
     return storage;
 };
 
 export const computeAgentProduction = (agent: Agent): Record<string, number> => {
+    const start = perfStart('computeAgentProduction');
     const production: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         for (const fac of planetAssets.productionFacilities ?? []) {
@@ -61,10 +68,12 @@ export const computeAgentProduction = (agent: Agent): Record<string, number> => 
             }
         }
     }
+    perfEnd('computeAgentProduction', start);
     return production;
 };
 
 export const computeAgentConsumption = (agent: Agent): Record<string, number> => {
+    const start = perfStart('computeAgentConsumption');
     const consumption: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
         for (const fac of planetAssets.productionFacilities ?? []) {
@@ -75,6 +84,7 @@ export const computeAgentConsumption = (agent: Agent): Record<string, number> =>
             }
         }
     }
+    perfEnd('computeAgentConsumption', start);
     return consumption;
 };
 
@@ -92,6 +102,7 @@ export type AgentListSummary = {
 };
 
 export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSummary => {
+    const start = perfStart('summariseAgentBlob');
     const a = blob as Agent;
 
     let facilityCount = 0;
@@ -134,7 +145,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
             quantity: quantity || 0,
         }));
 
-    return {
+    const result = {
         agentId: agentId || '',
         name: a?.name ?? agentId ?? '',
         associatedPlanetId: a?.associatedPlanetId ?? '',
@@ -151,6 +162,8 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
         topResources,
         shipCount: a?.ships?.length ?? 0,
     };
+    perfEnd('summariseAgentBlob', start);
+    return result;
 };
 
 export type AgentPlanetSummary = {
@@ -179,6 +192,7 @@ export type AgentOverviewData = {
 };
 
 export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][string]): AgentPlanetSummary => {
+    const start = perfStart('summarisePlanetAssets');
     let facilityCount = 0;
     let efficiencySum = 0;
     let efficiencyN = 0;
@@ -223,7 +237,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         .slice(0, 3)
         .map(([name, quantity]) => ({ name, quantity }));
 
-    return {
+    const result = {
         planetId,
         facilityCount,
         deposits: assets.deposits,
@@ -233,4 +247,6 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         topResources,
         licenses: assets.licenses ?? {},
     };
+    perfEnd('summarisePlanetAssets', start);
+    return result;
 };

@@ -11,7 +11,12 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
-import { putIntoStorageFacility, type ProductionFacility, type StorageFacility } from '../planet/facility';
+import {
+    createLastTickResults,
+    putIntoStorageFacility,
+    type ProductionFacility,
+    type StorageFacility,
+} from '../planet/facility';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -52,18 +57,9 @@ export function makeProductionFacility(opts: {
         needs: opts.needs,
         produces: opts.produces,
         lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            resourceEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
+            ...createLastTickResults(),
             lastProduced: {},
-            lastConsumed: {},
             revenue: 0,
-            wageCosts: 0,
-            inputCosts: 0,
-            costBalance: 0,
         },
         pidState: null,
     };
@@ -94,16 +90,7 @@ export function makeStorage(opts: {
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
-        lastTickResults: {
-            overallEfficiency: 0,
-            workerEfficiency: {},
-            overqualifiedWorkers: {},
-            exactUsedByEdu: {},
-            totalUsedByEdu: {},
-            wageCosts: 0,
-            inputCosts: 0,
-            costBalance: 0,
-        },
+        lastTickResults: createLastTickResults(),
         escrow: {},
     };
 }
@@ -139,6 +126,7 @@ export function makeAgentPlanetAssets(
         deaths: createEmptyDemographicEventCounters(),
         disabilities: createEmptyDemographicEventCounters(),
         profitShareBonus: 0,
+        lastDepreciatedPerTick: {},
         monthAcc: {
             depositsAtMonthStart: 0,
             ...createEmptyAccumulator(),

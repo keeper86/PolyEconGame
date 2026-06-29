@@ -1,4 +1,5 @@
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
+import { GameConfigProvider } from '@/components/client/GameConfigContext';
 import { db } from '@/server/db';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
@@ -17,5 +18,11 @@ export default async function PlanetsLayout({ children }: { children: ReactNode 
         redirect('/');
     }
 
-    return <>{children}</>;
+    let tickIntervalMs = Number(process.env.TICK_INTERVAL_MS);
+    if (!tickIntervalMs) {
+        console.error('tickIntervalMs not set! Check .env');
+        tickIntervalMs = 10000;
+    }
+
+    return <GameConfigProvider tickIntervalMs={tickIntervalMs}>{children}</GameConfigProvider>;
 }

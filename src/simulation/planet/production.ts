@@ -31,7 +31,12 @@ import type {
     ShipConstructionFacility,
     StorageFacility,
 } from './facility';
-import { putIntoStorageFacility, queryStorageFacility, removeFromStorageFacility } from './facility';
+import {
+    createLastTickResults,
+    putIntoStorageFacility,
+    queryStorageFacility,
+    removeFromStorageFacility,
+} from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
@@ -69,6 +74,9 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
         return;
     }
 
+    // Reset per-tick depreciation tracker
+    assets.lastDepreciatedPerTick = {};
+
     ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
         if (storage.currentInStorage[serviceName]) {
             const quantity = storage.currentInStorage[serviceName].quantity;
@@ -85,6 +93,9 @@ const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
                     (assets.monthAcc.depreciatedServices[serviceName]?.value ?? 0) +
                     depreciatedQuantity * (planet.marketPrices[serviceName] ?? 0),
             };
+
+            // Record per-tick depreciation for display on the storage page
+            assets.lastDepreciatedPerTick[serviceName] = depreciatedQuantity;
         }
     });
 };
@@ -106,16 +117,16 @@ export function consumeConstructionForFacility(
     if (!facility.construction || !storage) {
         return 0;
     }
+    const resourceName = constructionServiceResourceType.name;
     const cs = facility.construction;
     const available = queryStorageFacility(storage, constructionServiceResourceType.name);
-    const toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
+    let toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
     cs.lastTickInvestedConstructionServices = toConsume;
 
     if (toConsume > 0) {
-        removeFromStorageFacility(storage, constructionServiceResourceType.name, toConsume);
+        toConsume = removeFromStorageFacility(storage, constructionServiceResourceType.name, toConsume);
         cs.progress += toConsume;
 
-        const resourceName = constructionServiceResourceType.name;
         const price = tracking.planet.marketPrices[resourceName] ?? 0;
         tracking.planet.consumedResources[resourceName] =
             (tracking.planet.consumedResources[resourceName] ?? 0) + toConsume;
@@ -124,6 +135,7 @@ export function consumeConstructionForFacility(
             value: (tracking.monthAcc.consumedResources[resourceName]?.value ?? 0) + toConsume * price,
         };
         tracking.monthAcc.consumptionValue += toConsume * price;
+
         tracking.planet.consumedResources[resourceName] =
             (tracking.planet.consumedResources[resourceName] ?? 0) + toConsume;
     }
@@ -154,10 +166,24 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
-            consumeConstructionForFacility(facility, assets.storageFacility, {
+            const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storageFacility, {
                 planet,
                 monthAcc: assets.monthAcc,
             });
+            // For 'new' construction, the facility wasn't processed by productionTick(), so
+            // lastTickResults contains stale data. Reset lastConsumed before setting fresh values.
+            if (facility.construction?.type === 'new') {
+                facility.lastTickResults = {
+                    ...createLastTickResults(),
+                    lastProduced: {},
+                    revenue: 0,
+                };
+            }
+
+            facility.lastTickResults.lastConsumed[constructionServiceResourceType.name] =
+                (facility.lastTickResults.lastConsumed[constructionServiceResourceType.name] ?? 0) +
+                constructionServiceConsumption;
+
             if (wasUnderConstruction && facility.construction === null) {
                 pushTickerEvent(gameState, {
                     category: 'facilityCompleted',
@@ -598,6 +624,8 @@ function processStorageFacility(params: StorageParameters): void {
         wageCosts: 0,
         inputCosts: 0,
         costBalance: 0,
+        lastConsumed: {},
+        resourceEfficiency: {},
     };
 }
 

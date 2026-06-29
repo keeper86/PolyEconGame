@@ -4,6 +4,7 @@ import type { InboundMessage, OutboundMessage } from './messages';
 import type { CommandSpec } from './commandSpec';
 import type { WorkerQuery, WorkerQueryResult, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import { getPending } from './pendingRequests';
+import { getQueryCacheKey, getCachedOrCompute } from './queryCache';
 import { logger } from '../../server/logger';
 export { rejectAllPending } from './pendingRequests';
 
@@ -74,29 +75,33 @@ export function sendQuery<T extends WorkerQuery['type']>(
     query: Extract<WorkerQuery, { type: T }>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<WorkerQueryResult[T]> {
-    ensureQueryResponseListener();
+    const cacheKey = getQueryCacheKey(query);
 
-    const requestId = randomUUID();
+    return getCachedOrCompute(cacheKey, () => {
+        ensureQueryResponseListener();
 
-    return new Promise<WorkerQueryResult[T]>((resolve, reject) => {
-        const timer = setTimeout(() => {
-            getPending().delete(requestId);
-            reject(new Error(`Worker query '${query.type}' timed out after ${timeoutMs}ms (id=${requestId})`));
-        }, timeoutMs);
+        const requestId = randomUUID();
 
-        getPending().set(requestId, {
-            resolve: resolve as (value: unknown) => void,
-            reject,
-            timer,
+        return new Promise<WorkerQueryResult[T]>((resolve, reject) => {
+            const timer = setTimeout(() => {
+                getPending().delete(requestId);
+                reject(new Error(`Worker query '${query.type}' timed out after ${timeoutMs}ms (id=${requestId})`));
+            }, timeoutMs);
+
+            getPending().set(requestId, {
+                resolve: resolve as (value: unknown) => void,
+                reject,
+                timer,
+            });
+
+            try {
+                sendToWorker({ ...query, requestId } as never);
+            } catch (err) {
+                getPending().delete(requestId);
+                clearTimeout(timer);
+                reject(err);
+            }
         });
-
-        try {
-            sendToWorker({ ...query, requestId } as never);
-        } catch (err) {
-            getPending().delete(requestId);
-            clearTimeout(timer);
-            reject(err);
-        }
     });
 }
 

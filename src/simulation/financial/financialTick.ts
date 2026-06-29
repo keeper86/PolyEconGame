@@ -3,7 +3,6 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { totalDepartingForEdu, totalWorkingForEdu } from '../workforce/workforceAggregates';
 import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
@@ -55,14 +54,39 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             secondary: 0,
             tertiary: 0,
         };
-        for (const edu of educationLevelKeys) {
-            const activeWorkers = totalWorkingForEdu(workforce, edu);
-            const departingWorkers = totalDepartingForEdu(workforce, edu);
-            const totalWorkers = activeWorkers + departingWorkers;
-            totalWorkersForEdu[edu] = totalWorkers;
-            wageBill += totalWorkers * assets.wagePerEdu[edu];
-            weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
-            totalPlanetWorkersForEdu[edu] += totalWorkers;
+
+        // Single-pass workforce count: iterate workforce[age][edu][skill] once instead of 8+ times
+        for (let age = 0; age < workforce.length; age++) {
+            const cohort = workforce[age];
+            for (let li = 0; li < educationLevelKeys.length; li++) {
+                const edu = educationLevelKeys[li];
+                const eduCohort = cohort[edu];
+                for (let si = 0; si < SKILL.length; si++) {
+                    const skill = SKILL[si];
+                    const cat = eduCohort[skill];
+                    const totalWorkers =
+                        cat.active +
+                        cat.onboarding[0] +
+                        cat.onboarding[1] +
+                        cat.onboarding[2] +
+                        cat.voluntaryDeparting[0] +
+                        cat.voluntaryDeparting[1] +
+                        cat.voluntaryDeparting[2] +
+                        cat.departingFired[0] +
+                        cat.departingFired[1] +
+                        cat.departingFired[2] +
+                        cat.departingRetired[0] +
+                        cat.departingRetired[1] +
+                        cat.departingRetired[2];
+                    if (totalWorkers <= 0) {
+                        continue;
+                    }
+                    totalWorkersForEdu[edu] += totalWorkers;
+                    wageBill += totalWorkers * assets.wagePerEdu[edu];
+                    weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
+                    totalPlanetWorkersForEdu[edu] += totalWorkers;
+                }
+            }
         }
 
         if (wageBill <= 0) {
@@ -70,7 +94,12 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
 
         assets.monthAcc.wages += wageBill;
-        assets.monthAcc.totalWorkersTicks += Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+        const totalAgentWorkerCount =
+            totalWorkersForEdu.none +
+            totalWorkersForEdu.primary +
+            totalWorkersForEdu.secondary +
+            totalWorkersForEdu.tertiary;
+        assets.monthAcc.totalWorkersTicks += totalAgentWorkerCount;
 
         if (assets.deposits < wageBill) {
             const shortfall = 6 * TICKS_PER_MONTH * wageBill - assets.deposits;
@@ -87,33 +116,33 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             }
         }
 
-        let totalAgentWorkerCount = 0;
-        for (const edu of educationLevelKeys) {
-            totalAgentWorkerCount += totalWorkersForEdu[edu];
-        }
-
         if (totalAgentWorkerCount > 0) {
             const perCapitaWage = wageBill / totalAgentWorkerCount;
-            for (let age = 0; age < demography.length; age++) {
-                for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        const agentWorkers = workforce[age]?.[edu]?.[skill];
-                        if (!agentWorkers) {
-                            continue;
-                        }
-                        const activeWorkers = agentWorkers.active;
-                        const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
-                        const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
-                        const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
+            // Fused wage-crediting: iterate workforce and credit corresponding population categories in the same pass
+            for (let age = 0; age < workforce.length; age++) {
+                const cohort = workforce[age];
+                for (let li = 0; li < educationLevelKeys.length; li++) {
+                    const edu = educationLevelKeys[li];
+                    const eduCohort = cohort[edu];
+                    for (let si = 0; si < SKILL.length; si++) {
+                        const skill = SKILL[si];
+                        const cat = eduCohort[skill];
+                        const agentWorkersHere =
+                            cat.active +
+                            cat.onboarding[0] +
+                            cat.onboarding[1] +
+                            cat.onboarding[2] +
+                            cat.voluntaryDeparting[0] +
+                            cat.voluntaryDeparting[1] +
+                            cat.voluntaryDeparting[2];
                         if (agentWorkersHere <= 0) {
                             continue;
                         }
-                        const cat = demography[age].employed[edu][skill];
-                        if (cat.total <= 0) {
+                        const popCat = demography[age].employed[edu][skill];
+                        if (popCat.total <= 0) {
                             continue;
                         }
-
-                        creditWageIncome(bank, cat, perCapitaWage, agentWorkersHere);
+                        creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
                     }
                 }
             }

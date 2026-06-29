@@ -8,6 +8,10 @@ const handler = (req: Request) =>
         req,
         router: appRouter,
         createContext,
+
+        batching: {
+            enabled: true,
+        },
     });
 
 export { handler as DELETE, handler as GET, handler as POST, handler as PUT };

@@ -5,6 +5,9 @@ import { Piscina } from 'piscina';
 import { spawnSync } from 'node:child_process';
 
 import type { InboundMessage, OutboundMessage } from '../worker';
+import type { Planet, Agent } from '../planet/planet';
+import type { ShipCapitalMarket } from '../ships/ships';
+import type { TickerEvent } from '../../server/controller/simulation';
 import { rejectAllPending } from './pendingRequests';
 
 export type MessageHandler = (msg: OutboundMessage) => void;
@@ -13,6 +16,28 @@ const GLOBAL_KEY_POOL = Symbol.for('__polyecon_worker_pool__');
 const GLOBAL_KEY_PORT = Symbol.for('__polyecon_worker_port__');
 const GLOBAL_KEY_HANDLERS = Symbol.for('__polyecon_message_handlers__');
 const GLOBAL_KEY_TICK = Symbol.for('__polyecon_cached_tick__');
+/**
+ * Lightweight cached representation of the game state, built from the wire format.
+ * Uses pre-built index Maps for fast lookups while avoiding the expensive
+ * wireToGameState conversion (no Map reconstruction, no agent defaults pass).
+ */
+export interface SnapshotCache {
+    tick: number;
+    planets: Planet[];
+    planetsById: Map<string, Planet>;
+    agents: Agent[];
+    agentsById: Map<string, Agent>;
+    /** Pre-built index: planetId → agents that have assets on that planet. O(1) lookup, built once per tick. */
+    agentsByPlanetId: Map<string, Agent[]>;
+    shipCapitalMarket: ShipCapitalMarket;
+    forexMarketMakers: Agent[];
+    forexMarketMakersByPlanetId: Map<string, Agent[]>;
+    shipbuilderAgents: Agent[];
+    arbitrageTraders: Agent[];
+    tickerEvents: TickerEvent[];
+}
+
+const GLOBAL_KEY_STATE = Symbol.for('__polyecon_cached_state__');
 
 const TICK_UNSET = 0;
 
@@ -20,11 +45,16 @@ export function getLatestTick(): number {
     return (g as Record<symbol, number | undefined>)[GLOBAL_KEY_TICK] ?? TICK_UNSET;
 }
 
+export function getCachedGameState(): SnapshotCache | null {
+    return (g as Record<symbol, SnapshotCache | undefined>)[GLOBAL_KEY_STATE] ?? null;
+}
+
 const g = globalThis as unknown as {
     [GLOBAL_KEY_POOL]?: Piscina | null;
     [GLOBAL_KEY_PORT]?: MessagePort | null;
     [GLOBAL_KEY_HANDLERS]?: Set<MessageHandler>;
     [GLOBAL_KEY_TICK]?: number;
+    [GLOBAL_KEY_STATE]?: SnapshotCache;
 };
 
 function getPool(): Piscina | null {
@@ -114,9 +144,7 @@ function createPool(): { pool: Piscina; port: MessagePort } {
 
     const { port1, port2 } = new MessageChannel();
 
-    const tickIntervalMs = process.env.NEXT_PUBLIC_TICK_INTERVAL_MS
-        ? parseInt(process.env.NEXT_PUBLIC_TICK_INTERVAL_MS, 10)
-        : 0;
+    const tickIntervalMs = process.env.TICK_INTERVAL_MS ? parseInt(process.env.TICK_INTERVAL_MS, 10) : 0;
 
     const p = new Piscina({
         filename: workerPath,
@@ -169,6 +197,73 @@ export function startWorker(): void {
         if (msg.type === 'tick') {
             (g as Record<symbol, number>)[GLOBAL_KEY_TICK] = msg.tick;
         }
+    });
+
+    // Listen for snapshot broadcasts — the wire-format state arrives already
+    // deserialized by structured clone (no msgpack/gunzip).  Build index Maps
+    // for fast lookups in a single O(n) pass per array.
+    onWorkerMessage((msg: OutboundMessage) => {
+        if (msg.type !== 'snapshot') {
+            return;
+        }
+        const { data, tickerEvents } = msg;
+
+        // Update tick immediately
+        (g as Record<symbol, number>)[GLOBAL_KEY_TICK] = data.tick;
+
+        // Build lookup indexes (one pass per array, avoids wireToGameState overhead)
+        const planetsById = new Map<string, Planet>();
+        for (const p of data.planets) {
+            planetsById.set(p.id, p);
+        }
+        const agentsById = new Map<string, Agent>();
+        for (const a of data.agents) {
+            agentsById.set(a.id, a);
+        }
+
+        // Build planet→agents index in a single pass (avoids O(N) filter in syncQueries)
+        const agentsByPlanetId = new Map<string, Agent[]>();
+        for (const a of data.agents) {
+            for (const planetId of Object.keys(a.assets)) {
+                const list = agentsByPlanetId.get(planetId);
+                if (list) {
+                    list.push(a);
+                } else {
+                    agentsByPlanetId.set(planetId, [a]);
+                }
+            }
+        }
+
+        // Build planet→forexMMs index similarly
+        const forexMMs = data.forexMarketMakers ?? [];
+        const forexMarketMakersByPlanetId = new Map<string, Agent[]>();
+        for (const mm of forexMMs) {
+            for (const planetId of Object.keys(mm.assets)) {
+                const list = forexMarketMakersByPlanetId.get(planetId);
+                if (list) {
+                    list.push(mm);
+                } else {
+                    forexMarketMakersByPlanetId.set(planetId, [mm]);
+                }
+            }
+        }
+
+        const cache: SnapshotCache = {
+            tick: data.tick,
+            planets: data.planets,
+            planetsById,
+            agents: data.agents,
+            agentsById,
+            agentsByPlanetId,
+            shipCapitalMarket: data.shipCapitalMarket ?? { tradeHistory: [], emaPrice: {} },
+            forexMarketMakers: forexMMs,
+            forexMarketMakersByPlanetId,
+            shipbuilderAgents: data.shipbuilderAgents ?? [],
+            arbitrageTraders: data.arbitrageTraders ?? [],
+            tickerEvents: tickerEvents ?? [],
+        };
+
+        (g as Record<symbol, SnapshotCache>)[GLOBAL_KEY_STATE] = cache;
     });
 }
 

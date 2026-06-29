@@ -27,7 +27,7 @@ import {
     workerSetShipConstructionTarget,
     workerAcquireLicense,
 } from '@/simulation/workerClient/commands';
-import { workerQueries } from '@/simulation/workerClient/queries';
+import { getAgentSync } from '@/simulation/workerClient/syncQueries';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -427,7 +427,7 @@ export const setWorkerAllocationTargets = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            const { agent: allocAgent } = await workerQueries.getAgent(input.agentId);
+            const { agent: allocAgent } = getAgentSync(input.agentId);
             const allocAssets = allocAgent?.assets[input.planetId];
             if (!allocAssets?.licenses?.workforce || allocAssets.licenses.workforce.frozen) {
                 throw new TRPCError({
@@ -480,7 +480,7 @@ export const setSellOffers = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            const { agent: sellAgent } = await workerQueries.getAgent(input.agentId);
+            const { agent: sellAgent } = getAgentSync(input.agentId);
             if (!sellAgent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
             }
@@ -666,7 +666,7 @@ export const setBuyBids = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            const { agent: bidAgent } = await workerQueries.getAgent(input.agentId);
+            const { agent: bidAgent } = getAgentSync(input.agentId);
             if (!bidAgent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
             }
@@ -747,7 +747,7 @@ export const buildFacility = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            const { agent: buildAgent } = await workerQueries.getAgent(input.agentId);
+            const { agent: buildAgent } = getAgentSync(input.agentId);
             const buildAssets = buildAgent?.assets[input.planetId];
             if (!buildAssets?.licenses?.workforce || buildAssets.licenses.workforce.frozen) {
                 throw new TRPCError({
@@ -796,7 +796,7 @@ export const expandFacility = () => {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
 
-            const { agent: expandAgent } = await workerQueries.getAgent(input.agentId);
+            const { agent: expandAgent } = getAgentSync(input.agentId);
             const expandAssets = expandAgent?.assets[input.planetId];
             if (!expandAssets?.licenses?.workforce || expandAssets.licenses.workforce.frozen) {
                 throw new TRPCError({

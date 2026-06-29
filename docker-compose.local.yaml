@@ -1,0 +1,108 @@
+services:
+    app:
+        image: ghcr.io/keeper86/polyecongame:local
+        build:
+            context: .
+            dockerfile: Dockerfile
+            target: production
+        ports:
+            - '3000:3000'
+        extra_hosts:
+            - 'localhost:host-gateway'
+        environment:
+            NODE_ENV: production
+            APP_DOMAIN: localhost
+            NEXTAUTH_URL: http://localhost:3000
+            NEXTAUTH_SECRET: super-secret
+            KEYCLOAK_DOMAIN: localhost
+            KEYCLOAK_ISSUER: http://localhost:8080/realms/polyecongame
+            KEYCLOAK_CLIENT_ID: polyecongame-app
+            KEYCLOAK_CLIENT_SECRET: super-secret
+            NEXT_PUBLIC_API_BASE_URL: http://localhost:3000/api/trpc
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: polyecongamedb
+            DATABASE_URL: postgresql://postgres:password@db:5432/polyecongamedb
+            LOG_LEVEL: warn
+            SIM_DEBUG: 0
+            TICK_INTERVAL_MS: 2000
+        depends_on:
+            db:
+                condition: service_healthy
+            migrations:
+                condition: service_completed_successfully
+            keycloak:
+                condition: service_healthy
+
+    migrations:
+        image: ghcr.io/keeper86/polyecongame-migrator:local
+        build:
+            context: .
+            dockerfile: Dockerfile.migrator
+        environment:
+            NODE_ENV: production
+            DATABASE_URL: postgresql://postgres:password@db:5432/polyecongamedb
+        depends_on:
+            db:
+                condition: service_healthy
+        restart: 'no'
+
+    db:
+        image: timescale/timescaledb:2.17.2-pg15
+        tmpfs: /var/lib/postgresql/data
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: polyecongamedb
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U postgres']
+            interval: 10s
+            timeout: 3s
+            retries: 10
+
+    keycloak:
+        image: quay.io/keycloak/keycloak:26.3.4
+        ports:
+            - '8080:8080'
+        environment:
+            KC_DB: postgres
+            KC_DB_URL: jdbc:postgresql://keycloak-db:5433/keycloak
+            KC_DB_USERNAME: keycloak
+            KC_DB_PASSWORD: secure_keycloak_db_password
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: secure_keycloak_admin_password
+            KC_HOSTNAME: localhost
+            KC_HTTP_ENABLED: true
+            KC_HEALTH_ENABLED: true
+            KC_HOSTNAME_STRICT: false
+            KC_HOSTNAME_STRICT_HTTPS: false
+        depends_on:
+            keycloak-db:
+                condition: service_healthy
+        volumes:
+            - ./keycloak/themes:/opt/keycloak/themes
+            - ./keycloak/data/localImport:/opt/keycloak/data/import/
+        entrypoint: ['/opt/keycloak/data/import/docker-entrypoint.sh']
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost:9000\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1",
+                ]
+            interval: 10s
+            timeout: 3s
+            retries: 10
+
+    keycloak-db:
+        image: postgres:15-alpine
+        tmpfs: /var/lib/postgresql/data
+        environment:
+            POSTGRES_DB: keycloak
+            POSTGRES_USER: keycloak
+            POSTGRES_PASSWORD: secure_keycloak_db_password
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U keycloak -p 5433']
+            interval: 10s
+            timeout: 3s
+            retries: 10
+        command: postgres -p 5433

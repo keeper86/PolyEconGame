@@ -52,6 +52,25 @@ export const authOptions: AuthOptions = {
                 token.accessToken = account.access_token;
                 token.idToken = account.id_token;
                 token.userId = account.providerAccountId || profile?.sub;
+
+                // Fetch user_data once on sign-in and store in JWT to avoid a DB query on every request.
+                if (token.userId) {
+                    try {
+                        const row = await db('user_data').where({ user_id: token.userId }).first();
+                        if (row) {
+                            token.displayName = row.display_name;
+                            token.email = row.email;
+                            token.hasAssessmentPublished = row.has_assessment_published;
+                        } else {
+                            logger.debug(
+                                { component: 'auth-jwt' },
+                                `No user_data found for ${token.userId} during token enrichment;`,
+                            );
+                        }
+                    } catch (err) {
+                        logger.error({ component: 'auth-jwt', err }, 'Failed to load user_data on jwt callback');
+                    }
+                }
             }
             return token;
         },
@@ -61,30 +80,15 @@ export const authOptions: AuthOptions = {
                 session.accessToken = token.accessToken;
             }
 
-            try {
-                if (token.userId) {
-                    const row = await db('user_data').where({ user_id: token.userId }).first();
-                    if (row) {
-                        session.user = {
-                            id: row.user_id,
-                            email: row.email,
-                            displayName: row.display_name || undefined,
-                            hasAssessmentPublished: row.has_assessment_published,
-                        };
-                    } else {
-                        logger.debug(
-                            { component: 'auth-session' },
-                            `No user_data found for ${token.userId} during session enrichment;`,
-                        );
-                    }
-                } else {
-                    logger.debug({ component: 'auth-session' }, 'No userId present on token; skipping user_data load');
-                }
-            } catch (err) {
-                logger.error(
-                    { component: 'auth-session', err },
-                    'Failed to load or insert user_data on session callback',
-                );
+            if (token.userId) {
+                session.user = {
+                    id: token.userId,
+                    email: token.email ?? '',
+                    displayName: token.displayName ?? undefined,
+                    hasAssessmentPublished: token.hasAssessmentPublished ?? false,
+                };
+            } else {
+                logger.debug({ component: 'auth-session' }, 'No userId present on token; skipping user enrichment');
             }
 
             return session;

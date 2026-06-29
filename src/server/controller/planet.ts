@@ -7,9 +7,9 @@ import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
-import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
-import { workerQueries } from '../../simulation/workerClient/queries';
+import { computePopulationTotal } from '../../simulation/snapshotRepository';
 import { getLatestTick } from '../../simulation/workerClient/manager';
+import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
 import { protectedProcedure } from '../trpcRoot';
 
 export const getPlanetOverview = () =>
@@ -24,7 +24,7 @@ export const getPlanetOverview = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
             return {
                 tick,
                 name: planet?.name ?? input.planetId,
@@ -93,7 +93,7 @@ export const getPlanetDemographics = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
             if (!planet) {
                 return { tick, demographics: null };
             }
@@ -124,7 +124,7 @@ export const getPlanetEconomy = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
             if (!planet) {
                 return { tick, economy: null };
             }
@@ -358,7 +358,6 @@ export const getPlanetDemographicsFull = () =>
                             }),
                         ),
                         priceLevel: z.number(),
-                        starvationLevel: z.number(),
                         lastTransferMatrix: z.array(z.any()),
                     })
                     .nullable(),
@@ -366,7 +365,7 @@ export const getPlanetDemographicsFull = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
             if (!planet) {
                 return { tick, data: null };
             }
@@ -377,7 +376,6 @@ export const getPlanetDemographicsFull = () =>
                     groupMode: input.groupMode,
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
-                    starvationLevel: computeGlobalStarvation(planet),
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
             };
@@ -553,7 +551,7 @@ export const getPlanetMarket = () =>
             }),
         )
         .query(async ({ input }) => {
-            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
+            const { tick, planet, agents } = getPlanetWithAgentsSync(input.planetId);
 
             if (!planet) {
                 return { tick, market: null };
@@ -650,7 +648,7 @@ export const getPlanetClaims = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
 
             if (!planet) {
                 return { tick, governmentId: '', resources: [] };
@@ -732,7 +730,7 @@ export const getAgentClaims = () =>
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
         .output(z.object({ tick: z.number(), claims: z.array(agentClaimEntrySchema) }))
         .query(async ({ input }) => {
-            const { tick, planet, agents } = await workerQueries.getPlanetWithAgents(input.planetId);
+            const { tick, planet, agents } = getPlanetWithAgentsSync(input.planetId);
 
             if (!planet) {
                 return { tick, claims: [] };
@@ -803,7 +801,7 @@ export const getPlanetMarketOverview = () =>
             }),
         )
         .query(async ({ input }) => {
-            const { tick, planet } = await workerQueries.getPlanetWithAgents(input.planetId);
+            const { tick, planet } = getPlanetWithAgentsSync(input.planetId);
 
             if (!planet) {
                 return { tick, rows: [] };

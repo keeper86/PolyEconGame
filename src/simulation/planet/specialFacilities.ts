@@ -1,6 +1,6 @@
-import type { LastManagementTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
+import type { LastTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
 
-const zeroLastTicksResults: LastManagementTickResults = {
+const zeroLastTicksResults: LastTickResults = {
     overallEfficiency: 0,
     workerEfficiency: {},
     resourceEfficiency: {},

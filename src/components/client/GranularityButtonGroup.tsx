@@ -1,9 +1,10 @@
 'use client';
 
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
-import React from 'react';
+import React, { useState } from 'react';
 
-type Granularity = 'monthly' | 'yearly' | 'decade';
+export type Granularity = 'monthly' | 'yearly' | 'decade';
 
 function GranularityButton({
     active,
@@ -65,5 +66,53 @@ export function GranularityButtonGroup({ granularity, onChange, currentTick }: G
                 Decade
             </GranularityButton>
         </div>
+    );
+}
+
+/** Hook that encapsulates the common granularity state + currentTick. */
+export function useGranularity(): {
+    granularity: Granularity;
+    setGranularity: React.Dispatch<React.SetStateAction<Granularity>>;
+    currentTick: number;
+} {
+    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const currentTick = useSimulationTick();
+    return { granularity, setGranularity, currentTick };
+}
+
+type GranularityHeaderProps = {
+    title: string;
+    icon?: React.ReactNode;
+    granularity: Granularity;
+    onGranularityChange: (g: Granularity) => void;
+    currentTick: number;
+    /** Additional class names for the container span (in addition to `flex justify-between items-center`). */
+    className?: string;
+    /** Class names for the title paragraph. Defaults to `text-sm font-semibold flex items-center gap-2`. */
+    titleClassName?: string;
+};
+
+/** Renders the preferred flex justify-between layout with title + icon + granularity toggle. */
+export function GranularityHeader({
+    title,
+    icon,
+    granularity,
+    onGranularityChange,
+    currentTick,
+    className,
+    titleClassName,
+}: GranularityHeaderProps) {
+    return (
+        <span className={`flex justify-between items-center${className ? ` ${className}` : ''}`}>
+            <p className={titleClassName ?? 'text-sm font-semibold flex items-center gap-2'}>
+                {icon}
+                {title}
+            </p>
+            <GranularityButtonGroup
+                granularity={granularity}
+                onChange={onGranularityChange}
+                currentTick={currentTick}
+            />
+        </span>
     );
 }

@@ -33,7 +33,15 @@
         "db:types:update": "node ./tools/db_types.cjs update",
         "db:waitFor": "npx wait-on --timeout=60000 tcp:localhost:5432",
         "generate-keycloak-realm": "set -a && . ./.env && set +a && envsubst < ./keycloak/data/template.json > ./keycloak/data/import/initialRealm.json",
-        "svg:icons": "node ./tools/svg-to-react-icons.cjs"
+        "benchmark": "npx tsx tools/benchmark/node/trpc-benchmark.ts",
+        "benchmark:light": "npx tsx tools/benchmark/node/trpc-benchmark.ts --scenario=light",
+        "benchmark:medium": "npx tsx tools/benchmark/node/trpc-benchmark.ts --scenario=medium",
+        "benchmark:heavy": "npx tsx tools/benchmark/node/trpc-benchmark.ts --scenario=heavy",
+        "benchmark:mixed": "npx tsx tools/benchmark/node/trpc-benchmark.ts --scenario=mixed",
+        "benchmark:vu": "npx tsx tools/benchmark/node/trpc-benchmark.ts --vu=",
+        "benchmark:verbose": "npx tsx tools/benchmark/node/trpc-benchmark.ts --verbose",
+        "benchmark:ci": "npx tsx tools/benchmark/node/trpc-benchmark.ts --ci",
+        "benchmark:ramp": "npx tsx tools/benchmark/node/trpc-benchmark.ts --ramp --vu=20 --duration=60"
     },
     "dependencies": {
         "@msgpack/msgpack": "^3.1.3",

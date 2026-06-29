@@ -1,6 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-
-export type Granularity = 'monthly' | 'yearly' | 'decade';
+export type { Granularity } from '@/components/client/GranularityButtonGroup';
 
 export type FinancialPoint = {
     bucket: number;

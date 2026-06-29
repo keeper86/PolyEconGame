@@ -14,7 +14,7 @@ import {
     workerPostShipListing,
     workerPostTransportContract,
 } from '../../simulation/workerClient/commands';
-import { workerQueries } from '../../simulation/workerClient/queries';
+import { getAgentSync, getAllAgentsSync, getShipCapitalMarketSync } from '../../simulation/workerClient/syncQueries';
 import { db } from '../db';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
@@ -32,7 +32,7 @@ export const listAgentShips = () =>
     protectedProcedure.input(z.object({ agentId: z.string().min(1) })).query(async ({ input, ctx }) => {
         const userId = getUserIdFromContext(ctx);
         await assertAgentOwnership(userId, input.agentId);
-        const { agent } = await workerQueries.getAgent(input.agentId);
+        const { agent } = getAgentSync(input.agentId);
         if (!agent) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
         }
@@ -41,7 +41,7 @@ export const listAgentShips = () =>
 
 export const listTransportContracts = () =>
     protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
-        const { agents } = await workerQueries.getAllAgents();
+        const { agents } = getAllAgentsSync();
         const contracts = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
             return (assets?.transportContracts ?? []).map((c) => ({ ...c, _agentId: agent.id }));
@@ -51,7 +51,7 @@ export const listTransportContracts = () =>
 
 export const listShipBuyingOffers = () =>
     protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
-        const { agents } = await workerQueries.getAllAgents();
+        const { agents } = getAllAgentsSync();
         const offers = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
             return (assets?.shipBuyingOffers ?? []).map((o) => ({ ...o, _agentId: agent.id }));
@@ -222,7 +222,7 @@ export const acceptShipBuyingOffer = () =>
 
 export const listShipListings = () =>
     protectedProcedure.input(z.object({ planetId: z.string().min(1) })).query(async ({ input }) => {
-        const { agents } = await workerQueries.getAllAgents();
+        const { agents } = getAllAgentsSync();
         const listings = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
             return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
@@ -232,7 +232,7 @@ export const listShipListings = () =>
 
 export const getShipMarketHistory = () =>
     protectedProcedure.query(async () => {
-        const { shipCapitalMarket } = await workerQueries.getShipCapitalMarket();
+        const { shipCapitalMarket } = getShipCapitalMarketSync();
         return {
             emaPrice: shipCapitalMarket.emaPrice,
             recentTrades: shipCapitalMarket.tradeHistory.slice(-50),
@@ -296,7 +296,7 @@ export const getAgentPlanetStorage = () =>
         .query(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { agent } = await workerQueries.getAgent(input.agentId);
+            const { agent } = getAgentSync(input.agentId);
             if (!agent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
             }

@@ -20,7 +20,7 @@ import {
     getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
 } from '../../simulation/gameSnapshotRepository';
-import type { Agent } from '../../simulation/planet/planet';
+import type { Agent, Planet } from '../../simulation/planet/planet';
 import {
     computeAgentConsumption,
     computeAgentProduction,
@@ -30,10 +30,29 @@ import {
     summarisePlanetAssets,
     type AgentPlanetSummary,
 } from '../../simulation/snapshotRepository';
-import { workerQueries } from '../../simulation/workerClient/queries';
-import { db } from '../db';
-import { protectedProcedure } from '../trpcRoot';
 import { getLatestTick } from '../../simulation/workerClient/manager';
+import {
+    getAgentSync,
+    getAllAgentsSync,
+    getAllPlanetsSync,
+    getLoanConditionsSync,
+    getPlanetSync,
+    getShipCapitalMarketSync,
+    getTickerEventsSync,
+} from '../../simulation/workerClient/syncQueries';
+import { db } from '../db';
+import { procedure, protectedProcedure } from '../trpcRoot';
+
+const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
+
+function profileReturn<T>(label: string, result: T): T {
+    if (!PERF_DEBUG) {
+        return result;
+    }
+    const jsonLen = JSON.stringify(result).length;
+    console.log(`[perf][payload] ${label}: ${(jsonLen / 1024).toFixed(1)} KB serialized`);
+    return result;
+}
 
 const loanSchema = z.object({
     id: z.string(),
@@ -60,7 +79,7 @@ const loanConditionsSchema = z.object({
 export type LoanConditions = z.infer<typeof loanConditionsSchema>;
 
 export const getCurrentTick = () =>
-    protectedProcedure
+    procedure
         .input(z.void())
         .output(z.object({ tick: z.number() }))
         .query(async () => {
@@ -105,42 +124,48 @@ export const getLatestPlanetSummaries = () =>
             }),
         )
         .query(async () => {
-            const { tick, planets } = await workerQueries.getAllPlanets();
+            const { tick, planets } = getAllPlanetsSync();
 
-            return {
+            return profileReturn('getLatestPlanetSummaries', {
                 tick,
-                planets: planets.map((p) => ({
-                    planetId: p.id,
-                    populationTotal: computePopulationTotal(p),
+                planets: planets.map((planet) => ({
+                    planetId: planet.id,
+                    populationTotal: computePopulationTotal(planet),
                     bank: {
-                        equity: p.bank.equity,
-                        deposits: p.bank.deposits,
+                        equity: planet.bank.equity,
+                        deposits: planet.bank.deposits,
                     },
-                    foodPrice: p.marketPrices[groceryServiceResourceType.name] ?? 1,
-                    name: p.name,
+                    foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
+                    name: planet.name,
                     gdp:
-                        Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                        planet._gdp ??
+                        Object.values(planet.avgMarketResult).reduce(
+                            (sum, r) => sum + r.clearingPrice * r.totalVolume,
+                            0,
+                        ) *
                             TICKS_PER_YEAR +
-                        (p.monthTransferVolume * 1) / 3,
-                    moneySupply: p.bank.deposits,
-                    policyRate: p.bank.loanRate,
-                    costOfLiving: computeCostOfLiving(p.marketPrices, false),
-                    costOfLivingRich: computeCostOfLiving(p.marketPrices, true),
-                    wageEdu0: p.wagePerEdu.none ?? 0,
-                    wageEdu1: p.wagePerEdu.primary ?? 0,
-                    wageEdu2: p.wagePerEdu.secondary ?? 0,
-                    wageEdu3: p.wagePerEdu.tertiary ?? 0,
-                    claims: Object.entries(p.resources)
-                        .map(([name, entries]) => ({
-                            name,
-                            freeCapacity: entries.reduce(
-                                (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
-                                0,
-                            ),
-                        }))
-                        .sort((a, b) => b.freeCapacity - a.freeCapacity),
+                            (planet.monthTransferVolume * 1) / 3,
+                    moneySupply: planet.bank.deposits,
+                    policyRate: planet.bank.loanRate,
+                    costOfLiving: computeCostOfLiving(planet, false),
+                    costOfLivingRich: computeCostOfLiving(planet, true),
+                    wageEdu0: planet.wagePerEdu.none ?? 0,
+                    wageEdu1: planet.wagePerEdu.primary ?? 0,
+                    wageEdu2: planet.wagePerEdu.secondary ?? 0,
+                    wageEdu3: planet.wagePerEdu.tertiary ?? 0,
+                    claims:
+                        planet._freeResources ??
+                        Object.entries(planet.resources)
+                            .map(([name, entries]) => ({
+                                name,
+                                freeCapacity: entries.reduce(
+                                    (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
+                                    0,
+                                ),
+                            }))
+                            .sort((a, b) => b.freeCapacity - a.freeCapacity),
                 })),
-            };
+            });
         });
 
 export const getLatestAgents = () =>
@@ -162,8 +187,8 @@ export const getLatestAgents = () =>
             }),
         )
         .query(async () => {
-            const { tick, agents } = await workerQueries.getAllAgents();
-            return {
+            const { tick, agents } = getAllAgentsSync();
+            return profileReturn('getLatestAgents', {
                 tick,
                 agents: agents.map((a) => ({
                     agentId: a.id,
@@ -176,9 +201,9 @@ export const getLatestAgents = () =>
                     storage: computeAgentStorage(a),
                     production: computeAgentProduction(a),
                     consumption: computeAgentConsumption(a),
-                    agentSummary: a,
+                    agentSummary: summariseAgentBlob(a.id, a),
                 })),
-            };
+            });
         });
 
 export const getAgentListSummaries = () =>
@@ -206,11 +231,11 @@ export const getAgentListSummaries = () =>
             }),
         )
         .query(async ({ input }) => {
-            const { tick, agents } = await workerQueries.getAllAgents();
+            const { tick, agents } = getAllAgentsSync();
 
             let forexRates: Record<string, number> | undefined;
             if (input.planetId) {
-                const { planet } = await workerQueries.getPlanet(input.planetId);
+                const { planet } = getPlanetSync(input.planetId);
                 if (planet) {
                     forexRates = {};
                     for (const [curName, result] of Object.entries(planet.avgMarketResult)) {
@@ -263,11 +288,11 @@ export const getAgentDetail = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { agent } = await workerQueries.getAgent(input.agentId);
+            const { agent } = getAgentSync(input.agentId);
             if (!agent) {
                 return { tick, agent: null };
             }
-            return {
+            return profileReturn('getAgentDetail', {
                 tick,
                 agent: {
                     agentId: agent.id,
@@ -281,9 +306,9 @@ export const getAgentDetail = () =>
                     storage: computeAgentStorage(agent),
                     production: computeAgentProduction(agent),
                     consumption: computeAgentConsumption(agent),
-                    agentSummary: agent,
+                    agentSummary: summariseAgentBlob(agent.id, agent),
                 },
-            };
+            });
         });
 
 export const getAgentOverview = () =>
@@ -320,7 +345,7 @@ export const getAgentOverview = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { agent } = await workerQueries.getAgent(input.agentId);
+            const { agent } = getAgentSync(input.agentId);
             if (!agent) {
                 return { tick, overview: null };
             }
@@ -363,15 +388,15 @@ export const getPlanetDetail = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { planet } = await workerQueries.getPlanet(input.planetId);
+            const { planet } = getPlanetSync(input.planetId);
             if (!planet) {
                 return { tick, planet: null, populationTotal: 0 };
             }
-            return {
+            return profileReturn('getPlanetDetail', {
                 tick,
                 planet,
                 populationTotal: computePopulationTotal(planet),
-            };
+            });
         });
 
 const agentPlanetDetail = z.object({
@@ -395,7 +420,7 @@ export const getAgentPlanetDetail = () =>
         )
         .query(async ({ input }) => {
             const tick = getLatestTick();
-            const { agent } = await workerQueries.getAgent(input.agentId);
+            const { agent } = getAgentSync(input.agentId);
             if (!agent) {
                 return { tick, detail: null };
             }
@@ -586,10 +611,8 @@ export const getAgentHistory = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ agent }, rows] = await Promise.all([
-                workerQueries.getAgent(input.agentId),
-                dbGetAgentHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
-            ]);
+            const { agent } = getAgentSync(input.agentId);
+            const rows = await dbGetAgentHistory(db, input.agentId, input.planetId, input.granularity, input.limit);
             return {
                 agentId: input.agentId,
                 granularity: input.granularity,
@@ -636,10 +659,14 @@ export const getAgentFinancialHistory = () =>
             }),
         )
         .query(async ({ input }) => {
-            const [{ agent }, rows] = await Promise.all([
-                workerQueries.getAgent(input.agentId),
-                dbGetAgentFinancialHistory(db, input.agentId, input.planetId, input.granularity, input.limit),
-            ]);
+            const { agent } = getAgentSync(input.agentId);
+            const rows = await dbGetAgentFinancialHistory(
+                db,
+                input.agentId,
+                input.planetId,
+                input.granularity,
+                input.limit,
+            );
             return {
                 agentId: input.agentId,
                 granularity: input.granularity,
@@ -715,10 +742,8 @@ export const getAgentFinancials = () =>
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
         .output(z.object({ deposits: z.number(), monthlyNetCashFlow: z.number() }))
         .query(async ({ input }) => {
-            const [{ agent }, { conditions }] = await Promise.all([
-                workerQueries.getAgent(input.agentId),
-                workerQueries.getLoanConditions(input.agentId, input.planetId),
-            ]);
+            const { agent } = getAgentSync(input.agentId);
+            const { conditions } = getLoanConditionsSync(input.agentId, input.planetId);
             const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
             const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
             return { deposits, monthlyNetCashFlow };
@@ -729,7 +754,7 @@ export const getLoanConditions = () =>
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
         .output(z.object({ conditions: loanConditionsSchema.nullable(), activeLoans: z.array(loanSchema) }))
         .query(async ({ input }) => {
-            const { conditions, activeLoans } = await workerQueries.getLoanConditions(input.agentId, input.planetId);
+            const { conditions, activeLoans } = getLoanConditionsSync(input.agentId, input.planetId);
             return { conditions: conditions ?? null, activeLoans: activeLoans ?? [] };
         });
 
@@ -767,7 +792,7 @@ export const getTickerEvents = () =>
         .input(z.object({ lastSeenId: z.number().optional() }).default({}))
         .output(z.object({ tickerEvents: z.array(tickerEventSchema) }))
         .query(async ({ input }) => {
-            const { tickerEvents } = await workerQueries.getTickerEvents();
+            const { tickerEvents } = getTickerEventsSync();
             const filtered =
                 input.lastSeenId !== undefined ? tickerEvents.filter((e) => e.id > input.lastSeenId!) : tickerEvents;
             return { tickerEvents: filtered };
@@ -800,7 +825,7 @@ const routeRowSchema = z.object({
 
 export type ArbitrageRouteRow = z.infer<typeof routeRowSchema>;
 
-type PlanetList = Awaited<ReturnType<typeof workerQueries.getAllPlanets>>['planets'];
+type PlanetList = Planet[];
 
 function computeArbitrageRoutesForShip(
     planets: PlanetList,
@@ -917,10 +942,8 @@ export const getArbitrageRoutes = () =>
                 return { tick: 0, shipTypeName: input.shipTypeName, routes: [] };
             }
 
-            const [{ tick, planets }, { shipCapitalMarket }] = await Promise.all([
-                workerQueries.getAllPlanets(),
-                workerQueries.getShipCapitalMarket(),
-            ]);
+            const { tick, planets } = getAllPlanetsSync();
+            const { shipCapitalMarket } = getShipCapitalMarketSync();
 
             const oneWayTicks = Math.ceil(1000 / shipType.speed);
             const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
@@ -958,10 +981,8 @@ export const getArbitrageForResources = () =>
             }
 
             const resourceNameSet = new Set(input.resourceNames);
-            const [{ tick, planets }, { shipCapitalMarket }] = await Promise.all([
-                workerQueries.getAllPlanets(),
-                workerQueries.getShipCapitalMarket(),
-            ]);
+            const { tick, planets } = getAllPlanetsSync();
+            const { shipCapitalMarket } = getShipCapitalMarketSync();
 
             const byResource: Record<string, ArbitrageRouteRow | null> = {};
             for (const name of input.resourceNames) {
