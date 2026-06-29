@@ -40,6 +40,10 @@ test.describe('Guided Tour E2E', () => {
         // Submit the founding form
         await page.locator('button[type="submit"]').click();
 
+        // Wait for redirect to the financial page
+        await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 20000 });
+        await page.waitForLoadState('networkidle');
+
         // ==================================================================
         // 4. Financial — Step 0: Take the starter loan (blocking step)
         // ==================================================================
