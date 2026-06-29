@@ -43,33 +43,6 @@ export const computePopulationTotal = (planet: Planet): number => {
     return total;
 };
 
-export const computeGlobalStarvation = (planet: Planet): number => {
-    if (planet._globalStarvation !== undefined) {
-        return planet._globalStarvation;
-    }
-    const start = perfStart('computeGlobalStarvation');
-    let totalStarvation = 0;
-    let totalPop = 0;
-    for (const cohort of planet.population.demography) {
-        if (!cohort) {
-            continue;
-        }
-        for (const occ of OCCUPATIONS) {
-            for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total > 0) {
-                        totalStarvation += cat.services.grocery.starvationLevel * cat.total;
-                        totalPop += cat.total;
-                    }
-                }
-            }
-        }
-    }
-    perfEnd('computeGlobalStarvation', start);
-    return totalPop > 0 ? totalStarvation / totalPop : 0;
-};
-
 export const computeAgentStorage = (agent: Agent): Record<string, number> => {
     const start = perfStart('computeAgentStorage');
     const storage: Record<string, number> = {};

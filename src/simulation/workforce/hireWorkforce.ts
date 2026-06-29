@@ -168,8 +168,8 @@ const ageMultiplier: (age: number) => number = (age) => {
 };
 
 const buildCurrentMinimumWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
-    const costOfLiving = computeCostOfLiving(planet.marketPrices) * 2;
-    const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true) * 10;
+    const costOfLiving = computeCostOfLiving(planet) * 2;
+    const costOfLivingRich = computeCostOfLiving(planet, true) * 10;
 
     return (category: WorkforceCategoryIndex): number => {
         const baseWage = costOfLiving * skillMultiplier[category.skill] * ageMultiplier(category.age);

@@ -85,9 +85,7 @@ export function getShipCapitalMarketSync(): { shipCapitalMarket: ShipCapitalMark
     return { shipCapitalMarket: cache.shipCapitalMarket };
 }
 
-export function getPlanetWithAgentsSync(
-    planetId: string,
-): { tick: number; planet: Planet | null; agents: Agent[] } {
+export function getPlanetWithAgentsSync(planetId: string): { tick: number; planet: Planet | null; agents: Agent[] } {
     const cache = getCache();
     if (!cache) {
         return { tick: getLatestTick(), planet: null, agents: [] };

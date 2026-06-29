@@ -93,16 +93,3 @@ export function deserializeSnapshot(data: Buffer): GameState {
     const wire = decode(decompressed) as WireGameState;
     return wireToGameState(wire);
 }
-
-/** msgpack-only encode (no gzip) — used for IPC snapshot push. */
-export function packGameState(gs: GameState): Buffer {
-    const wire = gameStateToWire(gs);
-    const packed = encode(wire);
-    return Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength);
-}
-
-/** msgpack-only decode (no gunzip) — used for IPC snapshot receive. */
-export function unpackGameState(data: Buffer): GameState {
-    const wire = decode(data) as WireGameState;
-    return wireToGameState(wire);
-}

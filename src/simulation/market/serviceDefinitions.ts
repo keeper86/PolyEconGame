@@ -1,5 +1,6 @@
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 import type { Resource } from '../planet/claims';
+import type { Planet } from '../planet/planet';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -130,11 +131,18 @@ export function computeTierCost(marketPrices: Record<string, number>, tier: Serv
     }, 0);
 }
 
-export function computeCostOfLiving(marketPrices: Record<string, number>, whenRich: boolean = false): number {
+export function computeCostOfLiving(planet: Planet, whenRich: boolean = false): number {
     let total = 0;
+    if (whenRich && planet._costOfLivingRich !== undefined) {
+        return planet._costOfLivingRich;
+    }
+    if (!whenRich && planet._costOfLiving !== undefined) {
+        return planet._costOfLiving;
+    }
+
     for (const tier of SERVICE_TIERS) {
         if (tier.mandatoryForOwnConsumption || whenRich) {
-            total += computeTierCost(marketPrices, tier);
+            total += computeTierCost(planet.marketPrices, tier);
         }
     }
     return total;

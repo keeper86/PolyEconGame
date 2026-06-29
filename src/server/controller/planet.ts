@@ -7,9 +7,9 @@ import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
-import { computeGlobalStarvation, computePopulationTotal } from '../../simulation/snapshotRepository';
-import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
+import { computePopulationTotal } from '../../simulation/snapshotRepository';
 import { getLatestTick } from '../../simulation/workerClient/manager';
+import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
 import { protectedProcedure } from '../trpcRoot';
 
 export const getPlanetOverview = () =>
@@ -358,7 +358,6 @@ export const getPlanetDemographicsFull = () =>
                             }),
                         ),
                         priceLevel: z.number(),
-                        starvationLevel: z.number(),
                         lastTransferMatrix: z.array(z.any()),
                     })
                     .nullable(),
@@ -377,7 +376,6 @@ export const getPlanetDemographicsFull = () =>
                     groupMode: input.groupMode,
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
-                    starvationLevel: computeGlobalStarvation(planet),
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                 },
             };

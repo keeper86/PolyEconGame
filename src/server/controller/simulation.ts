@@ -128,29 +128,32 @@ export const getLatestPlanetSummaries = () =>
 
             return profileReturn('getLatestPlanetSummaries', {
                 tick,
-                planets: planets.map((p) => ({
-                    planetId: p.id,
-                    populationTotal: computePopulationTotal(p),
+                planets: planets.map((planet) => ({
+                    planetId: planet.id,
+                    populationTotal: computePopulationTotal(planet),
                     bank: {
-                        equity: p.bank.equity,
-                        deposits: p.bank.deposits,
+                        equity: planet.bank.equity,
+                        deposits: planet.bank.deposits,
                     },
-                    foodPrice: p.marketPrices[groceryServiceResourceType.name] ?? 1,
-                    name: p.name,
+                    foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
+                    name: planet.name,
                     gdp:
-                        p._gdp ??
-                        Object.values(p.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                        planet._gdp ??
+                        Object.values(planet.avgMarketResult).reduce(
+                            (sum, r) => sum + r.clearingPrice * r.totalVolume,
+                            0,
+                        ) *
                             TICKS_PER_YEAR +
-                            (p.monthTransferVolume * 1) / 3,
-                    moneySupply: p.bank.deposits,
-                    policyRate: p.bank.loanRate,
-                    costOfLiving: p._costOfLiving ?? computeCostOfLiving(p.marketPrices, false),
-                    costOfLivingRich: p._costOfLivingRich ?? computeCostOfLiving(p.marketPrices, true),
-                    wageEdu0: p.wagePerEdu.none ?? 0,
-                    wageEdu1: p.wagePerEdu.primary ?? 0,
-                    wageEdu2: p.wagePerEdu.secondary ?? 0,
-                    wageEdu3: p.wagePerEdu.tertiary ?? 0,
-                    claims: Object.entries(p.resources)
+                            (planet.monthTransferVolume * 1) / 3,
+                    moneySupply: planet.bank.deposits,
+                    policyRate: planet.bank.loanRate,
+                    costOfLiving: computeCostOfLiving(planet, false),
+                    costOfLivingRich: computeCostOfLiving(planet, true),
+                    wageEdu0: planet.wagePerEdu.none ?? 0,
+                    wageEdu1: planet.wagePerEdu.primary ?? 0,
+                    wageEdu2: planet.wagePerEdu.secondary ?? 0,
+                    wageEdu3: planet.wagePerEdu.tertiary ?? 0,
+                    claims: Object.entries(planet.resources)
                         .map(([name, entries]) => ({
                             name,
                             freeCapacity: entries.reduce(

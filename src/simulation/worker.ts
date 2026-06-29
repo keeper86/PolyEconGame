@@ -21,7 +21,7 @@ import { createInitialGameState } from './initialUniverse';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, gameStateToWire, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
-import { computeGlobalStarvation, computePopulationTotal } from './snapshotRepository';
+import { computePopulationTotal } from './snapshotRepository';
 import { handleAgentAction } from './workerClient/agentActions';
 import { handleFacilityAction } from './workerClient/facilityActions';
 import { handleFinancialAction } from './workerClient/financialActions';
@@ -390,8 +390,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     TICKS_PER_YEAR +
                 (planet.monthTransferVolume * 1) / 3; // assume part of transfer volume is commercial p2p activity
 
-            const costOfLiving = computeCostOfLiving(planet.marketPrices, false);
-            const costOfLivingRich = computeCostOfLiving(planet.marketPrices, true);
+            const costOfLiving = computeCostOfLiving(planet, false);
+            const costOfLivingRich = computeCostOfLiving(planet, true);
             const wageEdu0 = planet.wagePerEdu.none ?? 0;
             const wageEdu1 = planet.wagePerEdu.primary ?? 0;
             const wageEdu2 = planet.wagePerEdu.secondary ?? 0;
@@ -538,14 +538,18 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             // Pre-compute derived values for O(1) controller lookups — one pass per tick
             for (const planet of state.planets.values()) {
+                planet._populationTotal = undefined;
                 planet._populationTotal = computePopulationTotal(planet);
-                planet._globalStarvation = computeGlobalStarvation(planet);
+
                 planet._gdp =
                     Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
                         TICKS_PER_YEAR +
                     (planet.monthTransferVolume * 1) / 3;
-                planet._costOfLiving = computeCostOfLiving(planet.marketPrices, false);
-                planet._costOfLivingRich = computeCostOfLiving(planet.marketPrices, true);
+
+                planet._costOfLivingRich = undefined;
+                planet._costOfLiving = undefined;
+                planet._costOfLiving = computeCostOfLiving(planet, false);
+                planet._costOfLivingRich = computeCostOfLiving(planet, true);
             }
 
             currentSnapshot = state;
