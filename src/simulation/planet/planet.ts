@@ -158,6 +158,7 @@ export type Planet = {
     _populationTotal?: number;
     _costOfLiving?: number;
     _costOfLivingRich?: number;
+    _freeResources?: { name: string; freeCapacity: number }[];
     _gdp?: number;
 };
 

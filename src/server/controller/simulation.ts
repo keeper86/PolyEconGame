@@ -153,15 +153,17 @@ export const getLatestPlanetSummaries = () =>
                     wageEdu1: planet.wagePerEdu.primary ?? 0,
                     wageEdu2: planet.wagePerEdu.secondary ?? 0,
                     wageEdu3: planet.wagePerEdu.tertiary ?? 0,
-                    claims: Object.entries(planet.resources)
-                        .map(([name, entries]) => ({
-                            name,
-                            freeCapacity: entries.reduce(
-                                (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
-                                0,
-                            ),
-                        }))
-                        .sort((a, b) => b.freeCapacity - a.freeCapacity),
+                    claims:
+                        planet._freeResources ??
+                        Object.entries(planet.resources)
+                            .map(([name, entries]) => ({
+                                name,
+                                freeCapacity: entries.reduce(
+                                    (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
+                                    0,
+                                ),
+                            }))
+                            .sort((a, b) => b.freeCapacity - a.freeCapacity),
                 })),
             });
         });

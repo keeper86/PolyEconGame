@@ -12,6 +12,7 @@
 
 # testing
 /coverage
+node-ramp-*.json
 
 # playwright
 /test-results/

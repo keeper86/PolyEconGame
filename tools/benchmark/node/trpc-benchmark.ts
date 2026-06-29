@@ -79,7 +79,7 @@ interface PerProcStats {
 /** A single operation that a VU worker can execute. */
 interface Op {
     name: string;
-    run: (client: Client, td: TestData) => Promise<void>;
+    run: (client: Client, td: TestData) => Promise<unknown>;
 }
 
 /** Weighted operation for the mixed scenario. */

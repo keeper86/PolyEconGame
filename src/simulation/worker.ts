@@ -550,6 +550,17 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planet._costOfLiving = undefined;
                 planet._costOfLiving = computeCostOfLiving(planet, false);
                 planet._costOfLivingRich = computeCostOfLiving(planet, true);
+
+                planet._freeResources = undefined;
+                planet._freeResources = Object.entries(planet.resources)
+                    .map(([name, entries]) => ({
+                        name,
+                        freeCapacity: entries.reduce(
+                            (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
+                            0,
+                        ),
+                    }))
+                    .sort((a, b) => b.freeCapacity - a.freeCapacity);
             }
 
             currentSnapshot = state;
