@@ -16,13 +16,13 @@ export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.1;
+export const PID_KP = 0.05;
 
 export const PID_KI = 0.001;
 
-export const PID_KD = 0.05;
-export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.5;
+export const PID_KD = 0.025;
+export const PID_IMAX = 0.025;
+export const PID_OUT_MAX = 0.05;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
@@ -131,15 +131,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         return 0;
     }
 
-    let profitSignal: number | undefined = undefined;
-    const costs = lastTickResults.inputCosts + lastTickResults.wageCosts;
-    const effectiveCosts = costs + depreciationCosts;
-    const hasOperated = costs > 0 || lastTickResults.revenue > 0;
-    if (hasOperated && isFinite(costs)) {
-        const margin = effectiveCosts > 0 ? (lastTickResults.revenue - effectiveCosts) / effectiveCosts : 1;
-        profitSignal = Math.max(-1, Math.min(1, margin));
-    }
-
     const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
     assert(
@@ -147,7 +138,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
     );
 
-    let signal = profitSignal !== undefined ? (maxOutputSignal + profitSignal) / 2 : maxOutputSignal;
+    let signal = maxOutputSignal;
     if (signal > 0) {
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;

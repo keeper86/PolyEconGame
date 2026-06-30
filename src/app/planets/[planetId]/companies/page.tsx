@@ -146,7 +146,9 @@ export default function PlanetAgentsLeaderboardPage() {
                     <div>
                         effective firms deposits (incl. depositHold):{' '}
                         <span className='tabular-nums'>
-                            {(data.diagnostic.sumPerPlanetDeposits + data.diagnostic.sumPerPlanetDepositHold).toFixed(2)}
+                            {(data.diagnostic.sumPerPlanetDeposits + data.diagnostic.sumPerPlanetDepositHold).toFixed(
+                                2,
+                            )}
                         </span>
                     </div>
                     <div>

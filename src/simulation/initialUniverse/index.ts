@@ -46,9 +46,9 @@ export function createInitialGameState(): GameState {
         nextEventId: 1,
     };
 
-    seedForexMarketMakers(gameState);
-    seedShipbuilderAgents(gameState);
-    seedArbitrageTraderAgents(gameState);
+    // seedForexMarketMakers(gameState);
+    // seedShipbuilderAgents(gameState);
+    // seedArbitrageTraderAgents(gameState);
 
     prefillAgentStorageFromFacilities(gameState);
 

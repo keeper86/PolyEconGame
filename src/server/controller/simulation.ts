@@ -290,7 +290,15 @@ export const getAgentListSummaries = () =>
                 }
             }
 
-            let diagnostic: { householdDeposits: number; sumPerPlanetDeposits: number; sumPerPlanetDepositHold: number; sumPerPlanetLoans: number; residual: number } | undefined;
+            let diagnostic:
+                | {
+                      householdDeposits: number;
+                      sumPerPlanetDeposits: number;
+                      sumPerPlanetDepositHold: number;
+                      sumPerPlanetLoans: number;
+                      residual: number;
+                  }
+                | undefined;
             if (input.planetId) {
                 const { planet } = getPlanetSync(input.planetId);
                 if (planet) {

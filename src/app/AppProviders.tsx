@@ -56,7 +56,7 @@ export default function AppProviders({ children, session }: { children: React.Re
             <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
                 <AttachLoggerToQueryClient queryClient={queryClient} />
                 <SimulationOfflineBanner />
-                <SessionProvider session={session} refetchOnWindowFocus={false}>
+                <SessionProvider session={session} refetchOnWindowFocus={false} refetchInterval={5 * 60}>
                     <TourProvider>{children}</TourProvider>
                 </SessionProvider>
             </TRPCProvider>

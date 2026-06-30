@@ -61,6 +61,8 @@ export const authOptions: AuthOptions = {
                             token.displayName = row.display_name;
                             token.email = row.email;
                             token.hasAssessmentPublished = row.has_assessment_published;
+                            token.agentId = row.agent_id ?? null;
+                            token.planetId = row.planet_id ?? null;
                         } else {
                             logger.debug(
                                 { component: 'auth-jwt' },
@@ -86,6 +88,8 @@ export const authOptions: AuthOptions = {
                     email: token.email ?? '',
                     displayName: token.displayName ?? undefined,
                     hasAssessmentPublished: token.hasAssessmentPublished ?? false,
+                    agentId: token.agentId ?? null,
+                    planetId: token.planetId ?? null,
                 };
             } else {
                 logger.debug({ component: 'auth-session' }, 'No userId present on token; skipping user enrichment');

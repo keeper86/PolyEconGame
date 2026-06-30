@@ -16,6 +16,8 @@ declare module 'next-auth' {
             displayName?: string;
             hasAssessmentPublished?: boolean;
             email: string;
+            agentId: string | null;
+            planetId: string | null;
         };
     }
 }
@@ -28,5 +30,7 @@ declare module 'next-auth/jwt' {
         displayName?: string | null;
         email?: string;
         hasAssessmentPublished?: boolean;
+        agentId?: string | null;
+        planetId?: string | null;
     }
 }
