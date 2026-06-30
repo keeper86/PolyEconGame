@@ -1,4 +1,4 @@
-import type { Agent, GameState, Planet } from './planet/planet';
+import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet/planet';
 import { educationLevelKeys } from './population/education';
 import { SKILL, forEachPopulationCohort } from './population/population';
 
@@ -76,8 +76,10 @@ export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: M
 export function checkMonetaryConservation(
     agents: Map<string, Agent>,
     planets: Map<string, Planet>,
-    tolerance = 0.01,
+    tolerance = 0.0001,
     forexMarketMakers?: Map<string, Agent>,
+    shipbuilderAgents?: Map<string, Agent>,
+    arbitrageTraders?: Map<string, Agent>,
 ): string[] {
     const discrepancies: string[] = [];
 
@@ -85,29 +87,46 @@ export function checkMonetaryConservation(
         const bank = planet.bank;
 
         let firmDeposits = 0;
+        let totalDepositHold = 0;
         let c = 0;
-        for (const agent of agents.values()) {
-            const total = agent.assets[planetId]?.deposits ?? 0;
+
+        // Helper to robustly sum deposits including depositHold
+        function addFirm(assets: AgentPlanetAssets | undefined): void {
+            if (!assets) {
+                return;
+            }
+            const total = assets.deposits ?? 0;
             if (total !== 0) {
                 const d = total - c;
                 const t = firmDeposits + d;
                 c = t - firmDeposits - d;
                 firmDeposits = t;
             }
+            totalDepositHold += assets.depositHold ?? 0;
+        }
+
+        for (const agent of agents.values()) {
+            addFirm(agent.assets[planetId]);
         }
         if (forexMarketMakers) {
             for (const mm of forexMarketMakers.values()) {
-                const total = mm.assets[planetId]?.deposits ?? 0;
-                if (total !== 0) {
-                    const d = total - c;
-                    const t = firmDeposits + d;
-                    c = t - firmDeposits - d;
-                    firmDeposits = t;
-                }
+                addFirm(mm.assets[planetId]);
+            }
+        }
+        if (shipbuilderAgents) {
+            for (const sb of shipbuilderAgents.values()) {
+                addFirm(sb.assets[planetId]);
+            }
+        }
+        if (arbitrageTraders) {
+            for (const at of arbitrageTraders.values()) {
+                addFirm(at.assets[planetId]);
             }
         }
 
-        const depositSum = firmDeposits + bank.householdDeposits;
+        // depositHold was subtracted from agent.deposits but still sits in bank.deposits
+        const effectiveFirmDeposits = firmDeposits + totalDepositHold;
+        const depositSum = effectiveFirmDeposits + bank.householdDeposits;
         const depositDiff =
             bank.deposits === 0 && depositSum === 0
                 ? 0
@@ -125,7 +144,7 @@ export function checkMonetaryConservation(
             );
         }
 
-        const residual = bank.householdDeposits + firmDeposits - bank.loans;
+        const residual = bank.householdDeposits + effectiveFirmDeposits - bank.loans;
         const residualRel =
             bank.loans === 0 && residual === 0
                 ? 0
@@ -162,6 +181,7 @@ export function checkWealthBankConsistency(
     name: string,
     tolerance?: number,
 ): WealthBankDiscrepancy[];
+
 export function checkWealthBankConsistency(
     planets: Map<string, Planet>,
     nameOrTolerance: string | number = 'checkWealthBankConsistency',

@@ -35,8 +35,11 @@ import {
     getAgentSync,
     getAllAgentsSync,
     getAllPlanetsSync,
+    getArbitrageTradersSync,
+    getForexMarketMakersSync,
     getLoanConditionsSync,
     getPlanetSync,
+    getShipbuilderAgentsSync,
     getShipCapitalMarketSync,
     getTickerEventsSync,
 } from '../../simulation/workerClient/syncQueries';
@@ -228,6 +231,15 @@ export const getAgentListSummaries = () =>
                         shipCount: z.number(),
                     }),
                 ),
+                diagnostic: z
+                    .object({
+                        householdDeposits: z.number(),
+                        sumPerPlanetDeposits: z.number(),
+                        sumPerPlanetDepositHold: z.number(),
+                        sumPerPlanetLoans: z.number(),
+                        residual: z.number(),
+                    })
+                    .optional(),
             }),
         )
         .query(async ({ input }) => {
@@ -257,9 +269,48 @@ export const getAgentListSummaries = () =>
                     return { ...summary, normalizedBalance };
                 });
 
+            const allEntities = [
+                ...agents,
+                ...getForexMarketMakersSync(),
+                ...getShipbuilderAgentsSync(),
+                ...getArbitrageTradersSync(),
+            ];
+
+            let sumPerPlanetDeposits = 0;
+            let sumPerPlanetDepositHold = 0;
+            let sumPerPlanetLoans = 0;
+            if (input.planetId) {
+                for (const a of allEntities) {
+                    const pa = a.assets[input.planetId];
+                    if (pa) {
+                        sumPerPlanetDeposits += pa.deposits ?? 0;
+                        sumPerPlanetDepositHold += pa.depositHold ?? 0;
+                        sumPerPlanetLoans += totalOutstandingLoans(pa.activeLoans ?? []);
+                    }
+                }
+            }
+
+            let diagnostic: { householdDeposits: number; sumPerPlanetDeposits: number; sumPerPlanetDepositHold: number; sumPerPlanetLoans: number; residual: number } | undefined;
+            if (input.planetId) {
+                const { planet } = getPlanetSync(input.planetId);
+                if (planet) {
+                    // depositHold was subtracted from agent.deposits but still lives in bank.deposits
+                    const effectiveAgentDeposits = sumPerPlanetDeposits + sumPerPlanetDepositHold;
+                    diagnostic = {
+                        householdDeposits: planet.bank.householdDeposits,
+                        sumPerPlanetDeposits,
+                        sumPerPlanetDepositHold,
+                        sumPerPlanetLoans,
+                        // invariant: householdDeposits + effectiveAgentDeposits - loans ≈ 0
+                        residual: planet.bank.householdDeposits + effectiveAgentDeposits - planet.bank.loans,
+                    };
+                }
+            }
+
             return {
                 tick,
                 agents: resultAgents,
+                diagnostic,
             };
         });
 

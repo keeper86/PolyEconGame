@@ -1,11 +1,11 @@
+import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { creditWageIncome } from '../financial/wealthOps';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
-import { totalDepartingForEdu, totalWorkingForEdu } from './workforceAggregates';
-import { creditWageIncome } from '../financial/wealthOps';
+import { totalActiveForEduSkill } from './workforceAggregates';
 
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
     const allFacilities = [
@@ -175,49 +175,62 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const excessCash = netBalance - reservationCapital;
 
             if (excessCash > 0) {
-                // Distribute directly to workers
+                // Distribute directly to active workers
                 const totalWorkersForEdu: Record<EducationLevelType, number> = {
                     none: 0,
                     primary: 0,
                     secondary: 0,
                     tertiary: 0,
                 };
+
+                let totalWorkers = 0;
                 for (const edu of educationLevelKeys) {
-                    const activeWorkers = totalWorkingForEdu(workforce, edu);
-                    const departingWorkers = totalDepartingForEdu(workforce, edu);
-                    totalWorkersForEdu[edu] = activeWorkers + departingWorkers;
+                    for (const skill of SKILL) {
+                        const activeHere = totalActiveForEduSkill(workforce, edu, skill);
+                        totalWorkersForEdu[edu] += activeHere;
+                        totalWorkers += activeHere;
+                    }
                 }
 
-                const totalWorkers = Object.values(totalWorkersForEdu).reduce((s, n) => s + n, 0);
+                let totalCredit = 0;
                 if (totalWorkers > 0) {
                     const perWorkerBonus = excessCash / totalWorkers;
                     for (let age = 0; age < demography.length; age++) {
                         for (const edu of educationLevelKeys) {
                             for (const skill of SKILL) {
+                                // TODO: turn around, iterate workforce not general population
                                 const agentWorkers = workforce[age]?.[edu]?.[skill];
                                 if (!agentWorkers) {
                                     continue;
                                 }
                                 const activeWorkers = agentWorkers.active;
-                                const onboardingWorkers = agentWorkers.onboarding.reduce((s, n) => s + n, 0);
-                                const departingWorkers = agentWorkers.voluntaryDeparting.reduce((s, n) => s + n, 0);
-                                const agentWorkersHere = activeWorkers + onboardingWorkers + departingWorkers;
-                                if (agentWorkersHere <= 0) {
+
+                                if (activeWorkers <= 0) {
                                     continue;
                                 }
                                 const cat = demography[age].employed[edu][skill];
                                 if (cat.total <= 0) {
+                                    console.error('should not happen');
                                     continue;
                                 }
 
-                                creditWageIncome(bank, cat, perWorkerBonus, agentWorkersHere);
+                                totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
                             }
                         }
                     }
+
+                    if (Math.abs(totalCredit - excessCash) / excessCash > 1e-6) {
+                        console.error(
+                            `[automaticWageAdjustment] profit-sharing accounting mismatch: ` +
+                                `excessCash=${excessCash.toFixed(4)}, ` +
+                                `totalCredit=${totalCredit.toFixed(4)}, ` +
+                                `diff=${(totalCredit - excessCash).toFixed(6)}`,
+                        );
+                    }
                 }
 
-                assets.monthAcc.profitShareBonuses += excessCash;
-                assets.deposits -= excessCash;
+                assets.monthAcc.profitShareBonuses += totalCredit;
+                assets.deposits -= totalCredit;
             }
         }
     }

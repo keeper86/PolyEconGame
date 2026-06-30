@@ -134,7 +134,13 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                             cat.onboarding[2] +
                             cat.voluntaryDeparting[0] +
                             cat.voluntaryDeparting[1] +
-                            cat.voluntaryDeparting[2];
+                            cat.voluntaryDeparting[2] +
+                            cat.departingFired[0] +
+                            cat.departingFired[1] +
+                            cat.departingFired[2] +
+                            cat.departingRetired[0] +
+                            cat.departingRetired[1] +
+                            cat.departingRetired[2];
                         if (agentWorkersHere <= 0) {
                             continue;
                         }

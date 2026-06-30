@@ -58,6 +58,30 @@ export function getAllAgentsSync(): { tick: number; agents: Agent[] } {
     return { tick: cache.tick, agents: cache.agents };
 }
 
+export function getForexMarketMakersSync(): Agent[] {
+    const cache = getCache();
+    if (!cache) {
+        return [];
+    }
+    return cache.forexMarketMakers;
+}
+
+export function getShipbuilderAgentsSync(): Agent[] {
+    const cache = getCache();
+    if (!cache) {
+        return [];
+    }
+    return cache.shipbuilderAgents;
+}
+
+export function getArbitrageTradersSync(): Agent[] {
+    const cache = getCache();
+    if (!cache) {
+        return [];
+    }
+    return cache.arbitrageTraders;
+}
+
 export function getLoanConditionsSync(
     agentId: string,
     planetId: string,

@@ -1,8 +1,7 @@
 import { FOREX_MM_RETAIN_RATIO, FOREX_MM_TARGET_DEPOSIT } from '../constants';
+import type { Loan } from '../financial/loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
-import type { Loan } from '../financial/loanTypes';
-import { ROLLOVER_FEE_RATE } from '../financial/financialTick';
 
 function enforceForexMMLoanMaturities(gameState: GameState): void {
     for (const mm of gameState.forexMarketMakers.values()) {
@@ -38,7 +37,7 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             }
 
             if (shortfall > 0) {
-                const fee = Math.round(shortfall * ROLLOVER_FEE_RATE);
+                const fee = 0;
                 const rolloverPrincipal = shortfall + fee;
 
                 grantLoan(assets, planet.bank, rolloverPrincipal, 'forexWorkingCapital', gameState.tick);
