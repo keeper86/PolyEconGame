@@ -124,49 +124,6 @@ export default function PlanetAgentsLeaderboardPage() {
                     ))}
                 </TableBody>
             </Table>
-
-            {data?.diagnostic && (
-                <div className='mt-4 text-xs text-muted-foreground space-y-0.5 border-t pt-2'>
-                    <div className='font-medium'>Monetary Conservation Check</div>
-                    <div>
-                        Σ(deposits):{' '}
-                        <span className='tabular-nums'>{data.diagnostic.sumPerPlanetDeposits.toFixed(2)}</span>
-                    </div>
-                    <div>
-                        Σ(loans): <span className='tabular-nums'>{data.diagnostic.sumPerPlanetLoans.toFixed(2)}</span>
-                    </div>
-                    <div>
-                        Σ(depositHold):{' '}
-                        <span className='tabular-nums'>{data.diagnostic.sumPerPlanetDepositHold.toFixed(2)}</span>
-                    </div>
-                    <div>
-                        householdDeposits:{' '}
-                        <span className='tabular-nums'>{data.diagnostic.householdDeposits.toFixed(2)}</span>
-                    </div>
-                    <div>
-                        effective firms deposits (incl. depositHold):{' '}
-                        <span className='tabular-nums'>
-                            {(data.diagnostic.sumPerPlanetDeposits + data.diagnostic.sumPerPlanetDepositHold).toFixed(
-                                2,
-                            )}
-                        </span>
-                    </div>
-                    <div>
-                        residual (householdDeposits + effectiveDeposits - loans, should be ~0):{' '}
-                        <span
-                            className={`tabular-nums ${
-                                Math.abs(data.diagnostic.residual) > 0.01 ? 'text-red-500 font-bold' : ''
-                            }`}
-                        >
-                            {data.diagnostic.residual.toFixed(4)} (
-                            {data.diagnostic.sumPerPlanetLoans > 0
-                                ? (data.diagnostic.residual / data.diagnostic.sumPerPlanetLoans).toFixed(2)
-                                : '0.00'}
-                            )
-                        </span>
-                    </div>
-                </div>
-            )}
         </Page>
     );
 }

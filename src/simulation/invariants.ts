@@ -105,21 +105,38 @@ export function checkMonetaryConservation(
             totalDepositHold += assets.depositHold ?? 0;
         }
 
+        // Shipbuilder and arbitrage trader agents exist in both gameState.agents and their
+        // dedicated maps. Track seen IDs to avoid double-counting.
+        const seenIds = new Set<string>();
+
         for (const agent of agents.values()) {
+            seenIds.add(agent.id);
             addFirm(agent.assets[planetId]);
         }
         if (forexMarketMakers) {
             for (const mm of forexMarketMakers.values()) {
+                if (seenIds.has(mm.id)) {
+                    continue;
+                }
+                seenIds.add(mm.id);
                 addFirm(mm.assets[planetId]);
             }
         }
         if (shipbuilderAgents) {
             for (const sb of shipbuilderAgents.values()) {
+                if (seenIds.has(sb.id)) {
+                    continue;
+                }
+                seenIds.add(sb.id);
                 addFirm(sb.assets[planetId]);
             }
         }
         if (arbitrageTraders) {
             for (const at of arbitrageTraders.values()) {
+                if (seenIds.has(at.id)) {
+                    continue;
+                }
+                seenIds.add(at.id);
                 addFirm(at.assets[planetId]);
             }
         }
