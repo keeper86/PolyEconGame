@@ -17,7 +17,6 @@ import {
     getAgentHistoryAggregated as dbGetAgentHistory,
     getPlanetBufferHistory as dbGetPlanetBufferHistory,
     getPlanetEconomyHistoryAggregated as dbGetPlanetEconomyHistory,
-    getPlanetPopulationHistoryAggregated as dbGetPlanetPopulationHistory,
     getProductPriceHistory as dbGetProductPriceHistory,
 } from '../../simulation/gameSnapshotRepository';
 import type { Agent, Planet } from '../../simulation/planet/planet';
@@ -84,6 +83,25 @@ export const getCurrentTick = () =>
         .output(z.object({ tick: z.number() }))
         .query(async () => {
             return { tick: getLatestTick() };
+        });
+
+export const getListOfPlanets = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(
+            z.object({
+                tick: z.number(),
+                planets: z.array(
+                    z.object({
+                        planetId: z.string(),
+                        name: z.string(),
+                    }),
+                ),
+            }),
+        )
+        .query(async () => {
+            const { tick, planets } = getAllPlanetsSync();
+            return { tick, planets: planets.map((p) => ({ planetId: p.id, name: p.name })) };
         });
 
 const resourceSummarySchema = z.object({
@@ -445,41 +463,6 @@ export const getAgentPlanetDetail = () =>
                     assets,
                     allPlanetDeposits,
                 },
-            };
-        });
-
-export const getPlanetPopulationHistory = () =>
-    protectedProcedure
-        .input(
-            z.object({
-                planetId: z.string(),
-                granularity: z.enum(['monthly', 'yearly', 'decade']).default('monthly'),
-                limit: z.number().int().min(1).max(1000).default(100),
-            }),
-        )
-        .output(
-            z.object({
-                planetId: z.string(),
-                granularity: z.enum(['monthly', 'yearly', 'decade']),
-                history: z.array(
-                    z.object({
-                        bucket: z.number(),
-                        avgPopulation: z.number(),
-                    }),
-                ),
-            }),
-        )
-        .query(async ({ input }) => {
-            const rows = await dbGetPlanetPopulationHistory(db, input.planetId, input.granularity, input.limit);
-            return {
-                planetId: input.planetId,
-                granularity: input.granularity,
-                history: rows
-                    .map((r) => ({
-                        bucket: Number(r.bucket),
-                        avgPopulation: r.avg_population ?? 0,
-                    }))
-                    .sort((a, b) => a.bucket - b.bucket),
             };
         });
 

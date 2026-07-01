@@ -62,7 +62,7 @@ export const getCaller = (id: string = testUsers.testUser.user_id) => {
         session: {
             type: 'next-auth',
             accessToken: 'test-token',
-            user: { id, email: `${id}@example.com` },
+            user: { id, email: `${id}@example.com`, agentId: null, planetId: null },
             expires: new Date(Date.now() + 3600_000).toISOString(),
         },
     });

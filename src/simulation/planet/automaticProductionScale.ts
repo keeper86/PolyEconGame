@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, TICKS_PER_MONTH } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
@@ -16,13 +16,13 @@ export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.1;
+export const PID_KP = 0.05;
 
 export const PID_KI = 0.001;
 
-export const PID_KD = 0.05;
-export const PID_IMAX = 0.05;
-export const PID_OUT_MAX = 0.5;
+export const PID_KD = 0.025;
+export const PID_IMAX = 0.025;
+export const PID_OUT_MAX = 0.05;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
@@ -44,7 +44,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
     let noData = 0;
-    let depreciationCosts = 0;
 
     const storage = assets.storageFacility;
 
@@ -115,13 +114,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 OVERFILL_PENALTY * overfilled +
                 WEIGHT_BALANCE * balance);
         totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
-
-        if (output.resource.form === 'services') {
-            depreciationCosts +=
-                (assets.lastMonthAcc.depreciatedServices[output.resource.name]
-                    ? assets.lastMonthAcc.depreciatedServices[output.resource.name].value
-                    : 0) / TICKS_PER_MONTH;
-        }
     }
 
     if (totalWeight === 0) {
@@ -131,15 +123,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         return 0;
     }
 
-    let profitSignal: number | undefined = undefined;
-    const costs = lastTickResults.inputCosts + lastTickResults.wageCosts;
-    const effectiveCosts = costs + depreciationCosts;
-    const hasOperated = costs > 0 || lastTickResults.revenue > 0;
-    if (hasOperated && isFinite(costs)) {
-        const margin = effectiveCosts > 0 ? (lastTickResults.revenue - effectiveCosts) / effectiveCosts : 1;
-        profitSignal = Math.max(-1, Math.min(1, margin));
-    }
-
     const maxOutputSignal = weightedOutputSignalSum / totalWeight;
 
     assert(
@@ -147,7 +130,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
     );
 
-    let signal = profitSignal !== undefined ? (maxOutputSignal + profitSignal) / 2 : maxOutputSignal;
+    let signal = maxOutputSignal;
     if (signal > 0) {
         const eff = Math.max(0.1, lastTickResults.overallEfficiency);
         signal = eff * signal;

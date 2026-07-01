@@ -41,11 +41,11 @@ import {
     getCurrentTick,
     getLatestAgents,
     getLatestPlanetSummaries,
+    getListOfPlanets,
     getLoanConditions,
     getPlanetBufferHistory,
     getPlanetDetail,
     getPlanetEconomyHistory,
-    getPlanetPopulationHistory,
     getProductPriceHistory,
     getTickerEvents,
 } from './controller/simulation';
@@ -79,6 +79,7 @@ import { trpcRoot } from './trpcRoot';
 
 const simulationRouter = trpcRoot.router({
     getCurrentTick: getCurrentTick(),
+    getListOfPlanets: getListOfPlanets(),
     getLatestPlanetSummaries: getLatestPlanetSummaries(),
     getLatestAgents: getLatestAgents(),
     getAgentListSummaries: getAgentListSummaries(),
@@ -88,7 +89,6 @@ const simulationRouter = trpcRoot.router({
     getPlanetDetail: getPlanetDetail(),
     getPlanetEconomyHistory: getPlanetEconomyHistory(),
     getPlanetBufferHistory: getPlanetBufferHistory(),
-    getPlanetPopulationHistory: getPlanetPopulationHistory(),
     getProductPriceHistory: getProductPriceHistory(),
     getAgentHistory: getAgentHistory(),
     getAgentFinancialHistory: getAgentFinancialHistory(),

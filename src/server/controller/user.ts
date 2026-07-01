@@ -1,3 +1,4 @@
+import { revalidateTag } from 'next/cache';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import {
     CURRENCY_RESOURCE_PREFIX,
@@ -240,7 +241,7 @@ export const createAgent = () => {
                 planetId: z.string().min(1),
             }),
         )
-        .output(z.object({ agentId: z.string() }))
+        .output(z.object({ agentId: z.string(), planetId: z.string() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -282,9 +283,11 @@ export const createAgent = () => {
 
             await db('user_data').where({ user_id: userId }).update({ agent_id: createdId, planet_id: input.planetId });
 
+            revalidateTag('session');
+
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 
-            return { agentId: createdId };
+            return { agentId: createdId, planetId: input.planetId };
         });
 };
 

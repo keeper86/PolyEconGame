@@ -87,7 +87,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     seedRng(42);
 
     let state: GameState;
-    let currentSnapshot: GameState;
     let recovered = false;
 
     try {
@@ -96,7 +95,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const latestRow = await getLatestGameSnapshot(db);
             if (latestRow) {
                 state = deserializeSnapshot(latestRow.snapshot_data);
-                currentSnapshot = state;
                 recovered = true;
                 console.log(
                     `[worker] Recovered from cold snapshot at tick ${state.tick} ` +
@@ -110,7 +108,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
     if (!recovered) {
         state = createInitialGameState();
-        currentSnapshot = state;
 
         if (snapshotDb) {
             const db = snapshotDb;
@@ -563,18 +560,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     .sort((a, b) => b.freeCapacity - a.freeCapacity);
             }
 
-            currentSnapshot = state;
-
             processingTick = false;
 
-            if (currentSnapshot.tick % 30 === 0) {
-                const tickAtFlush = currentSnapshot.tick;
+            if (state.tick % 30 === 0) {
+                const tickAtFlush = state.tick;
 
                 void Promise.all([
-                    flushProductPrices(currentSnapshot, tickAtFlush),
-                    flushPopulationHistory(currentSnapshot, tickAtFlush),
-                    flushAgentMonthlyHistory(currentSnapshot, tickAtFlush),
-                    flushPlanetEconomyHistory(currentSnapshot, tickAtFlush),
+                    flushProductPrices(state, tickAtFlush),
+                    flushPopulationHistory(state, tickAtFlush),
+                    flushAgentMonthlyHistory(state, tickAtFlush),
+                    flushPlanetEconomyHistory(state, tickAtFlush),
                 ])
                     .then(() => {
                         if (snapshotDb) {
@@ -586,29 +581,24 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     );
             }
 
-            if (currentSnapshot.tick % 360 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(snapshotDb, currentSnapshot.tick + TICKS_PER_YEAR, 'yearly').catch(
-                    (err) =>
-                        console.error(`[worker] Failed to refresh yearly CAGGs at tick ${currentSnapshot.tick}:`, err),
+            if (state.tick % 360 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR, 'yearly').catch((err) =>
+                    console.error(`[worker] Failed to refresh yearly CAGGs at tick ${state.tick}:`, err),
                 );
             }
-            if (currentSnapshot.tick % 3600 === 0 && snapshotDb) {
-                void refreshContinuousAggregates(
-                    snapshotDb,
-                    currentSnapshot.tick + TICKS_PER_YEAR * 10,
-                    'decade',
-                ).catch((err) =>
-                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${currentSnapshot.tick}:`, err),
+            if (state.tick % 3600 === 0 && snapshotDb) {
+                void refreshContinuousAggregates(snapshotDb, state.tick + TICKS_PER_YEAR * 10, 'decade').catch((err) =>
+                    console.error(`[worker] Failed to refresh decade CAGGs at tick ${state.tick}:`, err),
                 );
             }
 
-            if (currentSnapshot.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
-                spawnSnapshotTask(currentSnapshot, currentSnapshot.tick);
+            if (state.tick % SNAPSHOT_INTERVAL_TICKS === 1) {
+                spawnSnapshotTask(state, state.tick);
             }
 
             const elapsedMs = Date.now() - start;
-            if (currentSnapshot.tick % 17 === 0) {
-                console.log(`[worker] Tick ${currentSnapshot.tick} completed in ${elapsedMs}ms`);
+            if (state.tick % 17 === 0) {
+                console.log(`[worker] Tick ${state.tick} completed in ${elapsedMs}ms`);
             }
 
             // Push the game state wire format directly to the main thread via structured clone,
@@ -616,7 +606,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             pendingTickMsg = {
                 type: 'snapshot',
                 tick: state.tick,
-                data: gameStateToWire(currentSnapshot),
+                data: gameStateToWire(state),
                 elapsedMs,
                 tickerEvents: state.tickerEvents,
             };
@@ -627,7 +617,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     function handleQuery(msg: WorkerQueryMessage): void {
         const { requestId } = msg;
         try {
-            const snap = currentSnapshot;
+            const snap = state;
             let data: unknown;
 
             switch (msg.type) {

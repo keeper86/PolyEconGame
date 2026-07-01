@@ -1,5 +1,3 @@
-import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 
 export type UseAgentIdResult = {
@@ -9,16 +7,11 @@ export type UseAgentIdResult = {
 };
 
 export function useAgentId(): UseAgentIdResult {
-    const { status } = useSession();
-    const trpc = useTRPC();
-
-    const { data, isLoading } = useQuery(
-        trpc.getUser.queryOptions({ userId: undefined }, { enabled: status === 'authenticated' }),
-    );
+    const { data: session, status } = useSession();
 
     return {
-        agentId: data?.agentId ?? null,
-        planetId: data?.planetId ?? null,
-        isLoading: status === 'loading' || (status === 'authenticated' && isLoading),
+        agentId: session?.user?.agentId ?? null,
+        planetId: session?.user?.planetId ?? null,
+        isLoading: status === 'loading',
     };
 }

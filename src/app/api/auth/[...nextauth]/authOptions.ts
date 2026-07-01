@@ -47,7 +47,19 @@ export const authOptions: AuthOptions = {
             return true;
         },
         async jwt(thing) {
-            const { token, account, profile } = thing;
+            const { token, account, profile, trigger, session: newSession } = thing;
+
+            // When the client calls updateSession(), persist the new values into the JWT.
+            if (trigger === 'update' && newSession) {
+                if (newSession.agentId !== undefined) {
+                    token.agentId = newSession.agentId;
+                }
+                if (newSession.planetId !== undefined) {
+                    token.planetId = newSession.planetId;
+                }
+                // Add other fields here if they should also be updateable from the client
+            }
+
             if (account) {
                 token.accessToken = account.access_token;
                 token.idToken = account.id_token;
@@ -61,6 +73,8 @@ export const authOptions: AuthOptions = {
                             token.displayName = row.display_name;
                             token.email = row.email;
                             token.hasAssessmentPublished = row.has_assessment_published;
+                            token.agentId = row.agent_id ?? null;
+                            token.planetId = row.planet_id ?? null;
                         } else {
                             logger.debug(
                                 { component: 'auth-jwt' },
@@ -86,6 +100,8 @@ export const authOptions: AuthOptions = {
                     email: token.email ?? '',
                     displayName: token.displayName ?? undefined,
                     hasAssessmentPublished: token.hasAssessmentPublished ?? false,
+                    agentId: token.agentId ?? null,
+                    planetId: token.planetId ?? null,
                 };
             } else {
                 logger.debug({ component: 'auth-session' }, 'No userId present on token; skipping user enrichment');

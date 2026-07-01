@@ -1,7 +1,6 @@
+import { useAgentId } from '@/hooks/useAgentId';
 import { usePlanetId } from '@/hooks/usePlanetId';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
-import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -9,16 +8,11 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '../
 
 export function CompanyNavEntry() {
     const { status } = useSession();
-    const trpc = useTRPC();
     const pathname = usePathname();
     const activePlanetId = usePlanetId();
     const { isMobile, setOpenMobile } = useSidebar();
 
-    const userQuery = useQuery(
-        trpc.getUser.queryOptions({ userId: undefined }, { enabled: status === 'authenticated' }),
-    );
-
-    const agentId = userQuery.data?.agentId;
+    const { agentId } = useAgentId();
 
     const loggedIn = status === 'authenticated';
 

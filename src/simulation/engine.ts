@@ -7,7 +7,7 @@ import { governmentTick } from './agents/governmentAgent';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
-import { checkWealthBankConsistency } from './invariants';
+import { checkMonetaryConservation, checkWealthBankConsistency } from './invariants';
 import { automaticPricing } from './market/automaticPricing';
 import { forexTick } from './market/forexTick';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
@@ -198,6 +198,20 @@ export function advanceTick(gameState: GameState) {
                     wealthBankIssues,
                 );
             }
+            const monetaryIssues = checkMonetaryConservation(
+                gameState.agents,
+                planetMap,
+                0.01,
+                gameState.forexMarketMakers,
+                gameState.shipbuilderAgents,
+                gameState.arbitrageTraders,
+            );
+            if (monetaryIssues.length > 0) {
+                console.error(
+                    `Monetary conservation violated on planet ${planet.name} at end of tick ${gameState.tick}:`,
+                    monetaryIssues,
+                );
+            }
         }
     });
 
@@ -232,6 +246,30 @@ export function advanceTick(gameState: GameState) {
 
     if (gameState.tickerEvents.length > MAX_TICKER_EVENTS) {
         gameState.tickerEvents = gameState.tickerEvents.slice(-MAX_TICKER_EVENTS);
+    }
+
+    // ── Post-global invariants check ──
+    // The per-planet loop above checks invariants, but the global phases (forex, ships, arbitrage)
+    // can move money between planets and agent types. We need a second check here to catch leaks
+    // introduced by those phases.
+    if (process.env.SIM_DEBUG) {
+        for (const planet of gameState.planets.values()) {
+            const planetMap = new Map([[planet.id, planet]]);
+            const monetaryIssues = checkMonetaryConservation(
+                gameState.agents,
+                planetMap,
+                0.01,
+                gameState.forexMarketMakers,
+                gameState.shipbuilderAgents,
+                gameState.arbitrageTraders,
+            );
+            if (monetaryIssues.length > 0) {
+                console.error(
+                    `Monetary conservation violated on planet ${planet.name} at end of tick ${gameState.tick} (post-global):`,
+                    monetaryIssues,
+                );
+            }
+        }
     }
 
     // ── Log profile every REPORT_INTERVAL ticks ──

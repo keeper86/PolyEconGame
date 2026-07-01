@@ -11,10 +11,11 @@ import { PLANET_LARGE_IMAGES } from '@/lib/planetAssets';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Page } from './Page';
@@ -54,6 +55,8 @@ export function FoundingPage() {
     const trpc = useTRPC();
     const router = useRouter();
     const { setTourActive } = useTour();
+    const { update: updateSession } = useSession();
+    const queryClient = useQueryClient();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
@@ -100,10 +103,13 @@ export function FoundingPage() {
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
-            onSuccess: (data) => {
+            onSuccess: async (data) => {
                 setFoundedAtTick(tickRef.current);
                 setCreatedAgentId(data.agentId);
                 toast.success('Company registered');
+                // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
+                await updateSession({ agentId: data.agentId, planetId: data.planetId });
+                void queryClient.invalidateQueries(trpc.getUser.queryFilter());
             },
             onError: (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'An unexpected error occurred';

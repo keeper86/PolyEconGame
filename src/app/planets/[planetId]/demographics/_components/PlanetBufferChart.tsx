@@ -1,8 +1,6 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
-import { useTRPC } from '@/lib/trpc';
 import { TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
 import { SERVICE_DEFINITIONS } from '@/simulation/market/serviceDefinitions';
 import React, { useMemo } from 'react';
@@ -372,41 +370,23 @@ function BufferAreaChart({
 }
 
 type Props = {
-    planetId: string;
+    monthlyPoints: RawPoint[];
+    yearlyPoints: RawPoint[];
+    decadePoints: RawPoint[];
     currentTick: number;
     granularity: 'monthly' | 'yearly' | 'decade';
+    isLoading?: boolean;
 };
 
-export default function PlanetBufferChart({ planetId, currentTick, granularity }: Props): React.ReactElement {
-    const trpc = useTRPC();
-
-    const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
-        trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'monthly', limit: 13 },
-            { enabled: granularity === 'monthly' },
-        ),
-    );
-    const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
-        trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'yearly', limit: 11 },
-            { enabled: granularity === 'yearly' },
-        ),
-    );
-    const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
-        trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'decade' },
-            { enabled: granularity === 'decade' },
-        ),
-    );
-
-    const isLoading =
-        (granularity === 'monthly' && (loadingMonthly || !monthly)) ||
-        (granularity === 'yearly' && (loadingYearly || !yearly)) ||
-        (granularity === 'decade' && (loadingDecade || !decade));
-
-    const monthlyPoints = useMemo(() => monthly?.history ?? [], [monthly]);
-    const yearlyPoints = useMemo(() => yearly?.history ?? [], [yearly]);
-    const decadePoints = useMemo(() => decade?.history ?? [], [decade]);
+export default function PlanetBufferChart({
+    monthlyPoints,
+    yearlyPoints,
+    decadePoints,
+    currentTick,
+    granularity,
+    isLoading: externalLoading,
+}: Props): React.ReactElement {
+    const isLoading = externalLoading ?? false;
 
     const monthlyChartData = useMemo(
         () => computeMonthlyData(monthlyPoints, currentTick),

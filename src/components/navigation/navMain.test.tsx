@@ -11,7 +11,7 @@ import { NavSecondary } from './navSecondary';
 const MOCK_SESSION: Session = {
     type: 'next-auth',
     accessToken: 'mock-access-token',
-    user: { id: 'test-user', name: 'Test User', email: 'test@example.com' },
+    user: { id: 'test-user', name: 'Test User', email: 'test@example.com', agentId: null, planetId: null },
     expires: new Date(Date.now() + 1000 * 60 * 60).toISOString(),
 };
 
