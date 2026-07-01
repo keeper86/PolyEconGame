@@ -109,7 +109,7 @@ export function FoundingPage() {
                 toast.success('Company registered');
                 // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
                 await updateSession({ agentId: data.agentId, planetId: data.planetId });
-                void queryClient.invalidateQueries({ queryKey: ['simulation', 'getUser'] });
+                void queryClient.invalidateQueries(trpc.getUser.queryFilter());
             },
             onError: (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'An unexpected error occurred';

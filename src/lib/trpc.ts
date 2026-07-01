@@ -5,20 +5,9 @@ import type { TRPCClientError } from '@trpc/client';
 import { createTRPCProxyClient, httpBatchLink, type TRPCLink } from '@trpc/client';
 import { observable } from '@trpc/server/observable';
 
-let trpcOperationCounter = 0;
-
 const instrumentedLink: TRPCLink<AppRouter> = () => {
     return ({ next, op }) => {
         return observable((observer) => {
-            const callId = ++trpcOperationCounter;
-            const path = op.path as string;
-
-            console.log(
-                `[tRPC Op #${callId}] ${op.type} ${path} — input:`,
-                op.input,
-                `— stack: ${new Error().stack?.split('\n').slice(2, 5).join(' → ')}`,
-            );
-
             const subscription = next(op).subscribe({
                 next: (value) => observer.next?.(value),
                 error: (err: TRPCClientError<AppRouter>) => {

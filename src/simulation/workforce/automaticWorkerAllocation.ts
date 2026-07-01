@@ -175,42 +175,34 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const excessCash = netBalance - reservationCapital;
 
             if (excessCash > 0) {
-                // Distribute directly to active workers
-                const totalWorkersForEdu: Record<EducationLevelType, number> = {
-                    none: 0,
-                    primary: 0,
-                    secondary: 0,
-                    tertiary: 0,
-                };
-
                 let totalWorkers = 0;
                 for (const edu of educationLevelKeys) {
                     for (const skill of SKILL) {
-                        const activeHere = totalActiveForEduSkill(workforce, edu, skill);
-                        totalWorkersForEdu[edu] += activeHere;
-                        totalWorkers += activeHere;
+                        totalWorkers += totalActiveForEduSkill(workforce, edu, skill);
                     }
                 }
 
                 let totalCredit = 0;
                 if (totalWorkers > 0) {
                     const perWorkerBonus = excessCash / totalWorkers;
-                    for (let age = 0; age < demography.length; age++) {
+                    for (let age = 0; age < workforce.length; age++) {
+                        const ageCohort = workforce[age];
+                        if (!ageCohort) {
+                            continue;
+                        }
                         for (const edu of educationLevelKeys) {
                             for (const skill of SKILL) {
-                                // TODO: turn around, iterate workforce not general population
-                                const agentWorkers = workforce[age]?.[edu]?.[skill];
+                                const agentWorkers = ageCohort[edu]?.[skill];
                                 if (!agentWorkers) {
                                     continue;
                                 }
                                 const activeWorkers = agentWorkers.active;
-
                                 if (activeWorkers <= 0) {
                                     continue;
                                 }
                                 const cat = demography[age].employed[edu][skill];
                                 if (cat.total <= 0) {
-                                    console.error('should not happen');
+                                    // cat should be populated if agent has active workers there
                                     continue;
                                 }
 
