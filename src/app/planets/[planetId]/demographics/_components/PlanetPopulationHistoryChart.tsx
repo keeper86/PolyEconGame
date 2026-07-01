@@ -12,7 +12,23 @@ import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
 
-type RawPoint = { bucket: number; avgPopulation: number };
+type BufferRawPoint = {
+    bucket: number;
+    avgPopulation: number;
+    avgGroceryBuffer: number;
+    avgHealthcareBuffer: number;
+    avgLogisticsBuffer: number;
+    avgEducationBuffer: number;
+    avgRetailBuffer: number;
+    avgConstructionBuffer: number;
+    avgMaintenanceBuffer: number;
+    avgAdministrationBuffer: number;
+};
+
+type PopulationRawPoint = {
+    bucket: number;
+    avgPopulation: number;
+};
 
 type ChartPoint = {
     tick: number;
@@ -44,7 +60,7 @@ function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'a
     return [Math.max(0, lo - pad), hi + pad];
 }
 
-function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
+function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): ChartPoint[] {
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
     if (pts.length === 0 && live.tick === 0) {
         return [];
@@ -105,7 +121,7 @@ function computeMonthlyData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
     return result;
 }
 
-function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData): ChartPoint[] {
+function computeMonthlyGhostData(allPts: PopulationRawPoint[], live: LiveData): ChartPoint[] {
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
     const { monthIndex: liveMi, day: liveDay, year: liveYear } = tickToDate(live.tick);
     const fractionalThreshold = liveMi + Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
@@ -159,7 +175,7 @@ function EmptyChart() {
     );
 }
 
-function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live?: LiveData }) {
+function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoint[]; live?: LiveData }) {
     const data = useMemo(
         () => computeMonthlyData(monthlyPoints, live ?? { tick: 0, population: 0 }),
         [monthlyPoints, live],
@@ -296,7 +312,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: RawPoint[]; live
     );
 }
 
-function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
+function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
             [...yearlyPoints]
@@ -381,7 +397,7 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: RawPoint[] }) {
     );
 }
 
-function DecadesChart({ decadePoints }: { decadePoints: RawPoint[] }) {
+function DecadesChart({ decadePoints }: { decadePoints: PopulationRawPoint[] }) {
     const data = useMemo(
         (): ChartPoint[] =>
             [...decadePoints]
@@ -463,20 +479,21 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
+    // Query buffer history (includes population) once instead of separate population queries
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
-        trpc.simulation.getPlanetPopulationHistory.queryOptions(
+        trpc.simulation.getPlanetBufferHistory.queryOptions(
             { planetId, granularity: 'monthly', limit: 13 },
             { enabled: granularity === 'monthly' },
         ),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
-        trpc.simulation.getPlanetPopulationHistory.queryOptions(
+        trpc.simulation.getPlanetBufferHistory.queryOptions(
             { planetId, granularity: 'yearly', limit: 11 },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
-        trpc.simulation.getPlanetPopulationHistory.queryOptions(
+        trpc.simulation.getPlanetBufferHistory.queryOptions(
             { planetId, granularity: 'decade' },
             { enabled: granularity === 'decade' },
         ),
@@ -487,6 +504,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         (granularity === 'yearly' && (loadingYearly || !yearly)) ||
         (granularity === 'decade' && (loadingDecade || !decade));
 
+    // Extract population-only points for the population charts
     const monthlyPoints = useMemo(
         () => (monthly?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
         [monthly],
@@ -499,6 +517,11 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
         () => (decade?.history ?? []).map((r) => ({ bucket: r.bucket, avgPopulation: r.avgPopulation })),
         [decade],
     );
+
+    // Full buffer data for the child chart
+    const bufferMonthlyPoints = useMemo(() => (monthly?.history ?? []) as BufferRawPoint[], [monthly]);
+    const bufferYearlyPoints = useMemo(() => (yearly?.history ?? []) as BufferRawPoint[], [yearly]);
+    const bufferDecadePoints = useMemo(() => (decade?.history ?? []) as BufferRawPoint[], [decade]);
 
     return (
         <Card>
@@ -523,7 +546,14 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     <div className='my-3'>
                         <span className='text-md text-slate-400'>Service Buffers</span>
                     </div>
-                    <PlanetBufferChart planetId={planetId} currentTick={currentTick} granularity={granularity} />
+                    <PlanetBufferChart
+                        monthlyPoints={bufferMonthlyPoints}
+                        yearlyPoints={bufferYearlyPoints}
+                        decadePoints={bufferDecadePoints}
+                        currentTick={currentTick}
+                        granularity={granularity}
+                        isLoading={isLoading}
+                    />
                 </div>
             </CardContent>
         </Card>

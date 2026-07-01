@@ -46,7 +46,6 @@ import {
     getPlanetBufferHistory,
     getPlanetDetail,
     getPlanetEconomyHistory,
-    getPlanetPopulationHistory,
     getProductPriceHistory,
     getTickerEvents,
 } from './controller/simulation';
@@ -90,7 +89,6 @@ const simulationRouter = trpcRoot.router({
     getPlanetDetail: getPlanetDetail(),
     getPlanetEconomyHistory: getPlanetEconomyHistory(),
     getPlanetBufferHistory: getPlanetBufferHistory(),
-    getPlanetPopulationHistory: getPlanetPopulationHistory(),
     getProductPriceHistory: getProductPriceHistory(),
     getAgentHistory: getAgentHistory(),
     getAgentFinancialHistory: getAgentFinancialHistory(),
