@@ -3,6 +3,7 @@
 import { TourProvider } from '@/components/tour/TourContext';
 import { trpcClient, TRPCProvider } from '@/lib/trpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { SimulationTickPoller } from '@/hooks/useSimulationQuery';
 import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
@@ -14,6 +15,8 @@ function makeQueryClient() {
         defaultOptions: {
             queries: {
                 staleTime: 60 * 1000,
+                // Important: keep deduplication working even with placeholderData
+                retry: 2,
             },
         },
     });
@@ -57,6 +60,7 @@ export default function AppProviders({ children, session }: { children: React.Re
                 <AttachLoggerToQueryClient queryClient={queryClient} />
                 <SimulationOfflineBanner />
                 <SessionProvider session={session} refetchOnWindowFocus={false} refetchInterval={5 * 60}>
+                    <SimulationTickPoller />
                     <TourProvider>{children}</TourProvider>
                 </SessionProvider>
             </TRPCProvider>

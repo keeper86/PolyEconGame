@@ -78,14 +78,14 @@ export default function MarketPanel({
         trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId: planetId, average: false }),
     );
 
-    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const { data: planetNameData } = useSimulationQuery(trpc.simulation.getListOfPlanets.queryOptions());
 
     const availableCurrencies = useMemo(
         () =>
-            (planetSummariesData?.planets ?? [])
+            (planetNameData?.planets ?? [])
                 .filter((p) => p.planetId !== planetId)
                 .map((p) => ({ name: getCurrencyResourceName(p.planetId) })),
-        [planetSummariesData, planetId],
+        [planetNameData, planetId],
     );
     const overviewRows: Record<string, MarketOverviewRow> = useMemo(() => {
         const map: Record<string, MarketOverviewRow> = {};

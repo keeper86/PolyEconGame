@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import UserAvatar from '@/components/client/UserAvatar';
+import { useTRPC } from '@/lib/trpc';
+import { useQuery } from '@tanstack/react-query';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
@@ -22,6 +24,14 @@ export function NavUser() {
     const { isMobile } = useSidebar();
     const { data: session, status } = useSession();
     const loggedIn = status === 'authenticated';
+    const trpc = useTRPC();
+
+    const { data: userData } = useQuery({
+        ...trpc.getUser.queryOptions({ userId: undefined }),
+        enabled: loggedIn,
+    });
+
+    const avatarSrc = userData?.avatar ? `data:image/png;base64,${userData.avatar}` : undefined;
 
     const callbackUrl = typeof window !== 'undefined' ? window.location.href : undefined;
 
@@ -56,7 +66,7 @@ export function NavUser() {
                             size='lg'
                             className='data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground'
                         >
-                            <UserAvatar />
+                            <UserAvatar src={avatarSrc} />
                             <div className='grid flex-1 text-left text-sm leading-tight'>
                                 <span className='truncate font-semibold'>{user?.displayName}</span>
                                 {user?.email && <span className='truncate text-xs'>{user?.email}</span>}
@@ -72,7 +82,7 @@ export function NavUser() {
                     >
                         <DropdownMenuLabel className='p-0 font-normal'>
                             <div className='flex items-center gap-2 py-1.5 text-left text-sm'>
-                                <UserAvatar />
+                                <UserAvatar src={avatarSrc} />
                                 <div className='grid flex-1 text-left text-sm leading-tight'>
                                     <span className='truncate font-semibold'>{user?.displayName}</span>
                                     {user?.email && <span className='truncate text-xs'>{user?.email}</span>}

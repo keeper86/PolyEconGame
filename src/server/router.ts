@@ -41,6 +41,7 @@ import {
     getCurrentTick,
     getLatestAgents,
     getLatestPlanetSummaries,
+    getListOfPlanets,
     getLoanConditions,
     getPlanetBufferHistory,
     getPlanetDetail,
@@ -79,6 +80,7 @@ import { trpcRoot } from './trpcRoot';
 
 const simulationRouter = trpcRoot.router({
     getCurrentTick: getCurrentTick(),
+    getListOfPlanets: getListOfPlanets(),
     getLatestPlanetSummaries: getLatestPlanetSummaries(),
     getLatestAgents: getLatestAgents(),
     getAgentListSummaries: getAgentListSummaries(),

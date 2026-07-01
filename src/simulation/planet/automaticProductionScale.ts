@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, TICKS_PER_MONTH } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
@@ -44,7 +44,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
     let noData = 0;
-    let depreciationCosts = 0;
 
     const storage = assets.storageFacility;
 
@@ -115,13 +114,6 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 OVERFILL_PENALTY * overfilled +
                 WEIGHT_BALANCE * balance);
         totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
-
-        if (output.resource.form === 'services') {
-            depreciationCosts +=
-                (assets.lastMonthAcc.depreciatedServices[output.resource.name]
-                    ? assets.lastMonthAcc.depreciatedServices[output.resource.name].value
-                    : 0) / TICKS_PER_MONTH;
-        }
     }
 
     if (totalWeight === 0) {

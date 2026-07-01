@@ -1,11 +1,8 @@
 import type { GameState, Planet } from '../planet/planet';
 import { AC_ID, buildAlphaCentauri } from './alphaCentauri';
+import { prefillAgentStorageFromFacilities } from './helpers';
 import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
-import { seedForexMarketMakers } from '../agents/forexMarketMaker';
-import { seedShipbuilderAgents } from '../agents/shipbuilder';
-import { seedArbitrageTraderAgents } from '../agents/arbitrageTrader';
-import { prefillAgentStorageFromFacilities } from './helpers';
 
 export {
     createPopulation,

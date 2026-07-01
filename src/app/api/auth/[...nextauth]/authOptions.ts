@@ -47,7 +47,19 @@ export const authOptions: AuthOptions = {
             return true;
         },
         async jwt(thing) {
-            const { token, account, profile } = thing;
+            const { token, account, profile, trigger, session: newSession } = thing;
+
+            // When the client calls updateSession(), persist the new values into the JWT.
+            if (trigger === 'update' && newSession) {
+                if (newSession.agentId !== undefined) {
+                    token.agentId = newSession.agentId;
+                }
+                if (newSession.planetId !== undefined) {
+                    token.planetId = newSession.planetId;
+                }
+                // Add other fields here if they should also be updateable from the client
+            }
+
             if (account) {
                 token.accessToken = account.access_token;
                 token.idToken = account.id_token;

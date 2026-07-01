@@ -1,4 +1,4 @@
-import { trpcClient } from '@/lib/trpc';
+import { useTRPC } from '@/lib/trpc';
 import {
     keepPreviousData,
     useQuery,
@@ -12,17 +12,36 @@ import { useEffect } from 'react';
 export const SIMULATION_MAX_RETRIES = 3;
 
 /**
- * Pushes the current simulation tick and invalidates all simulation queries
- * on tick advance. Shares the query cache with all consumers of this hook,
- * so there's only ever one network request.
+ * Polls the current simulation tick. Returns the tick number or 0 if unknown.
+ * Does NOT trigger query invalidations — that is handled by the single
+ * <SimulationTickPoller /> component rendered once in AppProviders.
  */
 export function useSimulationTick(): number {
     const loggedIn = useSession().status === 'authenticated';
-    const queryClient = useQueryClient();
+    const trpc = useTRPC();
 
     const { data } = useQuery({
-        queryKey: ['simulation', 'currentTick'],
-        queryFn: () => trpcClient.simulation.getCurrentTick.query(),
+        ...trpc.simulation.getCurrentTick.queryOptions(),
+        refetchInterval: 1000,
+        staleTime: Infinity,
+        enabled: loggedIn,
+    });
+
+    return data?.tick ?? 0;
+}
+
+/**
+ * Renders exactly once in the app tree (inside AppProviders).
+ * Listens for tick advances and invalidates all stale simulation queries
+ * except the heartbeat itself.
+ */
+export function SimulationTickPoller() {
+    const loggedIn = useSession().status === 'authenticated';
+    const queryClient = useQueryClient();
+    const trpc = useTRPC();
+
+    const { data } = useQuery({
+        ...trpc.simulation.getCurrentTick.queryOptions(),
         refetchInterval: 1000,
         staleTime: Infinity,
         enabled: loggedIn,
@@ -34,11 +53,16 @@ export function useSimulationTick(): number {
         }
 
         void queryClient.invalidateQueries({
-            predicate: (query) => query.queryKey[0] !== 'simulation' || query.queryKey[1] !== 'currentTick',
+            predicate: (query) => {
+                // tRPC generates nested query keys: [['simulation', 'procedureName'], ...]
+                const path = Array.isArray(query.queryKey[0]) ? query.queryKey[0] : query.queryKey;
+                // Only invalidate simulation queries, but NOT the currentTick heartbeat itself
+                return path[0] === 'simulation' && path[1] !== 'getCurrentTick';
+            },
         });
     }, [data, queryClient]);
 
-    return data?.tick ?? 0;
+    return null;
 }
 
 type SimulationQueryOptions<TData, TError> = Omit<

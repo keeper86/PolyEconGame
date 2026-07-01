@@ -89,6 +89,25 @@ export const getCurrentTick = () =>
             return { tick: getLatestTick() };
         });
 
+export const getListOfPlanets = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(
+            z.object({
+                tick: z.number(),
+                planets: z.array(
+                    z.object({
+                        planetId: z.string(),
+                        name: z.string(),
+                    }),
+                ),
+            }),
+        )
+        .query(async () => {
+            const { tick, planets } = getAllPlanetsSync();
+            return { tick, planets: planets.map((p) => ({ planetId: p.id, name: p.name })) };
+        });
+
 const resourceSummarySchema = z.object({
     name: z.string(),
     freeCapacity: z.number(),

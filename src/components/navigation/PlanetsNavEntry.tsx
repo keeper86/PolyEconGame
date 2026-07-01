@@ -76,7 +76,7 @@ export function PlanetsNavEntry() {
     const { agentId } = useAgentId();
     const hasCompany = loggedIn && !!agentId;
 
-    const { data } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const { data } = useSimulationQuery(trpc.simulation.getListOfPlanets.queryOptions());
     const planets = data?.planets ?? [];
 
     const activePlanet = planets.find((p) => p.planetId === activePlanetId);
