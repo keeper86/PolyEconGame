@@ -21,6 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
 import { useGameConfig } from '@/components/client/GameConfigContext';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility } from '@/simulation/planet/facility';
@@ -115,12 +116,17 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
     const queryClient = useQueryClient();
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
+    const removeOverlay = useRemoveOverlayByFacilityId();
+    const addOverlay = useAddActionOverlay();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
+                // Remove any optimistic build overlay for this facility
+                removeOverlay(agentId, planetId, facility.id);
+                // Add a cancel overlay to hide the facility immediately,
+                // whether it's real or optimistic. The next snapshot will
+                // confirm the cancel and resolveOverlays will GC this.
+                addOverlay({ type: 'facilityCancelled', agentId, planetId, facilityId: facility.id });
             },
         }),
     );

@@ -229,7 +229,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
     }
 
-    const DEBOUNCE_MS = 1000;
+    const DEBOUNCE_MS = 50;
     let lastMessagePost = 0;
     let pendingTickMsg: OutboundMessage | null = null;
     let running = true;

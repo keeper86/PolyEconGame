@@ -10,6 +10,8 @@ import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilit
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { useAddActionOverlay } from '@/hooks/useActionOverlay';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityIORow } from './FacilityIORow';
@@ -40,12 +42,25 @@ function BuildCard({
     const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
     const [previewScale, setPreviewScale] = useState(1);
+    const addOverlay = useAddActionOverlay();
+    const currentTick = useSimulationTick();
 
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+            onSuccess: (result) => {
+                // Push optimistic overlay so the UI shows the facility immediately.
+                // Do NOT invalidate the query here — the overlay *is* the data until the
+                // next snapshot broadcast triggers a natural invalidation via the tick poller.
+                // Skipping the invalidation avoids a "flash of stale content" render cycle
+                // where the old query data renders before the overlay context propagates.
+                addOverlay({
+                    type: 'facilityBuilt',
+                    tickConfirmed: currentTick,
+                    agentId,
+                    planetId,
+                    facilityKey: facility.name,
+                    facilityId: result.facilityId,
+                    targetScale: previewScale,
                 });
                 onBuilt();
             },

@@ -4,6 +4,7 @@ import { TourProvider } from '@/components/tour/TourContext';
 import { trpcClient, TRPCProvider } from '@/lib/trpc';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SimulationTickPoller } from '@/hooks/useSimulationQuery';
+import { ActionOverlayProvider } from '@/hooks/useActionOverlay';
 import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
@@ -61,7 +62,9 @@ export default function AppProviders({ children, session }: { children: React.Re
                 <SimulationOfflineBanner />
                 <SessionProvider session={session} refetchOnWindowFocus={false} refetchInterval={5 * 60}>
                     <SimulationTickPoller />
-                    <TourProvider>{children}</TourProvider>
+                    <ActionOverlayProvider>
+                        <TourProvider>{children}</TourProvider>
+                    </ActionOverlayProvider>
                 </SessionProvider>
             </TRPCProvider>
         </QueryClientProvider>

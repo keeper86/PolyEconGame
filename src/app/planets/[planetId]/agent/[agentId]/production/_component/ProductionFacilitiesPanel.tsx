@@ -143,7 +143,10 @@ export default function ProductionFacilitiesPanel({
                                         agentId={agentId}
                                         planetId={planetId}
                                         constructionServicePrice={constructionServicePrice}
-                                        onBuilt={refresh}
+                                        // onBuilt is a no-op — the LevelBuildSection handles the overlay
+                                        // internally via onSuccess. Query invalidation is done by the
+                                        // tick poller when the snapshot arrives.
+                                        onBuilt={() => {}}
                                         mode={buildMode}
                                         onModeChange={setBuildMode}
                                     />
