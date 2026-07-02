@@ -39,6 +39,7 @@ import {
     getShipCapitalMarketSync,
     getTickerEventsSync,
 } from '../../simulation/workerClient/syncQueries';
+import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
 import { db } from '../db';
 import { procedure, protectedProcedure } from '../trpcRoot';
 
@@ -665,6 +666,15 @@ export const getAgentFinancialHistory = () =>
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };
+        });
+
+export const generateNewsReport = () =>
+    procedure
+        .input(z.void())
+        .output(z.object({ prompt: z.string() }))
+        .query(async () => {
+            const prompt = generateAndLogNewsPrompt();
+            return { prompt };
         });
 
 export const getPlanetEconomyHistory = () =>

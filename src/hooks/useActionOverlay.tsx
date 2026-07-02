@@ -129,7 +129,9 @@ export function ActionOverlayProvider({ children }: { children: React.ReactNode 
         if (!current || current.length === 0) {
             return;
         }
-        const remaining = current.filter((o) => !('facilityId' in o) || (o as { facilityId: string }).facilityId !== facilityId);
+        const remaining = current.filter(
+            (o) => !('facilityId' in o) || (o as { facilityId: string }).facilityId !== facilityId,
+        );
         if (remaining.length === current.length) {
             return;
         }
