@@ -953,6 +953,20 @@ export const getArbitrageRoutes = () =>
             };
         });
 
+export const getRawAgents = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(
+            z.object({
+                tick: z.number(),
+                agents: z.array(z.any()),
+            }),
+        )
+        .query(async () => {
+            const { tick, agents } = getAllAgentsSync();
+            return profileReturn('getRawAgents', { tick, agents });
+        });
+
 export const getArbitrageForResources = () =>
     protectedProcedure
         .input(
