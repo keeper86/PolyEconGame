@@ -1,14 +1,13 @@
 'use client';
 
-import { facilityByName } from '@/simulation/planet/productionFacilities';
+import type { ProductionFacility } from '@/simulation/planet/facility';
 import {
     calculateCostsForConstruction,
     getFacilityType,
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
 } from '@/simulation/planet/facility';
-import type { ProductionFacility } from '@/simulation/planet/facility';
-import React, { createContext, useContext, useCallback, useMemo, useRef, useState } from 'react';
-import { useSimulationTick } from './useSimulationQuery';
+import { facilityByName } from '@/simulation/planet/productionFacilities';
+import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 
 // ── Overlay types ────────────────────────────────────────────────────────────
 

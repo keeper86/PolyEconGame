@@ -2,6 +2,7 @@ import assert from 'assert';
 import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
+import { processContractionPayment } from '../agents/recycler';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -9,8 +10,9 @@ import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
     queryStorageFacility,
 } from './facility';
-import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
+import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
+import { pushTickerEvent } from './planet';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
@@ -35,8 +37,15 @@ export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
+// ── Contraction constants ──
+export const MAX_SCALE_CONTRACT_FRACTION = 0.1;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
+export const CONTRACTION_INTEGRAL_MAX = 60;
+export const CONTRACTION_INTEGRAL_DECAY = 0.5;
+export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
+
 function getDefaultPidState(): PidState {
-    return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+    return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0, contractionIntegral: 0 };
 }
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { lastTickResults, produces, maxScale } = facility;
@@ -256,8 +265,48 @@ function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPl
     return true;
 }
 
-export function updateAgentProductionScale(agents: Map<string, Agent>, planet: Planet): void {
-    agents.forEach((agent) => {
+function initiateCapacityContraction(
+    facility: ProductionFacility,
+    assets: AgentPlanetAssets,
+    planet: Planet,
+    agent: Agent,
+    gameState: GameState,
+): boolean {
+    const currentMax = facility.maxScale;
+    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION)));
+    if (targetMax >= currentMax) {
+        return false; // Cannot contract any further
+    }
+
+    const facilityType = getFacilityType(facility);
+    const replacementCost = calculateCostsForConstruction(facilityType, targetMax, currentMax);
+
+    // Delegate the recycling payment/CS recovery to the recycler agent
+    if (!processContractionPayment(planet, assets, replacementCost, gameState)) {
+        return false;
+    }
+
+    // Shrink the facility
+    const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
+    facility.maxScale = targetMax;
+    facility.scale = targetMax * scaleFraction;
+
+    pushTickerEvent(gameState, {
+        category: 'facilityScrapped',
+        planetId: planet.id,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${
+            agent.name
+        } scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
+        tick: gameState.tick,
+    });
+
+    return true;
+}
+
+export function updateAgentProductionScale(gameState: GameState, planet: Planet): void {
+    gameState.agents.forEach((agent) => {
         if (!agent.automated) {
             return;
         }
@@ -289,20 +338,32 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
 
+            // ── Expansion logic ──
             if (facility.scale === facility.maxScale && signal > 0) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
             } else {
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            // Compute inflation-aware dynamic threshold
+            // ── Contraction logic ──
+            const atLowerBound = facility.scale <= facility.maxScale * 0.1;
+            if (atLowerBound && signal < 0) {
+                state.contractionIntegral = Math.min(
+                    CONTRACTION_INTEGRAL_MAX,
+                    state.contractionIntegral + Math.abs(signal),
+                );
+            } else {
+                state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
+            }
+
+            // Compute inflation-aware dynamic expansion threshold
             const priceInflationFactor = computePriceInflationFactor(facility, planet);
             const dynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
                 EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, priceInflationFactor / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
-            // Check worker availability
+            // Check worker availability for expansion
             const hasWorkers = hasSufficientUnemployedWorkers(facility, planet);
 
             if (
@@ -315,6 +376,19 @@ export function updateAgentProductionScale(agents: Map<string, Agent>, planet: P
                 const expanded = initiateCapacityExpansion(facility, assets, planet);
                 if (expanded) {
                     state.expansionIntegral = 0;
+                }
+            }
+
+            // Contraction: trigger when facility is at the lower bound, under-performing, and sufficient negative signal has accumulated
+            if (
+                atLowerBound &&
+                facility.construction === null &&
+                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
+                (facility.lastTickResults?.overallEfficiency ?? 1) < CONTRACTION_EFFICIENCY_THRESHOLD
+            ) {
+                const contracted = initiateCapacityContraction(facility, assets, planet, agent, gameState);
+                if (contracted) {
+                    state.contractionIntegral = 0;
                 }
             }
 

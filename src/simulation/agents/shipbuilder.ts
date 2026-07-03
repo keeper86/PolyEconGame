@@ -23,6 +23,7 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
         scale: 1,
         maxScale: 4,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 0.5,
         workerRequirement: { none: 10, primary: 20, secondary: 15, tertiary: 5 },
         pollutionPerTick: { air: 0.01, water: 0.01, soil: 0 },

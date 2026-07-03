@@ -1,40 +1,38 @@
-import { TICKS_PER_YEAR, TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
+import { computeSupplyChainBalance } from '@/app/supply-chain/_components/computeBalance';
+import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
+import { currencyMapping, DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
-import { groceryServiceResourceType } from '@/simulation/planet/services';
-import type { Planet, Agent } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
-import { computePopulationTotal } from '@/simulation/snapshotRepository';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import type { Agent, Planet } from '@/simulation/planet/planet';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { educationLevelKeys } from '@/simulation/population/education';
+import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { computePopulationTotal } from '@/simulation/snapshotRepository';
 import {
     getAllAgentsSync,
     getAllPlanetsSync,
+    getArbitrageTradersSync,
     getForexMarketMakersSync,
     getShipbuilderAgentsSync,
-    getArbitrageTradersSync,
 } from '@/simulation/workerClient/syncQueries';
-import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
-import { getCurrencyResourceName, currencyMapping } from '@/simulation/market/currencyResources';
-import { DEFAULT_EXCHANGE_RATE } from '@/simulation/market/currencyResources';
-import { facilityByName } from '@/simulation/planet/productionFacilities';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { computeSupplyChainBalance } from '@/app/supply-chain/_components/computeBalance';
-import type {
-    MonthlyReport,
-    MonthlyAgentReport,
-    MonthlyPlanetReport,
-    CondensedReport,
-    AgentDelta,
-    FacilityPerf,
-    ResourceGap,
-    RootCause,
-    PlanetSnap,
-    PlanetDelta,
-    CommodityVol,
-    CurInfo,
-} from './types';
 import { newsMemory } from './newsMemory';
 import { buildNewsPrompt } from './promptBuilder';
+import type {
+    AgentDelta,
+    CommodityVol,
+    CondensedReport,
+    CurInfo,
+    FacilityPerf,
+    MonthlyAgentReport,
+    MonthlyPlanetReport,
+    MonthlyReport,
+    PlanetDelta,
+    PlanetSnap,
+    ResourceGap,
+    RootCause,
+} from './types';
 
 const TOP_N = 10;
 const PRICE_CHANGE_THRESHOLD_PCT = 10;
@@ -45,9 +43,6 @@ const MARKET_FAILURE_PRODUCTION_THRESHOLD = 0.7;
 const _STATIC_SC = computeSupplyChainBalance({}, 0);
 const RESOURCE_PRODUCERS: Map<string, string[]> = new Map(
     _STATIC_SC.resources.map((r) => [r.resourceName, r.producedBy]),
-);
-const RESOURCE_CONSUMERS: Map<string, string[]> = new Map(
-    _STATIC_SC.resources.map((r) => [r.resourceName, r.consumedBy.filter((c) => c !== r.resourceName)]),
 );
 
 /**

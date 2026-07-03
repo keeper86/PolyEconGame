@@ -25,6 +25,7 @@ const makeManagementFacilityDefaults = () => ({
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
+    lastConstructionCompletedTick: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
         workerEfficiency: {},
@@ -64,6 +65,7 @@ export const shipConstructionFacilityType = (planetId: string, id: string): Ship
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 10,

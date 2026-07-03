@@ -37,6 +37,7 @@ import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
 import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 import type { ResourceClaimEntry } from './helpers';
+import { createRecyclerAgent } from '../agents/recycler';
 
 interface AgriSpec {
     id: string;
@@ -216,6 +217,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             loanRate: 0,
             depositRate: 0,
         },
+        recycler: null!,
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
@@ -237,6 +239,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         infrastructure: spec.infrastructure,
         environment: spec.environment,
     };
+    createRecyclerAgent(planet);
 
     return { planet, agents };
 }

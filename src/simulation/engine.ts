@@ -150,7 +150,7 @@ export function advanceTick(gameState: GameState) {
         productionTick(gameState, planet);
         constructionTick(gameState, planet);
         automaticWageAdjustment(gameState.agents, planet);
-        updateAgentProductionScale(gameState.agents, planet);
+        updateAgentProductionScale(gameState, planet);
         if (profile.isEnabled) {
             t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
         }

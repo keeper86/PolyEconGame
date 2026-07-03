@@ -38,6 +38,7 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
             maxScale: 1000,
             scale: 1,
             construction: null,
+            lastConstructionCompletedTick: 0,
             powerConsumptionPerTick: 0,
             lastTickResults: {
                 overallEfficiency: 1,

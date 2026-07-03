@@ -765,6 +765,7 @@ const tickerEventSchema = baseTickerEventSchema.extend(
             'shipArrived',
             'shipCompleted',
             'facilityCompleted',
+            'facilityScrapped',
             'licenseAcquired',
             'agentBankrupt',
             'contractAccepted',

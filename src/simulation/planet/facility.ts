@@ -68,6 +68,7 @@ export type FacilityBase = PlanetaryId & {
     maxScale: number;
     scale: number;
     construction: ConstructionState;
+    lastConstructionCompletedTick: number;
 
     powerConsumptionPerTick: number;
     workerRequirement: {
@@ -113,6 +114,7 @@ export type PidState = {
     prevError: number;
     filteredError: number;
     expansionIntegral: number;
+    contractionIntegral: number;
 };
 
 export type ProductionFacility = FacilityBase & {

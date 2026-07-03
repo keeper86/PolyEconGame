@@ -1,3 +1,4 @@
+import { createRecyclerAgent } from '../agents/recycler';
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { makeLoan } from '../financial/loanTypes';
@@ -212,6 +213,7 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -236,6 +238,7 @@ export function makeManagementFacility(
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -260,6 +263,7 @@ export function makeProductionFacility(
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         lastTickResults: {
             ...createLastTickResults(),
             lastProduced: {},
@@ -379,7 +383,7 @@ export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
 
 export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string }): Planet {
     const { marketPrices: overrideMarketPrices, ...restOverrides } = overrides ?? {};
-    return {
+    const planet = {
         id: 'p',
         name: 'Test Planet',
         position: { x: 0, y: 0, z: 0 },
@@ -387,6 +391,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         resources: {},
         governmentId: overrides?.governmentId ?? 'gov-1',
         bank: makeBank(),
+        recycler: null!,
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
@@ -409,6 +414,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         landBoundCostPerUnit: {},
         ...restOverrides,
     };
+    createRecyclerAgent(planet);
+    return planet;
 }
 
 export function makePlanetWithPopulation(

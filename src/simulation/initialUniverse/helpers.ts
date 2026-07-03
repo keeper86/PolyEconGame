@@ -46,6 +46,7 @@ export function makeProductionFacility(opts: {
         maxScale: opts.scale,
         scale: opts.scale,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
             none: opts.workers.none ?? 0,
@@ -81,6 +82,7 @@ export function makeStorage(opts: {
         maxScale: opts.scale ?? 1,
         scale: opts.scale ?? 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 0.1,
         workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
         pollutionPerTick: { air: 0, water: 0, soil: 0 },

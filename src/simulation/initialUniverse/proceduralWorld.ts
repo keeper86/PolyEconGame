@@ -1,3 +1,19 @@
+import { createRecyclerAgent } from '../agents/recycler';
+import type { ProductionFacility } from '../planet/facility';
+import {
+    arableLandResourceType,
+    clayDepositResourceType,
+    coalDepositResourceType,
+    copperDepositResourceType,
+    forestResourceType,
+    ironOreDepositResourceType,
+    limestoneDepositResourceType,
+    oilReservoirResourceType,
+    sandDepositResourceType,
+    stoneDepositResourceType,
+    waterSourceResourceType,
+} from '../planet/landBoundResources';
+import type { Agent, Planet } from '../planet/planet';
 import {
     administrativeCenter,
     beveragePlant,
@@ -8,10 +24,10 @@ import {
     coalPowerPlant,
     concretePlant,
     constructionFacility,
-    itDevicesFactory,
     copperMine,
     copperSmelter,
     cottonFarm,
+    educationCenter,
     electronicsFactory,
     foodProcessingPlant,
     furnitureFactory,
@@ -21,6 +37,7 @@ import {
     intensiveFarmFacility,
     ironExtractionFacility,
     ironSmelter,
+    itDevicesFactory,
     limestoneQuarry,
     loggingCamp,
     logisticsHub,
@@ -37,30 +54,14 @@ import {
     siliconWaferFactory,
     stoneQuarry,
     textileMill,
-    educationCenter,
     vehicleFactory,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
-import {
-    arableLandResourceType,
-    clayDepositResourceType,
-    coalDepositResourceType,
-    copperDepositResourceType,
-    forestResourceType,
-    ironOreDepositResourceType,
-    limestoneDepositResourceType,
-    oilReservoirResourceType,
-    sandDepositResourceType,
-    stoneDepositResourceType,
-    waterSourceResourceType,
-} from '../planet/landBoundResources';
-import type { Agent, Planet } from '../planet/planet';
-import type { ProductionFacility } from '../planet/facility';
 import type { ResourceClaimEntry } from './helpers';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
-import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 import { NAMES } from './preConfiguredCompanies';
+import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -807,6 +808,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             loanRate: 0,
             depositRate: 0,
         },
+        recycler: null!,
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
@@ -853,6 +855,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             storms: 30,
         }),
     };
+    createRecyclerAgent(planet);
 
     const TICKS_PER_YEAR = 30 * 12;
 

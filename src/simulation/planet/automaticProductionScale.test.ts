@@ -8,7 +8,7 @@ import {
     makeProductionFacility,
 } from '../utils/testHelper';
 import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
-import type { Agent, MarketResult, Planet } from './planet';
+import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
 const RESOURCE = produceResourceType;
@@ -74,6 +74,19 @@ function makeSetup(
     return { agents: new Map([[agent.id, agent]]), facility };
 }
 
+function makeGameState(agents: Map<string, Agent>): GameState {
+    return {
+        tick: 0,
+        planets: new Map(),
+        agents,
+        shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers: new Map(),
+        shipbuilderAgents: new Map(),
+        arbitrageTraders: new Map(),
+        tickerEvents: [],
+        nextEventId: 1,
+    };
+}
 /** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
  * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */
 function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: number): Planet {
@@ -114,7 +127,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeLessThanOrEqual(initial);
         expect(facility.scale).toBeGreaterThan(initial - 0.07 * facility.maxScale);
@@ -125,7 +138,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThanOrEqual(initial);
         expect(facility.scale).toBeLessThan(initial + 0.07 * facility.maxScale);
@@ -136,7 +149,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeLessThan(initial);
     });
@@ -152,7 +165,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
     });
@@ -161,7 +174,7 @@ describe('updateAgentProductionScale', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(facility.maxScale * 0.1);
     });
@@ -172,7 +185,7 @@ describe('updateAgentProductionScale', () => {
         const maxScale = 1;
         const { agents, facility } = makeSetup(planet, { scale: maxScale - 0.0001, maxScale });
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(maxScale);
     });
@@ -191,7 +204,7 @@ describe('updateAgentProductionScale', () => {
         });
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(initial);
     });
@@ -201,7 +214,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(initial);
     });
@@ -223,7 +236,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(initial);
     });
@@ -235,7 +248,7 @@ describe('updateAgentProductionScale', () => {
         agent.automated = false;
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBe(initial);
     });
@@ -247,7 +260,13 @@ describe('updateAgentProductionScale', () => {
             scale: 10,
             maxScale: 10,
 
-            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+            },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
         });
@@ -256,7 +275,7 @@ describe('updateAgentProductionScale', () => {
         agent.assets[planet.id].deposits = 1_000_000;
         expect(facility.construction).toBeNull();
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).not.toBeNull();
         expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(10);
@@ -271,7 +290,7 @@ describe('updateAgentProductionScale', () => {
 
         expect(facility.construction).toBeNull();
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).toBeNull();
     });
@@ -281,13 +300,19 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
-            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+            },
             workerRequirement: { none: 1 },
         });
 
         expect(facility.construction).toBeNull();
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).toBeNull();
     });
@@ -318,7 +343,7 @@ describe('updateAgentProductionScale', () => {
         });
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
     });
@@ -328,7 +353,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
     });
@@ -419,7 +444,7 @@ describe('updateAgentProductionScale', () => {
         const agents = new Map([[agent.id, agent]]);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
     });
@@ -491,7 +516,7 @@ describe('updateAgentProductionScale', () => {
         const agents = new Map([[agent.id, agent]]);
         const initial = facility.scale;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
     });
@@ -499,11 +524,17 @@ describe('updateAgentProductionScale', () => {
     it('integral accumulation causes larger scale changes over repeated ticks than a single proportional step', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 100 });
-        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+        facility.pidState = {
+            contractionIntegral: 0,
+            integral: 0,
+            prevError: 0,
+            filteredError: 0,
+            expansionIntegral: 0,
+        };
 
         const N = 20;
         for (let i = 0; i < N; i++) {
-            updateAgentProductionScale(agents, planet);
+            updateAgentProductionScale(makeGameState(agents), planet);
         }
 
         const minExpected = facility.maxScale * 0.1 + (N - 1) * PID_KP * 0.2 * facility.maxScale;
@@ -515,16 +546,22 @@ describe('updateAgentProductionScale', () => {
             makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }),
         );
         const { agents, facility } = makeSetup(planetDemand, { scale: 0.0, maxScale: 100 });
-        facility.pidState = { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0 };
+        facility.pidState = {
+            contractionIntegral: 0,
+            integral: 0,
+            prevError: 0,
+            filteredError: 0,
+            expansionIntegral: 0,
+        };
 
         for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(agents, planetDemand);
+            updateAgentProductionScale(makeGameState(agents), planetDemand);
         }
         const scaleAfterBuild = facility.scale;
 
         const planetBalanced = makePlanetWithAvg(makeMarketResult());
         for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(agents, planetBalanced);
+            updateAgentProductionScale(makeGameState(agents), planetBalanced);
         }
 
         const demandPhaseGrowth = scaleAfterBuild;
@@ -538,7 +575,7 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet);
         expect(facility.pidState).toBeNull();
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.pidState).not.toBeNull();
         expect(facility.pidState).toMatchObject({
@@ -554,13 +591,19 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
-            pidState: { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+            },
             workerRequirement: { none: 1 },
         });
         const agent = agents.values().next().value as Agent;
         agent.assets[planet.id].deposits = 1_000_000;
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).not.toBeNull();
         expect(facility.pidState!.expansionIntegral).toBe(0);
@@ -594,7 +637,7 @@ describe('updateAgentProductionScale', () => {
         });
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 1 });
 
-        updateAgentProductionScale(agents, planet);
+        updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(0);
     });

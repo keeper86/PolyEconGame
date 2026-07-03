@@ -1,42 +1,42 @@
 export const articles = [
     {
-        title: 'Earth Healthcare Sector Explodes with Record Profits as Metro Health Group Leads the Field',
+        title: 'Logistics Sector on Brink of Collapse: Six Firms Drowning in Over €910 Billion Debt',
         summary:
-            "The inaugural economic report for December 2202 highlights massive capital accumulation in Earth's medical corporate sector. Metro Health Group topped the galaxy's leaderboards with a net balance surge of 106.68 billion Earthos. Sector peers HealthNet Corp (+72.46B €), Global Care Ltd (+67.95B €), and CureAll Clinics (+56.93B €) also secured multi-billion Eartho gains, establishing healthcare providers as the absolute financial titans of this financial cycle.",
+            'Nexus Distribution Inc, MoveIt Corp, AquaGlobal Corp, Swift Logistics Corp, Pure Water Inc, and Global Freight Ltd have accumulated combined negative assets exceeding €910 billion, threatening the backbone of planetary supply chains. Their financial distress contrasts sharply with booming healthcare corporations and may disrupt the flow of goods across Earth.',
         planetId: 'earth',
         category: 'agent',
         importance: 9,
     },
     {
-        title: 'Earth Demographic Crisis: Mass Educational Deprivation and Frightening Mortality Spikes',
+        title: 'Healthcare Giants Amass Unprecedented Wealth as Hospitals Run at 96% Capacity',
         summary:
-            "A chilling demographic emergence on Earth shows a staggering 449,014,714 deaths in December 2202 alone, reflecting a catastrophic annualized death rate. While the planet's grocery and healthcare buffers successfully held back starvation in those sectors, education starvation hit a near-total failure rate of 99.99%, alongside an alarming retail starvation rate of 67.09%. Paired with a massive 74.44% unemployment rate, the planet faces a deeply volatile social landscape.",
-        planetId: 'earth',
-        category: 'population',
-        importance: 10,
-    },
-    {
-        title: 'Logistics and Infrastructure Giants Face Staggering Financial Bleeding',
-        summary:
-            "As Earth's service providers consolidated massive wealth, the essential supply lines and structural networks backing them took brutal losses. Nexus Distribution Inc reported a devastating negative net balance of -79.12 billion Earthos, closely followed by infrastructure and operational shortfalls at MoveIt Corp (-65.80B €), BackOffice Corp (-62.22B €), Metro Admin Group (-50.59B €), and Global Builders Corp (-47.83B €). These massive deficits signal potential downstream supply chain friction.",
+            'Metro Health Group (€418.7B), HealthNet Corp (€306.5B), Global Care Ltd (€298.4B), and CureAll Clinics (€248.4B) report a combined €1.27 trillion in assets, fueled by sustained high demand that pushes the healthcare system to near-total utilization.',
         planetId: 'earth',
         category: 'agent',
         importance: 8,
     },
     {
-        title: 'The Ghost Frontiers: Zero-Population Worlds Maintain Inactive Financial Shells',
+        title: "Earth's Population Starved for Education and Retail as Employment Stagnates at 24%",
         summary:
-            'While Earth commands a roaring, hyper-turbulent economy of over 7.86 billion citizens and a multi-trillion Eartho GDP, the remaining six charted systems—Alpha Centauri, Gune, Icedonia, Pandara, Paradies, and Suerte—remain entirely unpopulated ghost economies. Despite registering zero active citizens, these worlds maintain functional monetary supplies, localized cost-of-living indexes, and deadlocked Forex market makers waiting for initial colonization.',
-        planetId: null,
-        category: 'economy',
+            "Despite stable food and healthcare access, 89% of Earth's 9.53 billion inhabitants experience severe education service starvation, and 74% lack adequate retail goods. With only 24% of the population employed, the service deprivation underscores a deepening structural crisis.",
+        planetId: 'earth',
+        category: 'population',
+        importance: 10,
+    },
+    {
+        title: 'Oil Refineries and Pharmaceutical Plants Maxed Out, Supply Buffer Nonexistent',
+        summary:
+            'Production of crude oil, fuel, plastic, chemicals, and pharmaceuticals has reached 100% of installed capacity, leaving no room for demand surges and raising the specter of sharp price increases in energy and medical supply chains.',
+        planetId: 'earth',
+        category: 'commodity',
         importance: 7,
     },
     {
-        title: "Alpha Centauri's Premium Frontier: Sky-High Cost of Living Without a Single Soul",
+        title: 'Retail Factories Idle at 10% Capacity While 74% of Population Faces Retail Starvation',
         summary:
-            "In a bizarre economic paradox, the unpopulated system of Alpha Centauri has registered an initial cost-of-living baseline of 20.17 Centas—nearly twenty times higher than Earth's baseline of 1.14 Earthos. Backed by an inactive but massive 11.49 billion Centas money supply held by its procedural government and market makers, the system stands as a wildly expensive frontier waiting for its first wave of interstellar infrastructure.",
-        planetId: 'alpha-centauri',
+            "Retail chains are producing a mere 94 million units of goods against a maximum capacity of 942 million, yet retail service starvation affects three-quarters of Earth's people, indicating a profound disconnect between potential supply and effective demand.",
+        planetId: 'earth',
         category: 'economy',
-        importance: 6,
+        importance: 8,
     },
 ];

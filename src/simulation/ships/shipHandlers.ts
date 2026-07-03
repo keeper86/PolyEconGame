@@ -477,6 +477,7 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
         consumeConstructionForFacility(target, assets.storageFacility, {
             planet,
             monthAcc: assets.monthAcc,
+            gameStateTick: ctx.tick,
         });
     }
     s.progress = target.construction?.progress ?? s.progress;

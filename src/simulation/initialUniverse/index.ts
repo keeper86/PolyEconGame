@@ -27,8 +27,16 @@ export function createInitialGameState(): GameState {
     const { planet: alphaCentauri, agents: acAgents } = buildAlphaCentauri();
 
     const smallPlanets = buildSmallPlanets();
+    const allRecycler = smallPlanets.map((p) => p.planet.recycler);
 
-    const allAgents = [...earthAgents, ...acAgents, ...smallPlanets.flatMap((p) => p.agents)];
+    const allAgents = [
+        ...earthAgents,
+        earth.recycler,
+        ...acAgents,
+        alphaCentauri.recycler,
+        ...allRecycler,
+        ...smallPlanets.flatMap((p) => p.agents),
+    ];
 
     const gameState: GameState = {
         tick: 0,

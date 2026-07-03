@@ -16,6 +16,7 @@ import type { Resource } from '../planet/claims';
 import { queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -151,6 +152,30 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const baseRate = productionRate.get(resource.name) ?? 0;
             adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, baseRate);
         }
+    }
+
+    for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
+        if (!offer.automated) {
+            continue;
+        }
+        const baseRate = productionRate.get(resourceName);
+        if (baseRate) {
+            continue; // already handled above by production facility loop
+        }
+        const inventoryQty = queryStorageFacility(assets.storageFacility, resourceName);
+        const initialPrice = planet.marketPrices[resourceName] ?? initialMarketPrices[resourceName];
+
+        const costFloor = planet.lastProductionCostFloors[resourceName];
+
+        if (costFloor !== undefined && costFloor < PRICE_FLOOR) {
+            console.warn(
+                `Cost floor for resource ${resourceName} on planet ${planet.id} is below PRICE_FLOOR (${costFloor}). ` +
+                    `This may lead to unstable pricing. Clamping to PRICE_FLOOR.`,
+            );
+        }
+
+        offer.offerRetainment = 0;
+        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, 0);
     }
 
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
