@@ -1,6 +1,7 @@
 'use client';
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { useGameConfig } from '@/components/client/GameConfigContext';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import {
@@ -19,14 +20,13 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
-import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
-import { useGameConfig } from '@/components/client/GameConfigContext';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Clock, HardHat, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React from 'react';
@@ -113,7 +113,7 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
+
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
     const removeOverlay = useRemoveOverlayByFacilityId();

@@ -1,8 +1,8 @@
-import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO, RECYCLER_SEED_CAPITAL } from '../constants';
+import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
-import { putIntoStorageFacility } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
 
 export function createRecyclerAgent(planet: Planet): void {
@@ -34,9 +34,6 @@ export function createRecyclerAgent(planet: Planet): void {
         automated: true,
     };
 
-    // The Recycler gets a working capital loan to pay for buy-backs
-    grantLoan(assets, planet.bank, RECYCLER_SEED_CAPITAL, 'starter', 0);
-
     const recycler: Agent = {
         id: recyclerId,
         name: `Recycler (${planet.name})`,
@@ -52,17 +49,26 @@ export function createRecyclerAgent(planet: Planet): void {
     planet.recycler = recycler;
 }
 
-/**
- * Process the contraction (scrapping) payment for a production facility.
- *
- * 1. Determines the market value of the recoverable Construction Services.
- * 2. Calculates the payment the recycler must make to the agent.
- * 3. Issues a buffer loan to the recycler if it has insufficient deposits.
- * 4. Transfers deposits from recycler → agent.
- * 5. Deposits the recovered CS into the recycler's storage.
- *
- * @returns true if the payment was processed successfully.
- */
+export function getRecyclerPaymentRatio(planet: Planet): number {
+    const recycler = planet.recycler;
+    if (!recycler) {
+        return 0;
+    }
+    const recyclerAssets = recycler.assets[planet.id];
+    if (!recyclerAssets) {
+        return 0;
+    }
+
+    // Determine buffer half-point from local CS market supply (EMA-smoothed)
+    const marketResult = planet.avgMarketResult[constructionServiceResourceType.name];
+    const avgTotalSupply = marketResult?.totalSupply ?? 0;
+
+    const recyclerCSStock = queryStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType.name);
+    const stockRatio = avgTotalSupply > 0 ? recyclerCSStock / avgTotalSupply : 0; // fallback when no market data yet
+
+    return RECYCLER_PAYMENT_RATIO / (1 + stockRatio);
+}
+
 export function processContractionPayment(
     planet: Planet,
     agentAssets: AgentPlanetAssets,
@@ -73,7 +79,6 @@ export function processContractionPayment(
 
     const recoveredCS = replacementCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
     const marketValue = recoveredCS * csPrice;
-    const payment = marketValue * RECYCLER_PAYMENT_RATIO;
 
     const recycler = planet.recycler;
     if (!recycler) {
@@ -83,6 +88,10 @@ export function processContractionPayment(
     if (!recyclerAssets) {
         return false;
     }
+
+    // Dynamic payment ratio decreases as recycler's CS buffer grows
+    const dynamicRatio = getRecyclerPaymentRatio(planet);
+    const payment = marketValue * dynamicRatio;
 
     // If recycler has insufficient deposits, grant an immediate loan to cover the gap
     if (recyclerAssets.deposits < payment) {

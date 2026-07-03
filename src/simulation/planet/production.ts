@@ -652,10 +652,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const active = workforce ? totalActiveForEduSkill(workforce, edu, skill) : 0;
                 const departing = workforce ? totalDepartingForEduSkill(workforce, edu, skill) : 0;
                 const onboarding = workforce ? totalOnboardingForEduSkill(workforce, edu, skill) : 0;
+                const onboardingEfficiency = gameState.tick < TICKS_PER_YEAR ? 1 : ONBOARDING_EFFICIENCY;
                 workerPool[edu][skill] =
                     active +
                     stochasticRound(departing * DEPARTING_EFFICIENCY) +
-                    stochasticRound(onboarding * ONBOARDING_EFFICIENCY);
+                    stochasticRound(onboarding * onboardingEfficiency);
             }
         }
 

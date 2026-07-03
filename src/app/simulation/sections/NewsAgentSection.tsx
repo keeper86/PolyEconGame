@@ -24,11 +24,18 @@ export default function NewsAgentSection() {
     }
 
     function copyToClipboard() {
-        if (!prompt) return;
-        navigator.clipboard.writeText(prompt).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        });
+        if (!prompt) {
+            return;
+        }
+        navigator.clipboard
+            .writeText(prompt)
+            .then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            })
+            .catch((err) => {
+                console.error('Failed to copy to clipboard:', err);
+            });
     }
 
     return (

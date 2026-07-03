@@ -4,14 +4,14 @@ import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityO
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAddActionOverlay } from '@/hooks/useActionOverlay';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { useAddActionOverlay } from '@/hooks/useActionOverlay';
-import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityIORow } from './FacilityIORow';
@@ -38,7 +38,7 @@ function BuildCard({
     onCancel: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
+
     const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
     const [previewScale, setPreviewScale] = useState(1);
@@ -48,11 +48,6 @@ function BuildCard({
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
             onSuccess: (result) => {
-                // Push optimistic overlay so the UI shows the facility immediately.
-                // Do NOT invalidate the query here — the overlay *is* the data until the
-                // next snapshot broadcast triggers a natural invalidation via the tick poller.
-                // Skipping the invalidation avoids a "flash of stale content" render cycle
-                // where the old query data renders before the overlay context propagates.
                 addOverlay({
                     type: 'facilityBuilt',
                     tickConfirmed: currentTick,
@@ -90,6 +85,8 @@ function BuildCard({
                             neutral={true}
                             workerEfficiency={{}}
                             globalMin={0}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     </span>
                 </span>

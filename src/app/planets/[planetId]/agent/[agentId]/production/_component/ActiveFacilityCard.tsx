@@ -106,6 +106,8 @@ export function ActiveFacilityCard({
                             scale={facility.scale}
                             workerEfficiency={results?.workerEfficiency ?? {}}
                             globalMin={globalMin}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     </span>
                 </span>

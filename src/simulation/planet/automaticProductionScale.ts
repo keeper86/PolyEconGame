@@ -1,8 +1,8 @@
 import assert from 'assert';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, RECYCLER_PAYMENT_RATIO } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { processContractionPayment } from '../agents/recycler';
+import { getRecyclerPaymentRatio, processContractionPayment } from '../agents/recycler';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -27,20 +27,16 @@ export const PID_IMAX = 0.025;
 export const PID_OUT_MAX = 0.05;
 export const PID_D_ALPHA = 0.3;
 
-export const EXPANSION_INTEGRAL_THRESHOLD = 30;
-
-export const EXPANSION_INTEGRAL_MAX = 60;
-
+export const EXPANSION_INTEGRAL_THRESHOLD = 60;
+export const EXPANSION_INTEGRAL_MAX = 180;
 export const EXPANSION_INTEGRAL_DECAY = 0.5;
-
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
-
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 // ── Contraction constants ──
 export const MAX_SCALE_CONTRACT_FRACTION = 0.1;
-export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
-export const CONTRACTION_INTEGRAL_MAX = 60;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 60;
+export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
 
@@ -272,8 +268,13 @@ function initiateCapacityContraction(
     agent: Agent,
     gameState: GameState,
 ): boolean {
+    const ratio = getRecyclerPaymentRatio(planet) / RECYCLER_PAYMENT_RATIO;
+    if (ratio < 0.1) {
+        return false;
+    }
+
     const currentMax = facility.maxScale;
-    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION)));
+    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION * ratio)));
     if (targetMax >= currentMax) {
         return false; // Cannot contract any further
     }
@@ -296,9 +297,7 @@ function initiateCapacityContraction(
         planetId: planet.id,
         agentId: agent.id,
         agentName: agent.name,
-        message: `${
-            agent.name
-        } scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
+        message: `${agent.name} scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
         tick: gameState.tick,
     });
 
