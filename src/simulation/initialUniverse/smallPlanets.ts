@@ -203,7 +203,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     });
     agents.unshift(govAgent);
 
-    const planet: Planet = {
+    const planetBase = {
         id: spec.id,
         name: spec.name,
         position: spec.position,
@@ -217,7 +217,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             loanRate: 0,
             depositRate: 0,
         },
-        recycler: null!,
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
@@ -239,9 +238,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         infrastructure: spec.infrastructure,
         environment: spec.environment,
     };
-    createRecyclerAgent(planet);
 
-    return { planet, agents };
+    return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }
 
 const guneForestClaims: ResourceClaimEntry[] = [];

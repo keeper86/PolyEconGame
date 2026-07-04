@@ -669,7 +669,7 @@ export const getAgentFinancialHistory = () =>
         });
 
 export const generateNewsReport = () =>
-    procedure
+    protectedProcedure
         .input(z.void())
         .output(z.object({ prompt: z.string() }))
         .query(async () => {

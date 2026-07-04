@@ -1,4 +1,5 @@
 import { createRecyclerAgent } from '../agents/recycler';
+import { TICKS_PER_YEAR } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
@@ -794,7 +795,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
     const getPool = (k: string): ResourceClaimEntry[] => claimPools.get(k) ?? [];
 
-    const planet: Planet = {
+    const planetBase = {
         id: PROC_PLANET_ID,
         name: 'Earth',
         position: { x: 10, y: 0, z: 0 },
@@ -808,7 +809,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             loanRate: 0,
             depositRate: 0,
         },
-        recycler: null!,
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
@@ -855,9 +855,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             storms: 30,
         }),
     };
-    createRecyclerAgent(planet);
-
-    const TICKS_PER_YEAR = 30 * 12;
 
     const extractionRatePerScale: Record<string, number> = {
         coalMine: 0.5,
@@ -914,5 +911,5 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     }
     console.log('=================================\n');
 
-    return { planet, agents };
+    return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }

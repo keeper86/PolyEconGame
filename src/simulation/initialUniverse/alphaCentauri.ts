@@ -367,7 +367,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     });
     agents.unshift(govAgent);
 
-    const planet: Planet = {
+    const planetBase = {
         id: AC_ID,
         name: 'Alpha Centauri',
         position: { x: 4.37, y: 0, z: 0 },
@@ -381,7 +381,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             loanRate: 0,
             depositRate: 0,
         },
-        recycler: null!,
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
@@ -419,7 +418,12 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             storms: 5,
         }),
     };
-    createRecyclerAgent(planet);
 
-    return { planet, agents };
+    return {
+        planet: {
+            ...planetBase,
+            recycler: createRecyclerAgent(planetBase.id, planetBase.name),
+        },
+        agents,
+    };
 }

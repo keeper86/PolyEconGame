@@ -383,7 +383,7 @@ export function makeGovernmentAgent(id = 'gov-1', planetId = 'p'): Agent {
 
 export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string }): Planet {
     const { marketPrices: overrideMarketPrices, ...restOverrides } = overrides ?? {};
-    const planet = {
+    const planetBase = {
         id: 'p',
         name: 'Test Planet',
         position: { x: 0, y: 0, z: 0 },
@@ -391,7 +391,6 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         resources: {},
         governmentId: overrides?.governmentId ?? 'gov-1',
         bank: makeBank(),
-        recycler: null!,
         infrastructure: makeInfrastructure(),
         environment: makeEnvironment(),
         marketPrices: { ...initialMarketPrices, ...overrideMarketPrices },
@@ -414,8 +413,8 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         landBoundCostPerUnit: {},
         ...restOverrides,
     };
-    createRecyclerAgent(planet);
-    return planet;
+
+    return { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) };
 }
 
 export function makePlanetWithPopulation(

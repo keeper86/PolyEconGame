@@ -2,7 +2,7 @@ import assert from 'assert';
 import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, RECYCLER_PAYMENT_RATIO } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { getRecyclerPaymentRatio, processContractionPayment } from '../agents/recycler';
+import { getRecyclerPaymentRatio, processFacilityContraction } from '../agents/recycler';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -12,7 +12,6 @@ import {
 } from './facility';
 import { constructionServiceResourceType } from './services';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
-import { pushTickerEvent } from './planet';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
@@ -27,7 +26,7 @@ export const PID_IMAX = 0.025;
 export const PID_OUT_MAX = 0.05;
 export const PID_D_ALPHA = 0.3;
 
-export const EXPANSION_INTEGRAL_THRESHOLD = 60;
+export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 export const EXPANSION_INTEGRAL_MAX = 180;
 export const EXPANSION_INTEGRAL_DECAY = 0.5;
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
@@ -35,7 +34,7 @@ export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 // ── Contraction constants ──
 export const MAX_SCALE_CONTRACT_FRACTION = 0.1;
-export const CONTRACTION_INTEGRAL_THRESHOLD = 60;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
 export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
@@ -263,7 +262,6 @@ function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPl
 
 function initiateCapacityContraction(
     facility: ProductionFacility,
-    assets: AgentPlanetAssets,
     planet: Planet,
     agent: Agent,
     gameState: GameState,
@@ -282,26 +280,8 @@ function initiateCapacityContraction(
     const facilityType = getFacilityType(facility);
     const replacementCost = calculateCostsForConstruction(facilityType, targetMax, currentMax);
 
-    // Delegate the recycling payment/CS recovery to the recycler agent
-    if (!processContractionPayment(planet, assets, replacementCost, gameState)) {
-        return false;
-    }
-
-    // Shrink the facility
-    const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
-    facility.maxScale = targetMax;
-    facility.scale = targetMax * scaleFraction;
-
-    pushTickerEvent(gameState, {
-        category: 'facilityScrapped',
-        planetId: planet.id,
-        agentId: agent.id,
-        agentName: agent.name,
-        message: `${agent.name} scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
-        tick: gameState.tick,
-    });
-
-    return true;
+    // Delegate full contraction (payment, CS recovery, scale reduction, ticker event) to the recycler agent
+    return processFacilityContraction(planet, facility, agent, targetMax, replacementCost, gameState);
 }
 
 export function updateAgentProductionScale(gameState: GameState, planet: Planet): void {
@@ -385,7 +365,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
                 (facility.lastTickResults?.overallEfficiency ?? 1) < CONTRACTION_EFFICIENCY_THRESHOLD
             ) {
-                const contracted = initiateCapacityContraction(facility, assets, planet, agent, gameState);
+                const contracted = initiateCapacityContraction(facility, planet, agent, gameState);
                 if (contracted) {
                     state.contractionIntegral = 0;
                 }

@@ -49,7 +49,7 @@ const RESOURCE_PRODUCERS: Map<string, string[]> = new Map(
  * Convert a simulation tick to a human-readable date string like "September 2233".
  */
 function tickToMonthYear(tick: number): string {
-    const simTick = tick - 1;
+    const simTick = Math.max(0, tick - 1);
     const year = Math.floor(simTick / TICKS_PER_YEAR) + START_YEAR;
     const monthIndex = Math.floor((simTick % TICKS_PER_YEAR) / TICKS_PER_MONTH);
     const monthNames = [
@@ -448,7 +448,7 @@ export function extractMonthlyReport(): MonthlyReport {
         for (const assets of Object.values(a.assets ?? {})) {
             netBalance += (assets.deposits ?? 0) - totalOutstandingLoans(assets.activeLoans ?? []);
             monthlyNetIncome += assets.monthAcc?.revenue ?? 0;
-            totalWorkers += Math.round((assets.monthAcc?.totalWorkersTicks ?? 0) / 30);
+            totalWorkers += Math.round((assets.monthAcc?.totalWorkersTicks ?? 0) / TICKS_PER_MONTH);
             facilityCount += assets.productionFacilities?.length ?? 0;
         }
 
@@ -513,7 +513,9 @@ function computeEmploymentRate(planet: MonthlyPlanetReport): number {
 }
 
 function computeDeathRatePer100k(planet: MonthlyPlanetReport): number {
-    return planet.population > 0 ? ((planet.deathsThisMonth * TICKS_PER_YEAR) / planet.population) * 100000 : 0;
+    return planet.population > 0
+        ? ((planet.deathsThisMonth * (TICKS_PER_YEAR / TICKS_PER_MONTH)) / planet.population) * 100000
+        : 0;
 }
 
 /**

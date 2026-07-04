@@ -163,7 +163,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             continue; // already handled above by production facility loop
         }
         const inventoryQty = queryStorageFacility(assets.storageFacility, resourceName);
-        const initialPrice = planet.marketPrices[resourceName] ?? initialMarketPrices[resourceName];
+        const initialPrice = planet.marketPrices[resourceName] ?? initialMarketPrices[resourceName] ?? PRICE_FLOOR;
 
         const costFloor = planet.lastProductionCostFloors[resourceName];
 

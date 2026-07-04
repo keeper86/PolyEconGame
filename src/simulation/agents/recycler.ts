@@ -1,19 +1,17 @@
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
+import type { ProductionFacility } from '../planet/facility';
 import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
-import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
+import type { Agent, GameState, Planet } from '../planet/planet';
+import { pushTickerEvent } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 
-export function createRecyclerAgent(planet: Planet): void {
-    if (planet.recycler) {
-        console.warn(`[worker] Recycler already exists on planet ${planet.name}`);
-        return;
-    }
-    const recyclerId = `recycler_${planet.id}`;
+export function createRecyclerAgent(planetId: string, planetName: string): Agent {
+    const recyclerId = `recycler_${planetId}`;
 
     const storage = makeStorage({
-        planetId: planet.id,
+        planetId: planetId,
         id: `${recyclerId}_store`,
         name: 'Recycler CS Storage',
         scale: 1,
@@ -21,7 +19,7 @@ export function createRecyclerAgent(planet: Planet): void {
         massCapacity: 1e6,
     });
 
-    const assets = makeAgentPlanetAssets(planet.id, [], storage);
+    const assets = makeAgentPlanetAssets(planetId, [], storage);
     assets.licenses = {
         commercial: { acquiredTick: 0, frozen: false },
     };
@@ -36,17 +34,17 @@ export function createRecyclerAgent(planet: Planet): void {
 
     const recycler: Agent = {
         id: recyclerId,
-        name: `Recycler (${planet.name})`,
+        name: `Recycler (${planetName})`,
         automated: true,
         automateWorkerAllocation: false,
         foundedTick: 0,
         starterLoanTaken: true,
-        associatedPlanetId: planet.id,
+        associatedPlanetId: planetId,
         ships: [],
-        assets: { [planet.id]: assets },
+        assets: { [planetId]: assets },
     };
 
-    planet.recycler = recycler;
+    return recycler;
 }
 
 export function getRecyclerPaymentRatio(planet: Planet): number {
@@ -69,12 +67,19 @@ export function getRecyclerPaymentRatio(planet: Planet): number {
     return RECYCLER_PAYMENT_RATIO / (1 + stockRatio);
 }
 
-export function processContractionPayment(
+export function processFacilityContraction(
     planet: Planet,
-    agentAssets: AgentPlanetAssets,
+    facility: ProductionFacility,
+    agent: Agent,
+    targetMax: number,
     replacementCost: number,
     gameState: GameState,
 ): boolean {
+    const agentAssets = agent.assets[planet.id];
+    if (!agentAssets) {
+        return false;
+    }
+
     const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 1;
 
     const recoveredCS = replacementCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
@@ -105,6 +110,21 @@ export function processContractionPayment(
 
     // Add recovered CS to recycler's storage (services have 0 volume/mass, so no overflow possible)
     putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, recoveredCS);
+
+    // Shrink the facility
+    const currentMax = facility.maxScale;
+    const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
+    facility.maxScale = targetMax;
+    facility.scale = targetMax * scaleFraction;
+
+    pushTickerEvent(gameState, {
+        category: 'facilityScrapped',
+        planetId: planet.id,
+        agentId: agent.id,
+        agentName: agent.name,
+        message: `${agent.name} scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
+        tick: gameState.tick,
+    });
 
     return true;
 }

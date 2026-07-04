@@ -18,7 +18,7 @@ import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
 import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick, updateProductionCostFloors } from './planet/production';
-import { populationAdvanceYearTick, populationTick } from './population/populationTick';
+import { populationAdvanceYearTick, populationTick, resetPopulationMonthCounters } from './population/populationTick';
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
@@ -55,6 +55,7 @@ export function advanceTick(gameState: GameState) {
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
+            resetPopulationMonthCounters(planet);
             planet.monthPriceAcc = {};
             planet.monthTransferVolume = 0;
         }
