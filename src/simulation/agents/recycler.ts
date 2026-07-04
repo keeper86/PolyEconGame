@@ -62,7 +62,8 @@ export function getRecyclerPaymentRatio(planet: Planet): number {
     const avgTotalSupply = marketResult?.totalSupply ?? 0;
 
     const recyclerCSStock = queryStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType.name);
-    const stockRatio = avgTotalSupply > 0 ? recyclerCSStock / avgTotalSupply : 0; // fallback when no market data yet
+    const supplyWithoutRecycler = avgTotalSupply - recyclerCSStock;
+    const stockRatio = avgTotalSupply > 0 ? recyclerCSStock / supplyWithoutRecycler : 0; // fallback when no market data yet
 
     return RECYCLER_PAYMENT_RATIO / (1 + stockRatio);
 }
