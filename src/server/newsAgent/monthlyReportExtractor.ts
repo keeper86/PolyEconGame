@@ -718,8 +718,15 @@ export function computeCondensedReport(current: MonthlyReport, previous: Monthly
  */
 export function generateAndLogNewsPrompt(): string {
     const currentReport = extractMonthlyReport();
-    const previousReport = newsMemory.getLatest();
-    const condensed = computeCondensedReport(currentReport, previousReport);
+
+    // Guard against multiple calls within the same tick (e.g. from debug UI/endpoint).
+    // If a report for this tick was already stored, return empty to avoid polluting the ring buffer.
+    const currentStored = newsMemory.getCurrent();
+    if (currentStored && currentStored.tick === currentReport.tick) {
+        return '';
+    }
+
+    const condensed = computeCondensedReport(currentReport, currentStored);
     const prompt = buildNewsPrompt(condensed);
     newsMemory.store(currentReport);
 

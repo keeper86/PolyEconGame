@@ -20,22 +20,6 @@ class NewsMemory {
     }
 
     /**
-     * Get the most recent monthly report (previous month).
-     * Returns null if no previous report exists.
-     */
-    getLatest(): MonthlyReport | null {
-        if (this.history.length === 0) {
-            return null;
-        }
-        // The second-to-last entry is the previous month
-        // (the last one is the current month, which was just stored)
-        if (this.history.length === 1) {
-            return null;
-        }
-        return this.history[this.history.length - 2];
-    }
-
-    /**
      * Get the current (most recently stored) report.
      */
     getCurrent(): MonthlyReport | null {

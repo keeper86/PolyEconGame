@@ -159,7 +159,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             continue;
         }
         const baseRate = productionRate.get(resourceName);
-        if (baseRate) {
+        if (baseRate !== undefined) {
             continue; // already handled above by production facility loop
         }
         const inventoryQty = queryStorageFacility(assets.storageFacility, resourceName);
