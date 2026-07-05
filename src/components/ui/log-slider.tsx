@@ -25,8 +25,25 @@ export function LogSlider({
     formatLabel,
     className,
 }: LogSliderProps): React.ReactElement {
-    const maxIndex = values.length - 1;
     const labelFormatter = formatLabel ?? ((v: number) => formatNumberWithUnit(v, 'none'));
+
+    // Degenerate case: fewer than 2 values → render a disabled, minimal slider stub
+    if (values.length < 2) {
+        return (
+            <div className={className}>
+                <Slider min={0} max={1} step={1} value={[0]} disabled />
+                <div className='relative h-4 text-[10px] text-muted-foreground mt-2'>
+                    {values.length === 1 && (
+                        <span className='absolute' style={{ left: '50%', transform: 'translateX(-50%)' }}>
+                            {labelFormatter(values[0]!)}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    const maxIndex = values.length - 1;
 
     return (
         <div className={className}>

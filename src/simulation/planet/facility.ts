@@ -34,20 +34,14 @@ export const getFacilityType = (facility: Facility): FacilityType => {
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
 const constructionCostFactor = 3000;
-export const constructionServiceCostPerScaleIncrease: Record<FacilityType, (scale: number) => number> = {
-    raw: (scale: number) => (constructionCostFactor * Math.pow(scale, 1.1)) / scale + constructionCostFactor,
-    refined: (scale: number) =>
-        (2 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 2 * constructionCostFactor,
-    manufactured: (scale: number) =>
-        (4 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 4 * constructionCostFactor,
-    services: (scale: number) =>
-        (3 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 3 * constructionCostFactor,
-    storage: (scale: number) =>
-        (1.5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 1.5 * constructionCostFactor,
-    management: (scale: number) =>
-        (2.5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 2.5 * constructionCostFactor,
-    ship_construction: (scale: number) =>
-        (5 * constructionCostFactor * Math.pow(scale, 1.1)) / scale + 5 * constructionCostFactor,
+const facilityConstructionCostMultiplier: Record<FacilityType, number> = {
+    raw: 1,
+    refined: 2,
+    manufactured: 4,
+    services: 3,
+    storage: 1.5,
+    management: 2.5,
+    ship_construction: 5,
 };
 
 export const calculateCostsForConstruction = (
@@ -55,11 +49,15 @@ export const calculateCostsForConstruction = (
     currentScale: number,
     targetScale: number,
 ): number => {
-    let totalCost = 0;
-    for (let scale = currentScale + 1; scale <= targetScale; scale++) {
-        totalCost += constructionServiceCostPerScaleIncrease[facilityType](scale);
+    if (targetScale <= currentScale) {
+        return 0;
     }
-    return totalCost;
+
+    const m = facilityConstructionCostMultiplier[facilityType];
+    const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
+    const linearTerm = targetScale - currentScale;
+
+    return Math.round(m * constructionCostFactor * (integralTerm + linearTerm));
 };
 
 export type FacilityBase = PlanetaryId & {
