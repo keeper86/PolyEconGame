@@ -58,6 +58,10 @@ export function advanceTick(gameState: GameState) {
             resetPopulationMonthCounters(planet);
             planet.monthPriceAcc = {};
             planet.monthTransferVolume = 0;
+
+            const govAgent = gameState.agents.get(planet.governmentId);
+            assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
+            governmentTick(planet, govAgent);
         }
 
         let t: number = 0;
@@ -67,9 +71,7 @@ export function advanceTick(gameState: GameState) {
             t = profile.mark();
         }
         environmentTick(planet);
-        const govAgent = gameState.agents.get(planet.governmentId);
-        assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
-        governmentTick(planet, govAgent);
+
         if (profile.isEnabled) {
             t = profile.markAndAccum('envGov', 'environmentTick + governmentTick', t);
         }

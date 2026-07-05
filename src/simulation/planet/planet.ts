@@ -279,7 +279,7 @@ export type AgentPlanetAssets = {
 
     activeLoans: Loan[];
 
-    market?: AgentMarketOffers;
+    market: AgentMarketOffers;
 
     wagePerEdu: Record<EducationLevelType, number>;
 

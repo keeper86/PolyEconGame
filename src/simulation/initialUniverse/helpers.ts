@@ -118,6 +118,10 @@ export function makeAgentPlanetAssets(
         totalSlotCapacity: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         overqualifiedWorkers: {},
+        market: {
+            sell: {},
+            buy: {},
+        },
         wagePerEdu: {
             none: DEFAULT_WAGE_PER_EDU,
             primary: DEFAULT_WAGE_PER_EDU,

@@ -356,6 +356,10 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
             commercial: { acquiredTick: 0, frozen: false },
             workforce: { acquiredTick: 0, frozen: false },
         },
+        market: {
+            sell: {},
+            buy: {},
+        },
         ...overrides,
     };
 }

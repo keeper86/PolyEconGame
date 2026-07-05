@@ -69,6 +69,17 @@ function wireToGameState(wire: WireGameState): GameState {
             arbitrageTraders.set(at.id, canonical);
         }
     }
+
+    // Re-link planet.recycler references
+    for (const planet of planets.values()) {
+        if (planet.recycler) {
+            const canonical = agents.get(planet.recycler.id);
+            if (canonical) {
+                planet.recycler = canonical;
+            }
+        }
+    }
+
     return {
         tick: wire.tick,
         planets,

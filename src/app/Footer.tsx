@@ -15,7 +15,6 @@ const GAP_PX = 48;
 const BASE_SPEED_PX_PER_SEC = 80;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
-const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 240;
 
 type DisplayedEvent = { id: number; event: TickerEvent; duration: number; startX: number };
@@ -157,10 +156,7 @@ export default function Footer() {
 
     const computeSpeed = useCallback((pending: number) => {
         const factor = 0.15;
-        return Math.min(
-            MAX_SPEED_PX_PER_SEC,
-            Math.max(MIN_SPEED_PX_PER_SEC, BASE_SPEED_PX_PER_SEC * (1 + pending * factor)),
-        );
+        return Math.min(MAX_SPEED_PX_PER_SEC, BASE_SPEED_PX_PER_SEC * (1 + (pending - 2) * factor));
     }, []);
 
     const trySpawn = useCallback(() => {

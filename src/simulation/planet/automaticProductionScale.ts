@@ -1,8 +1,8 @@
 import assert from 'assert';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS, RECYCLER_PAYMENT_RATIO } from '../constants';
+import { getRecyclerPaymentRatio, processFacilityContraction } from '../agents/recycler';
+import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { getRecyclerPaymentRatio, processFacilityContraction } from '../agents/recycler';
 import type { PidState, ProductionFacility } from './facility';
 import {
     calculateCostsForConstruction,
@@ -10,20 +10,20 @@ import {
     MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
     queryStorageFacility,
 } from './facility';
-import { constructionServiceResourceType } from './services';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
+import { constructionServiceResourceType } from './services';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.05;
+export const PID_KP = 0.033;
 
 export const PID_KI = 0.001;
 
-export const PID_KD = 0.025;
+export const PID_KD = 0.01;
 export const PID_IMAX = 0.025;
-export const PID_OUT_MAX = 0.05;
+export const PID_OUT_MAX = 0.033;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
@@ -70,7 +70,12 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
         assert(
             isFinite(ownSupply) && ownSupply >= 0,
-            'Own supply should be non-negative and finite, but got' + ownSupply,
+            'Own supply should be non-negative and finite, but got' +
+                ownSupply +
+                ', resource=' +
+                output.resource.name +
+                ', facility=' +
+                facility.name,
         );
 
         const perTick = output.quantity * Math.max(maxScale, 1);
@@ -266,22 +271,19 @@ function initiateCapacityContraction(
     agent: Agent,
     gameState: GameState,
 ): boolean {
-    const ratio = getRecyclerPaymentRatio(planet) / RECYCLER_PAYMENT_RATIO;
-    if (ratio < 0.1) {
+    const ratio = getRecyclerPaymentRatio(planet);
+    if (ratio < 0.5) {
         return false;
     }
 
     const currentMax = facility.maxScale;
-    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION * ratio)));
+    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION * (2 * ratio - 1))));
     if (targetMax >= currentMax) {
         return false; // Cannot contract any further
     }
 
-    const facilityType = getFacilityType(facility);
-    const replacementCost = calculateCostsForConstruction(facilityType, targetMax, currentMax);
-
     // Delegate full contraction (payment, CS recovery, scale reduction, ticker event) to the recycler agent
-    return processFacilityContraction(planet, facility, agent, targetMax, replacementCost, gameState);
+    return processFacilityContraction(planet, facility, agent, targetMax, gameState);
 }
 
 export function updateAgentProductionScale(gameState: GameState, planet: Planet): void {
@@ -342,19 +344,19 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, priceInflationFactor / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
-            // Check worker availability for expansion
-            const hasWorkers = hasSufficientUnemployedWorkers(facility, planet);
-
             if (
                 facility.scale >= facility.maxScale &&
                 facility.construction === null &&
                 state.expansionIntegral >= dynamicThreshold &&
-                facility.lastTickResults?.overallEfficiency > 0.95 &&
-                hasWorkers
+                facility.lastTickResults?.overallEfficiency > 0.95
             ) {
-                const expanded = initiateCapacityExpansion(facility, assets, planet);
-                if (expanded) {
-                    state.expansionIntegral = 0;
+                // Check worker availability for expansion
+                const hasWorkers = hasSufficientUnemployedWorkers(facility, planet);
+                if (hasWorkers) {
+                    const expanded = initiateCapacityExpansion(facility, assets, planet);
+                    if (expanded) {
+                        state.expansionIntegral = 0;
+                    }
                 }
             }
 
@@ -362,8 +364,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             if (
                 atLowerBound &&
                 facility.construction === null &&
-                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
-                (facility.lastTickResults?.overallEfficiency ?? 1) < CONTRACTION_EFFICIENCY_THRESHOLD
+                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
                 const contracted = initiateCapacityContraction(facility, planet, agent, gameState);
                 if (contracted) {
