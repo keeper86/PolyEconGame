@@ -104,6 +104,8 @@ export function ActiveShipyardCard({
                             scale={facility.scale}
                             workerEfficiency={results?.workerEfficiency ?? {}}
                             globalMin={globalMin}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     </span>
                 }

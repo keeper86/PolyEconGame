@@ -8,13 +8,13 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useParams } from 'next/navigation';
 
 const MAX_LOCAL_EVENTS = 60;
 const GAP_PX = 48;
 const BASE_SPEED_PX_PER_SEC = 80;
 
 const RENDER_LAG_ESTIMATE_MS = 16;
-const MIN_SPEED_PX_PER_SEC = 30;
 const MAX_SPEED_PX_PER_SEC = 240;
 
 type DisplayedEvent = { id: number; event: TickerEvent; duration: number; startX: number };
@@ -45,6 +45,8 @@ function textColor(category: string): string {
 
 export default function Footer() {
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const params = useParams();
+    const planetId = typeof params?.planetId === 'string' ? params.planetId : undefined;
 
     const toggleFullscreen = useCallback(async () => {
         try {
@@ -79,13 +81,18 @@ export default function Footer() {
 
     useEffect(() => {
         const newEvents =
-            data?.tickerEvents.filter((e) => e.category !== 'shipArrived' && e.category !== 'shipDispatched') ?? [];
+            data?.tickerEvents.filter((e) => {
+                if (planetId && e.planetId !== planetId) {
+                    return false;
+                }
+                return e.category !== 'shipArrived' && e.category !== 'shipDispatched';
+            }) ?? [];
         if (!newEvents || newEvents.length === 0) {
             return;
         }
         setEvents((prev) => [...prev, ...newEvents].slice(-MAX_LOCAL_EVENTS));
         setLastSeenId(Math.max(...newEvents.map((e) => e.id)));
-    }, [data]);
+    }, [data, planetId]);
 
     const isSmallScreen = useIsSmallScreen();
 
@@ -149,10 +156,7 @@ export default function Footer() {
 
     const computeSpeed = useCallback((pending: number) => {
         const factor = 0.15;
-        return Math.min(
-            MAX_SPEED_PX_PER_SEC,
-            Math.max(MIN_SPEED_PX_PER_SEC, BASE_SPEED_PX_PER_SEC * (1 + pending * factor)),
-        );
+        return Math.min(MAX_SPEED_PX_PER_SEC, BASE_SPEED_PX_PER_SEC * (1 + (pending - 2) * factor));
     }, []);
 
     const trySpawn = useCallback(() => {

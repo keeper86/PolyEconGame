@@ -123,3 +123,7 @@ export const ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS = 3_600;
 export const ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS = 60;
 
 export const ARBITRAGE_FOREX_THIN_BOOK_HAIRCUT = 0.9;
+
+// ── Recycler Agent ──────────────────────────────────────────────────────────
+export const RECYCLER_BASE_RECOVERY_EFFICIENCY = 0.66;
+export const RECYCLER_PAYMENT_RATIO = 0.75;

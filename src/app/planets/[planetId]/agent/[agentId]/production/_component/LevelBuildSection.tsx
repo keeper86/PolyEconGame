@@ -4,10 +4,12 @@ import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityO
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useAddActionOverlay } from '@/hooks/useActionOverlay';
+import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
@@ -36,16 +38,24 @@ function BuildCard({
     onCancel: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
+
     const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
     const [previewScale, setPreviewScale] = useState(1);
+    const addOverlay = useAddActionOverlay();
+    const currentTick = useSimulationTick();
 
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+            onSuccess: (result) => {
+                addOverlay({
+                    type: 'facilityBuilt',
+                    tickConfirmed: currentTick,
+                    agentId,
+                    planetId,
+                    facilityKey: facility.name,
+                    facilityId: result.facilityId,
+                    targetScale: previewScale,
                 });
                 onBuilt();
             },
@@ -75,6 +85,8 @@ function BuildCard({
                             neutral={true}
                             workerEfficiency={{}}
                             globalMin={0}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     </span>
                 </span>

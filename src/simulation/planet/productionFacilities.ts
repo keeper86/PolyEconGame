@@ -90,6 +90,7 @@ const makeFacilityDefaults = () => ({
     scale: 1,
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
+    lastConstructionCompletedTick: 0,
     pidState: null,
     lastTickResults: {
         ...zeroLastTicksProductionResults,
@@ -838,7 +839,7 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: logisticsServiceResourceType, quantity: 20 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
-    produces: [{ resource: retailServiceResourceType, quantity: 500 }],
+    produces: [{ resource: retailServiceResourceType, quantity: 300 }],
 });
 
 export const hospital = (planetId: string, id: string): ProductionFacility => ({
@@ -879,7 +880,7 @@ export const educationCenter = (planetId: string, id: string): ProductionFacilit
         { resource: furnitureResourceType, quantity: 5 },
         { resource: administrativeServiceResourceType, quantity: 6 },
     ],
-    produces: [{ resource: educationServiceResourceType, quantity: 500 }],
+    produces: [{ resource: educationServiceResourceType, quantity: 300 }],
 });
 
 export const maintenanceFacility = (planetId: string, id: string): ProductionFacility => {
@@ -891,6 +892,7 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 5,

@@ -168,7 +168,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             }
         }
 
-        if (agent.automated) {
+        if (agent.automated && agent.id !== planet.governmentId) {
             const netBalance =
                 assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
             const reservationCapital = computeReservationCapital(assets);

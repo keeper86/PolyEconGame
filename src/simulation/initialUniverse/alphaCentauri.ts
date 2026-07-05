@@ -1,3 +1,4 @@
+import { createRecyclerAgent } from '../agents/recycler';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -366,7 +367,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     });
     agents.unshift(govAgent);
 
-    const planet: Planet = {
+    const planetBase = {
         id: AC_ID,
         name: 'Alpha Centauri',
         position: { x: 4.37, y: 0, z: 0 },
@@ -418,5 +419,11 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     };
 
-    return { planet, agents };
+    return {
+        planet: {
+            ...planetBase,
+            recycler: createRecyclerAgent(planetBase.id, planetBase.name),
+        },
+        agents,
+    };
 }

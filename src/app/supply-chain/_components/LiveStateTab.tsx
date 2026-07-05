@@ -627,14 +627,14 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
     const trpc = useTRPC();
 
     const { data: agentData, isLoading: agentsLoading } = useSimulationQuery(
-        trpc.simulation.getLatestAgents.queryOptions(),
+        trpc.simulation.getRawAgents.queryOptions(),
     );
     const { data: planetData, isLoading: planetsLoading } = useSimulationQuery(
         trpc.simulation.getLatestPlanetSummaries.queryOptions(),
     );
 
     const tick = agentData?.tick ?? 0;
-    const agents = useMemo(() => (agentData?.agents.map((a) => a.agentSummary as Agent) ?? []) as Agent[], [agentData]);
+    const agents = useMemo(() => (agentData?.agents ?? []) as Agent[], [agentData]);
     const planets = useMemo(() => planetData?.planets ?? [], [planetData]);
     const livePop = useMemo(() => {
         if (selectedPlanetId === 'all') {

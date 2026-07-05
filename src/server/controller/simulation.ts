@@ -39,6 +39,7 @@ import {
     getShipCapitalMarketSync,
     getTickerEventsSync,
 } from '../../simulation/workerClient/syncQueries';
+import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
 import { db } from '../db';
 import { procedure, protectedProcedure } from '../trpcRoot';
 
@@ -667,6 +668,15 @@ export const getAgentFinancialHistory = () =>
             };
         });
 
+export const generateNewsReport = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(z.object({ prompt: z.string() }))
+        .query(async () => {
+            const prompt = generateAndLogNewsPrompt();
+            return { prompt };
+        });
+
 export const getPlanetEconomyHistory = () =>
     protectedProcedure
         .input(
@@ -755,6 +765,7 @@ const tickerEventSchema = baseTickerEventSchema.extend(
             'shipArrived',
             'shipCompleted',
             'facilityCompleted',
+            'facilityScrapped',
             'licenseAcquired',
             'agentBankrupt',
             'contractAccepted',
@@ -941,6 +952,20 @@ export const getArbitrageRoutes = () =>
                 shipTypeName: input.shipTypeName,
                 routes: routes.slice(0, input.maxRoutes),
             };
+        });
+
+export const getRawAgents = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(
+            z.object({
+                tick: z.number(),
+                agents: z.array(z.any()),
+            }),
+        )
+        .query(async () => {
+            const { tick, agents } = getAllAgentsSync();
+            return profileReturn('getRawAgents', { tick, agents });
         });
 
 export const getArbitrageForResources = () =>

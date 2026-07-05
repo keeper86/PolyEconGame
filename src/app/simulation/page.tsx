@@ -8,6 +8,7 @@ import { OverviewSection } from './sections/OverviewSection';
 import { PricingMarketSection } from './sections/PricingMarketSection';
 import { ProductionPostSection } from './sections/ProductionPostSection';
 import { TickOrderSection } from './sections/TickOrderSection';
+import NewsAgentSection from './sections/NewsAgentSection';
 
 const TOC = [
     { id: 'overview', label: '0. Overview & Time Units' },
@@ -64,6 +65,9 @@ export default function SimulationPage() {
                 <ProductionPostSection />
                 <InterPlanetSection />
                 <TickOrderSection />
+
+                <hr className='my-8' />
+                <NewsAgentSection />
 
                 <hr className='my-8' />
             </div>

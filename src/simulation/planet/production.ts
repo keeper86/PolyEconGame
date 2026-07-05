@@ -109,10 +109,12 @@ function emptyEduRecord(): Record<EducationLevelType, number> {
     return { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 }
 
+type ConstructionTracking = { planet: Planet; monthAcc: MonthAccumulator; gameStateTick: number };
+
 export function consumeConstructionForFacility(
     facility: Facility,
     storage: StorageFacility | null,
-    tracking: { planet: Planet; monthAcc: MonthAccumulator },
+    tracking: ConstructionTracking,
 ): number {
     if (!facility.construction || !storage) {
         return 0;
@@ -145,6 +147,7 @@ export function consumeConstructionForFacility(
         facility.maxScale = cs.constructionTargetMaxScale;
         facility.scale = facility.maxScale * scaleFraction;
         facility.construction = null;
+        facility.lastConstructionCompletedTick = tracking.gameStateTick;
     }
 
     return toConsume;
@@ -169,6 +172,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
             const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storageFacility, {
                 planet,
                 monthAcc: assets.monthAcc,
+                gameStateTick: gameState.tick,
             });
             // For 'new' construction, the facility wasn't processed by productionTick(), so
             // lastTickResults contains stale data. Reset lastConsumed before setting fresh values.
@@ -648,10 +652,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const active = workforce ? totalActiveForEduSkill(workforce, edu, skill) : 0;
                 const departing = workforce ? totalDepartingForEduSkill(workforce, edu, skill) : 0;
                 const onboarding = workforce ? totalOnboardingForEduSkill(workforce, edu, skill) : 0;
+                const onboardingEfficiency = gameState.tick < TICKS_PER_YEAR ? 1 : ONBOARDING_EFFICIENCY;
                 workerPool[edu][skill] =
                     active +
                     stochasticRound(departing * DEPARTING_EFFICIENCY) +
-                    stochasticRound(onboarding * ONBOARDING_EFFICIENCY);
+                    stochasticRound(onboarding * onboardingEfficiency);
             }
         }
 

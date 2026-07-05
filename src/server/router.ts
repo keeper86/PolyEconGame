@@ -47,7 +47,9 @@ import {
     getPlanetDetail,
     getPlanetEconomyHistory,
     getProductPriceHistory,
+    getRawAgents,
     getTickerEvents,
+    generateNewsReport,
 } from './controller/simulation';
 
 import {
@@ -104,6 +106,8 @@ const simulationRouter = trpcRoot.router({
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),
     getArbitrageForResources: getArbitrageForResources(),
+    getRawAgents: getRawAgents(),
+    generateNewsReport: generateNewsReport(),
 });
 
 const protectedAppRouter = trpcRoot.router({

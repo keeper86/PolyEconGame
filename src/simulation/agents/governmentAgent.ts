@@ -26,6 +26,14 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
                 if (cat.total > 0) {
                     cells.push(cat);
                 }
+                const eduCat = ageCohort.education[edu][skill];
+                if (eduCat.total > 0) {
+                    cells.push(eduCat);
+                }
+                const unemployedCat = ageCohort.unoccupied[edu][skill];
+                if (unemployedCat.total > 0) {
+                    cells.push(unemployedCat);
+                }
             }
         }
     }

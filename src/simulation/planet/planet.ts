@@ -120,6 +120,8 @@ export type Planet = {
     environment: Environment;
     bank: Bank;
 
+    recycler: Agent;
+
     wagePerEdu: Record<EducationLevelType, number>;
     marketPrices: Record<string, number>;
     orderBooks: Record<string, ResourceOrderBook>;
@@ -277,7 +279,7 @@ export type AgentPlanetAssets = {
 
     activeLoans: Loan[];
 
-    market?: AgentMarketOffers;
+    market: AgentMarketOffers;
 
     wagePerEdu: Record<EducationLevelType, number>;
 

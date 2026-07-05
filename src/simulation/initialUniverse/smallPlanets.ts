@@ -37,6 +37,7 @@ import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
 import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 import type { ResourceClaimEntry } from './helpers';
+import { createRecyclerAgent } from '../agents/recycler';
 
 interface AgriSpec {
     id: string;
@@ -202,7 +203,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     });
     agents.unshift(govAgent);
 
-    const planet: Planet = {
+    const planetBase = {
         id: spec.id,
         name: spec.name,
         position: spec.position,
@@ -238,7 +239,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         environment: spec.environment,
     };
 
-    return { planet, agents };
+    return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }
 
 const guneForestClaims: ResourceClaimEntry[] = [];

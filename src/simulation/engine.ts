@@ -18,7 +18,7 @@ import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
 import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick, updateProductionCostFloors } from './planet/production';
-import { populationAdvanceYearTick, populationTick } from './population/populationTick';
+import { populationAdvanceYearTick, populationTick, resetPopulationMonthCounters } from './population/populationTick';
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
@@ -55,8 +55,13 @@ export function advanceTick(gameState: GameState) {
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
+            resetPopulationMonthCounters(planet);
             planet.monthPriceAcc = {};
             planet.monthTransferVolume = 0;
+
+            const govAgent = gameState.agents.get(planet.governmentId);
+            assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
+            governmentTick(planet, govAgent);
         }
 
         let t: number = 0;
@@ -66,9 +71,7 @@ export function advanceTick(gameState: GameState) {
             t = profile.mark();
         }
         environmentTick(planet);
-        const govAgent = gameState.agents.get(planet.governmentId);
-        assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
-        governmentTick(planet, govAgent);
+
         if (profile.isEnabled) {
             t = profile.markAndAccum('envGov', 'environmentTick + governmentTick', t);
         }
@@ -150,7 +153,7 @@ export function advanceTick(gameState: GameState) {
         productionTick(gameState, planet);
         constructionTick(gameState, planet);
         automaticWageAdjustment(gameState.agents, planet);
-        updateAgentProductionScale(gameState.agents, planet);
+        updateAgentProductionScale(gameState, planet);
         if (profile.isEnabled) {
             t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
         }
