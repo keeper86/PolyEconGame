@@ -75,7 +75,7 @@ function tickToMonthYear(tick: number): string {
  */
 function computeDemographicMetrics(planet: Planet): {
     totalEmployed: number;
-    deathsThisMonth: number;
+    deathsLastMonth: number;
     avgGroceryStarvation: number;
     avgHealthcareStarvation: number;
     avgRetailStarvation: number;
@@ -86,7 +86,7 @@ function computeDemographicMetrics(planet: Planet): {
     avgRetailBuffer: number;
 } {
     let totalEmployed = 0;
-    let deathsThisMonth = 0;
+    let deathsLastMonth = 0;
     let totalPop = 0;
 
     let groceryStarveSum = 0;
@@ -111,7 +111,7 @@ function computeDemographicMetrics(planet: Planet): {
                     if (occ === 'employed') {
                         totalEmployed += cat.total;
                     }
-                    deathsThisMonth += cat.deaths.countThisMonth;
+                    deathsLastMonth += cat.deaths.countLastMonth;
 
                     const svc = cat.services;
                     groceryStarveSum += svc.grocery.starvationLevel * cat.total;
@@ -131,7 +131,7 @@ function computeDemographicMetrics(planet: Planet): {
 
     return {
         totalEmployed,
-        deathsThisMonth,
+        deathsLastMonth: deathsLastMonth,
         avgGroceryStarvation: safeDiv(groceryStarveSum),
         avgHealthcareStarvation: safeDiv(healthcareStarveSum),
         avgRetailStarvation: safeDiv(retailStarveSum),
@@ -513,9 +513,7 @@ function computeEmploymentRate(planet: MonthlyPlanetReport): number {
 }
 
 function computeDeathRatePer100k(planet: MonthlyPlanetReport): number {
-    return planet.population > 0
-        ? ((planet.deathsThisMonth * (TICKS_PER_YEAR / TICKS_PER_MONTH)) / planet.population) * 100000
-        : 0;
+    return planet.population > 0 ? (planet.deathsLastMonth / planet.population) * 100000 : 0;
 }
 
 /**

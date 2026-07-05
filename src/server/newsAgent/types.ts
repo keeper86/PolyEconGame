@@ -28,7 +28,7 @@ export interface MonthlyPlanetReport {
     agentCount: number;
     // Demographics
     totalEmployed: number;
-    deathsThisMonth: number;
+    deathsLastMonth: number;
     avgGroceryStarvation: number;
     avgHealthcareStarvation: number;
     avgRetailStarvation: number;
