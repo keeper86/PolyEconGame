@@ -735,7 +735,7 @@ export const buildFacility = () => {
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
                 facilityKey: z.string().min(1),
-                targetScale: z.number().int().min(1).max(100).default(1),
+                targetScale: z.number().int().min(1).max(1_000_000_000_000_000).default(1),
             }),
         )
         .output(z.object({ facilityId: z.string() }))
@@ -784,7 +784,7 @@ export const expandFacility = () => {
                 agentId: z.string().min(1),
                 planetId: z.string().min(1),
                 facilityId: z.string().min(1),
-                targetScale: z.number().int().min(2).max(100),
+                targetScale: z.number().int().min(2).max(1_000_000_000_000_000),
             }),
         )
         .output(z.object({ facilityId: z.string() }))

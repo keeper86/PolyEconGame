@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Slider } from '@/components/ui/slider';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 interface LogSliderProps {
     /** The discrete values corresponding to each slider step, e.g. [1, 10, 100, 1000] */
@@ -25,7 +26,7 @@ export function LogSlider({
     className,
 }: LogSliderProps): React.ReactElement {
     const maxIndex = values.length - 1;
-    const labelFormatter = formatLabel ?? ((v: number) => String(v));
+    const labelFormatter = formatLabel ?? ((v: number) => formatNumberWithUnit(v, 'none'));
 
     return (
         <div className={className}>
