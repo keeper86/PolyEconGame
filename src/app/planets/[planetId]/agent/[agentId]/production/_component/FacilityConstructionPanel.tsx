@@ -4,8 +4,8 @@ import { Button } from '@/components/ui/button';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import type { FacilityType } from '@/simulation/planet/facility';
+import { LogSlider } from '@/components/ui/log-slider';
 import React, { useMemo, useState } from 'react';
-import { ScaleSelector } from './ScaleSelector';
 
 export function FacilityConstructionPanel({
     facilityType,
@@ -41,6 +41,40 @@ export function FacilityConstructionPanel({
         onScaleChange?.(v);
     };
 
+    // Build logarithmic scale values based on the current fromScale
+    const scaleValues = useMemo(() => {
+        const base = fromScale === 0 ? 1 : fromScale;
+        const raw = [
+            base,
+            Math.round(base * 1.3),
+            Math.round(base * 1.5),
+            Math.round(base * 2),
+            Math.round(base * 5),
+            Math.round(base * 10),
+            Math.round(base * 100),
+            Math.round(base * 1000),
+        ];
+        // Deduplicate while preserving order
+        const filtered = raw.filter((v, i, arr) => arr.indexOf(v) === i && v > fromScale);
+        let factor = 10000;
+        for (let i = filtered.length; i < 8; i++) {
+            filtered.push(Math.round(factor * base));
+            factor *= 10;
+        }
+        return filtered;
+    }, [fromScale]);
+
+    // Map the current targetScale to the closest index in scaleValues
+    const sliderIndex = scaleValues.indexOf(targetScale);
+    const currentIndex = sliderIndex !== -1 ? sliderIndex : 0;
+
+    const handleSliderChange = (index: number) => {
+        const v = scaleValues[index];
+        if (v !== undefined) {
+            handleScaleChange(v);
+        }
+    };
+
     const cost = useMemo(
         () => calculateCostsForConstruction(facilityType, fromScale, targetScale),
         [facilityType, fromScale, targetScale],
@@ -51,7 +85,13 @@ export function FacilityConstructionPanel({
     return (
         <>
             <p className='text-xs font-medium'>{label}</p>
-            <ScaleSelector value={targetScale} min={minScale} onChange={handleScaleChange} />
+            <LogSlider
+                values={scaleValues}
+                value={currentIndex}
+                onValueChange={handleSliderChange}
+                className='w-full'
+                formatLabel={(n) => formatNumberWithUnit(n, 'none')}
+            />
             <p className='text-xs text-muted-foreground'>
                 Cost:{' '}
                 <span className='tabular-nums font-medium text-foreground'>{formatNumberWithUnit(cost, 'units')}</span>{' '}
