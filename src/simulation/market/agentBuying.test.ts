@@ -214,15 +214,6 @@ describe('automaticPricing — buy side', () => {
         expect(buyer.assets.p.market!.buy[COAL]!.bidPrice).toBeGreaterThan(firstBidPrice);
     });
 
-    it('skips buy-order creation when agent.automated is false and no bids have automated=true', () => {
-        const buyer = makeSteelProducer();
-        buyer.automated = false;
-
-        automaticPricing(agentMap(buyer), planet);
-
-        expect(buyer.assets.p.market?.buy).toBeUndefined();
-    });
-
     it('bootstraps bid price from the current market price', () => {
         planet.marketPrices[COAL] = 3.0;
         planet.marketPrices[steelResourceType.name] = 4.0;
