@@ -473,8 +473,7 @@ export function extractMonthlyReport(): MonthlyReport {
             gdp:
                 planet._gdp ??
                 Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
-                    TICKS_PER_YEAR +
-                    (planet.monthTransferVolume * 1) / 3,
+                    TICKS_PER_YEAR,
             costOfLiving: computeCostOfLiving(planet, false),
             costOfLivingRich: computeCostOfLiving(planet, true),
             wages: {

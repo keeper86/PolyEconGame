@@ -67,8 +67,8 @@ import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
 
-const TOTAL_ARABLE = 2_500_000_000;
-const TOTAL_WATER = 2_000_000_000;
+const TOTAL_ARABLE = 3_500_000_000;
+const TOTAL_WATER = 4_000_000_000;
 const TOTAL_IRON_ORE = 5_000_000_000_000;
 const TOTAL_COAL = 4_000_000_000_000;
 const TOTAL_OIL = 3_000_000_000_000;
@@ -122,7 +122,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     limestoneQuarry: { totalScale: 145_818, agentCount: 3 },
     clayMine: { totalScale: 24_000, agentCount: 3 },
     cottonFarm: { totalScale: 983_157, agentCount: 4 },
-    waterExtractionFacility: { totalScale: 381_115, agentCount: 4 },
+    waterExtractionFacility: { totalScale: 241_115, agentCount: 4 },
     ironExtractionFacility: { totalScale: 242_191, agentCount: 4 },
     coalPowerPlant: { totalScale: 73_244, agentCount: 4 },
     ironSmelter: { totalScale: 645_843, agentCount: 4 },
@@ -319,7 +319,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             type: arableLandResourceType,
             quantity: 100_000_000,
             tenantAgentId: 'proc-utilities',
-            costPerTick: 1_000_000,
+            costPerTick: 100_000_000,
             renewable: true,
         }),
     );
@@ -329,7 +329,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             type: waterSourceResourceType,
             quantity: 100_000_000,
             tenantAgentId: 'proc-utilities',
-            costPerTick: 500_000,
+            costPerTick: 100_000_000,
             renewable: true,
         }),
     );

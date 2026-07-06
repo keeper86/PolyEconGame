@@ -11,7 +11,6 @@ export function makeClaim(opts: {
     renewable?: boolean;
 }): ResourceClaimEntry {
     const isRenewable = opts.renewable === true;
-    const passedCost = opts.tenantCostInCoins ?? 0;
     return {
         id: opts.id,
         resource: opts.type,
@@ -20,7 +19,7 @@ export function makeClaim(opts: {
         maximumCapacity: opts.quantity,
         tenantAgentId: opts.tenantAgentId,
         tenantCostInCoins: isRenewable ? 0 : (opts.tenantCostInCoins ?? 0),
-        costPerTick: isRenewable ? (opts.costPerTick ?? passedCost) : 0,
+        costPerTick: isRenewable ? (opts.costPerTick ?? opts.quantity) : 0,
         claimStatus: 'active',
         noticePeriodEndsAtTick: null,
         pausedTicksThisYear: 0,

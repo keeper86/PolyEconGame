@@ -224,12 +224,15 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             actualConsumed[need.resource.name] = extracted;
             params.planet.consumedResources[need.resource.name] =
                 (params.planet.consumedResources[need.resource.name] ?? 0) + extracted;
-            if (consumed > 0 && Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
-                console.warn(`Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`, {
-                    planetId: planet.id,
-                    agentId: agent.id,
-                    facilityId,
-                });
+
+            if (process.env.SIM_DEBUG === '1') {
+                if (consumed > 0 && Math.abs(extracted / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+                    console.warn(`Unexpected: extracted ${extracted} of ${need.resource.name}, expected ${consumed}.`, {
+                        planetId: planet.id,
+                        agentId: agent.id,
+                        facilityId,
+                    });
+                }
             }
         } else {
             const removed = removeFromStorageFacility(storage, need.resource.name, consumed);
@@ -237,12 +240,15 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
             actualConsumed[need.resource.name] = actual;
             params.planet.consumedResources[need.resource.name] =
                 (params.planet.consumedResources[need.resource.name] ?? 0) + actual;
-            if (consumed > 0 && Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
-                console.warn(`Unexpected: removed ${actual} of ${need.resource.name}, expected ${consumed}.`, {
-                    planetId: planet.id,
-                    agentId: agent.id,
-                    facilityId,
-                });
+
+            if (process.env.SIM_DEBUG === '1') {
+                if (consumed > 0 && Math.abs(actual / consumed - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
+                    console.warn(`Unexpected: removed ${actual} of ${need.resource.name}, expected ${consumed}.`, {
+                        planetId: planet.id,
+                        agentId: agent.id,
+                        facilityId,
+                    });
+                }
             }
         }
     }

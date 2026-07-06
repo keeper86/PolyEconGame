@@ -145,6 +145,8 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         );
     }
 
+    agents.push(...spec.industrialAgents);
+
     const arableRemainder = makeUnclaimedRemainder({
         idPrefix: `${spec.id}-arable`,
         type: arableLandResourceType,

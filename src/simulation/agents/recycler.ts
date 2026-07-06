@@ -123,7 +123,10 @@ export function processFacilityContraction(
     agentAssets.deposits += payment;
 
     // If recycler has a lot of money, give it to the government
-    if (recyclerAssets.deposits > 10_000_000) {
+    if (
+        recyclerAssets.deposits - recyclerAssets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0) >
+        10_000_000
+    ) {
         const governmentAgent = gameState.agents.get(planet.governmentId);
         assert(governmentAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
         governmentAgent.assets[planet.id]!.deposits += recyclerAssets.deposits;

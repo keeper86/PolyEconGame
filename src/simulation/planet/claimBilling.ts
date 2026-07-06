@@ -1,7 +1,7 @@
-import type { Agent, Planet } from './planet';
-import { collapseUntenantedClaims } from './claims';
 import { TICKS_PER_MONTH } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
+import { collapseUntenantedClaims } from './claims';
+import type { Agent, Planet } from './planet';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
@@ -37,23 +37,28 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
             const agent = agents.get(entry.tenantAgentId);
             const assets = agent?.assets[planet.id];
             if (!assets) {
+                console.warn(
+                    `Agent ${agent?.name}/${agent?.id} has no asset record for planet ${planet.name}; looking for tenant ${entry.tenantAgentId}`,
+                );
                 continue;
             }
 
-            if (assets.deposits < entry.costPerTick && agent.automated) {
-                const shortfall = entry.costPerTick * TICKS_PER_MONTH - assets.deposits;
+            const cost = (entry.costPerTick / entry.maximumCapacity) * (entry.maximumCapacity - entry.quantity);
+
+            if (assets.deposits < cost && agent.automated) {
+                const shortfall = cost * TICKS_PER_MONTH - assets.deposits;
                 grantLoan(assets, planet.bank, shortfall, 'claimCoverage', tick);
             }
 
-            if (assets.deposits >= entry.costPerTick) {
+            if (assets.deposits >= cost) {
                 if (entry.claimStatus === 'paused') {
                     entry.claimStatus = 'active';
                 }
-                assets.deposits -= entry.costPerTick;
-                assets.monthAcc.claimPayments += entry.costPerTick;
+                assets.deposits -= cost;
+                assets.monthAcc.claimPayments += cost;
                 const govAssets = agents.get(planet.governmentId)?.assets[planet.id];
                 if (govAssets) {
-                    govAssets.deposits += entry.costPerTick;
+                    govAssets.deposits += cost;
                 }
             } else if (!isTerminating) {
                 entry.claimStatus = 'paused';

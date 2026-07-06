@@ -117,10 +117,6 @@ export function advanceTick(gameState: GameState) {
         if (profile.isEnabled) {
             t = profile.mark();
         }
-        claimBillingTick(gameState.agents, planet, gameState.tick);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
-        }
         maturesLoans(gameState.agents, planet, gameState.tick);
         if (profile.isEnabled) {
             t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
@@ -156,6 +152,12 @@ export function advanceTick(gameState: GameState) {
         updateAgentProductionScale(gameState, planet);
         if (profile.isEnabled) {
             t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
+        }
+
+        // Must be after productionTick, to infer claim usage
+        claimBillingTick(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
         }
 
         // ── Month boundary ──
