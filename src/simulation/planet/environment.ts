@@ -21,6 +21,11 @@ export function environmentTick(planet: Planet) {
     );
 
     for (const entry of Object.values(planet.resources)) {
+        const pool = entry.pool;
+        if (pool.regenerationRate > 0) {
+            const toRegenerate = Math.min(pool.regenerationRate, pool.maximumCapacity - pool.quantity);
+            pool.quantity += toRegenerate;
+        }
         for (const claim of entry.claims) {
             if (claim.regenerationRate > 0) {
                 const toRegenerate = Math.min(claim.regenerationRate, claim.maximumCapacity - claim.quantity);

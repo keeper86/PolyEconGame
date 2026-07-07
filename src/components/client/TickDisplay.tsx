@@ -26,7 +26,7 @@ export default function TickDisplay() {
     const tick = useSimulationTick();
 
     return (
-        <div className='text-sm text-muted-foreground w-[130px] text-right tabular-nums'>
+        <div className='text-sm text-muted-foreground w-[140px] text-right tabular-nums'>
             {tick > 0 ? mapTickToDate(tick) : '—'}
         </div>
     );

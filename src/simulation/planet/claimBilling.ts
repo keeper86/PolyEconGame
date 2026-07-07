@@ -8,6 +8,7 @@ const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     for (const resourceName of Object.keys(planet.resources)) {
         const { pool, claims } = planet.resources[resourceName];
+        const mergedClaimIds = new Set<string>();
 
         for (const entry of claims) {
             if (entry.regenerationRate <= 0) {
@@ -16,6 +17,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
 
             if (entry.noticePeriodEndsAtTick !== null && tick >= entry.noticePeriodEndsAtTick) {
                 mergeClaimBackIntoPool(pool, entry);
+                mergedClaimIds.add(entry.id);
                 continue;
             }
 
@@ -63,9 +65,13 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
             }
         }
 
+        if (mergedClaimIds.size > 0) {
+            planet.resources[resourceName].claims = claims.filter((c) => !mergedClaimIds.has(c.id));
+        }
+
         let totalCost = 0;
         let totalUnits = 0;
-        for (const entry of claims) {
+        for (const entry of planet.resources[resourceName].claims) {
             if (entry.regenerationRate > 0) {
                 totalCost += entry.costPerTick;
                 totalUnits += entry.quantity;

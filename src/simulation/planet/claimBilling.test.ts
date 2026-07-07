@@ -22,7 +22,7 @@ function makeRenewableClaim(
     return {
         id: 'claim-1',
         resource: arableLandResourceType,
-        quantity: 1000,
+        quantity: 0,
         regenerationRate: 1000,
         maximumCapacity: 1000,
         tenantAgentId: 'company-1',
@@ -259,7 +259,6 @@ describe('claimBillingTick', () => {
             claimBillingTick(agents, planet, 100);
 
             const entries = planet.resources[arableLandResourceType.name];
-            expect(entries.claims).toHaveLength(1);
             expect(entries.claims).toHaveLength(0);
             expect(entries.pool.quantity).toBe(700);
             expect(entries.pool.maximumCapacity).toBe(700);
@@ -419,7 +418,6 @@ describe('claimBillingTick', () => {
             claimBillingTick(agents, planet, TICKS_PER_MONTH);
 
             const entries = planet.resources[arableLandResourceType.name];
-            expect(entries.claims).toHaveLength(1);
             expect(entries.claims).toHaveLength(0);
             expect(entries.pool.quantity).toBe(700);
             expect(entries.pool.maximumCapacity).toBe(700);

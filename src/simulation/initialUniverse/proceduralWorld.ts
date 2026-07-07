@@ -779,6 +779,12 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
     const getPoolClaims = (k: string): ResourceClaim[] => claimPools.get(k) ?? [];
 
+    const getUnclaimedQuantity = (facilityType: string, total: number): number => {
+        const claims = claimPools.get(facilityType) ?? [];
+        const claimed = claims.reduce((s, c) => s + c.quantity, 0);
+        return Math.max(0, total - claimed);
+    };
+
     const planetBase = {
         id: PROC_PLANET_ID,
         name: 'Earth',
@@ -810,7 +816,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [arableLandResourceType.name]: {
                 pool: makePool({
                     type: arableLandResourceType,
-                    quantity: TOTAL_ARABLE,
+                    quantity: getUnclaimedQuantity('cottonFarm', TOTAL_ARABLE),
                     renewable: renewableForResource('cottonFarm'),
                 }),
                 claims: getPoolClaims('cottonFarm'),
@@ -818,7 +824,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [waterSourceResourceType.name]: {
                 pool: makePool({
                     type: waterSourceResourceType,
-                    quantity: TOTAL_WATER,
+                    quantity: getUnclaimedQuantity('waterExtractionFacility', TOTAL_WATER),
                     renewable: renewableForResource('waterExtractionFacility'),
                 }),
                 claims: getPoolClaims('waterExtractionFacility'),
@@ -826,7 +832,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [ironOreDepositResourceType.name]: {
                 pool: makePool({
                     type: ironOreDepositResourceType,
-                    quantity: TOTAL_IRON_ORE,
+                    quantity: getUnclaimedQuantity('ironExtractionFacility', TOTAL_IRON_ORE),
                     renewable: renewableForResource('ironExtractionFacility'),
                 }),
                 claims: getPoolClaims('ironExtractionFacility'),
@@ -834,7 +840,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [coalDepositResourceType.name]: {
                 pool: makePool({
                     type: coalDepositResourceType,
-                    quantity: TOTAL_COAL,
+                    quantity: getUnclaimedQuantity('coalMine', TOTAL_COAL),
                     renewable: renewableForResource('coalMine'),
                 }),
                 claims: getPoolClaims('coalMine'),
@@ -842,7 +848,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [oilReservoirResourceType.name]: {
                 pool: makePool({
                     type: oilReservoirResourceType,
-                    quantity: TOTAL_OIL,
+                    quantity: getUnclaimedQuantity('oilWell', TOTAL_OIL),
                     renewable: renewableForResource('oilWell'),
                 }),
                 claims: getPoolClaims('oilWell'),
@@ -850,7 +856,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [forestResourceType.name]: {
                 pool: makePool({
                     type: forestResourceType,
-                    quantity: TOTAL_FOREST,
+                    quantity: getUnclaimedQuantity('loggingCamp', TOTAL_FOREST),
                     renewable: renewableForResource('loggingCamp'),
                 }),
                 claims: getPoolClaims('loggingCamp'),
@@ -858,7 +864,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [copperDepositResourceType.name]: {
                 pool: makePool({
                     type: copperDepositResourceType,
-                    quantity: TOTAL_COPPER,
+                    quantity: getUnclaimedQuantity('copperMine', TOTAL_COPPER),
                     renewable: renewableForResource('copperMine'),
                 }),
                 claims: getPoolClaims('copperMine'),
@@ -866,7 +872,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [sandDepositResourceType.name]: {
                 pool: makePool({
                     type: sandDepositResourceType,
-                    quantity: TOTAL_SAND,
+                    quantity: getUnclaimedQuantity('sandMine', TOTAL_SAND),
                     renewable: renewableForResource('sandMine'),
                 }),
                 claims: getPoolClaims('sandMine'),
@@ -874,7 +880,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [limestoneDepositResourceType.name]: {
                 pool: makePool({
                     type: limestoneDepositResourceType,
-                    quantity: TOTAL_LIMESTONE,
+                    quantity: getUnclaimedQuantity('limestoneQuarry', TOTAL_LIMESTONE),
                     renewable: renewableForResource('limestoneQuarry'),
                 }),
                 claims: getPoolClaims('limestoneQuarry'),
@@ -882,7 +888,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [clayDepositResourceType.name]: {
                 pool: makePool({
                     type: clayDepositResourceType,
-                    quantity: TOTAL_CLAY,
+                    quantity: getUnclaimedQuantity('clayMine', TOTAL_CLAY),
                     renewable: renewableForResource('clayMine'),
                 }),
                 claims: getPoolClaims('clayMine'),
@@ -890,7 +896,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [stoneDepositResourceType.name]: {
                 pool: makePool({
                     type: stoneDepositResourceType,
-                    quantity: TOTAL_STONE,
+                    quantity: getUnclaimedQuantity('stoneQuarry', TOTAL_STONE),
                     renewable: renewableForResource('stoneQuarry'),
                 }),
                 claims: getPoolClaims('stoneQuarry'),

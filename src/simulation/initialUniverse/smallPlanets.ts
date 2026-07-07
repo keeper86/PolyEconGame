@@ -223,16 +223,18 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             [arableLandResourceType.name]: { pool: arablePool, claims: arableClaims },
             [waterSourceResourceType.name]: { pool: waterPool, claims: waterClaims },
             ...Object.fromEntries(
-                Object.entries(spec.extraResources ?? {}).map(([name, claims]) => [
-                    name,
-                    {
-                        pool: makePool({
-                            type: claims[0]?.resource ?? {},
-                            quantity: claims.reduce((s, c) => s + c.quantity, 0),
-                        }),
-                        claims,
-                    },
-                ]),
+                Object.entries(spec.extraResources ?? {})
+                    .filter(([, claims]) => claims.length > 0)
+                    .map(([name, claims]) => [
+                        name,
+                        {
+                            pool: makePool({
+                                type: claims[0].resource,
+                                quantity: 0,
+                            }),
+                            claims,
+                        },
+                    ]),
             ),
         },
         infrastructure: spec.infrastructure,
