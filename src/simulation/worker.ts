@@ -3,6 +3,8 @@ import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
 import { computeLoanConditions } from './financial/loanConditions';
 import { totalOutstandingLoans } from './financial/loanTypes';
+import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
+import { constructionServiceResourceType } from './planet/services';
 import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
@@ -285,7 +287,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return [];
             }
             return Object.entries(agent.assets).map(([planetId, assets]) => {
-                const netBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
+                const cashBalance = assets.deposits - totalOutstandingLoans(assets.activeLoans);
+
                 const monthlyNetIncome = assets.monthAcc.revenue;
 
                 const totalWorkers = Math.round(assets.monthAcc.totalWorkersTicks / TICKS_PER_MONTH);
@@ -301,11 +304,17 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     }
                 }
 
+                // Compute net-worth including real assets (facilities + ships)
+                const csPrice = planet?.marketPrices[constructionServiceResourceType.name] ?? 0;
+                const facilitiesValue = computeFacilitiesValue(assets, csPrice);
+                const shipsValue = computeShipsValue(agent, gs.shipCapitalMarket, planet?.marketPrices ?? {});
+                const netWorth = cashBalance + facilitiesValue + shipsValue;
+
                 return {
                     tick,
                     planet_id: planetId,
                     agent_id: agent.id,
-                    net_balance: netBalance,
+                    net_balance: netWorth,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
                     wages: assets.monthAcc.wages,
@@ -384,8 +393,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
             const gdp =
                 Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
-                    TICKS_PER_YEAR +
-                (planet.monthTransferVolume * 1) / 3; // assume part of transfer volume is commercial p2p activity
+                TICKS_PER_YEAR;
 
             const costOfLiving = computeCostOfLiving(planet, false);
             const costOfLivingRich = computeCostOfLiving(planet, true);
@@ -540,8 +548,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
                 planet._gdp =
                     Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
-                        TICKS_PER_YEAR +
-                    (planet.monthTransferVolume * 1) / 3;
+                    TICKS_PER_YEAR;
 
                 planet._costOfLivingRich = undefined;
                 planet._costOfLiving = undefined;
@@ -552,10 +559,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planet._freeResources = Object.entries(planet.resources)
                     .map(([name, entries]) => ({
                         name,
-                        freeCapacity: entries.reduce(
-                            (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
-                            0,
-                        ),
+                        freeCapacity: entries.pool.maximumCapacity,
                     }))
                     .sort((a, b) => b.freeCapacity - a.freeCapacity);
             }
@@ -656,7 +660,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         data = { conditions: null, activeLoans: [] };
                     } else {
                         data = {
-                            conditions: computeLoanConditions(agent, planet),
+                            conditions: computeLoanConditions(agent, planet, snap.shipCapitalMarket),
                             activeLoans: agent.assets[msg.planetId]?.activeLoans ?? [],
                         };
                     }

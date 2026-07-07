@@ -655,26 +655,18 @@ export const getPlanetClaims = () =>
             }
 
             const summaries: ClaimResourceSummary[] = Object.entries(planet.resources)
-                .filter(([, claims]) => claims.length > 0 && claims[0]?.resource.form === 'landBoundResource')
-                .map(([resourceName, claims]) => {
-                    let tenantedCapacity = 0;
-                    let tenantedClaims = 0;
-                    let totalCapacity = 0;
-                    let isRenewable = false;
-                    let totalRegenerationRate = 0;
-
-                    for (const claim of claims) {
-                        totalCapacity += claim.maximumCapacity;
-                        totalRegenerationRate += claim.regenerationRate;
-                        if (claim.regenerationRate > 0) {
-                            isRenewable = true;
-                        }
-                        const isTenanted = claim.tenantAgentId !== null;
-                        if (isTenanted) {
-                            tenantedCapacity += claim.maximumCapacity;
-                            tenantedClaims += 1;
-                        }
-                    }
+                .filter(
+                    ([, entry]) => entry.claims.length > 0 && entry.claims[0]?.resource.form === 'landBoundResource',
+                )
+                .map(([resourceName, entry]) => {
+                    const pool = entry.pool;
+                    const claims = entry.claims;
+                    const tenantedCapacity = claims.reduce((s, c) => s + c.maximumCapacity, 0);
+                    const tenantedClaims = claims.length;
+                    const totalCapacity = pool.maximumCapacity + tenantedCapacity;
+                    const totalRegenerationRate =
+                        pool.regenerationRate + claims.reduce((s, c) => s + c.regenerationRate, 0);
+                    const isRenewable = pool.regenerationRate > 0 || claims.some((c) => c.regenerationRate > 0);
 
                     const regenerationRatePerUnit = totalCapacity > 0 ? totalRegenerationRate / totalCapacity : 0;
 
@@ -682,7 +674,7 @@ export const getPlanetClaims = () =>
                         resourceName,
                         totalCapacity,
                         tenantedCapacity,
-                        availableCapacity: totalCapacity - tenantedCapacity,
+                        availableCapacity: pool.maximumCapacity,
                         totalClaims: claims.length,
                         tenantedClaims,
                         renewable: isRenewable,
@@ -746,28 +738,28 @@ export const getAgentClaims = () =>
 
             const claims: AgentClaimEntry[] = [];
 
-            for (const [resourceName, entries] of Object.entries(planet.resources)) {
-                for (const entry of entries) {
-                    if (entry.tenantAgentId !== input.agentId) {
+            for (const [resourceName, entry] of Object.entries(planet.resources)) {
+                for (const claim of entry.claims) {
+                    if (claim.tenantAgentId !== input.agentId) {
                         continue;
                     }
                     const extractionRatePerTick = facilities.reduce((sum, f) => {
                         const need = f.needs.find((n) => n.resource.name === resourceName);
                         return need ? sum + need.quantity * f.scale : sum;
                     }, 0);
-                    const netDepletionRate = extractionRatePerTick - entry.regenerationRate;
+                    const netDepletionRate = extractionRatePerTick - claim.regenerationRate;
                     const depletionTicksEstimate =
-                        netDepletionRate > 0 ? Math.floor(entry.quantity / netDepletionRate) : null;
+                        netDepletionRate > 0 ? Math.floor(claim.quantity / netDepletionRate) : null;
                     claims.push({
-                        claimId: entry.id,
+                        claimId: claim.id,
                         resourceName,
-                        quantity: entry.quantity,
-                        maximumCapacity: entry.maximumCapacity,
-                        tenantCostInCoins: entry.tenantCostInCoins,
-                        costPerTick: entry.costPerTick,
-                        claimStatus: entry.claimStatus,
-                        noticePeriodEndsAtTick: entry.noticePeriodEndsAtTick,
-                        regenerationRate: entry.regenerationRate,
+                        quantity: claim.quantity,
+                        maximumCapacity: claim.maximumCapacity,
+                        tenantCostInCoins: claim.tenantCostInCoins,
+                        costPerTick: claim.costPerTick,
+                        claimStatus: claim.claimStatus,
+                        noticePeriodEndsAtTick: claim.noticePeriodEndsAtTick,
+                        regenerationRate: claim.regenerationRate,
                         extractionRatePerTick,
                         depletionTicksEstimate,
                     });

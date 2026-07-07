@@ -35,8 +35,8 @@ import {
 } from '../planet/productionFacilities';
 import type { Agent, Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
-import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
-import type { ResourceClaimEntry } from './helpers';
+import { makeClaim, makePool } from './resourceClaimFactory';
+import type { ResourceClaim } from '../planet/claims';
 import { createRecyclerAgent } from '../agents/recycler';
 
 interface AgriSpec {
@@ -58,13 +58,13 @@ interface SmallPlanetSpec {
     industrialAgents: { planet: Planet; agents: Agent[] }['agents'];
     infrastructure: Planet['infrastructure'];
     environment: Planet['environment'];
-    extraResources?: Record<string, ResourceClaimEntry[]>;
+    extraResources?: Record<string, ResourceClaim[]>;
 }
 
 function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
-    const arableClaims: ResourceClaimEntry[] = [];
-    const waterClaims: ResourceClaimEntry[] = [];
+    const arableClaims: ResourceClaim[] = [];
+    const waterClaims: ResourceClaim[] = [];
     const govId = `${spec.id}-government`;
 
     const govArableId = `${spec.id}-gov-arable`;
@@ -145,31 +145,20 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         );
     }
 
-    const arableRemainder = makeUnclaimedRemainder({
-        idPrefix: `${spec.id}-arable`,
-        type: arableLandResourceType,
-        total: spec.totalArable,
-        existing: arableClaims,
-        claimAgentId: govId,
-        renewable: true,
-    });
-    if (arableRemainder) {
-        arableClaims.push(arableRemainder);
-        govClaims.push(arableRemainder.id);
-    }
+    agents.push(...spec.industrialAgents);
 
-    const waterRemainder = makeUnclaimedRemainder({
-        idPrefix: `${spec.id}-water`,
-        type: waterSourceResourceType,
-        total: spec.totalWater,
-        existing: waterClaims,
-        claimAgentId: govId,
+    const arableUsed = arableClaims.reduce((s, c) => s + c.quantity, 0);
+    const arablePool = makePool({
+        type: arableLandResourceType,
+        quantity: spec.totalArable - arableUsed,
         renewable: true,
     });
-    if (waterRemainder) {
-        waterClaims.push(waterRemainder);
-        govClaims.push(waterRemainder.id);
-    }
+    const waterUsed = waterClaims.reduce((s, c) => s + c.quantity, 0);
+    const waterPool = makePool({
+        type: waterSourceResourceType,
+        quantity: spec.totalWater - waterUsed,
+        renewable: true,
+    });
 
     const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
     utilWaterFacility.scale = spec.govAgriScale;
@@ -231,9 +220,22 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
         resources: {
-            [arableLandResourceType.name]: arableClaims,
-            [waterSourceResourceType.name]: waterClaims,
-            ...(spec.extraResources ?? {}),
+            [arableLandResourceType.name]: { pool: arablePool, claims: arableClaims },
+            [waterSourceResourceType.name]: { pool: waterPool, claims: waterClaims },
+            ...Object.fromEntries(
+                Object.entries(spec.extraResources ?? {})
+                    .filter(([, claims]) => claims.length > 0)
+                    .map(([name, claims]) => [
+                        name,
+                        {
+                            pool: makePool({
+                                type: claims[0].resource,
+                                quantity: 0,
+                            }),
+                            claims,
+                        },
+                    ]),
+            ),
         },
         infrastructure: spec.infrastructure,
         environment: spec.environment,
@@ -242,7 +244,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }
 
-const guneForestClaims: ResourceClaimEntry[] = [];
+const guneForestClaims: ResourceClaim[] = [];
 
 function buildGuneIndustrialAgents(): Agent[] {
     const forestId = 'gune-forest-gune-timber';
@@ -371,7 +373,7 @@ function buildGuneIndustrialAgents(): Agent[] {
     ];
 }
 
-const icedoniaCoalClaims: ResourceClaimEntry[] = [];
+const icedoniaCoalClaims: ResourceClaim[] = [];
 
 function buildIcedoniaIndustrialAgents(): Agent[] {
     const coalId = 'icedonia-coal-polar-energy';
@@ -498,7 +500,7 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
     return [energyAgent, consumerAgent, adminAgent, logisticsAgent, groceryAgent, retailAgent, hospitalAgent];
 }
 
-const pandaraIronClaims: ResourceClaimEntry[] = [];
+const pandaraIronClaims: ResourceClaim[] = [];
 
 function buildPandaraIndustrialAgents(): Agent[] {
     const ironId = 'pandara-iron-pandara-steel';
@@ -639,8 +641,8 @@ function buildPandaraIndustrialAgents(): Agent[] {
     ];
 }
 
-const paradiesOilClaims: ResourceClaimEntry[] = [];
-const paradiesSandClaims: ResourceClaimEntry[] = [];
+const paradiesOilClaims: ResourceClaim[] = [];
+const paradiesSandClaims: ResourceClaim[] = [];
 
 function buildParadiesIndustrialAgents(): Agent[] {
     const oilId = 'paradies-oil-paradies-refinery';
@@ -804,7 +806,7 @@ function buildParadiesIndustrialAgents(): Agent[] {
     ];
 }
 
-const suerteCopperClaims: ResourceClaimEntry[] = [];
+const suerteCopperClaims: ResourceClaim[] = [];
 
 function buildSuerteIndustrialAgents(): Agent[] {
     const copperId = 'suerte-copper-suerte-mining';

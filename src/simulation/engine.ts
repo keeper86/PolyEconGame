@@ -117,10 +117,6 @@ export function advanceTick(gameState: GameState) {
         if (profile.isEnabled) {
             t = profile.mark();
         }
-        claimBillingTick(gameState.agents, planet, gameState.tick);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
-        }
         maturesLoans(gameState.agents, planet, gameState.tick);
         if (profile.isEnabled) {
             t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
@@ -158,6 +154,12 @@ export function advanceTick(gameState: GameState) {
             t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
         }
 
+        // Must be after productionTick, to infer claim usage
+        claimBillingTick(gameState.agents, planet, gameState.tick);
+        if (profile.isEnabled) {
+            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
+        }
+
         // ── Month boundary ──
         if (profile.isEnabled) {
             t = profile.mark();
@@ -177,9 +179,9 @@ export function advanceTick(gameState: GameState) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
             }
-            for (const entries of Object.values(planet.resources)) {
-                for (const entry of entries) {
-                    entry.pausedTicksThisYear = 0;
+            for (const entry of Object.values(planet.resources)) {
+                for (const claim of entry.claims) {
+                    claim.pausedTicksThisYear = 0;
                 }
             }
             populationAdvanceYearTick(planet);

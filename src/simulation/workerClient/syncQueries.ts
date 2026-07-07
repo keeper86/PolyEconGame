@@ -96,7 +96,7 @@ export function getLoanConditionsSync(
         return { conditions: null, activeLoans: agent?.assets[planetId]?.activeLoans ?? [] };
     }
     return {
-        conditions: computeLoanConditions(agent, planet),
+        conditions: computeLoanConditions(agent, planet, cache.shipCapitalMarket),
         activeLoans: agent.assets[planetId]?.activeLoans ?? [],
     };
 }

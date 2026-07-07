@@ -10,7 +10,7 @@ import type {
     TransportContract,
 } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-import type { Resource, ResourceClaim, ResourceQuantity } from './claims';
+import type { Resource, ResourceEntry, ResourceQuantity } from './claims';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 
 export interface Bank {
@@ -113,7 +113,7 @@ export type Planet = {
     };
     population: Population;
     resources: {
-        [resourceName in string]: (ResourceQuantity & ResourceClaim)[];
+        [resourceName in string]: ResourceEntry;
     };
     governmentId: string;
     infrastructure: Infrastructure;

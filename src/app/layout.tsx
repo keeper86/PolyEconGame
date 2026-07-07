@@ -15,6 +15,7 @@ import { Toaster } from '../components/ui/sonner';
 import { authOptions } from './api/auth/[...nextauth]/authOptions';
 import AppProviders from './AppProviders';
 import './globals.css';
+import KeyStatDisplay from '@/components/client/KeyStatDisplay';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -54,10 +55,11 @@ export default async function RootLayout({
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
                                         </div>
-                                        <div className='flex items-center gap-3'>
-                                            <span className='text-sm text-muted-foreground flex items-center gap-1'>
-                                                <TickDisplay />
-                                            </span>
+                                        <div className='flex items-center gap-2'>
+                                            <KeyStatDisplay />
+
+                                            <TickDisplay />
+
                                             <ModeToggle />
                                         </div>
                                     </header>

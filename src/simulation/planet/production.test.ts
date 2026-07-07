@@ -15,6 +15,7 @@ import {
 import { ironOreDepositResourceType } from './landBoundResources';
 import { produceResourceType, ironOreResourceType, steelResourceType, waterResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 
 describe('productionTick (basic)', () => {
     beforeEach(() => {
@@ -34,21 +35,24 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'iron-deposit-1',
-                resource: ironOreDepositResourceType,
-                quantity: 5000,
-                regenerationRate: 0,
-                maximumCapacity: 5000,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'iron-deposit-1',
+                    resource: ironOreDepositResourceType,
+                    quantity: 5000,
+                    regenerationRate: 0,
+                    maximumCapacity: 5000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gameState = makeGameState(planet, [agent, gov]);
 
@@ -59,7 +63,7 @@ describe('productionTick (basic)', () => {
         expect(storedIron).toBeGreaterThanOrEqual(1000);
 
         const ironEntries = planet.resources['Iron Ore Deposit'];
-        expect(ironEntries && ironEntries[0].quantity).toBeLessThan(5000);
+        expect(ironEntries?.claims[0]?.quantity).toBeLessThan(5000);
     });
 
     it('does not operate facility when required land-bound resource is unavailable', () => {
@@ -75,21 +79,24 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'iron-deposit-1',
-                resource: ironOreDepositResourceType,
-                quantity: 0,
-                regenerationRate: 0,
-                maximumCapacity: 0,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'iron-deposit-1',
+                    resource: ironOreDepositResourceType,
+                    quantity: 0,
+                    regenerationRate: 0,
+                    maximumCapacity: 0,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gameState = makeGameState(planet, [agent, gov]);
 
@@ -115,21 +122,24 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].primary.novice.active = 1;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'd1',
-                resource: ironOreDepositResourceType,
-                quantity: 10,
-                regenerationRate: 0,
-                maximumCapacity: 10,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'd1',
+                    resource: ironOreDepositResourceType,
+                    quantity: 10,
+                    regenerationRate: 0,
+                    maximumCapacity: 10,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -160,36 +170,42 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        planet.resources[resA.name] = [
-            {
-                id: 'a1',
-                resource: resA,
-                quantity: 10000,
-                regenerationRate: 0,
-                maximumCapacity: 10000,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
-        planet.resources[resB.name] = [
-            {
-                id: 'b1',
-                resource: resB,
-                quantity: 100,
-                regenerationRate: 0,
-                maximumCapacity: 100,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[resA.name] = {
+            pool: makePool({ type: resA, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'a1',
+                    resource: resA,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
+        planet.resources[resB.name] = {
+            pool: makePool({ type: resB, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'b1',
+                    resource: resB,
+                    quantity: 100,
+                    regenerationRate: 0,
+                    maximumCapacity: 100,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -217,21 +233,24 @@ describe('productionTick (basic)', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 2;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'd1',
-                resource: ironOreDepositResourceType,
-                quantity: 10,
-                regenerationRate: 0,
-                maximumCapacity: 10,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'd1',
+                    resource: ironOreDepositResourceType,
+                    quantity: 10,
+                    regenerationRate: 0,
+                    maximumCapacity: 10,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -922,21 +941,24 @@ describe('productionTick — XP boost effect on production', () => {
 
         wf[30].secondary.novice.workforceExperience = 40;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'd1',
-                resource: ironOreDepositResourceType,
-                quantity: 10000,
-                regenerationRate: 0,
-                maximumCapacity: 10000,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'd1',
+                    resource: ironOreDepositResourceType,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -963,21 +985,24 @@ describe('productionTick — XP boost effect on production', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.novice.active = 1;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'd2',
-                resource: ironOreDepositResourceType,
-                quantity: 10000,
-                regenerationRate: 0,
-                maximumCapacity: 10000,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'd2',
+                    resource: ironOreDepositResourceType,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1008,21 +1033,24 @@ describe('productionTick — XP boost effect on production', () => {
         wf[50].secondary.novice.active = 1;
         wf[50].secondary.novice.workforceExperience = 80;
 
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: 'd3',
-                resource: ironOreDepositResourceType,
-                quantity: 10000,
-                regenerationRate: 0,
-                maximumCapacity: 10000,
-                tenantAgentId: agent.id,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'd3',
+                    resource: ironOreDepositResourceType,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);

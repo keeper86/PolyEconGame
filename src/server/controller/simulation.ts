@@ -39,8 +39,8 @@ import {
     getShipCapitalMarketSync,
     getTickerEventsSync,
 } from '../../simulation/workerClient/syncQueries';
-import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
 import { db } from '../db';
+import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
 import { procedure, protectedProcedure } from '../trpcRoot';
 
 const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
@@ -73,6 +73,8 @@ const loanConditionsSchema = z.object({
     lastMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
     storageCollateral: z.number(),
+    facilitiesCollateral: z.number(),
+    shipsCollateral: z.number(),
     isNewAgent: z.boolean(),
 });
 
@@ -177,10 +179,7 @@ export const getLatestPlanetSummaries = () =>
                         Object.entries(planet.resources)
                             .map(([name, entries]) => ({
                                 name,
-                                freeCapacity: entries.reduce(
-                                    (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
-                                    0,
-                                ),
+                                freeCapacity: entries.pool.maximumCapacity,
                             }))
                             .sort((a, b) => b.freeCapacity - a.freeCapacity),
                 })),
@@ -207,6 +206,8 @@ export const getLatestAgents = () =>
         )
         .query(async () => {
             const { tick, agents } = getAllAgentsSync();
+            const { shipCapitalMarket } = getShipCapitalMarketSync();
+            const { planets } = getAllPlanetsSync();
             return profileReturn('getLatestAgents', {
                 tick,
                 agents: agents.map((a) => ({
@@ -220,7 +221,7 @@ export const getLatestAgents = () =>
                     storage: computeAgentStorage(a),
                     production: computeAgentProduction(a),
                     consumption: computeAgentConsumption(a),
-                    agentSummary: summariseAgentBlob(a.id, a),
+                    agentSummary: summariseAgentBlob(a.id, a, shipCapitalMarket, planets),
                 })),
             });
         });
@@ -263,10 +264,13 @@ export const getAgentListSummaries = () =>
                 }
             }
 
+            const { shipCapitalMarket } = getShipCapitalMarketSync();
+            const { planets } = getAllPlanetsSync();
+
             const resultAgents = agents
                 .filter((agent) => input.showAll || (input.planetId && agent.assets[input.planetId]))
                 .map((a: Agent) => {
-                    const summary = summariseAgentBlob(a.id, a);
+                    const summary = summariseAgentBlob(a.id, a, shipCapitalMarket, planets);
                     let normalizedBalance = summary.balance;
                     if (forexRates && summary.associatedPlanetId !== input.planetId) {
                         const curName = getCurrencyResourceName(summary.associatedPlanetId);
@@ -311,6 +315,8 @@ export const getAgentDetail = () =>
             if (!agent) {
                 return { tick, agent: null };
             }
+            const { shipCapitalMarket } = getShipCapitalMarketSync();
+            const { planets } = getAllPlanetsSync();
             return profileReturn('getAgentDetail', {
                 tick,
                 agent: {
@@ -325,7 +331,7 @@ export const getAgentDetail = () =>
                     storage: computeAgentStorage(agent),
                     production: computeAgentProduction(agent),
                     consumption: computeAgentConsumption(agent),
-                    agentSummary: summariseAgentBlob(agent.id, agent),
+                    agentSummary: summariseAgentBlob(agent.id, agent, shipCapitalMarket, planets),
                 },
             });
         });

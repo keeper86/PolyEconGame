@@ -17,9 +17,8 @@ export {
     makeStorage,
     makeWaterExtraction,
     prefillAgentStorageFromFacilities,
-    type ResourceClaimEntry,
 } from './helpers';
-export { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
+export { makeClaim, makePool } from './resourceClaimFactory';
 export { AC_ID, PROC_PLANET_ID };
 
 export function createInitialGameState(): GameState {

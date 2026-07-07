@@ -2,8 +2,15 @@ import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } fr
 import type { Agent, Planet } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
 import type { LoanConditions } from '../../server/controller/simulation';
+import { computeFacilitiesValue, computeShipsValue } from './assetValuation';
+import { constructionServiceResourceType } from '../planet/services';
+import type { ShipCapitalMarket } from '../ships/ships';
 
-export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditions {
+export function computeLoanConditions(
+    agent: Agent,
+    planet: Planet,
+    shipCapitalMarket?: ShipCapitalMarket,
+): LoanConditions {
     const assets = agent.assets[planet.id];
     const bank = planet.bank;
 
@@ -31,13 +38,20 @@ export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditi
         }
     }
 
+    const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    const facilitiesCollateral = assets ? computeFacilitiesValue(assets, csPrice) * LOAN_COLLATERAL_FACTOR : 0;
+    const shipsCollateral = shipCapitalMarket
+        ? computeShipsValue(agent, shipCapitalMarket, planet.marketPrices) * LOAN_COLLATERAL_FACTOR
+        : 0;
+
     let maxLoanAmount: number;
     if (isNewAgent) {
         maxLoanAmount = STARTER_LOAN_AMOUNT;
     } else if (monthlyNetCashFlow <= 0) {
-        maxLoanAmount = Math.max(0, storageCollateral - existingLoans);
+        maxLoanAmount = Math.max(0, storageCollateral + facilitiesCollateral + shipsCollateral - existingLoans);
     } else {
-        const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + storageCollateral;
+        const projectedCapacity =
+            LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + storageCollateral + facilitiesCollateral + shipsCollateral;
         maxLoanAmount = Math.max(0, projectedCapacity - existingLoans);
         if (maxLoanAmount < existingLoans / 10) {
             maxLoanAmount = 0;
@@ -52,6 +66,8 @@ export function computeLoanConditions(agent: Agent, planet: Planet): LoanConditi
         lastMonthlyRevenue: lastMonthlyRevenue,
         monthlyNetCashFlow,
         storageCollateral,
+        facilitiesCollateral: Math.floor(facilitiesCollateral),
+        shipsCollateral: Math.floor(shipsCollateral),
         isNewAgent,
     };
 }

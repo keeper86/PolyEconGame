@@ -20,11 +20,16 @@ export function environmentTick(planet: Planet) {
             planet.environment.pollution.soil * planet.environment.regenerationRates.soil.percentage,
     );
 
-    for (const resourceEntries of Object.values(planet.resources)) {
-        for (const entry of resourceEntries) {
-            if (entry.regenerationRate > 0) {
-                const toRegenerate = Math.min(entry.regenerationRate, entry.maximumCapacity - entry.quantity);
-                entry.quantity += toRegenerate;
+    for (const entry of Object.values(planet.resources)) {
+        const pool = entry.pool;
+        if (pool.regenerationRate > 0) {
+            const toRegenerate = Math.min(pool.regenerationRate, pool.maximumCapacity - pool.quantity);
+            pool.quantity += toRegenerate;
+        }
+        for (const claim of entry.claims) {
+            if (claim.regenerationRate > 0) {
+                const toRegenerate = Math.min(claim.regenerationRate, claim.maximumCapacity - claim.quantity);
+                claim.quantity += toRegenerate;
             }
         }
     }

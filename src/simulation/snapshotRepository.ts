@@ -2,6 +2,9 @@ import type { Planet, Agent } from './planet/planet';
 import { OCCUPATIONS, SKILL } from './population/population';
 import { educationLevelKeys } from './population/education';
 import { totalOutstandingLoans } from './financial/loanTypes';
+import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
+import { constructionServiceResourceType } from './planet/services';
+import type { ShipCapitalMarket } from './ships/ships';
 
 const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
 
@@ -101,7 +104,12 @@ export type AgentListSummary = {
     shipCount: number;
 };
 
-export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSummary => {
+export function summariseAgentBlob(
+    agentId: string,
+    blob: unknown,
+    shipCapitalMarket: ShipCapitalMarket,
+    planets: Planet[],
+): AgentListSummary {
     const start = perfStart('summariseAgentBlob');
     const a = blob as Agent;
 
@@ -145,16 +153,31 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
             quantity: quantity || 0,
         }));
 
+    // Compute cash-based balance (deposits minus loans)
+    const cashBalance = a?.assets
+        ? Object.values(a.assets).reduce(
+              (sum, pa) => sum + (pa?.deposits ?? 0) - totalOutstandingLoans(pa?.activeLoans ?? []),
+              0,
+          )
+        : 0;
+
+    // Compute net-worth including facilities and ships
+    let netWorth = cashBalance;
+    const planetMap = new Map(planets.map((p) => [p.id, p]));
+    for (const [planetId, assets] of Object.entries(a.assets ?? {})) {
+        const planet = planetMap.get(planetId);
+        if (planet && assets) {
+            const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+            netWorth += computeFacilitiesValue(assets, csPrice);
+        }
+    }
+    netWorth += computeShipsValue(a, shipCapitalMarket, {});
+
     const result = {
         agentId: agentId || '',
         name: a?.name ?? agentId ?? '',
         associatedPlanetId: a?.associatedPlanetId ?? '',
-        balance: a?.assets
-            ? Object.values(a.assets).reduce(
-                  (sum, pa) => sum + (pa?.deposits ?? 0) - totalOutstandingLoans(pa?.activeLoans ?? []),
-                  0,
-              )
-            : 0,
+        balance: netWorth,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,
@@ -164,7 +187,7 @@ export const summariseAgentBlob = (agentId: string, blob: unknown): AgentListSum
     };
     perfEnd('summariseAgentBlob', start);
     return result;
-};
+}
 
 export type AgentPlanetSummary = {
     planetId: string;

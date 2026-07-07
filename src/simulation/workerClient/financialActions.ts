@@ -19,7 +19,7 @@ export function handleRequestLoan(
         });
         return;
     }
-    const conditions = computeLoanConditions(agent, planet);
+    const conditions = computeLoanConditions(agent, planet, state.shipCapitalMarket);
     if (amount <= 0 || amount > conditions.maxLoanAmount * 1.1) {
         safePostMessage({
             type: 'loanDenied',
