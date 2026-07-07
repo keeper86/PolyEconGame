@@ -659,24 +659,14 @@ export const getPlanetClaims = () =>
                     ([, entry]) => entry.claims.length > 0 && entry.claims[0]?.resource.form === 'landBoundResource',
                 )
                 .map(([resourceName, entry]) => {
-                    let tenantedCapacity = 0;
-                    let tenantedClaims = 0;
-                    let totalCapacity = 0;
-                    let isRenewable = false;
-                    let totalRegenerationRate = 0;
-
-                    for (const claim of entry.claims) {
-                        totalCapacity += claim.maximumCapacity;
-                        totalRegenerationRate += claim.regenerationRate;
-                        if (claim.regenerationRate > 0) {
-                            isRenewable = true;
-                        }
-                        const isTenanted = claim.tenantAgentId !== null;
-                        if (isTenanted) {
-                            tenantedCapacity += claim.maximumCapacity;
-                            tenantedClaims += 1;
-                        }
-                    }
+                    const pool = entry.pool;
+                    const claims = entry.claims;
+                    const tenantedCapacity = claims.reduce((s, c) => s + c.maximumCapacity, 0);
+                    const tenantedClaims = claims.length;
+                    const totalCapacity = pool.maximumCapacity + tenantedCapacity;
+                    const totalRegenerationRate =
+                        pool.regenerationRate + claims.reduce((s, c) => s + c.regenerationRate, 0);
+                    const isRenewable = pool.regenerationRate > 0 || claims.some((c) => c.regenerationRate > 0);
 
                     const regenerationRatePerUnit = totalCapacity > 0 ? totalRegenerationRate / totalCapacity : 0;
 
@@ -684,8 +674,8 @@ export const getPlanetClaims = () =>
                         resourceName,
                         totalCapacity,
                         tenantedCapacity,
-                        availableCapacity: totalCapacity - tenantedCapacity,
-                        totalClaims: entry.claims.length,
+                        availableCapacity: pool.maximumCapacity,
+                        totalClaims: claims.length,
                         tenantedClaims,
                         renewable: isRenewable,
                         regenerationRatePerUnit,

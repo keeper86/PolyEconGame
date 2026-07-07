@@ -559,10 +559,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 planet._freeResources = Object.entries(planet.resources)
                     .map(([name, entries]) => ({
                         name,
-                        freeCapacity: entries.claims.reduce(
-                            (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
-                            0,
-                        ),
+                        freeCapacity: entries.pool.maximumCapacity,
                     }))
                     .sort((a, b) => b.freeCapacity - a.freeCapacity);
             }

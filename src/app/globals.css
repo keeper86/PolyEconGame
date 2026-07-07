@@ -181,6 +181,20 @@ html {
         0 0 6px black;
 }
 
+.text-outline-strong-inverted {
+    text-shadow:
+        0 0 2px black,
+        0 0 4px black,
+        0 0 6px black;
+}
+
+.dark .text-outline-strong-inverted {
+    text-shadow:
+        0 0 2px white,
+        0 0 4px white,
+        0 0 6px white;
+}
+
 [data-sonner-toaster] [data-sonner-toast][data-type='success'] [data-icon] {
     color: #22c55e;
 }

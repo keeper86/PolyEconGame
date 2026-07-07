@@ -306,7 +306,21 @@ describe('handleQuitClaim', () => {
             const { gameState, planet, company } = setupWorld(0);
             planet.resources[arableLandResourceType.name] = {
                 pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
-                claims: [],
+                claims: [
+                    {
+                        id: 'arable-claim',
+                        resource: arableLandResourceType,
+                        quantity: 2000,
+                        regenerationRate: 2000,
+                        maximumCapacity: 2000,
+                        tenantAgentId: company.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 20,
+                        claimStatus: 'active' as const,
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
             };
             const { post } = makeMessages();
 
@@ -404,7 +418,7 @@ describe('handleQuitClaim', () => {
     });
 
     describe('non-renewable claim', () => {
-        it('releases claim immediately (tenantAgentId set to null)', () => {
+        it('releases claim immediately (removed from claims array, merged back to pool)', () => {
             const { gameState, planet, company } = setupWorld(0);
             planet.resources[ironOreDepositResourceType.name] = {
                 pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -433,10 +447,12 @@ describe('handleQuitClaim', () => {
             );
 
             const entries = planet.resources[ironOreDepositResourceType.name];
-            expect(entries.claims.every((e) => e.tenantAgentId === null)).toBe(true);
+            expect(entries.claims).toHaveLength(0);
+            expect(entries.pool.quantity).toBe(5000);
+            expect(entries.pool.maximumCapacity).toBe(5000);
         });
 
-        it('resets tenantCostInCoins to 0 on immediate release', () => {
+        it('releases claim and merges quantity back into pool', () => {
             const { gameState, planet, company } = setupWorld(0);
             planet.resources[ironOreDepositResourceType.name] = {
                 pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -464,8 +480,10 @@ describe('handleQuitClaim', () => {
                 post,
             );
 
-            const pool = planet.resources[ironOreDepositResourceType.name].claims[0];
-            expect(pool.tenantCostInCoins).toBe(0);
+            const entry = planet.resources[ironOreDepositResourceType.name];
+            expect(entry.claims).toHaveLength(0);
+            expect(entry.pool.quantity).toBe(5000);
+            expect(entry.pool.maximumCapacity).toBe(5000);
         });
     });
 

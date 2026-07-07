@@ -66,9 +66,6 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
         let totalCost = 0;
         let totalUnits = 0;
         for (const entry of claims) {
-            if (entry.tenantAgentId === null) {
-                continue;
-            }
             if (entry.regenerationRate > 0) {
                 totalCost += entry.costPerTick;
                 totalUnits += entry.quantity;

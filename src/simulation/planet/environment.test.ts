@@ -33,7 +33,17 @@ describe('environmentTick', () => {
             governmentId: gov.id,
             resources: {
                 iron: {
-                    pool: makePool({ type: { name: 'Iron', form: 'solid', level: 'raw', volumePerQuantity: 0.3, massPerQuantity: 1 } as any, quantity: 0, renewable: true }),
+                    pool: makePool({
+                        type: {
+                            name: 'Iron',
+                            form: 'solid',
+                            level: 'raw',
+                            volumePerQuantity: 0.3,
+                            massPerQuantity: 1,
+                        },
+                        quantity: 0,
+                        renewable: true,
+                    }),
                     claims: [
                         {
                             resource: {
@@ -42,7 +52,7 @@ describe('environmentTick', () => {
                                 level: 'raw',
                                 volumePerQuantity: 0.3,
                                 massPerQuantity: 1,
-                            } as any,
+                            },
                             quantity: 50,
                             id: 'res1',
                             tenantAgentId: 'gov',

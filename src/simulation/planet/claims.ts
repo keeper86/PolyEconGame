@@ -43,6 +43,9 @@ export type ResourceEntry = {
 
 export const isRenewableClaim = (claim: ResourceClaim): boolean => claim.regenerationRate > 0;
 
+/** The free (unleased) capacity of a resource entry is simply its pool's maximumCapacity. */
+export const getFreeCapacity = (entry: ResourceEntry): number => entry.pool.maximumCapacity;
+
 export const queryClaimedResource = (planet: Planet, agent: Agent, resource: Resource): number => {
     const entry = planet.resources[resource.name];
     if (!entry) {

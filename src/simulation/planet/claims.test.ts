@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
-import type { Resource } from './claims';
+import type { Resource, ResourceEntry } from './claims';
 import { queryClaimedResource, extractFromClaimedResource } from './claims';
 import type { Planet, Agent } from './planet';
 import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { makeAgent } from '../utils/testHelper';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 
 function makePlanetWithResources(): Planet {
     const tenantA = makeAgent('tenant-a');
@@ -18,50 +19,54 @@ function makePlanetWithResources(): Planet {
         population: { demography: [] },
         governmentId: gov.id,
         resources: {
-            [arableLandResourceType.name]: [
-                {
-                    id: 'r1',
-                    type: arableLandResourceType,
-                    quantity: 100,
-                    regenerationRate: 0,
-                    maximumCapacity: 100,
-                    claimAgentId: gov.id,
-                    tenantAgentId: tenantA.id,
-                    tenantCostInCoins: 0,
-                },
-                {
-                    id: 'r2',
-                    type: arableLandResourceType,
-                    quantity: 50,
-                    regenerationRate: 0,
-                    maximumCapacity: 50,
-                    claimAgentId: gov.id,
-                    tenantAgentId: tenantA.id,
-                    tenantCostInCoins: 0,
-                },
-                {
-                    id: 'r3',
-                    type: arableLandResourceType,
-                    quantity: 200,
-                    regenerationRate: 0,
-                    maximumCapacity: 200,
-                    claimAgentId: gov.id,
-                    tenantAgentId: tenantB.id,
-                    tenantCostInCoins: 0,
-                },
-            ],
-            [waterSourceResourceType.name]: [
-                {
-                    id: 'w1',
-                    type: waterSourceResourceType,
-                    quantity: 10,
-                    regenerationRate: 0,
-                    maximumCapacity: 10,
-                    claimAgentId: gov.id,
-                    tenantAgentId: null,
-                    tenantCostInCoins: 0,
-                },
-            ],
+            [arableLandResourceType.name]: {
+                pool: makePool({ type: arableLandResourceType, quantity: 0 }),
+                claims: [
+                    {
+                        id: 'r1',
+                        resource: arableLandResourceType,
+                        quantity: 100,
+                        regenerationRate: 0,
+                        maximumCapacity: 100,
+                        tenantAgentId: tenantA.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 0,
+                        claimStatus: 'active',
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                    {
+                        id: 'r2',
+                        resource: arableLandResourceType,
+                        quantity: 50,
+                        regenerationRate: 0,
+                        maximumCapacity: 50,
+                        tenantAgentId: tenantA.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 0,
+                        claimStatus: 'active',
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                    {
+                        id: 'r3',
+                        resource: arableLandResourceType,
+                        quantity: 200,
+                        regenerationRate: 0,
+                        maximumCapacity: 200,
+                        tenantAgentId: tenantB.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 0,
+                        claimStatus: 'active',
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            },
+            [waterSourceResourceType.name]: {
+                pool: makePool({ type: waterSourceResourceType, quantity: 10 }),
+                claims: [],
+            },
         },
         infrastructure: {
             primarySchools: 0,
@@ -108,9 +113,9 @@ describe('claimed resource helpers', () => {
         const remaining = queryClaimedResource(planet, tenantA, arableLandResourceType as Resource);
         expect(remaining).toBe(30);
 
-        const entries = planet.resources[arableLandResourceType.name];
-        const r1 = entries.claims.find((e) => e.id === 'r1');
-        const r2 = entries.claims.find((e) => e.id === 'r2');
+        const entry = planet.resources[arableLandResourceType.name] as ResourceEntry;
+        const r1 = entry.claims.find((e) => e.id === 'r1');
+        const r2 = entry.claims.find((e) => e.id === 'r2');
         expect(r1!.quantity).toBe(0);
         expect(r2!.quantity).toBe(30);
     });
