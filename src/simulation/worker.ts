@@ -165,6 +165,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         break;
                     case 'buildFacility':
                     case 'expandFacility':
+                    case 'contractFacility':
                     case 'setFacilityScale':
                     case 'buildShipConstructionFacility':
                     case 'expandShipConstructionFacility':
@@ -1127,6 +1128,28 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'setFacilityScale', requestId, agentId, planetId, facilityId, scaleFraction });
+
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'contractFacility') {
+            const { requestId, agentId, planetId, facilityId, targetScale } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Agent not found' });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'facilityContractFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                });
+                return;
+            }
+            pendingActions.push({ type: 'contractFacility', requestId, agentId, planetId, facilityId, targetScale });
 
             if (!processingTick) {
                 drainActionQueue();

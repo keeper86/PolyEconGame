@@ -439,3 +439,16 @@ export const cancelConstructionSpec: CommandSpec<
     failureType: 'constructionCancelFailed',
     extract: () => undefined,
 };
+
+type ContractFacilitySuccess = Extract<OutboundMessage, { type: 'facilityContracted' }>;
+type ContractFacilityFailure = Extract<OutboundMessage, { type: 'facilityContractFailed' }>;
+export const contractFacilitySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'contractFacility' }>,
+    ContractFacilitySuccess,
+    ContractFacilityFailure,
+    string
+> = {
+    successType: 'facilityContracted',
+    failureType: 'facilityContractFailed',
+    extract: (msg) => msg.facilityId,
+};

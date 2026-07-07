@@ -12,6 +12,7 @@ import {
     workerCancelBuyBid,
     workerCancelConstruction,
     workerCancelSellOffer,
+    workerContractFacility,
     workerCreateAgent,
     workerLeaseClaim,
     workerExpandFacility,
@@ -821,6 +822,44 @@ export const expandFacility = () => {
             });
 
             logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${facilityId}`);
+
+            return { facilityId };
+        });
+};
+
+export const contractFacility = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                targetScale: z.number().int().min(1).max(1_000_000_000_000_000),
+            }),
+        )
+        .output(z.object({ facilityId: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'contract-facility' },
+                `User ${userId} contracting facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
+            );
+
+            const facilityId = await workerContractFacility({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                targetScale: input.targetScale,
+            });
 
             return { facilityId };
         });

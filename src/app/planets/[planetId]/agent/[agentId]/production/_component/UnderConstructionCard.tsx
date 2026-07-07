@@ -32,6 +32,7 @@ import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from './FacilityCardShell';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 function formatWallTime(ms: number, short = false): string {
     if (ms < 1000) {
@@ -213,8 +214,10 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <p className='text-xs text-muted-foreground mt-0.5'>
-                                Build {facility.maxScale} →{' '}
-                                <span className='font-medium text-foreground'>{cs.constructionTargetMaxScale}</span>
+                                Build {formatNumberWithUnit(facility.maxScale, 'none')} →{' '}
+                                <span className='font-medium text-foreground'>
+                                    {formatNumberWithUnit(cs.constructionTargetMaxScale, 'none')}
+                                </span>
                             </p>
                         </Badge>
 

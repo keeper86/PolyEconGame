@@ -165,6 +165,62 @@ export function handleSetFacilityScale(
     safePostMessage({ type: 'facilityScaleSet', requestId, agentId, facilityId });
 }
 
+export function handleContractFacility(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'contractFacility' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId, targetScale } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+    if (!facility) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Facility '${facilityId}' not found` });
+        return;
+    }
+    if (targetScale >= facility.maxScale) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Target scale ${targetScale} must be less than current max scale ${facility.maxScale}`,
+        });
+        return;
+    }
+    if (targetScale < 1) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Target scale must be at least 1',
+        });
+        return;
+    }
+
+    // No-op: just reduce maxScale. No recycler logic wired.
+    const currentMax = facility.maxScale;
+    const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
+    facility.maxScale = targetScale;
+    facility.scale = targetScale * scaleFraction;
+
+    console.log(
+        `[worker] Agent '${agentId}' contracted '${facilityId}' maxScale from ${currentMax} to ${targetScale} on planet '${planetId}'`,
+    );
+    safePostMessage({ type: 'facilityContracted', requestId, agentId, facilityId });
+}
+
 export function handleFacilityAction(
     state: GameState,
     action: PendingAction,
@@ -176,6 +232,9 @@ export function handleFacilityAction(
             break;
         case 'expandFacility':
             handleExpandFacility(state, action, safePostMessage);
+            break;
+        case 'contractFacility':
+            handleContractFacility(state, action, safePostMessage);
             break;
         case 'setFacilityScale':
             handleSetFacilityScale(state, action, safePostMessage);

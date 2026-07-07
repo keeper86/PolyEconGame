@@ -53,6 +53,14 @@ export type InboundMessage =
           targetScale: number;
       }
     | {
+          type: 'contractFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
+    | {
           type: 'setFacilityScale';
           requestId: string;
           agentId: string;
@@ -287,6 +295,8 @@ export type OutboundMessage =
     | { type: 'facilityBuildFailed'; requestId: string; reason: string }
     | { type: 'facilityExpanded'; requestId: string; agentId: string; facilityId: string }
     | { type: 'facilityExpandFailed'; requestId: string; reason: string }
+    | { type: 'facilityContracted'; requestId: string; agentId: string; facilityId: string }
+    | { type: 'facilityContractFailed'; requestId: string; reason: string }
     | { type: 'facilityScaleSet'; requestId: string; agentId: string; facilityId: string }
     | { type: 'facilityScaleSetFailed'; requestId: string; reason: string }
     | { type: 'constructionCancelled'; requestId: string; agentId: string; facilityId: string }
@@ -395,6 +405,14 @@ export type PendingAction =
       }
     | {
           type: 'expandFacility';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          targetScale: number;
+      }
+    | {
+          type: 'contractFacility';
           requestId: string;
           agentId: string;
           planetId: string;

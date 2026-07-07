@@ -16,6 +16,7 @@ import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
 import { UnderConstructionCompactRow } from './UnderConstructionCard';
 import { WorkerBars } from './WorkerBars';
+import { Spinner } from '@/components/ui/spinner';
 
 export function ActiveFacilityCard({
     facility,
@@ -34,7 +35,7 @@ export function ActiveFacilityCard({
     const queryClient = useQueryClient();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
-    const [showSetScale, setShowSetScale] = useState(false);
+    const [showReduce, setShowReduce] = useState(false);
 
     const SCALE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
     const computeScaleFractionIndex = (scale: number, maxScale: number) => {
@@ -50,12 +51,15 @@ export function ActiveFacilityCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [facility.scale, facility.maxScale]);
 
+    const invalidate = () =>
+        queryClient.invalidateQueries({
+            queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+        });
+
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
+                void invalidate();
                 setShowExpand(false);
                 onExpanded();
             },
@@ -65,10 +69,17 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
-                setShowSetScale(false);
+                void invalidate();
+            },
+        }),
+    );
+
+    const contractMutation = useMutation(
+        trpc.contractFacility.mutationOptions({
+            onSuccess: () => {
+                void invalidate();
+                setShowReduce(false);
+                onExpanded();
             },
         }),
     );
@@ -85,6 +96,85 @@ export function ActiveFacilityCard({
           )
         : 0;
 
+    const committedFractionIndex = computeScaleFractionIndex(facility.scale, facility.maxScale);
+    const scaleHasChanged = scaleFractionIndex !== committedFractionIndex;
+
+    // ── Reduce panel state ──
+    const reduceMax = facility.maxScale;
+    const reduceOptions = useMemo(() => {
+        const opts: number[] = [];
+        if (reduceMax > 2) {
+            const step = Math.max(1, Math.round(reduceMax / 6));
+            for (let s = 1; s < reduceMax; s += step) {
+                opts.push(s);
+            }
+            if (opts[opts.length - 1] !== reduceMax - 1) {
+                opts.push(reduceMax - 1);
+            }
+        } else if (reduceMax > 1) {
+            opts.push(1);
+        }
+        return opts;
+    }, [reduceMax]);
+    const [reduceTarget, setReduceTarget] = useState(reduceOptions[reduceOptions.length - 1] ?? 1);
+    const reduceIndex = reduceOptions.indexOf(reduceTarget);
+    const currentReduceIndex = reduceIndex !== -1 ? reduceIndex : reduceOptions.length - 1;
+
+    const operatingScaleSection = (
+        <div className='space-y-1 pt-2'>
+            <span className='flex flex-row text-muted-foreground text-xs gap-2 px-2'>
+                Operating scale
+                <span>
+                    {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
+                    {formatNumberWithUnit(facility.maxScale, 'units')}
+                </span>
+            </span>
+            <div className='flex items-center gap-3'>
+                <div className='flex-1 min-w-0 p-2'>
+                    <Slider
+                        min={0}
+                        max={SCALE_FRACTIONS.length - 1}
+                        step={1}
+                        value={[scaleFractionIndex]}
+                        onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
+                        disabled={setScaleMutation.isPending}
+                        className='w-full'
+                    />
+                    <div className='relative h-3 text-[10px] text-muted-foreground py-2'>
+                        {SCALE_FRACTIONS.map((f, i) => {
+                            const pct = (i / (SCALE_FRACTIONS.length - 1)) * 100;
+                            const translate = i === 0 ? '0%' : i === SCALE_FRACTIONS.length - 1 ? '-100%' : '-50%';
+                            return (
+                                <span
+                                    key={f}
+                                    className='absolute'
+                                    style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
+                                >
+                                    {f * 100}%
+                                </span>
+                            );
+                        })}
+                    </div>
+                </div>
+                <Button
+                    size='sm'
+                    className='shrink-0 text-xs h-7 w-16'
+                    disabled={setScaleMutation.isPending || !scaleHasChanged}
+                    onClick={() =>
+                        setScaleMutation.mutate({
+                            agentId,
+                            planetId,
+                            facilityId: facility.id,
+                            scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                        })
+                    }
+                >
+                    {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : 'Apply'}
+                </Button>
+            </div>
+        </div>
+    );
+
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
@@ -99,7 +189,7 @@ export function ActiveFacilityCard({
                             </Badge>
                         </span>
                     </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-1'>
+                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
                         Worker efficiency
                         <WorkerBars
                             workerRequirement={facility.workerRequirement}
@@ -161,6 +251,7 @@ export function ActiveFacilityCard({
                     </span>
                 </div>
             </div>
+
             <div className='flex-1 space-y-2'>
                 <FacilityProductionIORow
                     needs={facility.needs}
@@ -172,9 +263,12 @@ export function ActiveFacilityCard({
                 />
             </div>
 
+            {operatingScaleSection}
+
             <div className='mt-auto space-y-2'>
                 <Separator />
 
+                {/* ── Expand panel ── */}
                 {showExpand && !facility.construction ? (
                     <FacilityConstructionPanel
                         facilityType={facilityType}
@@ -191,7 +285,80 @@ export function ActiveFacilityCard({
                         }
                         onScaleChange={setPreviewScale}
                     />
+                ) : showReduce && !facility.construction ? (
+                    /* ── Reduce panel (no-op, no cost) ── */
+                    <div className='space-y-2'>
+                        <p className='text-xs font-medium'>Reduce capacity to scale</p>
+                        <Slider
+                            min={0}
+                            max={Math.max(0, reduceOptions.length - 1)}
+                            step={1}
+                            value={[currentReduceIndex]}
+                            onValueChange={([v]) => {
+                                const target = reduceOptions[v ?? 0];
+                                if (target !== undefined) {
+                                    setReduceTarget(target);
+                                }
+                            }}
+                            disabled={contractMutation.isPending}
+                            className='w-full'
+                        />
+                        <div className='relative h-4 text-[10px] text-muted-foreground'>
+                            {reduceOptions.map((v, i) => {
+                                const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
+                                const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
+                                return (
+                                    <span
+                                        key={v}
+                                        className='absolute'
+                                        style={{
+                                            left: `${pct}%`,
+                                            transform: `translateX(${translate})`,
+                                        }}
+                                    >
+                                        {formatNumberWithUnit(v, 'none')}
+                                    </span>
+                                );
+                            })}
+                        </div>
+                        <p className='text-xs text-muted-foreground'>
+                            Current max scale:{' '}
+                            <span className='tabular-nums font-medium text-foreground'>
+                                {formatNumberWithUnit(facility.maxScale, 'units')}
+                            </span>
+                            {' → '}
+                            <span className='tabular-nums font-medium text-foreground'>
+                                {formatNumberWithUnit(reduceTarget, 'units')}
+                            </span>
+                        </p>
+                        <div className='flex gap-2'>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                className='flex-1 text-xs'
+                                onClick={() => setShowReduce(false)}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size='sm'
+                                className='flex-1 text-xs'
+                                disabled={contractMutation.isPending}
+                                onClick={() =>
+                                    contractMutation.mutate({
+                                        agentId,
+                                        planetId,
+                                        facilityId: facility.id,
+                                        targetScale: reduceTarget,
+                                    })
+                                }
+                            >
+                                {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
+                            </Button>
+                        </div>
+                    </div>
                 ) : (
+                    /* ── Default: expand + reduce buttons ── */
                     <div className='flex gap-2'>
                         <Button
                             variant='outline'
@@ -200,6 +367,7 @@ export function ActiveFacilityCard({
                             disabled={facility.construction !== null}
                             onClick={() => {
                                 setPreviewScale(facility.maxScale + 1);
+                                setShowReduce(false);
                                 setShowExpand(true);
                             }}
                         >
@@ -209,76 +377,15 @@ export function ActiveFacilityCard({
                             variant='outline'
                             size='sm'
                             className='flex-1 text-xs gap-1'
-                            disabled={facility.construction !== null}
-                            onClick={() => setShowSetScale(true)}
+                            disabled={facility.maxScale <= 1}
+                            onClick={() => {
+                                setShowExpand(false);
+                                setShowReduce(true);
+                            }}
                         >
-                            Set scale
+                            Reduce capacity
                         </Button>
                     </div>
-                )}
-
-                {showSetScale && !facility.construction && (
-                    <>
-                        <Separator />
-                        <p className='text-xs font-medium'>Operating scale</p>
-                        <Slider
-                            min={0}
-                            max={SCALE_FRACTIONS.length - 1}
-                            step={1}
-                            value={[scaleFractionIndex]}
-                            onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
-                            disabled={setScaleMutation.isPending}
-                        />
-                        <div className='relative h-4 text-[10px] text-muted-foreground'>
-                            {SCALE_FRACTIONS.map((f, i) => {
-                                const pct = (i / (SCALE_FRACTIONS.length - 1)) * 100;
-                                const translate = i === 0 ? '0%' : i === SCALE_FRACTIONS.length - 1 ? '-100%' : '-50%';
-                                return (
-                                    <span
-                                        key={f}
-                                        className='absolute'
-                                        style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
-                                    >
-                                        {f * 100}%
-                                    </span>
-                                );
-                            })}
-                        </div>
-                        <div className='flex justify-between text-xs'>
-                            <span className='text-muted-foreground'>Resulting scale</span>
-                            <span className='font-medium tabular-nums'>
-                                {formatNumberWithUnit(
-                                    facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
-                                    'units',
-                                )}
-                            </span>
-                        </div>
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                variant='outline'
-                                className='flex-1 text-xs'
-                                onClick={() => setShowSetScale(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                size='sm'
-                                className='flex-1 text-xs'
-                                disabled={setScaleMutation.isPending}
-                                onClick={() =>
-                                    setScaleMutation.mutate({
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
-                                    })
-                                }
-                            >
-                                {setScaleMutation.isPending ? 'Applying…' : 'Confirm'}
-                            </Button>
-                        </div>
-                    </>
                 )}
             </div>
             {facility.construction !== null && <UnderConstructionCompactRow facility={facility} />}
