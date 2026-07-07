@@ -179,7 +179,7 @@ export const getLatestPlanetSummaries = () =>
                         Object.entries(planet.resources)
                             .map(([name, entries]) => ({
                                 name,
-                                freeCapacity: entries.reduce(
+                                freeCapacity: entries.claims.reduce(
                                     (s, e) => (e.tenantAgentId === null ? s + e.maximumCapacity : s),
                                     0,
                                 ),

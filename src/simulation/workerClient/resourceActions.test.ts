@@ -4,6 +4,7 @@ import { arableLandResourceType, ironOreDepositResourceType } from '../planet/la
 import type { GameState } from '../planet/planet';
 import { makeWorld } from '../utils/testHelper';
 import type { OutboundMessage } from './messages';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 import { handleLeaseClaim, handleQuitClaim } from './resourceActions';
 
 function makeMessages() {
@@ -22,40 +23,18 @@ function setupWorld(tick = 0) {
 
 function addRenewablePool(gameState: GameState, planetId: string, quantity = 10_000) {
     const planet = gameState.planets.get(planetId)!;
-    planet.resources[arableLandResourceType.name] = [
-        {
-            id: `${planetId}-arable-unclaimed`,
-            resource: arableLandResourceType,
-            quantity,
-            regenerationRate: quantity,
-            maximumCapacity: quantity,
-            tenantAgentId: null,
-            tenantCostInCoins: 0,
-            costPerTick: 0,
-            claimStatus: 'active' as const,
-            noticePeriodEndsAtTick: null,
-            pausedTicksThisYear: 0,
-        },
-    ];
+    planet.resources[arableLandResourceType.name] = {
+        pool: makePool({ type: arableLandResourceType, quantity: quantity, renewable: true }),
+        claims: [],
+    };
 }
 
 function addNonRenewablePool(gameState: GameState, planetId: string, quantity = 10_000) {
     const planet = gameState.planets.get(planetId)!;
-    planet.resources[ironOreDepositResourceType.name] = [
-        {
-            id: `${planetId}-iron-unclaimed`,
-            resource: ironOreDepositResourceType,
-            quantity,
-            regenerationRate: 0,
-            maximumCapacity: quantity,
-            tenantAgentId: null,
-            tenantCostInCoins: 0,
-            costPerTick: 0,
-            claimStatus: 'active' as const,
-            noticePeriodEndsAtTick: null,
-            pausedTicksThisYear: 0,
-        },
-    ];
+    planet.resources[ironOreDepositResourceType.name] = {
+        pool: makePool({ type: ironOreDepositResourceType, quantity: quantity, renewable: false }),
+        claims: [],
+    };
 }
 
 describe('handleLeaseClaim', () => {
@@ -78,7 +57,9 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
+            const claim = planet.resources[arableLandResourceType.name].claims.find(
+                (e) => e.tenantAgentId === company.id,
+            );
             expect(claim).toBeDefined();
             expect(claim!.costPerTick).toBe(Math.floor(2000 * 1));
         });
@@ -101,7 +82,9 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
+            const claim = planet.resources[arableLandResourceType.name].claims.find(
+                (e) => e.tenantAgentId === company.id,
+            );
             expect(claim!.tenantCostInCoins).toBe(0);
         });
 
@@ -123,7 +106,9 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
+            const claim = planet.resources[arableLandResourceType.name].claims.find(
+                (e) => e.tenantAgentId === company.id,
+            );
             expect(claim!.claimStatus).toBe('active');
             expect(claim!.noticePeriodEndsAtTick).toBeNull();
         });
@@ -167,8 +152,8 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const pool = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === null);
-            expect(pool!.maximumCapacity).toBe(8000);
+            const pool = planet.resources[arableLandResourceType.name].pool;
+            expect(pool.maximumCapacity).toBe(8000);
         });
 
         it('emits claimLeaseFailed when requested quantity exceeds available', () => {
@@ -283,7 +268,9 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[ironOreDepositResourceType.name].find((e) => e.tenantAgentId === company.id);
+            const claim = planet.resources[ironOreDepositResourceType.name].claims.find(
+                (e) => e.tenantAgentId === company.id,
+            );
             expect(claim!.tenantCostInCoins).toBe(Math.floor(3000 * 1));
         });
 
@@ -305,7 +292,9 @@ describe('handleLeaseClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[ironOreDepositResourceType.name].find((e) => e.tenantAgentId === company.id);
+            const claim = planet.resources[ironOreDepositResourceType.name].claims.find(
+                (e) => e.tenantAgentId === company.id,
+            );
             expect(claim!.costPerTick).toBe(0);
         });
     });
@@ -315,21 +304,10 @@ describe('handleQuitClaim', () => {
     describe('renewable claim', () => {
         it('sets noticePeriodEndsAtTick and does not release immediately', () => {
             const { gameState, planet, company } = setupWorld(0);
-            planet.resources[arableLandResourceType.name] = [
-                {
-                    id: 'arable-claim',
-                    resource: arableLandResourceType,
-                    quantity: 2000,
-                    regenerationRate: 2000,
-                    maximumCapacity: 2000,
-                    tenantAgentId: company.id,
-                    tenantCostInCoins: 0,
-                    costPerTick: 20,
-                    claimStatus: 'active' as const,
-                    noticePeriodEndsAtTick: null,
-                    pausedTicksThisYear: 0,
-                },
-            ];
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [],
+            };
             const { post } = makeMessages();
 
             handleQuitClaim(
@@ -344,28 +322,31 @@ describe('handleQuitClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[arableLandResourceType.name].find((e) => e.id === 'arable-claim');
+            const claim = planet.resources[arableLandResourceType.name].claims.find((e) => e.id === 'arable-claim');
             expect(claim!.noticePeriodEndsAtTick).not.toBeNull();
             expect(claim!.tenantAgentId).toBe(company.id);
         });
 
         it('sets noticePeriodEndsAtTick to currentTick + TICKS_PER_MONTH', () => {
             const { gameState, planet, company } = setupWorld(50);
-            planet.resources[arableLandResourceType.name] = [
-                {
-                    id: 'arable-claim',
-                    resource: arableLandResourceType,
-                    quantity: 2000,
-                    regenerationRate: 2000,
-                    maximumCapacity: 2000,
-                    tenantAgentId: company.id,
-                    tenantCostInCoins: 0,
-                    costPerTick: 20,
-                    claimStatus: 'active' as const,
-                    noticePeriodEndsAtTick: null,
-                    pausedTicksThisYear: 0,
-                },
-            ];
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [
+                    {
+                        id: 'arable-claim',
+                        resource: arableLandResourceType,
+                        quantity: 2000,
+                        regenerationRate: 2000,
+                        maximumCapacity: 2000,
+                        tenantAgentId: company.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 20,
+                        claimStatus: 'active' as const,
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            };
             const { post } = makeMessages();
 
             handleQuitClaim(
@@ -380,27 +361,30 @@ describe('handleQuitClaim', () => {
                 post,
             );
 
-            const claim = planet.resources[arableLandResourceType.name][0];
+            const claim = planet.resources[arableLandResourceType.name].claims[0];
             expect(claim.noticePeriodEndsAtTick).toBe(50 + TICKS_PER_MONTH);
         });
 
         it('emits claimQuit message', () => {
             const { gameState, planet, company } = setupWorld(0);
-            planet.resources[arableLandResourceType.name] = [
-                {
-                    id: 'arable-claim',
-                    resource: arableLandResourceType,
-                    quantity: 2000,
-                    regenerationRate: 2000,
-                    maximumCapacity: 2000,
-                    tenantAgentId: company.id,
-                    tenantCostInCoins: 0,
-                    costPerTick: 20,
-                    claimStatus: 'active' as const,
-                    noticePeriodEndsAtTick: null,
-                    pausedTicksThisYear: 0,
-                },
-            ];
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [
+                    {
+                        id: 'arable-claim',
+                        resource: arableLandResourceType,
+                        quantity: 2000,
+                        regenerationRate: 2000,
+                        maximumCapacity: 2000,
+                        tenantAgentId: company.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 20,
+                        claimStatus: 'active' as const,
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            };
             const { messages, post } = makeMessages();
 
             handleQuitClaim(
@@ -422,21 +406,24 @@ describe('handleQuitClaim', () => {
     describe('non-renewable claim', () => {
         it('releases claim immediately (tenantAgentId set to null)', () => {
             const { gameState, planet, company } = setupWorld(0);
-            planet.resources[ironOreDepositResourceType.name] = [
-                {
-                    id: 'iron-claim',
-                    resource: ironOreDepositResourceType,
-                    quantity: 5000,
-                    regenerationRate: 0,
-                    maximumCapacity: 5000,
-                    tenantAgentId: company.id,
-                    tenantCostInCoins: 50,
-                    costPerTick: 0,
-                    claimStatus: 'active' as const,
-                    noticePeriodEndsAtTick: null,
-                    pausedTicksThisYear: 0,
-                },
-            ];
+            planet.resources[ironOreDepositResourceType.name] = {
+                pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+                claims: [
+                    {
+                        id: 'iron-claim',
+                        resource: ironOreDepositResourceType,
+                        quantity: 5000,
+                        regenerationRate: 0,
+                        maximumCapacity: 5000,
+                        tenantAgentId: company.id,
+                        tenantCostInCoins: 50,
+                        costPerTick: 0,
+                        claimStatus: 'active' as const,
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            };
             const { post } = makeMessages();
 
             handleQuitClaim(
@@ -446,26 +433,29 @@ describe('handleQuitClaim', () => {
             );
 
             const entries = planet.resources[ironOreDepositResourceType.name];
-            expect(entries.every((e) => e.tenantAgentId === null)).toBe(true);
+            expect(entries.claims.every((e) => e.tenantAgentId === null)).toBe(true);
         });
 
         it('resets tenantCostInCoins to 0 on immediate release', () => {
             const { gameState, planet, company } = setupWorld(0);
-            planet.resources[ironOreDepositResourceType.name] = [
-                {
-                    id: 'iron-claim',
-                    resource: ironOreDepositResourceType,
-                    quantity: 5000,
-                    regenerationRate: 0,
-                    maximumCapacity: 5000,
-                    tenantAgentId: company.id,
-                    tenantCostInCoins: 50,
-                    costPerTick: 0,
-                    claimStatus: 'active' as const,
-                    noticePeriodEndsAtTick: null,
-                    pausedTicksThisYear: 0,
-                },
-            ];
+            planet.resources[ironOreDepositResourceType.name] = {
+                pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
+                claims: [
+                    {
+                        id: 'iron-claim',
+                        resource: ironOreDepositResourceType,
+                        quantity: 5000,
+                        regenerationRate: 0,
+                        maximumCapacity: 5000,
+                        tenantAgentId: company.id,
+                        tenantCostInCoins: 50,
+                        costPerTick: 0,
+                        claimStatus: 'active' as const,
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            };
             const { post } = makeMessages();
 
             handleQuitClaim(
@@ -474,7 +464,7 @@ describe('handleQuitClaim', () => {
                 post,
             );
 
-            const pool = planet.resources[ironOreDepositResourceType.name][0];
+            const pool = planet.resources[ironOreDepositResourceType.name].claims[0];
             expect(pool.tenantCostInCoins).toBe(0);
         });
     });
@@ -497,34 +487,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('recalculates costPerTick for renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
-        planet.resources[arableLandResourceType.name] = [
-            {
-                id: claimId,
-                resource: arableLandResourceType,
-                quantity: 2000,
-                regenerationRate: 2000,
-                maximumCapacity: 2000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: 0,
-                costPerTick: 2000,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                resource: arableLandResourceType,
-                quantity: 8000,
-                regenerationRate: 8000,
-                maximumCapacity: 8000,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 8000, renewable: true }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: arableLandResourceType,
+                    quantity: 2000,
+                    regenerationRate: 2000,
+                    maximumCapacity: 2000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 2000,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { post } = makeMessages();
 
         handleLeaseClaim(
@@ -540,7 +520,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             post,
         );
 
-        const claim = planet.resources[arableLandResourceType.name].find((e) => e.tenantAgentId === company.id);
+        const claim = planet.resources[arableLandResourceType.name].claims.find((e) => e.tenantAgentId === company.id);
         expect(claim!.maximumCapacity).toBe(3000);
         expect(claim!.costPerTick).toBe(Math.floor(3000 * 1));
         expect(claim!.tenantCostInCoins).toBe(0);
@@ -549,34 +529,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('recalculates tenantCostInCoins for non-renewable expansion', () => {
         const { gameState, planet, company } = setupWorld();
         const claimId = `${planet.id}-${ironOreDepositResourceType.name}-${company.id}`;
-        planet.resources[ironOreDepositResourceType.name] = [
-            {
-                id: claimId,
-                resource: ironOreDepositResourceType,
-                quantity: 3000,
-                regenerationRate: 0,
-                maximumCapacity: 3000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: Math.floor(3000 * 1),
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${ironOreDepositResourceType.name}-unclaimed`,
-                resource: ironOreDepositResourceType,
-                quantity: 7000,
-                regenerationRate: 0,
-                maximumCapacity: 7000,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[ironOreDepositResourceType.name] = {
+            pool: makePool({ type: ironOreDepositResourceType, quantity: 7000, renewable: false }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: ironOreDepositResourceType,
+                    quantity: 3000,
+                    regenerationRate: 0,
+                    maximumCapacity: 3000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: Math.floor(3000 * 1),
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { post } = makeMessages();
 
         handleLeaseClaim(
@@ -592,7 +562,9 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
             post,
         );
 
-        const claim = planet.resources[ironOreDepositResourceType.name].find((e) => e.tenantAgentId === company.id);
+        const claim = planet.resources[ironOreDepositResourceType.name].claims.find(
+            (e) => e.tenantAgentId === company.id,
+        );
         expect(claim!.tenantCostInCoins).toBe(Math.floor(5000 * 1));
         expect(claim!.costPerTick).toBe(0);
     });
@@ -600,34 +572,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('emits claimLeaseFailed when pool has insufficient capacity', () => {
         const { gameState, planet, company } = setupWorld();
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
-        planet.resources[arableLandResourceType.name] = [
-            {
-                id: claimId,
-                resource: arableLandResourceType,
-                quantity: 2000,
-                regenerationRate: 2000,
-                maximumCapacity: 2000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: 0,
-                costPerTick: 2000,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                resource: arableLandResourceType,
-                quantity: 500,
-                regenerationRate: 500,
-                maximumCapacity: 500,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 500, renewable: true }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: arableLandResourceType,
+                    quantity: 2000,
+                    regenerationRate: 2000,
+                    maximumCapacity: 2000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 2000,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { messages, post } = makeMessages();
 
         handleLeaseClaim(
@@ -653,34 +615,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         const expectedUpfront = costPerTick * TICKS_PER_MONTH;
         const initialDeposits = company.assets[planet.id].deposits;
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
-        planet.resources[arableLandResourceType.name] = [
-            {
-                id: claimId,
-                resource: arableLandResourceType,
-                quantity: 2000,
-                regenerationRate: 2000,
-                maximumCapacity: 2000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: 0,
-                costPerTick: 2000,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                resource: arableLandResourceType,
-                quantity: 8000,
-                regenerationRate: 8000,
-                maximumCapacity: 8000,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 8000, renewable: true }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: arableLandResourceType,
+                    quantity: 2000,
+                    regenerationRate: 2000,
+                    maximumCapacity: 2000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 2000,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { post } = makeMessages();
 
         handleLeaseClaim(
@@ -703,34 +655,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         const { gameState, planet, company } = setupWorld();
         company.assets[planet.id].deposits = 0;
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
-        planet.resources[arableLandResourceType.name] = [
-            {
-                id: claimId,
-                resource: arableLandResourceType,
-                quantity: 2000,
-                regenerationRate: 2000,
-                maximumCapacity: 2000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: 0,
-                costPerTick: 2000,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                resource: arableLandResourceType,
-                quantity: 8000,
-                regenerationRate: 8000,
-                maximumCapacity: 8000,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 8000, renewable: true }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: arableLandResourceType,
+                    quantity: 2000,
+                    regenerationRate: 2000,
+                    maximumCapacity: 2000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 2000,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { messages, post } = makeMessages();
 
         handleLeaseClaim(
@@ -752,34 +694,24 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
     it('does not create a duplicate entry when leasing an already-leased resource', () => {
         const { gameState, planet, company } = setupWorld();
         const claimId = `${planet.id}-${arableLandResourceType.name}-${company.id}`;
-        planet.resources[arableLandResourceType.name] = [
-            {
-                id: claimId,
-                resource: arableLandResourceType,
-                quantity: 2000,
-                regenerationRate: 2000,
-                maximumCapacity: 2000,
-                tenantAgentId: company.id,
-                tenantCostInCoins: 0,
-                costPerTick: 2000,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-            {
-                id: `${planet.id}-${arableLandResourceType.name}-unclaimed`,
-                resource: arableLandResourceType,
-                quantity: 8000,
-                regenerationRate: 8000,
-                maximumCapacity: 8000,
-                tenantAgentId: null,
-                tenantCostInCoins: 0,
-                costPerTick: 0,
-                claimStatus: 'active' as const,
-                noticePeriodEndsAtTick: null,
-                pausedTicksThisYear: 0,
-            },
-        ];
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 8000, renewable: true }),
+            claims: [
+                {
+                    id: claimId,
+                    resource: arableLandResourceType,
+                    quantity: 2000,
+                    regenerationRate: 2000,
+                    maximumCapacity: 2000,
+                    tenantAgentId: company.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 2000,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
         const { messages, post } = makeMessages();
 
         handleLeaseClaim(
@@ -796,7 +728,7 @@ describe('handleLeaseClaim auto-expand (claim already exists)', () => {
         );
 
         expect(messages.find((m) => m.type === 'claimLeased')).toBeDefined();
-        const tenantEntries = planet.resources[arableLandResourceType.name].filter(
+        const tenantEntries = planet.resources[arableLandResourceType.name].claims.filter(
             (e) => e.tenantAgentId === company.id,
         );
         expect(tenantEntries).toHaveLength(1);

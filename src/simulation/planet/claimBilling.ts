@@ -1,27 +1,21 @@
 import { TICKS_PER_MONTH } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
-import { collapseUntenantedClaims } from './claims';
+import { mergeClaimBackIntoPool } from './claims';
 import type { Agent, Planet } from './planet';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
 export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     for (const resourceName of Object.keys(planet.resources)) {
-        const entries = planet.resources[resourceName]!;
-        let needsCollapse = false;
+        const { pool, claims } = planet.resources[resourceName];
 
-        for (const entry of entries) {
-            if (entry.tenantAgentId === null || entry.regenerationRate <= 0) {
+        for (const entry of claims) {
+            if (entry.regenerationRate <= 0) {
                 continue;
             }
 
             if (entry.noticePeriodEndsAtTick !== null && tick >= entry.noticePeriodEndsAtTick) {
-                entry.tenantAgentId = null;
-                entry.costPerTick = 0;
-                entry.claimStatus = 'active';
-                entry.noticePeriodEndsAtTick = null;
-                entry.pausedTicksThisYear = 0;
-                needsCollapse = true;
+                mergeClaimBackIntoPool(pool, entry);
                 continue;
             }
 
@@ -69,13 +63,9 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
             }
         }
 
-        if (needsCollapse) {
-            collapseUntenantedClaims(planet, resourceName);
-        }
-
         let totalCost = 0;
         let totalUnits = 0;
-        for (const entry of entries) {
+        for (const entry of claims) {
             if (entry.tenantAgentId === null) {
                 continue;
             }

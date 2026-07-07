@@ -21,10 +21,10 @@ import {
     pesticidePlant,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
-import type { ResourceClaimEntry } from './helpers';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
-import { makeClaim, makeUnclaimedRemainder } from './resourceClaimFactory';
+import { makeClaim, makePool } from './resourceClaimFactory';
+import type { ResourceClaim } from '../planet/claims';
 
 export const AC_ID = 'alpha-centauri';
 const GOV = 'ac-government';
@@ -65,10 +65,10 @@ const industrialSpecs: IndustrialSpec[] = [
 
 export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
-    const arableClaims: ResourceClaimEntry[] = [];
-    const waterClaims: ResourceClaimEntry[] = [];
-    const ironClaims: ResourceClaimEntry[] = [];
-    const coalClaims: ResourceClaimEntry[] = [];
+    const arableClaims: ResourceClaim[] = [];
+    const waterClaims: ResourceClaim[] = [];
+    const ironClaims: ResourceClaim[] = [];
+    const coalClaims: ResourceClaim[] = [];
 
     const govArableId = 'ac-gov-arable';
     const govWaterId = 'ac-gov-water';
@@ -323,38 +323,14 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    const remainders = [
-        {
-            claims: arableClaims,
-            total: TOTAL_ARABLE,
-            type: arableLandResourceType,
-            prefix: 'ac-arable',
-            renewable: true,
-        },
-        { claims: waterClaims, total: TOTAL_WATER, type: waterSourceResourceType, prefix: 'ac-water', renewable: true },
-        {
-            claims: ironClaims,
-            total: TOTAL_IRON,
-            type: ironOreDepositResourceType,
-            prefix: 'ac-iron',
-            renewable: false,
-        },
-        { claims: coalClaims, total: TOTAL_COAL, type: coalDepositResourceType, prefix: 'ac-coal', renewable: false },
-    ];
-    for (const { claims, total, type, prefix, renewable } of remainders) {
-        const remainder = makeUnclaimedRemainder({
-            idPrefix: prefix,
-            type,
-            total,
-            existing: claims,
-            claimAgentId: GOV,
-            renewable,
-        });
-        if (remainder) {
-            claims.push(remainder);
-            govClaims.push(remainder.id);
-        }
-    }
+    const usedArable = arableClaims.reduce((s, c) => s + c.quantity, 0);
+    const arablePool = makePool({ type: arableLandResourceType, quantity: TOTAL_ARABLE - usedArable, renewable: true });
+    const usedWater = waterClaims.reduce((s, c) => s + c.quantity, 0);
+    const waterPool = makePool({ type: waterSourceResourceType, quantity: TOTAL_WATER - usedWater, renewable: true });
+    const usedIron = ironClaims.reduce((s, c) => s + c.quantity, 0);
+    const ironPool = makePool({ type: ironOreDepositResourceType, quantity: TOTAL_IRON - usedIron, renewable: false });
+    const usedCoal = coalClaims.reduce((s, c) => s + c.quantity, 0);
+    const coalPool = makePool({ type: coalDepositResourceType, quantity: TOTAL_COAL - usedCoal, renewable: false });
 
     const govAgent = makeAgent({
         id: GOV,
@@ -395,10 +371,10 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
         resources: {
-            [arableLandResourceType.name]: arableClaims,
-            [waterSourceResourceType.name]: waterClaims,
-            [ironOreDepositResourceType.name]: ironClaims,
-            [coalDepositResourceType.name]: coalClaims,
+            [arableLandResourceType.name]: { pool: arablePool, claims: arableClaims },
+            [waterSourceResourceType.name]: { pool: waterPool, claims: waterClaims },
+            [ironOreDepositResourceType.name]: { pool: ironPool, claims: ironClaims },
+            [coalDepositResourceType.name]: { pool: coalPool, claims: coalClaims },
         },
         infrastructure: {
             primarySchools: 50,

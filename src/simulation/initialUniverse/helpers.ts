@@ -2,15 +2,7 @@ import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
-import { intensiveFarmFacility, waterExtractionFacility } from '../planet/productionFacilities';
 import type { Resource } from '../planet/claims';
-import {
-    createEmptyAccumulator,
-    createEmptyDemographicEventCounters,
-    type Agent,
-    type AgentPlanetAssets,
-} from '../planet/planet';
-import { type ResourceClaim, type ResourceQuantity } from '../planet/claims';
 import {
     createLastTickResults,
     putIntoStorageFacility,
@@ -18,14 +10,19 @@ import {
     type StorageFacility,
 } from '../planet/facility';
 import {
+    createEmptyAccumulator,
+    createEmptyDemographicEventCounters,
+    type Agent,
+    type AgentPlanetAssets,
+} from '../planet/planet';
+import { intensiveFarmFacility, waterExtractionFacility } from '../planet/productionFacilities';
+import {
     MAX_AGE,
     createEmptyPopulationCohort,
     forEachPopulationCohort,
     type Population,
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
-
-export type ResourceClaimEntry = ResourceQuantity & ResourceClaim;
 
 export function makeProductionFacility(opts: {
     planetId: string;

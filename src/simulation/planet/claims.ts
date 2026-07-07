@@ -18,73 +18,43 @@ export type ResourceQuantity = {
 
 export type ClaimStatus = 'active' | 'paused';
 
-export type ResourceClaim = {
+/** The unleased, publicly-available pool of a resource on a planet. */
+export type ResourcePool = {
+    resource: Resource;
+    quantity: number;
+    regenerationRate: number;
+    maximumCapacity: number;
+};
+
+export type ResourceClaim = ResourcePool & {
     id: string;
-    tenantAgentId: string | null;
+    tenantAgentId: string;
     tenantCostInCoins: number;
     costPerTick: number;
     claimStatus: ClaimStatus;
     noticePeriodEndsAtTick: number | null;
     pausedTicksThisYear: number;
-    regenerationRate: number;
-    maximumCapacity: number;
 };
 
-export function collapseUntenantedClaims(
-    planet: Planet,
-    resourceName: string,
-    collapsedId?: string,
-): (ResourceClaim & ResourceQuantity) | null {
-    const entries = planet.resources[resourceName];
-    if (!entries) {
-        return null;
-    }
-
-    const untenanted = entries.filter((e) => e.tenantAgentId === null);
-    if (untenanted.length === 0) {
-        return null;
-    }
-
-    const totalQuantity = untenanted.reduce((s, e) => s + e.quantity, 0);
-    const totalRegen = untenanted.reduce((s, e) => s + e.regenerationRate, 0);
-    const totalCap = untenanted.reduce((s, e) => s + e.maximumCapacity, 0);
-
-    const survivorId = collapsedId ?? untenanted[0].id;
-
-    const filtered = entries.filter((e) => e.tenantAgentId !== null);
-
-    const collapsed = {
-        ...untenanted[0],
-        id: survivorId,
-        tenantAgentId: null,
-        tenantCostInCoins: 0,
-        costPerTick: 0,
-        claimStatus: 'active' as const,
-        noticePeriodEndsAtTick: null,
-        quantity: totalQuantity,
-        regenerationRate: totalRegen,
-        maximumCapacity: totalCap,
-    };
-    filtered.push(collapsed);
-    planet.resources[resourceName] = filtered;
-
-    return collapsed;
-}
+export type ResourceEntry = {
+    pool: ResourcePool;
+    claims: ResourceClaim[];
+};
 
 export const isRenewableClaim = (claim: ResourceClaim): boolean => claim.regenerationRate > 0;
 
 export const queryClaimedResource = (planet: Planet, agent: Agent, resource: Resource): number => {
-    const resourceEntries = planet.resources[resource.name];
-    if (!resourceEntries) {
+    const entry = planet.resources[resource.name];
+    if (!entry) {
         console.warn(`Resource ${resource.name} not found on planet ${planet.name}`);
         return 0;
     }
-    const tenantEntries = resourceEntries.filter((entry) => entry.tenantAgentId === agent.id);
+    const tenantEntries = entry.claims.filter((c) => c.tenantAgentId === agent.id);
     if (!tenantEntries.length) {
         console.warn(`Agent ${agent.name} is not tenant of resource ${resource.name} on planet ${planet.name}`);
         return 0;
     }
-    return tenantEntries.reduce((sum, entry) => sum + entry.quantity, 0);
+    return tenantEntries.reduce((sum, c) => sum + c.quantity, 0);
 };
 
 export const extractFromClaimedResource = (
@@ -93,22 +63,22 @@ export const extractFromClaimedResource = (
     resource: Resource,
     quantity: number,
 ): number => {
-    const resourceEntries = planet.resources[resource.name];
-    if (!resourceEntries) {
+    const entry = planet.resources[resource.name];
+    if (!entry) {
         console.warn(`Resource ${resource.name} not found on planet ${planet.name}`);
         return 0;
     }
-    const tenantEntries = resourceEntries.filter((entry) => entry.tenantAgentId === agent.id);
+    const tenantEntries = entry.claims.filter((c) => c.tenantAgentId === agent.id);
     if (!tenantEntries.length) {
         console.warn(`Agent ${agent.name} is not tenant of resource ${resource.name} on planet ${planet.name}`);
         return 0;
     }
 
     let extracted = 0;
-    for (const entry of tenantEntries) {
-        const available = entry.quantity;
+    for (const claim of tenantEntries) {
+        const available = claim.quantity;
         const toExtract = Math.min(available, quantity - extracted);
-        entry.quantity -= toExtract;
+        claim.quantity -= toExtract;
         extracted += toExtract;
         if (extracted >= quantity) {
             break;
@@ -118,23 +88,29 @@ export const extractFromClaimedResource = (
 };
 
 export function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourceName: string): number {
-    const entries = planet.resources[resourceName];
-    if (!entries) {
+    const entry = planet.resources[resourceName];
+    if (!entry) {
         return 0;
     }
     let totalCost = 0;
     let totalUnits = 0;
-    for (const entry of entries) {
-        if (entry.tenantAgentId !== agentId) {
+    for (const claim of entry.claims) {
+        if (claim.tenantAgentId !== agentId) {
             continue;
         }
-        if (entry.regenerationRate > 0) {
-            totalCost += entry.costPerTick;
-            totalUnits += entry.quantity;
+        if (claim.regenerationRate > 0) {
+            totalCost += claim.costPerTick;
+            totalUnits += claim.quantity;
         } else {
-            totalCost += entry.tenantCostInCoins;
-            totalUnits += entry.maximumCapacity;
+            totalCost += claim.tenantCostInCoins;
+            totalUnits += claim.maximumCapacity;
         }
     }
     return totalUnits > 0 ? totalCost / totalUnits : 0;
+}
+
+export function mergeClaimBackIntoPool(pool: ResourcePool, claim: ResourceClaim): void {
+    pool.quantity += claim.quantity;
+    pool.regenerationRate += claim.regenerationRate;
+    pool.maximumCapacity += claim.maximumCapacity;
 }

@@ -1,6 +1,6 @@
 import { TICKS_PER_MONTH } from '../constants';
-import type { ResourceClaim, ResourceQuantity } from '../planet/claims';
-import { collapseUntenantedClaims } from '../planet/claims';
+import type { ResourceClaim } from '../planet/claims';
+import { mergeClaimBackIntoPool } from '../planet/claims';
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
 
@@ -46,18 +46,29 @@ export function handleLeaseClaim(
         safePostMessage({ type: 'claimLeaseFailed', requestId, reason: `Agent has no assets on planet '${planetId}'` });
         return;
     }
-    const pool = collapseUntenantedClaims(planet, resourceName, `${planetId}-${resourceName}-unclaimed`);
-    if (!pool || pool.maximumCapacity < quantity) {
+
+    const entry = planet.resources[resourceName];
+    if (!entry) {
         safePostMessage({
             type: 'claimLeaseFailed',
             requestId,
-            reason: `Not enough untenanted ${resourceName} — requested ${quantity}, available ${pool?.maximumCapacity ?? 0}`,
+            reason: `Resource '${resourceName}' not found on planet`,
+        });
+        return;
+    }
+    const { pool, claims } = entry;
+
+    if (pool.maximumCapacity < quantity) {
+        safePostMessage({
+            type: 'claimLeaseFailed',
+            requestId,
+            reason: `Not enough untenanted ${resourceName} — requested ${quantity}, available ${pool.maximumCapacity}`,
         });
         return;
     }
     const claimId = `${planetId}-${resourceName}-${agentId}`;
 
-    const existingClaim = planet.resources[resourceName].find((e) => e.id === claimId && e.tenantAgentId === agentId);
+    const existingClaim = claims.find((e) => e.id === claimId && e.tenantAgentId === agentId);
     if (existingClaim) {
         const ratio = quantity / pool.maximumCapacity;
         const isRenewable = existingClaim.regenerationRate > 0;
@@ -102,7 +113,7 @@ export function handleLeaseClaim(
         });
         return;
     }
-    const newClaim = {
+    const newClaim: ResourceClaim = {
         id: claimId,
         resource: pool.resource,
         quantity,
@@ -111,14 +122,14 @@ export function handleLeaseClaim(
         tenantAgentId: agentId,
         tenantCostInCoins: isRenewable ? 0 : costAmount,
         costPerTick: isRenewable ? costAmount : 0,
-        claimStatus: 'active' as const,
+        claimStatus: 'active',
         noticePeriodEndsAtTick: null,
         pausedTicksThisYear: 0,
     };
     pool.quantity -= quantity;
     pool.regenerationRate -= newClaim.regenerationRate;
     pool.maximumCapacity -= quantity;
-    planet.resources[resourceName].push(newClaim);
+    claims.push(newClaim);
     agent.assets[planetId]!.monthAcc.claimPayments += charged;
     console.log(`[worker] Agent '${agentId}' leased ${quantity} of '${resourceName}' on planet '${planetId}'`);
     safePostMessage({ type: 'claimLeased', requestId, agentId, claimId });
@@ -137,9 +148,9 @@ export function handleQuitClaim(
         return;
     }
     let resourceName: string | null = null;
-    let existingClaim: (ResourceClaim & ResourceQuantity) | null = null;
-    for (const [rName, entries] of Object.entries(planet.resources)) {
-        const found = entries.find((e) => e.id === claimId && e.tenantAgentId === agentId);
+    let existingClaim: ResourceClaim | null = null;
+    for (const [rName, entry] of Object.entries(planet.resources)) {
+        const found = entry.claims.find((e) => e.id === claimId && e.tenantAgentId === agentId);
         if (found) {
             resourceName = rName;
             existingClaim = found;
@@ -150,15 +161,12 @@ export function handleQuitClaim(
         safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Claim '${claimId}' not found for agent` });
         return;
     }
+    const entry = planet.resources[resourceName]!;
     if (existingClaim.regenerationRate > 0) {
         existingClaim.noticePeriodEndsAtTick = state.tick + TICKS_PER_MONTH;
     } else {
-        existingClaim.tenantAgentId = null;
-        existingClaim.tenantCostInCoins = 0;
-        existingClaim.costPerTick = 0;
-        existingClaim.claimStatus = 'active';
-        existingClaim.noticePeriodEndsAtTick = null;
-        collapseUntenantedClaims(planet, resourceName, `${planetId}-${resourceName}-unclaimed`);
+        mergeClaimBackIntoPool(entry.pool, existingClaim);
+        entry.claims = entry.claims.filter((c) => c.id !== claimId);
     }
     console.log(`[worker] Agent '${agentId}' quit claim '${claimId}' on planet '${planetId}'`);
     safePostMessage({ type: 'claimQuit', requestId, agentId, claimId });

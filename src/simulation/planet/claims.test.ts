@@ -109,8 +109,8 @@ describe('claimed resource helpers', () => {
         expect(remaining).toBe(30);
 
         const entries = planet.resources[arableLandResourceType.name];
-        const r1 = entries.find((e) => e.id === 'r1');
-        const r2 = entries.find((e) => e.id === 'r2');
+        const r1 = entries.claims.find((e) => e.id === 'r1');
+        const r2 = entries.claims.find((e) => e.id === 'r2');
         expect(r1!.quantity).toBe(0);
         expect(r2!.quantity).toBe(30);
     });

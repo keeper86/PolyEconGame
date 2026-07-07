@@ -1,15 +1,14 @@
-import type { Resource } from '../planet/claims';
-import type { ResourceClaimEntry } from './helpers';
+import type { Resource, ResourceClaim, ResourcePool } from '../planet/claims';
 
 export function makeClaim(opts: {
     id: string;
     type: Resource;
     quantity: number;
-    tenantAgentId: string | null;
+    tenantAgentId: string;
     tenantCostInCoins?: number;
     costPerTick?: number;
     renewable?: boolean;
-}): ResourceClaimEntry {
+}): ResourceClaim {
     const isRenewable = opts.renewable === true;
     return {
         id: opts.id,
@@ -26,24 +25,11 @@ export function makeClaim(opts: {
     };
 }
 
-export function makeUnclaimedRemainder(opts: {
-    idPrefix: string;
-    type: Resource;
-    total: number;
-    existing: ResourceClaimEntry[];
-    claimAgentId: string;
-    renewable?: boolean;
-}): ResourceClaimEntry | null {
-    const used = opts.existing.reduce((sum, c) => sum + c.quantity, 0);
-    const remaining = opts.total - used;
-    if (remaining <= 0) {
-        return null;
-    }
-    return makeClaim({
-        id: `${opts.idPrefix}-unclaimed`,
-        type: opts.type,
-        quantity: remaining,
-        tenantAgentId: null,
-        renewable: opts.renewable,
-    });
+export function makePool(opts: { type: Resource; quantity: number; renewable?: boolean }): ResourcePool {
+    return {
+        resource: opts.type,
+        quantity: opts.quantity,
+        regenerationRate: opts.renewable === true ? opts.quantity : 0,
+        maximumCapacity: opts.quantity,
+    };
 }

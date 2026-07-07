@@ -179,9 +179,9 @@ export function advanceTick(gameState: GameState) {
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
             }
-            for (const entries of Object.values(planet.resources)) {
-                for (const entry of entries) {
-                    entry.pausedTicksThisYear = 0;
+            for (const entry of Object.values(planet.resources)) {
+                for (const claim of entry.claims) {
+                    claim.pausedTicksThisYear = 0;
                 }
             }
             populationAdvanceYearTick(planet);
