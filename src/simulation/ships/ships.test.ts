@@ -20,6 +20,7 @@ import type {
     TransportShipStatusUnloading,
 } from './ships';
 import { constructionShipType, createShip, passengerLiner, shipTick, shiptypes } from './ships';
+import { oilWell } from '../planet/productionFacilities';
 
 function makeMessages(): { messages: OutboundMessage[]; post: (m: OutboundMessage) => void } {
     const messages: OutboundMessage[] = [];
@@ -823,7 +824,7 @@ describe('construction ship: reconstruction places facility', () => {
         ship.state = {
             type: 'reconstruction',
             planetId: 'p2',
-            buildingTarget: { type: 'production', id: 'f', name: 'F', planetId: 'p1' } as never,
+            buildingTarget: oilWell('p1', 'fac-1'),
             progress: 0.9,
         };
         agent.ships.push(ship);
