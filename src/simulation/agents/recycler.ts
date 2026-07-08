@@ -2,7 +2,7 @@ import assert from 'assert';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../constants';
 import { grantLoan } from '../financial/loanTypes';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
-import type { ProductionFacility } from '../planet/facility';
+import type { Facility } from '../planet/facility';
 import {
     calculateCostsForConstruction,
     getFacilityType,
@@ -81,7 +81,7 @@ export function getRecyclerPaymentRatio(planet: Planet): number {
 
 export function processFacilityContraction(
     planet: Planet,
-    facility: ProductionFacility,
+    facility: Facility,
     agent: Agent,
     targetMax: number,
     gameState: GameState,
@@ -95,7 +95,7 @@ export function processFacilityContraction(
 
     const type = getFacilityType(facility);
     const recoveredCS =
-        calculateCostsForConstruction(type, targetMax, facility.maxScale) * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+        calculateCostsForConstruction(type, targetMax, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
     assert(recoveredCS > 0 && isFinite(recoveredCS), 'Recovered CS should be positive and finite');
     const marketValue = recoveredCS * csPrice;

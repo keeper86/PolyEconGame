@@ -9,6 +9,7 @@ import {
     getPlanetMarket,
     getPlanetMarketOverview,
     getPlanetOverview,
+    getPlanetScrapRecoveryRate,
 } from './controller/planet';
 import {
     acceptShipBuyingOffer,
@@ -59,6 +60,7 @@ import {
     cancelBuyBid,
     cancelConstruction,
     cancelSellOffer,
+    contractFacility,
     createAgent,
     expandFacility,
     expandShipConstructionFacility,
@@ -102,6 +104,7 @@ const simulationRouter = trpcRoot.router({
     getPlanetDemographicsFull: getPlanetDemographicsFull(),
     getPlanetMarket: getPlanetMarket(),
     getPlanetMarketOverview: getPlanetMarketOverview(),
+    getPlanetScrapRecoveryRate: getPlanetScrapRecoveryRate(),
     getPlanetClaims: getPlanetClaims(),
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),
@@ -127,6 +130,7 @@ const protectedAppRouter = trpcRoot.router({
     setBuyBids: setBuyBids(),
     buildFacility: buildFacility(),
     expandFacility: expandFacility(),
+    contractFacility: contractFacility(),
     setFacilityScale: setFacilityScale(),
     leaseClaim: leaseClaim(),
     quitClaim: quitClaim(),

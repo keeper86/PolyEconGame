@@ -4,11 +4,11 @@ import {
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
 } from '../constants';
-import { formatCargoQty } from '../utils/numberFormat';
 import { grantLoan } from '../financial/loanTypes';
 import type { Facility, ProductionFacility } from '../planet/facility';
 import {
-    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+    calculateCostsForConstruction,
+    getFacilityType,
     lockIntoEscrow,
     putIntoStorageFacility,
     removeFromStorageFacility,
@@ -22,6 +22,8 @@ import {
     healthcareServiceResourceType,
     maintenanceServiceResourceType,
 } from '../planet/services';
+import { formatCargoQty } from '../utils/numberFormat';
+import { nextRandom } from '../utils/stochasticRound';
 import {
     advanceManifestAge,
     boardPassengersFromWorkforce,
@@ -52,7 +54,6 @@ import type {
     TransportShipStatusType,
     TransportShipStatusUnloading,
 } from './ships';
-import { nextRandom } from '../utils/stochasticRound';
 
 export type TransitionResult =
     | { action: 'stay' }
@@ -519,7 +520,8 @@ function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState, 
 
 function handleReconstruction(ship: ConstructionShip, ctx: GameState, agent: Agent): TransitionResult {
     const s = ship.state as ConstructionShipStatusUnloading;
-    const updatedProgress = Math.max(0, s.progress - 1 / MINIMUM_CONSTRUCTION_TIME_IN_TICKS);
+    const { time } = calculateCostsForConstruction(getFacilityType(s.buildingTarget), 0, s.buildingTarget.maxScale);
+    const updatedProgress = Math.max(0, s.progress - 1 / time);
     s.progress = updatedProgress;
 
     if (updatedProgress > 0) {

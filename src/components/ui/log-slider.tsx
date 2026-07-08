@@ -61,7 +61,7 @@ export function LogSlider({
                     // Spread labels apart from the centre to reduce overlap when values
                     // grow exponentially while slider positions are linear.
                     const pct = (i / maxIndex) * 100 - (i - midpoint) * 0.3;
-                    const translate = i === 0 ? '100%' : i === maxIndex ? '-80%' : '-50%';
+                    const translate = i === maxIndex ? '-80%' : '-40%';
                     return (
                         <span
                             key={i}

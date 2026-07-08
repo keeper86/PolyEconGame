@@ -1,5 +1,6 @@
 'use client';
 
+import { Stat } from '@/components/client/Stat';
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -24,33 +25,6 @@ export type EducationLevelCardsProps = {
 
 function formatNumbersNextTotal(next: number, total: number): string {
     return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
-}
-
-function Stat({
-    label,
-    value,
-    valueClassName,
-    indent,
-    bold,
-}: {
-    label: React.ReactNode;
-    value: React.ReactNode;
-    valueClassName?: string;
-    indent?: boolean;
-    bold?: boolean;
-}): React.ReactElement {
-    return (
-        <div className={`flex items-baseline justify-between gap-2 ${indent ? 'pl-3' : ''}`}>
-            <span className={`truncate ${bold ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
-                {label}
-            </span>
-            <span
-                className={`tabular-nums whitespace-nowrap ${bold ? 'font-semibold' : 'font-medium'} ${valueClassName ?? ''}`}
-            >
-                {value}
-            </span>
-        </div>
-    );
 }
 
 function Rule(): React.ReactElement {

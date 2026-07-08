@@ -1,15 +1,20 @@
 'use client';
 
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { Stat } from '@/components/client/Stat';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
+import { Spinner } from '@/components/ui/spinner';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ProductionFacility } from '@/simulation/planet/facility';
-import { getFacilityType } from '@/simulation/planet/facility';
+import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
@@ -27,14 +32,18 @@ export function ActiveFacilityCard({
     facility: ProductionFacility;
     agentId: string;
     planetId: string;
-    constructionServicePrice?: number;
+    constructionServicePrice: number;
     onExpanded: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
-    const [showSetScale, setShowSetScale] = useState(false);
+    const [showReduce, setShowReduce] = useState(false);
+
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
 
     const SCALE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
     const computeScaleFractionIndex = (scale: number, maxScale: number) => {
@@ -50,12 +59,15 @@ export function ActiveFacilityCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [facility.scale, facility.maxScale]);
 
+    const invalidate = () =>
+        queryClient.invalidateQueries({
+            queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+        });
+
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
+                void invalidate();
                 setShowExpand(false);
                 onExpanded();
             },
@@ -65,10 +77,17 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-                });
-                setShowSetScale(false);
+                void invalidate();
+            },
+        }),
+    );
+
+    const contractMutation = useMutation(
+        trpc.contractFacility.mutationOptions({
+            onSuccess: () => {
+                void invalidate();
+                setShowReduce(false);
+                onExpanded();
             },
         }),
     );
@@ -85,6 +104,103 @@ export function ActiveFacilityCard({
           )
         : 0;
 
+    const committedFractionIndex = computeScaleFractionIndex(facility.scale, facility.maxScale);
+    const scaleHasChanged = scaleFractionIndex !== committedFractionIndex;
+
+    // ── Reduce panel state ──
+    const reduceMax = facility.maxScale;
+    const reduceOptions = useMemo(() => {
+        const opts: number[] = [];
+        if (reduceMax > 2) {
+            const step = Math.max(1, Math.round(reduceMax / 6));
+            for (let s = 1; s < reduceMax; s += step) {
+                opts.push(s);
+            }
+            if (opts[opts.length - 1] !== reduceMax - 1) {
+                opts.push(reduceMax - 1);
+            }
+        } else if (reduceMax > 1) {
+            opts.push(1);
+        }
+        return opts;
+    }, [reduceMax]);
+    const [reduceTarget, setReduceTarget] = useState(reduceOptions[reduceOptions.length - 1] ?? 1);
+    const reduceIndex = reduceOptions.indexOf(reduceTarget);
+    const currentReduceIndex = reduceIndex !== -1 ? reduceIndex : reduceOptions.length - 1;
+
+    // ── Recycler scrap recovery rate ──
+    const { data: scrapRecoveryData } = useSimulationQuery(
+        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId }),
+    );
+    const recyclerRatio = scrapRecoveryData?.recyclerRatio ?? 1;
+    const csPrice = scrapRecoveryData?.csPrice ?? constructionServicePrice;
+
+    // ── Estimated scrap payout ──
+    const estimatedPayout = useMemo(() => {
+        const { cost: recoveredCost } = calculateCostsForConstruction(facilityType, reduceTarget, facility.maxScale);
+        const recoveredCS = recoveredCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+        const marketValue = recoveredCS * csPrice;
+        return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
+    }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
+
+    const operatingScaleSection = (
+        <div className='space-y-1 pt-2'>
+            <span className='flex flex-row text-muted-foreground text-xs gap-2'>
+                Operating scale
+                <span>
+                    {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
+                    {formatNumberWithUnit(facility.maxScale, 'units')}
+                </span>
+            </span>
+            <div className='flex items-center gap-3'>
+                <div className='flex-1 min-w-0 py-2'>
+                    <Slider
+                        min={0}
+                        max={SCALE_FRACTIONS.length - 1}
+                        step={1}
+                        value={[scaleFractionIndex]}
+                        onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
+                        disabled={setScaleMutation.isPending}
+                        className='w-full'
+                    />
+                    <div className='relative h-3 text-[10px] text-muted-foreground py-2'>
+                        {SCALE_FRACTIONS.map((f, i) => {
+                            const pct = (i / (SCALE_FRACTIONS.length - 1)) * 100;
+                            const translate = i === 0 ? '0%' : i === SCALE_FRACTIONS.length - 1 ? '-100%' : '-50%';
+                            return (
+                                <span
+                                    key={f}
+                                    className='absolute'
+                                    style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
+                                >
+                                    {f * 100}%
+                                </span>
+                            );
+                        })}
+                    </div>
+                </div>
+                <Button
+                    size='sm'
+                    className='shrink-0 text-xs h-7 w-16'
+                    disabled={setScaleMutation.isPending || !scaleHasChanged}
+                    onClick={() =>
+                        setScaleMutation.mutate({
+                            agentId,
+                            planetId,
+                            facilityId: facility.id,
+                            scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                        })
+                    }
+                >
+                    {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : 'Apply'}
+                </Button>
+            </div>
+        </div>
+    );
+
+    const recyclerColor =
+        recyclerRatio < 0.5 ? 'text-red-600' : recyclerRatio < 0.66 ? 'text-amber-600' : 'text-green-600';
+
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
@@ -99,7 +215,7 @@ export function ActiveFacilityCard({
                             </Badge>
                         </span>
                     </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-1'>
+                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
                         Worker efficiency
                         <WorkerBars
                             workerRequirement={facility.workerRequirement}
@@ -161,6 +277,7 @@ export function ActiveFacilityCard({
                     </span>
                 </div>
             </div>
+
             <div className='flex-1 space-y-2'>
                 <FacilityProductionIORow
                     needs={facility.needs}
@@ -174,8 +291,7 @@ export function ActiveFacilityCard({
 
             <div className='mt-auto space-y-2'>
                 <Separator />
-
-                {showExpand && !facility.construction ? (
+                {facility.construction ? null : showExpand ? (
                     <FacilityConstructionPanel
                         facilityType={facilityType}
                         fromScale={facility.maxScale}
@@ -185,97 +301,144 @@ export function ActiveFacilityCard({
                         confirmLabel='Confirm Expand'
                         pendingLabel='Expanding…'
                         isPending={expandMutation.isPending}
+                        financials={financials}
                         onCancel={() => setShowExpand(false)}
                         onConfirm={(targetScale) =>
                             expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
                         }
                         onScaleChange={setPreviewScale}
                     />
-                ) : (
-                    <div className='flex gap-2'>
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='flex-1 text-xs gap-1'
-                            disabled={facility.construction !== null}
-                            onClick={() => {
-                                setPreviewScale(facility.maxScale + 1);
-                                setShowExpand(true);
-                            }}
-                        >
-                            Expand facility
-                        </Button>
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='flex-1 text-xs gap-1'
-                            disabled={facility.construction !== null}
-                            onClick={() => setShowSetScale(true)}
-                        >
-                            Set scale
-                        </Button>
-                    </div>
-                )}
-
-                {showSetScale && !facility.construction && (
-                    <>
-                        <Separator />
-                        <p className='text-xs font-medium'>Operating scale</p>
+                ) : showReduce ? (
+                    <div className='space-y-2'>
+                        <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
                         <Slider
                             min={0}
-                            max={SCALE_FRACTIONS.length - 1}
+                            max={Math.max(0, reduceOptions.length - 1)}
                             step={1}
-                            value={[scaleFractionIndex]}
-                            onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
-                            disabled={setScaleMutation.isPending}
+                            value={[currentReduceIndex]}
+                            onValueChange={([v]) => {
+                                const target = reduceOptions[v ?? 0];
+                                if (target !== undefined) {
+                                    setReduceTarget(target);
+                                }
+                            }}
+                            disabled={contractMutation.isPending}
+                            className='w-full'
                         />
                         <div className='relative h-4 text-[10px] text-muted-foreground'>
-                            {SCALE_FRACTIONS.map((f, i) => {
-                                const pct = (i / (SCALE_FRACTIONS.length - 1)) * 100;
-                                const translate = i === 0 ? '0%' : i === SCALE_FRACTIONS.length - 1 ? '-100%' : '-50%';
+                            {reduceOptions.map((v, i) => {
+                                const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
+                                const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
                                 return (
                                     <span
-                                        key={f}
+                                        key={v}
                                         className='absolute'
-                                        style={{ left: `${pct}%`, transform: `translateX(${translate})` }}
+                                        style={{
+                                            left: `${pct}%`,
+                                            transform: `translateX(${translate})`,
+                                        }}
                                     >
-                                        {f * 100}%
+                                        {formatNumberWithUnit(v, 'none')}
                                     </span>
                                 );
                             })}
                         </div>
-                        <div className='flex justify-between text-xs'>
-                            <span className='text-muted-foreground'>Resulting scale</span>
-                            <span className='font-medium tabular-nums'>
-                                {formatNumberWithUnit(
-                                    facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
-                                    'units',
-                                )}
-                            </span>
+
+                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
+                            <div className='grid grid-cols-1 gap-y-1'>
+                                <Stat
+                                    label='Reduced capacity'
+                                    value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
+                                    icon={<TrendingDown className='h-3 w-3' />}
+                                />
+                                <Stat
+                                    label='Estimated price'
+                                    value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
+                                    icon={<TrendingUp className='h-3 w-3' />}
+                                />
+                                <Stat
+                                    label='Efficiency'
+                                    value={Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) + '%'}
+                                    icon={<Clock className='h-3 w-3' />}
+                                    valueClassName={recyclerColor}
+                                />
+                            </div>
+                            <div className='grid grid-cols-1 gap-y-1'>
+                                <Stat
+                                    label='Deposits'
+                                    value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
+                                    icon={<Wallet className='h-3 w-3' />}
+                                />
+                                <Stat
+                                    label='Monthly cash flow'
+                                    value={formatNumberWithUnit(financials?.monthlyNetCashFlow, 'currency', planetId)}
+                                    icon={<Percent className='h-3 w-3' />}
+                                />
+                                <Stat
+                                    label='Loans'
+                                    value={formatNumberWithUnit(0, 'currency', planetId)}
+                                    icon={<TrendingDown className='h-3 w-3' />}
+                                />
+                            </div>
                         </div>
                         <div className='flex gap-2'>
                             <Button
                                 size='sm'
                                 variant='outline'
                                 className='flex-1 text-xs'
-                                onClick={() => setShowSetScale(false)}
+                                onClick={() => setShowReduce(false)}
                             >
                                 Cancel
                             </Button>
                             <Button
                                 size='sm'
                                 className='flex-1 text-xs'
-                                disabled={setScaleMutation.isPending}
+                                disabled={contractMutation.isPending}
                                 onClick={() =>
-                                    setScaleMutation.mutate({
+                                    contractMutation.mutate({
                                         agentId,
                                         planetId,
                                         facilityId: facility.id,
-                                        scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                                        targetScale: reduceTarget,
                                     })
                                 }
                             >
-                                {setScaleMutation.isPending ? 'Applying…' : 'Confirm'}
+                                <span
+                                    className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
+                                >
+                                    {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
+                                </span>
+                            </Button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {operatingScaleSection}
+                        <div className='flex gap-2 pt-1'>
+                            <Button
+                                variant='outline'
+                                size='sm'
+                                className='flex-1 text-xs gap-1'
+                                disabled={facility.construction !== null}
+                                onClick={() => {
+                                    setPreviewScale(facility.maxScale + 1);
+                                    setShowReduce(false);
+                                    setShowExpand(true);
+                                }}
+                            >
+                                Expand facility
+                            </Button>
+                            <Button
+                                variant='outline'
+                                size='sm'
+                                className='flex-1 text-xs gap-1'
+                                disabled={facility.maxScale <= 1}
+                                onClick={() => {
+                                    setShowExpand(false);
+                                    setShowReduce(true);
+                                }}
+                            >
+                                Reduce capacity
                             </Button>
                         </div>
                     </>

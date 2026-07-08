@@ -14,6 +14,7 @@ import {
     cancelSellOfferSpec,
     cancelShipListingSpec,
     cancelTransportContractSpec,
+    contractFacilitySpec,
     createAgentSpec,
     dispatchConstructionShipSpec,
     dispatchPassengerShipSpec,
@@ -204,6 +205,21 @@ export function workerSetFacilityScale(opts: {
     return sendCommandSpec(
         { type: 'setFacilityScale', requestId: randomUUID(), agentId, planetId, facilityId, scaleFraction },
         setFacilityScaleSpec,
+        timeoutMs,
+    );
+}
+
+export function workerContractFacility(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    targetScale: number;
+    timeoutMs?: number;
+}): Promise<string> {
+    const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'contractFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
+        contractFacilitySpec,
         timeoutMs,
     );
 }

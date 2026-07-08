@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useAddActionOverlay } from '@/hooks/useActionOverlay';
-import { useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
@@ -33,11 +33,15 @@ function BuildCard({
     entry: FacilityCatalogEntry;
     agentId: string;
     planetId: string;
-    constructionServicePrice: number | undefined;
+    constructionServicePrice: number;
     onBuilt: () => void;
     onCancel: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
+
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
 
     const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
@@ -106,6 +110,7 @@ function BuildCard({
                     confirmLabel='Build'
                     pendingLabel='Building…'
                     isPending={buildMutation.isPending}
+                    financials={financials}
                     onCancel={onCancel}
                     onConfirm={(targetScale) =>
                         buildMutation.mutate({ agentId, planetId, facilityKey: facility.name, targetScale })
@@ -129,7 +134,7 @@ export function LevelBuildSection({
     entries: FacilityCatalogEntry[];
     agentId: string;
     planetId: string;
-    constructionServicePrice: number | undefined;
+    constructionServicePrice: number;
     onBuilt: () => void;
     mode: Mode;
     onModeChange: (mode: Mode) => void;

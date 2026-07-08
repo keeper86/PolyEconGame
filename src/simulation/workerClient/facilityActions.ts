@@ -1,9 +1,10 @@
+import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName } from '../planet/productionFacilities';
-import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
-import { shiptypes, constructionShipType } from '../ships/ships';
+import { constructionShipType, shiptypes } from '../ships/ships';
+import { processFacilityContraction } from '../agents/recycler';
+import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleBuildFacility(
     state: GameState,
@@ -46,13 +47,13 @@ export function handleBuildFacility(
     const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = catalogEntry.factory(planetId, facilityId);
     const facilityType = getFacilityType(newFacility);
-    const costs = calculateCostsForConstruction(facilityType, 0, targetScale);
+    const { cost, time } = calculateCostsForConstruction(facilityType, 0, targetScale);
     newFacility.construction = {
         type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     newFacility.scale = 0;
@@ -104,13 +105,13 @@ export function handleExpandFacility(
         return;
     }
     const facilityType = getFacilityType(facility);
-    const costs = calculateCostsForConstruction(facilityType, facility.maxScale, targetScale);
+    const { cost, time } = calculateCostsForConstruction(facilityType, facility.maxScale, targetScale);
     facility.construction = {
         type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     console.log(
@@ -150,19 +151,73 @@ export function handleSetFacilityScale(
         safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `Facility '${facilityId}' not found` });
         return;
     }
-    if ('construction' in facility && facility.construction !== null) {
-        safePostMessage({
-            type: 'facilityScaleSetFailed',
-            requestId,
-            reason: 'Facility is under construction',
-        });
-        return;
-    }
     facility.scale = facility.maxScale * scaleFraction;
     console.log(
         `[worker] Agent '${agentId}' set '${facilityId}' scale to ${facility.scale} (${scaleFraction * 100}%) on planet '${planetId}'`,
     );
     safePostMessage({ type: 'facilityScaleSet', requestId, agentId, facilityId });
+}
+
+export function handleContractFacility(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'contractFacility' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId, targetScale } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Agent not found' });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+        });
+        return;
+    }
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+    if (!facility) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Facility '${facilityId}' not found` });
+        return;
+    }
+    if (facility.construction !== null) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Facility is under construction' });
+        return;
+    }
+    if (targetScale >= facility.maxScale) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Target scale ${targetScale} must be less than current max scale ${facility.maxScale}`,
+        });
+        return;
+    }
+    if (targetScale < 1) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Target scale must be at least 1',
+        });
+        return;
+    }
+
+    const planet = state.planets.get(planetId);
+    if (!planet) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Planet '${planetId}' not found` });
+        return;
+    }
+
+    processFacilityContraction(planet, facility, agent, targetScale, state);
+
+    console.log(
+        `[worker] Agent '${agentId}' contracted '${facilityId}' maxScale from ${facility.maxScale} to ${targetScale} on planet '${planetId}'`,
+    );
+    safePostMessage({ type: 'facilityContracted', requestId, agentId, facilityId });
 }
 
 export function handleFacilityAction(
@@ -176,6 +231,9 @@ export function handleFacilityAction(
             break;
         case 'expandFacility':
             handleExpandFacility(state, action, safePostMessage);
+            break;
+        case 'contractFacility':
+            handleContractFacility(state, action, safePostMessage);
             break;
         case 'setFacilityScale':
             handleSetFacilityScale(state, action, safePostMessage);
@@ -229,13 +287,13 @@ export function handleBuildShipConstructionFacility(
     const facilityId = `${agentId}-ship-construction-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = shipConstructionFacilityType(planetId, facilityId);
     newFacility.name = facilityName;
-    const costs = calculateCostsForConstruction('ship_construction', 0, targetScale);
+    const { cost, time } = calculateCostsForConstruction('ship_construction', 0, targetScale);
     newFacility.construction = {
         type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     newFacility.scale = targetScale;
@@ -292,13 +350,13 @@ export function handleExpandShipConstructionFacility(
         });
         return;
     }
-    const costs = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
+    const { cost, time } = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
     facility.construction = {
         type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     console.log(
