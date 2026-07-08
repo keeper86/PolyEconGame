@@ -141,7 +141,6 @@ export const updateUser = () => {
         .output(z.void())
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            console.log(`Updating user info for user ID: ${userId}`);
 
             logger.debug({ component: 'user-update' }, `Updating user info for user ID: ${userId}`);
 

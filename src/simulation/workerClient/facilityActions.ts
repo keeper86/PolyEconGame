@@ -3,6 +3,7 @@ import type { GameState } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
+import { processFacilityContraction } from '../agents/recycler';
 import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleBuildFacility(
@@ -201,14 +202,16 @@ export function handleContractFacility(
         return;
     }
 
-    // No-op: just reduce maxScale. No recycler logic wired.
-    const currentMax = facility.maxScale;
-    const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
-    facility.maxScale = targetScale;
-    facility.scale = targetScale * scaleFraction;
+    const planet = state.planets.get(planetId);
+    if (!planet) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Planet '${planetId}' not found` });
+        return;
+    }
+
+    processFacilityContraction(planet, facility, agent, targetScale, state);
 
     console.log(
-        `[worker] Agent '${agentId}' contracted '${facilityId}' maxScale from ${currentMax} to ${targetScale} on planet '${planetId}'`,
+        `[worker] Agent '${agentId}' contracted '${facilityId}' maxScale from ${facility.maxScale} to ${targetScale} on planet '${planetId}'`,
     );
     safePostMessage({ type: 'facilityContracted', requestId, agentId, facilityId });
 }

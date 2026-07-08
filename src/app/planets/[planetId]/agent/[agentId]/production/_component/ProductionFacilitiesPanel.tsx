@@ -38,6 +38,10 @@ export default function ProductionFacilitiesPanel({
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
 
+    const { data: scrapRecovery } = useQuery(
+        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId }),
+    );
+
     const refresh = () =>
         void queryClient.invalidateQueries({
             queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
@@ -136,6 +140,8 @@ export default function ProductionFacilitiesPanel({
                                                 agentId={agentId}
                                                 planetId={planetId}
                                                 constructionServicePrice={constructionServicePrice}
+                                                recoveryRatePerCS={scrapRecovery?.recoveryRatePerCS ?? 0}
+                                                recyclerRatio={scrapRecovery?.recyclerRatio ?? 0}
                                                 onExpanded={refresh}
                                             />
                                         );

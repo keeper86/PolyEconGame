@@ -65,7 +65,7 @@ export function FacilityConstructionPanel({
 
     // Build logarithmic scale values based on the current fromScale
     const scaleValues = useMemo(() => {
-        const base = fromScale === 0 ? 1 : fromScale;
+        const base = fromScale + 1;
         const raw = [
             base,
             Math.round(base * 1.3),
@@ -138,7 +138,7 @@ export function FacilityConstructionPanel({
 
     return (
         <>
-            <p className='text-xs font-medium text-muted-foreground'>{label}</p>
+            <p className='text-xs font-medium text-muted-foreground pt-2'>{label}</p>
             <LogSlider
                 values={scaleValues}
                 value={currentIndex}

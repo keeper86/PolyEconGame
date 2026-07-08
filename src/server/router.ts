@@ -9,6 +9,7 @@ import {
     getPlanetMarket,
     getPlanetMarketOverview,
     getPlanetOverview,
+    getPlanetScrapRecoveryRate,
 } from './controller/planet';
 import {
     acceptShipBuyingOffer,
@@ -103,6 +104,7 @@ const simulationRouter = trpcRoot.router({
     getPlanetDemographicsFull: getPlanetDemographicsFull(),
     getPlanetMarket: getPlanetMarket(),
     getPlanetMarketOverview: getPlanetMarketOverview(),
+    getPlanetScrapRecoveryRate: getPlanetScrapRecoveryRate(),
     getPlanetClaims: getPlanetClaims(),
     getAgentClaims: getAgentClaims(),
     getTickerEvents: getTickerEvents(),

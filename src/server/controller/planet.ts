@@ -1,13 +1,15 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { allServices, SERVICE_DEFINITIONS, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { groceryServiceResourceType } from '@/simulation/planet/services';
+import { constructionServiceResourceType, groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { computePopulationTotal } from '../../simulation/snapshotRepository';
+import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
+import { getRecyclerPaymentRatio } from '../../simulation/agents/recycler';
 import { getLatestTick } from '../../simulation/workerClient/manager';
 import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
 import { protectedProcedure } from '../trpcRoot';
@@ -620,6 +622,29 @@ export const getPlanetMarket = () =>
                     currentMonthStats,
                 },
             };
+        });
+
+export const getPlanetScrapRecoveryRate = () =>
+    protectedProcedure
+        .input(z.object({ planetId: z.string() }))
+        .output(
+            z.object({
+                tick: z.number(),
+                csPrice: z.number(),
+                recoveryRatePerCS: z.number(),
+                recyclerRatio: z.number(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const tick = getLatestTick();
+            const { planet } = getPlanetSync(input.planetId);
+            if (!planet) {
+                return { tick, csPrice: 0, recoveryRatePerCS: 0, recyclerRatio: 0 };
+            }
+            const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+            const ratio = getRecyclerPaymentRatio(planet);
+            const recoveryRatePerCS = csPrice * RECYCLER_BASE_RECOVERY_EFFICIENCY * RECYCLER_PAYMENT_RATIO * ratio;
+            return { tick, csPrice, recoveryRatePerCS, recyclerRatio: ratio };
         });
 
 const claimResourceSummarySchema = z.object({
