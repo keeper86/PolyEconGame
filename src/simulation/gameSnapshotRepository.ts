@@ -104,6 +104,7 @@ export interface InsertAgentMonthlyHistory {
     planet_id: string;
     agent_id: string;
     net_balance: number;
+    asset_value: number;
     monthly_net_income: number;
     total_workers: number;
     wages: number;
@@ -125,6 +126,7 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
             planet_id: r.planet_id,
             agent_id: r.agent_id,
             net_balance: r.net_balance,
+            asset_value: r.asset_value,
             monthly_net_income: r.monthly_net_income,
             total_workers: r.total_workers,
             wages: r.wages,
@@ -313,6 +315,7 @@ export interface AgentSummaryBucket {
     planet_id: string;
     agent_id: string;
     avg_net_balance: number;
+    avg_asset_value: number;
     avg_monthly_net_income: number;
     avg_total_workers: number;
     avg_wages: number;
@@ -323,6 +326,7 @@ export interface AgentSummaryBucket {
 export interface AgentFinancialBucket {
     bucket: string;
     avg_net_balance: number;
+    avg_asset_value: number;
     avg_monthly_net_income: number;
     avg_wages: number;
     sum_purchases: number;
@@ -352,6 +356,7 @@ export async function getAgentHistoryAggregated(
             'planet_id',
             'agent_id',
             'avg_net_balance',
+            'avg_asset_value',
             'avg_monthly_net_income',
             'avg_total_workers',
             'avg_wages',
@@ -381,6 +386,7 @@ export async function getAgentFinancialHistoryAggregated(
         .select(
             'bucket',
             'avg_net_balance',
+            'avg_asset_value',
             'avg_monthly_net_income',
             'avg_wages',
             'sum_purchases',

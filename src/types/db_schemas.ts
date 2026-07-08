@@ -52,6 +52,7 @@ export type AgentDecadeSummary = {
     planet_id: string | null;
     agent_id: string | null;
     avg_net_balance: number | null;
+    avg_asset_value: number | null;
     avg_monthly_net_income: number | null;
     avg_total_workers: number | null;
     avg_wages: number | null;
@@ -66,6 +67,7 @@ export type AgentMonthlyHistory = {
     planet_id: string;
     agent_id: string;
     net_balance: number;
+    asset_value: number;
     monthly_net_income: number;
     total_workers: number;
     wages: number | null;
@@ -83,6 +85,7 @@ export type AgentMonthlySummary = {
     planet_id: string | null;
     agent_id: string | null;
     avg_net_balance: number | null;
+    avg_asset_value: number | null;
     avg_monthly_net_income: number | null;
     avg_total_workers: number | null;
     avg_wages: number | null;
@@ -99,6 +102,7 @@ export type AgentYearlySummary = {
     planet_id: string | null;
     agent_id: string | null;
     avg_net_balance: number | null;
+    avg_asset_value: number | null;
     avg_monthly_net_income: number | null;
     avg_total_workers: number | null;
     avg_wages: number | null;

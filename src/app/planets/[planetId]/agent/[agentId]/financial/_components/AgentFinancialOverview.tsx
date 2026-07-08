@@ -3,6 +3,7 @@
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { Coins, TrendingDown, TrendingUp } from 'lucide-react';
+import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
 
 type Props = {
@@ -12,6 +13,9 @@ type Props = {
         lastMonthlyRevenue: number;
         lastMonthlyExpenses: number;
         monthlyNetCashFlow: number;
+        shipsCollateral: number;
+        storageCollateral: number;
+        facilitiesCollateral: number;
     };
     planetId: string;
     agentId: string;
@@ -23,7 +27,8 @@ export default function AgentFinancialOverview({
     loanConditions,
     planetId,
 }: Props): React.ReactElement {
-    const netPosition = deposits - loans;
+    const totalAssetsValue =
+        loanConditions.shipsCollateral + loanConditions.storageCollateral + loanConditions.facilitiesCollateral;
 
     return (
         <div className='space-y-3' data-tour='financial-overview'>
@@ -33,28 +38,28 @@ export default function AgentFinancialOverview({
                         label='Firm deposits'
                         value={formatNumberWithUnit(deposits, 'currency', planetId)}
                         icon={<Coins className='h-3 w-3' />}
-                        valueClassName={deposits < 0 ? 'text-red-500' : deposits === 0 ? 'text-muted-foreground' : ''}
+                        valueClassName={
+                            deposits < loans ? 'text-amber-600' : deposits === 0 ? 'text-muted-foreground' : ''
+                        }
+                    />
+                    <Stat
+                        label='Asset value'
+                        value={formatNumberWithUnit(totalAssetsValue, 'currency', planetId)}
+                        icon={<TbBuildingFactory2 className='h-3 w-3' />}
+                        valueClassName={
+                            totalAssetsValue + deposits < loans
+                                ? 'text-red-600'
+                                : totalAssetsValue > 0
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground'
+                        }
                     />
                     <Stat
                         label='Outstanding loans'
                         value={formatNumberWithUnit(loans, 'currency', planetId)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={
-                            loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-500' : 'text-amber-500'
-                        }
-                    />
-                    <Stat
-                        label='Net position (deposits − loans)'
-                        value={formatNumberWithUnit(netPosition, 'currency', planetId)}
-                        icon={
-                            netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
-                        }
-                        valueClassName={
-                            netPosition < 0
-                                ? 'text-red-500'
-                                : netPosition > 0
-                                  ? 'text-green-600'
-                                  : 'text-muted-foreground'
+                            loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-600' : 'text-amber-600'
                         }
                     />
                 </div>

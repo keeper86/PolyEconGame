@@ -58,9 +58,19 @@ export function BalanceFlowChart({
                     return {
                         monthIdx,
                         year,
-                        netBalance: curr?.avgNetBalance ?? null,
+                        cashBalance: curr?.avgNetBalance ?? null,
+                        assetValue: curr?.avgAssetValue ?? null,
+                        netPosition:
+                            curr?.avgNetBalance != null && curr?.avgAssetValue != null
+                                ? curr.avgNetBalance + curr.avgAssetValue
+                                : null,
                         netIncome: netIncome,
-                        ghostNetBalance: ghost?.avgNetBalance ?? null,
+                        ghostCashBalance: ghost?.avgNetBalance ?? null,
+                        ghostAssetValue: ghost?.avgAssetValue ?? null,
+                        ghostNetPosition:
+                            ghost?.avgNetBalance != null && ghost?.avgAssetValue != null
+                                ? ghost.avgNetBalance + ghost.avgAssetValue
+                                : null,
                         ghostNetIncome: ghostNetIncome,
                     };
                 });
@@ -73,11 +83,15 @@ export function BalanceFlowChart({
                 year: year + 1,
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
-                netBalance: p.avgNetBalance,
+                cashBalance: p.avgNetBalance,
+                assetValue: p.avgAssetValue,
+                netPosition: p.avgNetBalance + p.avgAssetValue,
                 netIncome:
                     p.avgMonthlyNetIncome -
                     (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
-                ghostNetBalance: null,
+                ghostCashBalance: null,
+                ghostAssetValue: null,
+                ghostNetPosition: null,
                 ghostNetIncome: null,
             };
         });
@@ -85,7 +99,7 @@ export function BalanceFlowChart({
 
     const [domainBalance, domainIncome] = useMemo(() => {
         const balanceVals = chartData
-            .map((p) => p.netBalance ?? p.ghostNetBalance)
+            .flatMap((p) => [p.cashBalance ?? p.ghostCashBalance, p.netPosition ?? p.ghostNetPosition])
             .filter((v): v is number => v !== null);
         const incomeVals = chartData.map((p) => p.netIncome ?? p.ghostNetIncome).filter((v): v is number => v !== null);
         return alignedYDomains(balanceVals, incomeVals);
@@ -147,14 +161,18 @@ export function BalanceFlowChart({
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Net Balance & Cash Flow</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>Cash Balance & Net Position</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>
                         <defs>
-                            <linearGradient id='gradBalance2' x1='0' x2='0' y1='0' y2='1'>
+                            <linearGradient id='gradCashBalance2' x1='0' x2='0' y1='0' y2='1'>
                                 <stop offset='5%' stopColor='#4f46e5' stopOpacity={0.45} />
                                 <stop offset='95%' stopColor='#4f46e5' stopOpacity={0.08} />
+                            </linearGradient>
+                            <linearGradient id='gradNetPosition2' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#10b981' stopOpacity={0.4} />
+                                <stop offset='95%' stopColor='#10b981' stopOpacity={0.06} />
                             </linearGradient>
                             <linearGradient id='gradIncome2' x1='0' x2='0' y1='0' y2='1'>
                                 <stop offset='5%' stopColor='#06b6d4' stopOpacity={0.45} />
@@ -209,16 +227,30 @@ export function BalanceFlowChart({
                             strokeDasharray='3 3'
                         />
                         <ReferenceLine yAxisId='right' y={0} stroke='#94a3b8' strokeOpacity={0} />
-                        <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />
+                        <Legend wrapperStyle={{ fontSize: 10, color: '#e2e8f0' }} />
                         <Area
                             yAxisId='left'
                             type='monotone'
-                            dataKey='netBalance'
+                            dataKey='cashBalance'
+                            name='Cash Balance'
                             stroke='#4f46e5'
                             strokeWidth={2}
-                            fill='url(#gradBalance2)'
+                            fill='url(#gradCashBalance2)'
                             dot={{ r: 2.5, fill: '#4f46e5' }}
                             activeDot={{ r: 3, fill: '#4f46e5', stroke: '#1e293b', strokeWidth: 2 }}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            yAxisId='left'
+                            type='monotone'
+                            dataKey='netPosition'
+                            name='Net Position'
+                            stroke='#10b981'
+                            strokeWidth={2}
+                            fill='url(#gradNetPosition2)'
+                            dot={{ r: 2.5, fill: '#10b981' }}
+                            activeDot={{ r: 3, fill: '#10b981', stroke: '#1e293b', strokeWidth: 2 }}
                             isAnimationActive={false}
                             connectNulls={false}
                         />
@@ -226,6 +258,7 @@ export function BalanceFlowChart({
                             yAxisId='right'
                             type='monotone'
                             dataKey='netIncome'
+                            name='Net Income'
                             stroke='#06b6d4'
                             strokeWidth={2}
                             fill='url(#gradIncome2)'
@@ -237,13 +270,28 @@ export function BalanceFlowChart({
                         <Area
                             yAxisId='left'
                             type='monotone'
-                            dataKey='ghostNetBalance'
+                            dataKey='ghostCashBalance'
                             stroke='#4f46e5'
                             strokeWidth={1}
                             strokeOpacity={0.5}
                             strokeDasharray='4 2'
                             fill='none'
                             dot={{ r: 2, fill: '#4f46e5', fillOpacity: 0.4, stroke: 'none' }}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            yAxisId='left'
+                            type='monotone'
+                            dataKey='ghostNetPosition'
+                            stroke='#10b981'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={{ r: 2, fill: '#10b981', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}

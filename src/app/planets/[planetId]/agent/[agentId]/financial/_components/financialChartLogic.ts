@@ -4,6 +4,7 @@ export type { Granularity } from '@/components/client/GranularityButtonGroup';
 export type FinancialPoint = {
     bucket: number;
     avgNetBalance: number;
+    avgAssetValue: number;
     avgMonthlyNetIncome: number;
     avgWages: number;
     sumPurchases: number;

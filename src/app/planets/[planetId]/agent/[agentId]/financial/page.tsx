@@ -28,6 +28,9 @@ export default function FinancialPage() {
         lastMonthlyRevenue: 0,
         lastMonthlyExpenses: 0,
         monthlyNetCashFlow: 0,
+        shipsCollateral: 0,
+        storageCollateral: 0,
+        facilitiesCollateral: 0,
     };
 
     return (

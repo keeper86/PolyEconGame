@@ -7,6 +7,9 @@ export const OVER_SUPPLIED_LIMIT = 1.5;
 
 export function updateAgentClaims(gameState: GameState, planet: Planet): void {
     for (const agent of gameState.agents.values()) {
+        if (!agent.automated) {
+            continue;
+        }
         const assets = agent.assets[planet.id];
         if (!assets) {
             continue;
