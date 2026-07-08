@@ -146,8 +146,6 @@ export function makeAgent(opts: {
     planetId: string;
     facilities: ProductionFacility[];
     storage: StorageFacility;
-    claims?: string[];
-    tenancies?: string[];
 }): Agent {
     const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
 

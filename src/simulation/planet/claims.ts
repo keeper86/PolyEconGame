@@ -1,4 +1,5 @@
-import { type Agent, type Planet } from './planet';
+import { TICKS_PER_MONTH } from '../constants';
+import type { Agent, GameState, Planet } from './planet';
 
 export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
 
@@ -116,4 +117,196 @@ export function mergeClaimBackIntoPool(pool: ResourcePool, claim: ResourceClaim)
     pool.quantity += claim.quantity;
     pool.regenerationRate += claim.regenerationRate;
     pool.maximumCapacity += claim.maximumCapacity;
+}
+
+/**
+ * Shared result returned by `leaseClaim` on success/failure.
+ */
+export type LeaseClaimResult = { ok: true; claimId: string } | { ok: false; reason: string };
+
+export function leaseClaim(
+    gameState: GameState,
+    agentId: string,
+    planetId: string,
+    resourceName: string,
+    quantity: number,
+): LeaseClaimResult {
+    const planet = gameState.planets.get(planetId);
+    if (!planet) {
+        return { ok: false, reason: 'Planet not found' };
+    }
+    const agent = gameState.agents.get(agentId);
+    if (!agent) {
+        return { ok: false, reason: 'Agent not found' };
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        return { ok: false, reason: `Agent has no assets on planet '${planetId}'` };
+    }
+
+    const entry = planet.resources[resourceName];
+    if (!entry) {
+        return { ok: false, reason: `Resource '${resourceName}' not found on planet` };
+    }
+
+    if (quantity <= 0) {
+        return { ok: false, reason: 'Quantity must be positive' };
+    }
+
+    const { pool } = entry;
+    if (pool.maximumCapacity < quantity) {
+        return {
+            ok: false,
+            reason: `Not enough untenanted ${resourceName} — requested ${quantity}, available ${pool.maximumCapacity}`,
+        };
+    }
+
+    const isRenewable = pool.regenerationRate > 0;
+    const costAmount = Math.floor(quantity);
+
+    if (isRenewable) {
+        // Renewable: pay a month's worth upfront
+        const upfrontCost = costAmount * TICKS_PER_MONTH * 1;
+        if (assets.deposits < upfrontCost) {
+            return {
+                ok: false,
+                reason: `Insufficient deposits — required ${upfrontCost} upfront, available ${assets.deposits}`,
+            };
+        }
+        assets.deposits -= upfrontCost;
+        const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+        if (govAssets) {
+            govAssets.deposits += upfrontCost;
+        }
+        assets.monthAcc.claimPayments += upfrontCost;
+    } else {
+        // Non-renewable: pay one-time cost
+        const upfrontCost = costAmount * 1;
+        if (assets.deposits < upfrontCost) {
+            return {
+                ok: false,
+                reason: `Insufficient deposits — required ${upfrontCost}, available ${assets.deposits}`,
+            };
+        }
+        assets.deposits -= upfrontCost;
+        const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+        if (govAssets) {
+            govAssets.deposits += upfrontCost;
+        }
+        assets.monthAcc.claimPayments += upfrontCost;
+    }
+
+    const ratio = quantity / pool.maximumCapacity;
+    const claimId = `${planetId}-${resourceName}-${agentId}`;
+    const existingClaim = entry.claims.find((c) => c.id === claimId && c.tenantAgentId === agentId);
+
+    if (existingClaim) {
+        // Expand existing claim
+        existingClaim.quantity += quantity;
+        existingClaim.maximumCapacity += quantity;
+        existingClaim.regenerationRate += pool.regenerationRate * ratio;
+        if (isRenewable) {
+            existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
+        } else {
+            existingClaim.tenantCostInCoins += costAmount * 1;
+        }
+
+        // Update pool
+        if (isRenewable) {
+            pool.maximumCapacity -= quantity;
+            pool.regenerationRate -= pool.regenerationRate * ratio;
+        } else {
+            pool.maximumCapacity -= quantity;
+            pool.quantity -= quantity;
+        }
+    } else {
+        // Create new claim
+        const newClaim: ResourceClaim = {
+            id: claimId,
+            resource: pool.resource,
+            quantity,
+            regenerationRate: isRenewable ? pool.regenerationRate * ratio : 0,
+            maximumCapacity: quantity,
+            tenantAgentId: agentId,
+            tenantCostInCoins: isRenewable ? 0 : costAmount,
+            costPerTick: isRenewable ? costAmount : 0,
+            claimStatus: 'active',
+            noticePeriodEndsAtTick: null,
+            pausedTicksThisYear: 0,
+        };
+        pool.quantity -= quantity;
+        pool.regenerationRate -= newClaim.regenerationRate;
+        pool.maximumCapacity -= quantity;
+        entry.claims.push(newClaim);
+    }
+
+    return { ok: true, claimId };
+}
+
+export function reduceClaim(
+    gameState: GameState,
+    agentId: string,
+    planetId: string,
+    resourceName: string,
+    quantity: number,
+): LeaseClaimResult {
+    const planet = gameState.planets.get(planetId);
+    if (!planet) {
+        return { ok: false, reason: 'Planet not found' };
+    }
+    const agent = gameState.agents.get(agentId);
+    if (!agent) {
+        return { ok: false, reason: 'Agent not found' };
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        return { ok: false, reason: `Agent has no assets on planet '${planetId}'` };
+    }
+
+    const entry = planet.resources[resourceName];
+    if (!entry) {
+        return { ok: false, reason: `Resource '${resourceName}' not found on planet` };
+    }
+
+    if (quantity <= 0) {
+        return { ok: false, reason: 'Quantity must be positive' };
+    }
+
+    const claimId = `${planetId}-${resourceName}-${agentId}`;
+    const existingClaim = entry.claims.find((c) => c.id === claimId && c.tenantAgentId === agentId);
+    if (!existingClaim) {
+        return { ok: false, reason: `No claim '${claimId}' found for agent` };
+    }
+
+    if (existingClaim.maximumCapacity < quantity) {
+        return {
+            ok: false,
+            reason: `Claim only has ${existingClaim.maximumCapacity} units, cannot reduce by ${quantity}`,
+        };
+    }
+
+    const { pool } = entry;
+    const isRenewable = existingClaim.regenerationRate > 0;
+    const ratio = quantity / existingClaim.maximumCapacity;
+
+    // Capture the regen rate being returned before mutating the claim
+    const regenToReturn = existingClaim.regenerationRate * ratio;
+
+    // Reduce claim
+    existingClaim.quantity -= quantity;
+    existingClaim.maximumCapacity -= quantity;
+    existingClaim.regenerationRate -= regenToReturn;
+    existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
+    existingClaim.tenantCostInCoins = Math.max(0, existingClaim.tenantCostInCoins - quantity);
+
+    // Return to pool — mirror the pool deduction logic in leaseClaim
+    if (isRenewable) {
+        pool.maximumCapacity += quantity;
+        pool.regenerationRate += regenToReturn;
+    } else {
+        pool.maximumCapacity += quantity;
+        pool.quantity += quantity;
+    }
+
+    return { ok: true, claimId };
 }
