@@ -185,6 +185,10 @@ export function handleContractFacility(
         safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Facility '${facilityId}' not found` });
         return;
     }
+    if (facility.construction !== null) {
+        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Facility is under construction' });
+        return;
+    }
     if (targetScale >= facility.maxScale) {
         safePostMessage({
             type: 'facilityContractFailed',
