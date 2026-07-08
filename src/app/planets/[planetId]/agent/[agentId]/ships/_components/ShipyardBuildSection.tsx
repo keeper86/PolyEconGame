@@ -30,7 +30,10 @@ export function ShipyardBuildSection({
     const [targetScale, setTargetScale] = useState(1);
     const [shipyardName, setShipyardName] = useState('');
 
-    const buildCost = useMemo(() => calculateCostsForConstruction('ship_construction', 0, targetScale), [targetScale]);
+    const buildCost = useMemo(
+        () => calculateCostsForConstruction('ship_construction', 0, targetScale).cost,
+        [targetScale],
+    );
     const estimatedCredits =
         constructionServicePrice && constructionServicePrice > 0 ? buildCost * constructionServicePrice : null;
 

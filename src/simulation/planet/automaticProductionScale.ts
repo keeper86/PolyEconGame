@@ -4,12 +4,7 @@ import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constan
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
-import {
-    calculateCostsForConstruction,
-    getFacilityType,
-    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-    queryStorageFacility,
-} from './facility';
+import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 
@@ -248,17 +243,17 @@ function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPl
     const currentMax = facility.maxScale;
     const targetMax = Math.max(Math.ceil(currentMax * (1 + MAX_SCALE_EXPAND_FRACTION)), currentMax + 1);
     const facilityType = getFacilityType(facility);
-    const totalCost = calculateCostsForConstruction(facilityType, currentMax, targetMax);
+    const { cost, time } = calculateCostsForConstruction(facilityType, currentMax, targetMax);
 
-    if (!hasSufficientFundsForExpansion(assets, planet, totalCost)) {
+    if (!hasSufficientFundsForExpansion(assets, planet, cost)) {
         return false;
     }
 
     facility.construction = {
         type: 'expansion',
         constructionTargetMaxScale: targetMax,
-        totalConstructionServiceRequired: totalCost,
-        maximumConstructionServiceConsumption: totalCost / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
     };

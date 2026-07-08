@@ -1,5 +1,6 @@
 'use client';
 
+import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { Coins, TrendingDown, TrendingUp } from 'lucide-react';
 import React from 'react';
@@ -15,30 +16,6 @@ type Props = {
     planetId: string;
     agentId: string;
 };
-
-function Stat({
-    label,
-    value,
-    icon,
-    valueClassName,
-}: {
-    label: string;
-    value: React.ReactNode;
-    icon?: React.ReactNode;
-    valueClassName?: string;
-}): React.ReactElement {
-    return (
-        <div className='flex items-baseline justify-between gap-2'>
-            <span className='flex items-center gap-1 text-xs text-muted-foreground truncate'>
-                {icon}
-                {label}
-            </span>
-            <span className={`tabular-nums whitespace-nowrap text-xs font-medium ${valueClassName ?? ''}`}>
-                {value}
-            </span>
-        </div>
-    );
-}
 
 export default function AgentFinancialOverview({
     deposits,

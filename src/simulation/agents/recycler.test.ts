@@ -136,7 +136,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         const recycler = planet.recycler!;
         recycler.assets[planet.id]!.deposits = 1_000_000;
 
-        const contractCost = calculateCostsForConstruction('services', 90, 100);
+        const contractCost = calculateCostsForConstruction('services', 90, 100).cost;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
         // Code uses spot price (planet.marketPrices.Construction = 50)
@@ -177,7 +177,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         recycler.assets[planet.id]!.deposits = 1_000_000;
         planet.avgMarketResult = {}; // no EMA data
 
-        const contractCost = calculateCostsForConstruction('services', 90, 100);
+        const contractCost = calculateCostsForConstruction('services', 90, 100).cost;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
         // spot price = 10
@@ -214,7 +214,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         const recycler = planet.recycler!;
         recycler.assets[planet.id]!.deposits = 1_000_000;
 
-        const contractCost = calculateCostsForConstruction('services', 90, 100);
+        const contractCost = calculateCostsForConstruction('services', 90, 100).cost;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
         // spot price = 100
@@ -255,7 +255,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         const recycler = planet.recycler!;
         recycler.assets[planet.id]!.deposits = 1_000_000;
 
-        const contractCost = calculateCostsForConstruction('services', 90, 100);
+        const contractCost = calculateCostsForConstruction('services', 90, 100).cost;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
         // spot price = 10
@@ -303,7 +303,7 @@ describe('processFacilityContraction', () => {
         facility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
 
         gameState = makeGameState([planet], [agent, planet.recycler!]);
-        contractCost = calculateCostsForConstruction('services', 90, 100);
+        contractCost = calculateCostsForConstruction('services', 90, 100).cost;
     });
 
     it('transfers payment from recycler to contractor', () => {
@@ -472,7 +472,7 @@ describe('recycler profitability over multiple contraction cycles', () => {
         recyclerAssets.deposits = seedCapital;
 
         const gameState = makeGameState([planet], [agent, recycler]);
-        const contractCost = calculateCostsForConstruction('services', 90, 100);
+        const contractCost = calculateCostsForConstruction('services', 90, 100).cost;
 
         // Run contraction
         processFacilityContraction(planet, facility, agent, 90, gameState);

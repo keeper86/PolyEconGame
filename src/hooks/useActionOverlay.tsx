@@ -1,11 +1,7 @@
 'use client';
 
 import type { ProductionFacility } from '@/simulation/planet/facility';
-import {
-    calculateCostsForConstruction,
-    getFacilityType,
-    MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
-} from '@/simulation/planet/facility';
+import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { facilityByName } from '@/simulation/planet/productionFacilities';
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
 
@@ -243,14 +239,14 @@ export function applyFacilityOverlays(
         }
 
         const facilityType = getFacilityType(facility);
-        const costs = calculateCostsForConstruction(facilityType, 0, overlay.targetScale);
+        const { cost, time } = calculateCostsForConstruction(facilityType, 0, overlay.targetScale);
 
         facility.construction = {
             type: 'new',
             progress: 0,
             constructionTargetMaxScale: overlay.targetScale,
-            totalConstructionServiceRequired: costs,
-            maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+            totalConstructionServiceRequired: cost,
+            maximumConstructionServiceConsumption: cost / time,
             lastTickInvestedConstructionServices: 0,
         };
         facility.scale = 0;

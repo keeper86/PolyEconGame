@@ -32,14 +32,14 @@ export const getFacilityType = (facility: Facility): FacilityType => {
     return facility.type;
 };
 
-export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 30;
-const constructionCostFactor = 3000;
-const facilityConstructionCostMultiplier: Record<FacilityType, number> = {
+export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
+const constructionCostFactor = 6000;
+const facilityConstructionMultiplier: Record<FacilityType, number> = {
     raw: 1,
     refined: 2,
-    manufactured: 4,
-    services: 3,
-    storage: 1.5,
+    manufactured: 3,
+    services: 4,
+    storage: 1,
     management: 2.5,
     ship_construction: 5,
 };
@@ -48,16 +48,19 @@ export const calculateCostsForConstruction = (
     facilityType: FacilityType,
     currentScale: number,
     targetScale: number,
-): number => {
+): { cost: number; time: number } => {
     if (targetScale <= currentScale) {
-        return 0;
+        return { cost: 0, time: 0 };
     }
 
-    const m = facilityConstructionCostMultiplier[facilityType];
+    const m = facilityConstructionMultiplier[facilityType];
     const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
     const linearTerm = targetScale - currentScale;
 
-    return Math.round(m * constructionCostFactor * (integralTerm + linearTerm));
+    return {
+        cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
+        time: MINIMUM_CONSTRUCTION_TIME_IN_TICKS + 30 * m * Math.log(targetScale / Math.max(1, currentScale)),
+    };
 };
 
 export type FacilityBase = PlanetaryId & {

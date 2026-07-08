@@ -1,9 +1,9 @@
+import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
 import { facilityByName } from '../planet/productionFacilities';
-import { calculateCostsForConstruction, getFacilityType, MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { shipConstructionFacilityType } from '../planet/specialFacilities';
-import { shiptypes, constructionShipType } from '../ships/ships';
+import { constructionShipType, shiptypes } from '../ships/ships';
+import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleBuildFacility(
     state: GameState,
@@ -46,13 +46,13 @@ export function handleBuildFacility(
     const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = catalogEntry.factory(planetId, facilityId);
     const facilityType = getFacilityType(newFacility);
-    const costs = calculateCostsForConstruction(facilityType, 0, targetScale);
+    const { cost, time } = calculateCostsForConstruction(facilityType, 0, targetScale);
     newFacility.construction = {
         type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     newFacility.scale = 0;
@@ -104,13 +104,13 @@ export function handleExpandFacility(
         return;
     }
     const facilityType = getFacilityType(facility);
-    const costs = calculateCostsForConstruction(facilityType, facility.maxScale, targetScale);
+    const { cost, time } = calculateCostsForConstruction(facilityType, facility.maxScale, targetScale);
     facility.construction = {
         type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     console.log(
@@ -148,14 +148,6 @@ export function handleSetFacilityScale(
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `Facility '${facilityId}' not found` });
-        return;
-    }
-    if ('construction' in facility && facility.construction !== null) {
-        safePostMessage({
-            type: 'facilityScaleSetFailed',
-            requestId,
-            reason: 'Facility is under construction',
-        });
         return;
     }
     facility.scale = facility.maxScale * scaleFraction;
@@ -288,13 +280,13 @@ export function handleBuildShipConstructionFacility(
     const facilityId = `${agentId}-ship-construction-${facilityName.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = shipConstructionFacilityType(planetId, facilityId);
     newFacility.name = facilityName;
-    const costs = calculateCostsForConstruction('ship_construction', 0, targetScale);
+    const { cost, time } = calculateCostsForConstruction('ship_construction', 0, targetScale);
     newFacility.construction = {
         type: 'new',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     newFacility.scale = targetScale;
@@ -351,13 +343,13 @@ export function handleExpandShipConstructionFacility(
         });
         return;
     }
-    const costs = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
+    const { cost, time } = calculateCostsForConstruction('ship_construction', facility.maxScale, targetScale);
     facility.construction = {
         type: 'expansion',
         progress: 0,
         constructionTargetMaxScale: targetScale,
-        totalConstructionServiceRequired: costs,
-        maximumConstructionServiceConsumption: costs / MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+        totalConstructionServiceRequired: cost,
+        maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
     };
     console.log(

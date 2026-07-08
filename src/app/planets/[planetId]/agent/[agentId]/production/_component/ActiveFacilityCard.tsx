@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { useTRPC } from '@/lib/trpc';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
@@ -28,7 +29,7 @@ export function ActiveFacilityCard({
     facility: ProductionFacility;
     agentId: string;
     planetId: string;
-    constructionServicePrice?: number;
+    constructionServicePrice: number;
     onExpanded: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
@@ -36,6 +37,10 @@ export function ActiveFacilityCard({
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
     const [showReduce, setShowReduce] = useState(false);
+
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
 
     const SCALE_FRACTIONS = [0, 0.25, 0.5, 0.75, 1] as const;
     const computeScaleFractionIndex = (scale: number, maxScale: number) => {
@@ -122,7 +127,7 @@ export function ActiveFacilityCard({
 
     const operatingScaleSection = (
         <div className='space-y-1 pt-2'>
-            <span className='flex flex-row text-muted-foreground text-xs gap-2 px-2'>
+            <span className='flex flex-row text-muted-foreground text-xs gap-2'>
                 Operating scale
                 <span>
                     {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
@@ -130,7 +135,7 @@ export function ActiveFacilityCard({
                 </span>
             </span>
             <div className='flex items-center gap-3'>
-                <div className='flex-1 min-w-0 p-2'>
+                <div className='flex-1 min-w-0 py-2'>
                     <Slider
                         min={0}
                         max={SCALE_FRACTIONS.length - 1}
@@ -264,12 +269,9 @@ export function ActiveFacilityCard({
             </div>
 
             {operatingScaleSection}
-
             <div className='mt-auto space-y-2'>
                 <Separator />
-
-                {/* ── Expand panel ── */}
-                {showExpand && !facility.construction ? (
+                {facility.construction ? null : showExpand ? (
                     <FacilityConstructionPanel
                         facilityType={facilityType}
                         fromScale={facility.maxScale}
@@ -279,13 +281,14 @@ export function ActiveFacilityCard({
                         confirmLabel='Confirm Expand'
                         pendingLabel='Expanding…'
                         isPending={expandMutation.isPending}
+                        financials={financials}
                         onCancel={() => setShowExpand(false)}
                         onConfirm={(targetScale) =>
                             expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
                         }
                         onScaleChange={setPreviewScale}
                     />
-                ) : showReduce && !facility.construction ? (
+                ) : showReduce ? (
                     /* ── Reduce panel (no-op, no cost) ── */
                     <div className='space-y-2'>
                         <p className='text-xs font-medium'>Reduce capacity to scale</p>
@@ -359,7 +362,7 @@ export function ActiveFacilityCard({
                     </div>
                 ) : (
                     /* ── Default: expand + reduce buttons ── */
-                    <div className='flex gap-2'>
+                    <div className='flex gap-2 pt-1'>
                         <Button
                             variant='outline'
                             size='sm'

@@ -12,6 +12,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { LevelBuildSection, type Mode as BuildMode } from './LevelBuildSection';
 import { UnderConstructionCard } from './UnderConstructionCard';
+import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
+import { PRICE_FLOOR } from '@/simulation/constants';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -31,7 +33,10 @@ export default function ProductionFacilitiesPanel({
     const { data: constructionMarket } = useQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
-    const constructionServicePrice = constructionMarket?.market?.clearingPrice;
+    const constructionServicePrice =
+        constructionMarket?.market?.clearingPrice ??
+        initialMarketPrices[constructionServiceResourceType.name] ??
+        PRICE_FLOOR;
 
     const refresh = () =>
         void queryClient.invalidateQueries({

@@ -19,7 +19,7 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
     for (const facility of allFacilities) {
         const type = getFacilityType(facility);
         const recoveredCS =
-            calculateCostsForConstruction(type, 0, facility.maxScale) * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+            calculateCostsForConstruction(type, 0, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
         total += recoveredCS * csPrice;
     }
 

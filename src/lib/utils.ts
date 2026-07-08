@@ -59,3 +59,37 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
 
     return formattedNumber;
 };
+export function formatWallTime(ms: number, short = false): string {
+    if (ms < 1000) {
+        return '<1s';
+    }
+    const totalSeconds = Math.round(ms / 1000);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    let result = '';
+    if (days > 0) {
+        result += `${days}d `;
+        if (short) {
+            return `${(totalSeconds / 86400).toFixed(1)}d`;
+        }
+    }
+    if (hours > 0) {
+        result += `${hours}h `;
+        if (short) {
+            return `${(totalSeconds / 3600).toFixed(1)}h`;
+        }
+    }
+    if (minutes > 0) {
+        result += `${minutes}m `;
+        if (short) {
+            return `${(totalSeconds / 60).toFixed(1)}m`;
+        }
+    }
+    if (seconds > 0) {
+        result += `${seconds}s `;
+    }
+    return result.slice(0, -1);
+}

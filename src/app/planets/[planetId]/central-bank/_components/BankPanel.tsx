@@ -1,6 +1,7 @@
 'use client';
 
 import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
+import { Stat } from '@/components/client/Stat';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -12,30 +13,6 @@ import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfL
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
 
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
-
-function Stat({
-    label,
-    value,
-    icon,
-    valueClassName,
-}: {
-    label: string;
-    value: React.ReactNode;
-    icon?: React.ReactNode;
-    valueClassName?: string;
-}): React.ReactElement {
-    return (
-        <div className='flex items-baseline justify-between gap-2'>
-            <span className='flex items-center gap-1 text-xs text-muted-foreground truncate'>
-                {icon}
-                {label}
-            </span>
-            <span className={`tabular-nums whitespace-nowrap text-xs font-medium ${valueClassName ?? ''}`}>
-                {value}
-            </span>
-        </div>
-    );
-}
 
 type Props = {
     bank: Bank;
