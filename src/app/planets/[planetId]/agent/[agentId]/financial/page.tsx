@@ -26,7 +26,9 @@ export default function FinancialPage() {
     );
     const loanConditions = loanConditionsData?.conditions ?? {
         lastMonthlyRevenue: 0,
-        lastMonthlyExpenses: 0,
+        lastMonthlyWages: 0,
+        lastMonthlyPurchases: 0,
+        lastMonthlyClaimPayments: 0,
         monthlyNetCashFlow: 0,
         shipsCollateral: 0,
         storageCollateral: 0,

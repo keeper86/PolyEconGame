@@ -2,16 +2,19 @@
 
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { Coins, TrendingDown, TrendingUp } from 'lucide-react';
+import { Coins, ShoppingCart, Scale, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
+import { GoRocket } from 'react-icons/go';
 
 type Props = {
     deposits: number;
     loans: number;
     loanConditions: {
         lastMonthlyRevenue: number;
-        lastMonthlyExpenses: number;
+        lastMonthlyWages: number;
+        lastMonthlyPurchases: number;
+        lastMonthlyClaimPayments: number;
         monthlyNetCashFlow: number;
         shipsCollateral: number;
         storageCollateral: number;
@@ -27,31 +30,20 @@ export default function AgentFinancialOverview({
     loanConditions,
     planetId,
 }: Props): React.ReactElement {
-    const totalAssetsValue =
-        loanConditions.shipsCollateral + loanConditions.storageCollateral + loanConditions.facilitiesCollateral;
+    const totalAssetsValue = loanConditions.shipsCollateral;
+    const netPosition = deposits - loans;
 
     return (
         <div className='space-y-3' data-tour='financial-overview'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div className='grid grid-cols-1 gap-y-1'>
+                    <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
                     <Stat
                         label='Firm deposits'
                         value={formatNumberWithUnit(deposits, 'currency', planetId)}
                         icon={<Coins className='h-3 w-3' />}
                         valueClassName={
                             deposits < loans ? 'text-amber-600' : deposits === 0 ? 'text-muted-foreground' : ''
-                        }
-                    />
-                    <Stat
-                        label='Asset value'
-                        value={formatNumberWithUnit(totalAssetsValue, 'currency', planetId)}
-                        icon={<TbBuildingFactory2 className='h-3 w-3' />}
-                        valueClassName={
-                            totalAssetsValue + deposits < loans
-                                ? 'text-red-600'
-                                : totalAssetsValue > 0
-                                  ? 'text-green-600'
-                                  : 'text-muted-foreground'
                         }
                     />
                     <Stat
@@ -62,26 +54,74 @@ export default function AgentFinancialOverview({
                             loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-600' : 'text-amber-600'
                         }
                     />
-                </div>
-                <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
                     <Stat
-                        label='Monthly revenue (last month)'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyRevenue, 'currency', planetId)}
-                    />
-                    <Stat
-                        label='Monthly expenses (last month)'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyExpenses, 'currency', planetId)}
+                        label='Net position (deposits − loans)'
+                        value={formatNumberWithUnit(netPosition, 'currency', planetId)}
+                        icon={
+                            netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
+                        }
                         valueClassName={
-                            loanConditions.lastMonthlyExpenses === 0
-                                ? 'text-muted-foreground'
-                                : loanConditions.lastMonthlyExpenses > loanConditions.lastMonthlyRevenue
-                                  ? 'text-red-500'
-                                  : 'text-amber-500'
+                            netPosition < 0
+                                ? 'text-red-500'
+                                : netPosition > 0
+                                  ? 'text-green-600'
+                                  : 'text-muted-foreground'
                         }
                     />
                     <Stat
-                        label='Net monthly cash flow (last month)'
+                        label='Facilities value'
+                        value={formatNumberWithUnit(loanConditions.facilitiesCollateral, 'currency', planetId)}
+                        icon={<TbBuildingFactory2 className='h-3 w-3' />}
+                        valueClassName={'text-muted-foreground'}
+                    />
+                    <Stat
+                        label='Ships value'
+                        value={formatNumberWithUnit(loanConditions.shipsCollateral, 'currency', planetId)}
+                        icon={<GoRocket className='h-3 w-3' />}
+                        valueClassName={'text-muted-foreground'}
+                    />
+                </div>
+                <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
+                    <span className=' text-xs font-semibold text-muted-foreground'>Monthly flow (last) </span>
+                    <Stat
+                        label='Revenue'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyRevenue, 'currency', planetId)}
+                        icon={<TrendingUp className='h-3 w-3' />}
+                    />
+                    <Stat
+                        label='Wages'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyWages, 'currency', planetId)}
+                        icon={<Users className='h-3 w-3' />}
+                        valueClassName={
+                            loanConditions.lastMonthlyWages === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        }
+                    />
+                    <Stat
+                        label='Purchases'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyPurchases, 'currency', planetId)}
+                        icon={<ShoppingCart className='h-3 w-3' />}
+                        valueClassName={
+                            loanConditions.lastMonthlyPurchases === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        }
+                    />
+                    <Stat
+                        label='Claims'
+                        value={formatNumberWithUnit(loanConditions.lastMonthlyClaimPayments, 'currency', planetId)}
+                        icon={<Scale className='h-3 w-3' />}
+                        valueClassName={
+                            loanConditions.lastMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        }
+                    />
+                    <Stat
+                        label='Net cash flow'
                         value={formatNumberWithUnit(loanConditions.monthlyNetCashFlow, 'currency', planetId)}
+                        icon={
+                            loanConditions.monthlyNetCashFlow >= 0 ? (
+                                <TrendingUp className='h-3 w-3' />
+                            ) : (
+                                <TrendingDown className='h-3 w-3' />
+                            )
+                        }
                         valueClassName={
                             loanConditions.monthlyNetCashFlow === 0
                                 ? 'text-muted-foreground'
