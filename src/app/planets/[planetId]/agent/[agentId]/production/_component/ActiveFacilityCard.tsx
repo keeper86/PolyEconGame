@@ -19,7 +19,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityProductionIORow';
-import { UnderConstructionCompactRow } from './UnderConstructionCard';
+import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { WorkerBars } from './WorkerBars';
 
 export function ActiveFacilityCard({
@@ -229,56 +229,7 @@ export function ActiveFacilityCard({
                 </span>
             }
         >
-            <div className='flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground'>
-                {'revenue' in facility.lastTickResults && (
-                    <>
-                        <div className='flex flex-col items-center'>
-                            {' '}
-                            revenue{' '}
-                            <span className='tabular-nums text-green-600 dark:text-green-400'>
-                                {formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
-                            </span>
-                        </div>
-                        <span className='shrink-0'>−</span>
-                    </>
-                )}
-
-                <div className='flex flex-col items-center'>
-                    {' '}
-                    inputs{' '}
-                    <span className='tabular-nums text-red-600 dark:text-red-400'>
-                        {formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
-                    </span>
-                </div>
-
-                <span className='shrink-0'>−</span>
-
-                <div className='flex flex-col items-center'>
-                    {' '}
-                    wages{' '}
-                    <span className='tabular-nums text-red-600 dark:text-red-400'>
-                        {formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
-                    </span>
-                </div>
-
-                <span className='shrink-0'>=</span>
-
-                <div className='flex flex-col items-center text-foreground'>
-                    {' '}
-                    net/day{' '}
-                    <span
-                        className={`tabular-nums text-md ${
-                            results.costBalance >= 0
-                                ? 'text-green-600 dark:text-green-400'
-                                : 'text-red-600 dark:text-red-400'
-                        }`}
-                    >
-                        {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
-                    </span>
-                </div>
-            </div>
-
-            <div className='flex-1 space-y-2'>
+            <div className='flex-1 space-y-2 pb-3'>
                 <FacilityProductionIORow
                     needs={facility.needs}
                     produces={facility.produces}
@@ -290,6 +241,55 @@ export function ActiveFacilityCard({
             </div>
 
             <div className='mt-auto space-y-2'>
+                <Separator />
+                <div className='flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 rounded-sm w-full'>
+                    {'revenue' in facility.lastTickResults && (
+                        <>
+                            <div className='flex flex-col items-center'>
+                                {' '}
+                                revenue{' '}
+                                <span className='tabular-nums text-green-600 dark:text-green-400'>
+                                    {formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
+                                </span>
+                            </div>
+                            <span className='shrink-0'>−</span>
+                        </>
+                    )}
+
+                    <div className='flex flex-col items-center'>
+                        {' '}
+                        inputs{' '}
+                        <span className='tabular-nums text-red-600 dark:text-red-400'>
+                            {formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
+                        </span>
+                    </div>
+
+                    <span className='shrink-0'>−</span>
+
+                    <div className='flex flex-col items-center'>
+                        {' '}
+                        wages{' '}
+                        <span className='tabular-nums text-red-600 dark:text-red-400'>
+                            {formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
+                        </span>
+                    </div>
+
+                    <span className='shrink-0'>=</span>
+
+                    <div className='flex flex-col items-center text-foreground'>
+                        {' '}
+                        net/day{' '}
+                        <span
+                            className={`tabular-nums text-md ${
+                                results.costBalance >= 0
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-red-600 dark:text-red-400'
+                            }`}
+                        >
+                            {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
+                        </span>
+                    </div>
+                </div>
                 <Separator />
                 {facility.construction ? null : showExpand ? (
                     <FacilityConstructionPanel
@@ -444,7 +444,7 @@ export function ActiveFacilityCard({
                     </>
                 )}
             </div>
-            {facility.construction !== null && <UnderConstructionCompactRow facility={facility} />}
+            {facility.construction !== null && <ConstructionCompactRow facility={facility} />}
         </FacilityCardShell>
     );
 }

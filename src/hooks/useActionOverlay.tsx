@@ -45,16 +45,7 @@ type OverlayMap = Map<AgentPlanetKey, ActionOverlay[]>;
 interface ActionOverlayContextValue {
     addOverlay: (overlay: ActionOverlay) => void;
     getOverlays: (agentId: string, planetId: string) => ActionOverlay[];
-    /**
-     * Removes overlays whose facilityId matches a resolved ID.
-     * Call after merge to prevent unbounded overlay accumulation.
-     */
     resolveOverlays: (agentId: string, planetId: string, resolvedIds: Set<string>) => void;
-    /**
-     * Removes ALL overlays that match the given facilityId for this agent/planet.
-     * This includes both facilityBuilt (optimistic build) and facilityCancelled (optimistic cancel).
-     * Used by UnderConstructionCard when a cancel succeeds.
-     */
     removeOverlayByFacilityId: (agentId: string, planetId: string, facilityId: string) => void;
 }
 
