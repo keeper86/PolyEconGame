@@ -11,10 +11,7 @@ exports.up = async function (knex) {
             healthcare_buffer     DOUBLE PRECISION NOT NULL DEFAULT 0,
             logistics_buffer      DOUBLE PRECISION NOT NULL DEFAULT 0,
             education_buffer      DOUBLE PRECISION NOT NULL DEFAULT 0,
-            retail_buffer         DOUBLE PRECISION NOT NULL DEFAULT 0,
-            construction_buffer   DOUBLE PRECISION NOT NULL DEFAULT 0,
-            maintenance_buffer    DOUBLE PRECISION NOT NULL DEFAULT 0,
-            administration_buffer DOUBLE PRECISION NOT NULL DEFAULT 0,
+            retail_buffer         DOUBLE PRECISION NOT NULL DEFAULT 0,           
 
             created_at            TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
             UNIQUE (planet_id, tick)
@@ -161,10 +158,7 @@ exports.up = async function (knex) {
             avg(healthcare_buffer)::float8      AS avg_healthcare_buffer,
             avg(logistics_buffer)::float8       AS avg_logistics_buffer,
             avg(education_buffer)::float8       AS avg_education_buffer,
-            avg(retail_buffer)::float8          AS avg_retail_buffer,
-            avg(construction_buffer)::float8    AS avg_construction_buffer,
-            avg(maintenance_buffer)::float8     AS avg_maintenance_buffer,
-            avg(administration_buffer)::float8  AS avg_administration_buffer
+            avg(retail_buffer)::float8          AS avg_retail_buffer
         FROM planet_population_history
         GROUP BY time_bucket(30, tick), planet_id
         WITH NO DATA
@@ -217,10 +211,7 @@ exports.up = async function (knex) {
             avg(avg_healthcare_buffer)::float8      AS avg_healthcare_buffer,
             avg(avg_logistics_buffer)::float8       AS avg_logistics_buffer,
             avg(avg_education_buffer)::float8       AS avg_education_buffer,
-            avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
-            avg(avg_construction_buffer)::float8    AS avg_construction_buffer,
-            avg(avg_maintenance_buffer)::float8     AS avg_maintenance_buffer,
-            avg(avg_administration_buffer)::float8  AS avg_administration_buffer
+            avg(avg_retail_buffer)::float8          AS avg_retail_buffer           
         FROM planet_population_monthly
         GROUP BY time_bucket(360, bucket), planet_id
         WITH NO DATA
@@ -273,10 +264,7 @@ exports.up = async function (knex) {
             avg(avg_healthcare_buffer)::float8      AS avg_healthcare_buffer,
             avg(avg_logistics_buffer)::float8       AS avg_logistics_buffer,
             avg(avg_education_buffer)::float8       AS avg_education_buffer,
-            avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
-            avg(avg_construction_buffer)::float8    AS avg_construction_buffer,
-            avg(avg_maintenance_buffer)::float8     AS avg_maintenance_buffer,
-            avg(avg_administration_buffer)::float8  AS avg_administration_buffer
+            avg(avg_retail_buffer)::float8          AS avg_retail_buffer            
         FROM planet_population_yearly
         GROUP BY time_bucket(3600, bucket), planet_id
         WITH NO DATA

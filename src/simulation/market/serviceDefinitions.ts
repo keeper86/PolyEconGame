@@ -2,12 +2,10 @@ import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { Planet } from '../planet/planet';
 import {
-    constructionServiceResourceType,
     educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
-    maintenanceServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
 import type { Occupation, ServiceName } from '../population/population';
@@ -49,33 +47,19 @@ const healthcareAgeMultiplier = (age: number, occ: Occupation): number => {
     return base;
 };
 
+const logisticsAgeMultiplier = (age: number, occ: Occupation): number => {
+    if (occ === 'education') {
+        return 0.5;
+    }
+    return 1.0;
+};
+
 /** Education only for school-age and university-age (5–22) */
 const educationAgeMultiplier = (_age: number, occ: Occupation): number => {
     if (occ === 'education') {
         return 1.0;
     }
     return 0.0;
-};
-
-/** Construction: peaks in middle age (25–60, home-buying years), near-zero before 20, tapers after 65 */
-const constructionAgeMultiplier = (age: number, occ: Occupation): number => {
-    if (occ === 'education') {
-        return 0;
-    }
-    // Product of two sigmoids: rising at 25, falling at 65
-    const rise = 1 / (1 + Math.exp(-(age - 25) / 5));
-    const fall = 1 / (1 + Math.exp((age - 65) / 5));
-    return rise * fall;
-};
-
-/** Maintenance: similar to standard, but peaks a bit later (prime home-owning years 30–60) */
-const maintenanceAgeMultiplier = (age: number, occ: Occupation): number => {
-    if (occ === 'education') {
-        return 0;
-    }
-    const rise = 1 / (1 + Math.exp(-(age - 22) / 4));
-    const fall = 1 / (1 + Math.exp((age - 70) / 6));
-    return rise * fall;
 };
 
 // ── Service definitions ───────────────────────────────────────────────────────
@@ -98,7 +82,7 @@ const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: standardAgeMultiplier,
+    ageMultiplier: logisticsAgeMultiplier,
 } as const;
 
 const educationDefinition: ServiceDefinition = {
@@ -115,33 +99,12 @@ const retailDefinition: ServiceDefinition = {
     ageMultiplier: standardAgeMultiplier,
 } as const;
 
-/** Construction represents housing stock.
- *  bufferTargetTicks = 40 years — a full buffer takes 40 years to fully deplete (depreciation).
- *  consumptionRate is the depreciation rate. */
-const constructionDefinition: ServiceDefinition = {
-    resource: constructionServiceResourceType,
-    bufferTargetTicks: 40 * TICKS_PER_YEAR,
-    consumptionRatePerPersonPerTick: 10 / TICKS_PER_YEAR, // 400 cs per house
-    ageMultiplier: constructionAgeMultiplier,
-} as const;
-
-/** Maintenance base definition. The effective consumption rate scales with a cohort's
- *  construction buffer ratio (see populationDemand.ts / consumption.ts). */
-const maintenanceDefinition: ServiceDefinition = {
-    resource: maintenanceServiceResourceType,
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
-    ageMultiplier: maintenanceAgeMultiplier,
-} as const;
-
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
     grocery: groceryDefinition,
     healthcare: healthcareDefinition,
     logistics: logisticsDefinition,
     education: educationDefinition,
     retail: retailDefinition,
-    construction: constructionDefinition,
-    maintenance: maintenanceDefinition,
 } as const;
 
 export const getServiceDefinitionByResourceName = (resourceName: string): ServiceDefinition | undefined => {
@@ -169,7 +132,7 @@ export type ServiceTier = {
 export const SERVICE_TIERS: ServiceTier[] = [
     {
         name: 'survival',
-        services: ['grocery', 'healthcare', 'education'],
+        services: ['grocery', 'healthcare'],
         coverageFraction: 1.0,
         mandatoryForOwnConsumption: true,
     },
@@ -181,7 +144,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
     },
     {
         name: 'luxury',
-        services: ['retail', 'construction', 'maintenance'],
+        services: ['retail'],
         coverageFraction: 0.1,
         mandatoryForOwnConsumption: false,
     },

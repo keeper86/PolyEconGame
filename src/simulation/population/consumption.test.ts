@@ -96,7 +96,12 @@ describe('consumeServices (per-category model)', () => {
 
         const cat = pop.demography[30].unoccupied.none.novice;
 
-        expect(cat.services.grocery.buffer).toBeCloseTo(9.0056, 3);
+        // Buffer (in ticks) now depletes by exactly the demanded amount (age-adjusted).
+        // At age 30 with unoccupied occ, standardAgeMultiplier ≈ 0.9715.
+        // Demand = pop * rate * ageMult = 360 * (1/TICKS_PER_MONTH) * 0.9715.
+        // Buffer starts at 10 ticks.  Consumed = demand (since buffer covers it).
+        // bufferConsumed = consumed / (effectiveRate * pop) = 1.0 tick exactly.
+        expect(cat.services.grocery.buffer).toBeCloseTo(9.0, 3);
 
         expect(cat.services.grocery.starvationLevel).toBeLessThan(0.5);
     });
@@ -154,17 +159,16 @@ describe('consumeServices (per-category model)', () => {
         pop.demography[25].employed.tertiary.expert.services.healthcare.buffer = 8;
         pop.demography[25].employed.tertiary.expert.services.retail.buffer = 6;
         pop.demography[25].employed.tertiary.expert.services.logistics.buffer = 4;
-        pop.demography[25].employed.tertiary.expert.services.construction.buffer = 2;
 
         consumeServices(planet);
 
         const cat = pop.demography[25].employed.tertiary.expert;
 
-        // Age 25 has age multipliers: grocery=0.9715, healthcare=0.7, retail=0.9715, logistics=0.9715, construction=0.4998
-        expect(cat.services.grocery.buffer).toBeCloseTo(9.0285, 3);
-        expect(cat.services.healthcare.buffer).toBeCloseTo(7.3, 3);
-        expect(cat.services.retail.buffer).toBeCloseTo(5.0285, 3);
-        expect(cat.services.logistics.buffer).toBeCloseTo(3.0285, 3);
-        expect(cat.services.construction.buffer).toBeCloseTo(1.5002, 3);
+        // With age-adjusted buffer consumption, each service's buffer decreases by exactly
+        // 1 tick when the buffer covers the age-adjusted demand.
+        expect(cat.services.grocery.buffer).toBeCloseTo(9.0, 3);
+        expect(cat.services.healthcare.buffer).toBeCloseTo(7.0, 3);
+        expect(cat.services.retail.buffer).toBeCloseTo(5.0, 3);
+        expect(cat.services.logistics.buffer).toBeCloseTo(3.0, 3);
     });
 });

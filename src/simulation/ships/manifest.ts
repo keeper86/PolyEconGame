@@ -55,9 +55,6 @@ function mergeIntoManifest(
                 retail: { ...sourceCategory.services.retail },
                 logistics: { ...sourceCategory.services.logistics },
                 healthcare: { ...sourceCategory.services.healthcare },
-                construction: { ...sourceCategory.services.construction },
-                maintenance: { ...sourceCategory.services.maintenance },
-                administration: { ...sourceCategory.services.administration },
                 education: { ...sourceCategory.services.education },
             },
         };
@@ -279,9 +276,6 @@ export function advanceManifestAge(
                 retail: { ...category.services.retail },
                 logistics: { ...category.services.logistics },
                 healthcare: { ...category.services.healthcare },
-                construction: { ...category.services.construction },
-                maintenance: { ...category.services.maintenance },
-                administration: { ...category.services.administration },
                 education: { ...category.services.education },
             },
         };

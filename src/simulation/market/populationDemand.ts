@@ -1,19 +1,10 @@
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
-import {
-    administrativeCenter,
-    constructionFacility,
-    educationCenter,
-    groceryChain,
-    hospital,
-    logisticsHub,
-    maintenanceFacility,
-    retailChain,
-} from '../planet/productionFacilities';
-import { forEachPopulationCohort } from '../population/population';
+import { educationCenter, groceryChain, hospital, logisticsHub, retailChain } from '../planet/productionFacilities';
 import type { ServiceName } from '../population/population';
+import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import { allServices, householdDemandPriority, serviceKeyOf, SERVICE_DEFINITIONS } from './serviceDefinitions';
+import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export type { ServiceDefinition } from './serviceDefinitions';
 
@@ -120,9 +111,6 @@ const groceryChainTemplate: ProductionFacility = groceryChain('', '');
 const retailTemplate: ProductionFacility = retailChain('', '');
 const healthcareTemplate: ProductionFacility = hospital('', '');
 const educationTemplate: ProductionFacility = educationCenter('', '');
-const constructionTemplate: ProductionFacility = constructionFacility('', '');
-const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
-const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
 const logisticsTemplate: ProductionFacility = logisticsHub('', '');
 
 export const serviceFacilityTemplate: Record<ServiceName, { template: ProductionFacility; produced: number }> = {
@@ -142,18 +130,6 @@ export const serviceFacilityTemplate: Record<ServiceName, { template: Production
         template: educationTemplate,
         produced: educationTemplate.produces[0].quantity,
     },
-    construction: {
-        template: constructionTemplate,
-        produced: constructionTemplate.produces[0].quantity,
-    },
-    maintenance: {
-        template: maintenanceTemplate,
-        produced: maintenanceTemplate.produces[0].quantity,
-    },
-    administration: {
-        template: administrativeTemplate,
-        produced: administrativeTemplate.produces[0].quantity,
-    },
     logistics: {
         template: logisticsTemplate,
         produced: logisticsTemplate.produces[0].quantity,
@@ -162,8 +138,6 @@ export const serviceFacilityTemplate: Record<ServiceName, { template: Production
 
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));
-
-    const constructionDef = SERVICE_DEFINITIONS.construction;
 
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
@@ -180,13 +154,6 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
             }
 
             let remainingWealth = wm.mean;
-
-            // Pre-compute construction buffer ratio for maintenance scaling
-            const constructionBuffer = category.services.construction?.buffer ?? 0;
-            const constructionBufferRatio =
-                constructionDef.bufferTargetTicks > 0
-                    ? Math.min(1, constructionBuffer / constructionDef.bufferTargetTicks)
-                    : 0;
 
             for (const service of allServices) {
                 if (remainingWealth <= 0) {
@@ -208,12 +175,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 // Apply age multiplier to effective consumption rate
                 const ageMult = service.ageMultiplier(age, occ);
-                let effectiveRate = rate * ageMult;
-
-                // For maintenance, scale effective rate by construction buffer ratio
-                if (serviceKeyOf(service) === 'maintenance') {
-                    effectiveRate = rate * ageMult * constructionBufferRatio;
-                }
+                const effectiveRate = rate * ageMult;
 
                 if (effectiveRate <= 0) {
                     continue;

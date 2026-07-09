@@ -184,24 +184,6 @@ function emptyServiceBuffers(): AggRow['serviceBuffers'] {
             [0, 0],
             [0, 0],
         ],
-        construction: [
-            [0, 0],
-            [0, 0],
-            [0, 0],
-            [0, 0],
-        ],
-        maintenance: [
-            [0, 0],
-            [0, 0],
-            [0, 0],
-            [0, 0],
-        ],
-        administration: [
-            [0, 0],
-            [0, 0],
-            [0, 0],
-            [0, 0],
-        ],
         education: [
             [0, 0],
             [0, 0],
@@ -319,9 +301,6 @@ const serviceBuffersSchema = z.object({
     healthcare: svcBands4,
     logistics: svcBands4,
     retail: svcBands4,
-    construction: svcBands4,
-    maintenance: svcBands4,
-    administration: svcBands4,
     education: svcBands4,
 });
 

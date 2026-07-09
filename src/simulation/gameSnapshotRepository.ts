@@ -61,9 +61,6 @@ export interface InsertPlanetPopulation {
     logistics_buffer: number;
     education_buffer: number;
     retail_buffer: number;
-    construction_buffer: number;
-    maintenance_buffer: number;
-    administration_buffer: number;
 }
 
 export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanetPopulation[]): Promise<void> {
@@ -80,9 +77,6 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
             logistics_buffer: r.logistics_buffer,
             education_buffer: r.education_buffer,
             retail_buffer: r.retail_buffer,
-            construction_buffer: r.construction_buffer,
-            maintenance_buffer: r.maintenance_buffer,
-            administration_buffer: r.administration_buffer,
         })),
     );
 }
@@ -253,9 +247,6 @@ export interface BufferBucket {
     avg_logistics_buffer: number;
     avg_education_buffer: number;
     avg_retail_buffer: number;
-    avg_construction_buffer: number;
-    avg_maintenance_buffer: number;
-    avg_administration_buffer: number;
 }
 
 export async function getPlanetBufferHistory(
@@ -284,9 +275,6 @@ export async function getPlanetBufferHistory(
             'avg_logistics_buffer',
             'avg_education_buffer',
             'avg_retail_buffer',
-            'avg_construction_buffer',
-            'avg_maintenance_buffer',
-            'avg_administration_buffer',
         );
 }
 

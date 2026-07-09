@@ -1,4 +1,4 @@
-import { allServices, serviceKeyOf, SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
+import { allServices, serviceKeyOf } from '../market/serviceDefinitions';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from './population';
 
@@ -12,8 +12,6 @@ export interface ConsumptionResult {
 }
 
 export function consumeServices(planet: Planet) {
-    const constructionDef = SERVICE_DEFINITIONS.construction;
-
     planet.population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ) => {
             if (category.total === 0) {
@@ -22,24 +20,12 @@ export function consumeServices(planet: Planet) {
 
             const pop = category.total;
 
-            // Pre-compute construction buffer ratio for maintenance scaling
-            const constructionBuffer = category.services.construction?.buffer ?? 0;
-            const constructionBufferRatio =
-                constructionDef.bufferTargetTicks > 0
-                    ? Math.min(1, constructionBuffer / constructionDef.bufferTargetTicks)
-                    : 0;
-
             for (const def of allServices) {
                 const rate = def.consumptionRatePerPersonPerTick;
 
                 // Apply age multiplier
                 const ageMult = def.ageMultiplier(age, occ);
-                let effectiveRate = rate * ageMult;
-
-                // For maintenance, scale by construction buffer ratio
-                if (serviceKeyOf(def) === 'maintenance') {
-                    effectiveRate = rate * ageMult * constructionBufferRatio;
-                }
+                const effectiveRate = rate * ageMult;
 
                 if (effectiveRate <= 0) {
                     continue;
@@ -47,9 +33,12 @@ export function consumeServices(planet: Planet) {
 
                 const demand = pop * effectiveRate;
                 const serviceState = category.services[serviceKeyOf(def)];
-                const available = serviceState.buffer * rate * pop; // Note: we still use `rate` here to match buffer units
+                // Buffer is stored in base-rate ticks.  Multiply by effectiveRate to get the
+                // age-adjusted quantity available this tick, so that availability and demand
+                // use the same effective consumption rate consistently.
+                const available = serviceState.buffer * effectiveRate * pop;
                 const consumed = Math.min(available, demand);
-                const bufferConsumed = consumed / (rate * pop);
+                const bufferConsumed = consumed / (effectiveRate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);
 
                 if (serviceKeyOf(def) === 'education' && occ !== 'education' && consumed > 0) {

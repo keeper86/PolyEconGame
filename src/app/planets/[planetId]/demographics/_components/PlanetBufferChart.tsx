@@ -12,9 +12,6 @@ const BUFFER_LABELS: Record<string, string> = {
     logistics: 'Logistics',
     education: 'Education',
     retail: 'Retail',
-    construction: 'Construction',
-    maintenance: 'Maintenance',
-    administration: 'Administration',
 };
 
 const BUFFER_COLORS: Record<string, string> = {
@@ -23,21 +20,9 @@ const BUFFER_COLORS: Record<string, string> = {
     logistics: '#f59e0b',
     education: '#a855f7',
     retail: '#06b6d4',
-    construction: '#f97316',
-    maintenance: '#64748b',
-    administration: '#3b82f6',
 };
 
-const BUFFER_KEYS = [
-    'grocery',
-    'healthcare',
-    'logistics',
-    'education',
-    'retail',
-    'construction',
-    'maintenance',
-    'administration',
-] as const;
+const BUFFER_KEYS = ['grocery', 'healthcare', 'logistics', 'education', 'retail'] as const;
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 const MONTHLY_X_TICKS = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
@@ -51,9 +36,6 @@ type RawPoint = {
     avgLogisticsBuffer: number;
     avgEducationBuffer: number;
     avgRetailBuffer: number;
-    avgConstructionBuffer: number;
-    avgMaintenanceBuffer: number;
-    avgAdministrationBuffer: number;
 };
 
 type ChartPoint = {

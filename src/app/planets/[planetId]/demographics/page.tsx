@@ -267,7 +267,7 @@ export default function PlanetDemographicsPage() {
             <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
 
             <div className='flex justify-between gap-1 my-3 pt-3 items-center'>
-                <span className='text-md text-slate-400'>Detailed Demographics</span>
+                <span className='text-md text-slate-400'>Demographics</span>
                 {groupTabs}
             </div>
 
@@ -301,17 +301,7 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                {(
-                    [
-                        'grocery',
-                        'healthcare',
-                        'logistics',
-                        'retail',
-                        'construction',
-                        'maintenance',
-                        'education',
-                    ] as const
-                ).map((key) => (
+                {(['grocery', 'healthcare', 'logistics', 'retail', 'education'] as const).map((key) => (
                     <ServiceSection
                         key={key}
                         serviceKey={key}
