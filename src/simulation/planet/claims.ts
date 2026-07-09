@@ -214,6 +214,7 @@ export function leaseClaim(
         // Update pool
         if (isRenewable) {
             pool.maximumCapacity -= quantity;
+            pool.quantity -= quantity;
             pool.regenerationRate -= pool.regenerationRate * ratio;
         } else {
             pool.maximumCapacity -= quantity;
@@ -292,12 +293,15 @@ export function reduceClaim(
     // Capture the regen rate being returned before mutating the claim
     const regenToReturn = existingClaim.regenerationRate * ratio;
 
-    // Reduce claim
-    existingClaim.quantity -= quantity;
+    // Reduce claim — clamp quantity to prevent going negative (extractFromClaimedResource may have consumed it)
+    existingClaim.quantity = Math.max(0, existingClaim.quantity - quantity);
     existingClaim.maximumCapacity -= quantity;
     existingClaim.regenerationRate -= regenToReturn;
-    existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
-    existingClaim.tenantCostInCoins = Math.max(0, existingClaim.tenantCostInCoins - quantity);
+    if (isRenewable) {
+        existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
+    } else {
+        existingClaim.tenantCostInCoins = Math.max(0, existingClaim.tenantCostInCoins - quantity);
+    }
 
     // Return to pool — mirror the pool deduction logic in leaseClaim
     if (isRenewable) {
