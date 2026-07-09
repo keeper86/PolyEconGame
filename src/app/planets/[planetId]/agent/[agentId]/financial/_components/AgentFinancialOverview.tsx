@@ -6,6 +6,7 @@ import { Coins, ShoppingCart, Scale, TrendingDown, TrendingUp, Users } from 'luc
 import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
+import type { MonthAccumulator } from '@/simulation/planet/planet';
 
 type Props = {
     deposits: number;
@@ -20,18 +21,67 @@ type Props = {
         storageCollateral: number;
         facilitiesCollateral: number;
     };
+    monthAcc: MonthAccumulator;
     planetId: string;
     agentId: string;
 };
+
+function ValueWithSub({
+    value,
+    subValue,
+    planetId,
+    subValueClassName,
+}: {
+    value: number;
+    subValue: number;
+    planetId: string;
+    subValueClassName?: string;
+}): React.ReactElement {
+    return (
+        <span className='inline-flex flex-row items-center flex-baseline gap-1'>
+            <span>{formatNumberWithUnit(value, 'currency', planetId)}</span>
+            <span className={`text-[10px] w-[50px] text-right ${subValueClassName ?? 'text-muted-foreground'}`}>
+                ({formatNumberWithUnit(subValue, 'currency', planetId)})
+            </span>
+        </span>
+    );
+}
+
+function cashFlowColor(value: number): string {
+    if (value === 0) {
+        return 'text-muted-foreground';
+    }
+    if (value > 0) {
+        return 'text-green-600';
+    }
+    return 'text-red-500';
+}
+
+function mutedCashFlowColor(value: number): string {
+    if (value === 0) {
+        return 'text-muted-foreground';
+    }
+    if (value > 0) {
+        return 'text-green-600/50';
+    }
+    return 'text-red-500/50';
+}
 
 export default function AgentFinancialOverview({
     deposits,
     loans,
     loanConditions,
+    monthAcc,
     planetId,
 }: Props): React.ReactElement {
-    const totalAssetsValue = loanConditions.shipsCollateral;
     const netPosition = deposits - loans;
+
+    const currentMonthlyRevenue = monthAcc.revenue;
+    const currentMonthlyWages = monthAcc.wages;
+    const currentMonthlyPurchases = monthAcc.purchases;
+    const currentMonthlyClaimPayments = monthAcc.claimPayments;
+    const currentNetCashFlow =
+        currentMonthlyRevenue - currentMonthlyWages - currentMonthlyPurchases - currentMonthlyClaimPayments;
 
     return (
         <div className='space-y-3' data-tour='financial-overview'>
@@ -82,53 +132,83 @@ export default function AgentFinancialOverview({
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
-                    <span className=' text-xs font-semibold text-muted-foreground'>Monthly flow (last) </span>
+                    <span className=' text-xs font-semibold text-muted-foreground'>
+                        Monthly flow: <span className='text-foreground'>current </span> (last)
+                    </span>
                     <Stat
                         label='Revenue'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyRevenue, 'currency', planetId)}
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyRevenue}
+                                subValue={loanConditions.lastMonthlyRevenue}
+                                planetId={planetId}
+                            />
+                        }
                         icon={<TrendingUp className='h-3 w-3' />}
                     />
                     <Stat
                         label='Wages'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyWages, 'currency', planetId)}
-                        icon={<Users className='h-3 w-3' />}
-                        valueClassName={
-                            loanConditions.lastMonthlyWages === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyWages}
+                                subValue={loanConditions.lastMonthlyWages}
+                                planetId={planetId}
+                                subValueClassName={
+                                    currentMonthlyWages === 0 ? 'text-muted-foreground' : 'text-amber-500/50'
+                                }
+                            />
                         }
+                        icon={<Users className='h-3 w-3' />}
+                        valueClassName={currentMonthlyWages === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
                         label='Purchases'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyPurchases, 'currency', planetId)}
-                        icon={<ShoppingCart className='h-3 w-3' />}
-                        valueClassName={
-                            loanConditions.lastMonthlyPurchases === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyPurchases}
+                                subValue={loanConditions.lastMonthlyPurchases}
+                                planetId={planetId}
+                                subValueClassName={
+                                    currentMonthlyPurchases === 0 ? 'text-muted-foreground' : 'text-amber-500/50'
+                                }
+                            />
                         }
+                        icon={<ShoppingCart className='h-3 w-3' />}
+                        valueClassName={currentMonthlyPurchases === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
                         label='Claims'
-                        value={formatNumberWithUnit(loanConditions.lastMonthlyClaimPayments, 'currency', planetId)}
-                        icon={<Scale className='h-3 w-3' />}
-                        valueClassName={
-                            loanConditions.lastMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyClaimPayments}
+                                subValue={loanConditions.lastMonthlyClaimPayments}
+                                planetId={planetId}
+                                subValueClassName={
+                                    currentMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500/50'
+                                }
+                            />
                         }
+                        icon={<Scale className='h-3 w-3' />}
+                        valueClassName={currentMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
                         label='Net cash flow'
-                        value={formatNumberWithUnit(loanConditions.monthlyNetCashFlow, 'currency', planetId)}
+                        value={
+                            <ValueWithSub
+                                value={currentNetCashFlow}
+                                subValue={loanConditions.monthlyNetCashFlow}
+                                planetId={planetId}
+                                subValueClassName={mutedCashFlowColor(loanConditions.monthlyNetCashFlow)}
+                            />
+                        }
                         icon={
-                            loanConditions.monthlyNetCashFlow >= 0 ? (
+                            currentNetCashFlow >= 0 ? (
                                 <TrendingUp className='h-3 w-3' />
                             ) : (
                                 <TrendingDown className='h-3 w-3' />
                             )
                         }
-                        valueClassName={
-                            loanConditions.monthlyNetCashFlow === 0
-                                ? 'text-muted-foreground'
-                                : loanConditions.monthlyNetCashFlow > 0
-                                  ? 'text-green-600'
-                                  : 'text-red-500'
-                        }
+                        valueClassName={cashFlowColor(currentNetCashFlow)}
                     />
                 </div>
             </div>
