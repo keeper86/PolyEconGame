@@ -222,12 +222,24 @@ export function FacilityConstructionPanel({
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button size='sm' variant='outline' onClick={handleCancelWarning}>
-                            Cancel
-                        </Button>
-                        <Button size='sm' variant='default' onClick={handleProceedAnyway}>
-                            Proceed Anyway
-                        </Button>
+                        <div className='flex gap-2 pt-1 w-full'>
+                            <Button
+                                size='sm'
+                                className='flex-1 text-xs gap-1'
+                                variant='destructive'
+                                onClick={handleCancelWarning}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                size='sm'
+                                className='flex-1 text-xs gap-1'
+                                variant='default'
+                                onClick={handleProceedAnyway}
+                            >
+                                Proceed Anyway
+                            </Button>
+                        </div>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

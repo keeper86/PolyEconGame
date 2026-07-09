@@ -4,7 +4,7 @@ import { makeAgent, makeGameState, makeGovernmentAgent, makePlanet, makeProducti
 import { updateAgentClaims } from './automaticClaimManagement';
 import { arableLandResourceType, coalDepositResourceType } from './landBoundResources';
 import { produceResourceType } from './resources';
-import { TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
 
 describe('updateAgentClaims', () => {
     it('leases renewable claim when facility needs exceed current capacity', () => {
@@ -324,7 +324,7 @@ describe('updateAgentClaims', () => {
         const amountPerTick = 100;
         const scale = 5;
         const required = amountPerTick * scale; // 500
-        const safetyQuantity = TICKS_PER_MONTH * required; // 15000
+        const safetyQuantity = TICKS_PER_YEAR * required; // 15000
         const claimedQuantity = safetyQuantity * 2; // 30000 — oversupplied
         const agent = makeAgent('auto-1', 'test-p', 'Auto Agent');
         agent.automated = true;

@@ -10,7 +10,6 @@ import {
     administrativeCenter,
     beveragePlant,
     coalMine,
-    coalPowerPlant,
     foodProcessingPlant,
     groceryChain,
     intensiveFarmFacility,
@@ -128,16 +127,13 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
     const ec1 = coalMine(AC_ID, 'energy-corp-coal-mine');
     ec1.scale = 200;
     ec1.maxScale = 200;
-    const ec2 = coalPowerPlant(AC_ID, 'energy-corp-power-plant');
-    ec2.scale = 50;
-    ec2.maxScale = 50;
     agents.push(
         makeAgent({
             id: energyCorp.id,
             name: energyCorp.name,
             associatedPlanetId: AC_ID,
             planetId: AC_ID,
-            facilities: [ec1, ec2],
+            facilities: [ec1],
             storage: makeStorage({ planetId: AC_ID, id: 'energy-corp-storage', name: 'AC Energy Storage' }),
         }),
     );

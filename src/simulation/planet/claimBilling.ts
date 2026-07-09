@@ -74,7 +74,7 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
         for (const entry of planet.resources[resourceName].claims) {
             if (entry.regenerationRate > 0) {
                 totalCost += entry.costPerTick;
-                totalUnits += entry.quantity;
+                totalUnits += entry.maximumCapacity;
             } else {
                 totalCost += entry.tenantCostInCoins;
                 totalUnits += entry.maximumCapacity;
