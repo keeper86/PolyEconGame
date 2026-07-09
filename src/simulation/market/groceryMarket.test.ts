@@ -136,7 +136,7 @@ describe('groceryMarketTick', () => {
         expect(planet.bank.householdDeposits).toBeLessThan(totalPop * 100);
     });
 
-    it('does not target more than the buffer target per person', () => {
+    it('does not target more than the buffer target per person (with age multiplier)', () => {
         const pop = giveHouseholdsWealth(planet, 1000);
         planet.bank.householdDeposits = pop * 1000;
         planet.bank.deposits = pop * 1000;
@@ -152,11 +152,11 @@ describe('groceryMarketTick', () => {
 
         marketTick(agentMap(groceryAgent), planet);
 
-        const expected = groceryDef.bufferTargetTicks;
-
+        // Age 14 has age multiplier ~0.6035, so effective target = 30 * 0.6035 ≈ 18.1
+        const expected = groceryDef.bufferTargetTicks * 0.603546;
         const cat = planet.population.demography[14].unoccupied.none.novice;
         expect(cat.total).toBeGreaterThan(0);
-        expect(cat.services.grocery.buffer).toBeCloseTo(expected, 5);
+        expect(cat.services.grocery.buffer).toBeCloseTo(expected, 4);
     });
 
     it('price-priority: highest-bid cohort buys before lower-bid cohort', () => {

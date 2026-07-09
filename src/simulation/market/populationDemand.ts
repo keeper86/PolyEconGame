@@ -13,7 +13,7 @@ import {
 import { forEachPopulationCohort } from '../population/population';
 import type { ServiceName } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
+import { allServices, householdDemandPriority, serviceKeyOf, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export type { ServiceDefinition } from './serviceDefinitions';
 
@@ -163,6 +163,8 @@ export const serviceFacilityTemplate: Record<ServiceName, { template: Production
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));
 
+    const constructionDef = SERVICE_DEFINITIONS.construction;
+
     planet.population.demography.forEach((cohort, age) =>
         forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
             const pop = category.total;
@@ -178,6 +180,13 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
             }
 
             let remainingWealth = wm.mean;
+
+            // Pre-compute construction buffer ratio for maintenance scaling
+            const constructionBuffer = category.services.construction?.buffer ?? 0;
+            const constructionBufferRatio =
+                constructionDef.bufferTargetTicks > 0
+                    ? Math.min(1, constructionBuffer / constructionDef.bufferTargetTicks)
+                    : 0;
 
             for (const service of allServices) {
                 if (remainingWealth <= 0) {
@@ -196,6 +205,20 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
                 const rate = service.consumptionRatePerPersonPerTick;
+
+                // Apply age multiplier to effective consumption rate
+                const ageMult = service.ageMultiplier(age, occ);
+                let effectiveRate = rate * ageMult;
+
+                // For maintenance, scale effective rate by construction buffer ratio
+                if (serviceKeyOf(service) === 'maintenance') {
+                    effectiveRate = rate * ageMult * constructionBufferRatio;
+                }
+
+                if (effectiveRate <= 0) {
+                    continue;
+                }
+
                 const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
 
                 if (bufferFillDeficit <= 0) {
@@ -207,11 +230,11 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
+                let quantityPerPerson = effectiveRate * service.bufferTargetTicks * bufferFillDeficit;
 
-                if (remainingWealth < 1.2 * rate * willingPrice) {
-                    willingPrice = remainingWealth / rate / 1.2;
-                    quantityPerPerson = 1.2 * rate;
+                if (remainingWealth < 1.2 * effectiveRate * willingPrice) {
+                    willingPrice = remainingWealth / effectiveRate / 1.2;
+                    quantityPerPerson = 1.2 * effectiveRate;
                 } else if (remainingWealth < quantityPerPerson * willingPrice) {
                     const affordableQuantity = remainingWealth / willingPrice;
                     quantityPerPerson = Math.min(quantityPerPerson, affordableQuantity);

@@ -100,7 +100,6 @@ export type PopulationCategory = {
         healthcare: ServiceState;
         construction: ServiceState;
         maintenance: ServiceState;
-        administration: ServiceState;
         education: ServiceState;
     };
 

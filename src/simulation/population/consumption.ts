@@ -1,4 +1,4 @@
-import { allServices, serviceKeyOf } from '../market/serviceDefinitions';
+import { allServices, serviceKeyOf, SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from './population';
 
@@ -12,7 +12,9 @@ export interface ConsumptionResult {
 }
 
 export function consumeServices(planet: Planet) {
-    planet.population.demography.forEach((cohort) => {
+    const constructionDef = SERVICE_DEFINITIONS.construction;
+
+    planet.population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ) => {
             if (category.total === 0) {
                 return;
@@ -20,11 +22,32 @@ export function consumeServices(planet: Planet) {
 
             const pop = category.total;
 
+            // Pre-compute construction buffer ratio for maintenance scaling
+            const constructionBuffer = category.services.construction?.buffer ?? 0;
+            const constructionBufferRatio =
+                constructionDef.bufferTargetTicks > 0
+                    ? Math.min(1, constructionBuffer / constructionDef.bufferTargetTicks)
+                    : 0;
+
             for (const def of allServices) {
                 const rate = def.consumptionRatePerPersonPerTick;
-                const demand = pop * rate;
+
+                // Apply age multiplier
+                const ageMult = def.ageMultiplier(age, occ);
+                let effectiveRate = rate * ageMult;
+
+                // For maintenance, scale by construction buffer ratio
+                if (serviceKeyOf(def) === 'maintenance') {
+                    effectiveRate = rate * ageMult * constructionBufferRatio;
+                }
+
+                if (effectiveRate <= 0) {
+                    continue;
+                }
+
+                const demand = pop * effectiveRate;
                 const serviceState = category.services[serviceKeyOf(def)];
-                const available = serviceState.buffer * rate * pop;
+                const available = serviceState.buffer * rate * pop; // Note: we still use `rate` here to match buffer units
                 const consumed = Math.min(available, demand);
                 const bufferConsumed = consumed / (rate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);

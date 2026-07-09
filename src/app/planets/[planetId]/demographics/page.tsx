@@ -308,7 +308,7 @@ export default function PlanetDemographicsPage() {
                         'logistics',
                         'retail',
                         'construction',
-                        'administration',
+                        'maintenance',
                         'education',
                     ] as const
                 ).map((key) => (

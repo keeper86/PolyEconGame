@@ -96,7 +96,7 @@ describe('consumeServices (per-category model)', () => {
 
         const cat = pop.demography[30].unoccupied.none.novice;
 
-        expect(cat.services.grocery.buffer).toBeCloseTo(9, 10);
+        expect(cat.services.grocery.buffer).toBeCloseTo(9.0056, 3);
 
         expect(cat.services.grocery.starvationLevel).toBeLessThan(0.5);
     });
@@ -160,10 +160,11 @@ describe('consumeServices (per-category model)', () => {
 
         const cat = pop.demography[25].employed.tertiary.expert;
 
-        expect(cat.services.grocery.buffer).toBeCloseTo(9, 10);
-        expect(cat.services.healthcare.buffer).toBeCloseTo(7, 10);
-        expect(cat.services.retail.buffer).toBeCloseTo(5, 10);
-        expect(cat.services.logistics.buffer).toBeCloseTo(3, 10);
-        expect(cat.services.construction.buffer).toBeCloseTo(1, 10);
+        // Age 25 has age multipliers: grocery=0.9715, healthcare=0.7, retail=0.9715, logistics=0.9715, construction=0.4998
+        expect(cat.services.grocery.buffer).toBeCloseTo(9.0285, 3);
+        expect(cat.services.healthcare.buffer).toBeCloseTo(7.3, 3);
+        expect(cat.services.retail.buffer).toBeCloseTo(5.0285, 3);
+        expect(cat.services.logistics.buffer).toBeCloseTo(3.0285, 3);
+        expect(cat.services.construction.buffer).toBeCloseTo(1.5002, 3);
     });
 });
