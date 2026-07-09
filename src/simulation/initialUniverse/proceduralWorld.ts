@@ -1,5 +1,4 @@
 import { createRecyclerAgent } from '../agents/recycler';
-import { TICKS_PER_YEAR } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
@@ -61,8 +60,7 @@ import {
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { NAMES } from './preConfiguredCompanies';
-import { makeClaim, makePool } from './resourceClaimFactory';
-import type { ResourceClaim } from '../planet/claims';
+import { makePool } from './resourceClaimFactory';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -155,37 +153,6 @@ const TARGETS: Record<string, FacilityTarget> = {
     siliconWaferFactory: { totalScale: 222_982, agentCount: 4 },
 };
 
-function depositPerScale(facilityType: string): number {
-    switch (facilityType) {
-        case 'coalMine':
-            return 500000;
-        case 'oilWell':
-            return 300000;
-        case 'loggingCamp':
-            return 400000;
-        case 'stoneQuarry':
-            return 400000;
-        case 'copperMine':
-            return 400000;
-        case 'sandMine':
-            return 300000;
-        case 'limestoneQuarry':
-            return 300000;
-        case 'clayMine':
-            return 400000;
-        case 'cottonFarm':
-            return 200000;
-        case 'intensiveFarmFacility':
-            return 30000;
-        case 'waterExtractionFacility':
-            return 800000;
-        case 'ironExtractionFacility':
-            return 400000;
-        default:
-            return 0;
-    }
-}
-
 type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
 
 function getFacilityFactory(type: string): FacilityFactory {
@@ -238,101 +205,8 @@ function getFacilityFactory(type: string): FacilityFactory {
     return f;
 }
 
-interface ClaimPool {
-    type:
-        | typeof arableLandResourceType
-        | typeof waterSourceResourceType
-        | typeof coalDepositResourceType
-        | typeof oilReservoirResourceType
-        | typeof forestResourceType
-        | typeof stoneDepositResourceType
-        | typeof copperDepositResourceType
-        | typeof sandDepositResourceType
-        | typeof limestoneDepositResourceType
-        | typeof clayDepositResourceType
-        | typeof ironOreDepositResourceType;
-    total: number;
-    prefix: string;
-    renewable: boolean;
-    entries: ResourceClaim[];
-}
-
-function resourceType(facilityType: string): ClaimPool['type'] | null {
-    const MAP: Record<string, ClaimPool['type']> = {
-        coalMine: coalDepositResourceType,
-        oilWell: oilReservoirResourceType,
-        loggingCamp: forestResourceType,
-        stoneQuarry: stoneDepositResourceType,
-        copperMine: copperDepositResourceType,
-        sandMine: sandDepositResourceType,
-        limestoneQuarry: limestoneDepositResourceType,
-        clayMine: clayDepositResourceType,
-        cottonFarm: arableLandResourceType,
-        intensiveFarmFacility: arableLandResourceType,
-        waterExtractionFacility: waterSourceResourceType,
-        ironExtractionFacility: ironOreDepositResourceType,
-    };
-    return MAP[facilityType] ?? null;
-}
-
-function renewableForResource(facilityType: string): boolean {
-    const NON_RENEWABLE = new Set([
-        'coalMine',
-        'oilWell',
-        'copperMine',
-        'ironExtractionFacility',
-        'stoneQuarry',
-        'sandMine',
-        'limestoneQuarry',
-        'clayMine',
-    ]);
-    return !NON_RENEWABLE.has(facilityType);
-}
-
-function claimPoolKey(facilityType: string): string {
-    if (facilityType === 'intensiveFarmFacility') {
-        return 'cottonFarm';
-    }
-    return facilityType;
-}
-
-export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
+export function buildProceduralWorld(): { planet: Planet; agents: import('../planet/planet').Agent[] } {
     const agents: Agent[] = [];
-    const govClaims: string[] = [];
-
-    const claimPools = new Map<string, ResourceClaim[]>();
-
-    const govArableId = `${PROC_PLANET_ID}-gov-arable`;
-    const govWaterId = `${PROC_PLANET_ID}-gov-water`;
-    govClaims.push(govArableId, govWaterId);
-
-    if (!claimPools.has('cottonFarm')) {
-        claimPools.set('cottonFarm', []);
-    }
-    if (!claimPools.has('waterExtractionFacility')) {
-        claimPools.set('waterExtractionFacility', []);
-    }
-
-    claimPools.get('cottonFarm')!.push(
-        makeClaim({
-            id: govArableId,
-            type: arableLandResourceType,
-            quantity: 100_000_000,
-            tenantAgentId: 'proc-utilities',
-            costPerTick: 100_000_000,
-            renewable: true,
-        }),
-    );
-    claimPools.get('waterExtractionFacility')!.push(
-        makeClaim({
-            id: govWaterId,
-            type: waterSourceResourceType,
-            quantity: 100_000_000,
-            tenantAgentId: 'proc-utilities',
-            costPerTick: 100_000_000,
-            renewable: true,
-        }),
-    );
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {
         const names = NAMES[facilityType] ?? [];
@@ -342,8 +216,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         }
 
         const scales = splitScale(target.totalScale, count, facilityType);
-        const rType = resourceType(facilityType);
-        const dpScale = depositPerScale(facilityType);
 
         for (let i = 0; i < count; i++) {
             const name = names[i];
@@ -351,7 +223,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             const scale = scales[i];
 
             const facilities: ProductionFacility[] = [];
-            const tenancies: string[] = [];
 
             const factory = getFacilityFactory(facilityType);
             const fac = factory(PROC_PLANET_ID, `${id}-${facilityType}`);
@@ -367,41 +238,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 wFac.scale = waterScale;
                 wFac.maxScale = waterScale;
                 facilities.push(wFac);
-
-                const waterPool = claimPools.get('waterExtractionFacility') ?? [];
-                claimPools.set('waterExtractionFacility', waterPool);
-                const waterClaimQty = waterScale * 800;
-                const waterClaimId = `${PROC_PLANET_ID}-water-${id}`;
-                const waterClaim = makeClaim({
-                    id: waterClaimId,
-                    type: waterSourceResourceType,
-                    quantity: waterClaimQty,
-                    tenantAgentId: id,
-                    tenantCostInCoins: Math.floor(waterClaimQty * 0.0005),
-                    renewable: true,
-                });
-                waterPool.push(waterClaim);
-                govClaims.push(waterClaimId);
-                tenancies.push(waterClaimId);
-            }
-
-            if (rType !== null && dpScale > 0) {
-                const poolKey = claimPoolKey(facilityType);
-                const pool = claimPools.get(poolKey) ?? [];
-                claimPools.set(poolKey, pool);
-                const depositQty = scale * dpScale;
-                const claimId = `${PROC_PLANET_ID}-deposit-${facilityType}-${id}`;
-                const claim = makeClaim({
-                    id: claimId,
-                    type: rType,
-                    quantity: depositQty,
-                    tenantAgentId: id,
-                    tenantCostInCoins: Math.floor(depositQty * 0.0001),
-                    renewable: renewableForResource(facilityType),
-                });
-                pool.push(claim);
-                govClaims.push(claimId);
-                tenancies.push(claimId);
             }
 
             agents.push(
@@ -412,7 +248,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                     planetId: PROC_PLANET_ID,
                     facilities,
                     storage: makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` }),
-                    tenancies,
                 }),
             );
         }
@@ -657,98 +492,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         );
     }
 
-    const poolConfigs: Array<{
-        facilityType: string;
-        total: number;
-        type: ClaimPool['type'];
-        prefix: string;
-        renewable: boolean;
-    }> = [
-        {
-            facilityType: 'coalMine',
-            total: TOTAL_COAL,
-            type: coalDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-coal`,
-            renewable: renewableForResource('coalMine'),
-        },
-        {
-            facilityType: 'oilWell',
-            total: TOTAL_OIL,
-            type: oilReservoirResourceType,
-            prefix: `${PROC_PLANET_ID}-oil`,
-            renewable: renewableForResource('oilWell'),
-        },
-        {
-            facilityType: 'loggingCamp',
-            total: TOTAL_FOREST,
-            type: forestResourceType,
-            prefix: `${PROC_PLANET_ID}-forest`,
-            renewable: renewableForResource('loggingCamp'),
-        },
-        {
-            facilityType: 'stoneQuarry',
-            total: TOTAL_STONE,
-            type: stoneDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-stone`,
-            renewable: renewableForResource('stoneQuarry'),
-        },
-        {
-            facilityType: 'copperMine',
-            total: TOTAL_COPPER,
-            type: copperDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-copper`,
-            renewable: renewableForResource('copperMine'),
-        },
-        {
-            facilityType: 'sandMine',
-            total: TOTAL_SAND,
-            type: sandDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-sand`,
-            renewable: renewableForResource('sandMine'),
-        },
-        {
-            facilityType: 'limestoneQuarry',
-            total: TOTAL_LIMESTONE,
-            type: limestoneDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-limestone`,
-            renewable: renewableForResource('limestoneQuarry'),
-        },
-        {
-            facilityType: 'clayMine',
-            total: TOTAL_CLAY,
-            type: clayDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-clay`,
-            renewable: renewableForResource('clayMine'),
-        },
-        {
-            facilityType: 'cottonFarm',
-            total: TOTAL_ARABLE,
-            type: arableLandResourceType,
-            prefix: `${PROC_PLANET_ID}-arable`,
-            renewable: renewableForResource('cottonFarm'),
-        },
-        {
-            facilityType: 'waterExtractionFacility',
-            total: TOTAL_WATER,
-            type: waterSourceResourceType,
-            prefix: `${PROC_PLANET_ID}-water`,
-            renewable: renewableForResource('waterExtractionFacility'),
-        },
-        {
-            facilityType: 'ironExtractionFacility',
-            total: TOTAL_IRON_ORE,
-            type: ironOreDepositResourceType,
-            prefix: `${PROC_PLANET_ID}-iron`,
-            renewable: renewableForResource('ironExtractionFacility'),
-        },
-    ];
-
-    for (const cfg of poolConfigs) {
-        if (!claimPools.has(cfg.facilityType)) {
-            claimPools.set(cfg.facilityType, []);
-        }
-    }
-
     const utilWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-util-water');
     utilWaterFac.scale = 200;
     utilWaterFac.maxScale = 200;
@@ -762,7 +505,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         planetId: PROC_PLANET_ID,
         facilities: [utilWaterFac, utilAgriFac],
         storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-util-storage', name: 'Public Utilities Storage' }),
-        tenancies: [govArableId, govWaterId],
     });
     agents.push(utilAgent);
 
@@ -773,17 +515,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         planetId: PROC_PLANET_ID,
         facilities: [],
         storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-gov-storage', name: 'Gov. Central Storage' }),
-        claims: govClaims,
     });
     agents.unshift(govAgent);
-
-    const getPoolClaims = (k: string): ResourceClaim[] => claimPools.get(k) ?? [];
-
-    const getUnclaimedQuantity = (facilityType: string, total: number): number => {
-        const claims = claimPools.get(facilityType) ?? [];
-        const claimed = claims.reduce((s, c) => s + c.quantity, 0);
-        return Math.max(0, total - claimed);
-    };
 
     const planetBase = {
         id: PROC_PLANET_ID,
@@ -816,90 +549,90 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             [arableLandResourceType.name]: {
                 pool: makePool({
                     type: arableLandResourceType,
-                    quantity: getUnclaimedQuantity('cottonFarm', TOTAL_ARABLE),
-                    renewable: renewableForResource('cottonFarm'),
+                    quantity: TOTAL_ARABLE,
+                    renewable: true,
                 }),
-                claims: getPoolClaims('cottonFarm'),
+                claims: [],
             },
             [waterSourceResourceType.name]: {
                 pool: makePool({
                     type: waterSourceResourceType,
-                    quantity: getUnclaimedQuantity('waterExtractionFacility', TOTAL_WATER),
-                    renewable: renewableForResource('waterExtractionFacility'),
+                    quantity: TOTAL_WATER,
+                    renewable: true,
                 }),
-                claims: getPoolClaims('waterExtractionFacility'),
+                claims: [],
             },
             [ironOreDepositResourceType.name]: {
                 pool: makePool({
                     type: ironOreDepositResourceType,
-                    quantity: getUnclaimedQuantity('ironExtractionFacility', TOTAL_IRON_ORE),
-                    renewable: renewableForResource('ironExtractionFacility'),
+                    quantity: TOTAL_IRON_ORE,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('ironExtractionFacility'),
+                claims: [],
             },
             [coalDepositResourceType.name]: {
                 pool: makePool({
                     type: coalDepositResourceType,
-                    quantity: getUnclaimedQuantity('coalMine', TOTAL_COAL),
-                    renewable: renewableForResource('coalMine'),
+                    quantity: TOTAL_COAL,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('coalMine'),
+                claims: [],
             },
             [oilReservoirResourceType.name]: {
                 pool: makePool({
                     type: oilReservoirResourceType,
-                    quantity: getUnclaimedQuantity('oilWell', TOTAL_OIL),
-                    renewable: renewableForResource('oilWell'),
+                    quantity: TOTAL_OIL,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('oilWell'),
+                claims: [],
             },
             [forestResourceType.name]: {
                 pool: makePool({
                     type: forestResourceType,
-                    quantity: getUnclaimedQuantity('loggingCamp', TOTAL_FOREST),
-                    renewable: renewableForResource('loggingCamp'),
+                    quantity: TOTAL_FOREST,
+                    renewable: true,
                 }),
-                claims: getPoolClaims('loggingCamp'),
+                claims: [],
             },
             [copperDepositResourceType.name]: {
                 pool: makePool({
                     type: copperDepositResourceType,
-                    quantity: getUnclaimedQuantity('copperMine', TOTAL_COPPER),
-                    renewable: renewableForResource('copperMine'),
+                    quantity: TOTAL_COPPER,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('copperMine'),
+                claims: [],
             },
             [sandDepositResourceType.name]: {
                 pool: makePool({
                     type: sandDepositResourceType,
-                    quantity: getUnclaimedQuantity('sandMine', TOTAL_SAND),
-                    renewable: renewableForResource('sandMine'),
+                    quantity: TOTAL_SAND,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('sandMine'),
+                claims: [],
             },
             [limestoneDepositResourceType.name]: {
                 pool: makePool({
                     type: limestoneDepositResourceType,
-                    quantity: getUnclaimedQuantity('limestoneQuarry', TOTAL_LIMESTONE),
-                    renewable: renewableForResource('limestoneQuarry'),
+                    quantity: TOTAL_LIMESTONE,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('limestoneQuarry'),
+                claims: [],
             },
             [clayDepositResourceType.name]: {
                 pool: makePool({
                     type: clayDepositResourceType,
-                    quantity: getUnclaimedQuantity('clayMine', TOTAL_CLAY),
-                    renewable: renewableForResource('clayMine'),
+                    quantity: TOTAL_CLAY,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('clayMine'),
+                claims: [],
             },
             [stoneDepositResourceType.name]: {
                 pool: makePool({
                     type: stoneDepositResourceType,
-                    quantity: getUnclaimedQuantity('stoneQuarry', TOTAL_STONE),
-                    renewable: renewableForResource('stoneQuarry'),
+                    quantity: TOTAL_STONE,
+                    renewable: false,
                 }),
-                claims: getPoolClaims('stoneQuarry'),
+                claims: [],
             },
         },
         infrastructure: {
@@ -922,59 +655,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             storms: 30,
         }),
     };
-
-    const extractionRatePerScale: Record<string, number> = {
-        coalMine: 0.5,
-        oilWell: 0.3,
-        copperMine: 0.4,
-        ironExtractionFacility: 0.4,
-    };
-
-    const resourceSummary: Array<{
-        resource: string;
-        totalDeposit: number;
-        assignedToAgents: number;
-        unassigned: number;
-        renewable: boolean;
-        depletionYears: number | null;
-    }> = poolConfigs.map((cfg) => {
-        const pool = claimPools.get(cfg.facilityType) ?? [];
-
-        const assigned = pool.filter((c) => c.tenantAgentId !== GOV).reduce((s, c) => s + c.quantity, 0);
-        const unclaimedQty = 0; // no more unclaimed entries in the claims array
-
-        const rate = extractionRatePerScale[cfg.facilityType] ?? null;
-
-        let depletionYears: number | null = null;
-        if (rate !== null && assigned > 0 && !renewableForResource(cfg.facilityType)) {
-            const dpScale = depositPerScale(cfg.facilityType);
-            depletionYears = Math.round(dpScale / rate / TICKS_PER_YEAR);
-        }
-
-        return {
-            resource: cfg.type.name,
-            totalDeposit: cfg.total,
-            assignedToAgents: assigned,
-            unassigned: unclaimedQty,
-            renewable: renewableForResource(cfg.facilityType),
-            depletionYears,
-        };
-    });
-
-    console.log('\n=== Procedural World Summary ===');
-    console.log(`Agents: ${agents.length}`);
-    console.log('\nResource Deposits:');
-    console.log(
-        `${'Resource'.padEnd(28)} ${'Total Deposit'.padStart(20)} ${'Assigned'.padStart(16)} ${'Unassigned'.padStart(16)} ${'Renewable'.padStart(10)} ${'Depletion (yrs)'.padStart(16)}`,
-    );
-    console.log('-'.repeat(110));
-    for (const r of resourceSummary) {
-        const depletion = r.depletionYears !== null ? r.depletionYears.toLocaleString() : 'renewable';
-        console.log(
-            `${r.resource.padEnd(28)} ${r.totalDeposit.toLocaleString().padStart(20)} ${r.assignedToAgents.toLocaleString().padStart(16)} ${r.unassigned.toLocaleString().padStart(16)} ${(r.renewable ? 'yes' : 'no').padStart(10)} ${depletion.padStart(16)}`,
-        );
-    }
-    console.log('=================================\n');
 
     return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }

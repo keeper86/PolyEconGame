@@ -26,8 +26,13 @@ export default function FinancialPage() {
     );
     const loanConditions = loanConditionsData?.conditions ?? {
         lastMonthlyRevenue: 0,
-        lastMonthlyExpenses: 0,
+        lastMonthlyWages: 0,
+        lastMonthlyPurchases: 0,
+        lastMonthlyClaimPayments: 0,
         monthlyNetCashFlow: 0,
+        shipsCollateral: 0,
+        storageCollateral: 0,
+        facilitiesCollateral: 0,
     };
 
     return (
@@ -43,6 +48,7 @@ export default function FinancialPage() {
                                     deposits={assets.deposits ?? 0}
                                     loans={totalOutstandingLoans(assets.activeLoans ?? [])}
                                     loanConditions={loanConditions}
+                                    monthAcc={assets.monthAcc}
                                     planetId={planetId}
                                     agentId={agentId}
                                 />

@@ -12,6 +12,7 @@ import { automaticPricing } from './market/automaticPricing';
 import { forexTick } from './market/forexTick';
 import { intergenerationalTransfersForPlanet } from './market/intergenerationalTransfers';
 import { marketTick } from './market/market';
+import { updateAgentClaims } from './planet/automaticClaimManagement';
 import { updateAgentProductionScale } from './planet/automaticProductionScale';
 import { claimBillingTick } from './planet/claimBilling';
 import { environmentTick } from './planet/environment';
@@ -52,6 +53,8 @@ export function advanceTick(gameState: GameState) {
         planet.consumedResources = {};
         planet.productionCosts = {};
 
+        let t: number = 0;
+
         if (isFirstTickInMonth(gameState.tick)) {
             resetAgentMetrics(gameState.agents, planet);
             resetAgentMetrics(gameState.forexMarketMakers, planet);
@@ -62,9 +65,12 @@ export function advanceTick(gameState: GameState) {
             const govAgent = gameState.agents.get(planet.governmentId);
             assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
             governmentTick(planet, govAgent);
-        }
 
-        let t: number = 0;
+            updateAgentClaims(gameState, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('claimAdjust', '  updateAgentClaims', t);
+            }
+        }
 
         // ── Environment + Government ──
         if (profile.isEnabled) {

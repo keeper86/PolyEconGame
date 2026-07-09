@@ -5,7 +5,7 @@ import {
     ironOreDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
-import type { Agent, Planet } from '../planet/planet';
+import type { Planet } from '../planet/planet';
 import {
     administrativeCenter,
     beveragePlant,
@@ -23,14 +23,13 @@ import {
 } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
-import { makeClaim, makePool } from './resourceClaimFactory';
-import type { ResourceClaim } from '../planet/claims';
+import { makePool } from './resourceClaimFactory';
 
 export const AC_ID = 'alpha-centauri';
 const GOV = 'ac-government';
 
-const TOTAL_ARABLE = 80_000;
-const TOTAL_WATER = 80_000;
+const TOTAL_ARABLE = 800_000;
+const TOTAL_WATER = 800_000;
 const TOTAL_IRON = 500_000;
 const TOTAL_COAL = 400_000;
 
@@ -63,37 +62,8 @@ const industrialSpecs: IndustrialSpec[] = [
     { id: 'ac-pesticides-inc', name: 'Pesticides Inc' },
 ];
 
-export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
-    const agents: Agent[] = [];
-    const arableClaims: ResourceClaim[] = [];
-    const waterClaims: ResourceClaim[] = [];
-    const ironClaims: ResourceClaim[] = [];
-    const coalClaims: ResourceClaim[] = [];
-
-    const govArableId = 'ac-gov-arable';
-    const govWaterId = 'ac-gov-water';
-    const govClaims: string[] = [govArableId, govWaterId];
-
-    arableClaims.push(
-        makeClaim({
-            id: govArableId,
-            type: arableLandResourceType,
-            quantity: 20000,
-            tenantAgentId: 'ac-utilities',
-            costPerTick: 200,
-            renewable: true,
-        }),
-    );
-    waterClaims.push(
-        makeClaim({
-            id: govWaterId,
-            type: waterSourceResourceType,
-            quantity: 20000,
-            tenantAgentId: 'ac-utilities',
-            costPerTick: 100,
-            renewable: true,
-        }),
-    );
+export function buildAlphaCentauri(): { planet: Planet; agents: import('../planet/planet').Agent[] } {
+    const agents: import('../planet/planet').Agent[] = [];
 
     const utilWaterFacility = waterExtractionFacility(AC_ID, 'ac-utilities-water');
     utilWaterFacility.scale = 100;
@@ -109,36 +79,10 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [utilWaterFacility, utilAgriFacility],
             storage: makeStorage({ planetId: AC_ID, id: 'ac-utilities-storage', name: 'AC Public Utilities Storage' }),
-            tenancies: [govArableId, govWaterId],
         }),
     );
 
     for (const spec of agriSpecs) {
-        const arableId = `ac-arable-${spec.id}`;
-        const waterId = `ac-water-${spec.id}`;
-        govClaims.push(arableId, waterId);
-
-        arableClaims.push(
-            makeClaim({
-                id: arableId,
-                type: arableLandResourceType,
-                quantity: spec.arableLand,
-                tenantAgentId: spec.id,
-                tenantCostInCoins: Math.floor(spec.arableLand * 0.01),
-                renewable: true,
-            }),
-        );
-        waterClaims.push(
-            makeClaim({
-                id: waterId,
-                type: waterSourceResourceType,
-                quantity: spec.waterSource,
-                tenantAgentId: spec.id,
-                tenantCostInCoins: Math.floor(spec.waterSource * 0.005),
-                renewable: true,
-            }),
-        );
-
         const agriScale = spec.arableLand / 1000;
         const waterScale = spec.waterSource / 1000;
 
@@ -158,25 +102,12 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
                 planetId: AC_ID,
                 facilities: [waterFacility, agriFacility],
                 storage: makeStorage({ planetId: AC_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
-                tenancies: [arableId, waterId],
             }),
         );
     }
 
     const [colonyIron, energyCorp, foodProc] = industrialSpecs;
 
-    const ironId = 'ac-iron-colony-iron';
-    govClaims.push(ironId);
-    ironClaims.push(
-        makeClaim({
-            id: ironId,
-            type: ironOreDepositResourceType,
-            quantity: 300000,
-            tenantAgentId: colonyIron.id,
-            tenantCostInCoins: 300,
-            renewable: false,
-        }),
-    );
     const ci1 = ironExtractionFacility(AC_ID, 'colony-iron-extraction');
     ci1.scale = 300;
     ci1.maxScale = 300;
@@ -191,22 +122,9 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [ci1, ci2],
             storage: makeStorage({ planetId: AC_ID, id: 'colony-iron-storage', name: 'Colony Iron Storage' }),
-            tenancies: [ironId],
         }),
     );
 
-    const coalId = 'ac-coal-energy-corp';
-    govClaims.push(coalId);
-    coalClaims.push(
-        makeClaim({
-            id: coalId,
-            type: coalDepositResourceType,
-            quantity: 200000,
-            tenantAgentId: energyCorp.id,
-            tenantCostInCoins: 200,
-            renewable: false,
-        }),
-    );
     const ec1 = coalMine(AC_ID, 'energy-corp-coal-mine');
     ec1.scale = 200;
     ec1.maxScale = 200;
@@ -221,7 +139,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
             planetId: AC_ID,
             facilities: [ec1, ec2],
             storage: makeStorage({ planetId: AC_ID, id: 'energy-corp-storage', name: 'AC Energy Storage' }),
-            tenancies: [coalId],
         }),
     );
 
@@ -323,15 +240,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         }),
     );
 
-    const usedArable = arableClaims.reduce((s, c) => s + c.quantity, 0);
-    const arablePool = makePool({ type: arableLandResourceType, quantity: TOTAL_ARABLE - usedArable, renewable: true });
-    const usedWater = waterClaims.reduce((s, c) => s + c.quantity, 0);
-    const waterPool = makePool({ type: waterSourceResourceType, quantity: TOTAL_WATER - usedWater, renewable: true });
-    const usedIron = ironClaims.reduce((s, c) => s + c.quantity, 0);
-    const ironPool = makePool({ type: ironOreDepositResourceType, quantity: TOTAL_IRON - usedIron, renewable: false });
-    const usedCoal = coalClaims.reduce((s, c) => s + c.quantity, 0);
-    const coalPool = makePool({ type: coalDepositResourceType, quantity: TOTAL_COAL - usedCoal, renewable: false });
-
     const govAgent = makeAgent({
         id: GOV,
         name: 'Alpha Centauri Government',
@@ -339,7 +247,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         planetId: AC_ID,
         facilities: [],
         storage: makeStorage({ planetId: AC_ID, id: 'ac-gov-storage', name: 'AC Gov. Storage' }),
-        claims: govClaims,
     });
     agents.unshift(govAgent);
 
@@ -371,10 +278,22 @@ export function buildAlphaCentauri(): { planet: Planet; agents: Agent[] } {
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
         resources: {
-            [arableLandResourceType.name]: { pool: arablePool, claims: arableClaims },
-            [waterSourceResourceType.name]: { pool: waterPool, claims: waterClaims },
-            [ironOreDepositResourceType.name]: { pool: ironPool, claims: ironClaims },
-            [coalDepositResourceType.name]: { pool: coalPool, claims: coalClaims },
+            [arableLandResourceType.name]: {
+                pool: makePool({ type: arableLandResourceType, quantity: TOTAL_ARABLE, renewable: true }),
+                claims: [],
+            },
+            [waterSourceResourceType.name]: {
+                pool: makePool({ type: waterSourceResourceType, quantity: TOTAL_WATER, renewable: true }),
+                claims: [],
+            },
+            [ironOreDepositResourceType.name]: {
+                pool: makePool({ type: ironOreDepositResourceType, quantity: TOTAL_IRON, renewable: false }),
+                claims: [],
+            },
+            [coalDepositResourceType.name]: {
+                pool: makePool({ type: coalDepositResourceType, quantity: TOTAL_COAL, renewable: false }),
+                claims: [],
+            },
         },
         infrastructure: {
             primarySchools: 50,

@@ -10,8 +10,9 @@ import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
+import { BuildCard } from './BuildCard';
 import { LevelBuildSection, type Mode as BuildMode } from './LevelBuildSection';
-import { UnderConstructionCard } from './UnderConstructionCard';
+
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { PRICE_FLOOR } from '@/simulation/constants';
 
@@ -127,7 +128,17 @@ export default function ProductionFacilitiesPanel({
                                     const owned = ownedByName.get(previewName);
                                     if (owned) {
                                         if (owned.construction !== null && owned.construction.type === 'new') {
-                                            return <UnderConstructionCard key={owned.id} facility={owned} />;
+                                            return (
+                                                <BuildCard
+                                                    key={owned.id}
+                                                    facility={owned}
+                                                    agentId={agentId}
+                                                    planetId={planetId}
+                                                    constructionServicePrice={constructionServicePrice}
+                                                    onBuilt={() => {}}
+                                                    onCancel={() => {}}
+                                                />
+                                            );
                                         }
                                         return (
                                             <ActiveFacilityCard

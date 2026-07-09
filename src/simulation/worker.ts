@@ -305,17 +305,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     }
                 }
 
-                // Compute net-worth including real assets (facilities + ships)
                 const csPrice = planet?.marketPrices[constructionServiceResourceType.name] ?? 0;
                 const facilitiesValue = computeFacilitiesValue(assets, csPrice);
                 const shipsValue = computeShipsValue(agent, gs.shipCapitalMarket, planet?.marketPrices ?? {});
-                const netWorth = cashBalance + facilitiesValue + shipsValue;
 
                 return {
                     tick,
                     planet_id: planetId,
                     agent_id: agent.id,
-                    net_balance: netWorth,
+                    net_balance: cashBalance,
+                    asset_value: facilitiesValue + shipsValue,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
                     wages: assets.monthAcc.wages,

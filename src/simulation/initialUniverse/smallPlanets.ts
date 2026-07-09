@@ -33,10 +33,9 @@ import {
     sawmill,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
-import type { Agent, Planet } from '../planet/planet';
+import type { Planet } from '../planet/planet';
 import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
-import { makeClaim, makePool } from './resourceClaimFactory';
-import type { ResourceClaim } from '../planet/claims';
+import { makePool } from './resourceClaimFactory';
 import { createRecyclerAgent } from '../agents/recycler';
 
 interface AgriSpec {
@@ -55,70 +54,30 @@ interface SmallPlanetSpec {
     totalWater: number;
     govAgriScale: number;
     agriCompanies: AgriSpec[];
-    industrialAgents: { planet: Planet; agents: Agent[] }['agents'];
+    industrialAgents: import('../planet/planet').Agent[];
     infrastructure: Planet['infrastructure'];
     environment: Planet['environment'];
-    extraResources?: Record<string, ResourceClaim[]>;
+    extraPools?: Array<{
+        resource:
+            | typeof arableLandResourceType
+            | typeof waterSourceResourceType
+            | typeof coalDepositResourceType
+            | typeof copperDepositResourceType
+            | typeof forestResourceType
+            | typeof ironOreDepositResourceType
+            | typeof oilReservoirResourceType
+            | typeof sandDepositResourceType;
+        quantity: number;
+        renewable: boolean;
+    }>;
 }
 
-function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agent[] } {
-    const agents: Agent[] = [];
-    const arableClaims: ResourceClaim[] = [];
-    const waterClaims: ResourceClaim[] = [];
+function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: import('../planet/planet').Agent[] } {
+    const agents: import('../planet/planet').Agent[] = [];
     const govId = `${spec.id}-government`;
-
-    const govArableId = `${spec.id}-gov-arable`;
-    const govWaterId = `${spec.id}-gov-water`;
-    const govClaims: string[] = [govArableId, govWaterId];
     const utilId = `${spec.id}-utilities`;
 
-    arableClaims.push(
-        makeClaim({
-            id: govArableId,
-            type: arableLandResourceType,
-            quantity: spec.govAgriScale * 1000,
-            tenantAgentId: utilId,
-            costPerTick: Math.floor(spec.govAgriScale * 10),
-            renewable: true,
-        }),
-    );
-    waterClaims.push(
-        makeClaim({
-            id: govWaterId,
-            type: waterSourceResourceType,
-            quantity: spec.govAgriScale * 1000,
-            tenantAgentId: utilId,
-            costPerTick: Math.floor(spec.govAgriScale * 5),
-            renewable: true,
-        }),
-    );
-
     for (const company of spec.agriCompanies) {
-        const arableId = `${spec.id}-arable-${company.id}`;
-        const waterId = `${spec.id}-water-${company.id}`;
-        govClaims.push(arableId, waterId);
-
-        arableClaims.push(
-            makeClaim({
-                id: arableId,
-                type: arableLandResourceType,
-                quantity: company.arableLand,
-                tenantAgentId: company.id,
-                tenantCostInCoins: Math.floor(company.arableLand * 0.01),
-                renewable: true,
-            }),
-        );
-        waterClaims.push(
-            makeClaim({
-                id: waterId,
-                type: waterSourceResourceType,
-                quantity: company.waterSource,
-                tenantAgentId: company.id,
-                tenantCostInCoins: Math.floor(company.waterSource * 0.005),
-                renewable: true,
-            }),
-        );
-
         const waterFacility = waterExtractionFacility(spec.id, `${company.id}-water`);
         const scale = company.arableLand / 1000;
         waterFacility.scale = scale;
@@ -140,25 +99,11 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                     id: `${company.id}-storage`,
                     name: `${company.name} Storage`,
                 }),
-                tenancies: [arableId, waterId],
             }),
         );
     }
 
     agents.push(...spec.industrialAgents);
-
-    const arableUsed = arableClaims.reduce((s, c) => s + c.quantity, 0);
-    const arablePool = makePool({
-        type: arableLandResourceType,
-        quantity: spec.totalArable - arableUsed,
-        renewable: true,
-    });
-    const waterUsed = waterClaims.reduce((s, c) => s + c.quantity, 0);
-    const waterPool = makePool({
-        type: waterSourceResourceType,
-        quantity: spec.totalWater - waterUsed,
-        renewable: true,
-    });
 
     const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
     utilWaterFacility.scale = spec.govAgriScale;
@@ -177,7 +122,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             id: `${spec.id}-util-storage`,
             name: `${spec.name} Utilities Storage`,
         }),
-        tenancies: [govArableId, govWaterId],
     });
     agents.push(utilAgent);
 
@@ -188,9 +132,29 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         planetId: spec.id,
         facilities: [],
         storage: makeStorage({ planetId: spec.id, id: `${spec.id}-gov-storage`, name: `${spec.name} Gov. Storage` }),
-        claims: govClaims,
     });
     agents.unshift(govAgent);
+
+    const resources: Planet['resources'] = {
+        [arableLandResourceType.name]: {
+            pool: makePool({ type: arableLandResourceType, quantity: spec.totalArable, renewable: true }),
+            claims: [],
+        },
+        [waterSourceResourceType.name]: {
+            pool: makePool({ type: waterSourceResourceType, quantity: spec.totalWater, renewable: true }),
+            claims: [],
+        },
+    };
+
+    for (const extra of spec.extraPools ?? []) {
+        const name = extra.resource.name;
+        if (!resources[name]) {
+            resources[name] = {
+                pool: makePool({ type: extra.resource, quantity: extra.quantity, renewable: extra.renewable }),
+                claims: [],
+            };
+        }
+    }
 
     const planetBase = {
         id: spec.id,
@@ -219,24 +183,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
-        resources: {
-            [arableLandResourceType.name]: { pool: arablePool, claims: arableClaims },
-            [waterSourceResourceType.name]: { pool: waterPool, claims: waterClaims },
-            ...Object.fromEntries(
-                Object.entries(spec.extraResources ?? {})
-                    .filter(([, claims]) => claims.length > 0)
-                    .map(([name, claims]) => [
-                        name,
-                        {
-                            pool: makePool({
-                                type: claims[0].resource,
-                                quantity: 0,
-                            }),
-                            claims,
-                        },
-                    ]),
-            ),
-        },
+        resources,
         infrastructure: spec.infrastructure,
         environment: spec.environment,
     };
@@ -244,20 +191,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
     return { planet: { ...planetBase, recycler: createRecyclerAgent(planetBase.id, planetBase.name) }, agents };
 }
 
-const guneForestClaims: ResourceClaim[] = [];
-
-function buildGuneIndustrialAgents(): Agent[] {
-    const forestId = 'gune-forest-gune-timber';
-    guneForestClaims.push(
-        makeClaim({
-            id: forestId,
-            type: forestResourceType,
-            quantity: 15000,
-            tenantAgentId: 'gune-timber-co',
-            tenantCostInCoins: 150,
-            renewable: true,
-        }),
-    );
+function buildGuneIndustrialAgents(): import('../planet/planet').Agent[] {
     const l1 = loggingCamp('gune', 'gune-timber-logging');
     l1.scale = 15;
     l1.maxScale = 15;
@@ -271,7 +205,6 @@ function buildGuneIndustrialAgents(): Agent[] {
         planetId: 'gune',
         facilities: [l1, l2],
         storage: makeStorage({ planetId: 'gune', id: 'gune-timber-storage', name: 'Gune Timber Storage' }),
-        tenancies: [forestId],
     });
 
     const fp1 = foodProcessingPlant('gune', 'gune-foods-plant');
@@ -373,20 +306,7 @@ function buildGuneIndustrialAgents(): Agent[] {
     ];
 }
 
-const icedoniaCoalClaims: ResourceClaim[] = [];
-
-function buildIcedoniaIndustrialAgents(): Agent[] {
-    const coalId = 'icedonia-coal-polar-energy';
-    icedoniaCoalClaims.push(
-        makeClaim({
-            id: coalId,
-            type: coalDepositResourceType,
-            quantity: 60000,
-            tenantAgentId: 'icedonia-polar-energy',
-            tenantCostInCoins: 60,
-            renewable: false,
-        }),
-    );
+function buildIcedoniaIndustrialAgents(): import('../planet/planet').Agent[] {
     const c1 = coalMine('icedonia', 'icedonia-polar-coal-mine');
     c1.scale = 60;
     c1.maxScale = 60;
@@ -400,7 +320,6 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
         planetId: 'icedonia',
         facilities: [c1, c2],
         storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
-        tenancies: [coalId],
     });
 
     const fp1 = foodProcessingPlant('icedonia', 'icedonia-food-plant');
@@ -500,20 +419,7 @@ function buildIcedoniaIndustrialAgents(): Agent[] {
     return [energyAgent, consumerAgent, adminAgent, logisticsAgent, groceryAgent, retailAgent, hospitalAgent];
 }
 
-const pandaraIronClaims: ResourceClaim[] = [];
-
-function buildPandaraIndustrialAgents(): Agent[] {
-    const ironId = 'pandara-iron-pandara-steel';
-    pandaraIronClaims.push(
-        makeClaim({
-            id: ironId,
-            type: ironOreDepositResourceType,
-            quantity: 200000,
-            tenantAgentId: 'pandara-steel-works',
-            tenantCostInCoins: 200,
-            renewable: false,
-        }),
-    );
+function buildPandaraIndustrialAgents(): import('../planet/planet').Agent[] {
     const i1 = ironExtractionFacility('pandara', 'pandara-steel-iron');
     i1.scale = 200;
     i1.maxScale = 200;
@@ -527,7 +433,6 @@ function buildPandaraIndustrialAgents(): Agent[] {
         planetId: 'pandara',
         facilities: [i1, i2],
         storage: makeStorage({ planetId: 'pandara', id: 'pandara-steel-storage', name: 'Pandara Steel Storage' }),
-        tenancies: [ironId],
     });
 
     const fp1 = foodProcessingPlant('pandara', 'pandara-food-plant');
@@ -641,21 +546,7 @@ function buildPandaraIndustrialAgents(): Agent[] {
     ];
 }
 
-const paradiesOilClaims: ResourceClaim[] = [];
-const paradiesSandClaims: ResourceClaim[] = [];
-
-function buildParadiesIndustrialAgents(): Agent[] {
-    const oilId = 'paradies-oil-paradies-refinery';
-    paradiesOilClaims.push(
-        makeClaim({
-            id: oilId,
-            type: oilReservoirResourceType,
-            quantity: 100000,
-            tenantAgentId: 'paradies-refinery',
-            tenantCostInCoins: 200,
-            renewable: false,
-        }),
-    );
+function buildParadiesIndustrialAgents(): import('../planet/planet').Agent[] {
     const or1 = oilWell('paradies', 'paradies-oil-well');
     or1.scale = 100;
     or1.maxScale = 100;
@@ -673,20 +564,8 @@ function buildParadiesIndustrialAgents(): Agent[] {
             id: 'paradies-refinery-storage',
             name: 'Paradies Refinery Storage',
         }),
-        tenancies: [oilId],
     });
 
-    const sandId = 'paradies-sand-glass-works';
-    paradiesSandClaims.push(
-        makeClaim({
-            id: sandId,
-            type: sandDepositResourceType,
-            quantity: 80000,
-            tenantAgentId: 'paradies-glass-works',
-            tenantCostInCoins: 40,
-            renewable: true,
-        }),
-    );
     const gl1 = glassFactory('paradies', 'paradies-glass-factory');
     gl1.scale = 30;
     gl1.maxScale = 30;
@@ -697,7 +576,6 @@ function buildParadiesIndustrialAgents(): Agent[] {
         planetId: 'paradies',
         facilities: [gl1],
         storage: makeStorage({ planetId: 'paradies', id: 'paradies-glass-storage', name: 'Paradies Glass Storage' }),
-        tenancies: [sandId],
     });
 
     const fp1 = foodProcessingPlant('paradies', 'paradies-food-plant');
@@ -806,20 +684,7 @@ function buildParadiesIndustrialAgents(): Agent[] {
     ];
 }
 
-const suerteCopperClaims: ResourceClaim[] = [];
-
-function buildSuerteIndustrialAgents(): Agent[] {
-    const copperId = 'suerte-copper-suerte-mining';
-    suerteCopperClaims.push(
-        makeClaim({
-            id: copperId,
-            type: copperDepositResourceType,
-            quantity: 120000,
-            tenantAgentId: 'suerte-copper-mining',
-            tenantCostInCoins: 120,
-            renewable: false,
-        }),
-    );
+function buildSuerteIndustrialAgents(): import('../planet/planet').Agent[] {
     const cm1 = copperMine('suerte', 'suerte-copper-mine');
     cm1.scale = 120;
     cm1.maxScale = 120;
@@ -833,7 +698,6 @@ function buildSuerteIndustrialAgents(): Agent[] {
         planetId: 'suerte',
         facilities: [cm1, cs1],
         storage: makeStorage({ planetId: 'suerte', id: 'suerte-copper-storage', name: 'Suerte Copper Storage' }),
-        tenancies: [copperId],
     });
 
     const cem1 = cementPlant('suerte', 'suerte-cement-plant');
@@ -942,7 +806,7 @@ function buildSuerteIndustrialAgents(): Agent[] {
     ];
 }
 
-export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
+export function buildSmallPlanets(): { planet: Planet; agents: import('../planet/planet').Agent[] }[] {
     return [
         buildSmallPlanet({
             id: 'gune',
@@ -955,15 +819,10 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             agriCompanies: [
                 { id: 'gune-harvest-co', name: 'Gune Harvest Co', arableLand: 8000, waterSource: 8000 },
                 { id: 'gune-soil-works', name: 'Gune Soil Works', arableLand: 5000, waterSource: 5000 },
-                {
-                    id: 'gune-valley-crops',
-                    name: 'Gune Valley Crops',
-                    arableLand: 4000,
-                    waterSource: 4000,
-                },
+                { id: 'gune-valley-crops', name: 'Gune Valley Crops', arableLand: 4000, waterSource: 4000 },
             ],
+            extraPools: [{ resource: forestResourceType, quantity: 50000, renewable: true }],
             industrialAgents: buildGuneIndustrialAgents(),
-            extraResources: { [forestResourceType.name]: guneForestClaims },
             infrastructure: {
                 primarySchools: 30,
                 secondarySchools: 15,
@@ -994,15 +853,10 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             govAgriScale: 5,
             agriCompanies: [
                 { id: 'icedonia-polar-farms', name: 'Polar Farms', arableLand: 5000, waterSource: 5000 },
-                {
-                    id: 'icedonia-frost-ag',
-                    name: 'Frost Agriculture',
-                    arableLand: 3000,
-                    waterSource: 3000,
-                },
+                { id: 'icedonia-frost-ag', name: 'Frost Agriculture', arableLand: 3000, waterSource: 3000 },
             ],
+            extraPools: [{ resource: coalDepositResourceType, quantity: 200000, renewable: false }],
             industrialAgents: buildIcedoniaIndustrialAgents(),
-            extraResources: { [coalDepositResourceType.name]: icedoniaCoalClaims },
             infrastructure: {
                 primarySchools: 15,
                 secondarySchools: 8,
@@ -1029,33 +883,13 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             govAgriScale: 50,
             agriCompanies: [
                 { id: 'pandara-green-delta', name: 'Green Delta', arableLand: 30000, waterSource: 30000 },
-                {
-                    id: 'pandara-river-farms',
-                    name: 'River Farms Pandara',
-                    arableLand: 25000,
-                    waterSource: 25000,
-                },
-                {
-                    id: 'pandara-sunleaf',
-                    name: 'Sunleaf Agriculture',
-                    arableLand: 20000,
-                    waterSource: 20000,
-                },
-                {
-                    id: 'pandara-crop-union',
-                    name: 'Pandara Crop Union',
-                    arableLand: 15000,
-                    waterSource: 15000,
-                },
-                {
-                    id: 'pandara-harvest-guild',
-                    name: 'Harvest Guild Pandara',
-                    arableLand: 10000,
-                    waterSource: 10000,
-                },
+                { id: 'pandara-river-farms', name: 'River Farms Pandara', arableLand: 25000, waterSource: 25000 },
+                { id: 'pandara-sunleaf', name: 'Sunleaf Agriculture', arableLand: 20000, waterSource: 20000 },
+                { id: 'pandara-crop-union', name: 'Pandara Crop Union', arableLand: 15000, waterSource: 15000 },
+                { id: 'pandara-harvest-guild', name: 'Harvest Guild Pandara', arableLand: 10000, waterSource: 10000 },
             ],
+            extraPools: [{ resource: ironOreDepositResourceType, quantity: 500000, renewable: false }],
             industrialAgents: buildPandaraIndustrialAgents(),
-            extraResources: { [ironOreDepositResourceType.name]: pandaraIronClaims },
             infrastructure: {
                 primarySchools: 200,
                 secondarySchools: 100,
@@ -1086,30 +920,15 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             govAgriScale: 15,
             agriCompanies: [
                 { id: 'paradies-eden-farms', name: 'Eden Farms', arableLand: 20000, waterSource: 20000 },
-                {
-                    id: 'paradies-blossom-ag',
-                    name: 'Blossom Agriculture',
-                    arableLand: 15000,
-                    waterSource: 15000,
-                },
-                {
-                    id: 'paradies-golden-fields',
-                    name: 'Golden Fields Paradies',
-                    arableLand: 10000,
-                    waterSource: 10000,
-                },
-                {
-                    id: 'paradies-sun-harvest',
-                    name: 'Paradies Sun Harvest',
-                    arableLand: 8000,
-                    waterSource: 8000,
-                },
+                { id: 'paradies-blossom-ag', name: 'Blossom Agriculture', arableLand: 15000, waterSource: 15000 },
+                { id: 'paradies-golden-fields', name: 'Golden Fields Paradies', arableLand: 10000, waterSource: 10000 },
+                { id: 'paradies-sun-harvest', name: 'Paradies Sun Harvest', arableLand: 8000, waterSource: 8000 },
+            ],
+            extraPools: [
+                { resource: oilReservoirResourceType, quantity: 300000, renewable: false },
+                { resource: sandDepositResourceType, quantity: 200000, renewable: false },
             ],
             industrialAgents: buildParadiesIndustrialAgents(),
-            extraResources: {
-                [oilReservoirResourceType.name]: paradiesOilClaims,
-                [sandDepositResourceType.name]: paradiesSandClaims,
-            },
             infrastructure: {
                 primarySchools: 60,
                 secondarySchools: 30,
@@ -1137,33 +956,13 @@ export function buildSmallPlanets(): { planet: Planet; agents: Agent[] }[] {
             totalWater: 100000,
             govAgriScale: 30,
             agriCompanies: [
-                {
-                    id: 'suerte-lucky-harvest',
-                    name: 'Lucky Harvest',
-                    arableLand: 25000,
-                    waterSource: 25000,
-                },
-                {
-                    id: 'suerte-fortune-farms',
-                    name: 'Fortune Farms',
-                    arableLand: 20000,
-                    waterSource: 20000,
-                },
-                {
-                    id: 'suerte-oasis-ag',
-                    name: 'Oasis Agriculture',
-                    arableLand: 15000,
-                    waterSource: 15000,
-                },
-                {
-                    id: 'suerte-sunrise-crops',
-                    name: 'Sunrise Crops',
-                    arableLand: 10000,
-                    waterSource: 10000,
-                },
+                { id: 'suerte-lucky-harvest', name: 'Lucky Harvest', arableLand: 25000, waterSource: 25000 },
+                { id: 'suerte-fortune-farms', name: 'Fortune Farms', arableLand: 20000, waterSource: 20000 },
+                { id: 'suerte-oasis-ag', name: 'Oasis Agriculture', arableLand: 15000, waterSource: 15000 },
+                { id: 'suerte-sunrise-crops', name: 'Sunrise Crops', arableLand: 10000, waterSource: 10000 },
             ],
+            extraPools: [{ resource: copperDepositResourceType, quantity: 300000, renewable: false }],
             industrialAgents: buildSuerteIndustrialAgents(),
-            extraResources: { [copperDepositResourceType.name]: suerteCopperClaims },
             infrastructure: {
                 primarySchools: 100,
                 secondarySchools: 50,

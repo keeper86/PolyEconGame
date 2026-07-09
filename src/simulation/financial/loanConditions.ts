@@ -19,10 +19,11 @@ export function computeLoanConditions(
     const existingLoans = totalOutstandingLoans(assets?.activeLoans ?? []);
 
     const lastMonthlyRevenue = assets?.lastMonthAcc.revenue ?? 0;
-    const lastMonthlyExpenses =
-        (assets?.lastMonthAcc.wages ?? 0) +
-        (assets?.lastMonthAcc.purchases ?? 0) +
-        (assets?.lastMonthAcc.claimPayments ?? 0);
+    const lastMonthlyWages = assets?.lastMonthAcc.wages ?? 0;
+    const lastMonthlyPurchases = assets?.lastMonthAcc.purchases ?? 0;
+    const lastMonthlyClaimPayments = assets?.lastMonthAcc.claimPayments ?? 0;
+
+    const lastMonthlyExpenses = lastMonthlyWages + lastMonthlyPurchases + lastMonthlyClaimPayments;
 
     const monthlyNetCashFlow = lastMonthlyRevenue - lastMonthlyExpenses;
 
@@ -62,7 +63,9 @@ export function computeLoanConditions(
         maxLoanAmount: Math.floor(maxLoanAmount),
         annualInterestRate,
         existingLoans,
-        lastMonthlyExpenses: lastMonthlyExpenses,
+        lastMonthlyWages,
+        lastMonthlyPurchases,
+        lastMonthlyClaimPayments,
         lastMonthlyRevenue: lastMonthlyRevenue,
         monthlyNetCashFlow,
         storageCollateral,

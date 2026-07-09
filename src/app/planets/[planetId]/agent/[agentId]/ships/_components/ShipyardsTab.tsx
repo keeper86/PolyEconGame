@@ -5,9 +5,9 @@ import { useTRPC } from '@/lib/trpc';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
+import { BuildCard } from '../../production/_component/BuildCard';
 import { ShipyardBuildSection } from './ShipyardBuildSection';
 import { ActiveShipyardCard } from './ActiveShipyardCard';
-import { UnderConstructionCard } from '../../production/_component/UnderConstructionCard';
 
 export function ShipyardsTab({
     agentId,
@@ -45,7 +45,17 @@ export function ShipyardsTab({
             <div className='flex flex-row gap-3 flex-wrap'>
                 {shipConstructionFacilities.map((sy) => {
                     if (sy.construction !== null) {
-                        return <UnderConstructionCard key={sy.id} facility={sy} />;
+                        return (
+                            <BuildCard
+                                key={sy.id}
+                                facility={sy}
+                                agentId={agentId}
+                                planetId={planetId}
+                                constructionServicePrice={constructionServicePrice ?? 0}
+                                onBuilt={() => {}}
+                                onCancel={() => {}}
+                            />
+                        );
                     }
                     return <ActiveShipyardCard key={sy.id} facility={sy} agentId={agentId} planetId={planetId} />;
                 })}

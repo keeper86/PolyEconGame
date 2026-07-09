@@ -1,6 +1,5 @@
 'use client';
 
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { useGameConfig } from '@/components/client/GameConfigContext';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { mapTickToDate } from '@/components/client/TickDisplay';
@@ -18,64 +17,21 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useMutation } from '@tanstack/react-query';
-import { Clock, HardHat, Timer } from 'lucide-react';
+import { Clock, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
-import { FacilityCardShell } from './FacilityCardShell';
-import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 
-export function UnderConstructionCard({ facility }: { facility: Facility }): React.ReactElement {
-    const cs = facility.construction!;
-    const pct =
-        cs.totalConstructionServiceRequired > 0
-            ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
-            : 0;
-
-    return (
-        <FacilityCardShell
-            contentClassName='flex flex-col flex-1 gap-2'
-            icon={
-                facility.type === 'ship_construction' ? (
-                    <FacilityOrShipIcon
-                        facilityOrShipName={'Shipyard'}
-                        buildProgress={pct / 100}
-                        suffix={String(facility.scale)}
-                    />
-                ) : (
-                    <FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />
-                )
-            }
-            headerContent={
-                <>
-                    <div className='flex flex-col items-center gap-2'>
-                        <h3 className='font-semibold leading-tight mb-2'>{facility.name}</h3>
-                        <Badge
-                            variant='secondary'
-                            className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
-                        >
-                            <HardHat className='h-2.5 w-2.5' />
-                            Under Construction
-                        </Badge>
-                    </div>
-                </>
-            }
-        >
-            <UnderConstructionCompactRow facility={facility} />
-        </FacilityCardShell>
-    );
-}
-
-export function UnderConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
+export function ConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
@@ -89,10 +45,10 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
             onSuccess: () => {
                 // Remove any optimistic build overlay for this facility
                 removeOverlay(agentId, planetId, facility.id);
-                // Add a cancel overlay to hide the facility immediately,
-                // whether it's real or optimistic. The next snapshot will
-                // confirm the cancel and resolveOverlays will GC this.
-                addOverlay({ type: 'facilityCancelled', agentId, planetId, facilityId: facility.id });
+
+                if (facility.maxScale === 0) {
+                    addOverlay({ type: 'facilityCancelled', agentId, planetId, facilityId: facility.id });
+                }
             },
         }),
     );
@@ -172,7 +128,7 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
 
                 <RiArrowRightBoxFill className={`shrink-0 h-8 w-8 text-muted-foreground`} />
 
-                <div className='flex flex-wrap gap-1.5 px-6 justify-center'>
+                <div className='flex flex-wrap gap-1.5 sm:pl-4 justify-center'>
                     <div className='flex flex-row w-full justify-between text-xs text-muted-foreground mb-1'>
                         <Badge
                             variant='secondary'
@@ -194,7 +150,6 @@ export function UnderConstructionCompactRow({ facility }: { facility: Facility }
             </div>
 
             <div className='mt-auto space-y-2'>
-                <Separator />
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button

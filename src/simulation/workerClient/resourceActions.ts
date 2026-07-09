@@ -1,34 +1,8 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { ResourceClaim } from '../planet/claims';
-import { mergeClaimBackIntoPool } from '../planet/claims';
+import { leaseClaim, mergeClaimBackIntoPool } from '../planet/claims';
 import type { GameState } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
-
-function chargeUpfrontCost(
-    state: GameState,
-    agentId: string,
-    planetId: string,
-    resourceName: string,
-    quantity: number,
-    isRenewable: boolean,
-): number | null {
-    const costAmount = Math.floor(quantity * 1);
-    const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
-    const agentAssets = state.agents.get(agentId)?.assets[planetId];
-    const planet = state.planets.get(planetId);
-    if (!agentAssets || !planet) {
-        return null;
-    }
-    if (agentAssets.deposits < upfrontCost) {
-        return null;
-    }
-    agentAssets.deposits -= upfrontCost;
-    const govAssets = state.agents.get(planet.governmentId)?.assets[planetId];
-    if (govAssets) {
-        govAssets.deposits += upfrontCost;
-    }
-    return upfrontCost;
-}
 
 export function handleLeaseClaim(
     state: GameState,
@@ -36,103 +10,20 @@ export function handleLeaseClaim(
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
     const { requestId, agentId, planetId, resourceName, quantity } = action;
-    const agent = state.agents.get(agentId);
-    const planet = state.planets.get(planetId);
-    if (!agent || !planet) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Agent or planet not found' });
-        return;
-    }
-    if (!agent.assets[planetId]) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: `Agent has no assets on planet '${planetId}'` });
+
+    if (quantity <= 0) {
+        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Quantity must be positive' });
         return;
     }
 
-    const entry = planet.resources[resourceName];
-    if (!entry) {
-        safePostMessage({
-            type: 'claimLeaseFailed',
-            requestId,
-            reason: `Resource '${resourceName}' not found on planet`,
-        });
-        return;
-    }
-    const { pool, claims } = entry;
-
-    if (pool.maximumCapacity < quantity) {
-        safePostMessage({
-            type: 'claimLeaseFailed',
-            requestId,
-            reason: `Not enough untenanted ${resourceName} — requested ${quantity}, available ${pool.maximumCapacity}`,
-        });
-        return;
-    }
-    const claimId = `${planetId}-${resourceName}-${agentId}`;
-
-    const existingClaim = claims.find((e) => e.id === claimId && e.tenantAgentId === agentId);
-    if (existingClaim) {
-        const ratio = quantity / pool.maximumCapacity;
-        const isRenewable = existingClaim.regenerationRate > 0;
-        const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, quantity, isRenewable);
-        if (charged === null) {
-            const costAmount = Math.floor(quantity * 1);
-            const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
-            safePostMessage({
-                type: 'claimLeaseFailed',
-                requestId,
-                reason: `Insufficient deposits — required ${upfrontCost}, available ${agent.assets[planetId]!.deposits}`,
-            });
-            return;
-        }
-        existingClaim.quantity += quantity;
-        existingClaim.maximumCapacity += quantity;
-        existingClaim.regenerationRate += pool.regenerationRate * ratio;
-        if (isRenewable) {
-            existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
-        } else {
-            existingClaim.tenantCostInCoins = Math.floor(existingClaim.maximumCapacity * 1);
-        }
-        pool.quantity -= quantity;
-        pool.regenerationRate -= pool.regenerationRate * ratio;
-        pool.maximumCapacity -= quantity;
-        agent.assets[planetId]!.monthAcc.claimPayments += charged;
-        console.log(`[worker] Agent '${agentId}' expanded claim '${claimId}' by ${quantity} on planet '${planetId}'`);
-        safePostMessage({ type: 'claimLeased', requestId, agentId, claimId });
+    const result = leaseClaim(state, agentId, planetId, resourceName, quantity);
+    if (!result.ok) {
+        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: result.reason });
         return;
     }
 
-    const ratio = quantity / pool.maximumCapacity;
-    const isRenewable = pool.regenerationRate > 0;
-    const costAmount = Math.floor(quantity * 1);
-    const charged = chargeUpfrontCost(state, agentId, planetId, resourceName, quantity, isRenewable);
-    if (charged === null) {
-        const upfrontCost = isRenewable ? costAmount * TICKS_PER_MONTH : costAmount;
-        safePostMessage({
-            type: 'claimLeaseFailed',
-            requestId,
-            reason: `Insufficient deposits — required ${upfrontCost}, available ${agent.assets[planetId]!.deposits}`,
-        });
-        return;
-    }
-    const newClaim: ResourceClaim = {
-        id: claimId,
-        resource: pool.resource,
-        quantity,
-        regenerationRate: pool.regenerationRate * ratio,
-        maximumCapacity: quantity,
-        tenantAgentId: agentId,
-        tenantCostInCoins: isRenewable ? 0 : costAmount,
-        costPerTick: isRenewable ? costAmount : 0,
-        claimStatus: 'active',
-        noticePeriodEndsAtTick: null,
-        pausedTicksThisYear: 0,
-    };
-    pool.quantity -= quantity;
-    pool.regenerationRate -= newClaim.regenerationRate;
-    pool.maximumCapacity -= quantity;
-    claims.push(newClaim);
-    agent.assets[planetId]!.monthAcc.claimPayments += charged;
     console.log(`[worker] Agent '${agentId}' leased ${quantity} of '${resourceName}' on planet '${planetId}'`);
-    safePostMessage({ type: 'claimLeased', requestId, agentId, claimId });
+    safePostMessage({ type: 'claimLeased', requestId, agentId, claimId: result.claimId });
 }
 
 export function handleQuitClaim(

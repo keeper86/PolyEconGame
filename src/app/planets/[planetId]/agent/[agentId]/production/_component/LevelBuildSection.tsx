@@ -1,126 +1,15 @@
 'use client';
 
-import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { useAddActionOverlay } from '@/hooks/useActionOverlay';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
-import { useTRPC } from '@/lib/trpc';
-import { getFacilityType } from '@/simulation/planet/facility';
-import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
-import { useMutation } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
-import { FacilityCardShell } from './FacilityCardShell';
-import { FacilityConstructionPanel } from './FacilityConstructionPanel';
-import { FacilityIORow } from './FacilityIORow';
-import { WorkerBars } from './WorkerBars';
+import React from 'react';
+import { BuildCard, type Mode } from './BuildCard';
+import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+
+export type { Mode } from './BuildCard';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
-
-export type Mode = { type: 'idle' } | { type: 'selecting' };
-
-function BuildCard({
-    entry,
-    agentId,
-    planetId,
-    constructionServicePrice,
-    onBuilt,
-    onCancel,
-}: {
-    entry: FacilityCatalogEntry;
-    agentId: string;
-    planetId: string;
-    constructionServicePrice: number;
-    onBuilt: () => void;
-    onCancel: () => void;
-}): React.ReactElement {
-    const trpc = useTRPC();
-
-    const { data: financials } = useSimulationQuery(
-        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
-    );
-
-    const facility = useMemo(() => entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID), [entry]);
-    const facilityType = useMemo(() => getFacilityType(facility), [facility]);
-    const [previewScale, setPreviewScale] = useState(1);
-    const addOverlay = useAddActionOverlay();
-    const currentTick = useSimulationTick();
-
-    const buildMutation = useMutation(
-        trpc.buildFacility.mutationOptions({
-            onSuccess: (result) => {
-                addOverlay({
-                    type: 'facilityBuilt',
-                    tickConfirmed: currentTick,
-                    agentId,
-                    planetId,
-                    facilityKey: facility.name,
-                    facilityId: result.facilityId,
-                    targetScale: previewScale,
-                });
-                onBuilt();
-            },
-        }),
-    );
-
-    return (
-        <FacilityCardShell
-            className='max-w-[600px]'
-            contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
-            headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{facility.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                new
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-1'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={facility.scale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
-            }
-        >
-            <div className='flex-1'>
-                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={previewScale} />
-            </div>
-            <div className='mt-auto space-y-2'>
-                <Separator />
-                <FacilityConstructionPanel
-                    facilityType={facilityType}
-                    fromScale={0}
-                    constructionServicePrice={constructionServicePrice}
-                    planetId={planetId}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Building…'
-                    isPending={buildMutation.isPending}
-                    financials={financials}
-                    onCancel={onCancel}
-                    onConfirm={(targetScale) =>
-                        buildMutation.mutate({ agentId, planetId, facilityKey: facility.name, targetScale })
-                    }
-                    onScaleChange={setPreviewScale}
-                />
-            </div>
-        </FacilityCardShell>
-    );
-}
 
 export function LevelBuildSection({
     entries,
@@ -157,11 +46,11 @@ export function LevelBuildSection({
     return (
         <>
             {entries.map((entry) => {
-                const name = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name;
+                const factory = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID);
                 return (
                     <BuildCard
-                        key={name}
-                        entry={entry}
+                        key={factory.name}
+                        entry={factory}
                         agentId={agentId}
                         planetId={planetId}
                         constructionServicePrice={constructionServicePrice}

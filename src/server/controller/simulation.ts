@@ -69,7 +69,9 @@ const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
-    lastMonthlyExpenses: z.number(),
+    lastMonthlyWages: z.number(),
+    lastMonthlyPurchases: z.number(),
+    lastMonthlyClaimPayments: z.number(),
     lastMonthlyRevenue: z.number(),
     monthlyNetCashFlow: z.number(),
     storageCollateral: z.number(),
@@ -591,6 +593,7 @@ export const getAgentHistory = () =>
                     z.object({
                         bucket: z.number(),
                         avgNetBalance: z.number(),
+                        avgAssetValue: z.number(),
                         avgMonthlyNetIncome: z.number(),
                         avgTotalWorkers: z.number(),
                         avgWages: z.number(),
@@ -611,6 +614,7 @@ export const getAgentHistory = () =>
                     .map((r) => ({
                         bucket: Number(r.bucket),
                         avgNetBalance: r.avg_net_balance ?? 0,
+                        avgAssetValue: r.avg_asset_value ?? 0,
                         avgMonthlyNetIncome: r.avg_monthly_net_income ?? 0,
                         avgTotalWorkers: r.avg_total_workers ?? 0,
                         avgWages: r.avg_wages ?? 0,
@@ -640,6 +644,7 @@ export const getAgentFinancialHistory = () =>
                     z.object({
                         bucket: z.number(),
                         avgNetBalance: z.number(),
+                        avgAssetValue: z.number(),
                         avgMonthlyNetIncome: z.number(),
                         avgWages: z.number(),
                         sumPurchases: z.number(),
@@ -665,6 +670,7 @@ export const getAgentFinancialHistory = () =>
                     .map((r) => ({
                         bucket: Number(r.bucket),
                         avgNetBalance: r.avg_net_balance ?? 0,
+                        avgAssetValue: r.avg_asset_value ?? 0,
                         avgMonthlyNetIncome: r.avg_monthly_net_income ?? 0,
                         avgWages: r.avg_wages ?? 0,
                         sumPurchases: r.sum_purchases ?? 0,

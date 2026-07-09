@@ -26,7 +26,7 @@ function mergePairs(rows: ChartRow[]): ChartRow[] {
             if (key === 'age') {
                 continue;
             }
-            merged[key] = (a[key] ?? 0) + (b[key] ?? 0);
+            merged[key] = 0.5 * ((a[key] ?? 0) + (b[key] ?? 0));
         }
         result.push(merged);
     }
