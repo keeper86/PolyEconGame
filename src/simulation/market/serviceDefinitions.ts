@@ -19,27 +19,22 @@ export type ServiceDefinition = {
 
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
 
-// ── Age multiplier functions ──────────────────────────────────────────────────
-
-/** Sigmoid from childhood to adult: low for infants, ramps through teens, 1.0 for adults */
-const standardAgeMultiplier = (age: number, _occ: Occupation): number => {
-    // logistic curve: starts at 0.4, plateaus at 1.0
-    // steepest around age 16
-    return 0.3 + 0.6 / (1 + Math.exp(-(age - 16) / 3));
+const groceryAgeMultiplier = (age: number, _occ: Occupation): number => {
+    return 0.3 + 0.7 / (1 + Math.exp(-(age - 12) / 4));
 };
 
 /** U-shaped: high for children (0-5) and elderly (65+), lower for working-age adults.
  *  Occupation adds flat bonuses: unableToWork +0.3, employed +0.1 */
 const healthcareAgeMultiplier = (age: number, occ: Occupation): number => {
     // Child bump: peak around age 2
-    const childBump = 0.8 * Math.exp(-(((age - 2) / 2) ** 2));
+    const childBump = 1 / (1 + Math.exp(-(5 - age) / 3));
     // Elderly bump: peak around age 75
-    const elderBump = 1.6 * Math.exp(-(((age - 75) / 10) ** 2));
-    let base = 0.6 + childBump + elderBump;
+    const elderBump = 1.2 - 1 / (1 + Math.exp(-(60 - age) / 10));
+    let base = 0.5 + childBump + elderBump;
 
     // Occupation modifiers
     if (occ === 'unableToWork') {
-        base += 0.6;
+        base += 0.5;
     } else if (occ === 'employed') {
         base += 0.2;
     }
@@ -48,16 +43,26 @@ const healthcareAgeMultiplier = (age: number, occ: Occupation): number => {
 };
 
 const logisticsAgeMultiplier = (age: number, occ: Occupation): number => {
+    let occFactor = 1.0;
     if (occ === 'education') {
-        return 0.5;
+        occFactor = 0.5;
     }
-    return 1.0;
+    if (occ === 'employed') {
+        occFactor = 1.3;
+    }
+    if (occ === 'unableToWork') {
+        occFactor = 0.6;
+    }
+    if (occ === 'unoccupied') {
+        occFactor = 0.8;
+    }
+    return occFactor * (0.3 + 0.7 / (1 + Math.exp(-(age - 16) / 3)));
 };
 
 /** Education only for school-age and university-age (5–22) */
-const educationAgeMultiplier = (_age: number, occ: Occupation): number => {
+const educationAgeMultiplier = (age: number, occ: Occupation): number => {
     if (occ === 'education') {
-        return 1.0;
+        return 0.1 + 0.9 / (1 + Math.exp(-(age - 6)));
     }
     return 0.0;
 };
@@ -68,7 +73,7 @@ const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: standardAgeMultiplier,
+    ageMultiplier: groceryAgeMultiplier,
 } as const;
 
 const healthcareDefinition: ServiceDefinition = {
@@ -96,7 +101,7 @@ const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: standardAgeMultiplier,
+    ageMultiplier: groceryAgeMultiplier,
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
