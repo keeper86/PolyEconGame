@@ -7,7 +7,7 @@ import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveFacilityCard } from './ActiveFacilityCard';
 import { BuildCard } from './BuildCard';
@@ -29,7 +29,6 @@ export default function ProductionFacilitiesPanel({
     planetId: string;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
 
     const { data: constructionMarket } = useQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
@@ -38,11 +37,6 @@ export default function ProductionFacilitiesPanel({
         constructionMarket?.market?.clearingPrice ??
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
-
-    const refresh = () =>
-        void queryClient.invalidateQueries({
-            queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-        });
 
     const ownedByName = useMemo(() => {
         const m = new Map<string, ProductionFacility>();
@@ -147,7 +141,7 @@ export default function ProductionFacilitiesPanel({
                                                 agentId={agentId}
                                                 planetId={planetId}
                                                 constructionServicePrice={constructionServicePrice}
-                                                onExpanded={refresh}
+                                                onExpanded={() => {}}
                                             />
                                         );
                                     }

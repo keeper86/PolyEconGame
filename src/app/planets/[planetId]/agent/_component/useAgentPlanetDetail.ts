@@ -59,11 +59,12 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         if (!baseAssets) {
             return;
         }
-        const realIds = new Set<string>(baseAssets.productionFacilities.map((f: ProductionFacility) => f.id));
+        const realFacilities = baseAssets.productionFacilities;
+        const realIds = new Set<string>(realFacilities.map((f: ProductionFacility) => f.id));
         const prev = prevResolvedRef.current;
         if (prev.size !== realIds.size || ![...realIds].every((id) => prev.has(id))) {
             prevResolvedRef.current = realIds;
-            resolveOverlays(agentId, planetId, realIds);
+            resolveOverlays(agentId, planetId, realIds, realFacilities);
         }
     }, [baseAssets, agentId, planetId, resolveOverlays]);
 

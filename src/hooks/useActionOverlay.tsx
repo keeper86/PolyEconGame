@@ -34,6 +34,13 @@ export type ActionOverlay =
           agentId: string;
           planetId: string;
           facilityId: string;
+      }
+    | {
+          type: 'facilityScaleChange';
+          tickConfirmed: number;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
       };
 
 // ── Context ──────────────────────────────────────────────────────────────────
@@ -45,7 +52,12 @@ type OverlayMap = Map<AgentPlanetKey, ActionOverlay[]>;
 interface ActionOverlayContextValue {
     addOverlay: (overlay: ActionOverlay) => void;
     getOverlays: (agentId: string, planetId: string) => ActionOverlay[];
-    resolveOverlays: (agentId: string, planetId: string, resolvedIds: Set<string>) => void;
+    resolveOverlays: (
+        agentId: string,
+        planetId: string,
+        resolvedIds: Set<string>,
+        snapshotFacilities: ProductionFacility[],
+    ) => void;
     removeOverlayByFacilityId: (agentId: string, planetId: string, facilityId: string) => void;
 }
 
@@ -77,37 +89,65 @@ export function ActionOverlayProvider({ children }: { children: React.ReactNode 
         return overlaysRef.current.get(key) ?? [];
     }, []);
 
-    const resolveOverlays = useCallback((agentId: string, planetId: string, resolvedIds: Set<string>) => {
-        const key = `${agentId}|${planetId}`;
-        const current = overlaysRef.current.get(key);
-        if (!current || current.length === 0) {
-            return;
-        }
-        // Remove facilityBuilt overlays whose IDs are in the snapshot (they're now real)
-        // AND remove facilityCancelled overlays whose IDs are NOT in the snapshot
-        // (the cancel has been reflected — nothing left to hide)
-        const remaining = current.filter((o) => {
-            if (o.type === 'facilityBuilt') {
-                return !resolvedIds.has(o.facilityId);
+    const resolveOverlays = useCallback(
+        (agentId: string, planetId: string, resolvedIds: Set<string>, snapshotFacilities: ProductionFacility[]) => {
+            const key = `${agentId}|${planetId}`;
+            const current = overlaysRef.current.get(key);
+            if (!current || current.length === 0) {
+                return;
             }
-            if (o.type === 'facilityCancelled') {
-                // Keep cancels only as long as the facility is still in the snapshot
-                return resolvedIds.has(o.facilityId);
+
+            // Build a set of facility IDs that are under construction in the snapshot
+            const underConstructionIds = new Set<string>();
+            for (const f of snapshotFacilities) {
+                if (f.construction !== null) {
+                    underConstructionIds.add(f.id);
+                }
             }
-            return true;
-        });
-        if (remaining.length === current.length) {
-            return;
-        }
-        const next = new Map(overlaysRef.current);
-        if (remaining.length === 0) {
-            next.delete(key);
-        } else {
-            next.set(key, remaining);
-        }
-        overlaysRef.current = next;
-        setOverlays(next);
-    }, []);
+
+            const remaining = current.filter((o) => {
+                if (o.type === 'facilityBuilt') {
+                    // Remove facilityBuilt overlays whose IDs are now in the snapshot (they're real)
+                    return !resolvedIds.has(o.facilityId);
+                }
+                if (o.type === 'facilityCancelled') {
+                    // Keep cancels only as long as the facility is still in the snapshot
+                    return resolvedIds.has(o.facilityId);
+                }
+                if (o.type === 'facilityExpanded') {
+                    // Remove once the real facility is under construction with the target scale
+                    if (!resolvedIds.has(o.facilityId)) {
+                        return true; // facility doesn't exist yet — keep overlay
+                    }
+                    const real = snapshotFacilities.find((f) => f.id === o.facilityId);
+                    if (real && real.construction !== null) {
+                        return false; // backend has started processing the expansion
+                    }
+                    return true; // still waiting
+                }
+                if (o.type === 'facilityScaleChange') {
+                    // Remove once the facility exists in the snapshot (scale change reflected)
+                    if (resolvedIds.has(o.facilityId)) {
+                        return false;
+                    }
+                    return true;
+                }
+                return true;
+            });
+            if (remaining.length === current.length) {
+                return;
+            }
+            const next = new Map(overlaysRef.current);
+            if (remaining.length === 0) {
+                next.delete(key);
+            } else {
+                next.set(key, remaining);
+            }
+            overlaysRef.current = next;
+            setOverlays(next);
+        },
+        [],
+    );
 
     const removeOverlayByFacilityId = useCallback((agentId: string, planetId: string, facilityId: string) => {
         const key = `${agentId}|${planetId}`;
@@ -183,12 +223,6 @@ function getCancelledIds(overlays: ActionOverlay[]): Set<string> {
     return ids;
 }
 
-/**
- * Applies facilityBuilt overlays to a list of production facilities,
- * then filters out any facility whose ID is in a facilityCancelled overlay.
- *
- * Returns a new array.
- */
 export function applyFacilityOverlays(
     facilities: ProductionFacility[],
     overlays: ActionOverlay[],
@@ -202,6 +236,45 @@ export function applyFacilityOverlays(
         if (!cancelledIds.has(f.id)) {
             result.push(f);
         }
+    }
+
+    // Apply facilityExpanded overlays — set construction on existing facilities
+    for (const overlay of overlays) {
+        if (overlay.type !== 'facilityExpanded') {
+            continue;
+        }
+
+        if (cancelledIds.has(overlay.facilityId)) {
+            continue;
+        }
+
+        // Find the facility in the result array
+        const idx = result.findIndex((f) => f.id === overlay.facilityId);
+        if (idx === -1) {
+            continue;
+        }
+
+        const facility = result[idx];
+
+        // Skip if the real facility already has construction (backend already processed it)
+        if (facility.construction !== null) {
+            continue;
+        }
+
+        const facilityType = getFacilityType(facility);
+        const { cost, time } = calculateCostsForConstruction(facilityType, facility.maxScale, overlay.targetScale);
+
+        // Clone to avoid mutating cache
+        const updated = { ...facility };
+        updated.construction = {
+            type: 'expansion',
+            progress: 0,
+            constructionTargetMaxScale: overlay.targetScale,
+            totalConstructionServiceRequired: cost,
+            maximumConstructionServiceConsumption: cost / time,
+            lastTickInvestedConstructionServices: 0,
+        };
+        result[idx] = updated;
     }
 
     // Add skeleton facilities from facilityBuilt overlays (unless cancelled)
@@ -247,4 +320,17 @@ export function applyFacilityOverlays(
     }
 
     return result;
+}
+
+/**
+ * Checks if there is a pending action overlay (not yet reflected in snapshot) for a given facility.
+ * Used by UI components to show a disabled/pending state while the action is being processed.
+ */
+export function hasPendingOverlay(overlays: ActionOverlay[], facilityId: string): boolean {
+    for (const o of overlays) {
+        if ('facilityId' in o && (o as { facilityId: string }).facilityId === facilityId) {
+            return true;
+        }
+    }
+    return false;
 }

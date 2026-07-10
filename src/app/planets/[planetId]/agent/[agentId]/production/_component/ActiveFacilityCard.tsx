@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useAddActionOverlay, useActionOverlays, hasPendingOverlay } from '@/hooks/useActionOverlay';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
@@ -37,7 +38,6 @@ export function ActiveFacilityCard({
     onExpanded: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
     const [showReduce, setShowReduce] = useState(false);
@@ -60,15 +60,21 @@ export function ActiveFacilityCard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [facility.scale, facility.maxScale]);
 
-    const invalidate = () =>
-        queryClient.invalidateQueries({
-            queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-        });
+    const addOverlay = useAddActionOverlay();
+    const currentTick = useSimulationTick();
+    const actionOverlays = useActionOverlays(agentId, planetId);
 
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
-                void invalidate();
+                addOverlay({
+                    type: 'facilityExpanded',
+                    tickConfirmed: currentTick,
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    targetScale: previewScale,
+                });
                 setShowExpand(false);
                 onExpanded();
             },
@@ -78,7 +84,13 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
-                void invalidate();
+                addOverlay({
+                    type: 'facilityScaleChange',
+                    tickConfirmed: currentTick,
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                });
             },
         }),
     );
@@ -86,7 +98,14 @@ export function ActiveFacilityCard({
     const contractMutation = useMutation(
         trpc.contractFacility.mutationOptions({
             onSuccess: () => {
-                void invalidate();
+                addOverlay({
+                    type: 'facilityExpanded',
+                    tickConfirmed: currentTick,
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    targetScale: reduceTarget,
+                });
                 setShowReduce(false);
                 onExpanded();
             },
@@ -144,6 +163,8 @@ export function ActiveFacilityCard({
         return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
     }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
 
+    const facilityHasPendingOverlay = hasPendingOverlay(actionOverlays, facility.id);
+
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>
             <span className='flex flex-row text-muted-foreground text-xs gap-2'>
@@ -161,7 +182,7 @@ export function ActiveFacilityCard({
                         step={1}
                         value={[scaleFractionIndex]}
                         onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
-                        disabled={setScaleMutation.isPending}
+                        disabled={setScaleMutation.isPending || facilityHasPendingOverlay}
                         className='w-full'
                     />
                     <div className='relative h-3 text-[10px] text-muted-foreground py-2'>
@@ -183,7 +204,7 @@ export function ActiveFacilityCard({
                 <Button
                     size='sm'
                     className='shrink-0 text-xs h-7 w-16'
-                    disabled={setScaleMutation.isPending || !scaleHasChanged}
+                    disabled={setScaleMutation.isPending || !scaleHasChanged || facilityHasPendingOverlay}
                     onClick={() =>
                         setScaleMutation.mutate({
                             agentId,
@@ -245,7 +266,7 @@ export function ActiveFacilityCard({
                 <Link href={`/planets/${planetId}/agent/${agentId}/financial` as never}>
                     <Separator />
 
-                    <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 rounded-sm w-full hover:ring-2 hover:ring-primary/50'>
+                    <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full hover:ring-2 hover:ring-primary/50'>
                         {'revenue' in facility.lastTickResults && (
                             <>
                                 <div className='flex flex-col items-center'>
