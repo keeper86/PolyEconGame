@@ -73,11 +73,19 @@ function readAll(): PendingAction[] {
     if (typeof window === 'undefined') {
         return [];
     }
-    return deserialize(localStorage.getItem(STORAGE_KEY));
+    try {
+        return deserialize(localStorage.getItem(STORAGE_KEY));
+    } catch {
+        return [];
+    }
 }
 
 function writeAll(actions: PendingAction[]): void {
-    localStorage.setItem(STORAGE_KEY, serialize(actions));
+    try {
+        localStorage.setItem(STORAGE_KEY, serialize(actions));
+    } catch {
+        // Silently ignore storage errors (e.g. Safari private mode, quota exceeded)
+    }
 }
 
 // ── Key helpers ──────────────────────────────────────────────────────────────
@@ -230,8 +238,11 @@ export function resolvePendingActions(actions: PendingAction[], facilities: Prod
                 if (!a.facilityId) {
                     return true;
                 }
+                if (a.targetScale == null) {
+                    return true; // cannot verify completion without a target
+                }
                 const f = facilities.find((f) => f.id === a.facilityId);
-                const targetScale = a.targetScale ?? 0;
+                const targetScale = a.targetScale;
                 return !(
                     f?.construction?.constructionTargetMaxScale != null &&
                     f.construction.constructionTargetMaxScale >= targetScale
@@ -250,11 +261,14 @@ export function resolvePendingActions(actions: PendingAction[], facilities: Prod
                 if (!a.facilityId) {
                     return true;
                 }
+                if (a.targetScaleFraction == null) {
+                    return true; // cannot verify completion without a target
+                }
                 const f = facilities.find((f) => f.id === a.facilityId);
                 if (!f || f.maxScale === 0) {
                     return true;
                 }
-                const fraction = a.targetScaleFraction ?? 1;
+                const fraction = a.targetScaleFraction;
                 return Math.abs(f.scale / f.maxScale - fraction) >= 0.01;
             }
             case 'cancel': {

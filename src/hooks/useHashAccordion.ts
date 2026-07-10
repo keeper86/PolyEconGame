@@ -35,7 +35,7 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
 
     const [openItem, setOpenItem] = useState<string | undefined>(() => readHash(fromSlug) ?? undefined);
 
-    // On mount / hash change, open the accordion item matching the URL hash.
+    // On mount, open the accordion item matching the URL hash.
     useEffect(() => {
         const value = readHash(fromSlug);
         if (value) {
@@ -63,7 +63,7 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
             }
         };
         // Wait for the accordion open animation to finish before measuring position.
-        let timeoutId: ReturnType<typeof setTimeout>;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined = undefined;
         const rafId = requestAnimationFrame(() => {
             timeoutId = setTimeout(doScroll, ACCORDION_ANIMATION_DURATION_MS);
         });
