@@ -73,7 +73,6 @@ function makeTooltip(
                         return null;
                     }
                     const ratio = row[`${key}_bufferRatio`] ?? 0;
-                    const effPop = row[`${key}_effectivePop`] ?? 0;
                     return (
                         <div key={key} className='flex items-center gap-1 mt-0.5'>
                             <span
@@ -86,10 +85,6 @@ function makeTooltip(
                             <span className='ml-auto pl-2 text-muted-foreground'>
                                 {(ratio * 100).toFixed(0)}%{' · '}
                                 {formatNumberWithUnit(ratio * bufferTargetTicks, 'days')}
-                                {' · '}
-                                {formatNumberWithUnit(pop, 'persons')}
-                                {' · eff. '}
-                                {formatNumberWithUnit(effPop, 'persons')}
                             </span>
                         </div>
                     );
