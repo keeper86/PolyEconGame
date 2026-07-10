@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, useRemovePendingById } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -40,13 +40,6 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
     const { tickIntervalMs } = useGameConfig();
     const removePendingById = useRemovePendingById();
     const addPending = useAddPendingAction();
-    const pendingActions = usePendingActions(agentId, planetId);
-
-    // Check if there's a pending cancel action for this facility
-    const hasPendingCancel = pendingActions.some(
-        (a) => a.type === 'cancel' && a.facilityId === facility.id,
-    );
-
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
@@ -62,18 +55,6 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
 
     if (!cs) {
         return <div>Error: Facility is not under construction</div>;
-    }
-
-    // If cancel was submitted and we're awaiting the tick, show pending state
-    if (hasPendingCancel) {
-        return (
-            <div className='mt-auto space-y-2 py-2'>
-                <div className='flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground'>
-                    <Spinner className='h-4 w-4' />
-                    <span>Cancellation pending…</span>
-                </div>
-            </div>
-        );
     }
 
     const pct =

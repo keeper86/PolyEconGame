@@ -107,13 +107,16 @@ export function ActiveFacilityCard({
         }),
     );
 
-    // Check pending expand/contract actions for this facility
+    // Check pending expand/contract/cancel actions for this facility
     // These are placed after mutations to avoid temporal dead zone
     const pendingExpandAction = pendingActions.find(
         (a) => a.type === 'expand' && a.facilityId === facility.id,
     );
     const pendingContractAction = pendingActions.find(
         (a) => a.type === 'contract' && a.facilityId === facility.id,
+    );
+    const pendingCancelAction = pendingActions.find(
+        (a) => a.type === 'cancel' && a.facilityId === facility.id,
     );
 
     // If expand is pending (mutation done, awaiting tick), keep the panel visible
@@ -250,6 +253,19 @@ export function ActiveFacilityCard({
     const recyclerColor =
         recyclerRatio < 0.5 ? 'text-red-600' : recyclerRatio < 0.66 ? 'text-amber-600' : 'text-green-600';
 
+    // Determine blocking overlay message for any in-flight or pending action
+    const overlayMessage = expandMutation.isPending
+        ? 'Expanding…'
+        : expandPending
+          ? 'Awaiting tick…'
+          : contractMutation.isPending
+            ? 'Reducing…'
+            : contractPending
+              ? 'Awaiting tick…'
+              : pendingCancelAction
+                ? 'Cancellation pending…'
+                : null;
+
     return (
         <FacilityCardShell
             contentClassName='flex flex-col flex-1 gap-2'
@@ -344,176 +360,190 @@ export function ActiveFacilityCard({
 
                     <Separator />
                 </Link>
-                <div></div>
-                {facility.construction ? null : showExpand || expandPending ? (
-                    <FacilityConstructionPanel
-                        facilityType={facilityType}
-                        fromScale={facility.maxScale}
-                        constructionServicePrice={constructionServicePrice}
-                        planetId={planetId}
-                        label='Expand to scale'
-                        confirmLabel='Confirm Expand'
-                        pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting tick…'}
-                        isPending={expandMutation.isPending || expandPending}
-                        financials={financials}
-                        onCancel={() => setShowExpand(false)}
-                        onConfirm={(targetScale) => {
-                            addPending({
-                                type: 'expand',
-                                agentId,
-                                planetId,
-                                facilityId: facility.id,
-                                targetScale,
-                                triggerTick: currentTick,
-                            });
-                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale });
-                        }}
-                        onScaleChange={setPreviewScale}
-                    />
-                ) : showReduce || contractPending ? (
-                    <div className='space-y-2'>
-                        <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
-                        <Slider
-                            min={0}
-                            max={Math.max(0, reduceOptions.length - 1)}
-                            step={1}
-                            value={[currentReduceIndex]}
-                            onValueChange={([v]) => {
-                                const target = reduceOptions[v ?? 0];
-                                if (target !== undefined) {
-                                    setReduceTarget(target);
-                                }
-                            }}
-                            disabled={contractMutation.isPending}
-                            className='w-full'
-                        />
-                        <div className='relative h-4 text-[10px] text-muted-foreground'>
-                            {reduceOptions.map((v, i) => {
-                                const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
-                                const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
-                                return (
-                                    <span
-                                        key={v}
-                                        className='absolute'
-                                        style={{
-                                            left: `${pct}%`,
-                                            transform: `translateX(${translate})`,
-                                        }}
-                                    >
-                                        {formatNumberWithUnit(v, 'none')}
-                                    </span>
-                                );
-                            })}
-                        </div>
 
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
-                            <div className='grid grid-cols-1 gap-y-1'>
-                                <Stat
-                                    label='Reduced capacity'
-                                    value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
-                                    icon={<TrendingDown className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Estimated price'
-                                    value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
-                                    icon={<TrendingUp className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Efficiency'
-                                    value={Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) + '%'}
-                                    icon={<Clock className='h-3 w-3' />}
-                                    valueClassName={recyclerColor}
-                                />
-                            </div>
-                            <div className='grid grid-cols-1 gap-y-1'>
-                                <Stat
-                                    label='Deposits'
-                                    value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
-                                    icon={<Wallet className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Monthly cash flow'
-                                    value={formatNumberWithUnit(financials?.monthlyNetCashFlow, 'currency', planetId)}
-                                    icon={<Percent className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Loans'
-                                    value={formatNumberWithUnit(0, 'currency', planetId)}
-                                    icon={<TrendingDown className='h-3 w-3' />}
-                                />
-                            </div>
-                        </div>
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                variant='outline'
-                                className='flex-1 text-xs'
-                                onClick={() => setShowReduce(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                size='sm'
-                                className='flex-1 text-xs'
-                                disabled={contractMutation.isPending}
-                                onClick={() => {
+                <div className='relative'>
+                    <div className='space-y-2'>
+                        {facility.construction ? null : showExpand || expandPending ? (
+                            <FacilityConstructionPanel
+                                facilityType={facilityType}
+                                fromScale={facility.maxScale}
+                                constructionServicePrice={constructionServicePrice}
+                                planetId={planetId}
+                                label='Expand to scale'
+                                confirmLabel='Confirm Expand'
+                                pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting tick…'}
+                                isPending={expandMutation.isPending || expandPending}
+                                financials={financials}
+                                onCancel={() => setShowExpand(false)}
+                                onConfirm={(targetScale) => {
                                     addPending({
-                                        type: 'contract',
+                                        type: 'expand',
                                         agentId,
                                         planetId,
                                         facilityId: facility.id,
-                                        targetScale: reduceTarget,
+                                        targetScale,
                                         triggerTick: currentTick,
                                     });
-                                    contractMutation.mutate({
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        targetScale: reduceTarget,
-                                    });
+                                    expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale });
                                 }}
-                            >
-                                <span
-                                    className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
-                                >
-                                    {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
-                                </span>
-                            </Button>
-                        </div>
+                                onScaleChange={setPreviewScale}
+                            />
+                        ) : showReduce || contractPending ? (
+                            <div className='space-y-2'>
+                                <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
+                                <Slider
+                                    min={0}
+                                    max={Math.max(0, reduceOptions.length - 1)}
+                                    step={1}
+                                    value={[currentReduceIndex]}
+                                    onValueChange={([v]) => {
+                                        const target = reduceOptions[v ?? 0];
+                                        if (target !== undefined) {
+                                            setReduceTarget(target);
+                                        }
+                                    }}
+                                    disabled={contractMutation.isPending}
+                                    className='w-full'
+                                />
+                                <div className='relative h-4 text-[10px] text-muted-foreground'>
+                                    {reduceOptions.map((v, i) => {
+                                        const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
+                                        const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
+                                        return (
+                                            <span
+                                                key={v}
+                                                className='absolute'
+                                                style={{
+                                                    left: `${pct}%`,
+                                                    transform: `translateX(${translate})`,
+                                                }}
+                                            >
+                                                {formatNumberWithUnit(v, 'none')}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
+                                    <div className='grid grid-cols-1 gap-y-1'>
+                                        <Stat
+                                            label='Reduced capacity'
+                                            value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
+                                            icon={<TrendingDown className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Estimated price'
+                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
+                                            icon={<TrendingUp className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Efficiency'
+                                            value={Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) + '%'}
+                                            icon={<Clock className='h-3 w-3' />}
+                                            valueClassName={recyclerColor}
+                                        />
+                                    </div>
+                                    <div className='grid grid-cols-1 gap-y-1'>
+                                        <Stat
+                                            label='Deposits'
+                                            value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
+                                            icon={<Wallet className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Monthly cash flow'
+                                            value={formatNumberWithUnit(financials?.monthlyNetCashFlow, 'currency', planetId)}
+                                            icon={<Percent className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Loans'
+                                            value={formatNumberWithUnit(0, 'currency', planetId)}
+                                            icon={<TrendingDown className='h-3 w-3' />}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex gap-2'>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        className='flex-1 text-xs'
+                                        onClick={() => setShowReduce(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        className='flex-1 text-xs'
+                                        disabled={contractMutation.isPending}
+                                        onClick={() => {
+                                            addPending({
+                                                type: 'contract',
+                                                agentId,
+                                                planetId,
+                                                facilityId: facility.id,
+                                                targetScale: reduceTarget,
+                                                triggerTick: currentTick,
+                                            });
+                                            contractMutation.mutate({
+                                                agentId,
+                                                planetId,
+                                                facilityId: facility.id,
+                                                targetScale: reduceTarget,
+                                            });
+                                        }}
+                                    >
+                                        <span
+                                            className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
+                                        >
+                                            {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
+                                        </span>
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {operatingScaleSection}
+                                <Separator />
+                                <div className='flex gap-2 pt-1'>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        className='flex-1 text-xs gap-1'
+                                        disabled={facility.construction !== null}
+                                        onClick={() => {
+                                            setPreviewScale(facility.maxScale + 1);
+                                            setShowReduce(false);
+                                            setShowExpand(true);
+                                        }}
+                                    >
+                                        Expand facility
+                                    </Button>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        className='flex-1 text-xs gap-1'
+                                        disabled={facility.maxScale <= 1}
+                                        onClick={() => {
+                                            setShowExpand(false);
+                                            setShowReduce(true);
+                                        }}
+                                    >
+                                        Reduce capacity
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
-                ) : (
-                    <>
-                        {operatingScaleSection}
-                        <Separator />
-                        <div className='flex gap-2 pt-1'>
-                            <Button
-                                variant='outline'
-                                size='sm'
-                                className='flex-1 text-xs gap-1'
-                                disabled={facility.construction !== null}
-                                onClick={() => {
-                                    setPreviewScale(facility.maxScale + 1);
-                                    setShowReduce(false);
-                                    setShowExpand(true);
-                                }}
-                            >
-                                Expand facility
-                            </Button>
-                            <Button
-                                variant='outline'
-                                size='sm'
-                                className='flex-1 text-xs gap-1'
-                                disabled={facility.maxScale <= 1}
-                                onClick={() => {
-                                    setShowExpand(false);
-                                    setShowReduce(true);
-                                }}
-                            >
-                                Reduce capacity
-                            </Button>
+
+                    {/* Blocking overlay only over the action controls (not the revenue row) */}
+                    {overlayMessage && (
+                        <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
+                            <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                <Spinner className='h-4 w-4' />
+                                {overlayMessage}
+                            </span>
                         </div>
-                    </>
-                )}
+                    )}
+                </div>
             </div>
             {facility.construction !== null && <ConstructionCompactRow facility={facility} />}
         </FacilityCardShell>

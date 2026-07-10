@@ -4,7 +4,7 @@ import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityO
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, useRemovePendingByKey } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, usePendingActions, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
@@ -64,6 +64,13 @@ function BuildForm({
     const awaitingTick = isPending && !buildMutation.isPending;
     const sending = buildMutation.isPending;
 
+    // Overlay message for pending states
+    const overlayMessage = awaitingTick
+        ? 'Awaiting tick…'
+        : sending
+          ? 'Sending build…'
+          : null;
+
     return (
         <FacilityCardShell
             className='max-w-[600px]'
@@ -97,51 +104,42 @@ function BuildForm({
             <div className='flex-1'>
                 <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
             </div>
+            <div className='relative mt-auto space-y-2'>
+                <Separator />
+                <FacilityConstructionPanel
+                    facilityType={facilityType}
+                    fromScale={0}
+                    constructionServicePrice={constructionServicePrice}
+                    planetId={planetId}
+                    label='Build at scale'
+                    confirmLabel='Build'
+                    pendingLabel='Sending build…'
+                    isPending={sending}
+                    financials={financials}
+                    onCancel={onCancel}
+                    onConfirm={(targetScale) => {
+                        addPending({
+                            type: 'build',
+                            agentId,
+                            planetId,
+                            facilityKey: entry.name,
+                            triggerTick: currentTick,
+                        });
+                        buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
+                    }}
+                    onScaleChange={setPreviewScale}
+                />
 
-            {/* Pending state overlay (awaiting tick) */}
-            {awaitingTick && (
-                <div className='mt-auto space-y-2'>
-                    <Separator />
-                    <div className='flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground'>
-                        <Spinner className='h-4 w-4' />
-                        <span>Awaiting tick…</span>
+                {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
+                {overlayMessage && (
+                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
+                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                            <Spinner className='h-4 w-4' />
+                            {overlayMessage}
+                        </span>
                     </div>
-                </div>
-            )}
-
-            {/* Build form (only show when not awaiting tick) */}
-            {!awaitingTick && (
-                <div className='mt-auto space-y-2'>
-                    <Separator />
-                    <FacilityConstructionPanel
-                        facilityType={facilityType}
-                        fromScale={0}
-                        constructionServicePrice={constructionServicePrice}
-                        planetId={planetId}
-                        label='Build at scale'
-                        confirmLabel='Build'
-                        pendingLabel='Sending build…'
-                        isPending={sending}
-                        financials={financials}
-                        onCancel={onCancel}
-                        onConfirm={(targetScale) => {
-                            // Create pending action eagerly — before the mutation request is sent.
-                            // This survives page reload: if the user navigates away and comes back,
-                            // the pending action will be loaded from localStorage and shown until
-                            // the next snapshot confirms the build.
-                            addPending({
-                                type: 'build',
-                                agentId,
-                                planetId,
-                                facilityKey: entry.name,
-                                triggerTick: currentTick,
-                            });
-                            buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
-                        }}
-                        onScaleChange={setPreviewScale}
-                    />
-                </div>
-            )}
+                )}
+            </div>
         </FacilityCardShell>
     );
 }
@@ -161,6 +159,11 @@ function ConstructionDisplay({
         cs.totalConstructionServiceRequired > 0
             ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
             : 0;
+
+    // Check for pending cancel for this facility
+    const pendingCancelAction = usePendingActions(agentId, planetId).find(
+        (a) => a.type === 'cancel' && a.facilityId === facility.id,
+    );
 
     return (
         <FacilityCardShell
@@ -217,9 +220,19 @@ function ConstructionDisplay({
                     />
                 ) : null}
             </div>
-            <div className='mt-auto space-y-2'>
+            <div className='relative mt-auto space-y-2'>
                 <Separator />
                 <ConstructionCompactRow facility={facility} />
+
+                {/* Blocking overlay only over the action controls */}
+                {pendingCancelAction && (
+                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
+                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                            <Spinner className='h-4 w-4' />
+                            Cancellation pending…
+                        </span>
+                    </div>
+                )}
             </div>
         </FacilityCardShell>
     );
