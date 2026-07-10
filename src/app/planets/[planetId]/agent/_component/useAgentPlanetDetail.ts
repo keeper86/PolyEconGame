@@ -66,7 +66,10 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
 
         // Compute a quick version hash to detect actual changes (skip if same)
         const versionHash = realFacilities
-            .map((f) => `${f.id}:${f.scale}:${f.maxScale}:${f.construction !== null}`)
+            .map((f) => {
+                const cs = f.construction;
+                return `${f.id}:${f.scale}:${f.maxScale}:${cs?.type ?? 'none'}:${cs?.constructionTargetMaxScale ?? 'none'}`;
+            })
             .join('|');
         if (prevAssetVersionRef.current === versionHash) {
             return;
@@ -85,7 +88,7 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
             if (action.type === 'build' && action.facilityKey) {
                 removeByKey(agentId, planetId, action.facilityKey);
             } else if (action.facilityId) {
-                removeById(agentId, planetId, action.facilityId);
+                removeById(agentId, planetId, action.facilityId, action.type);
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

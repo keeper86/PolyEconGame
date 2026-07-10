@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -54,6 +54,7 @@ export function ActiveFacilityCard({
     };
 
     const addPending = useAddPendingAction();
+    const removePendingById = useRemovePendingById();
     const currentTick = useSimulationTick();
     const pendingActions = usePendingActions(agentId, planetId);
 
@@ -85,6 +86,9 @@ export function ActiveFacilityCard({
                 setShowExpand(false);
                 onExpanded();
             },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'expand');
+            },
         }),
     );
 
@@ -92,6 +96,9 @@ export function ActiveFacilityCard({
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
                 // pending action gets resolved by predicate check in useAgentPlanetDetail
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'scaleChange');
             },
         }),
     );
@@ -101,6 +108,9 @@ export function ActiveFacilityCard({
             onSuccess: () => {
                 setShowReduce(false);
                 onExpanded();
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'contract');
             },
         }),
     );

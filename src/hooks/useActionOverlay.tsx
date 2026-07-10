@@ -91,7 +91,12 @@ function agentPlanetKey(a: PendingAction): string {
 interface PendingActionContextValue {
     addPending: (action: PendingAction) => void;
     getPending: (agentId: string, planetId: string) => PendingAction[];
-    removePendingById: (agentId: string, planetId: string, facilityId: string) => void;
+    removePendingById: (
+        agentId: string,
+        planetId: string,
+        facilityId: string,
+        actionType?: PendingAction['type'],
+    ) => void;
     removePendingByKey: (agentId: string, planetId: string, facilityKey: string) => void;
 }
 
@@ -140,16 +145,26 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         [allActions],
     );
 
-    const removePendingById = useCallback((agentId: string, planetId: string, facilityId: string) => {
-        const key = `${agentId}|${planetId}`;
-        const current = readAll();
-        const next = current.filter((a) => !(agentPlanetKey(a) === key && a.facilityId === facilityId));
-        if (next.length === current.length) {
-            return;
-        }
-        writeAll(next);
-        setAllActions(next);
-    }, []);
+    const removePendingById = useCallback(
+        (agentId: string, planetId: string, facilityId: string, actionType?: PendingAction['type']) => {
+            const key = `${agentId}|${planetId}`;
+            const current = readAll();
+            const next = current.filter(
+                (a) =>
+                    !(
+                        agentPlanetKey(a) === key &&
+                        a.facilityId === facilityId &&
+                        (!actionType || a.type === actionType)
+                    ),
+            );
+            if (next.length === current.length) {
+                return;
+            }
+            writeAll(next);
+            setAllActions(next);
+        },
+        [],
+    );
 
     const removePendingByKey = useCallback((agentId: string, planetId: string, facilityKey: string) => {
         const key = `${agentId}|${planetId}`;

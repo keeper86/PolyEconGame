@@ -63,10 +63,14 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
             }
         };
         // Wait for the accordion open animation to finish before measuring position.
+        let timeoutId: ReturnType<typeof setTimeout>;
         const rafId = requestAnimationFrame(() => {
-            setTimeout(doScroll, ACCORDION_ANIMATION_DURATION_MS);
+            timeoutId = setTimeout(doScroll, ACCORDION_ANIMATION_DURATION_MS);
         });
-        return () => cancelAnimationFrame(rafId);
+        return () => {
+            cancelAnimationFrame(rafId);
+            clearTimeout(timeoutId);
+        };
     }, [openItem, toSlug]);
 
     const onValueChange = useCallback(
