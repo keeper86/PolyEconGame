@@ -1,7 +1,12 @@
 'use client';
 
 import { useAgentId } from '@/hooks/useAgentId';
-import { usePendingActions, useRemovePendingById, useRemovePendingByKey, resolvePendingActions } from '@/hooks/useActionOverlay';
+import {
+    usePendingActions,
+    useRemovePendingById,
+    useRemovePendingByKey,
+    resolvePendingActions,
+} from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentPlanetDetail } from '@/server/controller/simulation';
@@ -60,7 +65,9 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         const realFacilities: ProductionFacility[] = baseAssets.productionFacilities;
 
         // Compute a quick version hash to detect actual changes (skip if same)
-        const versionHash = realFacilities.map((f) => `${f.id}:${f.scale}:${f.maxScale}:${f.construction !== null}`).join('|');
+        const versionHash = realFacilities
+            .map((f) => `${f.id}:${f.scale}:${f.maxScale}:${f.construction !== null}`)
+            .join('|');
         if (prevAssetVersionRef.current === versionHash) {
             return;
         }

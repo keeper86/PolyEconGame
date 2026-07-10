@@ -172,15 +172,15 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
                             <AlertDialogCancel>Keep building</AlertDialogCancel>
                             <AlertDialogAction
                                 onClick={() => {
-                    addPending({
-                        type: 'cancel',
-                        agentId,
-                        planetId,
-                        facilityId: facility.id,
-                        triggerTick: currentTick,
-                    });
-                    cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
-                }}
+                                    addPending({
+                                        type: 'cancel',
+                                        agentId,
+                                        planetId,
+                                        facilityId: facility.id,
+                                        triggerTick: currentTick,
+                                    });
+                                    cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
+                                }}
                             >
                                 Cancel construction
                             </AlertDialogAction>

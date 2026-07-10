@@ -65,11 +65,7 @@ function BuildForm({
     const sending = buildMutation.isPending;
 
     // Overlay message for pending states
-    const overlayMessage = awaitingTick
-        ? 'Awaiting tick…'
-        : sending
-          ? 'Sending build…'
-          : null;
+    const overlayMessage = awaitingTick ? 'Awaiting tick…' : sending ? 'Sending build…' : null;
 
     return (
         <FacilityCardShell

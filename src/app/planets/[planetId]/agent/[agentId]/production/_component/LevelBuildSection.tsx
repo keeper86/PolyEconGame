@@ -1,12 +1,11 @@
 'use client';
 
 import { Card, CardContent } from '@/components/ui/card';
-import { Spinner } from '@/components/ui/spinner';
 import { usePendingActions } from '@/hooks/useActionOverlay';
-import { PlusCircle, SendHorizonal } from 'lucide-react';
+import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+import { PlusCircle } from 'lucide-react';
 import React from 'react';
 import { BuildCard, type Mode } from './BuildCard';
-import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
 
 export type { Mode } from './BuildCard';
 

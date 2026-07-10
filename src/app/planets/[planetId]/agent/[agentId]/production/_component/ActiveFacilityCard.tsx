@@ -58,9 +58,7 @@ export function ActiveFacilityCard({
     const pendingActions = usePendingActions(agentId, planetId);
 
     // Check if there's a pending scale change for this facility
-    const pendingScaleAction = pendingActions.find(
-        (a) => a.type === 'scaleChange' && a.facilityId === facility.id,
-    );
+    const pendingScaleAction = pendingActions.find((a) => a.type === 'scaleChange' && a.facilityId === facility.id);
 
     const [scaleFractionIndex, setScaleFractionIndex] = useState(() => {
         // If there's a pending scale action, initialize slider to its target
@@ -109,15 +107,9 @@ export function ActiveFacilityCard({
 
     // Check pending expand/contract/cancel actions for this facility
     // These are placed after mutations to avoid temporal dead zone
-    const pendingExpandAction = pendingActions.find(
-        (a) => a.type === 'expand' && a.facilityId === facility.id,
-    );
-    const pendingContractAction = pendingActions.find(
-        (a) => a.type === 'contract' && a.facilityId === facility.id,
-    );
-    const pendingCancelAction = pendingActions.find(
-        (a) => a.type === 'cancel' && a.facilityId === facility.id,
-    );
+    const pendingExpandAction = pendingActions.find((a) => a.type === 'expand' && a.facilityId === facility.id);
+    const pendingContractAction = pendingActions.find((a) => a.type === 'contract' && a.facilityId === facility.id);
+    const pendingCancelAction = pendingActions.find((a) => a.type === 'cancel' && a.facilityId === facility.id);
 
     // If expand is pending (mutation done, awaiting tick), keep the panel visible
     const expandPending = Boolean(pendingExpandAction) && !expandMutation.isPending;
@@ -178,9 +170,7 @@ export function ActiveFacilityCard({
     // Compute the pending scale fraction from the pending action (if any)
     const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
     const pendingScaleText =
-        pendingScaleFraction !== undefined
-            ? `Pending → ${Math.round(pendingScaleFraction * 100)}%`
-            : null;
+        pendingScaleFraction !== undefined ? `Pending → ${Math.round(pendingScaleFraction * 100)}%` : null;
 
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>
@@ -408,7 +398,8 @@ export function ActiveFacilityCard({
                                 <div className='relative h-4 text-[10px] text-muted-foreground'>
                                     {reduceOptions.map((v, i) => {
                                         const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
-                                        const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
+                                        const translate =
+                                            i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
                                         return (
                                             <span
                                                 key={v}
@@ -438,7 +429,10 @@ export function ActiveFacilityCard({
                                         />
                                         <Stat
                                             label='Efficiency'
-                                            value={Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) + '%'}
+                                            value={
+                                                Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) +
+                                                '%'
+                                            }
                                             icon={<Clock className='h-3 w-3' />}
                                             valueClassName={recyclerColor}
                                         />
@@ -451,7 +445,11 @@ export function ActiveFacilityCard({
                                         />
                                         <Stat
                                             label='Monthly cash flow'
-                                            value={formatNumberWithUnit(financials?.monthlyNetCashFlow, 'currency', planetId)}
+                                            value={formatNumberWithUnit(
+                                                financials?.monthlyNetCashFlow,
+                                                'currency',
+                                                planetId,
+                                            )}
                                             icon={<Percent className='h-3 w-3' />}
                                         />
                                         <Stat
