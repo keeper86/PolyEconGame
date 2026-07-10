@@ -1,14 +1,9 @@
 import { TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
-
-const groceryDef = SERVICE_DEFINITIONS.grocery;
-const healthcareDef = SERVICE_DEFINITIONS.healthcare;
-const educationDef = SERVICE_DEFINITIONS.education;
 import type { Agent, Planet } from '../planet/planet';
-import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { ageDependentBaseDisabilityProb } from '../population/disability';
+import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import { mortalityProbability } from '../population/mortality';
-import { stochasticRound } from '../utils/stochasticRound';
 import {
     MAX_AGE,
     SKILL,
@@ -20,7 +15,12 @@ import {
     type ServiceName,
     type Skill,
 } from '../population/population';
+import { stochasticRound } from '../utils/stochasticRound';
 import type { Provision } from './ships';
+
+const groceryDef = SERVICE_DEFINITIONS.grocery;
+const healthcareDef = SERVICE_DEFINITIONS.healthcare;
+const educationDef = SERVICE_DEFINITIONS.education;
 
 export type PassengerManifest = Record<string, PopulationCategory>;
 
@@ -150,53 +150,34 @@ export function boardPassengersFromWorkforce(
 }
 
 export function calculateProvisions(manifest: PassengerManifest, flightTicks: number): Provision {
-    let totalPassengers = 0;
-    let educationPassengers = 0;
+    let groceryRequired = 0;
+    let healthcareRequired = 0;
+    let educationRequired = 0;
     for (const [key, cat] of Object.entries(manifest)) {
         if (cat.total <= 0) {
             continue;
         }
-        totalPassengers += cat.total;
+
         const idx = parseManifestKey(key);
-        if (idx.occ === 'education') {
-            educationPassengers += cat.total;
-        }
-    }
-    const provisionList: Provision = {
-        groceryProvisioned: { currently: 0, goal: 0 },
-        healthcareProvisioned: { currently: 0, goal: 0 },
-        educationProvisioned: { currently: 0, goal: 0 },
-    };
 
-    if (totalPassengers === 0) {
-        return provisionList;
-    }
-
-    const groceryRequired =
-        totalPassengers * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
-    if (groceryRequired > 0) {
-        provisionList.groceryProvisioned.goal = groceryRequired;
-    }
-
-    const healthcareRequired =
-        totalPassengers *
-        healthcareDef.consumptionRatePerPersonPerTick *
-        (flightTicks + healthcareDef.bufferTargetTicks);
-    if (healthcareRequired > 0) {
-        provisionList.healthcareProvisioned.goal = healthcareRequired;
-    }
-
-    if (educationPassengers > 0) {
-        const educationRequired =
-            educationPassengers *
-            educationDef.consumptionRatePerPersonPerTick *
+        groceryRequired +=
+            cat.total *
+            groceryDef.consumptionRatePerPersonPerTick(idx.age, idx.occ) *
+            (flightTicks + groceryDef.bufferTargetTicks);
+        healthcareRequired +=
+            cat.total *
+            healthcareDef.consumptionRatePerPersonPerTick(idx.age, idx.occ) *
+            (flightTicks + healthcareDef.bufferTargetTicks);
+        educationRequired +=
+            cat.total *
+            educationDef.consumptionRatePerPersonPerTick(idx.age, idx.occ) *
             (flightTicks + educationDef.bufferTargetTicks);
-        if (educationRequired > 0) {
-            provisionList.educationProvisioned.goal = educationRequired;
-        }
     }
-
-    return provisionList;
+    return {
+        groceryProvisioned: { currently: 0, goal: groceryRequired },
+        healthcareProvisioned: { currently: 0, goal: healthcareRequired },
+        educationProvisioned: { currently: 0, goal: educationRequired },
+    };
 }
 
 export function refundBoardedPassengers(

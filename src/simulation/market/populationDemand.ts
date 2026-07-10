@@ -171,13 +171,9 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 }
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
-                const rate = service.consumptionRatePerPersonPerTick;
+                const rate = service.consumptionRatePerPersonPerTick(age, occ);
 
-                // Apply age multiplier to effective consumption rate
-                const ageMult = service.ageMultiplier(age, occ);
-                const effectiveRate = rate * ageMult;
-
-                if (effectiveRate <= 0) {
+                if (rate <= 0) {
                     continue;
                 }
 
@@ -192,11 +188,11 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                let quantityPerPerson = effectiveRate * service.bufferTargetTicks * bufferFillDeficit;
+                let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
 
-                if (remainingWealth < 1.2 * effectiveRate * willingPrice) {
-                    willingPrice = remainingWealth / effectiveRate / 1.2;
-                    quantityPerPerson = 1.2 * effectiveRate;
+                if (remainingWealth < 1.2 * rate * willingPrice) {
+                    willingPrice = remainingWealth / rate / 1.2;
+                    quantityPerPerson = 1.2 * rate;
                 } else if (remainingWealth < quantityPerPerson * willingPrice) {
                     const affordableQuantity = remainingWealth / willingPrice;
                     quantityPerPerson = Math.min(quantityPerPerson, affordableQuantity);

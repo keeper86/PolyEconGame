@@ -266,7 +266,7 @@ describe('buildPopulationDemand', () => {
         planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
         planet.marketPrices[HEALTHCARE_SERVICE] = healthcarePrice;
 
-        const groceryTarget = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
+        const groceryTarget = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick(30, 'employed');
 
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {

@@ -290,7 +290,7 @@ describe('shipTick passenger boarding', () => {
         seedWorkforce(agent, planet, 30, 500);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const provisions =
-            500 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
+            500 * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + groceryDef.bufferTargetTicks);
         putProvisions(agent, 'p1', provisions * 2, provisions * 2);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -330,7 +330,7 @@ describe('shipTick passenger boarding', () => {
         seedWorkforce(agent, planet, 30, 300);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const prov =
-            300 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks) * 2;
+            300 * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + groceryDef.bufferTargetTicks) * 2;
         putProvisions(agent, 'p1', prov, prov);
 
         const ship = makePassengerShip('S1', 'p1');
@@ -480,7 +480,7 @@ describe('shipTick passenger boarding', () => {
         seedWorkforce(agent, planet, 30, count);
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const prov =
-            count * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks) * 2;
+            count * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + groceryDef.bufferTargetTicks) * 2;
         putProvisions(agent, 'p1', prov, prov);
 
         const ship = makePassengerShip('S1', 'p1', 50_000);
@@ -530,9 +530,9 @@ describe('shipTick passenger boarding', () => {
 
         const maxFlightTicks = Math.ceil((1.1 * 1000) / passengerLiner.speed);
         const groceryProvided =
-            count * groceryDef.consumptionRatePerPersonPerTick * (maxFlightTicks + groceryDef.bufferTargetTicks);
+            count * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (maxFlightTicks + groceryDef.bufferTargetTicks);
         const healthcareProvided =
-            count * healthcareDef.consumptionRatePerPersonPerTick * (maxFlightTicks + healthcareDef.bufferTargetTicks);
+            count * healthcareDef.consumptionRatePerPersonPerTick(30, 'employed') * (maxFlightTicks + healthcareDef.bufferTargetTicks);
 
         putProvisions(agent, 'p1', groceryProvided, healthcareProvided);
 
@@ -559,10 +559,10 @@ describe('shipTick passenger boarding', () => {
 
         const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
         expect(groceryLeft).toBeLessThanOrEqual(
-            count * groceryDef.consumptionRatePerPersonPerTick * (maxJitterTicks + 1),
+            count * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (maxJitterTicks + 1),
         );
         expect(healthcareLeft).toBeLessThanOrEqual(
-            count * healthcareDef.consumptionRatePerPersonPerTick * (maxJitterTicks + 1),
+            count * healthcareDef.consumptionRatePerPersonPerTick(30, 'employed') * (maxJitterTicks + 1),
         );
         expect(groceryLeft).toBeGreaterThanOrEqual(0);
         expect(healthcareLeft).toBeGreaterThanOrEqual(0);
@@ -743,9 +743,9 @@ describe('calculateProvisions', () => {
         const provisions = calculateProvisions(manifest, flightTicks);
 
         const expectedGrocery =
-            100 * groceryDef.consumptionRatePerPersonPerTick * (flightTicks + groceryDef.bufferTargetTicks);
+            100 * groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + groceryDef.bufferTargetTicks);
         const expectedHealthcare =
-            100 * healthcareDef.consumptionRatePerPersonPerTick * (flightTicks + healthcareDef.bufferTargetTicks);
+            100 * healthcareDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + healthcareDef.bufferTargetTicks);
 
         expect(provisions.groceryProvisioned.goal).toBeCloseTo(expectedGrocery, 5);
         expect(provisions.healthcareProvisioned.goal).toBeCloseTo(expectedHealthcare, 5);
@@ -761,7 +761,7 @@ describe('calculateProvisions', () => {
         const provisions = calculateProvisions(manifest, flightTicks);
 
         const expectedEducation =
-            50 * educationDef.consumptionRatePerPersonPerTick * (flightTicks + educationDef.bufferTargetTicks);
+            50 * educationDef.consumptionRatePerPersonPerTick(30, 'employed') * (flightTicks + educationDef.bufferTargetTicks);
         expect(provisions.educationProvisioned.goal).toBeCloseTo(expectedEducation, 5);
     });
 

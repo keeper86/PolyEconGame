@@ -13,8 +13,7 @@ import type { Occupation, ServiceName } from '../population/population';
 export type ServiceDefinition = {
     readonly resource: Resource;
     readonly bufferTargetTicks: number;
-    readonly consumptionRatePerPersonPerTick: number;
-    readonly ageMultiplier: (age: number, occ: Occupation) => number;
+    readonly consumptionRatePerPersonPerTick: (age: number, occ: Occupation) => number;
 };
 
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
@@ -71,37 +70,32 @@ const educationAgeMultiplier = (age: number, occ: Occupation): number => {
 
 const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: groceryAgeMultiplier,
+    bufferTargetTicks: 2 * TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * groceryAgeMultiplier(age, occ),
 } as const;
 
 const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: healthcareAgeMultiplier,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * healthcareAgeMultiplier(age, occ),
 } as const;
 
 const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: logisticsAgeMultiplier,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * logisticsAgeMultiplier(age, occ),
 } as const;
 
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_YEAR,
-    ageMultiplier: educationAgeMultiplier,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_YEAR) * educationAgeMultiplier(age, occ),
 } as const;
 
 const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: 1 / TICKS_PER_MONTH,
-    ageMultiplier: groceryAgeMultiplier,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * groceryAgeMultiplier(age, occ),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
@@ -155,11 +149,16 @@ export const SERVICE_TIERS: ServiceTier[] = [
     },
 ];
 
-export function computeTierCost(marketPrices: Record<string, number>, tier: ServiceTier): number {
+export function computeTierCost(
+    marketPrices: Record<string, number>,
+    tier: ServiceTier,
+    age: number = 30,
+    occ: Occupation = 'employed',
+): number {
     return tier.services.reduce((sum, key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = marketPrices[def.resource.name] ?? 0;
-        return sum + def.consumptionRatePerPersonPerTick * price;
+        return sum + def.consumptionRatePerPersonPerTick(age, occ) * price;
     }, 0);
 }
 

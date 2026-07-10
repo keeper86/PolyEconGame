@@ -21,24 +21,18 @@ export function consumeServices(planet: Planet) {
             const pop = category.total;
 
             for (const def of allServices) {
-                const rate = def.consumptionRatePerPersonPerTick;
+                const rate = def.consumptionRatePerPersonPerTick(age, occ);
 
-                // Apply age multiplier
-                const ageMult = def.ageMultiplier(age, occ);
-                const effectiveRate = rate * ageMult;
-
-                if (effectiveRate <= 0) {
+                if (rate <= 0) {
                     continue;
                 }
 
-                const demand = pop * effectiveRate;
+                const demand = pop * rate;
                 const serviceState = category.services[serviceKeyOf(def)];
-                // Buffer is stored in base-rate ticks.  Multiply by effectiveRate to get the
-                // age-adjusted quantity available this tick, so that availability and demand
-                // use the same effective consumption rate consistently.
-                const available = serviceState.buffer * effectiveRate * pop;
+
+                const available = serviceState.buffer * rate * pop;
                 const consumed = Math.min(available, demand);
-                const bufferConsumed = consumed / (effectiveRate * pop);
+                const bufferConsumed = consumed / (rate * pop);
                 serviceState.buffer = Math.max(0, serviceState.buffer - bufferConsumed);
 
                 if (serviceKeyOf(def) === 'education' && occ !== 'education' && consumed > 0) {

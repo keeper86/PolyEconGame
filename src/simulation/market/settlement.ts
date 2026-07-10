@@ -17,7 +17,6 @@ export function settleHouseholds(
         return;
     }
     const serviceName = serviceKeyOf(def);
-    const rate = def.consumptionRatePerPersonPerTick;
 
     const demography = planet.population.demography;
 
@@ -31,11 +30,8 @@ export function settleHouseholds(
         const category = demography[record.age][record.occ][record.edu][record.skill];
         const perPersonCost = record.population > 0 ? bidCosts[i] / record.population : 0;
 
-        // Use the age-adjusted effective rate for buffer conversion so that
-        // the buffer tick quantity is consistent with how consumption.ts debits it.
-        const ageMult = def.ageMultiplier(record.age, record.occ);
-        const effectiveRate = rate * ageMult;
-        const bufferTicks = filled / (effectiveRate * category.total);
+        const rate = def.consumptionRatePerPersonPerTick(record.age, record.occ);
+        const bufferTicks = filled / (rate * category.total);
         category.services[serviceName].buffer += bufferTicks;
 
         debitConsumptionPurchase(planet.bank, category, perPersonCost);

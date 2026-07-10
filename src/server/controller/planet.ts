@@ -266,14 +266,14 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
 
                         gFoodStock +=
                             cat.services.grocery.buffer *
-                            SERVICE_DEFINITIONS.grocery.consumptionRatePerPersonPerTick *
+                            SERVICE_DEFINITIONS.grocery.consumptionRatePerPersonPerTick(30, 'employed') *
                             cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                         for (const def of nonGroceryDefs) {
                             const svcKey = serviceKeyOf(def) as Exclude<ServiceName, 'grocery'>;
                             const svc = cat.services[svcKey];
-                            svcBuffers[svcKey][gi][0] += svc.buffer * def.consumptionRatePerPersonPerTick * cat.total;
+                            svcBuffers[svcKey][gi][0] += svc.buffer * def.consumptionRatePerPersonPerTick(30, 'employed') * cat.total;
                             svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
                         }
                     }

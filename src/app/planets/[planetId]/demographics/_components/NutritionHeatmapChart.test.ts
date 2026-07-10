@@ -5,7 +5,7 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import { describe, expect, it } from 'vitest';
 
 const groceryDef = SERVICE_DEFINITIONS.grocery;
-const SERVICE_TARGET_PER_PERSON = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
+const SERVICE_TARGET_PER_PERSON = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick(30, 'employed');
 
 const BANDS = [
     { key: 'fatalStarvation', label: 'Fatal' },
@@ -256,7 +256,7 @@ describe('NutritionHeatmapChart — computeChartData', () => {
 
     it('SERVICE_TARGET_PER_PERSON matches bufferTargetTicks × consumptionRatePerPersonPerTick', () => {
         expect(SERVICE_TARGET_PER_PERSON).toBeCloseTo(
-            groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick,
+            groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick(30, 'employed'),
             10,
         );
     });
