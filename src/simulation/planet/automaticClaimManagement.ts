@@ -1,8 +1,8 @@
-import { TICKS_PER_MONTH } from '../constants';
+import { TICKS_PER_YEAR } from '../constants';
 import { leaseClaim, reduceClaim } from './claims';
 import type { GameState, Planet } from './planet';
 
-export const NON_RENEWABLE_SAFETY_MARGIN_IN_TICKS = TICKS_PER_MONTH;
+export const NON_RENEWABLE_SAFETY_MARGIN_IN_TICKS = TICKS_PER_YEAR;
 export const OVER_SUPPLIED_LIMIT = 1.5;
 
 export function updateAgentClaims(gameState: GameState, planet: Planet): void {
@@ -73,7 +73,7 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
                 ? Math.max(0, entry.pool.maximumCapacity)
                 : Math.max(0, entry.pool.quantity);
 
-            const toAcquire = Math.ceil(Math.min(shortfall, availableInPool));
+            const toAcquire = Math.min(Math.ceil(shortfall), availableInPool);
             if (toAcquire <= 0) {
                 continue;
             }

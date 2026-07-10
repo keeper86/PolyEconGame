@@ -136,7 +136,7 @@ describe('groceryMarketTick', () => {
         expect(planet.bank.householdDeposits).toBeLessThan(totalPop * 100);
     });
 
-    it('does not target more than the buffer target per person', () => {
+    it('does not target more than the buffer target per person (with age multiplier)', () => {
         const pop = giveHouseholdsWealth(planet, 1000);
         planet.bank.householdDeposits = pop * 1000;
         planet.bank.deposits = pop * 1000;
@@ -153,10 +153,9 @@ describe('groceryMarketTick', () => {
         marketTick(agentMap(groceryAgent), planet);
 
         const expected = groceryDef.bufferTargetTicks;
-
         const cat = planet.population.demography[14].unoccupied.none.novice;
         expect(cat.total).toBeGreaterThan(0);
-        expect(cat.services.grocery.buffer).toBeCloseTo(expected, 5);
+        expect(cat.services.grocery.buffer).toBeCloseTo(expected, 4);
     });
 
     it('price-priority: highest-bid cohort buys before lower-bid cohort', () => {
@@ -458,7 +457,8 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                total += cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick * cat.total;
+                total +=
+                    cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick(30, 'employed') * cat.total;
             }),
         );
         return total;

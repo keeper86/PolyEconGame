@@ -139,7 +139,7 @@ function buildLPModel(config: SolverConfig): Model {
         const key = resourceConstraintKey(svc.name);
         if (constraints[key]) {
             const def = getServiceDefinitionByResourceName(svc.name);
-            const perPerson = def?.consumptionRatePerPersonPerTick ?? 0;
+            const perPerson = def?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
             (constraints[key] as { min?: number; max?: number }).min = population * perPerson;
         }
     }
@@ -251,7 +251,7 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
             }
         }
         const def = getServiceDefinitionByResourceName(svc.name);
-        const perPerson = def?.consumptionRatePerPersonPerTick ?? 0;
+        const perPerson = def?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
         const demandForSvc = config.population * perPerson;
         serviceCoverage[svc.name] = demandForSvc > 0 ? supplyPerTick / demandForSvc : 1;
     }

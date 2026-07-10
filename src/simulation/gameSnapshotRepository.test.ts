@@ -211,9 +211,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             },
         ]);
 
@@ -240,9 +237,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             },
         ]);
 
@@ -271,9 +265,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             })),
         );
 
@@ -301,9 +292,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             },
             {
                 tick: 60,
@@ -314,9 +302,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             },
             {
                 tick: 90,
@@ -327,9 +312,6 @@ describe('planet population history: write-refresh-read', () => {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
-                construction_buffer: 0,
-                maintenance_buffer: 0,
-                administration_buffer: 0,
             },
         ];
 

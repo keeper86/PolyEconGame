@@ -21,9 +21,6 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             retail: { buffer: 0, starvationLevel: 0 },
             logistics: { buffer: 0, starvationLevel: 0 },
             healthcare: { buffer: 0, starvationLevel: 0 },
-            construction: { buffer: 0, starvationLevel: 0 },
-            maintenance: { buffer: 0, starvationLevel: 0 },
-            administration: { buffer: 0, starvationLevel: 0 },
             education: { buffer: 0, starvationLevel: 0 },
         },
     });
@@ -35,9 +32,6 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             retail: { buffer: 1000, starvationLevel: 0 },
             logistics: { buffer: 1000, starvationLevel: 0 },
             healthcare: { buffer: 1000, starvationLevel: 0 },
-            construction: { buffer: 1000, starvationLevel: 0 },
-            maintenance: { buffer: 1000, starvationLevel: 0 },
-            administration: { buffer: 1000, starvationLevel: 0 },
             education: { buffer: 1000, starvationLevel: 0 },
         },
     });
@@ -272,7 +266,7 @@ describe('buildPopulationDemand', () => {
         planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
         planet.marketPrices[HEALTHCARE_SERVICE] = healthcarePrice;
 
-        const groceryTarget = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick;
+        const groceryTarget = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick(30, 'employed');
 
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {

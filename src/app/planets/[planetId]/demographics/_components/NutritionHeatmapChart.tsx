@@ -227,9 +227,7 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const targetPerPerson =
-        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
-        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
+    const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
     const { data, yDomain } = useMemo(() => {
         const builtData: ChartRow[] = [];

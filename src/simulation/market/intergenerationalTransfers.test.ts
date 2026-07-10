@@ -282,8 +282,8 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
         const groceryPrice = planet.marketPrices[groceryDef.resource.name] ?? 0;
         const healthcarePrice = planet.marketPrices[healthcareDef.resource.name] ?? 0;
         const survivalFloor =
-            (groceryDef.consumptionRatePerPersonPerTick * groceryPrice +
-                healthcareDef.consumptionRatePerPersonPerTick * healthcarePrice) *
+            (groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * groceryPrice +
+                healthcareDef.consumptionRatePerPersonPerTick(30, 'employed') * healthcarePrice) *
             RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
         placePeople(planet, PARENT_AGE, 1000, {
             wealthMean: survivalFloor * 2,
@@ -386,7 +386,7 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
         const foodTarget = groceryDef.bufferTargetTicks;
 
         const groceryPrice = planet.marketPrices[GROCERY_SERVICE] ?? 1.0;
-        const floor = groceryDef.consumptionRatePerPersonPerTick * groceryPrice;
+        const floor = groceryDef.consumptionRatePerPersonPerTick(30, 'employed') * groceryPrice;
 
         placePeople(planet, 30, 500, { wealthMean: floor, foodStock: foodTarget * 500 });
 

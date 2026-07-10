@@ -98,18 +98,6 @@ export const NAMES: Record<string, string[]> = {
         'Ore Masters Corp',
         'Taconite Mining Inc',
     ],
-    coalPowerPlant: [
-        'PowerGen Corp',
-        'National Energy Ltd',
-        'Continental Power Inc',
-        'Grid Masters Corp',
-        'Atlas Energy Group',
-        'Volt Systems Ltd',
-        'MegaWatt Corp',
-        'Ampere Power Co',
-        'Kilowatt Energy Inc',
-        'ThermalPower Ltd',
-    ],
     ironSmelter: [
         'Atlas Steel Works',
         'Meridian Steel Corp',

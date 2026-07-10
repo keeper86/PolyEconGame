@@ -1,17 +1,8 @@
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
-import {
-    administrativeCenter,
-    constructionFacility,
-    educationCenter,
-    groceryChain,
-    hospital,
-    logisticsHub,
-    maintenanceFacility,
-    retailChain,
-} from '../planet/productionFacilities';
-import { forEachPopulationCohort } from '../population/population';
+import { educationCenter, groceryChain, hospital, logisticsHub, retailChain } from '../planet/productionFacilities';
 import type { ServiceName } from '../population/population';
+import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
 import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
@@ -120,9 +111,6 @@ const groceryChainTemplate: ProductionFacility = groceryChain('', '');
 const retailTemplate: ProductionFacility = retailChain('', '');
 const healthcareTemplate: ProductionFacility = hospital('', '');
 const educationTemplate: ProductionFacility = educationCenter('', '');
-const constructionTemplate: ProductionFacility = constructionFacility('', '');
-const maintenanceTemplate: ProductionFacility = maintenanceFacility('', '');
-const administrativeTemplate: ProductionFacility = administrativeCenter('', '');
 const logisticsTemplate: ProductionFacility = logisticsHub('', '');
 
 export const serviceFacilityTemplate: Record<ServiceName, { template: ProductionFacility; produced: number }> = {
@@ -141,18 +129,6 @@ export const serviceFacilityTemplate: Record<ServiceName, { template: Production
     education: {
         template: educationTemplate,
         produced: educationTemplate.produces[0].quantity,
-    },
-    construction: {
-        template: constructionTemplate,
-        produced: constructionTemplate.produces[0].quantity,
-    },
-    maintenance: {
-        template: maintenanceTemplate,
-        produced: maintenanceTemplate.produces[0].quantity,
-    },
-    administration: {
-        template: administrativeTemplate,
-        produced: administrativeTemplate.produces[0].quantity,
     },
     logistics: {
         template: logisticsTemplate,
@@ -195,7 +171,12 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 }
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
-                const rate = service.consumptionRatePerPersonPerTick;
+                const rate = service.consumptionRatePerPersonPerTick(age, occ);
+
+                if (rate <= 0) {
+                    continue;
+                }
+
                 const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
 
                 if (bufferFillDeficit <= 0) {

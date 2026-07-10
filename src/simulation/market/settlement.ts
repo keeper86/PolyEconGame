@@ -1,3 +1,4 @@
+import assert from 'assert';
 import { debitConsumptionPurchase } from '../financial/wealthOps';
 import { putIntoStorageFacility, releaseFromEscrow, transferFromEscrow } from '../planet/facility';
 import type { Planet } from '../planet/planet';
@@ -17,7 +18,6 @@ export function settleHouseholds(
         return;
     }
     const serviceName = serviceKeyOf(def);
-    const rate = def.consumptionRatePerPersonPerTick;
 
     const demography = planet.population.demography;
 
@@ -29,7 +29,11 @@ export function settleHouseholds(
 
         const record = bidOrders[i];
         const category = demography[record.age][record.occ][record.edu][record.skill];
-        const perPersonCost = record.population > 0 ? bidCosts[i] / record.population : 0;
+        assert(category.total > 0, `Invalid population category: ${category.total}`);
+        const perPersonCost = bidCosts[i] / category.total;
+
+        const rate = def.consumptionRatePerPersonPerTick(record.age, record.occ);
+        assert(rate > 0, `Invalid consumption rate: ${rate}`);
 
         const bufferTicks = filled / (rate * category.total);
         category.services[serviceName].buffer += bufferTicks;

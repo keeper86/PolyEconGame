@@ -64,7 +64,8 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
             for (const svc of allServices) {
                 const key = serviceKeyOf(svc);
                 cell.buffers[key] =
-                    (cell.buffers[key] ?? 0) + cat.services[key].buffer * svc.consumptionRatePerPersonPerTick * n;
+                    (cell.buffers[key] ?? 0) +
+                    cat.services[key].buffer * svc.consumptionRatePerPersonPerTick(age, occ) * n;
             }
         });
 
@@ -141,11 +142,10 @@ function computeDependentNeedsForTier(
     const numAges = cache.length;
     const needs: DependentNeed[] = new Array(numAges);
 
-    const serviceParams = tierServices.map((key) => {
+    const serviceMeta = tierServices.map((key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = (marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-        const targetPerPerson = def.bufferTargetTicks * def.consumptionRatePerPersonPerTick * coverageFraction;
-        return { key, price, targetPerPerson };
+        return { key, def, price };
     });
 
     for (let age = 0; age < numAges; age++) {
@@ -158,8 +158,10 @@ function computeDependentNeedsForTier(
                     continue;
                 }
                 let totalCostGap = 0;
-                for (const { key, price, targetPerPerson } of serviceParams) {
+                for (const { key, def, price } of serviceMeta) {
                     const perCapitaBuffer = (buffers[key] ?? 0) / pop;
+                    const targetPerPerson =
+                        def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ) * coverageFraction;
                     const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
 
                     const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
@@ -448,11 +450,10 @@ function creditDependents(
         need: number;
     }
 
-    const serviceParams = tierServices.map((key) => {
+    const serviceMeta = tierServices.map((key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = (marketPrices[def.resource.name] ?? 0) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-        const targetPerPerson = def.bufferTargetTicks * def.consumptionRatePerPersonPerTick * coverageFraction;
-        return { key, price, targetPerPerson };
+        return { key, def, price };
     });
 
     const cells: CellInfo[] = [];
@@ -466,8 +467,10 @@ function creditDependents(
                 continue;
             }
             let totalCostGap = 0;
-            for (const { key, price, targetPerPerson } of serviceParams) {
+            for (const { key, def, price } of serviceMeta) {
                 const perCapitaBuffer = (buffers[key] ?? 0) / pop;
+                const targetPerPerson =
+                    def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ) * coverageFraction;
                 const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
                 const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
                 totalCostGap += gap * price * (1 - fillFraction);

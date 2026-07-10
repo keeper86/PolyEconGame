@@ -164,10 +164,13 @@ export function workforceDemographicTick(
 
                     for (let month = 0; month < NOTICE_PERIOD_MONTHS; month++) {
                         // --- Onboarding pipeline ---
-                        const onbCount = category.onboarding[month];
-                        if (onbCount > 0) {
+                        // Must re-read from the array after each mutation — the original const
+                        // would become stale if multiple subtractions occur in the same tick,
+                        // producing negative workforce counts (especially under high mortality +
+                        // disability when a planet is dying off).
+                        if (category.onboarding[month] > 0) {
                             if (mortalityProbabilityPerTick > 0) {
-                                const dead = stochasticRound(onbCount * mortalityProbabilityPerTick);
+                                const dead = stochasticRound(category.onboarding[month] * mortalityProbabilityPerTick);
                                 if (dead > 0) {
                                     category.onboarding[month] -= dead;
                                     deaths += dead;
@@ -175,7 +178,9 @@ export function workforceDemographicTick(
                             }
 
                             if (disabilityProbabilityPerTick > 0) {
-                                const disabled = stochasticRound(onbCount * disabilityProbabilityPerTick);
+                                const disabled = stochasticRound(
+                                    category.onboarding[month] * disabilityProbabilityPerTick,
+                                );
                                 if (disabled > 0) {
                                     category.onboarding[month] -= disabled;
                                     disabilities += disabled;
@@ -184,16 +189,18 @@ export function workforceDemographicTick(
                         }
 
                         // --- Departing pipeline (voluntary + fired + retired share the same month) ---
-                        const depVol = category.voluntaryDeparting[month];
-                        if (depVol > 0) {
+                        // Must re-read from the array after each mutation — see onboarding comment above.
+                        if (category.voluntaryDeparting[month] > 0) {
                             if (retirementProb > 0) {
-                                const toRetire = stochasticRound(depVol * retirementProb);
+                                const toRetire = stochasticRound(category.voluntaryDeparting[month] * retirementProb);
                                 category.departingRetired[month] += toRetire;
                                 category.voluntaryDeparting[month] -= toRetire;
                             }
 
                             if (mortalityProbabilityPerTick > 0) {
-                                const dead = stochasticRound(depVol * mortalityProbabilityPerTick);
+                                const dead = stochasticRound(
+                                    category.voluntaryDeparting[month] * mortalityProbabilityPerTick,
+                                );
                                 if (dead > 0) {
                                     subtractProportionalXP(category, dead, totalBeforePipeline);
                                     category.voluntaryDeparting[month] -= dead;
@@ -202,7 +209,9 @@ export function workforceDemographicTick(
                             }
 
                             if (disabilityProbabilityPerTick > 0) {
-                                const disabled = stochasticRound(depVol * disabilityProbabilityPerTick);
+                                const disabled = stochasticRound(
+                                    category.voluntaryDeparting[month] * disabilityProbabilityPerTick,
+                                );
                                 if (disabled > 0) {
                                     subtractProportionalXP(category, disabled, totalBeforePipeline);
                                     category.voluntaryDeparting[month] -= disabled;
@@ -211,16 +220,18 @@ export function workforceDemographicTick(
                             }
                         }
 
-                        const depFired = category.departingFired[month];
-                        if (depFired > 0) {
+                        // Must re-read from the array after each mutation — see onboarding comment above.
+                        if (category.departingFired[month] > 0) {
                             if (retirementProb > 0) {
-                                const toRetire = stochasticRound(depFired * retirementProb);
+                                const toRetire = stochasticRound(category.departingFired[month] * retirementProb);
                                 category.departingRetired[month] += toRetire;
                                 category.departingFired[month] -= toRetire;
                             }
 
                             if (mortalityProbabilityPerTick > 0) {
-                                const dead = stochasticRound(depFired * mortalityProbabilityPerTick);
+                                const dead = stochasticRound(
+                                    category.departingFired[month] * mortalityProbabilityPerTick,
+                                );
                                 if (dead > 0) {
                                     subtractProportionalXP(category, dead, totalBeforePipeline);
                                     category.departingFired[month] -= dead;
@@ -229,7 +240,9 @@ export function workforceDemographicTick(
                             }
 
                             if (disabilityProbabilityPerTick > 0) {
-                                const disabled = stochasticRound(depFired * disabilityProbabilityPerTick);
+                                const disabled = stochasticRound(
+                                    category.departingFired[month] * disabilityProbabilityPerTick,
+                                );
                                 if (disabled > 0) {
                                     subtractProportionalXP(category, disabled, totalBeforePipeline);
                                     category.departingFired[month] -= disabled;
@@ -238,10 +251,12 @@ export function workforceDemographicTick(
                             }
                         }
 
-                        const depRetired = category.departingRetired[month];
-                        if (depRetired > 0) {
+                        // Must re-read from the array after each mutation — see onboarding comment above.
+                        if (category.departingRetired[month] > 0) {
                             if (mortalityProbabilityPerTick > 0) {
-                                const dead = stochasticRound(depRetired * mortalityProbabilityPerTick);
+                                const dead = stochasticRound(
+                                    category.departingRetired[month] * mortalityProbabilityPerTick,
+                                );
                                 if (dead > 0) {
                                     subtractProportionalXP(category, dead, totalBeforePipeline);
                                     category.departingRetired[month] -= dead;
@@ -250,7 +265,9 @@ export function workforceDemographicTick(
                             }
 
                             if (disabilityProbabilityPerTick > 0) {
-                                const disabled = stochasticRound(depRetired * disabilityProbabilityPerTick);
+                                const disabled = stochasticRound(
+                                    category.departingRetired[month] * disabilityProbabilityPerTick,
+                                );
                                 if (disabled > 0) {
                                     subtractProportionalXP(category, disabled, totalBeforePipeline);
                                     category.departingRetired[month] -= disabled;

@@ -1,4 +1,4 @@
-import { initialMarketPrices } from './initialMarketPrices';
+import { createRecyclerAgent } from '../agents/recycler';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -9,12 +9,12 @@ import {
     sandDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
+import type { Planet } from '../planet/planet';
 import {
     administrativeCenter,
     beveragePlant,
     cementPlant,
     coalMine,
-    coalPowerPlant,
     copperMine,
     copperSmelter,
     foodProcessingPlant,
@@ -33,10 +33,9 @@ import {
     sawmill,
     waterExtractionFacility,
 } from '../planet/productionFacilities';
-import type { Planet } from '../planet/planet';
-import { makeAgent, makeStorage, createPopulation, makeDefaultEnvironment } from './helpers';
+import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
+import { initialMarketPrices } from './initialMarketPrices';
 import { makePool } from './resourceClaimFactory';
-import { createRecyclerAgent } from '../agents/recycler';
 
 interface AgriSpec {
     id: string;
@@ -310,15 +309,12 @@ function buildIcedoniaIndustrialAgents(): import('../planet/planet').Agent[] {
     const c1 = coalMine('icedonia', 'icedonia-polar-coal-mine');
     c1.scale = 60;
     c1.maxScale = 60;
-    const c2 = coalPowerPlant('icedonia', 'icedonia-polar-power-plant');
-    c2.scale = 10;
-    c2.maxScale = 10;
     const energyAgent = makeAgent({
         id: 'icedonia-polar-energy',
         name: 'Polar Energy Corp',
         associatedPlanetId: 'icedonia',
         planetId: 'icedonia',
-        facilities: [c1, c2],
+        facilities: [c1],
         storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
     });
 

@@ -16,10 +16,7 @@ const SERVICE_LABELS: Record<ServiceName, string> = {
     healthcare: 'Healthcare Buffers',
     logistics: 'Logistics Buffers',
     retail: 'Retail Buffers',
-    construction: 'Construction Buffers',
-    administration: 'Administrative Buffers',
     education: 'Education Buffers',
-    maintenance: 'Maintenance Buffers',
 };
 
 type Props = {
@@ -33,9 +30,7 @@ type Props = {
 
 export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys, groupColors, groupLabels }: Props) {
     const isSmallScreen = useIsSmallScreen();
-    const targetPerPerson =
-        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
-        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
+    const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
     const groupPop = [0, 0, 0, 0];
     const bufferSum = [0, 0, 0, 0];

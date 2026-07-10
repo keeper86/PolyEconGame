@@ -12,7 +12,7 @@ export interface ConsumptionResult {
 }
 
 export function consumeServices(planet: Planet) {
-    planet.population.demography.forEach((cohort) => {
+    planet.population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ) => {
             if (category.total === 0) {
                 return;
@@ -21,9 +21,15 @@ export function consumeServices(planet: Planet) {
             const pop = category.total;
 
             for (const def of allServices) {
-                const rate = def.consumptionRatePerPersonPerTick;
+                const rate = def.consumptionRatePerPersonPerTick(age, occ);
+
+                if (rate <= 0) {
+                    continue;
+                }
+
                 const demand = pop * rate;
                 const serviceState = category.services[serviceKeyOf(def)];
+
                 const available = serviceState.buffer * rate * pop;
                 const consumed = Math.min(available, demand);
                 const bufferConsumed = consumed / (rate * pop);

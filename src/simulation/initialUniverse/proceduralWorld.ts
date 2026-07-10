@@ -21,7 +21,6 @@ import {
     clayMine,
     clothingFactory,
     coalMine,
-    coalPowerPlant,
     concretePlant,
     constructionFacility,
     copperMine,
@@ -122,7 +121,6 @@ const TARGETS: Record<string, FacilityTarget> = {
     cottonFarm: { totalScale: 983_157, agentCount: 4 },
     waterExtractionFacility: { totalScale: 241_115, agentCount: 4 },
     ironExtractionFacility: { totalScale: 242_191, agentCount: 4 },
-    coalPowerPlant: { totalScale: 73_244, agentCount: 4 },
     ironSmelter: { totalScale: 645_843, agentCount: 4 },
     copperSmelter: { totalScale: 178_386, agentCount: 3 },
     oilRefinery: { totalScale: 1_172_862, agentCount: 4 },
@@ -168,7 +166,6 @@ function getFacilityFactory(type: string): FacilityFactory {
         cottonFarm,
         waterExtractionFacility,
         ironExtractionFacility,
-        coalPowerPlant,
         ironSmelter,
         copperSmelter,
         oilRefinery,
@@ -205,7 +202,7 @@ function getFacilityFactory(type: string): FacilityFactory {
     return f;
 }
 
-export function buildProceduralWorld(): { planet: Planet; agents: import('../planet/planet').Agent[] } {
+export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {

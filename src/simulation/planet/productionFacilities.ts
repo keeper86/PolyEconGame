@@ -947,7 +947,6 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(cottonFarm),
     entry(waterExtractionFacility),
     entry(ironExtractionFacility),
-    entry(coalPowerPlant),
     entry(ironSmelter),
     entry(copperSmelter),
     entry(oilRefinery),

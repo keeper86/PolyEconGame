@@ -497,9 +497,6 @@ export const getPlanetBufferHistory = () =>
                         avgLogisticsBuffer: z.number(),
                         avgEducationBuffer: z.number(),
                         avgRetailBuffer: z.number(),
-                        avgConstructionBuffer: z.number(),
-                        avgMaintenanceBuffer: z.number(),
-                        avgAdministrationBuffer: z.number(),
                     }),
                 ),
             }),
@@ -518,9 +515,6 @@ export const getPlanetBufferHistory = () =>
                         avgLogisticsBuffer: r.avg_logistics_buffer ?? 0,
                         avgEducationBuffer: r.avg_education_buffer ?? 0,
                         avgRetailBuffer: r.avg_retail_buffer ?? 0,
-                        avgConstructionBuffer: r.avg_construction_buffer ?? 0,
-                        avgMaintenanceBuffer: r.avg_maintenance_buffer ?? 0,
-                        avgAdministrationBuffer: r.avg_administration_buffer ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };
