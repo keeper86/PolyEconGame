@@ -153,7 +153,7 @@ describe('groceryMarketTick', () => {
         marketTick(agentMap(groceryAgent), planet);
 
         // Age 14 has age multiplier ~0.6035, so effective target = 30 * 0.6035 ≈ 18.1
-        const expected = groceryDef.bufferTargetTicks * 0.603546;
+        const expected = groceryDef.bufferTargetTicks * groceryDef.consumptionRatePerPersonPerTick(14, 'unoccupied');
         const cat = planet.population.demography[14].unoccupied.none.novice;
         expect(cat.total).toBeGreaterThan(0);
         expect(cat.services.grocery.buffer).toBeCloseTo(expected, 4);
