@@ -1,5 +1,5 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
-import { allServices, SERVICE_DEFINITIONS, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
+import { allServices, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType, groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
@@ -264,16 +264,13 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
                         }
                         gPop += cat.total;
 
-                        gFoodStock +=
-                            cat.services.grocery.buffer *
-                            SERVICE_DEFINITIONS.grocery.consumptionRatePerPersonPerTick(30, 'employed') *
-                            cat.total;
+                        gFoodStock += cat.services.grocery.buffer * cat.total;
                         gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
                         gWeightedWealth += cat.total * cat.wealth.mean;
                         for (const def of nonGroceryDefs) {
                             const svcKey = serviceKeyOf(def) as Exclude<ServiceName, 'grocery'>;
                             const svc = cat.services[svcKey];
-                            svcBuffers[svcKey][gi][0] += svc.buffer * def.consumptionRatePerPersonPerTick(30, 'employed') * cat.total;
+                            svcBuffers[svcKey][gi][0] += svc.buffer * cat.total;
                             svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
                         }
                     }

@@ -458,7 +458,8 @@ describe('sequential settlement: food is settled before discretionary goods', ()
         let total = 0;
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
-                total += cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick(30, 'employed') * cat.total;
+                total +=
+                    cat.services.retail.buffer * retailDef.consumptionRatePerPersonPerTick(30, 'employed') * cat.total;
             }),
         );
         return total;

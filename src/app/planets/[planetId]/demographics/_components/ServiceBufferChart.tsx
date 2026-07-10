@@ -101,7 +101,7 @@ function makeTooltip(
 
 function mergePairs(rows: ChartRow[], rowKeys: readonly string[], serviceKey: ServiceName): ChartRow[] {
     const def = SERVICE_DEFINITIONS[serviceKey];
-    const targetPerPerson = def.bufferTargetTicks * def.consumptionRatePerPersonPerTick;
+    const targetPerPerson = def.bufferTargetTicks;
     const result: ChartRow[] = [];
     for (let i = 0; i < rows.length; i += 2) {
         const a = rows[i];
@@ -148,22 +148,22 @@ function computeEffectiveMultiplier(
     groupIndex: number,
     occCounts: [number, number, number, number],
 ): number {
-    const ageMultFn = SERVICE_DEFINITIONS[serviceKey].ageMultiplier;
+    const rateFn = SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
     if (groupMode === 'occupation') {
         const occ = OCCUPATIONS[groupIndex];
-        return ageMultFn(age, occ);
+        return rateFn(age, occ);
     } else {
         // education mode: weighted average over occupations
-        let weightedMult = 0;
+        let weightedRate = 0;
         let totalOccPop = 0;
         for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
             const occPop = occCounts[oi];
             if (occPop > 0) {
-                weightedMult += occPop * ageMultFn(age, OCCUPATIONS[oi]);
+                weightedRate += occPop * rateFn(age, OCCUPATIONS[oi]);
                 totalOccPop += occPop;
             }
         }
-        return totalOccPop > 0 ? weightedMult / totalOccPop : 0;
+        return totalOccPop > 0 ? weightedRate / totalOccPop : 0;
     }
 }
 
@@ -190,9 +190,7 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const targetPerPerson =
-        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
-        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
+    const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
     const { data, yDomain } = useMemo(() => {
         const rawData: ChartRow[] = rows

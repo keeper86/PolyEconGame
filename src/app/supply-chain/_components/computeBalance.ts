@@ -133,7 +133,8 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
     if (population > 0) {
         for (const svc of POPULATION_DEMANDED_SERVICES) {
             const r = getOrCreate(svc.name, 'services', 'services', false);
-            const rate = getServiceDefinitionByResourceName(svc.name)?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
+            const rate =
+                getServiceDefinitionByResourceName(svc.name)?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
             r.populationDemandPerTick += population * rate;
         }
     }

@@ -30,9 +30,7 @@ type Props = {
 
 export default function ServiceSection({ serviceKey, rows, groupMode, groupKeys, groupColors, groupLabels }: Props) {
     const isSmallScreen = useIsSmallScreen();
-    const targetPerPerson =
-        SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks *
-        SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
+    const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 
     const groupPop = [0, 0, 0, 0];
     const bufferSum = [0, 0, 0, 0];
