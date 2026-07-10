@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddActionOverlay, useActionOverlays, hasPendingOverlay } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -52,29 +52,38 @@ export function ActiveFacilityCard({
         const idx = SCALE_FRACTIONS.indexOf(fraction as (typeof SCALE_FRACTIONS)[number]);
         return idx >= 0 ? idx : 4;
     };
-    const [scaleFractionIndex, setScaleFractionIndex] = useState(() =>
-        computeScaleFractionIndex(facility.scale, facility.maxScale),
-    );
-    useEffect(() => {
-        setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [facility.scale, facility.maxScale]);
 
-    const addOverlay = useAddActionOverlay();
+    const addPending = useAddPendingAction();
     const currentTick = useSimulationTick();
-    const actionOverlays = useActionOverlays(agentId, planetId);
+    const pendingActions = usePendingActions(agentId, planetId);
+
+    // Check if there's a pending scale change for this facility
+    const pendingScaleAction = pendingActions.find(
+        (a) => a.type === 'scaleChange' && a.facilityId === facility.id,
+    );
+
+    const [scaleFractionIndex, setScaleFractionIndex] = useState(() => {
+        // If there's a pending scale action, initialize slider to its target
+        if (pendingScaleAction) {
+            const idx = SCALE_FRACTIONS.indexOf(
+                pendingScaleAction.targetScaleFraction as (typeof SCALE_FRACTIONS)[number],
+            );
+            return idx >= 0 ? idx : computeScaleFractionIndex(facility.scale, facility.maxScale);
+        }
+        return computeScaleFractionIndex(facility.scale, facility.maxScale);
+    });
+    useEffect(() => {
+        // Don't reset slider position when snapshot updates if there's a pending action;
+        // the user may be overwriting it.
+        if (!pendingScaleAction) {
+            setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facility.scale, facility.maxScale, pendingScaleAction]);
 
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
-                addOverlay({
-                    type: 'facilityExpanded',
-                    tickConfirmed: currentTick,
-                    agentId,
-                    planetId,
-                    facilityId: facility.id,
-                    targetScale: previewScale,
-                });
                 setShowExpand(false);
                 onExpanded();
             },
@@ -84,13 +93,7 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
-                addOverlay({
-                    type: 'facilityScaleChange',
-                    tickConfirmed: currentTick,
-                    agentId,
-                    planetId,
-                    facilityId: facility.id,
-                });
+                // pending action gets resolved by predicate check in useAgentPlanetDetail
             },
         }),
     );
@@ -98,19 +101,25 @@ export function ActiveFacilityCard({
     const contractMutation = useMutation(
         trpc.contractFacility.mutationOptions({
             onSuccess: () => {
-                addOverlay({
-                    type: 'facilityExpanded',
-                    tickConfirmed: currentTick,
-                    agentId,
-                    planetId,
-                    facilityId: facility.id,
-                    targetScale: reduceTarget,
-                });
                 setShowReduce(false);
                 onExpanded();
             },
         }),
     );
+
+    // Check pending expand/contract actions for this facility
+    // These are placed after mutations to avoid temporal dead zone
+    const pendingExpandAction = pendingActions.find(
+        (a) => a.type === 'expand' && a.facilityId === facility.id,
+    );
+    const pendingContractAction = pendingActions.find(
+        (a) => a.type === 'contract' && a.facilityId === facility.id,
+    );
+
+    // If expand is pending (mutation done, awaiting tick), keep the panel visible
+    const expandPending = Boolean(pendingExpandAction) && !expandMutation.isPending;
+    // If contract is pending, keep the reduce panel visible
+    const contractPending = Boolean(pendingContractAction) && !contractMutation.isPending;
 
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
 
@@ -163,7 +172,12 @@ export function ActiveFacilityCard({
         return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
     }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
 
-    const facilityHasPendingOverlay = hasPendingOverlay(actionOverlays, facility.id);
+    // Compute the pending scale fraction from the pending action (if any)
+    const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
+    const pendingScaleText =
+        pendingScaleFraction !== undefined
+            ? `Pending → ${Math.round(pendingScaleFraction * 100)}%`
+            : null;
 
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>
@@ -173,6 +187,11 @@ export function ActiveFacilityCard({
                     {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
                     {formatNumberWithUnit(facility.maxScale, 'units')}
                 </span>
+                {pendingScaleText && (
+                    <span className='text-amber-600 dark:text-amber-400 ml-auto text-[10px] italic'>
+                        {pendingScaleText}
+                    </span>
+                )}
             </span>
             <div className='flex items-center gap-3'>
                 <div className='flex-1 min-w-0 py-2'>
@@ -182,7 +201,7 @@ export function ActiveFacilityCard({
                         step={1}
                         value={[scaleFractionIndex]}
                         onValueChange={([v]) => setScaleFractionIndex(v ?? 0)}
-                        disabled={setScaleMutation.isPending || facilityHasPendingOverlay}
+                        disabled={setScaleMutation.isPending}
                         className='w-full'
                     />
                     <div className='relative h-3 text-[10px] text-muted-foreground py-2'>
@@ -204,15 +223,23 @@ export function ActiveFacilityCard({
                 <Button
                     size='sm'
                     className='shrink-0 text-xs h-7 w-16'
-                    disabled={setScaleMutation.isPending || !scaleHasChanged || facilityHasPendingOverlay}
-                    onClick={() =>
+                    disabled={setScaleMutation.isPending || !scaleHasChanged}
+                    onClick={() => {
+                        addPending({
+                            type: 'scaleChange',
+                            agentId,
+                            planetId,
+                            facilityId: facility.id,
+                            targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                            triggerTick: currentTick,
+                        });
                         setScaleMutation.mutate({
                             agentId,
                             planetId,
                             facilityId: facility.id,
                             scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
-                        })
-                    }
+                        });
+                    }}
                 >
                     {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : 'Apply'}
                 </Button>
@@ -318,7 +345,7 @@ export function ActiveFacilityCard({
                     <Separator />
                 </Link>
                 <div></div>
-                {facility.construction ? null : showExpand ? (
+                {facility.construction ? null : showExpand || expandPending ? (
                     <FacilityConstructionPanel
                         facilityType={facilityType}
                         fromScale={facility.maxScale}
@@ -326,16 +353,24 @@ export function ActiveFacilityCard({
                         planetId={planetId}
                         label='Expand to scale'
                         confirmLabel='Confirm Expand'
-                        pendingLabel='Expanding…'
-                        isPending={expandMutation.isPending}
+                        pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting tick…'}
+                        isPending={expandMutation.isPending || expandPending}
                         financials={financials}
                         onCancel={() => setShowExpand(false)}
-                        onConfirm={(targetScale) =>
-                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
-                        }
+                        onConfirm={(targetScale) => {
+                            addPending({
+                                type: 'expand',
+                                agentId,
+                                planetId,
+                                facilityId: facility.id,
+                                targetScale,
+                                triggerTick: currentTick,
+                            });
+                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale });
+                        }}
                         onScaleChange={setPreviewScale}
                     />
-                ) : showReduce ? (
+                ) : showReduce || contractPending ? (
                     <div className='space-y-2'>
                         <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
                         <Slider
@@ -421,14 +456,22 @@ export function ActiveFacilityCard({
                                 size='sm'
                                 className='flex-1 text-xs'
                                 disabled={contractMutation.isPending}
-                                onClick={() =>
+                                onClick={() => {
+                                    addPending({
+                                        type: 'contract',
+                                        agentId,
+                                        planetId,
+                                        facilityId: facility.id,
+                                        targetScale: reduceTarget,
+                                        triggerTick: currentTick,
+                                    });
                                     contractMutation.mutate({
                                         agentId,
                                         planetId,
                                         facilityId: facility.id,
                                         targetScale: reduceTarget,
-                                    })
-                                }
+                                    });
+                                }}
                             >
                                 <span
                                     className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}

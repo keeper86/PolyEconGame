@@ -3,7 +3,8 @@
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useAddActionOverlay } from '@/hooks/useActionOverlay';
+import { Spinner } from '@/components/ui/spinner';
+import { useAddPendingAction, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
@@ -24,6 +25,7 @@ function BuildForm({
     constructionServicePrice,
     onBuilt,
     onCancel,
+    isPending,
 }: {
     entry: ProductionFacility;
     agentId: string;
@@ -31,9 +33,12 @@ function BuildForm({
     constructionServicePrice: number;
     onBuilt: () => void;
     onCancel: () => void;
+    /** True when there's a pending build action awaiting the next tick */
+    isPending: boolean;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const addOverlay = useAddActionOverlay();
+    const addPending = useAddPendingAction();
+    const removePendingByKey = useRemovePendingByKey();
     const currentTick = useSimulationTick();
 
     const { data: financials } = useSimulationQuery(
@@ -45,20 +50,19 @@ function BuildForm({
 
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
-            onSuccess: (result) => {
-                addOverlay({
-                    type: 'facilityBuilt',
-                    tickConfirmed: currentTick,
-                    agentId,
-                    planetId,
-                    facilityKey: entry.name,
-                    facilityId: result.facilityId,
-                    targetScale: previewScale,
-                });
+            onSuccess: () => {
                 onBuilt();
+            },
+            onError: () => {
+                // Mutation failed — remove pending action so the UI shows no loading state
+                removePendingByKey(agentId, planetId, entry.name);
             },
         }),
     );
+
+    // When isPending is true and mutation is not in flight, we're awaiting the tick
+    const awaitingTick = isPending && !buildMutation.isPending;
+    const sending = buildMutation.isPending;
 
     return (
         <FacilityCardShell
@@ -93,25 +97,51 @@ function BuildForm({
             <div className='flex-1'>
                 <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
             </div>
-            <div className='mt-auto space-y-2'>
-                <Separator />
-                <FacilityConstructionPanel
-                    facilityType={facilityType}
-                    fromScale={0}
-                    constructionServicePrice={constructionServicePrice}
-                    planetId={planetId}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Building…'
-                    isPending={buildMutation.isPending}
-                    financials={financials}
-                    onCancel={onCancel}
-                    onConfirm={(targetScale) =>
-                        buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale })
-                    }
-                    onScaleChange={setPreviewScale}
-                />
-            </div>
+
+            {/* Pending state overlay (awaiting tick) */}
+            {awaitingTick && (
+                <div className='mt-auto space-y-2'>
+                    <Separator />
+                    <div className='flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground'>
+                        <Spinner className='h-4 w-4' />
+                        <span>Awaiting tick…</span>
+                    </div>
+                </div>
+            )}
+
+            {/* Build form (only show when not awaiting tick) */}
+            {!awaitingTick && (
+                <div className='mt-auto space-y-2'>
+                    <Separator />
+                    <FacilityConstructionPanel
+                        facilityType={facilityType}
+                        fromScale={0}
+                        constructionServicePrice={constructionServicePrice}
+                        planetId={planetId}
+                        label='Build at scale'
+                        confirmLabel='Build'
+                        pendingLabel='Sending build…'
+                        isPending={sending}
+                        financials={financials}
+                        onCancel={onCancel}
+                        onConfirm={(targetScale) => {
+                            // Create pending action eagerly — before the mutation request is sent.
+                            // This survives page reload: if the user navigates away and comes back,
+                            // the pending action will be loaded from localStorage and shown until
+                            // the next snapshot confirms the build.
+                            addPending({
+                                type: 'build',
+                                agentId,
+                                planetId,
+                                facilityKey: entry.name,
+                                triggerTick: currentTick,
+                            });
+                            buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
+                        }}
+                        onScaleChange={setPreviewScale}
+                    />
+                </div>
+            )}
         </FacilityCardShell>
     );
 }
@@ -207,6 +237,7 @@ export function BuildCard({
     constructionServicePrice,
     onBuilt,
     onCancel,
+    isPending,
 }: {
     /** Catalog entry for the build form (unowned facility being built). */
     entry?: ProductionFacility;
@@ -217,6 +248,8 @@ export function BuildCard({
     constructionServicePrice: number;
     onBuilt: () => void;
     onCancel: () => void;
+    /** True when there's a pending build action awaiting the next tick (for BuildForm) */
+    isPending?: boolean;
 }): React.ReactElement | null {
     if (entry && !facility) {
         return (
@@ -227,6 +260,7 @@ export function BuildCard({
                 constructionServicePrice={constructionServicePrice}
                 onBuilt={onBuilt}
                 onCancel={onCancel}
+                isPending={isPending ?? false}
             />
         );
     }

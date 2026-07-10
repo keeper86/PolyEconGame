@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -38,24 +38,42 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
 
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
-    const removeOverlay = useRemoveOverlayByFacilityId();
-    const addOverlay = useAddActionOverlay();
+    const removePendingById = useRemovePendingById();
+    const addPending = useAddPendingAction();
+    const pendingActions = usePendingActions(agentId, planetId);
+
+    // Check if there's a pending cancel action for this facility
+    const hasPendingCancel = pendingActions.some(
+        (a) => a.type === 'cancel' && a.facilityId === facility.id,
+    );
+
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
-                // Remove any optimistic build overlay for this facility
-                removeOverlay(agentId, planetId, facility.id);
-
-                if (facility.maxScale === 0) {
-                    addOverlay({ type: 'facilityCancelled', agentId, planetId, facilityId: facility.id });
-                }
+                // Pending action will be resolved by predicate check
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id);
             },
         }),
     );
+
     const cs = facility.construction;
 
     if (!cs) {
         return <div>Error: Facility is not under construction</div>;
+    }
+
+    // If cancel was submitted and we're awaiting the tick, show pending state
+    if (hasPendingCancel) {
+        return (
+            <div className='mt-auto space-y-2 py-2'>
+                <div className='flex items-center justify-center gap-2 py-2 text-sm text-muted-foreground'>
+                    <Spinner className='h-4 w-4' />
+                    <span>Cancellation pending…</span>
+                </div>
+            </div>
+        );
     }
 
     const pct =
@@ -172,7 +190,16 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
                         <AlertDialogFooter>
                             <AlertDialogCancel>Keep building</AlertDialogCancel>
                             <AlertDialogAction
-                                onClick={() => cancelMutation.mutate({ agentId, planetId, facilityId: facility.id })}
+                                onClick={() => {
+                    addPending({
+                        type: 'cancel',
+                        agentId,
+                        planetId,
+                        facilityId: facility.id,
+                        triggerTick: currentTick,
+                    });
+                    cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
+                }}
                             >
                                 Cancel construction
                             </AlertDialogAction>
