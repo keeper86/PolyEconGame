@@ -4,7 +4,6 @@ import AutomationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkforceDemographyPanel';
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { AgentMetricChart } from '@/components/client/AgentMetricChart';
 import { Page } from '@/components/client/Page';
@@ -18,7 +17,8 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { Separator } from '@radix-ui/react-dropdown-menu';
 
 export default function WorkforcePage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
+        useAgentPlanetDetail();
 
     const trpc = useTRPC();
     const { data: economyData } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));
@@ -26,10 +26,16 @@ export default function WorkforcePage() {
 
     return (
         <Page title={`Workforce Management`}>
-            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-                {hasNoAssets ? (
-                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-                ) : !isLoading && assets ? (
+            <AgentAccessGuard
+                isLoading={myAgentId.isLoading}
+                isOwnAgent={isOwnAgent}
+                isOwnAgentUnknown={isOwnAgentUnknown}
+                hasNoAssets={hasNoAssets}
+                detailLoading={isLoading}
+                agentId={agentId}
+                planetId={planetId}
+            >
+                {assets ? (
                     <div className='space-y-6'>
                         <Card>
                             <CardContent className='px-3 pb-3 space-y-3'>
@@ -106,9 +112,7 @@ export default function WorkforcePage() {
 
                         <WorkforceDemographyPanel assets={assets} />
                     </div>
-                ) : (
-                    <div className='text-sm text-muted-foreground'>Loading…</div>
-                )}
+                ) : null}
             </AgentAccessGuard>
         </Page>
     );

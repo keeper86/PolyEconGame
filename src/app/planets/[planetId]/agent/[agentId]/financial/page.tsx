@@ -3,7 +3,6 @@
 import AgentFinancialCharts from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialCharts';
 import AgentFinancialOverview from '@/app/planets/[planetId]/agent/[agentId]/financial/_components/AgentFinancialOverview';
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +15,7 @@ import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
 
 export default function FinancialPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId, tick } =
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId, tick } =
         useAgentPlanetDetail();
 
     const trpc = useTRPC();
@@ -37,10 +36,16 @@ export default function FinancialPage() {
 
     return (
         <Page title={`Financial Overview`}>
-            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-                {hasNoAssets ? (
-                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-                ) : !isLoading && assets ? (
+            <AgentAccessGuard
+                isLoading={myAgentId.isLoading}
+                isOwnAgent={isOwnAgent}
+                isOwnAgentUnknown={isOwnAgentUnknown}
+                hasNoAssets={hasNoAssets}
+                detailLoading={isLoading}
+                agentId={agentId}
+                planetId={planetId}
+            >
+                {assets ? (
                     <span className='flex flex-col gap-3'>
                         <Card>
                             <CardContent className='px-3 py-3 space-y-3'>
@@ -75,9 +80,7 @@ export default function FinancialPage() {
                             licenses={assets.licenses}
                         />
                     </span>
-                ) : (
-                    <div className='text-sm text-muted-foreground'>Loading…</div>
-                )}
+                ) : null}
             </AgentAccessGuard>
         </Page>
     );
