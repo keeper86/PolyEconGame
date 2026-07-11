@@ -366,6 +366,20 @@ describe('processFacilityContraction', () => {
         expect(gameState.tickerEvents.length).toBe(eventsBefore + 1);
         expect(gameState.tickerEvents[eventsBefore].category).toBe('facilityScrapped');
     });
+
+    it('can scrap a facility to scale 0 completely', () => {
+        const recyclerAssets = planet.recycler!.assets[planet.id]!;
+        recyclerAssets.deposits = 1_000_000;
+        const result = processFacilityContraction(planet, facility, agent, 0, gameState);
+        expect(result).toBe(true);
+        expect(facility.maxScale).toBe(0);
+        expect(facility.scale).toBe(0);
+        // CS should still be recovered for the full scale
+        const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        expect(csStock).toBeGreaterThan(0);
+        // Payment should still be transferred
+        expect(agent.assets[planet.id]!.deposits).toBeGreaterThan(0);
+    });
 });
 
 describe('recycler end-to-end: contraction → storage → market sale', () => {

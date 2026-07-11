@@ -1,4 +1,4 @@
-import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_MONTH } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, MIN_WAGE, TICKS_PER_MONTH } from '../constants';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -7,7 +7,7 @@ import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
 
-export const DEFAULT_WAGE_PER_EDU = 10.0;
+export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
 function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): number {
     let cost = 0;

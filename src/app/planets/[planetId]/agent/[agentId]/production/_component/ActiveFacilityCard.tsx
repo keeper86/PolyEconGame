@@ -7,18 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
-import { FacilityProductionIORow } from './FacilityProductionIORow';
+import { FacilityProductionIORow } from './FacilityIORow';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { WorkerBars } from './WorkerBars';
 import Link from 'next/link';
@@ -37,7 +38,6 @@ export function ActiveFacilityCard({
     onExpanded: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
     const [showReduce, setShowReduce] = useState(false);
@@ -52,25 +52,42 @@ export function ActiveFacilityCard({
         const idx = SCALE_FRACTIONS.indexOf(fraction as (typeof SCALE_FRACTIONS)[number]);
         return idx >= 0 ? idx : 4;
     };
-    const [scaleFractionIndex, setScaleFractionIndex] = useState(() =>
-        computeScaleFractionIndex(facility.scale, facility.maxScale),
-    );
-    useEffect(() => {
-        setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [facility.scale, facility.maxScale]);
 
-    const invalidate = () =>
-        queryClient.invalidateQueries({
-            queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
-        });
+    const addPending = useAddPendingAction();
+    const removePendingById = useRemovePendingById();
+    const currentTick = useSimulationTick();
+    const pendingActions = usePendingActions(agentId, planetId);
+
+    // Check if there's a pending scale change for this facility
+    const pendingScaleAction = pendingActions.find((a) => a.type === 'scaleChange' && a.facilityId === facility.id);
+
+    const [scaleFractionIndex, setScaleFractionIndex] = useState(() => {
+        // If there's a pending scale action, initialize slider to its target
+        if (pendingScaleAction) {
+            const idx = SCALE_FRACTIONS.indexOf(
+                pendingScaleAction.targetScaleFraction as (typeof SCALE_FRACTIONS)[number],
+            );
+            return idx >= 0 ? idx : computeScaleFractionIndex(facility.scale, facility.maxScale);
+        }
+        return computeScaleFractionIndex(facility.scale, facility.maxScale);
+    });
+    useEffect(() => {
+        // Don't reset slider position when snapshot updates if there's a pending action;
+        // the user may be overwriting it.
+        if (!pendingScaleAction) {
+            setScaleFractionIndex(computeScaleFractionIndex(facility.scale, facility.maxScale));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facility.scale, facility.maxScale, pendingScaleAction]);
 
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
-                void invalidate();
                 setShowExpand(false);
                 onExpanded();
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'expand');
             },
         }),
     );
@@ -78,7 +95,10 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
-                void invalidate();
+                // pending action gets resolved by predicate check in useAgentPlanetDetail
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'scaleChange');
             },
         }),
     );
@@ -86,12 +106,25 @@ export function ActiveFacilityCard({
     const contractMutation = useMutation(
         trpc.contractFacility.mutationOptions({
             onSuccess: () => {
-                void invalidate();
                 setShowReduce(false);
                 onExpanded();
             },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id, 'contract');
+            },
         }),
     );
+
+    // Check pending expand/contract/cancel actions for this facility
+    // These are placed after mutations to avoid temporal dead zone
+    const pendingExpandAction = pendingActions.find((a) => a.type === 'expand' && a.facilityId === facility.id);
+    const pendingContractAction = pendingActions.find((a) => a.type === 'contract' && a.facilityId === facility.id);
+    const pendingCancelAction = pendingActions.find((a) => a.type === 'cancel' && a.facilityId === facility.id);
+
+    // If expand is pending (mutation done, awaiting tick), keep the panel visible
+    const expandPending = Boolean(pendingExpandAction) && !expandMutation.isPending;
+    // If contract is pending, keep the reduce panel visible
+    const contractPending = Boolean(pendingContractAction) && !contractMutation.isPending;
 
     const facilityType = useMemo(() => getFacilityType(facility), [facility]);
 
@@ -117,11 +150,13 @@ export function ActiveFacilityCard({
             for (let s = 1; s < reduceMax; s += step) {
                 opts.push(s);
             }
-            if (opts[opts.length - 1] !== reduceMax - 1) {
-                opts.push(reduceMax - 1);
+            if (opts[opts.length - 1] !== reduceMax) {
+                opts.push(reduceMax);
             }
         } else if (reduceMax > 1) {
             opts.push(1);
+        } else {
+            opts.push(0);
         }
         return opts;
     }, [reduceMax]);
@@ -144,6 +179,11 @@ export function ActiveFacilityCard({
         return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
     }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
 
+    // Compute the pending scale fraction from the pending action (if any)
+    const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
+    const pendingScaleText =
+        pendingScaleFraction !== undefined ? `Pending → ${Math.round(pendingScaleFraction * 100)}%` : null;
+
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>
             <span className='flex flex-row text-muted-foreground text-xs gap-2'>
@@ -152,6 +192,11 @@ export function ActiveFacilityCard({
                     {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
                     {formatNumberWithUnit(facility.maxScale, 'units')}
                 </span>
+                {pendingScaleText && (
+                    <span className='text-amber-600 dark:text-amber-400 ml-auto text-[10px] italic'>
+                        {pendingScaleText}
+                    </span>
+                )}
             </span>
             <div className='flex items-center gap-3'>
                 <div className='flex-1 min-w-0 py-2'>
@@ -184,14 +229,22 @@ export function ActiveFacilityCard({
                     size='sm'
                     className='shrink-0 text-xs h-7 w-16'
                     disabled={setScaleMutation.isPending || !scaleHasChanged}
-                    onClick={() =>
+                    onClick={() => {
+                        addPending({
+                            type: 'scaleChange',
+                            agentId,
+                            planetId,
+                            facilityId: facility.id,
+                            targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                            triggerTick: currentTick,
+                        });
                         setScaleMutation.mutate({
                             agentId,
                             planetId,
                             facilityId: facility.id,
                             scaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
-                        })
-                    }
+                        });
+                    }}
                 >
                     {setScaleMutation.isPending ? <Spinner className='h-4 w-4' /> : 'Apply'}
                 </Button>
@@ -201,6 +254,19 @@ export function ActiveFacilityCard({
 
     const recyclerColor =
         recyclerRatio < 0.5 ? 'text-red-600' : recyclerRatio < 0.66 ? 'text-amber-600' : 'text-green-600';
+
+    // Determine blocking overlay message for any in-flight or pending action
+    const overlayMessage = expandMutation.isPending
+        ? 'Expanding…'
+        : expandPending
+          ? 'Awaiting tick…'
+          : contractMutation.isPending
+            ? 'Reducing…'
+            : contractPending
+              ? 'Awaiting tick…'
+              : pendingCancelAction
+                ? 'Cancellation pending…'
+                : null;
 
     return (
         <FacilityCardShell
@@ -245,7 +311,7 @@ export function ActiveFacilityCard({
                 <Link href={`/planets/${planetId}/agent/${agentId}/financial` as never}>
                     <Separator />
 
-                    <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 rounded-sm w-full hover:ring-2 hover:ring-primary/50'>
+                    <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full hover:ring-2 hover:ring-primary/50'>
                         {'revenue' in facility.lastTickResults && (
                             <>
                                 <div className='flex flex-col items-center'>
@@ -296,162 +362,203 @@ export function ActiveFacilityCard({
 
                     <Separator />
                 </Link>
-                <div></div>
-                {facility.construction ? null : showExpand ? (
-                    <FacilityConstructionPanel
-                        facilityType={facilityType}
-                        fromScale={facility.maxScale}
-                        constructionServicePrice={constructionServicePrice}
-                        planetId={planetId}
-                        label='Expand to scale'
-                        confirmLabel='Confirm Expand'
-                        pendingLabel='Expanding…'
-                        isPending={expandMutation.isPending}
-                        financials={financials}
-                        onCancel={() => setShowExpand(false)}
-                        onConfirm={(targetScale) =>
-                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
-                        }
-                        onScaleChange={setPreviewScale}
-                    />
-                ) : showReduce ? (
-                    <div className='space-y-2'>
-                        <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
-                        <Slider
-                            min={0}
-                            max={Math.max(0, reduceOptions.length - 1)}
-                            step={1}
-                            value={[currentReduceIndex]}
-                            onValueChange={([v]) => {
-                                const target = reduceOptions[v ?? 0];
-                                if (target !== undefined) {
-                                    setReduceTarget(target);
-                                }
-                            }}
-                            disabled={contractMutation.isPending}
-                            className='w-full'
-                        />
-                        <div className='relative h-4 text-[10px] text-muted-foreground'>
-                            {reduceOptions.map((v, i) => {
-                                const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
-                                const translate = i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
-                                return (
-                                    <span
-                                        key={v}
-                                        className='absolute'
-                                        style={{
-                                            left: `${pct}%`,
-                                            transform: `translateX(${translate})`,
-                                        }}
-                                    >
-                                        {formatNumberWithUnit(v, 'none')}
-                                    </span>
-                                );
-                            })}
-                        </div>
 
-                        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
-                            <div className='grid grid-cols-1 gap-y-1'>
-                                <Stat
-                                    label='Reduced capacity'
-                                    value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
-                                    icon={<TrendingDown className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Estimated price'
-                                    value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
-                                    icon={<TrendingUp className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Efficiency'
-                                    value={Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) + '%'}
-                                    icon={<Clock className='h-3 w-3' />}
-                                    valueClassName={recyclerColor}
-                                />
-                            </div>
-                            <div className='grid grid-cols-1 gap-y-1'>
-                                <Stat
-                                    label='Deposits'
-                                    value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
-                                    icon={<Wallet className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Monthly cash flow'
-                                    value={formatNumberWithUnit(financials?.monthlyNetCashFlow, 'currency', planetId)}
-                                    icon={<Percent className='h-3 w-3' />}
-                                />
-                                <Stat
-                                    label='Loans'
-                                    value={formatNumberWithUnit(0, 'currency', planetId)}
-                                    icon={<TrendingDown className='h-3 w-3' />}
-                                />
-                            </div>
-                        </div>
-                        <div className='flex gap-2'>
-                            <Button
-                                size='sm'
-                                variant='outline'
-                                className='flex-1 text-xs'
-                                onClick={() => setShowReduce(false)}
-                            >
-                                Cancel
-                            </Button>
-                            <Button
-                                size='sm'
-                                className='flex-1 text-xs'
-                                disabled={contractMutation.isPending}
-                                onClick={() =>
-                                    contractMutation.mutate({
+                <div className='relative'>
+                    <div className='space-y-2'>
+                        {facility.construction ? (
+                            <ConstructionCompactRow
+                                facility={facility}
+                                isPendingCancel={Boolean(pendingCancelAction)}
+                            />
+                        ) : showExpand || expandPending ? (
+                            <FacilityConstructionPanel
+                                facilityType={facilityType}
+                                fromScale={facility.maxScale}
+                                constructionServicePrice={constructionServicePrice}
+                                planetId={planetId}
+                                label='Expand to scale'
+                                confirmLabel='Confirm Expand'
+                                pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting tick…'}
+                                isPending={expandMutation.isPending || expandPending}
+                                financials={financials}
+                                onCancel={() => setShowExpand(false)}
+                                onConfirm={(targetScale) => {
+                                    addPending({
+                                        type: 'expand',
                                         agentId,
                                         planetId,
                                         facilityId: facility.id,
-                                        targetScale: reduceTarget,
-                                    })
-                                }
-                            >
-                                <span
-                                    className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
-                                >
-                                    {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
-                                </span>
-                            </Button>
-                        </div>
+                                        targetScale,
+                                        triggerTick: currentTick,
+                                    });
+                                    expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale });
+                                }}
+                                onScaleChange={setPreviewScale}
+                            />
+                        ) : showReduce || contractPending ? (
+                            <div className='space-y-2'>
+                                <p className='text-xs text-muted-foreground pt-2 pb-1'>Reduce capacity to scale</p>
+                                <Slider
+                                    min={0}
+                                    max={Math.max(0, reduceOptions.length - 1)}
+                                    step={1}
+                                    value={[currentReduceIndex]}
+                                    onValueChange={([v]) => {
+                                        const target = reduceOptions[v ?? 0];
+                                        if (target !== undefined) {
+                                            setReduceTarget(target);
+                                        }
+                                    }}
+                                    disabled={contractMutation.isPending}
+                                    className='w-full'
+                                />
+                                <div className='relative h-4 text-[10px] text-muted-foreground'>
+                                    {reduceOptions.map((v, i) => {
+                                        const pct = (i / Math.max(1, reduceOptions.length - 1)) * 100;
+                                        const translate =
+                                            i === 0 ? '0%' : i === reduceOptions.length - 1 ? '-100%' : '-50%';
+                                        return (
+                                            <span
+                                                key={v}
+                                                className='absolute'
+                                                style={{
+                                                    left: `${pct}%`,
+                                                    transform: `translateX(${translate})`,
+                                                }}
+                                            >
+                                                {formatNumberWithUnit(v, 'none')}
+                                            </span>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
+                                    <div className='grid grid-cols-1 gap-y-1'>
+                                        <Stat
+                                            label='Reduced capacity'
+                                            value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
+                                            icon={<TrendingDown className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Estimated price'
+                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
+                                            icon={<TrendingUp className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Efficiency'
+                                            value={
+                                                Math.round(recyclerRatio * RECYCLER_BASE_RECOVERY_EFFICIENCY * 100) +
+                                                '%'
+                                            }
+                                            icon={<Clock className='h-3 w-3' />}
+                                            valueClassName={recyclerColor}
+                                        />
+                                    </div>
+                                    <div className='grid grid-cols-1 gap-y-1'>
+                                        <Stat
+                                            label='Deposits'
+                                            value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
+                                            icon={<Wallet className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Monthly cash flow'
+                                            value={formatNumberWithUnit(
+                                                financials?.monthlyNetCashFlow,
+                                                'currency',
+                                                planetId,
+                                            )}
+                                            icon={<Percent className='h-3 w-3' />}
+                                        />
+                                        <Stat
+                                            label='Loans'
+                                            value={formatNumberWithUnit(0, 'currency', planetId)}
+                                            icon={<TrendingDown className='h-3 w-3' />}
+                                        />
+                                    </div>
+                                </div>
+                                <div className='flex gap-2'>
+                                    <Button
+                                        size='sm'
+                                        variant='outline'
+                                        className='flex-1 text-xs'
+                                        onClick={() => setShowReduce(false)}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        className='flex-1 text-xs'
+                                        disabled={contractMutation.isPending}
+                                        onClick={() => {
+                                            addPending({
+                                                type: 'contract',
+                                                agentId,
+                                                planetId,
+                                                facilityId: facility.id,
+                                                targetScale: reduceTarget,
+                                                triggerTick: currentTick,
+                                            });
+                                            contractMutation.mutate({
+                                                agentId,
+                                                planetId,
+                                                facilityId: facility.id,
+                                                targetScale: reduceTarget,
+                                            });
+                                        }}
+                                    >
+                                        <span
+                                            className={`font-bold text-[14px] dark:text-[12px] ${recyclerColor} text-outline-strong text-muted-foreground`}
+                                        >
+                                            {contractMutation.isPending ? 'Reducing…' : 'Confirm Reduce'}
+                                        </span>
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                {operatingScaleSection}
+                                <Separator />
+                                <div className='flex gap-2 pt-1'>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        className='flex-1 text-xs gap-1'
+                                        disabled={facility.construction !== null}
+                                        onClick={() => {
+                                            setPreviewScale(facility.maxScale + 1);
+                                            setShowReduce(false);
+                                            setShowExpand(true);
+                                        }}
+                                    >
+                                        Expand facility
+                                    </Button>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        className='flex-1 text-xs gap-1'
+                                        onClick={() => {
+                                            setShowExpand(false);
+                                            setShowReduce(true);
+                                        }}
+                                    >
+                                        Reduce capacity
+                                    </Button>
+                                </div>
+                            </>
+                        )}
                     </div>
-                ) : (
-                    <>
-                        {operatingScaleSection}
-                        <Separator />
-                        <div className='flex gap-2 pt-1'>
-                            <Button
-                                variant='outline'
-                                size='sm'
-                                className='flex-1 text-xs gap-1'
-                                disabled={facility.construction !== null}
-                                onClick={() => {
-                                    setPreviewScale(facility.maxScale + 1);
-                                    setShowReduce(false);
-                                    setShowExpand(true);
-                                }}
-                            >
-                                Expand facility
-                            </Button>
-                            <Button
-                                variant='outline'
-                                size='sm'
-                                className='flex-1 text-xs gap-1'
-                                disabled={facility.maxScale <= 1}
-                                onClick={() => {
-                                    setShowExpand(false);
-                                    setShowReduce(true);
-                                }}
-                            >
-                                Reduce capacity
-                            </Button>
+
+                    {/* Blocking overlay only over the action controls (not the revenue row) */}
+                    {overlayMessage && (
+                        <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
+                            <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                <Spinner className='h-4 w-4' />
+                                {overlayMessage}
+                            </span>
                         </div>
-                    </>
-                )}
+                    )}
+                </div>
             </div>
-            {facility.construction !== null && <ConstructionCompactRow facility={facility} />}
         </FacilityCardShell>
     );
 }

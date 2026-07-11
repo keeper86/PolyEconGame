@@ -9,11 +9,15 @@ import { ShipMarketTab } from './_components/ShipMarketTab';
 import { Page } from '@/components/client/Page';
 
 export default function AgentShipsPage() {
-    const { agentId, planetId, isOwnAgent, myAgentId, tick, assets } = useAgentPlanetDetail();
+    const { agentId, planetId, isOwnAgent, isOwnAgentUnknown, myAgentId, tick, assets } = useAgentPlanetDetail();
 
     return (
         <Page title={`Ship Management`}>
-            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
+            <AgentAccessGuard
+                isLoading={myAgentId.isLoading}
+                isOwnAgent={isOwnAgent}
+                isOwnAgentUnknown={isOwnAgentUnknown}
+            >
                 <div data-tour='ships-tabs'>
                     <Tabs defaultValue='my-ships'>
                         <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>

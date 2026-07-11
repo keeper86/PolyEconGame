@@ -41,6 +41,11 @@ type ChartPoint = {
 type LiveData = {
     tick: number;
     population: number;
+    groceryBuffer: number;
+    healthcareBuffer: number;
+    logisticsBuffer: number;
+    educationBuffer: number;
+    retailBuffer: number;
 };
 
 function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'auto'] {
@@ -177,7 +182,19 @@ function EmptyChart() {
 
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoint[]; live?: LiveData }) {
     const data = useMemo(
-        () => computeMonthlyData(monthlyPoints, live ?? { tick: 0, population: 0 }),
+        () =>
+            computeMonthlyData(
+                monthlyPoints,
+                live ?? {
+                    tick: 0,
+                    population: 0,
+                    groceryBuffer: 0,
+                    healthcareBuffer: 0,
+                    logisticsBuffer: 0,
+                    educationBuffer: 0,
+                    retailBuffer: 0,
+                },
+            ),
         [monthlyPoints, live],
     );
     const ghostData = useMemo(
@@ -553,6 +570,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                         currentTick={currentTick}
                         granularity={granularity}
                         isLoading={isLoading}
+                        live={live}
                     />
                 </div>
             </CardContent>

@@ -38,6 +38,15 @@ type RawPoint = {
     avgRetailBuffer: number;
 };
 
+type LiveBufferData = {
+    tick: number;
+    groceryBuffer: number;
+    healthcareBuffer: number;
+    logisticsBuffer: number;
+    educationBuffer: number;
+    retailBuffer: number;
+};
+
 type ChartPoint = {
     tick: number;
     year: number;
@@ -53,7 +62,7 @@ function toPercent(bufferValue: number, serviceKey: string): number {
     return Math.min(100, (bufferValue / target) * 100);
 }
 
-function computeMonthlyData(allPts: RawPoint[], currentTick: number): ChartPoint[] {
+function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveBufferData): ChartPoint[] {
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
     if (pts.length === 0 && currentTick === 0) {
         return [];
@@ -101,6 +110,42 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number): ChartPoint
                 prev[key] = toPercent(lastBefore[dbKey] as number, key);
             }
             result.unshift(prev);
+        }
+    }
+
+    // Insert live data point with fractional month index
+    if (live.tick > 0) {
+        const { year: liveYear, monthIndex: liveMi, day: liveDay } = tickToDate(live.tick);
+        if (liveYear === latestYear) {
+            const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
+            const fractionalMonthIdx = liveMi + dayFraction;
+
+            const livePoint: ChartPoint = {
+                tick: live.tick,
+                year: liveYear,
+                monthIdx: fractionalMonthIdx,
+            };
+            for (const key of BUFFER_KEYS) {
+                let livePercent = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number, key);
+
+                // Early-month blending: during days 1-7 of a new month, blend toward previous month's historic value
+                if (liveDay <= 7) {
+                    const prevMonthIdx = liveMi; // 0-based month index of the previous completed month
+                    const prevMonthPoint = pts.find((p) => {
+                        const { year, monthIndex } = tickToDate(p.bucket);
+                        return year === liveYear && monthIndex === prevMonthIdx;
+                    });
+                    if (prevMonthPoint) {
+                        const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
+                        const prevPercent = toPercent(prevMonthPoint[dbKey] as number, key);
+                        const blend = liveDay / 8;
+                        livePercent = livePercent * blend + prevPercent * (1 - blend);
+                    }
+                }
+
+                livePoint[key] = livePercent;
+            }
+            result.push(livePoint);
         }
     }
 
@@ -308,21 +353,45 @@ function BufferAreaChart({
                         }}
                     />
                     <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8', paddingTop: 4 }} />
-                    {BUFFER_KEYS.map((key) => (
-                        <Area
-                            key={key}
-                            type='monotone'
-                            dataKey={key}
-                            name={key}
-                            stroke={BUFFER_COLORS[key]}
-                            strokeWidth={1.5}
-                            fill={`url(#grad${key})`}
-                            dot={{ r: 2.5, fill: BUFFER_COLORS[key] }}
-                            activeDot={{ r: 3 }}
-                            isAnimationActive={false}
-                            connectNulls={false}
-                        />
-                    ))}
+                    {BUFFER_KEYS.map((key) => {
+                        const color = BUFFER_COLORS[key];
+                        return (
+                            <Area
+                                key={key}
+                                type='monotone'
+                                dataKey={key}
+                                name={key}
+                                stroke={color}
+                                strokeWidth={1.5}
+                                fill={`url(#grad${key})`}
+                                dot={(props: { cx: number; cy: number; payload: ChartPoint }) => {
+                                    const { cx, cy, payload } = props;
+                                    const monthIdx = payload?.monthIdx;
+                                    // Larger dot for live data point (fractional monthIdx)
+                                    if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
+                                        return (
+                                            <circle
+                                                key={`${key}_${monthIdx}_live`}
+                                                cx={cx}
+                                                cy={cy}
+                                                r={3.5}
+                                                fill={color}
+                                            />
+                                        );
+                                    }
+                                    if (cx != null && !isNaN(cx)) {
+                                        return (
+                                            <circle key={`${key}_${monthIdx}`} cx={cx} cy={cy} r={2.5} fill={color} />
+                                        );
+                                    }
+                                    return <circle key={`${key}_${monthIdx}_hidden`} r={0} visibility='hidden' />;
+                                }}
+                                activeDot={{ r: 3 }}
+                                isAnimationActive={false}
+                                connectNulls={false}
+                            />
+                        );
+                    })}
                     {ghostData &&
                         ghostData.length > 0 &&
                         BUFFER_KEYS.map((key) => {
@@ -358,6 +427,7 @@ type Props = {
     currentTick: number;
     granularity: 'monthly' | 'yearly' | 'decade';
     isLoading?: boolean;
+    live: LiveBufferData;
 };
 
 export default function PlanetBufferChart({
@@ -367,12 +437,13 @@ export default function PlanetBufferChart({
     currentTick,
     granularity,
     isLoading: externalLoading,
+    live,
 }: Props): React.ReactElement {
     const isLoading = externalLoading ?? false;
 
     const monthlyChartData = useMemo(
-        () => computeMonthlyData(monthlyPoints, currentTick),
-        [monthlyPoints, currentTick],
+        () => computeMonthlyData(monthlyPoints, currentTick, live),
+        [monthlyPoints, currentTick, live],
     );
     const ghostData = useMemo(() => computeBufferGhostData(monthlyPoints, currentTick), [monthlyPoints, currentTick]);
     const yearlyChartData = useMemo(() => computeYearlyData(yearlyPoints), [yearlyPoints]);

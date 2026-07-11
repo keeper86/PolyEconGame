@@ -1,13 +1,18 @@
 'use client';
 
 import { useAgentId } from '@/hooks/useAgentId';
+import {
+    usePendingActions,
+    useRemovePendingById,
+    useRemovePendingByKey,
+    resolvePendingActions,
+} from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentPlanetDetail } from '@/server/controller/simulation';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { useParams } from 'next/navigation';
-import { useActionOverlays, applyFacilityOverlays, useResolveActionOverlays } from '@/hooks/useActionOverlay';
 import { useEffect, useMemo, useRef } from 'react';
 
 export type UseAgentPlanetDetailResult = {
@@ -19,6 +24,7 @@ export type UseAgentPlanetDetailResult = {
     isLoading: boolean;
     hasNoAssets: boolean;
     isOwnAgent: boolean;
+    isOwnAgentUnknown: boolean;
     myAgentId: ReturnType<typeof useAgentId>;
 };
 
@@ -36,36 +42,58 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
     const detail = (data?.detail as AgentPlanetDetail | null) ?? null;
     const baseAssets = detail?.assets ?? null;
 
-    // Apply optimistic overlays for confirmed but not-yet-snapshot actions
-    const overlays = useActionOverlays(agentId, planetId);
-    const resolveOverlays = useResolveActionOverlays();
-    const prevResolvedRef = useRef<Set<string>>(new Set());
+    // Pending actions for this agent/planet
+    const pendingActions = usePendingActions(agentId, planetId);
+    const removeById = useRemovePendingById();
+    const removeByKey = useRemovePendingByKey();
 
+    // Expose the real facilities directly (no fake data merging)
     const assets = useMemo(() => {
         if (!baseAssets) {
             return null;
         }
-        // Clone to avoid mutating the cache
-        const merged: AgentPlanetAssets = {
-            ...baseAssets,
-            productionFacilities: applyFacilityOverlays(baseAssets.productionFacilities, overlays, planetId),
-        };
-        return merged;
-    }, [baseAssets, overlays, planetId]);
+        return baseAssets as AgentPlanetAssets;
+    }, [baseAssets]);
 
-    // GC overlays in a useEffect — never inside useMemo (that would cause
-    // React's "Cannot update a component while rendering a different component").
+    // GC resolved pending actions whenever the facility list changes.
+    // This runs after every snapshot update that changes the facility set.
+    const prevAssetVersionRef = useRef<string | null>(null);
+
     useEffect(() => {
         if (!baseAssets) {
             return;
         }
-        const realIds = new Set<string>(baseAssets.productionFacilities.map((f: ProductionFacility) => f.id));
-        const prev = prevResolvedRef.current;
-        if (prev.size !== realIds.size || ![...realIds].every((id) => prev.has(id))) {
-            prevResolvedRef.current = realIds;
-            resolveOverlays(agentId, planetId, realIds);
+        const realFacilities: ProductionFacility[] = baseAssets.productionFacilities;
+
+        // Compute a quick version hash to detect actual changes (skip if same)
+        const versionHash = realFacilities
+            .map((f) => {
+                const cs = f.construction;
+                return `${f.id}:${f.scale}:${f.maxScale}:${cs?.type ?? 'none'}:${cs?.constructionTargetMaxScale ?? 'none'}`;
+            })
+            .join('|');
+        if (prevAssetVersionRef.current === versionHash) {
+            return;
         }
-    }, [baseAssets, agentId, planetId, resolveOverlays]);
+        prevAssetVersionRef.current = versionHash;
+
+        // Resolve pending actions against the real snapshot facilities
+        const remaining = resolvePendingActions(pendingActions, realFacilities);
+        if (remaining.length === pendingActions.length) {
+            return; // nothing resolved
+        }
+
+        // Identify which actions were resolved and remove them
+        const resolved = pendingActions.filter((a) => !remaining.includes(a));
+        for (const action of resolved) {
+            if (action.type === 'build' && action.facilityKey) {
+                removeByKey(agentId, planetId, action.facilityKey);
+            } else if (action.facilityId) {
+                removeById(agentId, planetId, action.facilityId, action.type);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [baseAssets, agentId, planetId, removeById, removeByKey]);
 
     return {
         agentId,
@@ -76,6 +104,7 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         isLoading,
         hasNoAssets: !isLoading && data !== undefined && detail === null,
         isOwnAgent: myAgentId.agentId === agentId,
+        isOwnAgentUnknown: myAgentId.agentId === null && myAgentId.status !== 'authenticated',
         myAgentId,
     };
 }

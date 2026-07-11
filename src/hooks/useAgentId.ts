@@ -4,6 +4,7 @@ export type UseAgentIdResult = {
     agentId: string | null;
     planetId: string | null;
     isLoading: boolean;
+    status: 'loading' | 'authenticated' | 'unauthenticated';
 };
 
 export function useAgentId(): UseAgentIdResult {
@@ -13,5 +14,6 @@ export function useAgentId(): UseAgentIdResult {
         agentId: session?.user?.agentId ?? null,
         planetId: session?.user?.planetId ?? null,
         isLoading: status === 'loading',
+        status,
     };
 }

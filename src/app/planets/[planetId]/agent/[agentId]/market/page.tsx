@@ -1,7 +1,6 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import { NoAssetsMessage } from '@/app/planets/[planetId]/agent/_component/NoAssetsMessage';
 import MarketPanel from './_components/MarketPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
@@ -10,7 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
 export default function MarketPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, myAgentId } = useAgentPlanetDetail();
+    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
+        useAgentPlanetDetail();
     const [showAll, setShowAll] = useState(false);
 
     return (
@@ -27,10 +27,16 @@ export default function MarketPage() {
                 </div>
             }
         >
-            <AgentAccessGuard isLoading={myAgentId.isLoading} isOwnAgent={isOwnAgent}>
-                {hasNoAssets ? (
-                    <NoAssetsMessage planetId={planetId} agentId={agentId} isOwnAgent={isOwnAgent} />
-                ) : !isLoading && assets ? (
+            <AgentAccessGuard
+                isLoading={myAgentId.isLoading}
+                isOwnAgent={isOwnAgent}
+                isOwnAgentUnknown={isOwnAgentUnknown}
+                hasNoAssets={hasNoAssets}
+                detailLoading={isLoading}
+                agentId={agentId}
+                planetId={planetId}
+            >
+                {assets ? (
                     <div data-tour='market-overview'>
                         <MarketPanel
                             agentId={agentId}
@@ -40,9 +46,7 @@ export default function MarketPage() {
                             showAll={showAll}
                         />
                     </div>
-                ) : (
-                    <div className='text-sm text-muted-foreground'>Loading…</div>
-                )}
+                ) : null}
             </AgentAccessGuard>
         </Page>
     );

@@ -119,9 +119,16 @@ export function mergeClaimBackIntoPool(pool: ResourcePool, claim: ResourceClaim)
     pool.maximumCapacity += claim.maximumCapacity;
 }
 
-/**
- * Shared result returned by `leaseClaim` on success/failure.
- */
+export function computeLeaseClaimUpfrontCost(pool: ResourcePool, quantity: number): number {
+    const costAmount = Math.floor(quantity);
+    if (pool.regenerationRate > 0) {
+        // Renewable: pay a month's worth upfront (costPerTick = units × 1)
+        return costAmount * TICKS_PER_MONTH * 1;
+    }
+    // Non-renewable: pay one-time cost
+    return costAmount * 1;
+}
+
 export type LeaseClaimResult = { ok: true; claimId: string } | { ok: false; reason: string };
 
 export function leaseClaim(
@@ -163,38 +170,20 @@ export function leaseClaim(
 
     const isRenewable = pool.regenerationRate > 0;
     const costAmount = Math.floor(quantity);
+    const upfrontCost = computeLeaseClaimUpfrontCost(pool, quantity);
 
-    if (isRenewable) {
-        // Renewable: pay a month's worth upfront
-        const upfrontCost = costAmount * TICKS_PER_MONTH * 1;
-        if (assets.deposits < upfrontCost) {
-            return {
-                ok: false,
-                reason: `Insufficient deposits — required ${upfrontCost} upfront, available ${assets.deposits}`,
-            };
-        }
-        assets.deposits -= upfrontCost;
-        const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
-        if (govAssets) {
-            govAssets.deposits += upfrontCost;
-        }
-        assets.monthAcc.claimPayments += upfrontCost;
-    } else {
-        // Non-renewable: pay one-time cost
-        const upfrontCost = costAmount * 1;
-        if (assets.deposits < upfrontCost) {
-            return {
-                ok: false,
-                reason: `Insufficient deposits — required ${upfrontCost}, available ${assets.deposits}`,
-            };
-        }
-        assets.deposits -= upfrontCost;
-        const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
-        if (govAssets) {
-            govAssets.deposits += upfrontCost;
-        }
-        assets.monthAcc.claimPayments += upfrontCost;
+    if (assets.deposits < upfrontCost) {
+        return {
+            ok: false,
+            reason: `Insufficient deposits — required ${upfrontCost} upfront, available ${assets.deposits}`,
+        };
     }
+    assets.deposits -= upfrontCost;
+    const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+    if (govAssets) {
+        govAssets.deposits += upfrontCost;
+    }
+    assets.monthAcc.claimPayments += upfrontCost;
 
     const ratio = quantity / pool.maximumCapacity;
     const claimId = `${planetId}-${resourceName}-${agentId}`;

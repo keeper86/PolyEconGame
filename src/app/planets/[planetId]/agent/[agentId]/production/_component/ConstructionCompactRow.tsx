@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddActionOverlay, useRemoveOverlayByFacilityId } from '@/hooks/useActionOverlay';
+import { useAddPendingAction, useRemovePendingById } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -31,27 +31,32 @@ import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 
-export function ConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
+export function ConstructionCompactRow({
+    facility,
+    isPendingCancel,
+}: {
+    facility: Facility;
+    isPendingCancel?: boolean;
+}): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
 
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
-    const removeOverlay = useRemoveOverlayByFacilityId();
-    const addOverlay = useAddActionOverlay();
+    const removePendingById = useRemovePendingById();
+    const addPending = useAddPendingAction();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
-                // Remove any optimistic build overlay for this facility
-                removeOverlay(agentId, planetId, facility.id);
-
-                if (facility.maxScale === 0) {
-                    addOverlay({ type: 'facilityCancelled', agentId, planetId, facilityId: facility.id });
-                }
+                // Pending action will be resolved by predicate check
+            },
+            onError: () => {
+                removePendingById(agentId, planetId, facility.id);
             },
         }),
     );
+
     const cs = facility.construction;
 
     if (!cs) {
@@ -156,9 +161,9 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
                             variant='outline'
                             size='sm'
                             className='w-full text-xs gap-1'
-                            disabled={cancelMutation.isPending}
+                            disabled={cancelMutation.isPending || isPendingCancel}
                         >
-                            {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Construction'}
+                            {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel Construction'}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
@@ -172,7 +177,16 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
                         <AlertDialogFooter>
                             <AlertDialogCancel>Keep building</AlertDialogCancel>
                             <AlertDialogAction
-                                onClick={() => cancelMutation.mutate({ agentId, planetId, facilityId: facility.id })}
+                                onClick={() => {
+                                    addPending({
+                                        type: 'cancel',
+                                        agentId,
+                                        planetId,
+                                        facilityId: facility.id,
+                                        triggerTick: currentTick,
+                                    });
+                                    cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
+                                }}
                             >
                                 Cancel construction
                             </AlertDialogAction>

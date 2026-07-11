@@ -13,7 +13,6 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
-import { defaultBuildingCost } from './resources';
 
 import {
     beverageResourceType,
@@ -389,7 +388,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Pharmaceutical Plant',
+    name: 'Pharma Plant',
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 0,
@@ -409,7 +408,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Food Processing Plant',
+    name: 'Food Processor',
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
@@ -642,7 +641,6 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
         { resource: steelResourceType, quantity: 10 },
         { resource: plasticResourceType, quantity: 10 },
         { resource: glassResourceType, quantity: 2 },
-        { resource: electronicsResourceType, quantity: 2 },
         { resource: fabricResourceType, quantity: 5 },
         { resource: machineryResourceType, quantity: 10 },
     ],
@@ -673,7 +671,7 @@ export const waterExtractionFacility = (planetId: string, id: string): Productio
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Water Extraction Facility',
+    name: 'Water Facility',
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
@@ -835,7 +833,6 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: itDevicesResourceType, quantity: 10 },
         { resource: clothingResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 10 },
-        { resource: packagingResourceType, quantity: 10 },
         { resource: logisticsServiceResourceType, quantity: 20 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],
@@ -902,12 +899,11 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         },
         pollutionPerTick: { ...defaultPollutionPerTick },
         needs: [
-            ...defaultBuildingCost.map((rq) => ({
-                resource: rq.resource,
-                quantity: rq.quantity * 0.1,
-            })),
-            { resource: logisticsServiceResourceType, quantity: 1 },
-            { resource: administrativeServiceResourceType, quantity: 1 },
+            { resource: steelResourceType, quantity: 10 },
+            { resource: electronicsResourceType, quantity: 5 },
+            { resource: plasticResourceType, quantity: 3 },
+            { resource: logisticsServiceResourceType, quantity: 5 },
+            { resource: administrativeServiceResourceType, quantity: 5 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },
