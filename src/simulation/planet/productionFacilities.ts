@@ -388,7 +388,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Pharmaceutical Plant',
+    name: 'Pharma Plant',
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 0,
@@ -408,7 +408,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Food Processing Plant',
+    name: 'Food Processor',
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
@@ -671,7 +671,7 @@ export const waterExtractionFacility = (planetId: string, id: string): Productio
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Water Extraction Facility',
+    name: 'Water Facility',
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
