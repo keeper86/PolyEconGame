@@ -44,8 +44,8 @@ export function AgentAccessGuard({
                 <ShieldAlert className='h-12 w-12 text-muted-foreground' />
                 <h2 className='text-xl font-semibold'>Classified Operations</h2>
                 <p className='text-sm text-muted-foreground max-w-sm'>
-                    You do not have clearance to view the internal operations of this company. Only the company's
-                    owner can access these facilities.
+                    You do not have clearance to view the internal operations of this company. Only the companys owner
+                    can access these facilities.
                 </p>
             </div>
         );

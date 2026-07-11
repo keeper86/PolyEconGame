@@ -13,7 +13,6 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from './landBoundResources';
-import { defaultBuildingCost } from './resources';
 
 import {
     beverageResourceType,
