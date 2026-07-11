@@ -13,7 +13,7 @@ import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
 import type { GroupMode } from './_components/demographicsTypes';
-import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
+import { GV_FOOD, GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
 
 import { Page } from '@/components/client/Page';
@@ -62,15 +62,35 @@ export default function PlanetDemographicsPage() {
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];
     const wealthWeightedSum = [0, 0, 0, 0];
+    // Weighted buffer sums: accumulate population-weighted buffer values per service
+    let weightedGroceryBuffer = 0;
+    let weightedHealthcareBuffer = 0;
+    let weightedLogisticsBuffer = 0;
+    let weightedEducationBuffer = 0;
+    let weightedRetailBuffer = 0;
+    let totalPopForBuffers = 0;
     for (const row of rows) {
         for (let i = 0; i < 4; i++) {
             const gv = row.groupValues[i];
             groupPop[i] += gv[GV_POP];
             groupAgeWeightedSum[i] += row.age * gv[GV_POP];
             wealthWeightedSum[i] += gv[GV_WEALTH];
+            // Accumulate weighted buffer values
+            weightedGroceryBuffer += gv[GV_FOOD];
+            weightedHealthcareBuffer += row.serviceBuffers.healthcare[i][0];
+            weightedLogisticsBuffer += row.serviceBuffers.logistics[i][0];
+            weightedEducationBuffer += row.serviceBuffers.education[i][0];
+            weightedRetailBuffer += row.serviceBuffers.retail[i][0];
+            totalPopForBuffers += gv[GV_POP];
         }
     }
     const populationTotal = groupPop.reduce((s, v) => s + v, 0);
+    // Compute average buffer per person (population-weighted mean)
+    const avgGroceryBuffer = totalPopForBuffers > 0 ? weightedGroceryBuffer / totalPopForBuffers : 0;
+    const avgHealthcareBuffer = totalPopForBuffers > 0 ? weightedHealthcareBuffer / totalPopForBuffers : 0;
+    const avgLogisticsBuffer = totalPopForBuffers > 0 ? weightedLogisticsBuffer / totalPopForBuffers : 0;
+    const avgEducationBuffer = totalPopForBuffers > 0 ? weightedEducationBuffer / totalPopForBuffers : 0;
+    const avgRetailBuffer = totalPopForBuffers > 0 ? weightedRetailBuffer / totalPopForBuffers : 0;
     const groupMeanAge = groupPop.map((pop, i) => (pop > 0 ? groupAgeWeightedSum[i] / pop : 0));
     const totalWealth = wealthWeightedSum.reduce((s, v) => s + v, 0);
     const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
@@ -264,7 +284,18 @@ export default function PlanetDemographicsPage() {
 
     return (
         <Page title={planetName}>
-            <PlanetPopulationHistoryChart planetId={planetId} live={{ tick: data.tick, population: populationTotal }} />
+            <PlanetPopulationHistoryChart
+                planetId={planetId}
+                live={{
+                    tick: data.tick,
+                    population: populationTotal,
+                    groceryBuffer: avgGroceryBuffer,
+                    healthcareBuffer: avgHealthcareBuffer,
+                    logisticsBuffer: avgLogisticsBuffer,
+                    educationBuffer: avgEducationBuffer,
+                    retailBuffer: avgRetailBuffer,
+                }}
+            />
 
             <div className='flex justify-between gap-1 my-3 pt-3 items-center'>
                 <span className='text-md text-slate-400'>Demographics</span>

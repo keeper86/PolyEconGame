@@ -197,15 +197,6 @@ export function handleContractFacility(
         });
         return;
     }
-    if (targetScale < 1) {
-        safePostMessage({
-            type: 'facilityContractFailed',
-            requestId,
-            reason: 'Target scale must be at least 1',
-        });
-        return;
-    }
-
     const planet = state.planets.get(planetId);
     if (!planet) {
         safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Planet '${planetId}' not found` });
@@ -213,6 +204,19 @@ export function handleContractFacility(
     }
 
     processFacilityContraction(planet, facility, agent, targetScale, state);
+
+    // TODO: we need to consider all facilities; Let's introduce a function that returns _all_ facilities
+    if (targetScale === 0) {
+        const prodIdx = assets.productionFacilities.findIndex((f) => f.id === facilityId);
+        if (prodIdx !== -1) {
+            assets.productionFacilities.splice(prodIdx, 1);
+        } else {
+            const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
+            if (shipIdx !== -1) {
+                assets.shipConstructionFacilities.splice(shipIdx, 1);
+            }
+        }
+    }
 
     console.log(
         `[worker] Agent '${agentId}' contracted '${facilityId}' maxScale from ${facility.maxScale} to ${targetScale} on planet '${planetId}'`,

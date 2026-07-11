@@ -150,11 +150,13 @@ export function ActiveFacilityCard({
             for (let s = 1; s < reduceMax; s += step) {
                 opts.push(s);
             }
-            if (opts[opts.length - 1] !== reduceMax - 1) {
-                opts.push(reduceMax - 1);
+            if (opts[opts.length - 1] !== reduceMax) {
+                opts.push(reduceMax);
             }
         } else if (reduceMax > 1) {
             opts.push(1);
+        } else {
+            opts.push(0);
         }
         return opts;
     }, [reduceMax]);
@@ -529,7 +531,6 @@ export function ActiveFacilityCard({
                                         variant='outline'
                                         size='sm'
                                         className='flex-1 text-xs gap-1'
-                                        disabled={facility.maxScale <= 1}
                                         onClick={() => {
                                             setShowExpand(false);
                                             setShowReduce(true);
