@@ -31,7 +31,13 @@ import { useParams } from 'next/navigation';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 
-export function ConstructionCompactRow({ facility }: { facility: Facility }): React.ReactElement {
+export function ConstructionCompactRow({
+    facility,
+    isPendingCancel,
+}: {
+    facility: Facility;
+    isPendingCancel?: boolean;
+}): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
@@ -155,9 +161,9 @@ export function ConstructionCompactRow({ facility }: { facility: Facility }): Re
                             variant='outline'
                             size='sm'
                             className='w-full text-xs gap-1'
-                            disabled={cancelMutation.isPending}
+                            disabled={cancelMutation.isPending || isPendingCancel}
                         >
-                            {cancelMutation.isPending ? 'Cancelling…' : 'Cancel Construction'}
+                            {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel Construction'}
                         </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>

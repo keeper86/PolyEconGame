@@ -160,6 +160,7 @@ function ConstructionDisplay({
     const pendingCancelAction = usePendingActions(agentId, planetId).find(
         (a) => a.type === 'cancel' && a.facilityId === facility.id,
     );
+    const isPending = pendingCancelAction !== undefined;
 
     return (
         <FacilityCardShell
@@ -225,7 +226,7 @@ function ConstructionDisplay({
                     <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
                         <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
                             <Spinner className='h-4 w-4' />
-                            Cancellation pending…
+                            {isPending ? 'Cancellation pending…' : 'Awaiting tick…'}
                         </span>
                     </div>
                 )}

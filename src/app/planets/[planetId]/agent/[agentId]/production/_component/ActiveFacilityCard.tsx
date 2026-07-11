@@ -19,7 +19,7 @@ import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
-import { FacilityProductionIORow } from './FacilityProductionIORow';
+import { FacilityProductionIORow } from './FacilityIORow';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { WorkerBars } from './WorkerBars';
 import Link from 'next/link';
@@ -365,7 +365,12 @@ export function ActiveFacilityCard({
 
                 <div className='relative'>
                     <div className='space-y-2'>
-                        {facility.construction ? null : showExpand || expandPending ? (
+                        {facility.construction ? (
+                            <ConstructionCompactRow
+                                facility={facility}
+                                isPendingCancel={Boolean(pendingCancelAction)}
+                            />
+                        ) : showExpand || expandPending ? (
                             <FacilityConstructionPanel
                                 facilityType={facilityType}
                                 fromScale={facility.maxScale}
@@ -554,7 +559,6 @@ export function ActiveFacilityCard({
                     )}
                 </div>
             </div>
-            {facility.construction !== null && <ConstructionCompactRow facility={facility} />}
         </FacilityCardShell>
     );
 }

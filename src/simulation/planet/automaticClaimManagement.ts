@@ -1,5 +1,6 @@
 import { TICKS_PER_YEAR } from '../constants';
-import { leaseClaim, reduceClaim } from './claims';
+import { grantLoan } from '../financial/loanTypes';
+import { computeLeaseClaimUpfrontCost, leaseClaim, reduceClaim } from './claims';
 import type { GameState, Planet } from './planet';
 
 export const NON_RENEWABLE_SAFETY_MARGIN_IN_TICKS = TICKS_PER_YEAR;
@@ -76,6 +77,13 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
             const toAcquire = Math.min(Math.ceil(shortfall), availableInPool);
             if (toAcquire <= 0) {
                 continue;
+            }
+
+            // Ensure sufficient deposits for the lease's upfront cost; grant a loan if needed.
+            const upfrontCost = computeLeaseClaimUpfrontCost(entry.pool, toAcquire);
+            if (assets.deposits < upfrontCost) {
+                const loanShortfall = upfrontCost - assets.deposits;
+                grantLoan(assets, planet.bank, loanShortfall, 'claimCoverage', gameState.tick);
             }
 
             const result = leaseClaim(gameState, agent.id, planet.id, resourceName, toAcquire);

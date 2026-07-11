@@ -5,6 +5,7 @@ import { updateAgentClaims } from './automaticClaimManagement';
 import { arableLandResourceType, coalDepositResourceType } from './landBoundResources';
 import { produceResourceType } from './resources';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
+import { totalOutstandingLoans } from '../financial/loanTypes';
 
 describe('updateAgentClaims', () => {
     it('leases renewable claim when facility needs exceed current capacity', () => {
@@ -459,5 +460,52 @@ describe('updateAgentClaims', () => {
         expect(() => updateAgentClaims(gameState, planet)).not.toThrow();
         const claims = planet.resources[arableLandResourceType.name].claims.filter((c) => c.tenantAgentId === agent.id);
         expect(claims).toHaveLength(0);
+    });
+
+    it('grants a loan when deposits are insufficient for the lease upfront cost', () => {
+        const gov = makeGovernmentAgent('gov-1', 'test-p');
+        const planet = makePlanet({ id: 'test-p', governmentId: gov.id });
+
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 10_000, renewable: true }),
+            claims: [],
+        };
+
+        const agent = makeAgent('auto-1', 'test-p', 'Auto Agent');
+        agent.automated = true;
+        // Intentionally low deposits — far below the upfront cost
+        agent.assets['test-p'].deposits = 0;
+
+        const amountPerTick = 100;
+        const scale = 10;
+        const required = amountPerTick * scale; // 1000
+        const upfrontCost = required * TICKS_PER_MONTH * 1; // 1000 * 30 = 30000
+
+        const facility = makeProductionFacility(undefined, {
+            planetId: 'test-p',
+            id: 'farm-1',
+            name: 'Test Farm',
+            maxScale: scale,
+            scale,
+            needs: [{ resource: arableLandResourceType, quantity: amountPerTick }],
+            produces: [{ resource: produceResourceType, quantity: 0 }],
+        });
+        agent.assets['test-p'].productionFacilities = [facility];
+
+        const gameState = makeGameState([planet], [gov, agent]);
+
+        updateAgentClaims(gameState, planet);
+
+        // The claim must still be acquired (loan bridged the shortfall)
+        const claim = planet.resources[arableLandResourceType.name].claims.find((c) => c.tenantAgentId === agent.id);
+        expect(claim).toBeDefined();
+        expect(claim!.maximumCapacity).toBe(required);
+
+        // A loan must have been created covering the upfront cost
+        const loansOutstanding = totalOutstandingLoans(agent.assets['test-p'].activeLoans);
+        expect(loansOutstanding).toBeGreaterThanOrEqual(upfrontCost - 0.01);
+
+        // Deposits should now be non-negative (loan was deposited, then spent on the lease)
+        expect(agent.assets['test-p'].deposits).toBeGreaterThanOrEqual(0);
     });
 });

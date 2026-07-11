@@ -369,12 +369,12 @@ function BufferAreaChart({
                                     const monthIdx = payload?.monthIdx;
                                     // Larger dot for live data point (fractional monthIdx)
                                     if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
-                                        return <circle key={`live_${key}`} cx={cx} cy={cy} r={3.5} fill={color} />;
+                                        return <circle key={`${key}_${monthIdx}_live`} cx={cx} cy={cy} r={3.5} fill={color} />;
                                     }
                                     if (cx != null && !isNaN(cx)) {
-                                        return <circle cx={cx} cy={cy} r={2.5} fill={color} />;
+                                        return <circle key={`${key}_${monthIdx}`} cx={cx} cy={cy} r={2.5} fill={color} />;
                                     }
-                                    return <circle r={0} visibility='hidden' />;
+                                    return <circle key={`${key}_${monthIdx}_hidden`} r={0} visibility='hidden' />;
                                 }}
                                 activeDot={{ r: 3 }}
                                 isAnimationActive={false}
