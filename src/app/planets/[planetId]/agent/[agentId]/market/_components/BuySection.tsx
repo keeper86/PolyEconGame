@@ -39,14 +39,19 @@ export default function BuySection({
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
+    const effectiveBuyQty =
+        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
+
+    const buyStaleReason =
+        local.bidAutomated && effectiveBuyQty !== undefined && effectiveBuyQty === 0
+            ? 'Storage target met — no bid placed last tick'
+            : null;
+
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
 
     const targetBuffer = parseFloat(local.targetBufferTicks);
     const suggestedStorageTarget =
         isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0 ? Math.ceil(targetBuffer * consumedPerTick) : null;
-
-    const effectiveBuyQty =
-        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
 
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
@@ -143,6 +148,7 @@ export default function BuySection({
                         successMsg={buyAutoConfigSuccessMsg}
                         errorMsg={buyAutoConfigErrorMsg}
                         diagnostics={bid?.diagnostics}
+                        staleReason={buyStaleReason}
                     />
 
                     <div className='grid grid-cols-2 gap-3'>

@@ -60,6 +60,11 @@ export default function SellSection({
         local.savedOfferPrice !== '' ||
         local.savedOfferRetainment !== '';
 
+    const sellStaleReason =
+        local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
+            ? 'Output buffer full — nothing offered for sale last tick'
+            : null;
+
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
     const handleSellConfigChange = (patch: Record<string, string>) => {
@@ -156,6 +161,7 @@ export default function SellSection({
                         successMsg={sellAutoConfigSuccessMsg}
                         errorMsg={sellAutoConfigErrorMsg}
                         diagnostics={offer?.diagnostics}
+                        staleReason={sellStaleReason}
                     />
 
                     <div className='grid grid-cols-2 gap-3'>

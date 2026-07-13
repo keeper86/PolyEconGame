@@ -21,21 +21,19 @@ type SliderDef = {
 };
 
 const BUY_SLIDERS: SliderDef[] = [
-    { key: 'inputBufferTargetTicks', label: 'Input buffer (ticks)', min: 1, max: 120, step: 1, defaultVal: 30 },
+    { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
+    { key: 'inventorySmoothingMaxExtra', label: 'Max buy rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
     {
         key: 'targetFillRate',
         label: 'Target fill rate',
-        min: 0.1,
+        min: 0.5,
         max: 1.0,
-        step: 0.05,
+        step: 0.025,
         defaultVal: 0.9,
         isPercent: true,
     },
     { key: 'priceAdjustMaxUp', label: 'Price adjust max up', min: 1.0, max: 1.5, step: 0.01, defaultVal: 1.05 },
     { key: 'priceAdjustMaxDown', label: 'Price adjust max down', min: 0.5, max: 1.0, step: 0.01, defaultVal: 0.95 },
-    { key: 'costSpringStrength', label: 'Cost spring strength', min: 0, max: 0.5, step: 0.01, defaultVal: 0.1 },
-    { key: 'bidOfferMaxCostMultiplier', label: 'Max cost multiplier', min: 1, max: 30, step: 1, defaultVal: 6 },
-    { key: 'inventorySmoothingMaxExtra', label: 'Inventory smoothing extra', min: 0, max: 20, step: 1, defaultVal: 2 },
 ];
 
 const SELL_SLIDERS: SliderDef[] = [
@@ -80,6 +78,7 @@ export function AutoConfigPanel({
     successMsg,
     errorMsg,
     diagnostics,
+    staleReason,
 }: {
     mode: 'buy' | 'sell';
     committedConfig: AutomatedPricingConfig | undefined;
@@ -91,6 +90,7 @@ export function AutoConfigPanel({
     successMsg: string | null;
     errorMsg: string | null;
     diagnostics?: SellDiagnostics | BuyDiagnostics | null;
+    staleReason?: string | null;
 }): React.ReactElement {
     const sliders = mode === 'buy' ? BUY_SLIDERS : SELL_SLIDERS;
     const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -166,7 +166,7 @@ export function AutoConfigPanel({
             </div>
 
             {/* Diagnostics panel */}
-            {diagnostics && (
+            {(diagnostics || staleReason) && (
                 <div className='rounded-md border bg-muted/20 p-2 space-y-2'>
                     <button
                         onClick={() => setShowDiagnostics(!showDiagnostics)}
@@ -182,7 +182,8 @@ export function AutoConfigPanel({
                     </button>
                     {showDiagnostics && (
                         <div className='space-y-2 text-[11px]'>
-                            {mode === 'sell'
+                            {diagnostics ? (
+                                mode === 'sell'
                                 ? (() => {
                                       const d = diagnostics as SellDiagnostics;
                                       const pct = (v: number) => `${Math.round(v * 100)}%`;
@@ -274,7 +275,13 @@ export function AutoConfigPanel({
                                               </p>
                                           </>
                                       );
-                                  })()}
+                                  })()
+                            ) : (
+                                <div className='flex items-center gap-2 text-muted-foreground'>
+                                    <AlertCircle className='h-3.5 w-3.5' />
+                                    <span>{staleReason ?? 'No pricing data available for the last tick.'}</span>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

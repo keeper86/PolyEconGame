@@ -409,6 +409,7 @@ export function adjustOfferPrice(
 
     if (sold === undefined || price === undefined) {
         offer.offerPrice = Math.max(PRICE_FLOOR, initialPrice);
+        offer.diagnostics = undefined;
         return;
     }
 
@@ -449,6 +450,8 @@ export function adjustOfferPrice(
                 effectiveQuantity,
                 rawRetainment,
             };
+        } else {
+            offer.diagnostics = undefined;
         }
         return;
     }
@@ -519,6 +522,7 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.diagnostics = undefined;
         return;
     }
 
@@ -529,12 +533,14 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.diagnostics = undefined;
         return;
     }
 
     if (bid.bidPrice === undefined || bid.bidPrice <= 0) {
         bid.bidPrice = marketPrice;
         bid.bidPrice = Math.max(PRICE_FLOOR, bid.bidPrice);
+        bid.diagnostics = undefined;
         return;
     }
 
