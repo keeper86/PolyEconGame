@@ -593,6 +593,7 @@ export default function ResourceAccordionItem({
                                       avgPrice: marketData.market.currentMonthStats?.avgPrice,
                                       minPrice: marketData.market.currentMonthStats?.minPrice,
                                       maxPrice: marketData.market.currentMonthStats?.maxPrice,
+                                      priceFloor: marketData.market.currentMonthStats?.priceFloor,
                                   }
                                 : undefined
                         }

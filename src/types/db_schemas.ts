@@ -245,6 +245,7 @@ export type ProductPriceDecade = {
     avg_price: number | null;
     min_price: number | null;
     max_price: number | null;
+    price_floor: number | null;
 };
 
 export type ProductPriceHistory = {
@@ -254,6 +255,7 @@ export type ProductPriceHistory = {
     avg_price: number;
     min_price: number;
     max_price: number;
+    price_floor: number;
     created_at: Date;
 };
 
@@ -264,6 +266,7 @@ export type ProductPriceMonthly = {
     avg_price: number | null;
     min_price: number | null;
     max_price: number | null;
+    price_floor: number | null;
 };
 
 export type ProductPriceYearly = {
@@ -273,6 +276,7 @@ export type ProductPriceYearly = {
     avg_price: number | null;
     min_price: number | null;
     max_price: number | null;
+    price_floor: number | null;
 };
 
 export type UserData = {

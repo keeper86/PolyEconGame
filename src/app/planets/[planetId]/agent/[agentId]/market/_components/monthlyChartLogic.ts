@@ -2,7 +2,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
-export type RawPoint = { bucket: number; avgPrice: number; minPrice: number; maxPrice: number };
+export type RawPoint = { bucket: number; avgPrice: number; minPrice: number; maxPrice: number; priceFloor: number };
 
 export type ChartPoint = {
     tick: number;
@@ -11,6 +11,7 @@ export type ChartPoint = {
     avgPrice: number;
     minPrice: number;
     maxPrice: number;
+    priceFloor: number;
 };
 
 export type LiveData = {
@@ -19,6 +20,7 @@ export type LiveData = {
     avgPrice?: number;
     minPrice?: number;
     maxPrice?: number;
+    priceFloor?: number;
 };
 
 export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productName: string): ChartPoint[] {
@@ -45,6 +47,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             };
         });
 
@@ -61,6 +64,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
             avgPrice: prevDecPoint.avgPrice,
             minPrice: prevDecPoint.minPrice,
             maxPrice: prevDecPoint.maxPrice,
+            priceFloor: prevDecPoint.priceFloor,
         });
     } else {
         const lastBeforeCurrentYear = [...pts].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
@@ -72,6 +76,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
                 avgPrice: lastBeforeCurrentYear.avgPrice,
                 minPrice: lastBeforeCurrentYear.minPrice,
                 maxPrice: lastBeforeCurrentYear.maxPrice,
+                priceFloor: lastBeforeCurrentYear.priceFloor,
             });
         } else {
             const fallbackPrice = initialMarketPrices[productName] ?? 1;
@@ -82,6 +87,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
                 avgPrice: fallbackPrice,
                 minPrice: fallbackPrice,
                 maxPrice: fallbackPrice,
+                priceFloor: fallbackPrice,
             });
         }
     }
@@ -94,6 +100,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
             const liveAvg = live.avgPrice ?? live.price;
             const liveMin = live.minPrice ?? live.price;
             const liveMax = live.maxPrice ?? live.price;
+            const livePriceFloor = live.priceFloor ?? live.price;
 
             const BLEND_TICKS = 10;
             const tickInMonth = liveDay;
@@ -101,12 +108,14 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
             let blendedAvg = liveAvg;
             let blendedMin = liveMin;
             let blendedMax = liveMax;
+            let blendedPriceFloor = livePriceFloor;
             if (prevPoint && tickInMonth < BLEND_TICKS && tickInMonth > 0) {
                 const newWeight = tickInMonth / BLEND_TICKS;
                 const oldWeight = 1 - newWeight;
                 blendedAvg = oldWeight * prevPoint.avgPrice + newWeight * liveAvg;
                 blendedMin = oldWeight * prevPoint.minPrice + newWeight * liveMin;
                 blendedMax = oldWeight * prevPoint.maxPrice + newWeight * liveMax;
+                blendedPriceFloor = oldWeight * prevPoint.priceFloor + newWeight * livePriceFloor;
             }
 
             result.push({
@@ -116,6 +125,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
                 avgPrice: blendedAvg,
                 minPrice: blendedMin,
                 maxPrice: blendedMax,
+                priceFloor: blendedPriceFloor,
             });
         }
     }
@@ -154,6 +164,7 @@ export function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData, data
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             };
         });
 }

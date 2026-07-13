@@ -24,7 +24,7 @@ function yDomainFor(points: ChartPoint[]): [number, number] {
     if (points.length === 0) {
         return [0, 1];
     }
-    const mins = points.map((d) => d.minPrice);
+    const mins = points.map((d) => Math.min(d.minPrice, d.priceFloor));
     const maxs = points.map((d) => d.maxPrice);
     const lo = Math.min(...mins);
     const hi = Math.max(...maxs);
@@ -75,7 +75,12 @@ function usesLogScale(points: ChartPoint[]): boolean {
 }
 
 const tooltipFormatter = (value: number, name: string): [string, string] => {
-    const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
+    const labels: Record<string, string> = {
+        avgPrice: 'Avg price',
+        minPrice: 'Min price',
+        maxPrice: 'Max price',
+        priceFloor: 'Price floor',
+    };
     return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
 };
 
@@ -86,9 +91,11 @@ type MergedPoint = {
     avgPrice: number | null;
     minPrice: number | null;
     maxPrice: number | null;
+    priceFloor: number | null;
     ghostAvgPrice: number | null;
     ghostMinPrice: number | null;
     ghostMaxPrice: number | null;
+    ghostPriceFloor: number | null;
 };
 
 function SimplePriceAreaChart({
@@ -120,7 +127,13 @@ function SimplePriceAreaChart({
 }) {
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
-            return data.map((p) => ({ ...p, ghostAvgPrice: null, ghostMinPrice: null, ghostMaxPrice: null }));
+            return data.map((p) => ({
+                ...p,
+                ghostAvgPrice: null,
+                ghostMinPrice: null,
+                ghostMaxPrice: null,
+                ghostPriceFloor: null,
+            }));
         }
         const ghostByMonth = new Map(ghostData.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
         const currentByMonth = new Map(data.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
@@ -144,9 +157,11 @@ function SimplePriceAreaChart({
                     avgPrice: curr?.avgPrice ?? null,
                     minPrice: curr?.minPrice ?? null,
                     maxPrice: curr?.maxPrice ?? null,
+                    priceFloor: curr?.priceFloor ?? null,
                     ghostAvgPrice: ghost?.avgPrice ?? null,
                     ghostMinPrice: ghost?.minPrice ?? null,
                     ghostMaxPrice: ghost?.maxPrice ?? null,
+                    ghostPriceFloor: ghost?.priceFloor ?? null,
                 };
             });
     }, [data, ghostData]);
@@ -228,12 +243,22 @@ function SimplePriceAreaChart({
                 />
                 <Area
                     type='monotone'
+                    dataKey='priceFloor'
+                    stroke='#ef444496'
+                    strokeWidth={2}
+                    fill='none'
+                    activeDot={{ r: 2, fill: '#ef444496', stroke: '#1e293b', strokeWidth: 2 }}
+                    isAnimationActive={false}
+                    name='priceFloor'
+                    connectNulls={false}
+                />
+                <Area
+                    type='monotone'
                     dataKey='maxPrice'
                     stroke='#38bdf8'
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill={`url(#${gradId})`}
-                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
                     isAnimationActive={false}
                     name='maxPrice'
@@ -245,7 +270,6 @@ function SimplePriceAreaChart({
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill='var(--background, #0f172a)'
-                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
                     isAnimationActive={false}
                     name='minPrice'
@@ -286,8 +310,6 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
-                        activeDot={false}
                         isAnimationActive={false}
                         name='ghostMaxPrice'
                         connectNulls={false}
@@ -302,10 +324,25 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
                         activeDot={false}
                         isAnimationActive={false}
                         name='ghostMinPrice'
+                        connectNulls={false}
+                    />
+                )}
+                {hasGhost && (
+                    <Area
+                        type='monotone'
+                        dataKey='ghostPriceFloor'
+                        stroke='#ef444496'
+                        strokeWidth={2}
+                        strokeOpacity={0.35}
+                        strokeDasharray='5 5'
+                        fill='none'
+                        dot={{ r: 2, fill: '#ef444496', fillOpacity: 0.4, stroke: 'none' }}
+                        activeDot={false}
+                        isAnimationActive={false}
+                        name='ghostPriceFloor'
                         connectNulls={false}
                     />
                 )}
@@ -384,6 +421,7 @@ function YearlyChart({
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             }));
     }, [yearlyPoints]);
 
@@ -432,6 +470,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             }));
     }, [decadePoints]);
 
@@ -516,6 +555,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [monthly],
     );
@@ -527,6 +567,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [yearly],
     );
@@ -537,6 +578,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [decade],
     );

@@ -18,7 +18,7 @@ import {
 import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
 
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
+import { PRICE_FLOOR, TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { createInitialGameState } from './initialUniverse';
 import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, gameStateToWire, serializeGameState } from './snapshotCompression';
@@ -435,6 +435,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             avgPrice: number;
             minPrice: number;
             maxPrice: number;
+            priceFloor: number;
         }> = [];
         for (const planet of gs.planets.values()) {
             for (const [productName, spotPrice] of Object.entries(planet.marketPrices)) {
@@ -445,6 +446,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const avgPrice = acc ? acc.sum / acc.count : spotPrice;
                 const minPrice = acc ? acc.min : spotPrice;
                 const maxPrice = acc ? acc.max : spotPrice;
+                const priceFloor = planet.lastProductionCostFloors[productName] ?? PRICE_FLOOR;
 
                 const bucketTick = tick;
                 rows.push({
@@ -454,6 +456,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     avgPrice,
                     minPrice,
                     maxPrice,
+                    priceFloor,
                 });
             }
         }
