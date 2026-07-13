@@ -14,9 +14,55 @@ import {
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import { queryStorageFacility } from '../planet/facility';
-import type { Agent, AgentMarketBidState, AgentMarketOfferState, Planet } from '../planet/planet';
+import type {
+    Agent,
+    AgentMarketBidState,
+    AgentMarketOfferState,
+    AutomatedPricingConfig,
+    Planet,
+} from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
+
+// ── Config resolvers ──────────────────────────────────────────────────────────
+// Each takes an optional config + the resource (to pick service-appropriate defaults),
+// and returns a fully resolved config with all fields populated.
+
+function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource: Resource) {
+    const c = config ?? {};
+    return {
+        priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
+        priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
+        costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
+        bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
+        inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
+        outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
+        targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 0.5,
+    };
+}
+
+function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: Resource) {
+    const c = config ?? {};
+    return {
+        priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
+        priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
+        costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
+        bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
+        inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
+        inputBufferTargetTicks:
+            c.inputBufferTargetTicks ??
+            (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
+        targetFillRate: c.targetFillRate ?? 0.9,
+    };
+}
+
+/** Convenience: looks up the existing buy bid (if any) and resolves with that config + resource. */
+function resolveBidConfigForResource(assets: import('../planet/planet').AgentPlanetAssets, resource: Resource) {
+    return resolveBidConfig(assets.market.buy[resource.name]?.autoConfig, resource);
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
     agents.forEach((agent) => {
@@ -46,15 +92,17 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         assets.market.buy = {};
     }
 
+    // ── Input reserve (sell-side retainment) ──────────────────────────────────
+
     const inputReserve = new Map<string, number>();
+
     for (const facility of assets.productionFacilities) {
         for (const { resource, quantity } of facility.needs) {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget =
-                resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
-            const target = quantity * facility.scale * bufferTarget;
+            const bidCfg = resolveBidConfigForResource(assets, resource);
+            const target = quantity * facility.scale * bidCfg.inputBufferTargetTicks;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
     }
@@ -63,9 +111,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             if (resource.form === 'landBoundResource') {
                 continue;
             }
-            const bufferTarget =
-                resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
-            const target = quantity * facility.scale * bufferTarget;
+            const bidCfg = resolveBidConfigForResource(assets, resource);
+            const target = quantity * facility.scale * bidCfg.inputBufferTargetTicks;
             inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
         }
     }
@@ -77,7 +124,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (facility.construction === null) {
             continue;
         }
-        const target = facility.construction.maximumConstructionServiceConsumption * INPUT_BUFFER_TARGET_TICKS;
+        const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
+        const target = facility.construction.maximumConstructionServiceConsumption * cfg.inputBufferTargetTicks;
         inputReserve.set(
             constructionServiceResourceType.name,
             (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
@@ -91,9 +139,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             ship.state.buildingTarget !== null &&
             ship.state.buildingTarget.construction !== null
         ) {
+            const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
             const target =
                 ship.state.buildingTarget.construction.maximumConstructionServiceConsumption *
-                INPUT_BUFFER_TARGET_TICKS;
+                cfg.inputBufferTargetTicks;
             inputReserve.set(
                 constructionServiceResourceType.name,
                 (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
@@ -108,15 +157,15 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (facility.produces) {
             const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
             for (const need of facility.produces.buildingCost) {
-                const bufferTarget =
-                    need.resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
-                const target = need.quantity * ratePerTick * bufferTarget;
+                const bidCfg = resolveBidConfigForResource(assets, need.resource);
+                const target = need.quantity * ratePerTick * bidCfg.inputBufferTargetTicks;
                 inputReserve.set(need.resource.name, (inputReserve.get(need.resource.name) ?? 0) + target);
             }
         }
     }
 
-    // Compute per-tick production rate for each output resource (may be produced by multiple facilities)
+    // ── Sell-side automated offers ───────────────────────────────────────────
+
     const productionRate = new Map<string, number>();
 
     for (const facility of assets.productionFacilities) {
@@ -125,7 +174,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            // Accumulate aggregate production rate for this resource
             productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.scale);
 
             const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
@@ -160,7 +208,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
         const baseRate = productionRate.get(resourceName);
         if (baseRate !== undefined) {
-            continue; // already handled above by production facility loop
+            continue;
         }
         const inventoryQty = queryStorageFacility(assets.storageFacility, resourceName);
         const initialPrice = planet.marketPrices[resourceName] ?? initialMarketPrices[resourceName] ?? PRICE_FLOOR;
@@ -177,6 +225,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         offer.offerRetainment = 0;
         adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, 0);
     }
+
+    // ── Buy-side aggregated targets ─────────────────────────────────────────
 
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
@@ -203,9 +253,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     continue;
                 }
 
-                const bufferTarget =
-                    resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
-                const facilityTarget = quantity * facility.scale * bufferTarget;
+                const bidCfg = resolveBidConfigForResource(assets, resource);
+                const facilityTarget = quantity * facility.scale * bidCfg.inputBufferTargetTicks;
 
                 const existing = aggregatedBuyTargets.get(resource.name);
                 if (existing) {
@@ -216,8 +265,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         }
         if (facility.construction !== null) {
+            const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
             const facilityTarget =
-                facility.construction.maximumConstructionServiceConsumption * INPUT_BUFFER_TARGET_TICKS_SERVICES;
+                facility.construction.maximumConstructionServiceConsumption * cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
@@ -238,9 +288,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             ship.state.buildingTarget !== null &&
             ship.state.buildingTarget.construction !== null
         ) {
+            const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
             const shipTarget =
                 ship.state.buildingTarget.construction.maximumConstructionServiceConsumption *
-                INPUT_BUFFER_TARGET_TICKS_SERVICES;
+                cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += shipTarget;
@@ -289,13 +340,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const bid = assets.market.buy[resourceName];
         assert(bid.resource.name === resource.name, 'Resource mismatch in buy bid');
 
+        const bidCfg = resolveBidConfig(bid.autoConfig, resource);
+
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
         const shortfall = Math.max(0, storageTarget - currentInventory);
 
-        // Apply inventory smoothing to buy demand
-        const bufferTargetTicks =
-            resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS;
-        const baseRateConsumption = storageTarget / bufferTargetTicks;
+        const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
         let smoothedTarget = storageTarget;
         if (
@@ -305,14 +355,14 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             resource.form !== 'services'
         ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const smoothedDemand = baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * (1 - fillRatio));
+            const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
             smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);
             smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
         }
 
         const marketPrice = planet.marketPrices[resourceName];
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
-        const bidCeil = Math.min(PRICE_CEIL, costFloor * BID_OFFER_MAX_COST_MULTIPLIER);
+        const bidCeil = Math.min(PRICE_CEIL, costFloor * bidCfg.bidOfferMaxCostMultiplier);
         if (bidCeil < PRICE_FLOOR) {
             console.warn(
                 `Calculated bid ceiling ${bidCeil} for resource ${resourceName} on planet ${planet.id} is below PRICE_FLOOR. ` +
@@ -331,17 +381,16 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 }
 
-const TARGET_SELL_THROUGH = 0.9;
-const SERVICE_SELL_THROUGH_TARGET = 0.95;
+// ── Sell-side helpers ─────────────────────────────────────────────────────────
 
-function sellThroughFactor(sellThrough: number, target: number = TARGET_SELL_THROUGH): number {
+function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
     if (clamped >= target) {
         const t = (clamped - target) / (1 - target);
-        return 1 + t * (PRICE_ADJUST_MAX_UP - 1);
+        return 1 + t * (maxUp - 1);
     } else {
         const t = clamped / target;
-        return PRICE_ADJUST_MAX_DOWN + t * (1 - PRICE_ADJUST_MAX_DOWN);
+        return maxDown + t * (1 - maxDown);
     }
 }
 
@@ -353,6 +402,8 @@ export function adjustOfferPrice(
     costFloor: number = PRICE_FLOOR,
     baseRate: number = 0,
 ): void {
+    const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
+
     const sold = offer.lastSold;
     const price = offer.offerPrice;
 
@@ -365,14 +416,10 @@ export function adjustOfferPrice(
     const rawRetainment = offer.offerRetainment ?? 0;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && baseRate > EPSILON && offer.resource.form !== 'services') {
-        // reference quantity: how much surplus corresponds to "full" (OUTPUT_BUFFER_MAX_TICKS worth of production)
-        const referenceQty = baseRate * OUTPUT_BUFFER_MAX_TICKS;
+        const referenceQty = baseRate * cfg.outputBufferMaxTicks;
         const surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
-        // Smoothed offer: baseRate * (1 + maxExtra * surplusRatio)
-        const smoothedOffer = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA * surplusRatio);
-        // Increase retainment to hold back everything above the smoothed offer
+        const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
         const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
-        // Clamp retainment so we never offer more than the surplus
         const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
         offer.offerRetainment = clampedRetainment;
     }
@@ -382,7 +429,7 @@ export function adjustOfferPrice(
 
     if (effectiveQuantity === 0) {
         if (sold > 0 && price > 0) {
-            const factor = sellThroughFactor(1);
+            const factor = sellThroughFactor(1, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
             const newPrice = price * factor;
             offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
         }
@@ -390,19 +437,16 @@ export function adjustOfferPrice(
     }
 
     const sellThrough = sold / effectiveQuantity;
-    const factor = sellThroughFactor(
-        sellThrough,
-        offer.resource.form === 'services' ? SERVICE_SELL_THROUGH_TARGET : TARGET_SELL_THROUGH,
-    );
+    const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
 
-    const brakeZoneTop = costFloor * (1 + AUTOMATED_COST_FLOOR_BUFFER);
+    const brakeZoneTop = costFloor * (1 + cfg.automatedCostFloorBuffer);
 
-    const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (BID_OFFER_MAX_COST_MULTIPLIER - 1) : PRICE_CEIL;
+    const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (cfg.bidOfferMaxCostMultiplier - 1) : PRICE_CEIL;
 
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
     const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
 
-    const newPrice = price * (factor + COST_SPRING_STRENGTH * deviation - COST_SPRING_STRENGTH * overDeviation);
+    const newPrice = price * (factor + cfg.costSpringStrength * deviation - cfg.costSpringStrength * overDeviation);
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
         offer.offerPrice = PRICE_FLOOR;
@@ -411,16 +455,16 @@ export function adjustOfferPrice(
     }
 }
 
-const TARGET_FILL_RATE = 0.9;
+// ── Buy-side helpers ──────────────────────────────────────────────────────────
 
-function fillRateFactor(fillRate: number): number {
+function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
     const clamped = Math.max(0, Math.min(1, fillRate));
-    if (clamped >= TARGET_FILL_RATE) {
-        const t = (clamped - TARGET_FILL_RATE) / (1 - TARGET_FILL_RATE);
-        return 1 + t * (PRICE_ADJUST_MAX_DOWN - 1);
+    if (clamped >= target) {
+        const t = (clamped - target) / (1 - target);
+        return 1 + t * (maxDown - 1);
     } else {
-        const t = clamped / TARGET_FILL_RATE;
-        return PRICE_ADJUST_MAX_UP + t * (1 - PRICE_ADJUST_MAX_UP);
+        const t = clamped / target;
+        return maxUp + t * (1 - maxUp);
     }
 }
 
@@ -431,6 +475,8 @@ function adjustBidPrice(
     marketPrice: number,
     ceilingPrice: number = PRICE_CEIL,
 ): void {
+    const cfg = resolveBidConfig(bid.autoConfig, bid.resource);
+
     if (shortfall > 0 && shortfall < EPSILON) {
         bid.bidStorageTarget = storageTarget - shortfall < EPSILON ? 0 : storageTarget - shortfall;
 
@@ -462,10 +508,10 @@ function adjustBidPrice(
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
 
-    const baseFactor = fillRateFactor(fillRate);
+    const baseFactor = fillRateFactor(fillRate, cfg.targetFillRate, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
 
     const overDeviation = Math.sqrt(Math.max(0, bid.bidPrice / ceilingPrice - 1));
-    const ceilingSpring = COST_SPRING_STRENGTH * overDeviation;
+    const ceilingSpring = cfg.costSpringStrength * overDeviation;
     const factor = baseFactor - ceilingSpring;
 
     const newPrice = bid.bidPrice * factor;

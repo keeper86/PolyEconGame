@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
 import { consumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
+import { AutoConfigPanel } from './AutoConfigPanel';
 
 export default function BuySection({
     resourceName,
@@ -22,7 +23,11 @@ export default function BuySection({
     onResetBuy,
     onCancelBid,
     onAutomationChange,
+    onSaveBuyAutoConfig,
+    onResetBuyAutoConfig,
     buySaving,
+    buyAutoConfigSuccessMsg,
+    buyAutoConfigErrorMsg,
     buySuccessMsg,
     buyErrorMsg,
     planetId,
@@ -49,6 +54,11 @@ export default function BuySection({
         (bid?.bidPrice ?? 0) *
         (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
+
+    const handleBuyConfigChange = (patch: Record<string, string>) => {
+        const updatedBuyAutoConfig = { ...local.buyAutoConfig, ...patch } as typeof local.buyAutoConfig;
+        onLocalChange(resourceName, { buyAutoConfig: updatedBuyAutoConfig });
+    };
 
     const hasDirtyBuyFields = local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget;
 
@@ -124,142 +134,162 @@ export default function BuySection({
                         </div>
                     )}
 
-                    <div className='grid grid-cols-2 gap-3'>
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label htmlFor={`bid-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                                Max price / unit
-                            </Label>
-                            <Input
-                                id={`bid-price-${resourceName}`}
-                                type='number'
-                                min={0.01}
-                                step='any'
-                                placeholder={bid?.bidPrice !== undefined ? bid.bidPrice.toFixed(2) : 'e.g. 1.50'}
-                                value={local.bidPrice}
-                                disabled={local.bidAutomated || buySaving}
-                                onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
-                                className={getFieldClassName('bidPrice', local.bidAutomated || buySaving)}
-                            />
-                            {overviewRow && !local.bidAutomated && (
-                                <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                    <span>
-                                        Current price:{' '}
-                                        {formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId)}
-                                    </span>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        className='h-5 text-[10px] px-1.5 py-0'
-                                        disabled={buySaving}
-                                        onClick={() =>
-                                            onLocalChange(resourceName, {
-                                                bidPrice: overviewRow.clearingPrice.toFixed(2),
-                                            })
-                                        }
-                                    >
-                                        Use
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label htmlFor={`bid-target-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                                {isCurrency ? 'Deposit target' : 'Storage target'}
-                            </Label>
-                            <Input
-                                id={`bid-target-${resourceName}`}
-                                type='number'
-                                min={0}
-                                step={1}
-                                placeholder={
-                                    bid?.bidStorageTarget !== undefined
-                                        ? String(Math.round(bid.bidStorageTarget))
-                                        : 'e.g. 500'
-                                }
-                                value={local.bidStorageTarget}
-                                disabled={local.bidAutomated || buySaving}
-                                onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
-                                className={getFieldClassName('bidStorageTarget', local.bidAutomated || buySaving)}
-                            />
-
-                            {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
-                                <div
-                                    className={`text-[11px] tabular-nums font-medium ${buyFulfillmentClass(inventoryQty, bid.bidStorageTarget)}`}
+                    {local.bidAutomated ? (
+                        <AutoConfigPanel
+                            mode='buy'
+                            committedConfig={bid?.autoConfig}
+                            localConfig={local.buyAutoConfig}
+                            onConfigChange={handleBuyConfigChange}
+                            onSave={onSaveBuyAutoConfig}
+                            onReset={onResetBuyAutoConfig}
+                            isSaving={buySaving}
+                            successMsg={buyAutoConfigSuccessMsg}
+                            errorMsg={buyAutoConfigErrorMsg}
+                        />
+                    ) : (
+                        <div className='grid grid-cols-2 gap-3'>
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                                <Label
+                                    htmlFor={`bid-price-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
                                 >
-                                    {effectiveBuyQty === 0
-                                        ? 'Target met — order inactive'
-                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
-                                </div>
-                            )}
-                            {isFacilityInput && (
-                                <div className='space-y-1 text-[11px] text-muted-foreground'>
-                                    <div>
-                                        {formatNumberWithUnit(
-                                            consumedPerTick,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
-                                        /tick · Stock:{' '}
-                                        {formatNumberWithUnit(
-                                            inventoryQty,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
-                                        {inventoryInBuyTicks !== null && (
-                                            <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                                        )}
-                                    </div>
-                                    <div className='flex items-center gap-1.5'>
-                                        <Label
-                                            htmlFor={`buf-ticks-${resourceName}`}
-                                            className='text-[11px] text-muted-foreground shrink-0'
-                                        >
-                                            Target (ticks)
-                                        </Label>
-                                        <Input
-                                            id={`buf-ticks-${resourceName}`}
-                                            type='number'
-                                            min={0}
-                                            step={1}
-                                            placeholder='e.g. 30'
-                                            value={local.targetBufferTicks}
-                                            disabled={local.bidAutomated || buySaving}
-                                            onChange={(e) =>
+                                    Max price / unit
+                                </Label>
+                                <Input
+                                    id={`bid-price-${resourceName}`}
+                                    type='number'
+                                    min={0.01}
+                                    step='any'
+                                    placeholder={bid?.bidPrice !== undefined ? bid.bidPrice.toFixed(2) : 'e.g. 1.50'}
+                                    value={local.bidPrice}
+                                    disabled={local.bidAutomated || buySaving}
+                                    onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
+                                    className={getFieldClassName('bidPrice', local.bidAutomated || buySaving)}
+                                />
+                                {overviewRow && !local.bidAutomated && (
+                                    <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                                        <span>
+                                            Current price:{' '}
+                                            {formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId)}
+                                        </span>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-5 text-[10px] px-1.5 py-0'
+                                            disabled={buySaving}
+                                            onClick={() =>
                                                 onLocalChange(resourceName, {
-                                                    targetBufferTicks: e.target.value,
+                                                    bidPrice: overviewRow.clearingPrice.toFixed(2),
                                                 })
                                             }
-                                            className='h-6 w-32 text-[11px] tabular-nums'
-                                        />
-                                        {suggestedStorageTarget !== null && (
-                                            <>
-                                                <span>
-                                                    →{' '}
-                                                    {formatNumberWithUnit(
-                                                        suggestedStorageTarget,
-                                                        resourceFormToUnit(
-                                                            getResourceByName(resourceName)?.form ?? 'pieces',
-                                                        ),
-                                                    )}
-                                                </span>
-                                                <Button
-                                                    variant='outline'
-                                                    className='h-6 text-[11px] px-1.5'
-                                                    disabled={local.bidAutomated || buySaving}
-                                                    onClick={() =>
-                                                        onLocalChange(resourceName, {
-                                                            bidStorageTarget: String(suggestedStorageTarget),
-                                                        })
-                                                    }
-                                                >
-                                                    Use
-                                                </Button>
-                                            </>
-                                        )}
+                                        >
+                                            Use
+                                        </Button>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                                <Label
+                                    htmlFor={`bid-target-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
+                                    {isCurrency ? 'Deposit target' : 'Storage target'}
+                                </Label>
+                                <Input
+                                    id={`bid-target-${resourceName}`}
+                                    type='number'
+                                    min={0}
+                                    step={1}
+                                    placeholder={
+                                        bid?.bidStorageTarget !== undefined
+                                            ? String(Math.round(bid.bidStorageTarget))
+                                            : 'e.g. 500'
+                                    }
+                                    value={local.bidStorageTarget}
+                                    disabled={local.bidAutomated || buySaving}
+                                    onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
+                                    className={getFieldClassName('bidStorageTarget', local.bidAutomated || buySaving)}
+                                />
+
+                                {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
+                                    <div
+                                        className={`text-[11px] tabular-nums font-medium ${buyFulfillmentClass(inventoryQty, bid.bidStorageTarget)}`}
+                                    >
+                                        {effectiveBuyQty === 0
+                                            ? 'Target met — order inactive'
+                                            : `Buy ${formatNumberWithUnit(effectiveBuyQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
+                                    </div>
+                                )}
+                                {isFacilityInput && (
+                                    <div className='space-y-1 text-[11px] text-muted-foreground'>
+                                        <div>
+                                            {formatNumberWithUnit(
+                                                consumedPerTick,
+                                                resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                            )}
+                                            /tick · Stock:{' '}
+                                            {formatNumberWithUnit(
+                                                inventoryQty,
+                                                resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                            )}
+                                            {inventoryInBuyTicks !== null && (
+                                                <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
+                                            )}
+                                        </div>
+                                        <div className='flex items-center gap-1.5'>
+                                            <Label
+                                                htmlFor={`buf-ticks-${resourceName}`}
+                                                className='text-[11px] text-muted-foreground shrink-0'
+                                            >
+                                                Target (ticks)
+                                            </Label>
+                                            <Input
+                                                id={`buf-ticks-${resourceName}`}
+                                                type='number'
+                                                min={0}
+                                                step={1}
+                                                placeholder='e.g. 30'
+                                                value={local.targetBufferTicks}
+                                                disabled={local.bidAutomated || buySaving}
+                                                onChange={(e) =>
+                                                    onLocalChange(resourceName, {
+                                                        targetBufferTicks: e.target.value,
+                                                    })
+                                                }
+                                                className='h-6 w-32 text-[11px] tabular-nums'
+                                            />
+                                            {suggestedStorageTarget !== null && (
+                                                <>
+                                                    <span>
+                                                        →{' '}
+                                                        {formatNumberWithUnit(
+                                                            suggestedStorageTarget,
+                                                            resourceFormToUnit(
+                                                                getResourceByName(resourceName)?.form ?? 'pieces',
+                                                            ),
+                                                        )}
+                                                    </span>
+                                                    <Button
+                                                        variant='outline'
+                                                        className='h-6 text-[11px] px-1.5'
+                                                        disabled={local.bidAutomated || buySaving}
+                                                        onClick={() =>
+                                                            onLocalChange(resourceName, {
+                                                                bidStorageTarget: String(suggestedStorageTarget),
+                                                            })
+                                                        }
+                                                    >
+                                                        Use
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
                         <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>

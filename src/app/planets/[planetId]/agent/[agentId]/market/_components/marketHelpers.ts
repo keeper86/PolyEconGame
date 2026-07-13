@@ -5,6 +5,7 @@ import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
+import { autoConfigToLocal } from './marketTypes';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
@@ -184,6 +185,9 @@ export function buildInitialState(
             bidStorageTarget,
             bidAutomated,
             targetBufferTicks: '',
+
+            buyAutoConfig: autoConfigToLocal(bid?.autoConfig),
+            sellAutoConfig: autoConfigToLocal(offer?.autoConfig),
 
             dirtyFields: {
                 offerPrice: false,

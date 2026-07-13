@@ -1,7 +1,84 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 
 export const TTL_FEEDBACK = 5_000;
+
+export type AutoConfigLocalState = {
+    priceAdjustMaxUp: string;
+    priceAdjustMaxDown: string;
+    costSpringStrength: string;
+    bidOfferMaxCostMultiplier: string;
+    inventorySmoothingMaxExtra: string;
+    outputBufferMaxTicks: string;
+    targetSellThrough: string;
+    automatedCostFloorBuffer: string;
+    inputBufferTargetTicks: string;
+    targetFillRate: string;
+};
+
+export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
+    return {
+        priceAdjustMaxUp: config?.priceAdjustMaxUp?.toString() ?? '',
+        priceAdjustMaxDown: config?.priceAdjustMaxDown?.toString() ?? '',
+        costSpringStrength: config?.costSpringStrength?.toString() ?? '',
+        bidOfferMaxCostMultiplier: config?.bidOfferMaxCostMultiplier?.toString() ?? '',
+        inventorySmoothingMaxExtra: config?.inventorySmoothingMaxExtra?.toString() ?? '',
+        outputBufferMaxTicks: config?.outputBufferMaxTicks?.toString() ?? '',
+        targetSellThrough: config?.targetSellThrough?.toString() ?? '',
+        automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
+        inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
+        targetFillRate: config?.targetFillRate?.toString() ?? '',
+    };
+}
+
+export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricingConfig | undefined {
+    const parsed: Record<string, number | undefined> = {};
+    const keys: (keyof AutoConfigLocalState)[] = [
+        'priceAdjustMaxUp',
+        'priceAdjustMaxDown',
+        'costSpringStrength',
+        'bidOfferMaxCostMultiplier',
+        'inventorySmoothingMaxExtra',
+        'outputBufferMaxTicks',
+        'targetSellThrough',
+        'automatedCostFloorBuffer',
+        'inputBufferTargetTicks',
+        'targetFillRate',
+    ];
+    let hasAny = false;
+    for (const key of keys) {
+        const v = local[key] !== '' ? parseFloat(local[key]) : undefined;
+        if (v !== undefined && !isNaN(v)) {
+            parsed[key] = v;
+            hasAny = true;
+        }
+    }
+    return hasAny ? (parsed as AutomatedPricingConfig) : undefined;
+}
+
+export function isAutoConfigDirty(local: AutoConfigLocalState, committed: AutomatedPricingConfig | undefined): boolean {
+    const resolvedCommitted = committed ?? {};
+    const keys: (keyof AutoConfigLocalState)[] = [
+        'priceAdjustMaxUp',
+        'priceAdjustMaxDown',
+        'costSpringStrength',
+        'bidOfferMaxCostMultiplier',
+        'inventorySmoothingMaxExtra',
+        'outputBufferMaxTicks',
+        'targetSellThrough',
+        'automatedCostFloorBuffer',
+        'inputBufferTargetTicks',
+        'targetFillRate',
+    ];
+    for (const key of keys) {
+        const localVal = local[key] !== '' ? parseFloat(local[key]) : undefined;
+        const committedVal = resolvedCommitted[key as keyof AutomatedPricingConfig];
+        if (localVal !== committedVal && localVal !== undefined) {
+            return true;
+        }
+    }
+    return false;
+}
 
 export type MarketBidEntry = {
     bidPrice?: number;
@@ -12,6 +89,7 @@ export type MarketBidEntry = {
     depositScaleWarning?: 'scaled' | 'dropped';
     storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
+    autoConfig?: AutomatedPricingConfig;
 };
 
 export type MarketOfferEntry = {
@@ -21,6 +99,7 @@ export type MarketOfferEntry = {
     lastRevenue?: number;
     priceDirection?: number;
     automated?: boolean;
+    autoConfig?: AutomatedPricingConfig;
 };
 
 export type LocalResourceState = {
@@ -34,6 +113,9 @@ export type LocalResourceState = {
     bidAutomated: boolean;
 
     targetBufferTicks: string;
+
+    buyAutoConfig: AutoConfigLocalState;
+    sellAutoConfig: AutoConfigLocalState;
 
     dirtyFields: {
         offerPrice: boolean;
@@ -128,7 +210,11 @@ export type BuySectionProps = {
     onResetBuy: () => void;
     onCancelBid: () => void;
     onAutomationChange: (automated: boolean) => void;
+    onSaveBuyAutoConfig: () => void;
+    onResetBuyAutoConfig: () => void;
     buySaving: boolean;
+    buyAutoConfigSuccessMsg: string | null;
+    buyAutoConfigErrorMsg: string | null;
     buySuccessMsg: string | null;
     buyErrorMsg: string | null;
 
@@ -146,7 +232,11 @@ export type SellSectionProps = {
     onResetSell: () => void;
     onCancelOffer: () => void;
     onAutomationChange: (automated: boolean) => void;
+    onSaveSellAutoConfig: () => void;
+    onResetSellAutoConfig: () => void;
     sellSaving: boolean;
+    sellAutoConfigSuccessMsg: string | null;
+    sellAutoConfigErrorMsg: string | null;
     sellSuccessMsg: string | null;
     sellErrorMsg: string | null;
 

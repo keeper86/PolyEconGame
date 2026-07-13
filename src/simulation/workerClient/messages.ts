@@ -2,6 +2,7 @@ import type { TickerEvent } from 'src/server/controller/simulation';
 import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import type { ResourceQuantity } from '../planet/claims';
 import type { WireGameState } from '../snapshotCompression';
+import type { AutomatedPricingConfig } from '../planet/planet';
 
 export type InboundMessage =
     | { type: 'ping' }
@@ -34,7 +35,15 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
+          offers: Record<
+              string,
+              {
+                  offerPrice?: number;
+                  offerRetainment?: number;
+                  automated?: boolean;
+                  autoConfig?: AutomatedPricingConfig;
+              }
+          >;
       }
     | {
           type: 'buildFacility';
@@ -73,7 +82,10 @@ export type InboundMessage =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
+          bids: Record<
+              string,
+              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean; autoConfig?: AutomatedPricingConfig }
+          >;
       }
     | {
           type: 'cancelSellOffer';
@@ -393,7 +405,15 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
+          offers: Record<
+              string,
+              {
+                  offerPrice?: number;
+                  offerRetainment?: number;
+                  automated?: boolean;
+                  autoConfig?: AutomatedPricingConfig;
+              }
+          >;
       }
     | {
           type: 'buildFacility';
@@ -432,7 +452,10 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           planetId: string;
-          bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
+          bids: Record<
+              string,
+              { bidPrice?: number; bidStorageTarget?: number; automated?: boolean; autoConfig?: AutomatedPricingConfig }
+          >;
       }
     | {
           type: 'cancelSellOffer';
