@@ -9,7 +9,7 @@ import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -241,16 +241,71 @@ function SimplePriceAreaChart({
                         );
                     }}
                 />
-                <Area
-                    type='monotone'
-                    dataKey='priceFloor'
-                    stroke='#ef444496'
-                    strokeWidth={2}
-                    fill='none'
-                    activeDot={{ r: 2, fill: '#ef444496', stroke: '#1e293b', strokeWidth: 2 }}
-                    isAnimationActive={false}
-                    name='priceFloor'
-                    connectNulls={false}
+                <Legend
+                    verticalAlign='bottom'
+                    content={({ payload }) => {
+                        if (!payload || payload.length === 0) {
+                            return null;
+                        }
+                        // Build a legend with 3 combined entries
+                        const entries = [
+                            {
+                                label: 'Avg Price',
+                                stroke: '#f59e0b',
+                                strokeWidth: 2,
+                                strokeDasharray: undefined,
+                            },
+                            {
+                                label: 'Min / Max Price',
+                                stroke: '#38bdf8',
+                                strokeWidth: 1.5,
+                                strokeDasharray: '4 3',
+                            },
+                            {
+                                label: 'Cost Estimate',
+                                stroke: '#ef444496',
+                                strokeWidth: 2,
+                                strokeDasharray: undefined,
+                            },
+                        ];
+                        return (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    gap: 16,
+                                    padding: 0,
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                {entries.map((e) => (
+                                    <div
+                                        key={e.label}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 5,
+                                            fontSize: 11,
+                                            color: '#94a3b8',
+                                        }}
+                                    >
+                                        <svg width={16} height={10} viewBox='0 0 16 10'>
+                                            <line
+                                                x1={0}
+                                                y1={5}
+                                                x2={16}
+                                                y2={5}
+                                                stroke={e.stroke}
+                                                strokeWidth={e.strokeWidth}
+                                                strokeDasharray={e.strokeDasharray}
+                                            />
+                                        </svg>
+                                        <span>{e.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    }}
                 />
                 <Area
                     type='monotone'
@@ -273,6 +328,17 @@ function SimplePriceAreaChart({
                     activeDot={false}
                     isAnimationActive={false}
                     name='minPrice'
+                />
+                <Area
+                    type='monotone'
+                    dataKey='priceFloor'
+                    stroke='#ef444496'
+                    strokeWidth={2}
+                    fill='#ef444421'
+                    activeDot={{ r: 2, fill: '#ef444496', stroke: '#1e293b', strokeWidth: 2 }}
+                    isAnimationActive={false}
+                    name='priceFloor'
+                    connectNulls={false}
                 />
                 <Area
                     type='monotone'
@@ -339,7 +405,6 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.35}
                         strokeDasharray='5 5'
                         fill='none'
-                        dot={{ r: 2, fill: '#ef444496', fillOpacity: 0.4, stroke: 'none' }}
                         activeDot={false}
                         isAnimationActive={false}
                         name='ghostPriceFloor'
