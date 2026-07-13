@@ -158,6 +158,7 @@ export default function SellSection({
                             isSaving={sellSaving}
                             successMsg={sellAutoConfigSuccessMsg}
                             errorMsg={sellAutoConfigErrorMsg}
+                            diagnostics={offer?.diagnostics}
                         />
                     ) : (
                         <div className='grid grid-cols-2 gap-3'>

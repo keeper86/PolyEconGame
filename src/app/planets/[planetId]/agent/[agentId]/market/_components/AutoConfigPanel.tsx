@@ -3,9 +3,9 @@
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import type { AutomatedPricingConfig } from '@/simulation/planet/planet';
-import { AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
-import React from 'react';
+import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
+import { AlertCircle, BarChart3, CheckCircle2, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
+import React, { useState } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
 
 // ── Slider config ─────────────────────────────────────────────────────────────
@@ -79,6 +79,7 @@ export function AutoConfigPanel({
     isSaving,
     successMsg,
     errorMsg,
+    diagnostics,
 }: {
     mode: 'buy' | 'sell';
     committedConfig: AutomatedPricingConfig | undefined;
@@ -89,8 +90,10 @@ export function AutoConfigPanel({
     isSaving: boolean;
     successMsg: string | null;
     errorMsg: string | null;
+    diagnostics?: SellDiagnostics | BuyDiagnostics | null;
 }): React.ReactElement {
     const sliders = mode === 'buy' ? BUY_SLIDERS : SELL_SLIDERS;
+    const [showDiagnostics, setShowDiagnostics] = useState(false);
     const hasDirty = sliders.some((s) => {
         const localVal = localConfig[s.key] !== '' ? parseFloat(localConfig[s.key]) : undefined;
         const committed = committedVal(committedConfig, s.key);
@@ -161,6 +164,97 @@ export function AutoConfigPanel({
                     );
                 })}
             </div>
+
+            {/* Diagnostics panel */}
+            {diagnostics && (
+                <div className='rounded-md border bg-muted/20 p-2 space-y-2'>
+                    <button
+                        onClick={() => setShowDiagnostics(!showDiagnostics)}
+                        className='flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground w-full text-left'
+                    >
+                        <BarChart3 className='h-3.5 w-3.5' />
+                        <span className='font-medium'>Last tick pricing diagnostics</span>
+                        {showDiagnostics ? <ChevronUp className='h-3 w-3 ml-auto' /> : <ChevronDown className='h-3 w-3 ml-auto' />}
+                    </button>
+                    {showDiagnostics && (
+                        <div className='space-y-2 text-[11px]'>
+                            {mode === 'sell' ? (() => {
+                                const d = diagnostics as SellDiagnostics;
+                                const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                const priceChange = d.newPrice - d.oldPrice;
+                                const dir = priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
+                                const dirClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                return (
+                                    <>
+                                        <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
+                                            <span>Sell-through</span>
+                                            <span className={`tabular-nums ${d.sellThroughRate >= d.targetSellThrough ? 'text-green-600' : 'text-red-500'}`}>
+                                                {pct(d.sellThroughRate)} (target {pct(d.targetSellThrough)})
+                                            </span>
+                                            <span>Effectively selling</span>
+                                            <span className='tabular-nums'>{d.effectiveQuantity.toFixed(0)} / tick</span>
+                                            {d.surplusRatio !== undefined && (
+                                                <>
+                                                    <span>Surplus ratio</span>
+                                                    <span className='tabular-nums'>{pct(d.surplusRatio)}</span>
+                                                </>
+                                            )}
+                                            <span>Price change factor</span>
+                                            <span className='tabular-nums'>
+                                                base {d.baseFactor.toFixed(4)} ± cost {d.costSpringDeviation.toFixed(4)} − over {d.overDeviation.toFixed(4)}
+                                                {' = '}
+                                                <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
+                                            </span>
+                                            <span>Price</span>
+                                            <span className={`tabular-nums font-semibold ${dirClass}`}>
+                                                {d.oldPrice.toFixed(2)} → {d.newPrice.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
+                                            Price {dir} by {Math.abs(priceChange).toFixed(2)} ({Math.abs(priceChange / d.oldPrice * 100).toFixed(1)}%).
+                                            Cost floor: {d.costFloor.toFixed(2)}. Market price: {d.marketPrice.toFixed(2)}.
+                                        </p>
+                                    </>
+                                );
+                            })() : (() => {
+                                const d = diagnostics as BuyDiagnostics;
+                                const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                const priceChange = d.newBidPrice - d.oldBidPrice;
+                                const dir = priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
+                                const dirClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                return (
+                                    <>
+                                        <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
+                                            <span>Fill rate</span>
+                                            <span className={`tabular-nums ${d.fillRate >= d.targetFillRate ? 'text-green-600' : 'text-red-500'}`}>
+                                                {pct(d.fillRate)} (target {pct(d.targetFillRate)})
+                                            </span>
+                                            <span>Shortfall</span>
+                                            <span className='tabular-nums'>{d.shortfall.toFixed(0)} / {d.storageTarget.toFixed(0)}</span>
+                                            <span>Price change factor</span>
+                                            <span className='tabular-nums'>
+                                                base {d.baseFactor.toFixed(4)} − ceiling spring {d.ceilingSpring.toFixed(4)}
+                                                {' = '}
+                                                <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
+                                            </span>
+                                            <span>Ceiling price</span>
+                                            <span className='tabular-nums'>{d.ceilingPrice.toFixed(2)}</span>
+                                            <span>Bid price</span>
+                                            <span className={`tabular-nums font-semibold ${dirClass}`}>
+                                                {d.oldBidPrice.toFixed(2)} → {d.newBidPrice.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
+                                            Price {dir} by {Math.abs(priceChange).toFixed(2)} ({Math.abs(priceChange / d.oldBidPrice * 100).toFixed(1)}%).
+                                            Market price: {d.marketPrice.toFixed(2)}. Ceiling: {d.ceilingPrice.toFixed(2)}.
+                                        </p>
+                                    </>
+                                );
+                            })()}
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* Validation & feedback */}
             {errorMsg && (

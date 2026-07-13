@@ -414,10 +414,11 @@ export function adjustOfferPrice(
 
     // Apply sell-side inventory smoothing
     const rawRetainment = offer.offerRetainment ?? 0;
+    let surplusRatio: number | undefined;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && baseRate > EPSILON && offer.resource.form !== 'services') {
         const referenceQty = baseRate * cfg.outputBufferMaxTicks;
-        const surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
+        surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
         const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
         const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
         const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
@@ -426,12 +427,28 @@ export function adjustOfferPrice(
 
     const retainment = offer.offerRetainment ?? 0;
     const effectiveQuantity = Math.max(0, inventoryQty - retainment);
+    const oldPrice = price;
 
     if (effectiveQuantity === 0) {
         if (sold > 0 && price > 0) {
             const factor = sellThroughFactor(1, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
             const newPrice = price * factor;
-            offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
+            const clamped = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
+            offer.offerPrice = clamped;
+            offer.diagnostics = {
+                sellThroughRate: 1,
+                targetSellThrough: cfg.targetSellThrough ?? 0.9,
+                baseFactor: factor,
+                costSpringDeviation: 0,
+                overDeviation: 0,
+                netFactor: factor,
+                oldPrice,
+                newPrice: clamped,
+                costFloor,
+                marketPrice: initialPrice,
+                effectiveQuantity,
+                rawRetainment,
+            };
         }
         return;
     }
@@ -446,13 +463,30 @@ export function adjustOfferPrice(
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
     const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
 
-    const newPrice = price * (factor + cfg.costSpringStrength * deviation - cfg.costSpringStrength * overDeviation);
+    const netFactor = factor + cfg.costSpringStrength * deviation - cfg.costSpringStrength * overDeviation;
+    const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
         offer.offerPrice = PRICE_FLOOR;
     } else {
         offer.offerPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
     }
+
+    offer.diagnostics = {
+        sellThroughRate: sellThrough,
+        targetSellThrough: cfg.targetSellThrough ?? 0.9,
+        baseFactor: factor,
+        costSpringDeviation: deviation,
+        overDeviation,
+        netFactor,
+        oldPrice,
+        newPrice: offer.offerPrice,
+        costFloor,
+        marketPrice: initialPrice,
+        effectiveQuantity,
+        rawRetainment,
+        surplusRatio,
+    };
 }
 
 // ── Buy-side helpers ──────────────────────────────────────────────────────────
@@ -476,6 +510,7 @@ function adjustBidPrice(
     ceilingPrice: number = PRICE_CEIL,
 ): void {
     const cfg = resolveBidConfig(bid.autoConfig, bid.resource);
+    const oldBidPrice = bid.bidPrice;
 
     if (shortfall > 0 && shortfall < EPSILON) {
         bid.bidStorageTarget = storageTarget - shortfall < EPSILON ? 0 : storageTarget - shortfall;
@@ -521,4 +556,19 @@ function adjustBidPrice(
     } else {
         bid.bidPrice = Math.max(PRICE_FLOOR, Math.min(PRICE_CEIL, newPrice));
     }
+
+    bid.diagnostics = {
+        fillRate,
+        targetFillRate: cfg.targetFillRate ?? 0.9,
+        baseFactor,
+        ceilingPrice,
+        ceilingSpring,
+        netFactor: factor,
+        oldBidPrice: oldBidPrice ?? bid.bidPrice,
+        newBidPrice: bid.bidPrice,
+        costFloor: 0,
+        marketPrice,
+        shortfall,
+        storageTarget,
+    };
 }

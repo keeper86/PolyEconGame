@@ -145,6 +145,7 @@ export default function BuySection({
                             isSaving={buySaving}
                             successMsg={buyAutoConfigSuccessMsg}
                             errorMsg={buyAutoConfigErrorMsg}
+                            diagnostics={bid?.diagnostics}
                         />
                     ) : (
                         <div className='grid grid-cols-2 gap-3'>

@@ -194,6 +194,37 @@ export interface AutomatedPricingConfig {
     targetFillRate?: number; // default: 0.9
 }
 
+export type SellDiagnostics = {
+    sellThroughRate: number;
+    targetSellThrough: number;
+    baseFactor: number;
+    costSpringDeviation: number;
+    overDeviation: number;
+    netFactor: number;
+    oldPrice: number;
+    newPrice: number;
+    costFloor: number;
+    marketPrice: number;
+    effectiveQuantity: number;
+    rawRetainment: number;
+    surplusRatio?: number;
+};
+
+export type BuyDiagnostics = {
+    fillRate: number;
+    targetFillRate: number;
+    baseFactor: number;
+    ceilingPrice: number;
+    ceilingSpring: number;
+    netFactor: number;
+    oldBidPrice: number;
+    newBidPrice: number;
+    costFloor: number;
+    marketPrice: number;
+    shortfall: number;
+    storageTarget: number;
+};
+
 export type AgentMarketOfferState = {
     resource: Resource;
     offerPrice?: number;
@@ -205,6 +236,7 @@ export type AgentMarketOfferState = {
     priceDirection?: number;
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
+    diagnostics?: SellDiagnostics;
 };
 
 export type AgentMarketBidState = {
@@ -223,6 +255,7 @@ export type AgentMarketBidState = {
     storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
+    diagnostics?: BuyDiagnostics;
 };
 
 export type AgentMarketOffers = {

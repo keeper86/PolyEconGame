@@ -1,5 +1,5 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
+import type { AgentPlanetAssets, AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
 
 export const TTL_FEEDBACK = 5_000;
 
@@ -90,6 +90,7 @@ export type MarketBidEntry = {
     storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
+    diagnostics?: BuyDiagnostics;
 };
 
 export type MarketOfferEntry = {
@@ -100,6 +101,7 @@ export type MarketOfferEntry = {
     priceDirection?: number;
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
+    diagnostics?: SellDiagnostics;
 };
 
 export type LocalResourceState = {
