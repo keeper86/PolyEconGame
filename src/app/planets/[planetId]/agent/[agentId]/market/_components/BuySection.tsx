@@ -19,7 +19,6 @@ export default function BuySection({
     onLocalChange,
     onSaveBuy,
     onResetBuy,
-    onCancelBid,
     onAutomationChange,
     onSaveBuyAutoConfig,
     onResetBuyAutoConfig,
@@ -46,8 +45,6 @@ export default function BuySection({
         local.bidAutomated && effectiveBuyQty !== undefined && effectiveBuyQty === 0
             ? 'Storage target met — no bid placed last tick'
             : null;
-
-    const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
 
     const targetBuffer = parseFloat(local.targetBufferTicks);
     const suggestedStorageTarget =
@@ -89,29 +86,12 @@ export default function BuySection({
     };
 
     return (
-        <div className='border p-1 rounded-md space-y-3'>
+        <div className=''>
             <div className='flex items-center justify-between hover:bg-muted/50 rounded-md px-1'>
                 <div className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </div>
                 <div className='flex items-center gap-2 pl-2'>
-                    {hasActiveBid && (
-                        <Button
-                            variant='ghost'
-                            size='sm'
-                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive  cursor-pointer'
-                            disabled={buySaving}
-                            onClick={onCancelBid}
-                        >
-                            Cancel bid
-                        </Button>
-                    )}
-                    <Label
-                        htmlFor={`bid-auto-${resourceName}`}
-                        className='text-[11px] text-muted-foreground cursor-pointer'
-                    >
-                        Auto-manage
-                    </Label>
                     <Switch
                         id={`bid-auto-${resourceName}`}
                         checked={local.bidAutomated}

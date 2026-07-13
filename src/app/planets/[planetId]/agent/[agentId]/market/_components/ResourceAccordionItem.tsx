@@ -26,6 +26,7 @@ import {
     TTL_FEEDBACK,
     localToAutoConfig,
 } from './marketTypes';
+import { Separator } from '@/components/ui/separator';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -554,7 +555,6 @@ export default function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-4'>
-                    {}
                     {droppedColumns.length > 0 && (
                         <div className='flex flex-wrap gap-1.5'>
                             {droppedColumns.map((col) => (
@@ -573,7 +573,7 @@ export default function ResourceAccordionItem({
                         </div>
                     )}
 
-                    {}
+                    <Separator />
                     <ProductPriceHistoryChart
                         planetId={planetId}
                         productName={resourceName}
@@ -591,7 +591,9 @@ export default function ResourceAccordionItem({
                         }
                     />
 
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <Separator />
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}

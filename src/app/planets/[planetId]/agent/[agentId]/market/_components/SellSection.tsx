@@ -1,14 +1,14 @@
-import React from 'react';
-import { Tag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { PRICE_FLOOR } from '@/simulation/constants';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import type { SellSectionProps } from './marketTypes';
-import { productionPerTick, sellFulfillmentClass, priceArrow, getResourceByName } from './marketHelpers';
+import { PRICE_FLOOR } from '@/simulation/constants';
+import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
+import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
+import { getResourceByName, priceArrow, productionPerTick, sellFulfillmentClass } from './marketHelpers';
+import type { SellSectionProps } from './marketTypes';
 
 export default function SellSection({
     resourceName,
@@ -19,7 +19,6 @@ export default function SellSection({
     onLocalChange,
     onSaveSell,
     onResetSell,
-    onCancelOffer,
     onAutomationChange,
     onSaveSellAutoConfig,
     onResetSellAutoConfig,
@@ -56,8 +55,6 @@ export default function SellSection({
             ? 'Output buffer full — nothing offered for sale last tick'
             : null;
 
-    const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
-
     const handleSellConfigChange = (patch: Record<string, string>) => {
         const updatedSellAutoConfig = { ...local.sellAutoConfig, ...patch } as typeof local.sellAutoConfig;
         onLocalChange(resourceName, { sellAutoConfig: updatedSellAutoConfig });
@@ -89,30 +86,13 @@ export default function SellSection({
     };
 
     return (
-        <div className={`border p-1 rounded-md space-y-3`}>
+        <div>
             <div className='px-1 flex items-center justify-between hover:bg-muted/50 rounded-md'>
                 <div className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
                 </div>
                 {}
                 <div className='flex items-center gap-2 pl-2'>
-                    {hasActiveOffer && (
-                        <Button
-                            variant='ghost'
-                            size='sm'
-                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
-                            disabled={sellSaving}
-                            onClick={onCancelOffer}
-                        >
-                            Cancel offer
-                        </Button>
-                    )}
-                    <Label
-                        htmlFor={`offer-auto-${resourceName}`}
-                        className='text-[11px] text-muted-foreground cursor-pointer'
-                    >
-                        Auto-manage
-                    </Label>
                     <Switch
                         id={`offer-auto-${resourceName}`}
                         checked={local.offerAutomated}
