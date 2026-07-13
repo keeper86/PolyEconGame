@@ -1,5 +1,10 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { AgentPlanetAssets, AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
+import type {
+    AgentPlanetAssets,
+    AutomatedPricingConfig,
+    SellDiagnostics,
+    BuyDiagnostics,
+} from '@/simulation/planet/planet';
 
 export const TTL_FEEDBACK = 5_000;
 

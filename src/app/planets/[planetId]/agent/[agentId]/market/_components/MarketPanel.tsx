@@ -390,7 +390,7 @@ export default function MarketPanel({
                                                     />
                                                 </motion.div>
                                             ))}
-                                        </Accordion>{' '}
+                                        </Accordion>
                                     </LayoutGroup>
                                 </>
                             )}{' '}

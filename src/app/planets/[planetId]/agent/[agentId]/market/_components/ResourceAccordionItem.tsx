@@ -1,7 +1,7 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -126,8 +126,6 @@ export default function ResourceAccordionItem({
                 return '—';
         }
     };
-
-    const [innerOpen, setInnerOpen] = useState<string>('');
 
     const [buySuccessMsg, setBuySuccessMsg] = useState<string | null>(null);
     const [buyErrorMsg, setBuyErrorMsg] = useState<string | null>(null);
@@ -468,9 +466,6 @@ export default function ResourceAccordionItem({
 
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
-        if (automated) {
-            setInnerOpen((prev) => (prev === 'buy' ? '' : prev));
-        }
         const buyPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
@@ -479,9 +474,6 @@ export default function ResourceAccordionItem({
 
     const handleSellAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { offerAutomated: automated, savedOfferAutomated: automated });
-        if (automated) {
-            setInnerOpen((prev) => (prev === 'sell' ? '' : prev));
-        }
         const sellPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
@@ -599,14 +591,7 @@ export default function ResourceAccordionItem({
                         }
                     />
 
-                    {}
-                    <Accordion
-                        type='single'
-                        collapsible
-                        className='space-y-1'
-                        value={innerOpen}
-                        onValueChange={setInnerOpen}
-                    >
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}
@@ -648,7 +633,7 @@ export default function ResourceAccordionItem({
                             sellErrorMsg={sellErrorMsg}
                             planetId={planetId}
                         />
-                    </Accordion>
+                    </div>
 
                     {}
                     <div className='flex items-center justify-between gap-3 pt-2'>
