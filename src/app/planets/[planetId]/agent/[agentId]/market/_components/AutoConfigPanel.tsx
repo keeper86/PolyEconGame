@@ -48,7 +48,7 @@ const SELL_SLIDERS: SliderDef[] = [
         defaultVal: 0.9,
         isPercent: true,
     },
-    { key: 'automatedCostFloorBuffer', label: 'Cost floor buffer', min: 0, max: 5.0, step: 0.1, defaultVal: 0.5 },
+    { key: 'automatedCostFloorBuffer', label: 'Cost floor buffer', min: -1, max: 2.0, step: 0.25, defaultVal: 0.5 },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -57,6 +57,13 @@ function committedVal(config: AutomatedPricingConfig | undefined, key: keyof Aut
     const raw = (config as Record<string, unknown>)?.[key as keyof AutomatedPricingConfig];
     return typeof raw === 'number' ? raw : undefined;
 }
+
+// Buffer-related slider keys that depend on the company producing/consuming the resource
+const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>([
+    'inputBufferTargetTicks',
+    'outputBufferMaxTicks',
+    'inventorySmoothingMaxExtra',
+]);
 
 function formatSliderValue(v: number, def: SliderDef): string {
     if (def.isPercent) {
@@ -79,6 +86,7 @@ export function AutoConfigPanel({
     errorMsg,
     diagnostics,
     staleReason,
+    bufferApplicable = true,
 }: {
     mode: 'buy' | 'sell';
     committedConfig: AutomatedPricingConfig | undefined;
@@ -91,6 +99,7 @@ export function AutoConfigPanel({
     errorMsg: string | null;
     diagnostics?: SellDiagnostics | BuyDiagnostics | null;
     staleReason?: string | null;
+    bufferApplicable?: boolean;
 }): React.ReactElement {
     const sliders = mode === 'buy' ? BUY_SLIDERS : SELL_SLIDERS;
     const [showDiagnostics, setShowDiagnostics] = useState(false);
@@ -117,8 +126,12 @@ export function AutoConfigPanel({
                     const committedFraction =
                         committedClamped !== undefined ? (committedClamped - def.min) / (def.max - def.min) : undefined;
 
+                    const isBufferSlider = BUFFER_KEYS.has(def.key);
+                    const sliderDisabled = isSaving || (isBufferSlider && !bufferApplicable);
+                    const containerClass = `space-y-1${isBufferSlider && !bufferApplicable ? ' opacity-50' : ''}`;
+
                     return (
-                        <div key={def.key} className='space-y-1'>
+                        <div key={def.key} className={containerClass}>
                             <div className='flex items-center justify-between'>
                                 <Label className='text-[11px] text-muted-foreground'>{def.label}</Label>
                                 <span className='text-[11px] tabular-nums font-medium'>
@@ -141,7 +154,7 @@ export function AutoConfigPanel({
                                             onConfigChange({ [def.key]: String(v) });
                                         }
                                     }}
-                                    disabled={isSaving}
+                                    disabled={sliderDisabled}
                                     className='w-full'
                                 />
                                 {/* Committed value marker */}
@@ -183,99 +196,102 @@ export function AutoConfigPanel({
                     {showDiagnostics && (
                         <div className='space-y-2 text-[11px]'>
                             {diagnostics ? (
-                                mode === 'sell'
-                                ? (() => {
-                                      const d = diagnostics as SellDiagnostics;
-                                      const pct = (v: number) => `${Math.round(v * 100)}%`;
-                                      const priceChange = d.newPrice - d.oldPrice;
-                                      const dir =
-                                          priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
-                                      const dirClass =
-                                          priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
-                                      return (
-                                          <>
-                                              <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
-                                                  <span>Sell-through</span>
-                                                  <span
-                                                      className={`tabular-nums ${d.sellThroughRate >= d.targetSellThrough ? 'text-green-600' : 'text-red-500'}`}
-                                                  >
-                                                      {pct(d.sellThroughRate)} (target {pct(d.targetSellThrough)})
-                                                  </span>
-                                                  <span>Effectively selling</span>
-                                                  <span className='tabular-nums'>
-                                                      {d.effectiveQuantity.toFixed(0)} / tick
-                                                  </span>
-                                                  {d.surplusRatio !== undefined && (
-                                                      <>
-                                                          <span>Surplus ratio</span>
-                                                          <span className='tabular-nums'>{pct(d.surplusRatio)}</span>
-                                                      </>
-                                                  )}
-                                                  <span>Price change factor</span>
-                                                  <span className='tabular-nums'>
-                                                      base {d.baseFactor.toFixed(4)} ± cost{' '}
-                                                      {d.costSpringDeviation.toFixed(4)} − over{' '}
-                                                      {d.overDeviation.toFixed(4)}
-                                                      {' = '}
-                                                      <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
-                                                  </span>
-                                                  <span>Price</span>
-                                                  <span className={`tabular-nums font-semibold ${dirClass}`}>
-                                                      {d.oldPrice.toFixed(2)} → {d.newPrice.toFixed(2)}
-                                                  </span>
-                                              </div>
-                                              <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
-                                                  Price {dir} by {Math.abs(priceChange).toFixed(2)} (
-                                                  {Math.abs((priceChange / d.oldPrice) * 100).toFixed(1)}%). Cost floor:{' '}
-                                                  {d.costFloor.toFixed(2)}. Market price: {d.marketPrice.toFixed(2)}.
-                                              </p>
-                                          </>
-                                      );
-                                  })()
-                                : (() => {
-                                      const d = diagnostics as BuyDiagnostics;
-                                      const pct = (v: number) => `${Math.round(v * 100)}%`;
-                                      const priceChange = d.newBidPrice - d.oldBidPrice;
-                                      const dir =
-                                          priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
-                                      const dirClass =
-                                          priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
-                                      return (
-                                          <>
-                                              <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
-                                                  <span>Fill rate</span>
-                                                  <span
-                                                      className={`tabular-nums ${d.fillRate >= d.targetFillRate ? 'text-green-600' : 'text-red-500'}`}
-                                                  >
-                                                      {pct(d.fillRate)} (target {pct(d.targetFillRate)})
-                                                  </span>
-                                                  <span>Shortfall</span>
-                                                  <span className='tabular-nums'>
-                                                      {d.shortfall.toFixed(0)} / {d.storageTarget.toFixed(0)}
-                                                  </span>
-                                                  <span>Price change factor</span>
-                                                  <span className='tabular-nums'>
-                                                      base {d.baseFactor.toFixed(4)} − ceiling spring{' '}
-                                                      {d.ceilingSpring.toFixed(4)}
-                                                      {' = '}
-                                                      <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
-                                                  </span>
-                                                  <span>Ceiling price</span>
-                                                  <span className='tabular-nums'>{d.ceilingPrice.toFixed(2)}</span>
-                                                  <span>Bid price</span>
-                                                  <span className={`tabular-nums font-semibold ${dirClass}`}>
-                                                      {d.oldBidPrice.toFixed(2)} → {d.newBidPrice.toFixed(2)}
-                                                  </span>
-                                              </div>
-                                              <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
-                                                  Price {dir} by {Math.abs(priceChange).toFixed(2)} (
-                                                  {Math.abs((priceChange / d.oldBidPrice) * 100).toFixed(1)}%). Market
-                                                  price: {d.marketPrice.toFixed(2)}. Ceiling:{' '}
-                                                  {d.ceilingPrice.toFixed(2)}.
-                                              </p>
-                                          </>
-                                      );
-                                  })()
+                                mode === 'sell' ? (
+                                    (() => {
+                                        const d = diagnostics as SellDiagnostics;
+                                        const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                        const priceChange = d.newPrice - d.oldPrice;
+                                        const dir =
+                                            priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
+                                        const dirClass =
+                                            priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                        return (
+                                            <>
+                                                <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
+                                                    <span>Sell-through</span>
+                                                    <span
+                                                        className={`tabular-nums ${d.sellThroughRate >= d.targetSellThrough ? 'text-green-600' : 'text-red-500'}`}
+                                                    >
+                                                        {pct(d.sellThroughRate)} (target {pct(d.targetSellThrough)})
+                                                    </span>
+                                                    <span>Effectively selling</span>
+                                                    <span className='tabular-nums'>
+                                                        {d.effectiveQuantity.toFixed(0)} / tick
+                                                    </span>
+                                                    {d.surplusRatio !== undefined && (
+                                                        <>
+                                                            <span>Surplus ratio</span>
+                                                            <span className='tabular-nums'>{pct(d.surplusRatio)}</span>
+                                                        </>
+                                                    )}
+                                                    <span>Price change factor</span>
+                                                    <span className='tabular-nums'>
+                                                        base {d.baseFactor.toFixed(4)} ± cost{' '}
+                                                        {d.costSpringDeviation.toFixed(4)} − over{' '}
+                                                        {d.overDeviation.toFixed(4)}
+                                                        {' = '}
+                                                        <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
+                                                    </span>
+                                                    <span>Price</span>
+                                                    <span className={`tabular-nums font-semibold ${dirClass}`}>
+                                                        {d.oldPrice.toFixed(2)} → {d.newPrice.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
+                                                    Price {dir} by {Math.abs(priceChange).toFixed(2)} (
+                                                    {Math.abs((priceChange / d.oldPrice) * 100).toFixed(1)}%). Cost
+                                                    floor: {d.costFloor.toFixed(2)}. Market price:{' '}
+                                                    {d.marketPrice.toFixed(2)}.
+                                                </p>
+                                            </>
+                                        );
+                                    })()
+                                ) : (
+                                    (() => {
+                                        const d = diagnostics as BuyDiagnostics;
+                                        const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                        const priceChange = d.newBidPrice - d.oldBidPrice;
+                                        const dir =
+                                            priceChange > 0 ? 'increased' : priceChange < 0 ? 'decreased' : 'stayed';
+                                        const dirClass =
+                                            priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                        return (
+                                            <>
+                                                <div className='grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]'>
+                                                    <span>Fill rate</span>
+                                                    <span
+                                                        className={`tabular-nums ${d.fillRate >= d.targetFillRate ? 'text-green-600' : 'text-red-500'}`}
+                                                    >
+                                                        {pct(d.fillRate)} (target {pct(d.targetFillRate)})
+                                                    </span>
+                                                    <span>Shortfall</span>
+                                                    <span className='tabular-nums'>
+                                                        {d.shortfall.toFixed(0)} / {d.storageTarget.toFixed(0)}
+                                                    </span>
+                                                    <span>Price change factor</span>
+                                                    <span className='tabular-nums'>
+                                                        base {d.baseFactor.toFixed(4)} − ceiling spring{' '}
+                                                        {d.ceilingSpring.toFixed(4)}
+                                                        {' = '}
+                                                        <span className='font-semibold'>{d.netFactor.toFixed(4)}</span>
+                                                    </span>
+                                                    <span>Ceiling price</span>
+                                                    <span className='tabular-nums'>{d.ceilingPrice.toFixed(2)}</span>
+                                                    <span>Bid price</span>
+                                                    <span className={`tabular-nums font-semibold ${dirClass}`}>
+                                                        {d.oldBidPrice.toFixed(2)} → {d.newBidPrice.toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <p className='text-[10px] italic text-muted-foreground pt-1 border-t border-border/40'>
+                                                    Price {dir} by {Math.abs(priceChange).toFixed(2)} (
+                                                    {Math.abs((priceChange / d.oldBidPrice) * 100).toFixed(1)}%). Market
+                                                    price: {d.marketPrice.toFixed(2)}. Ceiling:{' '}
+                                                    {d.ceilingPrice.toFixed(2)}.
+                                                </p>
+                                            </>
+                                        );
+                                    })()
+                                )
                             ) : (
                                 <div className='flex items-center gap-2 text-muted-foreground'>
                                     <AlertCircle className='h-3.5 w-3.5' />

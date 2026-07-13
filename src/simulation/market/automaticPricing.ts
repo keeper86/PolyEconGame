@@ -394,7 +394,6 @@ function sellThroughFactor(sellThrough: number, target: number, maxUp: number, m
     }
 }
 
-export const AUTOMATED_COST_FLOOR_BUFFER = 0.5;
 export function adjustOfferPrice(
     offer: AgentMarketOfferState,
     inventoryQty: number,

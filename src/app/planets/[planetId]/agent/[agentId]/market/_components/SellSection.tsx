@@ -51,15 +51,6 @@ export default function SellSection({
               ? ([{ label: '0', qty: 0 }] as const)
               : null;
 
-    const canSell =
-        isCurrency ||
-        inventoryQty > 0 ||
-        isFacilityOutput ||
-        offer?.offerPrice !== undefined ||
-        offer?.offerRetainment !== undefined ||
-        local.savedOfferPrice !== '' ||
-        local.savedOfferRetainment !== '';
-
     const sellStaleReason =
         local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
             ? 'Output buffer full — nothing offered for sale last tick'
@@ -98,13 +89,10 @@ export default function SellSection({
     };
 
     return (
-        <div className={`border p-1 ${!canSell ? 'opacity-50' : ''} rounded-md space-y-3`}>
+        <div className={`border p-1 rounded-md space-y-3`}>
             <div className='px-1 flex items-center justify-between hover:bg-muted/50 rounded-md'>
                 <div className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
-                    {!canSell && (
-                        <span className='text-[10px] font-normal text-muted-foreground'>— nothing to sell</span>
-                    )}
                 </div>
                 {}
                 <div className='flex items-center gap-2 pl-2'>
@@ -162,6 +150,7 @@ export default function SellSection({
                         errorMsg={sellAutoConfigErrorMsg}
                         diagnostics={offer?.diagnostics}
                         staleReason={sellStaleReason}
+                        bufferApplicable={isFacilityOutput}
                     />
 
                     <div className='grid grid-cols-2 gap-3'>

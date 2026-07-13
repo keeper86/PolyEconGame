@@ -90,7 +90,12 @@ function usesLogScale(points: ChartPoint[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
-const tooltipValueFormatter = (value: number, _name: string, rescaleMode: RescaleMode): [string, string] => {
+const tooltipValueFormatter = (
+    value: number,
+    _name: string,
+    rescaleMode: RescaleMode,
+    planetId: string,
+): [string, string] => {
     const labels: Record<string, string> = {
         avgPrice: 'Avg price',
         minPrice: 'Min price',
@@ -99,15 +104,15 @@ const tooltipValueFormatter = (value: number, _name: string, rescaleMode: Rescal
     };
     if (rescaleMode === 'relative') {
         const labelMap: Record<string, string> = {
-            avgPrice: 'Avg price',
-            minPrice: 'Min price',
-            maxPrice: 'Max price',
-            priceFloor: 'Cost estimate',
+            avgPrice: 'Rescaled price',
+            minPrice: 'Rescaled Min price',
+            maxPrice: 'Rescaled Max price',
+            priceFloor: 'Cost estimate (1)',
         };
         const label = labelMap[_name] ?? _name;
         return [`${value.toFixed(2)}×`, label];
     }
-    return [formatNumberWithUnit(value, 'currency'), labels[_name] ?? _name];
+    return [formatNumberWithUnit(value, 'currency', planetId), labels[_name] ?? _name];
 };
 
 type MergedPoint = {
@@ -138,6 +143,7 @@ function SimplePriceAreaChart({
     yTicks,
     verticalGridValues,
     rescaleMode,
+    planetId,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -152,6 +158,7 @@ function SimplePriceAreaChart({
     yTicks?: number[];
     verticalGridValues?: number[];
     rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -200,8 +207,8 @@ function SimplePriceAreaChart({
         if (rescaleMode === 'relative') {
             return (v: number) => `${v.toFixed(1)}×`;
         }
-        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v));
-    }, [rescaleMode]);
+        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId) : String(v));
+    }, [rescaleMode, planetId]);
 
     return (
         <ResponsiveContainer width='100%' height='100%'>
@@ -269,6 +276,7 @@ function SimplePriceAreaChart({
                                         p.value as number,
                                         p.name as string,
                                         rescaleMode,
+                                        planetId,
                                     );
                                     return (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
@@ -462,11 +470,13 @@ function MonthlyChart({
     live,
     productName,
     rescaleMode,
+    planetId,
 }: {
     monthlyPoints: RawPoint[];
     live?: LiveData;
     productName: string;
     rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const data = useMemo(
         (): ChartPoint[] => computeMonthlyData(monthlyPoints, live ?? { tick: 0, price: 0 }, productName),
@@ -514,6 +524,7 @@ function MonthlyChart({
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : undefined}
                 rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
@@ -523,10 +534,12 @@ function YearlyChart({
     yearlyPoints,
     productName,
     rescaleMode,
+    planetId,
 }: {
     yearlyPoints: RawPoint[];
     productName: string;
     rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
         return [...yearlyPoints]
@@ -577,6 +590,7 @@ function YearlyChart({
                 yTicks={data.length === 0 ? [] : yTicks}
                 verticalGridValues={verticalGridValues}
                 rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
@@ -586,10 +600,12 @@ function DecadesChart({
     decadePoints,
     productName,
     rescaleMode,
+    planetId,
 }: {
     decadePoints: RawPoint[];
     productName: string;
     rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
         return [...decadePoints]
@@ -641,6 +657,7 @@ function DecadesChart({
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
                 rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
@@ -754,13 +771,24 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                     live={monthlyPoints.length === 0 ? undefined : live}
                     productName={productName}
                     rescaleMode={rescaleMode}
+                    planetId={planetId}
                 />
             )}
             {granularity === 'yearly' && (
-                <YearlyChart yearlyPoints={yearlyPoints} productName={productName} rescaleMode={rescaleMode} />
+                <YearlyChart
+                    yearlyPoints={yearlyPoints}
+                    productName={productName}
+                    rescaleMode={rescaleMode}
+                    planetId={planetId}
+                />
             )}
             {granularity === 'decade' && (
-                <DecadesChart decadePoints={decadePoints} productName={productName} rescaleMode={rescaleMode} />
+                <DecadesChart
+                    decadePoints={decadePoints}
+                    productName={productName}
+                    rescaleMode={rescaleMode}
+                    planetId={planetId}
+                />
             )}
         </div>
     );

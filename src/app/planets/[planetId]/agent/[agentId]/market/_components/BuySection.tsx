@@ -149,6 +149,7 @@ export default function BuySection({
                         errorMsg={buyAutoConfigErrorMsg}
                         diagnostics={bid?.diagnostics}
                         staleReason={buyStaleReason}
+                        bufferApplicable={isFacilityInput}
                     />
 
                     <div className='grid grid-cols-2 gap-3'>
