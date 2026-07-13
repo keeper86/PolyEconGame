@@ -86,7 +86,7 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     },
     {
         id: 'priceCostRatio',
-        label: 'Rev/Cost',
+        label: 'Price/Cost',
         widthClass: 'w-[72px]',
         title: 'Revenue / cost',
         align: 'text-right',

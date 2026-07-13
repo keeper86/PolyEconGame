@@ -158,6 +158,7 @@ export interface InsertProductPrice {
     avgPrice: number;
     minPrice: number;
     maxPrice: number;
+    priceFloor: number;
 }
 
 export async function insertProductPriceHistory(db: Knex, rows: InsertProductPrice[]): Promise<void> {
@@ -172,6 +173,7 @@ export async function insertProductPriceHistory(db: Knex, rows: InsertProductPri
             avg_price: r.avgPrice,
             min_price: r.minPrice,
             max_price: r.maxPrice,
+            price_floor: r.priceFloor,
         })),
     );
 }
@@ -185,6 +187,7 @@ export interface ProductPriceBucket {
     avg_price: number;
     min_price: number;
     max_price: number;
+    price_floor: number;
 }
 
 export async function getProductPriceHistory(
@@ -205,7 +208,7 @@ export async function getProductPriceHistory(
         .where({ planet_id: planetId, product_name: productName })
         .orderBy('bucket', 'desc')
         .limit(limit)
-        .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price');
+        .select('bucket', 'planet_id', 'product_name', 'avg_price', 'min_price', 'max_price', 'price_floor');
 }
 
 export async function refreshContinuousAggregates(

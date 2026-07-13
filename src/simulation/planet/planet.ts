@@ -176,6 +176,55 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
     prevMonth: {},
 });
 
+export interface AutomatedPricingConfig {
+    // Shared price-adjustment limits
+    priceAdjustMaxUp?: number; // default: PRICE_ADJUST_MAX_UP (1.05)
+    priceAdjustMaxDown?: number; // default: PRICE_ADJUST_MAX_DOWN (0.95)
+    costSpringStrength?: number; // default: COST_SPRING_STRENGTH (0.10)
+    bidOfferMaxCostMultiplier?: number; // default: BID_OFFER_MAX_COST_MULTIPLIER (6)
+    inventorySmoothingMaxExtra?: number; // default: INVENTORY_SMOOTHING_MAX_EXTRA (2)
+
+    // Sell-side
+    outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)
+    targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)
+    automatedCostFloorBuffer?: number; // default: 0.5
+
+    // Buy-side
+    inputBufferTargetTicks?: number; // default: 30 (goods), 3 (services — resolver picks by resource.form)
+    targetFillRate?: number; // default: 0.9
+}
+
+export type SellDiagnostics = {
+    sellThroughRate: number;
+    targetSellThrough: number;
+    baseFactor: number;
+    costSpringDeviation: number;
+    overDeviation: number;
+    netFactor: number;
+    oldPrice: number;
+    newPrice: number;
+    costFloor: number;
+    marketPrice: number;
+    effectiveQuantity: number;
+    rawRetainment: number;
+    surplusRatio?: number;
+};
+
+export type BuyDiagnostics = {
+    fillRate: number;
+    targetFillRate: number;
+    baseFactor: number;
+    ceilingPrice: number;
+    ceilingSpring: number;
+    netFactor: number;
+    oldBidPrice: number;
+    newBidPrice: number;
+    costFloor: number;
+    marketPrice: number;
+    shortfall: number;
+    storageTarget: number;
+};
+
 export type AgentMarketOfferState = {
     resource: Resource;
     offerPrice?: number;
@@ -186,6 +235,8 @@ export type AgentMarketOfferState = {
     lastOfferPrice?: number;
     priceDirection?: number;
     automated?: boolean;
+    autoConfig?: AutomatedPricingConfig;
+    diagnostics?: SellDiagnostics;
 };
 
 export type AgentMarketBidState = {
@@ -203,6 +254,8 @@ export type AgentMarketBidState = {
 
     storageScaleWarning?: 'scaled' | 'dropped';
     automated?: boolean;
+    autoConfig?: AutomatedPricingConfig;
+    diagnostics?: BuyDiagnostics;
 };
 
 export type AgentMarketOffers = {

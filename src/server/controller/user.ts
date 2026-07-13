@@ -467,6 +467,7 @@ export const setSellOffers = () => {
                         offerRetainment: z.number().min(0).optional(),
 
                         automated: z.boolean().optional(),
+                        autoConfig: autoConfigSchema,
                     }),
                 ),
             }),
@@ -640,10 +641,26 @@ export const cancelConstruction = () => {
         });
 };
 
+const autoConfigSchema = z
+    .object({
+        priceAdjustMaxUp: z.number().positive().optional(),
+        priceAdjustMaxDown: z.number().positive().optional(),
+        costSpringStrength: z.number().min(0).optional(),
+        bidOfferMaxCostMultiplier: z.number().positive().optional(),
+        inventorySmoothingMaxExtra: z.number().min(0).optional(),
+        outputBufferMaxTicks: z.number().positive().optional(),
+        targetSellThrough: z.number().min(0).max(1).optional(),
+        automatedCostFloorBuffer: z.number().min(-1).optional(),
+        inputBufferTargetTicks: z.number().positive().optional(),
+        targetFillRate: z.number().min(0).max(1).optional(),
+    })
+    .optional();
+
 const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),
+    autoConfig: autoConfigSchema,
 });
 
 export type BuyBid = z.infer<typeof buyBid>;

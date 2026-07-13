@@ -6,8 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { LayoutGroup, motion } from 'motion/react';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
+import { LayoutGroup, motion } from 'motion/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useHashAccordion } from '@/hooks/useHashAccordion';
@@ -390,7 +390,7 @@ export default function MarketPanel({
                                                     />
                                                 </motion.div>
                                             ))}
-                                        </Accordion>{' '}
+                                        </Accordion>
                                     </LayoutGroup>
                                 </>
                             )}{' '}

@@ -31,8 +31,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
     title: 'Game',
-    description:
-        'Simulate and manage a workforce in a dynamic economic environment. Explore the impact of demographic changes, education levels, and economic policies on your planet’s economy.',
+    description: 'Simulate and manage a company in a dynamic economic environment.',
 };
 
 export default async function RootLayout({

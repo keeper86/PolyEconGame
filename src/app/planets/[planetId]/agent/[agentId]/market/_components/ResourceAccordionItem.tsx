@@ -1,7 +1,7 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -20,7 +20,13 @@ import ResourceTrigger from './ResourceTrigger';
 import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
-import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST, TTL_FEEDBACK } from './marketTypes';
+import {
+    autoConfigToLocal,
+    BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST,
+    TTL_FEEDBACK,
+    localToAutoConfig,
+} from './marketTypes';
+import { Separator } from '@/components/ui/separator';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -122,12 +128,14 @@ export default function ResourceAccordionItem({
         }
     };
 
-    const [innerOpen, setInnerOpen] = useState<string>('');
-
     const [buySuccessMsg, setBuySuccessMsg] = useState<string | null>(null);
     const [buyErrorMsg, setBuyErrorMsg] = useState<string | null>(null);
     const [sellSuccessMsg, setSellSuccessMsg] = useState<string | null>(null);
     const [sellErrorMsg, setSellErrorMsg] = useState<string | null>(null);
+    const [buyAutoConfigSuccessMsg, setBuyAutoConfigSuccessMsg] = useState<string | null>(null);
+    const [buyAutoConfigErrorMsg, setBuyAutoConfigErrorMsg] = useState<string | null>(null);
+    const [sellAutoConfigSuccessMsg, setSellAutoConfigSuccessMsg] = useState<string | null>(null);
+    const [sellAutoConfigErrorMsg, setSellAutoConfigErrorMsg] = useState<string | null>(null);
     const [showMarketDetails, setShowMarketDetails] = useState(false);
 
     const buySuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -459,9 +467,6 @@ export default function ResourceAccordionItem({
 
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
-        if (automated) {
-            setInnerOpen((prev) => (prev === 'buy' ? '' : prev));
-        }
         const buyPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
@@ -470,13 +475,68 @@ export default function ResourceAccordionItem({
 
     const handleSellAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { offerAutomated: automated, savedOfferAutomated: automated });
-        if (automated) {
-            setInnerOpen((prev) => (prev === 'sell' ? '' : prev));
-        }
         const sellPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
         sellMutation.mutate({ agentId, planetId, offers: sellPayload });
+    };
+
+    // ── Auto-config save / reset handlers ────────────────────────────────────
+
+    const handleSaveBuyAutoConfig = () => {
+        setBuyAutoConfigSuccessMsg(null);
+        setBuyAutoConfigErrorMsg(null);
+        const autoConfig = localToAutoConfig(local.buyAutoConfig);
+        const buyPayload: Record<string, { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }> =
+            {
+                [resourceName]: { autoConfig },
+            };
+        buyMutation.mutate(
+            { agentId, planetId, bids: buyPayload },
+            {
+                onSuccess: () => {
+                    setBuyAutoConfigSuccessMsg('Auto-config saved.');
+                },
+                onError: (err) => {
+                    setBuyAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                },
+            },
+        );
+    };
+
+    const handleResetBuyAutoConfig = () => {
+        onLocalChange(resourceName, { buyAutoConfig: autoConfigToLocal(bid?.autoConfig) });
+        setBuyAutoConfigSuccessMsg(null);
+        setBuyAutoConfigErrorMsg(null);
+    };
+
+    const handleSaveSellAutoConfig = () => {
+        setSellAutoConfigSuccessMsg(null);
+        setSellAutoConfigErrorMsg(null);
+        const autoConfig = localToAutoConfig(local.sellAutoConfig);
+        const sellPayload: Record<
+            string,
+            { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }
+        > = {
+            [resourceName]: { autoConfig },
+        };
+        sellMutation.mutate(
+            { agentId, planetId, offers: sellPayload },
+            {
+                onSuccess: () => {
+                    setSellAutoConfigSuccessMsg('Auto-config saved.');
+                },
+                onError: (err) => {
+                    setSellAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                },
+            },
+        );
+    };
+
+    const handleResetSellAutoConfig = () => {
+        onLocalChange(resourceName, { sellAutoConfig: autoConfigToLocal(offer?.autoConfig) });
+        setSellAutoConfigSuccessMsg(null);
+        setSellAutoConfigErrorMsg(null);
     };
 
     return (
@@ -495,7 +555,6 @@ export default function ResourceAccordionItem({
             </AccordionTrigger>
             <AccordionContent>
                 <div className='px-1 pb-2 space-y-4'>
-                    {}
                     {droppedColumns.length > 0 && (
                         <div className='flex flex-wrap gap-1.5'>
                             {droppedColumns.map((col) => (
@@ -514,7 +573,7 @@ export default function ResourceAccordionItem({
                         </div>
                     )}
 
-                    {}
+                    <Separator />
                     <ProductPriceHistoryChart
                         planetId={planetId}
                         productName={resourceName}
@@ -526,19 +585,15 @@ export default function ResourceAccordionItem({
                                       avgPrice: marketData.market.currentMonthStats?.avgPrice,
                                       minPrice: marketData.market.currentMonthStats?.minPrice,
                                       maxPrice: marketData.market.currentMonthStats?.maxPrice,
+                                      priceFloor: marketData.market.currentMonthStats?.priceFloor,
                                   }
                                 : undefined
                         }
                     />
 
-                    {}
-                    <Accordion
-                        type='single'
-                        collapsible
-                        className='space-y-1'
-                        value={innerOpen}
-                        onValueChange={setInnerOpen}
-                    >
+                    <Separator />
+
+                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}
@@ -550,7 +605,11 @@ export default function ResourceAccordionItem({
                             onResetBuy={handleResetBuy}
                             onCancelBid={() => cancelBuyBidMutation.mutate({ agentId, planetId, resourceName })}
                             onAutomationChange={handleBuyAutomationChange}
+                            onSaveBuyAutoConfig={handleSaveBuyAutoConfig}
+                            onResetBuyAutoConfig={handleResetBuyAutoConfig}
                             buySaving={buySaving}
+                            buyAutoConfigSuccessMsg={buyAutoConfigSuccessMsg}
+                            buyAutoConfigErrorMsg={buyAutoConfigErrorMsg}
                             buySuccessMsg={buySuccessMsg}
                             buyErrorMsg={buyErrorMsg}
                             planetId={planetId}
@@ -567,12 +626,16 @@ export default function ResourceAccordionItem({
                             onResetSell={handleResetSell}
                             onCancelOffer={() => cancelSellOfferMutation.mutate({ agentId, planetId, resourceName })}
                             onAutomationChange={handleSellAutomationChange}
+                            onSaveSellAutoConfig={handleSaveSellAutoConfig}
+                            onResetSellAutoConfig={handleResetSellAutoConfig}
                             sellSaving={sellSaving}
+                            sellAutoConfigSuccessMsg={sellAutoConfigSuccessMsg}
+                            sellAutoConfigErrorMsg={sellAutoConfigErrorMsg}
                             sellSuccessMsg={sellSuccessMsg}
                             sellErrorMsg={sellErrorMsg}
                             planetId={planetId}
                         />
-                    </Accordion>
+                    </div>
 
                     {}
                     <div className='flex items-center justify-between gap-3 pt-2'>

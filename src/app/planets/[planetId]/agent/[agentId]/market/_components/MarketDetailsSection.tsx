@@ -8,6 +8,7 @@ import React from 'react';
 import BidTable from './BidTable';
 import OfferTable from './OfferTable';
 import PopulationDemandChart from './PopulationDemandChart';
+import MarketStepChart from './MarketStepChart';
 
 interface MarketDetailsSectionProps {
     planetId: string;
@@ -67,6 +68,8 @@ export default function MarketDetailsSection({
                     <PopulationDemandChart bids={market.populationBids || []} />
                 </>
             )}
+
+            <MarketStepChart offers={market.offers} bids={market.bids} totalSold={market.totalSold} qtyUnit={qtyUnit} />
         </div>
     );
 }

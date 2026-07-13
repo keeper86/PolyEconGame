@@ -59,6 +59,9 @@ export function handleSetSellOffers(
         if (update.automated !== undefined) {
             offer.automated = update.automated;
         }
+        if (update.autoConfig !== undefined) {
+            offer.autoConfig = update.autoConfig;
+        }
     }
     console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
     safePostMessage({ type: 'sellOffersSet', requestId, agentId });
@@ -116,6 +119,7 @@ export function handleCancelBuyBid(
         delete bid.bidPrice;
         delete bid.bidStorageTarget;
         delete bid.automated;
+        delete bid.autoConfig;
         bid.lastBought = 0;
         bid.lastSpent = 0;
         bid.lastEffectiveQty = 0;
@@ -178,6 +182,9 @@ export function handleSetBuyBids(
         }
         if (update.automated !== undefined) {
             bid.automated = update.automated;
+        }
+        if (update.autoConfig !== undefined) {
+            bid.autoConfig = update.autoConfig;
         }
     }
     console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);

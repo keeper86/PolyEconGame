@@ -37,6 +37,7 @@ import {
     setWorkerAllocationTargetsSpec,
 } from './commandSpec';
 import { sendCommandSpec } from './transport';
+import type { AutomatedPricingConfig } from '../planet/planet';
 
 export function workerCreateAgent(opts: {
     agentId: string;
@@ -111,7 +112,10 @@ export function workerSetWorkerAllocationTargets(opts: {
 export function workerSetSellOffers(opts: {
     agentId: string;
     planetId: string;
-    offers: Record<string, { offerPrice?: number; offerRetainment?: number; automated?: boolean }>;
+    offers: Record<
+        string,
+        { offerPrice?: number; offerRetainment?: number; automated?: boolean; autoConfig?: AutomatedPricingConfig }
+    >;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, offers, timeoutMs } = opts;
@@ -153,7 +157,15 @@ export function workerCancelBuyBid(opts: {
 export function workerSetBuyBids(opts: {
     agentId: string;
     planetId: string;
-    bids: Record<string, { bidPrice?: number; bidStorageTarget?: number; automated?: boolean }>;
+    bids: Record<
+        string,
+        {
+            bidPrice?: number;
+            bidStorageTarget?: number;
+            automated?: boolean;
+            autoConfig?: AutomatedPricingConfig;
+        }
+    >;
     timeoutMs?: number;
 }): Promise<void> {
     const { agentId, planetId, bids, timeoutMs } = opts;

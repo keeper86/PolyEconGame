@@ -421,6 +421,8 @@ const agentOfferSchema = z.object({
     lastRevenue: z.number(),
 });
 
+export type AgentOffer = z.infer<typeof agentOfferSchema>;
+
 type AgentBidEntry = {
     agentId: string;
     agentName: string;
@@ -482,6 +484,8 @@ const agentBidSchema = z.object({
     lastSpent: z.number(),
 });
 
+export type AgentBid = z.infer<typeof agentBidSchema>;
+
 const marketSnapshotSchema = z.object({
     planetName: z.string(),
     resourceName: z.string(),
@@ -513,6 +517,7 @@ const marketSnapshotSchema = z.object({
             avgPrice: z.number(),
             minPrice: z.number(),
             maxPrice: z.number(),
+            priceFloor: z.number(),
         })
         .nullable(),
 });
@@ -576,8 +581,11 @@ export const getPlanetMarket = () =>
             }
 
             const acc = planet.monthPriceAcc[input.resourceName];
+            const priceFloor = planet.lastProductionCostFloors[input.resourceName] ?? 0;
             const currentMonthStats =
-                acc && acc.count > 0 ? { avgPrice: acc.sum / acc.count, minPrice: acc.min, maxPrice: acc.max } : null;
+                acc && acc.count > 0
+                    ? { avgPrice: acc.sum / acc.count, minPrice: acc.min, maxPrice: acc.max, priceFloor }
+                    : null;
 
             return {
                 tick,

@@ -81,7 +81,7 @@ export function useGranularity(): {
 }
 
 type GranularityHeaderProps = {
-    title: string;
+    title: React.ReactNode;
     icon?: React.ReactNode;
     granularity: Granularity;
     onGranularityChange: (g: Granularity) => void;
@@ -103,11 +103,11 @@ export function GranularityHeader({
     titleClassName,
 }: GranularityHeaderProps) {
     return (
-        <span className={`flex justify-between items-center${className ? ` ${className}` : ''}`}>
-            <p className={titleClassName ?? 'text-sm font-semibold flex items-center gap-2'}>
+        <span className={`flex justify-between flex-wrap items-center ${className ?? ''}`}>
+            <div className={titleClassName ?? 'text-sm font-semibold flex items-center gap-2'}>
                 {icon}
                 {title}
-            </p>
+            </div>
             <GranularityButtonGroup
                 granularity={granularity}
                 onChange={onGranularityChange}

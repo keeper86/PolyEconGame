@@ -14,7 +14,13 @@ function makeBucket(gameYear: number, monthIndex: number): number {
 }
 
 function makeRawPoint(gameYear: number, monthIndex: number, price = 10): RawPoint {
-    return { bucket: makeBucket(gameYear, monthIndex), avgPrice: price, minPrice: price * 0.9, maxPrice: price * 1.1 };
+    return {
+        bucket: makeBucket(gameYear, monthIndex),
+        avgPrice: price,
+        minPrice: price * 0.9,
+        maxPrice: price * 1.1,
+        priceFloor: price,
+    };
 }
 
 function makeTwoYearsOfData(year0 = 0, year1 = 1): RawPoint[] {

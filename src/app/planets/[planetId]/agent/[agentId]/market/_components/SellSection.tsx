@@ -1,15 +1,14 @@
-import React from 'react';
-import { Tag, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
-import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { PRICE_FLOOR } from '@/simulation/constants';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { PRICE_FLOOR } from '@/simulation/constants';
+import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
+import React from 'react';
+import { AutoConfigPanel } from './AutoConfigPanel';
+import { getResourceByName, priceArrow, productionPerTick, sellFulfillmentClass } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
-import { productionPerTick, sellFulfillmentClass, priceArrow, getResourceByName } from './marketHelpers';
 
 export default function SellSection({
     resourceName,
@@ -20,9 +19,12 @@ export default function SellSection({
     onLocalChange,
     onSaveSell,
     onResetSell,
-    onCancelOffer,
     onAutomationChange,
+    onSaveSellAutoConfig,
+    onResetSellAutoConfig,
     sellSaving,
+    sellAutoConfigSuccessMsg,
+    sellAutoConfigErrorMsg,
     sellSuccessMsg,
     sellErrorMsg,
     planetId,
@@ -48,16 +50,15 @@ export default function SellSection({
               ? ([{ label: '0', qty: 0 }] as const)
               : null;
 
-    const canSell =
-        isCurrency ||
-        inventoryQty > 0 ||
-        isFacilityOutput ||
-        offer?.offerPrice !== undefined ||
-        offer?.offerRetainment !== undefined ||
-        local.savedOfferPrice !== '' ||
-        local.savedOfferRetainment !== '';
+    const sellStaleReason =
+        local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
+            ? 'Output buffer full — nothing offered for sale last tick'
+            : null;
 
-    const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
+    const handleSellConfigChange = (patch: Record<string, string>) => {
+        const updatedSellAutoConfig = { ...local.sellAutoConfig, ...patch } as typeof local.sellAutoConfig;
+        onLocalChange(resourceName, { sellAutoConfig: updatedSellAutoConfig });
+    };
 
     const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment;
 
@@ -85,42 +86,20 @@ export default function SellSection({
     };
 
     return (
-        <AccordionItem value='sell' className={`border-1 p-1 ${!canSell ? 'opacity-50' : ''} rounded-md`}>
-            <AccordionPrimitive.Header className='px-1 flex items-center justify-between hover:bg-muted/50 rounded-md px-1 cursor-pointer'>
-                <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
+        <div>
+            <div className='flex items-center gap-6 pl-2'>
+                <div className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
-                    {!canSell && (
-                        <span className='text-[10px] font-normal text-muted-foreground'>— nothing to sell</span>
-                    )}
-                </AccordionPrimitive.Trigger>
-                {}
-                <div className='flex items-center gap-2 pl-2'>
-                    {hasActiveOffer && (
-                        <Button
-                            variant='ghost'
-                            size='sm'
-                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive'
-                            disabled={sellSaving}
-                            onClick={onCancelOffer}
-                        >
-                            Cancel offer
-                        </Button>
-                    )}
-                    <Label
-                        htmlFor={`offer-auto-${resourceName}`}
-                        className='text-[11px] text-muted-foreground cursor-pointer'
-                    >
-                        Auto-manage
-                    </Label>
-                    <Switch
-                        id={`offer-auto-${resourceName}`}
-                        checked={local.offerAutomated}
-                        disabled={sellSaving}
-                        onCheckedChange={(v) => onAutomationChange(v)}
-                    />
                 </div>
-            </AccordionPrimitive.Header>
-            <AccordionContent className='pb-0'>
+                <Switch
+                    id={`offer-auto-${resourceName}`}
+                    checked={local.offerAutomated}
+                    disabled={sellSaving}
+                    onCheckedChange={(v) => onAutomationChange(v)}
+                />
+            </div>
+
+            <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
                     {isFacilityOutput && (
                         <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
@@ -136,6 +115,21 @@ export default function SellSection({
                             </span>
                         </div>
                     )}
+
+                    <AutoConfigPanel
+                        mode='sell'
+                        committedConfig={offer?.autoConfig}
+                        localConfig={local.sellAutoConfig}
+                        onConfigChange={handleSellConfigChange}
+                        onSave={onSaveSellAutoConfig}
+                        onReset={onResetSellAutoConfig}
+                        isSaving={sellSaving}
+                        successMsg={sellAutoConfigSuccessMsg}
+                        errorMsg={sellAutoConfigErrorMsg}
+                        diagnostics={offer?.diagnostics}
+                        staleReason={sellStaleReason}
+                        bufferApplicable={isFacilityOutput}
+                    />
 
                     <div className='grid grid-cols-2 gap-3'>
                         {}
@@ -317,7 +311,7 @@ export default function SellSection({
                         </div>
                     </div>
                 </div>
-            </AccordionContent>
-        </AccordionItem>
+            </div>
+        </div>
     );
 }

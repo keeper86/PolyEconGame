@@ -72,6 +72,7 @@ exports.up = async function (knex) {
             avg_price    DOUBLE PRECISION NOT NULL,
             min_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
             max_price    DOUBLE PRECISION NOT NULL DEFAULT 0,
+            price_floor  DOUBLE PRECISION NOT NULL DEFAULT 0,
             created_at   TIMESTAMPTZ      NOT NULL DEFAULT NOW()
         )
     `);
@@ -118,7 +119,8 @@ exports.up = async function (knex) {
             product_name,
             avg(avg_price)         AS avg_price,
             min(min_price)         AS min_price,
-            max(max_price)         AS max_price
+            max(max_price)         AS max_price,
+            avg(price_floor)       AS price_floor
         FROM product_price_history
         GROUP BY time_bucket(30, tick), planet_id, product_name
         WITH NO DATA
@@ -173,7 +175,8 @@ exports.up = async function (knex) {
             product_name,
             avg(avg_price)                 AS avg_price,
             min(min_price)                 AS min_price,
-            max(max_price)                 AS max_price
+            max(max_price)                 AS max_price,
+            avg(price_floor)               AS price_floor
         FROM product_price_monthly
         GROUP BY time_bucket(360, bucket), planet_id, product_name
         WITH NO DATA
@@ -226,7 +229,8 @@ exports.up = async function (knex) {
             product_name,
             avg(avg_price)                 AS avg_price,
             min(min_price)                 AS min_price,
-            max(max_price)                 AS max_price
+            max(max_price)                 AS max_price,
+            avg(price_floor)               AS price_floor
         FROM product_price_yearly
         GROUP BY time_bucket(3600, bucket), planet_id, product_name
         WITH NO DATA

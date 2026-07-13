@@ -1,8 +1,6 @@
 import React from 'react';
 import { ShoppingCart, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import * as AccordionPrimitive from '@radix-ui/react-accordion';
-import { AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
 import { consumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
+import { AutoConfigPanel } from './AutoConfigPanel';
 
 export default function BuySection({
     resourceName,
@@ -20,9 +19,12 @@ export default function BuySection({
     onLocalChange,
     onSaveBuy,
     onResetBuy,
-    onCancelBid,
     onAutomationChange,
+    onSaveBuyAutoConfig,
+    onResetBuyAutoConfig,
     buySaving,
+    buyAutoConfigSuccessMsg,
+    buyAutoConfigErrorMsg,
     buySuccessMsg,
     buyErrorMsg,
     planetId,
@@ -36,19 +38,27 @@ export default function BuySection({
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
-    const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
+    const effectiveBuyQty =
+        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
+
+    const buyStaleReason =
+        local.bidAutomated && effectiveBuyQty !== undefined && effectiveBuyQty === 0
+            ? 'Storage target met — no bid placed last tick'
+            : null;
 
     const targetBuffer = parseFloat(local.targetBufferTicks);
     const suggestedStorageTarget =
         isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0 ? Math.ceil(targetBuffer * consumedPerTick) : null;
 
-    const effectiveBuyQty =
-        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
-
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
         (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
     const fundsWarning = totalBidCost > 0 && deposits < totalBidCost;
+
+    const handleBuyConfigChange = (patch: Record<string, string>) => {
+        const updatedBuyAutoConfig = { ...local.buyAutoConfig, ...patch } as typeof local.buyAutoConfig;
+        onLocalChange(resourceName, { buyAutoConfig: updatedBuyAutoConfig });
+    };
 
     const hasDirtyBuyFields = local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget;
 
@@ -76,38 +86,20 @@ export default function BuySection({
     };
 
     return (
-        <AccordionItem value='buy' className={`border-1 p-1 rounded-md`}>
-            <AccordionPrimitive.Header className='flex items-center justify-between hover:bg-muted/50 rounded-md px-1'>
-                <AccordionPrimitive.Trigger className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold hover:underline text-left'>
+        <div className=''>
+            <div className='flex items-center gap-6  px-1'>
+                <div className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
-                </AccordionPrimitive.Trigger>
-                <div className='flex items-center gap-2 pl-2'>
-                    {hasActiveBid && (
-                        <Button
-                            variant='ghost'
-                            size='sm'
-                            className='h-6 text-[10px] px-2 py-0 text-destructive hover:text-destructive  cursor-pointer'
-                            disabled={buySaving}
-                            onClick={onCancelBid}
-                        >
-                            Cancel bid
-                        </Button>
-                    )}
-                    <Label
-                        htmlFor={`bid-auto-${resourceName}`}
-                        className='text-[11px] text-muted-foreground cursor-pointer'
-                    >
-                        Auto-manage
-                    </Label>
-                    <Switch
-                        id={`bid-auto-${resourceName}`}
-                        checked={local.bidAutomated}
-                        disabled={buySaving}
-                        onCheckedChange={(v) => onAutomationChange(v)}
-                    />
                 </div>
-            </AccordionPrimitive.Header>
-            <AccordionContent className='pb-0'>
+
+                <Switch
+                    id={`bid-auto-${resourceName}`}
+                    checked={local.bidAutomated}
+                    disabled={buySaving}
+                    onCheckedChange={(v) => onAutomationChange(v)}
+                />
+            </div>
+            <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
                     {isFacilityInput && (
                         <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
@@ -123,6 +115,21 @@ export default function BuySection({
                             </span>
                         </div>
                     )}
+
+                    <AutoConfigPanel
+                        mode='buy'
+                        committedConfig={bid?.autoConfig}
+                        localConfig={local.buyAutoConfig}
+                        onConfigChange={handleBuyConfigChange}
+                        onSave={onSaveBuyAutoConfig}
+                        onReset={onResetBuyAutoConfig}
+                        isSaving={buySaving}
+                        successMsg={buyAutoConfigSuccessMsg}
+                        errorMsg={buyAutoConfigErrorMsg}
+                        diagnostics={bid?.diagnostics}
+                        staleReason={buyStaleReason}
+                        bufferApplicable={isFacilityInput}
+                    />
 
                     <div className='grid grid-cols-2 gap-3'>
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
@@ -356,8 +363,8 @@ export default function BuySection({
                             </Button>
                         </div>
                     </div>
-                </div>{' '}
-            </AccordionContent>
-        </AccordionItem>
+                </div>
+            </div>
+        </div>
     );
 }

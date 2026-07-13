@@ -127,7 +127,15 @@ describe('product price history: write-refresh-read', () => {
         const JAN_TICK = 30;
 
         await insertProductPriceHistory(db, [
-            { tick: JAN_TICK, planet_id: PLANET, product_name: PRODUCT, avgPrice: 10, minPrice: 9, maxPrice: 11 },
+            {
+                tick: JAN_TICK,
+                planet_id: PLANET,
+                product_name: PRODUCT,
+                avgPrice: 10,
+                minPrice: 9,
+                maxPrice: 11,
+                priceFloor: 8,
+            },
         ]);
 
         await refreshProductPriceMonthly(JAN_TICK + 30);
@@ -148,7 +156,15 @@ describe('product price history: write-refresh-read', () => {
         const CLEAN_PLANET = 'test-planet-pph-clean';
 
         await insertProductPriceHistory(db, [
-            { tick: 30, planet_id: CLEAN_PLANET, product_name: PRODUCT, avgPrice: 5, minPrice: 4, maxPrice: 6 },
+            {
+                tick: 30,
+                planet_id: CLEAN_PLANET,
+                product_name: PRODUCT,
+                avgPrice: 5,
+                minPrice: 4,
+                maxPrice: 6,
+                priceFloor: 4,
+            },
         ]);
 
         await refreshProductPriceMonthly(30);
@@ -172,7 +188,15 @@ describe('product price history: write-refresh-read', () => {
         });
 
         await insertProductPriceHistory(db, [
-            { tick: FEB_TICK, planet_id: PLANET, product_name: PRODUCT, avgPrice: 20, minPrice: 18, maxPrice: 22 },
+            {
+                tick: FEB_TICK,
+                planet_id: PLANET,
+                product_name: PRODUCT,
+                avgPrice: 20,
+                minPrice: 18,
+                maxPrice: 22,
+                priceFloor: 17,
+            },
         ]);
 
         await refreshProductPriceMonthly(FEB_TICK + BUCKET_WIDTH);

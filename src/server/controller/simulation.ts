@@ -541,6 +541,7 @@ export const getProductPriceHistory = () =>
                         avgPrice: z.number(),
                         minPrice: z.number(),
                         maxPrice: z.number(),
+                        priceFloor: z.number(),
                     }),
                 ),
             }),
@@ -563,6 +564,7 @@ export const getProductPriceHistory = () =>
                         avgPrice: r.avg_price,
                         minPrice: r.min_price,
                         maxPrice: r.max_price,
+                        priceFloor: r.price_floor,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

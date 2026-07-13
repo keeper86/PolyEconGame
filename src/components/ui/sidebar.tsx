@@ -147,7 +147,7 @@ function Sidebar({
 }) {
     const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
 
-    const edgeWidth = 20;
+    const edgeWidth = 50;
     const threshold = 60;
 
     React.useEffect(() => {

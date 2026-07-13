@@ -1,17 +1,33 @@
 'use client';
 
 import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+type RescaleMode = 'absolute' | 'relative';
+
+function rescalePoints(points: ChartPoint[]): ChartPoint[] {
+    return points.map((p) => {
+        const factor = p.priceFloor > 0 ? p.priceFloor : 1;
+        return {
+            ...p,
+            avgPrice: p.avgPrice / factor,
+            minPrice: p.minPrice / factor,
+            maxPrice: p.maxPrice / factor,
+            priceFloor: p.priceFloor > 0 ? 1 : p.priceFloor,
+        };
+    });
+}
 
 type Props = {
     planetId: string;
@@ -24,7 +40,7 @@ function yDomainFor(points: ChartPoint[]): [number, number] {
     if (points.length === 0) {
         return [0, 1];
     }
-    const mins = points.map((d) => d.minPrice);
+    const mins = points.map((d) => Math.min(d.minPrice, d.priceFloor));
     const maxs = points.map((d) => d.maxPrice);
     const lo = Math.min(...mins);
     const hi = Math.max(...maxs);
@@ -74,9 +90,29 @@ function usesLogScale(points: ChartPoint[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
-const tooltipFormatter = (value: number, name: string): [string, string] => {
-    const labels: Record<string, string> = { avgPrice: 'Avg price', minPrice: 'Min price', maxPrice: 'Max price' };
-    return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
+const tooltipValueFormatter = (
+    value: number,
+    _name: string,
+    rescaleMode: RescaleMode,
+    planetId: string,
+): [string, string] => {
+    const labels: Record<string, string> = {
+        avgPrice: 'Avg price',
+        minPrice: 'Min price',
+        maxPrice: 'Max price',
+        priceFloor: 'Cost estimate',
+    };
+    if (rescaleMode === 'relative') {
+        const labelMap: Record<string, string> = {
+            avgPrice: 'Rescaled price',
+            minPrice: 'Rescaled Min price',
+            maxPrice: 'Rescaled Max price',
+            priceFloor: 'Cost estimate (1)',
+        };
+        const label = labelMap[_name] ?? _name;
+        return [`${value.toFixed(2)}×`, label];
+    }
+    return [formatNumberWithUnit(value, 'currency', planetId), labels[_name] ?? _name];
 };
 
 type MergedPoint = {
@@ -86,9 +122,11 @@ type MergedPoint = {
     avgPrice: number | null;
     minPrice: number | null;
     maxPrice: number | null;
+    priceFloor: number | null;
     ghostAvgPrice: number | null;
     ghostMinPrice: number | null;
     ghostMaxPrice: number | null;
+    ghostPriceFloor: number | null;
 };
 
 function SimplePriceAreaChart({
@@ -104,6 +142,8 @@ function SimplePriceAreaChart({
     yDomain,
     yTicks,
     verticalGridValues,
+    rescaleMode,
+    planetId,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -117,10 +157,18 @@ function SimplePriceAreaChart({
     yDomain: [number, number] | ['auto', 'auto'];
     yTicks?: number[];
     verticalGridValues?: number[];
+    rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
-            return data.map((p) => ({ ...p, ghostAvgPrice: null, ghostMinPrice: null, ghostMaxPrice: null }));
+            return data.map((p) => ({
+                ...p,
+                ghostAvgPrice: null,
+                ghostMinPrice: null,
+                ghostMaxPrice: null,
+                ghostPriceFloor: null,
+            }));
         }
         const ghostByMonth = new Map(ghostData.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
         const currentByMonth = new Map(data.filter((p) => p.monthIdx !== undefined).map((p) => [p.monthIdx!, p]));
@@ -144,14 +192,23 @@ function SimplePriceAreaChart({
                     avgPrice: curr?.avgPrice ?? null,
                     minPrice: curr?.minPrice ?? null,
                     maxPrice: curr?.maxPrice ?? null,
+                    priceFloor: curr?.priceFloor ?? null,
                     ghostAvgPrice: ghost?.avgPrice ?? null,
                     ghostMinPrice: ghost?.minPrice ?? null,
                     ghostMaxPrice: ghost?.maxPrice ?? null,
+                    ghostPriceFloor: ghost?.priceFloor ?? null,
                 };
             });
     }, [data, ghostData]);
 
     const hasGhost = ghostData && ghostData.length > 0;
+
+    const yTickFormatter = useMemo(() => {
+        if (rescaleMode === 'relative') {
+            return (v: number) => `${v.toFixed(1)}×`;
+        }
+        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId) : String(v));
+    }, [rescaleMode, planetId]);
 
     return (
         <ResponsiveContainer width='100%' height='100%'>
@@ -190,7 +247,7 @@ function SimplePriceAreaChart({
                     axisLine={false}
                     tickLine={false}
                     width={52}
-                    tickFormatter={(v) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v))}
+                    tickFormatter={yTickFormatter}
                 />
                 <Tooltip
                     content={({ active, payload, label }) => {
@@ -215,13 +272,86 @@ function SimplePriceAreaChart({
                                     {tooltipLabelFormatter(label as number)}
                                 </div>
                                 {filtered.map((p) => {
-                                    const [val, name] = tooltipFormatter(p.value as number, p.name as string);
+                                    const [val, name] = tooltipValueFormatter(
+                                        p.value as number,
+                                        p.name as string,
+                                        rescaleMode,
+                                        planetId,
+                                    );
                                     return (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
                                             {name}: {val}
                                         </div>
                                     );
                                 })}
+                            </div>
+                        );
+                    }}
+                />
+                <Legend
+                    verticalAlign='bottom'
+                    content={({ payload }) => {
+                        if (!payload || payload.length === 0) {
+                            return null;
+                        }
+                        const priceLabel = rescaleMode === 'relative' ? 'Rescaled price' : 'Average Price';
+                        const minMaxLabel = rescaleMode === 'relative' ? 'Rescaled min/max' : 'Min/max Price';
+                        const costLabel = rescaleMode === 'relative' ? 'Cost estimate (1)' : 'Cost estimate';
+                        const entries = [
+                            {
+                                label: priceLabel,
+                                stroke: '#f59e0b',
+                                strokeWidth: 2,
+                                strokeDasharray: undefined,
+                            },
+                            {
+                                label: minMaxLabel,
+                                stroke: '#38bdf8',
+                                strokeWidth: 1.5,
+                                strokeDasharray: '4 3',
+                            },
+                            {
+                                label: costLabel,
+                                stroke: '#ef444496',
+                                strokeWidth: 2,
+                                strokeDasharray: undefined,
+                            },
+                        ];
+                        return (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    gap: 16,
+                                    padding: 0,
+                                    flexWrap: 'wrap',
+                                }}
+                            >
+                                {entries.map((e) => (
+                                    <div
+                                        key={e.label}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 5,
+                                            fontSize: 11,
+                                            color: '#94a3b8',
+                                        }}
+                                    >
+                                        <svg width={16} height={10} viewBox='0 0 16 10'>
+                                            <line
+                                                x1={0}
+                                                y1={5}
+                                                x2={16}
+                                                y2={5}
+                                                stroke={e.stroke}
+                                                strokeWidth={e.strokeWidth}
+                                                strokeDasharray={e.strokeDasharray}
+                                            />
+                                        </svg>
+                                        <span>{e.label}</span>
+                                    </div>
+                                ))}
                             </div>
                         );
                     }}
@@ -233,7 +363,6 @@ function SimplePriceAreaChart({
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill={`url(#${gradId})`}
-                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
                     isAnimationActive={false}
                     name='maxPrice'
@@ -245,10 +374,20 @@ function SimplePriceAreaChart({
                     strokeWidth={1}
                     strokeDasharray='3 3'
                     fill='var(--background, #0f172a)'
-                    dot={{ r: 2, fill: '#38bdf8' }}
                     activeDot={false}
                     isAnimationActive={false}
                     name='minPrice'
+                />
+                <Area
+                    type='monotone'
+                    dataKey='priceFloor'
+                    stroke='#ef444496'
+                    strokeWidth={2}
+                    fill='#ef444421'
+                    activeDot={{ r: 2, fill: '#ef444496', stroke: '#1e293b', strokeWidth: 2 }}
+                    isAnimationActive={false}
+                    name='priceFloor'
+                    connectNulls={false}
                 />
                 <Area
                     type='monotone'
@@ -286,8 +425,6 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
-                        activeDot={false}
                         isAnimationActive={false}
                         name='ghostMaxPrice'
                         connectNulls={false}
@@ -302,10 +439,24 @@ function SimplePriceAreaChart({
                         strokeOpacity={0.3}
                         strokeDasharray='3 3'
                         fill='none'
-                        dot={{ r: 2, fill: '#38bdf8', fillOpacity: 0.3, stroke: 'none' }}
                         activeDot={false}
                         isAnimationActive={false}
                         name='ghostMinPrice'
+                        connectNulls={false}
+                    />
+                )}
+                {hasGhost && (
+                    <Area
+                        type='monotone'
+                        dataKey='ghostPriceFloor'
+                        stroke='#ef444496'
+                        strokeWidth={2}
+                        strokeOpacity={0.35}
+                        strokeDasharray='5 5'
+                        fill='none'
+                        activeDot={false}
+                        isAnimationActive={false}
+                        name='ghostPriceFloor'
                         connectNulls={false}
                     />
                 )}
@@ -318,10 +469,14 @@ function MonthlyChart({
     monthlyPoints,
     live,
     productName,
+    rescaleMode,
+    planetId,
 }: {
     monthlyPoints: RawPoint[];
     live?: LiveData;
     productName: string;
+    rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const data = useMemo(
         (): ChartPoint[] => computeMonthlyData(monthlyPoints, live ?? { tick: 0, price: 0 }, productName),
@@ -333,7 +488,13 @@ function MonthlyChart({
         [monthlyPoints, live, data],
     );
 
-    const yDomain = useMemo(() => yDomainFor([...data, ...ghostData]), [data, ghostData]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+    const scaleGhostData = useMemo(
+        () => (rescaleMode === 'relative' && ghostData.length > 0 ? rescalePoints(ghostData) : ghostData),
+        [ghostData, rescaleMode],
+    );
+
+    const yDomain = useMemo(() => yDomainFor([...scaleData, ...scaleGhostData]), [scaleData, scaleGhostData]);
     const gradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
@@ -351,8 +512,8 @@ function MonthlyChart({
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
-                ghostData={ghostData}
+                data={scaleData}
+                ghostData={scaleGhostData}
                 gradId={gradId}
                 xDataKey='monthIdx'
                 xDomain={[0, 12]}
@@ -362,6 +523,8 @@ function MonthlyChart({
                 scale='linear'
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : undefined}
+                rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
@@ -370,10 +533,13 @@ function MonthlyChart({
 function YearlyChart({
     yearlyPoints,
     productName,
+    rescaleMode,
+    planetId,
 }: {
     yearlyPoints: RawPoint[];
-    live?: LiveData;
     productName: string;
+    rescaleMode: RescaleMode;
+    planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
         return [...yearlyPoints]
@@ -384,12 +550,18 @@ function YearlyChart({
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             }));
     }, [yearlyPoints]);
 
-    const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
-    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+
+    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
+    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
+    const yDomain = useMemo(
+        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
+        [scaleData, useLog, yTicks],
+    );
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
     const xMin = data.length > 0 ? data[0].year : 0;
@@ -406,7 +578,7 @@ function YearlyChart({
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
+                data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
                 xDomain={xDomain}
@@ -417,12 +589,24 @@ function YearlyChart({
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
                 verticalGridValues={verticalGridValues}
+                rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
 }
 
-function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[]; productName: string }) {
+function DecadesChart({
+    decadePoints,
+    productName,
+    rescaleMode,
+    planetId,
+}: {
+    decadePoints: RawPoint[];
+    productName: string;
+    rescaleMode: RescaleMode;
+    planetId: string;
+}) {
     const data = useMemo((): ChartPoint[] => {
         return [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -432,12 +616,18 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
+                priceFloor: p.priceFloor,
             }));
     }, [decadePoints]);
 
-    const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
-    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+
+    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
+    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
+    const yDomain = useMemo(
+        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
+        [scaleData, useLog, yTicks],
+    );
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
     const formatYearTick = (year: number): string => {
@@ -457,7 +647,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
+                data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
                 xDomain={['dataMin', 'dataMax']}
@@ -466,6 +656,8 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
+                rescaleMode={rescaleMode}
+                planetId={planetId}
             />
         </div>
     );
@@ -474,6 +666,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
+    const [rescaleMode, setRescaleMode] = useState<RescaleMode>('absolute');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
@@ -516,6 +709,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [monthly],
     );
@@ -527,6 +721,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [yearly],
     );
@@ -537,6 +732,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 avgPrice: r.avgPrice,
                 minPrice: r.minPrice,
                 maxPrice: r.maxPrice,
+                priceFloor: r.priceFloor,
             })),
         [decade],
     );
@@ -544,7 +740,27 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
             <GranularityHeader
-                title='Price'
+                className='pb-2'
+                title={
+                    <span className='pb-2'>
+                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as RescaleMode)}>
+                            <TabsList className='w-full justify-start flex-wrap h-7 gap-1 bg-transparent p-0 border-b border-border'>
+                                <TabsTrigger
+                                    value='absolute'
+                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value='relative'
+                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price/Cost
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </span>
+                }
                 granularity={granularity}
                 onGranularityChange={setGranularity}
                 currentTick={currentTick}
@@ -554,10 +770,26 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                     monthlyPoints={monthlyPoints}
                     live={monthlyPoints.length === 0 ? undefined : live}
                     productName={productName}
+                    rescaleMode={rescaleMode}
+                    planetId={planetId}
                 />
             )}
-            {granularity === 'yearly' && <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />}
-            {granularity === 'decade' && <DecadesChart decadePoints={decadePoints} productName={productName} />}
+            {granularity === 'yearly' && (
+                <YearlyChart
+                    yearlyPoints={yearlyPoints}
+                    productName={productName}
+                    rescaleMode={rescaleMode}
+                    planetId={planetId}
+                />
+            )}
+            {granularity === 'decade' && (
+                <DecadesChart
+                    decadePoints={decadePoints}
+                    productName={productName}
+                    rescaleMode={rescaleMode}
+                    planetId={planetId}
+                />
+            )}
         </div>
     );
 }
