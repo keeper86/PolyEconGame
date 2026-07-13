@@ -163,7 +163,7 @@ export function workerSetBuyBids(opts: {
             bidPrice?: number;
             bidStorageTarget?: number;
             automated?: boolean;
-            autoConfig?: import('../planet/planet').AutomatedPricingConfig;
+            autoConfig?: AutomatedPricingConfig;
         }
     >;
     timeoutMs?: number;

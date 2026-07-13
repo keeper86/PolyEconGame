@@ -87,18 +87,17 @@ export default function BuySection({
 
     return (
         <div className=''>
-            <div className='flex items-center justify-between hover:bg-muted/50 rounded-md px-1'>
-                <div className='flex flex-1 items-center gap-1.5 py-2 text-xs font-semibold text-left'>
+            <div className='flex items-center gap-6  px-1'>
+                <div className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left'>
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </div>
-                <div className='flex items-center gap-2 pl-2'>
-                    <Switch
-                        id={`bid-auto-${resourceName}`}
-                        checked={local.bidAutomated}
-                        disabled={buySaving}
-                        onCheckedChange={(v) => onAutomationChange(v)}
-                    />
-                </div>
+
+                <Switch
+                    id={`bid-auto-${resourceName}`}
+                    checked={local.bidAutomated}
+                    disabled={buySaving}
+                    onCheckedChange={(v) => onAutomationChange(v)}
+                />
             </div>
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>

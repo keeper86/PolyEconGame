@@ -650,7 +650,7 @@ const autoConfigSchema = z
         inventorySmoothingMaxExtra: z.number().min(0).optional(),
         outputBufferMaxTicks: z.number().positive().optional(),
         targetSellThrough: z.number().min(0).max(1).optional(),
-        automatedCostFloorBuffer: z.number().min(0).optional(),
+        automatedCostFloorBuffer: z.number().min(-1).optional(),
         inputBufferTargetTicks: z.number().positive().optional(),
         targetFillRate: z.number().min(0).max(1).optional(),
     })

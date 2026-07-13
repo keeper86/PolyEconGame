@@ -369,7 +369,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     `This may lead to unstable pricing. Setting bid ceiling to PRICE_FLOOR.`,
             );
         }
-        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil);
+        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(
@@ -510,6 +510,7 @@ function adjustBidPrice(
     storageTarget: number,
     marketPrice: number,
     ceilingPrice: number = PRICE_CEIL,
+    costFloor: number = PRICE_FLOOR,
 ): void {
     const cfg = resolveBidConfig(bid.autoConfig, bid.resource);
     const oldBidPrice = bid.bidPrice;
@@ -571,7 +572,7 @@ function adjustBidPrice(
         netFactor: factor,
         oldBidPrice: oldBidPrice ?? bid.bidPrice,
         newBidPrice: bid.bidPrice,
-        costFloor: 0,
+        costFloor,
         marketPrice,
         shortfall,
         storageTarget,
