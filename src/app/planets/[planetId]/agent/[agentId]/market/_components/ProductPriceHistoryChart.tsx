@@ -1,17 +1,33 @@
 'use client';
 
 import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+type RescaleMode = 'absolute' | 'relative';
+
+function rescalePoints(points: ChartPoint[]): ChartPoint[] {
+    return points.map((p) => {
+        const factor = p.priceFloor > 0 ? p.priceFloor : 1;
+        return {
+            ...p,
+            avgPrice: p.avgPrice / factor,
+            minPrice: p.minPrice / factor,
+            maxPrice: p.maxPrice / factor,
+            priceFloor: p.priceFloor > 0 ? 1 : p.priceFloor,
+        };
+    });
+}
 
 type Props = {
     planetId: string;
@@ -74,14 +90,24 @@ function usesLogScale(points: ChartPoint[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
-const tooltipFormatter = (value: number, name: string): [string, string] => {
+const tooltipValueFormatter = (value: number, _name: string, rescaleMode: RescaleMode): [string, string] => {
     const labels: Record<string, string> = {
         avgPrice: 'Avg price',
         minPrice: 'Min price',
         maxPrice: 'Max price',
-        priceFloor: 'Price floor',
+        priceFloor: 'Cost estimate',
     };
-    return [formatNumberWithUnit(value, 'currency'), labels[name] ?? name];
+    if (rescaleMode === 'relative') {
+        const labelMap: Record<string, string> = {
+            avgPrice: 'Avg price',
+            minPrice: 'Min price',
+            maxPrice: 'Max price',
+            priceFloor: 'Cost estimate',
+        };
+        const label = labelMap[_name] ?? _name;
+        return [`${value.toFixed(2)}×`, label];
+    }
+    return [formatNumberWithUnit(value, 'currency'), labels[_name] ?? _name];
 };
 
 type MergedPoint = {
@@ -111,6 +137,7 @@ function SimplePriceAreaChart({
     yDomain,
     yTicks,
     verticalGridValues,
+    rescaleMode,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -124,6 +151,7 @@ function SimplePriceAreaChart({
     yDomain: [number, number] | ['auto', 'auto'];
     yTicks?: number[];
     verticalGridValues?: number[];
+    rescaleMode: RescaleMode;
 }) {
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -168,6 +196,13 @@ function SimplePriceAreaChart({
 
     const hasGhost = ghostData && ghostData.length > 0;
 
+    const yTickFormatter = useMemo(() => {
+        if (rescaleMode === 'relative') {
+            return (v: number) => `${v.toFixed(1)}×`;
+        }
+        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v));
+    }, [rescaleMode]);
+
     return (
         <ResponsiveContainer width='100%' height='100%'>
             <AreaChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -205,7 +240,7 @@ function SimplePriceAreaChart({
                     axisLine={false}
                     tickLine={false}
                     width={52}
-                    tickFormatter={(v) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency') : String(v))}
+                    tickFormatter={yTickFormatter}
                 />
                 <Tooltip
                     content={({ active, payload, label }) => {
@@ -230,7 +265,11 @@ function SimplePriceAreaChart({
                                     {tooltipLabelFormatter(label as number)}
                                 </div>
                                 {filtered.map((p) => {
-                                    const [val, name] = tooltipFormatter(p.value as number, p.name as string);
+                                    const [val, name] = tooltipValueFormatter(
+                                        p.value as number,
+                                        p.name as string,
+                                        rescaleMode,
+                                    );
                                     return (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
                                             {name}: {val}
@@ -247,22 +286,24 @@ function SimplePriceAreaChart({
                         if (!payload || payload.length === 0) {
                             return null;
                         }
-                        // Build a legend with 3 combined entries
+                        const priceLabel = rescaleMode === 'relative' ? 'Rescaled price' : 'Average Price';
+                        const minMaxLabel = rescaleMode === 'relative' ? 'Rescaled min/max' : 'Min/max Price';
+                        const costLabel = rescaleMode === 'relative' ? 'Cost estimate (1)' : 'Cost estimate';
                         const entries = [
                             {
-                                label: 'Avg Price',
+                                label: priceLabel,
                                 stroke: '#f59e0b',
                                 strokeWidth: 2,
                                 strokeDasharray: undefined,
                             },
                             {
-                                label: 'Min / Max Price',
+                                label: minMaxLabel,
                                 stroke: '#38bdf8',
                                 strokeWidth: 1.5,
                                 strokeDasharray: '4 3',
                             },
                             {
-                                label: 'Cost Estimate',
+                                label: costLabel,
                                 stroke: '#ef444496',
                                 strokeWidth: 2,
                                 strokeDasharray: undefined,
@@ -420,10 +461,12 @@ function MonthlyChart({
     monthlyPoints,
     live,
     productName,
+    rescaleMode,
 }: {
     monthlyPoints: RawPoint[];
     live?: LiveData;
     productName: string;
+    rescaleMode: RescaleMode;
 }) {
     const data = useMemo(
         (): ChartPoint[] => computeMonthlyData(monthlyPoints, live ?? { tick: 0, price: 0 }, productName),
@@ -435,7 +478,13 @@ function MonthlyChart({
         [monthlyPoints, live, data],
     );
 
-    const yDomain = useMemo(() => yDomainFor([...data, ...ghostData]), [data, ghostData]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+    const scaleGhostData = useMemo(
+        () => (rescaleMode === 'relative' && ghostData.length > 0 ? rescalePoints(ghostData) : ghostData),
+        [ghostData, rescaleMode],
+    );
+
+    const yDomain = useMemo(() => yDomainFor([...scaleData, ...scaleGhostData]), [scaleData, scaleGhostData]);
     const gradId = `grad_mon_${productName.replace(/\s+/g, '_')}`;
 
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
@@ -453,8 +502,8 @@ function MonthlyChart({
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
-                ghostData={ghostData}
+                data={scaleData}
+                ghostData={scaleGhostData}
                 gradId={gradId}
                 xDataKey='monthIdx'
                 xDomain={[0, 12]}
@@ -464,6 +513,7 @@ function MonthlyChart({
                 scale='linear'
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : undefined}
+                rescaleMode={rescaleMode}
             />
         </div>
     );
@@ -472,10 +522,11 @@ function MonthlyChart({
 function YearlyChart({
     yearlyPoints,
     productName,
+    rescaleMode,
 }: {
     yearlyPoints: RawPoint[];
-    live?: LiveData;
     productName: string;
+    rescaleMode: RescaleMode;
 }) {
     const data = useMemo((): ChartPoint[] => {
         return [...yearlyPoints]
@@ -490,9 +541,14 @@ function YearlyChart({
             }));
     }, [yearlyPoints]);
 
-    const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
-    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+
+    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
+    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
+    const yDomain = useMemo(
+        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
+        [scaleData, useLog, yTicks],
+    );
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
     const xMin = data.length > 0 ? data[0].year : 0;
@@ -509,7 +565,7 @@ function YearlyChart({
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
+                data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
                 xDomain={xDomain}
@@ -520,12 +576,21 @@ function YearlyChart({
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
                 verticalGridValues={verticalGridValues}
+                rescaleMode={rescaleMode}
             />
         </div>
     );
 }
 
-function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[]; productName: string }) {
+function DecadesChart({
+    decadePoints,
+    productName,
+    rescaleMode,
+}: {
+    decadePoints: RawPoint[];
+    productName: string;
+    rescaleMode: RescaleMode;
+}) {
     const data = useMemo((): ChartPoint[] => {
         return [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -539,9 +604,14 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
             }));
     }, [decadePoints]);
 
-    const useLog = useMemo(() => usesLogScale(data), [data]);
-    const yTicks = useMemo(() => (useLog ? logTicksFor(data) : undefined), [data, useLog]);
-    const yDomain = useMemo(() => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(data)), [data, useLog, yTicks]);
+    const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
+
+    const useLog = useMemo(() => usesLogScale(scaleData), [scaleData]);
+    const yTicks = useMemo(() => (useLog ? logTicksFor(scaleData) : undefined), [scaleData, useLog]);
+    const yDomain = useMemo(
+        () => (useLog && yTicks ? logDomainFor(yTicks) : yDomainFor(scaleData)),
+        [scaleData, useLog, yTicks],
+    );
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
     const formatYearTick = (year: number): string => {
@@ -561,7 +631,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
     return (
         <div style={{ width: '100%', height: 240 }}>
             <SimplePriceAreaChart
-                data={data}
+                data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
                 xDomain={['dataMin', 'dataMax']}
@@ -570,6 +640,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
+                rescaleMode={rescaleMode}
             />
         </div>
     );
@@ -578,6 +649,7 @@ function DecadesChart({ decadePoints, productName }: { decadePoints: RawPoint[];
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
+    const [rescaleMode, setRescaleMode] = useState<RescaleMode>('absolute');
 
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
@@ -651,7 +723,27 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
             <GranularityHeader
-                title='Price'
+                className='pb-2'
+                title={
+                    <span className='pb-2'>
+                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as RescaleMode)}>
+                            <TabsList className='w-full justify-start flex-wrap h-7 gap-1 bg-transparent p-0 border-b border-border'>
+                                <TabsTrigger
+                                    value='absolute'
+                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value='relative'
+                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price/Cost
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                    </span>
+                }
                 granularity={granularity}
                 onGranularityChange={setGranularity}
                 currentTick={currentTick}
@@ -661,10 +753,15 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                     monthlyPoints={monthlyPoints}
                     live={monthlyPoints.length === 0 ? undefined : live}
                     productName={productName}
+                    rescaleMode={rescaleMode}
                 />
             )}
-            {granularity === 'yearly' && <YearlyChart yearlyPoints={yearlyPoints} productName={productName} />}
-            {granularity === 'decade' && <DecadesChart decadePoints={decadePoints} productName={productName} />}
+            {granularity === 'yearly' && (
+                <YearlyChart yearlyPoints={yearlyPoints} productName={productName} rescaleMode={rescaleMode} />
+            )}
+            {granularity === 'decade' && (
+                <DecadesChart decadePoints={decadePoints} productName={productName} rescaleMode={rescaleMode} />
+            )}
         </div>
     );
 }
