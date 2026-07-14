@@ -62,6 +62,7 @@ export default function MarketPanel({
     assets,
     allPlanetDeposits,
     showAll,
+    ships,
 }: Props): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
@@ -387,6 +388,7 @@ export default function MarketPanel({
                                                         overviewRow={overviewRows[name]}
                                                         visibleColumns={visibleColumns}
                                                         allPlanetDeposits={allPlanetDeposits}
+                                                        ships={ships}
                                                     />
                                                 </motion.div>
                                             ))}

@@ -28,13 +28,14 @@ export default function BuySection({
     buySuccessMsg,
     buyErrorMsg,
     planetId,
+    ships,
 }: BuySectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');
 
-    const consumptionInfo = totalConsumptionPerTick(assets, resourceName);
+    const consumptionInfo = totalConsumptionPerTick(assets, ships ?? [], planetId, resourceName);
     const consumedPerTick = consumptionInfo.totalPerTick;
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
@@ -106,7 +107,7 @@ export default function BuySection({
                         <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1'>
                             <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
                                 <span>
-                                    Total required{' '}
+                                    Total required
                                     <span className='font-semibold text-foreground'>
                                         {formatNumberWithUnit(
                                             consumedPerTick,

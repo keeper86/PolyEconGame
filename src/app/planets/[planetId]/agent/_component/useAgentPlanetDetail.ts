@@ -14,12 +14,14 @@ import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef } from 'react';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 
 export type UseAgentPlanetDetailResult = {
     agentId: string;
     planetId: string;
     detail: AgentPlanetDetail | null;
     assets: AgentPlanetAssets | null;
+    ships: ConsumptionShipInfo[];
     tick: number;
     isLoading: boolean;
     hasNoAssets: boolean;
@@ -95,11 +97,14 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [baseAssets, agentId, planetId, removeById, removeByKey]);
 
+    const ships = (detail?.ships ?? []) as ConsumptionShipInfo[];
+
     return {
         agentId,
         planetId,
         detail,
         assets,
+        ships,
         tick: data?.tick ?? 0,
         isLoading,
         hasNoAssets: !isLoading && data !== undefined && detail === null,

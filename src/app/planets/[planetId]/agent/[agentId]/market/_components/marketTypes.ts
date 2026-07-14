@@ -5,6 +5,7 @@ import type {
     SellDiagnostics,
     BuyDiagnostics,
 } from '@/simulation/planet/planet';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 
 export const TTL_FEEDBACK = 5_000;
 
@@ -152,6 +153,7 @@ export type Props = {
     assets: AgentPlanetAssets;
     showAll: boolean;
     allPlanetDeposits?: Record<string, number>;
+    ships: ConsumptionShipInfo[];
 };
 
 export const BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST = [
@@ -204,6 +206,7 @@ export type ResourceAccordionItemProps = {
     overviewRow?: MarketOverviewRow;
     visibleColumns: import('./columnConfig').ColumnConfig[];
     allPlanetDeposits?: Record<string, number>;
+    ships: ConsumptionShipInfo[];
 };
 
 export type BuySectionProps = {
@@ -226,6 +229,7 @@ export type BuySectionProps = {
     buyErrorMsg: string | null;
 
     planetId: string;
+    ships: ConsumptionShipInfo[];
 };
 
 export type SellSectionProps = {

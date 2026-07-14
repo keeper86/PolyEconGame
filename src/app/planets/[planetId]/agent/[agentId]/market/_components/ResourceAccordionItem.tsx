@@ -38,6 +38,7 @@ export default function ResourceAccordionItem({
     overviewRow,
     visibleColumns,
     allPlanetDeposits,
+    ships,
 }: ResourceAccordionItemProps): React.ReactElement {
     const bid = assets.market?.buy[resourceName];
     const offer = assets.market?.sell[resourceName];
@@ -613,6 +614,7 @@ export default function ResourceAccordionItem({
                             buySuccessMsg={buySuccessMsg}
                             buyErrorMsg={buyErrorMsg}
                             planetId={planetId}
+                            ships={ships}
                         />
 
                         <SellSection

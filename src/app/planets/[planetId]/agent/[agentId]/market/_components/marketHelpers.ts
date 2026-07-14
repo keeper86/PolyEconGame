@@ -1,6 +1,8 @@
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import type { ConsumptionInfo, ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
+import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
@@ -59,95 +61,23 @@ export function productionPerTick(facilities: ProductionFacility[], resourceName
     }, 0);
 }
 
-// ── Comprehensive consumption info ────────────────────────────────────────────
+// ── Re-export types from the shared function ─────────────────────────────────
+export type { ConsumptionBreakdownItem, ConsumptionInfo } from '@/simulation/market/consumptionSources';
 
-export type ConsumptionBreakdownItem = {
-    sourceType: 'production' | 'management' | 'ship_construction' | 'construction_service';
-    sourceName: string;
-    ratePerTick: number;
-};
-
-export type ConsumptionInfo = {
-    totalPerTick: number;
-    breakdown: ConsumptionBreakdownItem[];
-};
-
-/**
- * Aggregates all sources of consumption for a resource across facilities,
- * mirroring the buy-side demand aggregation in automaticPricing.ts.
- *
- * Returns the total consumption rate per tick and a labelled breakdown
- * so the UI can show "who needs this resource and how much per day".
- */
-export function totalConsumptionPerTick(assets: AgentPlanetAssets, resourceName: string): ConsumptionInfo {
-    const breakdown: ConsumptionBreakdownItem[] = [];
-
-    const isConstructionService = resourceName === constructionServiceResourceType.name;
-
-    // ── Production facilities (needs as inputs) ─────────────────────────────
-    for (const f of assets.productionFacilities) {
-        const need = f.needs.find((n) => n.resource.name === resourceName);
-        if (need) {
-            const rate = need.quantity * f.scale;
-            if (rate > 0) {
-                breakdown.push({ sourceType: 'production', sourceName: f.name, ratePerTick: rate });
-            }
-        }
-    }
-
-    // ── Management facilities (needs as inputs) ─────────────────────────────
-    for (const f of assets.managementFacilities) {
-        const need = f.needs.find((n) => n.resource.name === resourceName);
-        if (need) {
-            const rate = need.quantity * f.scale;
-            if (rate > 0) {
-                breakdown.push({ sourceType: 'management', sourceName: f.name, ratePerTick: rate });
-            }
-        }
-    }
-
-    // ── Ship construction facilities (building-cost inputs while producing) ─
-    for (const f of assets.shipConstructionFacilities) {
-        // Only counts when the yard is actively building a ship (construction === null)
-        if (f.construction !== null) {
-            continue;
-        }
-        if (!f.produces) {
-            continue;
-        }
-        const ratePerTick = Math.min(1, Math.sqrt(f.scale) / f.produces.buildingTime);
-        const costItem = f.produces.buildingCost.find((c) => c.resource.name === resourceName);
-        if (costItem) {
-            const rate = costItem.quantity * ratePerTick;
-            if (rate > 0) {
-                breakdown.push({ sourceType: 'ship_construction', sourceName: f.name, ratePerTick: rate });
-            }
-        }
-    }
-
-    // ── Construction services (any facility with active construction) ───────
-    if (isConstructionService) {
-        const allFacilities = [
-            ...assets.productionFacilities,
-            ...assets.managementFacilities,
-            ...assets.shipConstructionFacilities,
-        ];
-        for (const f of allFacilities) {
-            if (f.construction !== null) {
-                const rate = f.construction.maximumConstructionServiceConsumption;
-                if (rate > 0) {
-                    breakdown.push({
-                        sourceType: 'construction_service',
-                        sourceName: f.name,
-                        ratePerTick: rate,
-                    });
-                }
-            }
-        }
-    }
-
-    const totalPerTick = breakdown.reduce((sum, item) => sum + item.ratePerTick, 0);
-    return { totalPerTick, breakdown };
+export function totalConsumptionPerTick(
+    assets: AgentPlanetAssets,
+    ships: ConsumptionShipInfo[],
+    planetId: string,
+    resourceName: string,
+): ConsumptionInfo {
+    return computeConsumptionBreakdown(
+        assets.productionFacilities,
+        assets.managementFacilities,
+        assets.shipConstructionFacilities,
+        ships,
+        planetId,
+        resourceName,
+    );
 }
 
 export function getResourceByName(resourceName: string) {
