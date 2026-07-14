@@ -11,11 +11,13 @@ import PopulationDemandChart from './PopulationDemandChart';
 import MarketStepChart from './MarketStepChart';
 
 interface MarketDetailsSectionProps {
+    agentId: string;
     planetId: string;
     resourceName: string;
 }
 
 export default function MarketDetailsSection({
+    agentId,
     planetId,
     resourceName,
 }: MarketDetailsSectionProps): React.ReactElement {
@@ -39,7 +41,14 @@ export default function MarketDetailsSection({
 
     return (
         <div className='space-y-4'>
-            <MarketStepChart offers={market.offers} bids={market.bids} totalSold={market.totalSold} qtyUnit={qtyUnit} />
+            <MarketStepChart
+                offers={market.offers}
+                bids={market.bids}
+                totalSold={market.totalSold}
+                agentId={agentId}
+                planetId={planetId}
+                resourceName={resourceName}
+            />
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent supply</h4>
                 {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}

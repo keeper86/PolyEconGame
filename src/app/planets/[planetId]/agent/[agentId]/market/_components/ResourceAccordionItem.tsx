@@ -654,7 +654,9 @@ export default function ResourceAccordionItem({
                         </button>
                     </div>
 
-                    {showMarketDetails && <MarketDetailsSection planetId={planetId} resourceName={resourceName} />}
+                    {showMarketDetails && (
+                        <MarketDetailsSection agentId={agentId} planetId={planetId} resourceName={resourceName} />
+                    )}
                 </div>
             </AccordionContent>
         </AccordionItem>
