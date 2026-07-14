@@ -112,7 +112,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
     }, [offers, bids, totalSold]);
 
     return (
-        <div className='w-full h-72'>
+        <div className=' h-[120px]'>
             <ResponsiveContainer width='100%' height='100%'>
                 <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#262626' />
@@ -133,7 +133,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         stroke='#737373'
                         fontSize={11}
                         tickLine={false}
-                        tickFormatter={(v) => `${v.toFixed(2)}€`}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'none')}€`}
                     />
                     <Tooltip
                         contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', borderRadius: '6px' }}
@@ -141,6 +141,19 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         itemStyle={{ fontSize: '13px' }}
                         labelFormatter={(label) => `Cumulative Vol: ${formatNumberWithUnit(label, 'none')} ${qtyUnit}`}
                     />
+                    {totalSold > 0 && (
+                        <ReferenceLine
+                            x={totalSold}
+                            stroke='#22c55e'
+                            strokeWidth={4}
+                            label={{
+                                value: `Cleared: ${formatNumbers(totalSold)} ${qtyUnit}`,
+                                fill: '#22c55e',
+                                position: 'top',
+                                fontSize: 10,
+                            }}
+                        />
+                    )}
 
                     <Area
                         type='stepBefore'
@@ -162,20 +175,6 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         activeDot={{ r: 4 }}
                         isAnimationActive={false}
                     />
-
-                    {totalSold > 0 && (
-                        <ReferenceLine
-                            x={totalSold}
-                            stroke='#22c55e'
-                            strokeDasharray='4 4'
-                            label={{
-                                value: `Cleared: ${formatNumbers(totalSold)} ${qtyUnit}`,
-                                fill: '#22c55e',
-                                position: 'top',
-                                fontSize: 10,
-                            }}
-                        />
-                    )}
                 </ComposedChart>
             </ResponsiveContainer>
         </div>

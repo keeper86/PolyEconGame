@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
 import { totalConsumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
@@ -87,6 +88,8 @@ export default function BuySection({
         return baseClass;
     };
 
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+
     return (
         <div className=''>
             <div className='flex items-center gap-6  px-1'>
@@ -103,116 +106,97 @@ export default function BuySection({
             </div>
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {/* Always-visible info box showing consumption + last tick's results */}
-                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1 md:min-h-[4.5rem]'>
-                        {isFacilityInput && (
-                            <>
-                                <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
-                                    <span>
-                                        Total required
-                                        <span className='font-semibold text-foreground'>
-                                            {formatNumberWithUnit(
-                                                consumedPerTick,
-                                                resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                            )}
-                                            /tick
-                                        </span>
-                                    </span>
-                                </div>
-                                {/* Only show breakdown when there are multiple items or a single non-production source */}
-                                {consumptionInfo.breakdown.length > 0 && (
-                                    <div className='pl-2 space-y-0.5 text-[10px] text-muted-foreground'>
-                                        {consumptionInfo.breakdown.map((item, i) => {
-                                            const label =
-                                                item.sourceType === 'production'
-                                                    ? '🏭'
-                                                    : item.sourceType === 'management'
-                                                      ? '📋'
-                                                      : item.sourceType === 'ship_construction'
-                                                        ? '🚢'
-                                                        : '🔧';
-                                            return (
-                                                <div key={i} className='flex items-center justify-between'>
-                                                    <span className='truncate mr-2'>
-                                                        {label} {item.sourceName}
-                                                    </span>
-                                                    <span className='tabular-nums font-medium shrink-0'>
-                                                        {formatNumberWithUnit(
-                                                            item.ratePerTick,
-                                                            resourceFormToUnit(
-                                                                getResourceByName(resourceName)?.form ?? 'pieces',
-                                                            ),
-                                                        )}
-                                                        /tick
-                                                    </span>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </>
-                        )}
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
-                            {bid?.lastBought !== undefined ? (
-                                <span>
-                                    Last bought:{' '}
-                                    <span className='font-semibold text-foreground'>
-                                        {formatNumberWithUnit(
-                                            bid.lastBought,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
-                                    </span>
-                                </span>
-                            ) : (
-                                <span>Last bought: none</span>
-                            )}
-                            {bid?.lastSpent !== undefined ? (
-                                <span>
-                                    Spent:{' '}
-                                    <span className='font-semibold text-foreground'>
-                                        {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}
-                                    </span>
-                                </span>
-                            ) : (
-                                <span>No purchases yet</span>
-                            )}
+                    {/* Always-visible info box — all rows rendered to prevent layout shifts */}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
+                        <div className='space-y-0.5'>
+                            <Stat
+                                label='Required'
+                                value={
+                                    isFacilityInput
+                                        ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick`
+                                        : '—'
+                                }
+                                bold
+                            />
+                            {consumptionInfo.breakdown.map((item, i) => {
+                                const emoji =
+                                    item.sourceType === 'production'
+                                        ? '🏭'
+                                        : item.sourceType === 'management'
+                                          ? '📋'
+                                          : item.sourceType === 'ship_construction'
+                                            ? '🚢'
+                                            : '🔧';
+                                return (
+                                    <Stat
+                                        key={i}
+                                        label={`${emoji} ${item.sourceName}`}
+                                        value={`${formatNumberWithUnit(item.ratePerTick, unit)}/tick`}
+                                        indent
+                                    />
+                                );
+                            })}
+                            <Stat
+                                label='Last bought'
+                                value={
+                                    bid?.lastBought !== undefined
+                                        ? formatNumberWithUnit(bid.lastBought, unit)
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Spent'
+                                value={
+                                    bid?.lastSpent !== undefined
+                                        ? formatNumberWithUnit(bid.lastSpent, 'currency', planetId)
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Fill rate'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${Math.round(bid.diagnostics.fillRate * 100)}% (target ${Math.round(bid.diagnostics.targetFillRate * 100)}%)`
+                                        : '—'
+                                }
+                                valueClassName={
+                                    bid?.diagnostics
+                                        ? bid.diagnostics.fillRate >= bid.diagnostics.targetFillRate
+                                            ? 'text-green-600'
+                                            : 'text-red-500'
+                                        : ''
+                                }
+                            />
+                            <Stat
+                                label='Shortfall'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.shortfall.toFixed(0)} / ${bid.diagnostics.storageTarget.toFixed(0)}`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Bid price'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.oldBidPrice.toFixed(2)} → ${bid.diagnostics.newBidPrice.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Market / Ceiling'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.marketPrice.toFixed(2)} / ${bid.diagnostics.ceilingPrice.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
                         </div>
                         {buyStaleReason && (
-                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1'>
+                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1 mt-1'>
                                 {buyStaleReason}
                             </div>
                         )}
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground border-t border-border/40 pt-1'>
-                            {bid?.diagnostics ? (() => {
-                                const d = bid.diagnostics;
-                                const pct = (v: number) => `${Math.round(v * 100)}%`;
-                                const priceChange = d.newBidPrice - d.oldBidPrice;
-                                const dirClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
-                                return (
-                                    <>
-                                        <span className={d.fillRate >= d.targetFillRate ? 'text-green-600' : 'text-red-500'}>
-                                            Fill rate {pct(d.fillRate)} (target {pct(d.targetFillRate)})
-                                        </span>
-                                        <span>
-                                            Shortfall {d.shortfall.toFixed(0)} / {d.storageTarget.toFixed(0)}
-                                        </span>
-                                        <span className={dirClass}>
-                                            Bid {d.oldBidPrice.toFixed(2)} → {d.newBidPrice.toFixed(2)}
-                                        </span>
-                                        <span className='text-muted-foreground'>
-                                            Market: {d.marketPrice.toFixed(2)}. Ceiling: {d.ceilingPrice.toFixed(2)}.
-                                        </span>
-                                    </>
-                                );
-                            })() : (
-                                <>
-                                    <span>Fill rate —</span>
-                                    <span>Shortfall —</span>
-                                    <span>Bid —</span>
-                                    <span className='text-muted-foreground'>No pricing data available for the last tick.</span>
-                                </>
-                            )}
-                        </div>
                     </div>
 
                     <AutoConfigPanel
@@ -293,21 +277,15 @@ export default function BuySection({
                                 >
                                     {effectiveBuyQty === 0
                                         ? 'Target met — order inactive'
-                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
+                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, unit)} / tick`}
                                 </div>
                             )}
                             {isFacilityInput && (
                                 <div className='space-y-1 text-[11px] text-muted-foreground'>
                                     <div>
-                                        {formatNumberWithUnit(
-                                            consumedPerTick,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
+                                        {formatNumberWithUnit(consumedPerTick, unit)}
                                         /tick · Stock:{' '}
-                                        {formatNumberWithUnit(
-                                            inventoryQty,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
+                                        {formatNumberWithUnit(inventoryQty, unit)}
                                         {inventoryInBuyTicks !== null && (
                                             <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
                                         )}
@@ -338,12 +316,7 @@ export default function BuySection({
                                             <>
                                                 <span>
                                                     →{' '}
-                                                    {formatNumberWithUnit(
-                                                        suggestedStorageTarget,
-                                                        resourceFormToUnit(
-                                                            getResourceByName(resourceName)?.form ?? 'pieces',
-                                                        ),
-                                                    )}
+                                                    {formatNumberWithUnit(suggestedStorageTarget, unit)}
                                                 </span>
                                                 <Button
                                                     variant='outline'
