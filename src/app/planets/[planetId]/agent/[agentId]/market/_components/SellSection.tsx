@@ -101,20 +101,109 @@ export default function SellSection({
 
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {isFacilityOutput && (
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            <span>
-                                Max capacity production{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumberWithUnit(
-                                        producedPerTick,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                    {/* Always-visible info box showing production/stock + last tick's results */}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1 md:min-h-[4.5rem]'>
+                        {(inventoryQty > 0 || isFacilityOutput) && (
+                            <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                                {isFacilityOutput && (
+                                    <span>
+                                        Max capacity production{' '}
+                                        <span className='font-semibold text-foreground'>
+                                            {formatNumberWithUnit(
+                                                producedPerTick,
+                                                resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                            )}
+                                            /tick
+                                        </span>
+                                    </span>
+                                )}
+
+                                <span>
+                                    Stock:{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumberWithUnit(
+                                            inventoryQty,
+                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                        )}
+                                    </span>
+                                    {isFacilityOutput && producedPerTick > 0 && (
+                                        <span className='ml-1'>({(inventoryQty / producedPerTick).toFixed(1)} ticks)</span>
                                     )}
-                                    /tick
                                 </span>
-                            </span>
+                            </div>
+                        )}
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                            {offer?.lastSold !== undefined ? (
+                                <span>
+                                    Last sold:{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumberWithUnit(
+                                            offer.lastSold,
+                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                        )}
+                                    </span>
+                                </span>
+                            ) : (
+                                <span>Last sold: none</span>
+                            )}
+                            {offer?.lastRevenue !== undefined ? (
+                                <span>
+                                    Revenue:{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}
+                                    </span>
+                                </span>
+                            ) : (
+                                <span>No sales yet</span>
+                            )}
+                            {offer?.priceDirection !== undefined &&
+                                (() => {
+                                    const a = priceArrow(offer.priceDirection);
+                                    return a.label ? <span className={a.className}>{a.label}</span> : null;
+                                })()}
                         </div>
-                    )}
+                        {sellStaleReason && (
+                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1'>
+                                {sellStaleReason}
+                            </div>
+                        )}
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground border-t border-border/40 pt-1'>
+                            {offer?.diagnostics ? (() => {
+                                const d = offer.diagnostics;
+                                const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                const priceChange = d.newPrice - d.oldPrice;
+                                const dirClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                return (
+                                    <>
+                                        <span className={d.sellThroughRate >= d.targetSellThrough ? 'text-green-600' : 'text-red-500'}>
+                                            Sell-through {pct(d.sellThroughRate)} (target {pct(d.targetSellThrough)})
+                                        </span>
+                                        <span>
+                                            Selling {d.effectiveQuantity.toFixed(0)} / tick
+                                        </span>
+                                        {d.surplusRatio !== undefined && (
+                                            <span>
+                                                Surplus {pct(d.surplusRatio)}
+                                            </span>
+                                        )}
+                                        <span className={dirClass}>
+                                            Price {d.oldPrice.toFixed(2)} → {d.newPrice.toFixed(2)}
+                                        </span>
+                                        <span className='text-muted-foreground'>
+                                            Market: {d.marketPrice.toFixed(2)}. Cost floor: {d.costFloor.toFixed(2)}.
+                                        </span>
+                                    </>
+                                );
+                            })() : (
+                                <>
+                                    <span>Sell-through —</span>
+                                    <span>Selling —</span>
+                                    <span>Price —</span>
+                                    <span className='text-muted-foreground'>No pricing data available for the last tick.</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     <AutoConfigPanel
                         mode='sell'
@@ -126,8 +215,6 @@ export default function SellSection({
                         isSaving={sellSaving}
                         successMsg={sellAutoConfigSuccessMsg}
                         errorMsg={sellAutoConfigErrorMsg}
-                        diagnostics={offer?.diagnostics}
-                        staleReason={sellStaleReason}
                         bufferApplicable={isFacilityOutput}
                     />
 
@@ -231,28 +318,6 @@ export default function SellSection({
                             )}
                         </div>
                     </div>
-
-                    {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
-                        <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {offer.lastSold !== undefined && (
-                                <span>
-                                    Last sold:{' '}
-                                    {formatNumberWithUnit(
-                                        offer.lastSold,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                </span>
-                            )}
-                            {offer.lastRevenue !== undefined && (
-                                <span>Revenue: {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}</span>
-                            )}
-                            {offer.priceDirection !== undefined &&
-                                (() => {
-                                    const a = priceArrow(offer.priceDirection);
-                                    return a.label ? <span className={a.className}>{a.label}</span> : null;
-                                })()}
-                        </div>
-                    )}
 
                     {}
                     {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (

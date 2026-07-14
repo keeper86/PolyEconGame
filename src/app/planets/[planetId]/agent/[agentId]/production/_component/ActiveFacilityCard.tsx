@@ -363,7 +363,7 @@ export function ActiveFacilityCard({
                     <Separator />
                 </Link>
 
-                <div className='relative'>
+                <div className='relative pt-2'>
                     <div className='space-y-2'>
                         {facility.construction ? (
                             <ConstructionCompactRow
@@ -479,7 +479,7 @@ export function ActiveFacilityCard({
                                 <div className='flex gap-2'>
                                     <Button
                                         size='sm'
-                                        variant='outline'
+                                        variant='destructive'
                                         className='flex-1 text-xs'
                                         onClick={() => setShowReduce(false)}
                                     >

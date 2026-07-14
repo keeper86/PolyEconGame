@@ -75,9 +75,8 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
     }, [offers, bids]);
 
     return (
-        <div className='w-full h-72 bg-neutral-900/40 border border-neutral-800 rounded-lg p-4'>
-            <h4 className='text-sm font-semibold text-neutral-200 mb-4'>Market Clearance Curves</h4>
-            <ResponsiveContainer width='100%' height='85%'>
+        <div className='w-full h-72'>
+            <ResponsiveContainer width='100%' height='100%'>
                 <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#262626' />
                     <XAxis dataKey='volume' type='number' stroke='#737373' fontSize={11} tickLine={false} />

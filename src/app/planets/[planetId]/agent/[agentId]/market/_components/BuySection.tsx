@@ -103,53 +103,117 @@ export default function BuySection({
             </div>
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {isFacilityInput && (
-                        <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1'>
-                            <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                    {/* Always-visible info box showing consumption + last tick's results */}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1 md:min-h-[4.5rem]'>
+                        {isFacilityInput && (
+                            <>
+                                <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                                    <span>
+                                        Total required
+                                        <span className='font-semibold text-foreground'>
+                                            {formatNumberWithUnit(
+                                                consumedPerTick,
+                                                resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                            )}
+                                            /tick
+                                        </span>
+                                    </span>
+                                </div>
+                                {/* Only show breakdown when there are multiple items or a single non-production source */}
+                                {consumptionInfo.breakdown.length > 0 && (
+                                    <div className='pl-2 space-y-0.5 text-[10px] text-muted-foreground'>
+                                        {consumptionInfo.breakdown.map((item, i) => {
+                                            const label =
+                                                item.sourceType === 'production'
+                                                    ? '🏭'
+                                                    : item.sourceType === 'management'
+                                                      ? '📋'
+                                                      : item.sourceType === 'ship_construction'
+                                                        ? '🚢'
+                                                        : '🔧';
+                                            return (
+                                                <div key={i} className='flex items-center justify-between'>
+                                                    <span className='truncate mr-2'>
+                                                        {label} {item.sourceName}
+                                                    </span>
+                                                    <span className='tabular-nums font-medium shrink-0'>
+                                                        {formatNumberWithUnit(
+                                                            item.ratePerTick,
+                                                            resourceFormToUnit(
+                                                                getResourceByName(resourceName)?.form ?? 'pieces',
+                                                            ),
+                                                        )}
+                                                        /tick
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                            {bid?.lastBought !== undefined ? (
                                 <span>
-                                    Total required
+                                    Last bought:{' '}
                                     <span className='font-semibold text-foreground'>
                                         {formatNumberWithUnit(
-                                            consumedPerTick,
+                                            bid.lastBought,
                                             resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
                                         )}
-                                        /tick
                                     </span>
                                 </span>
-                            </div>
-                            {/* Only show breakdown when there are multiple items or a single non-production source */}
-                            {consumptionInfo.breakdown.length > 0 && (
-                                <div className='pl-2 space-y-0.5 text-[10px] text-muted-foreground'>
-                                    {consumptionInfo.breakdown.map((item, i) => {
-                                        const label =
-                                            item.sourceType === 'production'
-                                                ? '🏭'
-                                                : item.sourceType === 'management'
-                                                  ? '📋'
-                                                  : item.sourceType === 'ship_construction'
-                                                    ? '🚢'
-                                                    : '🔧';
-                                        return (
-                                            <div key={i} className='flex items-center justify-between'>
-                                                <span className='truncate mr-2'>
-                                                    {label} {item.sourceName}
-                                                </span>
-                                                <span className='tabular-nums font-medium shrink-0'>
-                                                    {formatNumberWithUnit(
-                                                        item.ratePerTick,
-                                                        resourceFormToUnit(
-                                                            getResourceByName(resourceName)?.form ?? 'pieces',
-                                                        ),
-                                                    )}
-                                                    /tick
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                            ) : (
+                                <span>Last bought: none</span>
+                            )}
+                            {bid?.lastSpent !== undefined ? (
+                                <span>
+                                    Spent:{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}
+                                    </span>
+                                </span>
+                            ) : (
+                                <span>No purchases yet</span>
                             )}
                         </div>
-                    )}
+                        {buyStaleReason && (
+                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1'>
+                                {buyStaleReason}
+                            </div>
+                        )}
+                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground border-t border-border/40 pt-1'>
+                            {bid?.diagnostics ? (() => {
+                                const d = bid.diagnostics;
+                                const pct = (v: number) => `${Math.round(v * 100)}%`;
+                                const priceChange = d.newBidPrice - d.oldBidPrice;
+                                const dirClass = priceChange > 0 ? 'text-green-600' : priceChange < 0 ? 'text-red-500' : '';
+                                return (
+                                    <>
+                                        <span className={d.fillRate >= d.targetFillRate ? 'text-green-600' : 'text-red-500'}>
+                                            Fill rate {pct(d.fillRate)} (target {pct(d.targetFillRate)})
+                                        </span>
+                                        <span>
+                                            Shortfall {d.shortfall.toFixed(0)} / {d.storageTarget.toFixed(0)}
+                                        </span>
+                                        <span className={dirClass}>
+                                            Bid {d.oldBidPrice.toFixed(2)} → {d.newBidPrice.toFixed(2)}
+                                        </span>
+                                        <span className='text-muted-foreground'>
+                                            Market: {d.marketPrice.toFixed(2)}. Ceiling: {d.ceilingPrice.toFixed(2)}.
+                                        </span>
+                                    </>
+                                );
+                            })() : (
+                                <>
+                                    <span>Fill rate —</span>
+                                    <span>Shortfall —</span>
+                                    <span>Bid —</span>
+                                    <span className='text-muted-foreground'>No pricing data available for the last tick.</span>
+                                </>
+                            )}
+                        </div>
+                    </div>
 
                     <AutoConfigPanel
                         mode='buy'
@@ -161,8 +225,6 @@ export default function BuySection({
                         isSaving={buySaving}
                         successMsg={buyAutoConfigSuccessMsg}
                         errorMsg={buyAutoConfigErrorMsg}
-                        diagnostics={bid?.diagnostics}
-                        staleReason={buyStaleReason}
                         bufferApplicable={isFacilityInput}
                     />
 
@@ -302,23 +364,6 @@ export default function BuySection({
                             )}
                         </div>
                     </div>
-
-                    {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
-                        <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {bid.lastBought !== undefined && (
-                                <span>
-                                    Last bought:{' '}
-                                    {formatNumberWithUnit(
-                                        bid.lastBought,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                </span>
-                            )}
-                            {bid.lastSpent !== undefined && (
-                                <span>Spent: {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}</span>
-                            )}
-                        </div>
-                    )}
 
                     {fundsWarning && (
                         <Alert variant='destructive' className='py-2'>

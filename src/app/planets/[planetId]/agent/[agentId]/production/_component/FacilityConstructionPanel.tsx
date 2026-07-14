@@ -185,7 +185,7 @@ export function FacilityConstructionPanel({
             </div>
 
             <div className='flex gap-2'>
-                <Button size='sm' variant='outline' className='flex-1 text-xs' onClick={onCancel}>
+                <Button size='sm' variant='destructive' className='flex-1 text-xs' onClick={onCancel}>
                     Cancel
                 </Button>
                 <Button size='sm' className={`flex-1`} disabled={isPending} onClick={handleConfirmClick}>

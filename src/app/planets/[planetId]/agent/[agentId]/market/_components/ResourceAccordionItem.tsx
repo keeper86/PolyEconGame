@@ -654,7 +654,6 @@ export default function ResourceAccordionItem({
                         </button>
                     </div>
 
-                    {}
                     {showMarketDetails && <MarketDetailsSection planetId={planetId} resourceName={resourceName} />}
                 </div>
             </AccordionContent>

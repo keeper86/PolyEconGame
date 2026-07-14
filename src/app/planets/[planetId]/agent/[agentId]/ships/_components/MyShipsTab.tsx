@@ -159,7 +159,7 @@ export function MyShipsTab({
                                                 return listing ? (
                                                     <Button
                                                         size='sm'
-                                                        variant='outline'
+                                                        variant='destructive'
                                                         disabled={cancelListingMutation.isPending}
                                                         onClick={() =>
                                                             cancelListingMutation.mutate({
@@ -255,7 +255,7 @@ export function MyShipsTab({
                                                 </Button>
                                                 <Button
                                                     size='sm'
-                                                    variant='ghost'
+                                                    variant='destructive'
                                                     onClick={() =>
                                                         setSellMode((prev) => ({
                                                             ...prev,

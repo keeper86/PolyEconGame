@@ -132,7 +132,7 @@ export function ShipMarketTab({
                                 <div className='flex gap-2'>
                                     {isMyContract && (
                                         <Button
-                                            variant='outline'
+                                            variant='destructive'
                                             size='sm'
                                             disabled={cancelContractMutation.isPending}
                                             onClick={() =>

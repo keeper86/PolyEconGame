@@ -129,7 +129,7 @@ export function ShipyardBuildSection({
                 </Button>
                 <Button
                     size='sm'
-                    variant='ghost'
+                    variant='destructive'
                     onClick={() => {
                         setShowForm(false);
                         setShipyardName('');
