@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
-import { consumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
+import { totalConsumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
 import { AutoConfigPanel } from './AutoConfigPanel';
 
 export default function BuySection({
@@ -30,11 +30,12 @@ export default function BuySection({
     planetId,
 }: BuySectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
-    const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');
 
+    const consumptionInfo = totalConsumptionPerTick(assets, resourceName);
+    const consumedPerTick = consumptionInfo.totalPerTick;
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
@@ -102,17 +103,50 @@ export default function BuySection({
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
                     {isFacilityInput && (
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            <span>
-                                Max capacity consumption{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumberWithUnit(
-                                        consumedPerTick,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                    /tick
+                        <div className='rounded-md bg-muted/50 px-2.5 py-1.5 space-y-1'>
+                            <div className='flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] tabular-nums text-muted-foreground'>
+                                <span>
+                                    Total required{' '}
+                                    <span className='font-semibold text-foreground'>
+                                        {formatNumberWithUnit(
+                                            consumedPerTick,
+                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
+                                        )}
+                                        /tick
+                                    </span>
                                 </span>
-                            </span>
+                            </div>
+                            {/* Only show breakdown when there are multiple items or a single non-production source */}
+                            {consumptionInfo.breakdown.length > 0 && (
+                                <div className='pl-2 space-y-0.5 text-[10px] text-muted-foreground'>
+                                    {consumptionInfo.breakdown.map((item, i) => {
+                                        const label =
+                                            item.sourceType === 'production'
+                                                ? '🏭'
+                                                : item.sourceType === 'management'
+                                                  ? '📋'
+                                                  : item.sourceType === 'ship_construction'
+                                                    ? '🚢'
+                                                    : '🔧';
+                                        return (
+                                            <div key={i} className='flex items-center justify-between'>
+                                                <span className='truncate mr-2'>
+                                                    {label} {item.sourceName}
+                                                </span>
+                                                <span className='tabular-nums font-medium shrink-0'>
+                                                    {formatNumberWithUnit(
+                                                        item.ratePerTick,
+                                                        resourceFormToUnit(
+                                                            getResourceByName(resourceName)?.form ?? 'pieces',
+                                                        ),
+                                                    )}
+                                                    /tick
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
 
