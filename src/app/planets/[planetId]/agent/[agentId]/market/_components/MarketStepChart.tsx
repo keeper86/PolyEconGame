@@ -21,7 +21,7 @@ interface MarketStepChartProps {
     qtyUnit: string;
 }
 export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: MarketStepChartProps) {
-    const { chartData, xDomain } = useMemo(() => {
+    const { chartData, xDomain, xTicks } = useMemo(() => {
         // 1. Process Supply (Sorted by price ascending)
         const sortedOffers = [...offers].sort((a, b) => a.offerPrice - b.offerPrice);
         const supplyPoints: { volume: number; supplyPrice: number | null; demandPrice: number | null }[] = [];
@@ -82,6 +82,12 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
             const xMax = totalSold + halfRange;
             const domain: [number, number] = [xMin, xMax];
 
+            // Compute xTicks at 0%, 25%, 50%, ..., 200% of totalSold, filtered to domain
+            const tickMultipliers = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+            const xTicks = tickMultipliers
+                .map((m) => m * totalSold)
+                .filter((v) => v >= xMin && v <= xMax);
+
             // Crop data to the domain range, with one extra point on each side for step line continuity
             let startIdx = 0;
             let endIdx = fullData.length - 1;
@@ -99,10 +105,10 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                 }
             }
 
-            return { chartData: fullData.slice(startIdx, endIdx + 1), xDomain: domain };
+            return { chartData: fullData.slice(startIdx, endIdx + 1), xDomain: domain, xTicks };
         }
 
-        return { chartData: fullData, xDomain: undefined };
+        return { chartData: fullData, xDomain: undefined, xTicks: undefined };
     }, [offers, bids, totalSold]);
 
     return (
@@ -115,6 +121,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         type='number'
                         domain={xDomain ?? ['auto', 'auto']}
                         allowDataOverflow={!!xDomain}
+                        ticks={xTicks}
                         stroke='#737373'
                         fontSize={11}
                         tickLine={false}
@@ -142,6 +149,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
+                        isAnimationActive={false}
                     />
                     <Line
                         type='stepBefore'
@@ -150,6 +158,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
+                        isAnimationActive={false}
                     />
 
                     {totalSold > 0 && (
