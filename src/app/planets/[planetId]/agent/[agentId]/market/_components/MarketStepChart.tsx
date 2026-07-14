@@ -1,9 +1,11 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentBid, AgentOffer } from '@/server/controller/planet';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import {
+    Area,
     CartesianGrid,
     ComposedChart,
     Line,
@@ -84,9 +86,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
 
             // Compute xTicks at 0%, 25%, 50%, ..., 200% of totalSold, filtered to domain
             const tickMultipliers = [0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
-            const xTicks = tickMultipliers
-                .map((m) => m * totalSold)
-                .filter((v) => v >= xMin && v <= xMax);
+            const xTicks = tickMultipliers.map((m) => m * totalSold).filter((v) => v >= xMin && v <= xMax);
 
             // Crop data to the domain range, with one extra point on each side for step line continuity
             let startIdx = 0;
@@ -125,7 +125,7 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         stroke='#737373'
                         fontSize={11}
                         tickLine={false}
-                        tickFormatter={(v) => formatNumbers(v)}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'none')}`}
                     />
                     <YAxis
                         type='number'
@@ -139,22 +139,24 @@ export default function MarketStepChart({ offers, bids, totalSold, qtyUnit }: Ma
                         contentStyle={{ backgroundColor: '#171717', borderColor: '#404040', borderRadius: '6px' }}
                         labelStyle={{ color: '#a3a3a3', fontSize: '12px' }}
                         itemStyle={{ fontSize: '13px' }}
-                        labelFormatter={(label) => `Cumulative Vol: ${formatNumbers(label)} ${qtyUnit}`}
+                        labelFormatter={(label) => `Cumulative Vol: ${formatNumberWithUnit(label, 'none')} ${qtyUnit}`}
                     />
 
-                    <Line
+                    <Area
                         type='stepBefore'
                         dataKey='Supply'
                         stroke='#6366f1'
+                        fill='#6365f144'
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
                         isAnimationActive={false}
                     />
-                    <Line
+                    <Area
                         type='stepBefore'
                         dataKey='Demand'
-                        stroke='#06b6d4'
+                        stroke='#d41e18'
+                        fill='#d41e183a'
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
