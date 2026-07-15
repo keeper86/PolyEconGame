@@ -10,7 +10,7 @@ import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
-import { consumptionShipInfoSchema, toConsumptionShipInfo } from '@/simulation/market/consumptionSources';
+import { toConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -426,6 +426,35 @@ export const getPlanetDetail = () =>
                 populationTotal: computePopulationTotal(planet),
             });
         });
+
+const consumptionShipInfoSchema = z.object({
+    id: z.string(),
+    type: z.object({ type: z.string() }),
+    state: z.object({
+        type: z.string(),
+        planetId: z.string(),
+        cargoGoal: z
+            .object({ resource: z.object({ name: z.string() }), quantity: z.number() })
+            .nullable()
+            .optional(),
+        currentCargo: z
+            .object({ resource: z.object({ name: z.string() }), quantity: z.number() })
+            .nullable()
+            .optional(),
+        buildingTarget: z
+            .object({
+                construction: z
+                    .object({
+                        maximumConstructionServiceConsumption: z.number(),
+                    })
+                    .nullable(),
+            })
+            .nullable()
+            .optional(),
+    }),
+});
+
+export type ConsumptionShipInfo = z.infer<typeof consumptionShipInfoSchema>;
 
 const agentPlanetDetail = z.object({
     agentId: z.string(),

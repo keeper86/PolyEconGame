@@ -1,40 +1,22 @@
-import { z } from 'zod';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ConstructionShip, Ship, TransportShip } from '../ships/ships';
 
 // ── Slim ship info needed for consumption computation ──────────────────────
 
-/** Zod schema for ConsumptionShipInfo — single source of truth */
-export const consumptionShipInfoSchema = z.object({
-    id: z.string(),
-    type: z.object({ type: z.string() }),
-    state: z.object({
-        type: z.string(),
-        planetId: z.string(),
-        cargoGoal: z
-            .object({ resource: z.object({ name: z.string() }), quantity: z.number() })
-            .nullable()
-            .optional(),
-        currentCargo: z
-            .object({ resource: z.object({ name: z.string() }), quantity: z.number() })
-            .nullable()
-            .optional(),
-        buildingTarget: z
-            .object({
-                construction: z
-                    .object({
-                        maximumConstructionServiceConsumption: z.number(),
-                    })
-                    .nullable(),
-            })
-            .nullable()
-            .optional(),
-    }),
-});
-
-/** Type inferred from consumptionShipInfoSchema — coupled to the Zod schema */
-export type ConsumptionShipInfo = z.infer<typeof consumptionShipInfoSchema>;
+export type ConsumptionShipInfo = {
+    id: string;
+    type: { type: string };
+    state: {
+        type: string;
+        planetId: string;
+        cargoGoal: { resource: { name: string }; quantity: number } | null;
+        currentCargo: { resource: { name: string }; quantity: number } | null;
+        buildingTarget: {
+            construction: { maximumConstructionServiceConsumption: number } | null;
+        } | null;
+    };
+};
 
 /**
  * Converts a full Ship to the slim ConsumptionShipInfo needed for consumption
