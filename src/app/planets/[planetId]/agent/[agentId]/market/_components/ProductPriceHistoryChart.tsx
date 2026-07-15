@@ -294,9 +294,9 @@ function SimplePriceAreaChart({
                         if (!payload || payload.length === 0) {
                             return null;
                         }
-                        const priceLabel = rescaleMode === 'relative' ? 'Rescaled price' : 'Average Price';
-                        const minMaxLabel = rescaleMode === 'relative' ? 'Rescaled min/max' : 'Min/max Price';
-                        const costLabel = rescaleMode === 'relative' ? 'Cost estimate (1)' : 'Cost estimate';
+                        const priceLabel = rescaleMode === 'relative' ? 'Scaled price' : 'Average Price';
+                        const minMaxLabel = rescaleMode === 'relative' ? 'Scaled min/max' : 'Min/max Price';
+                        const costLabel = rescaleMode === 'relative' ? 'Scaled Cost' : 'Cost estimate';
                         const entries = [
                             {
                                 label: priceLabel,

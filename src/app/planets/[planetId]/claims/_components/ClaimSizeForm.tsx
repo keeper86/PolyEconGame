@@ -175,7 +175,7 @@ export function ClaimSizeForm({
                     )}
                 </Button>
                 {onCancel && (
-                    <Button size='sm' variant='outline' disabled={isPending || isSubmitted} onClick={onCancel}>
+                    <Button size='sm' variant='destructive' disabled={isPending || isSubmitted} onClick={onCancel}>
                         Cancel
                     </Button>
                 )}

@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
-import { consumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
+import { totalConsumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
 import { AutoConfigPanel } from './AutoConfigPanel';
 
 export default function BuySection({
@@ -28,13 +29,15 @@ export default function BuySection({
     buySuccessMsg,
     buyErrorMsg,
     planetId,
+    ships,
 }: BuySectionProps): React.ReactElement {
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
-    const consumedPerTick = consumptionPerTick(assets.productionFacilities, resourceName);
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');
 
+    const consumptionInfo = totalConsumptionPerTick(assets, ships ?? [], planetId, resourceName);
+    const consumedPerTick = consumptionInfo.totalPerTick;
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
 
@@ -85,6 +88,8 @@ export default function BuySection({
         return baseClass;
     };
 
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+
     return (
         <div className=''>
             <div className='flex items-center gap-6  px-1'>
@@ -101,20 +106,90 @@ export default function BuySection({
             </div>
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {isFacilityInput && (
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            <span>
-                                Max capacity consumption{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumberWithUnit(
-                                        consumedPerTick,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                    /tick
-                                </span>
-                            </span>
+                    {/* Always-visible info box — all rows rendered to prevent layout shifts */}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
+                        <div className='space-y-0.5'>
+                            <Stat
+                                label='Required'
+                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
+                                bold
+                            />
+                            {consumptionInfo.breakdown.map((item, i) => {
+                                const emoji =
+                                    item.sourceType === 'production'
+                                        ? '🏭'
+                                        : item.sourceType === 'management'
+                                          ? '📋'
+                                          : item.sourceType === 'ship_construction'
+                                            ? '🚢'
+                                            : '🔧';
+                                return (
+                                    <Stat
+                                        key={i}
+                                        label={`${emoji} ${item.sourceName}`}
+                                        value={`${formatNumberWithUnit(item.ratePerTick, unit)}/tick`}
+                                        indent
+                                    />
+                                );
+                            })}
+                            <Stat
+                                label='Last bought'
+                                value={bid?.lastBought !== undefined ? formatNumberWithUnit(bid.lastBought, unit) : '—'}
+                            />
+                            <Stat
+                                label='Spent'
+                                value={
+                                    bid?.lastSpent !== undefined
+                                        ? formatNumberWithUnit(bid.lastSpent, 'currency', planetId)
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Fill rate'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${Math.round(bid.diagnostics.fillRate * 100)}% (target ${Math.round(bid.diagnostics.targetFillRate * 100)}%)`
+                                        : '—'
+                                }
+                                valueClassName={
+                                    bid?.diagnostics
+                                        ? bid.diagnostics.fillRate >= bid.diagnostics.targetFillRate
+                                            ? 'text-green-600'
+                                            : 'text-red-500'
+                                        : ''
+                                }
+                            />
+                            <Stat
+                                label='Shortfall'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.shortfall.toFixed(0)} / ${bid.diagnostics.storageTarget.toFixed(0)}`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Bid price'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.oldBidPrice.toFixed(2)} → ${bid.diagnostics.newBidPrice.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Market / Ceiling'
+                                value={
+                                    bid?.diagnostics
+                                        ? `${bid.diagnostics.marketPrice.toFixed(2)} / ${bid.diagnostics.ceilingPrice.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
                         </div>
-                    )}
+                        {buyStaleReason && (
+                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1 mt-1'>
+                                {buyStaleReason}
+                            </div>
+                        )}
+                    </div>
 
                     <AutoConfigPanel
                         mode='buy'
@@ -126,8 +201,6 @@ export default function BuySection({
                         isSaving={buySaving}
                         successMsg={buyAutoConfigSuccessMsg}
                         errorMsg={buyAutoConfigErrorMsg}
-                        diagnostics={bid?.diagnostics}
-                        staleReason={buyStaleReason}
                         bufferApplicable={isFacilityInput}
                     />
 
@@ -196,21 +269,14 @@ export default function BuySection({
                                 >
                                     {effectiveBuyQty === 0
                                         ? 'Target met — order inactive'
-                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
+                                        : `Buy ${formatNumberWithUnit(effectiveBuyQty, unit)} / tick`}
                                 </div>
                             )}
                             {isFacilityInput && (
                                 <div className='space-y-1 text-[11px] text-muted-foreground'>
                                     <div>
-                                        {formatNumberWithUnit(
-                                            consumedPerTick,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
-                                        /tick · Stock:{' '}
-                                        {formatNumberWithUnit(
-                                            inventoryQty,
-                                            resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                        )}
+                                        {formatNumberWithUnit(consumedPerTick, unit)}
+                                        /tick · Stock: {formatNumberWithUnit(inventoryQty, unit)}
                                         {inventoryInBuyTicks !== null && (
                                             <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
                                         )}
@@ -239,15 +305,7 @@ export default function BuySection({
                                         />
                                         {suggestedStorageTarget !== null && (
                                             <>
-                                                <span>
-                                                    →{' '}
-                                                    {formatNumberWithUnit(
-                                                        suggestedStorageTarget,
-                                                        resourceFormToUnit(
-                                                            getResourceByName(resourceName)?.form ?? 'pieces',
-                                                        ),
-                                                    )}
-                                                </span>
+                                                <span>→ {formatNumberWithUnit(suggestedStorageTarget, unit)}</span>
                                                 <Button
                                                     variant='outline'
                                                     className='h-6 text-[11px] px-1.5'
@@ -267,23 +325,6 @@ export default function BuySection({
                             )}
                         </div>
                     </div>
-
-                    {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
-                        <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {bid.lastBought !== undefined && (
-                                <span>
-                                    Last bought:{' '}
-                                    {formatNumberWithUnit(
-                                        bid.lastBought,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                </span>
-                            )}
-                            {bid.lastSpent !== undefined && (
-                                <span>Spent: {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}</span>
-                            )}
-                        </div>
-                    )}
 
                     {fundsWarning && (
                         <Alert variant='destructive' className='py-2'>

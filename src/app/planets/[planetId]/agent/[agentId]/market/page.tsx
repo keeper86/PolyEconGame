@@ -9,8 +9,18 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 
 export default function MarketPage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        detail,
+        assets,
+        ships,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        myAgentId,
+    } = useAgentPlanetDetail();
     const [showAll, setShowAll] = useState(false);
 
     return (
@@ -44,6 +54,7 @@ export default function MarketPage() {
                             assets={assets}
                             allPlanetDeposits={detail?.allPlanetDeposits}
                             showAll={showAll}
+                            ships={ships}
                         />
                     </div>
                 ) : null}

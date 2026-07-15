@@ -203,7 +203,7 @@ export function ActiveClaimCard({
                             </Button>
                             <Button
                                 size='sm'
-                                variant='outline'
+                                variant='destructive'
                                 disabled={quitMutation.isPending || noticeGiven}
                                 onClick={() => setConfirmQuit(false)}
                             >

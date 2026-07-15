@@ -2,12 +2,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
 import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
-import { getResourceByName, priceArrow, productionPerTick, sellFulfillmentClass } from './marketHelpers';
+import { getResourceByName, productionPerTick, sellFulfillmentClass } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 
 export default function SellSection({
@@ -85,6 +86,8 @@ export default function SellSection({
         return baseClass;
     };
 
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+
     return (
         <div>
             <div className='flex items-center gap-6 pl-2'>
@@ -101,20 +104,88 @@ export default function SellSection({
 
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {isFacilityOutput && (
-                        <div className='flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md bg-muted/50 px-2.5 py-1.5 text-[11px] tabular-nums text-muted-foreground'>
-                            <span>
-                                Max capacity production{' '}
-                                <span className='font-semibold text-foreground'>
-                                    {formatNumberWithUnit(
-                                        producedPerTick,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                    /tick
-                                </span>
-                            </span>
+                    {/* Always-visible info box — all rows rendered to prevent layout shifts */}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
+                        <div className='space-y-0.5'>
+                            <Stat
+                                label='Production'
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                bold
+                            />
+                            <Stat
+                                label='Stock'
+                                value={
+                                    isFacilityOutput && producedPerTick > 0
+                                        ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
+                                        : formatNumberWithUnit(inventoryQty, unit)
+                                }
+                            />
+                            <Stat
+                                label='Last sold'
+                                value={offer?.lastSold !== undefined ? formatNumberWithUnit(offer.lastSold, unit) : '—'}
+                            />
+                            <Stat
+                                label='Revenue'
+                                value={
+                                    offer?.lastRevenue !== undefined
+                                        ? formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Sell-through'
+                                value={
+                                    offer?.diagnostics
+                                        ? `${Math.round(offer.diagnostics.sellThroughRate * 100)}% (target ${Math.round(offer.diagnostics.targetSellThrough * 100)}%)`
+                                        : '—'
+                                }
+                                valueClassName={
+                                    offer?.diagnostics
+                                        ? offer.diagnostics.sellThroughRate >= offer.diagnostics.targetSellThrough
+                                            ? 'text-green-600'
+                                            : 'text-red-500'
+                                        : ''
+                                }
+                            />
+                            <Stat
+                                label='Selling'
+                                value={
+                                    offer?.diagnostics
+                                        ? `${offer.diagnostics.effectiveQuantity.toFixed(0)} / tick`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Surplus'
+                                value={
+                                    offer?.diagnostics?.surplusRatio !== undefined
+                                        ? `${Math.round(offer.diagnostics.surplusRatio * 100)}%`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Price'
+                                value={
+                                    offer?.diagnostics
+                                        ? `${offer.diagnostics.oldPrice.toFixed(2)} → ${offer.diagnostics.newPrice.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
+                            <Stat
+                                label='Market / Cost floor'
+                                value={
+                                    offer?.diagnostics
+                                        ? `${offer.diagnostics.marketPrice.toFixed(2)} / ${offer.diagnostics.costFloor.toFixed(2)}`
+                                        : '—'
+                                }
+                            />
                         </div>
-                    )}
+                        {sellStaleReason && (
+                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1 mt-1'>
+                                {sellStaleReason}
+                            </div>
+                        )}
+                    </div>
 
                     <AutoConfigPanel
                         mode='sell'
@@ -126,8 +197,6 @@ export default function SellSection({
                         isSaving={sellSaving}
                         successMsg={sellAutoConfigSuccessMsg}
                         errorMsg={sellAutoConfigErrorMsg}
-                        diagnostics={offer?.diagnostics}
-                        staleReason={sellStaleReason}
                         bufferApplicable={isFacilityOutput}
                     />
 
@@ -203,7 +272,7 @@ export default function SellSection({
                                 >
                                     {effectiveSellQty === 0
                                         ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'))} / tick`}
+                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
                                 </div>
                             )}
                             {retainmentPresets && !local.offerAutomated && (
@@ -231,28 +300,6 @@ export default function SellSection({
                             )}
                         </div>
                     </div>
-
-                    {(offer?.lastSold !== undefined || offer?.lastRevenue !== undefined) && (
-                        <div className='text-[11px] text-muted-foreground tabular-nums flex gap-3'>
-                            {offer.lastSold !== undefined && (
-                                <span>
-                                    Last sold:{' '}
-                                    {formatNumberWithUnit(
-                                        offer.lastSold,
-                                        resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces'),
-                                    )}
-                                </span>
-                            )}
-                            {offer.lastRevenue !== undefined && (
-                                <span>Revenue: {formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)}</span>
-                            )}
-                            {offer.priceDirection !== undefined &&
-                                (() => {
-                                    const a = priceArrow(offer.priceDirection);
-                                    return a.label ? <span className={a.className}>{a.label}</span> : null;
-                                })()}
-                        </div>
-                    )}
 
                     {}
                     {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (

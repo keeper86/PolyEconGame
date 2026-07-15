@@ -36,7 +36,7 @@ export const listAgentShips = () =>
         if (!agent) {
             throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
         }
-        return { ships: agent.ships ?? [] };
+        return { ships: agent.ships };
     });
 
 export const listTransportContracts = () =>

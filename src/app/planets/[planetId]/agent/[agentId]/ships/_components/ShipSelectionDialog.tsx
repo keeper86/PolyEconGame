@@ -197,7 +197,7 @@ export function ShipSelectionDialog({
                             <Button size='sm' disabled={!shipName.trim() || isPending} onClick={handleConfirm}>
                                 {isPending ? 'Starting…' : `Build ${selectedShipType.name}`}
                             </Button>
-                            <Button size='sm' variant='ghost' onClick={() => handleOpenChange(false)}>
+                            <Button size='sm' variant='destructive' onClick={() => handleOpenChange(false)}>
                                 Cancel
                             </Button>
                         </div>

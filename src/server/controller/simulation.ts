@@ -10,6 +10,7 @@ import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
+import { consumptionShipInfoSchema, toConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -393,7 +394,7 @@ export const getAgentOverview = () =>
                               0,
                           )
                         : 0,
-                    shipCount: agent.ships?.length ?? 0,
+                    shipCount: agent.ships.length,
                     planets,
                 },
             };
@@ -433,6 +434,7 @@ const agentPlanetDetail = z.object({
     automateWorkerAllocation: z.boolean(),
     assets: z.any(),
     allPlanetDeposits: z.record(z.string(), z.number()),
+    ships: z.array(consumptionShipInfoSchema),
 });
 export type AgentPlanetDetail = z.infer<typeof agentPlanetDetail>;
 
@@ -462,6 +464,19 @@ export const getAgentPlanetDetail = () =>
                 allPlanetDeposits[pid] = pa.deposits ?? 0;
             }
 
+            // Filter only ships relevant for this planet (idle, loading, pre-fab at this planet)
+            // and convert to the slim ConsumptionShipInfo type for the frontend
+            const ships = agent.ships
+                .filter((ship) => {
+                    // Check if the ship is currently at this planet in a state that affects consumption
+                    const state = ship.state;
+                    if ('planetId' in state && state.planetId === input.planetId) {
+                        return true;
+                    }
+                    return false;
+                })
+                .map(toConsumptionShipInfo);
+
             return {
                 tick,
                 detail: {
@@ -471,6 +486,7 @@ export const getAgentPlanetDetail = () =>
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
                     assets,
                     allPlanetDeposits,
+                    ships,
                 },
             };
         });

@@ -244,7 +244,12 @@ export function AvatarUploadDialog({ triggerLabel = 'Upload Avatar' }: AvatarUpl
                                 <Camera className='h-4 w-4 mr-2' />
                                 {isUploading ? 'Uploading...' : 'Upload Photo'}
                             </Button>
-                            <Button onClick={setToDefault} variant='outline' className='flex-1' disabled={isUploading}>
+                            <Button
+                                onClick={setToDefault}
+                                variant='destructive'
+                                className='flex-1'
+                                disabled={isUploading}
+                            >
                                 Cancel
                             </Button>
                         </div>

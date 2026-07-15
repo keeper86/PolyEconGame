@@ -8,7 +8,7 @@ import { educationLevelKeys } from '../../simulation/population/education';
 import type { ServiceName, Skill } from '../../simulation/population/population';
 import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
 import { computePopulationTotal } from '../../simulation/snapshotRepository';
-import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
+import { EPSILON, RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
 import { getRecyclerPaymentRatio } from '../../simulation/agents/recycler';
 import { getLatestTick } from '../../simulation/workerClient/manager';
 import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
@@ -392,7 +392,7 @@ function buildAgentOffers(agents: Agent[], planetId: string, resourceName: strin
         const lastRevenue = offer.lastRevenue ?? 0;
         const sellThrough = lastPlacedQuantity > 0 ? Math.min(1, lastSold / lastPlacedQuantity) : 0;
 
-        if (lastPlacedQuantity <= 0 && lastSold <= 0) {
+        if (lastPlacedQuantity <= EPSILON && lastSold <= 0) {
             continue;
         }
 
@@ -455,7 +455,7 @@ function buildAgentBids(agents: Agent[], planetId: string, resourceName: string)
         const fillRatio = effectiveQty > 0 ? Math.min(1, lastBought / effectiveQty) : 0;
 
         const isActiveBid = bidPrice > 0;
-        if (!isActiveBid && effectiveQty <= 0 && lastBought <= 0) {
+        if ((!isActiveBid && lastBought <= 0) || effectiveQty < EPSILON) {
             continue;
         }
 
@@ -487,7 +487,7 @@ const agentBidSchema = z.object({
 export type AgentBid = z.infer<typeof agentBidSchema>;
 
 const marketSnapshotSchema = z.object({
-    planetName: z.string(),
+    planetId: z.string(),
     resourceName: z.string(),
     clearingPrice: z.number(),
     totalDemand: z.number(),
@@ -524,6 +524,7 @@ const marketSnapshotSchema = z.object({
 
 export type PlanetMarketSnapshot = z.infer<typeof marketSnapshotSchema>;
 
+// TODO: cache on local planet copy
 export const getPlanetMarket = () =>
     protectedProcedure
         .input(z.object({ planetId: z.string(), resourceName: z.string() }))
@@ -590,7 +591,7 @@ export const getPlanetMarket = () =>
             return {
                 tick,
                 market: {
-                    planetName: planet.name,
+                    planetId: planet.id,
                     resourceName: input.resourceName,
                     clearingPrice,
                     totalDemand,

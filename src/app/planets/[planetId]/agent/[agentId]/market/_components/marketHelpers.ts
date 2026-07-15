@@ -1,6 +1,8 @@
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import type { ConsumptionInfo, ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
+import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
@@ -57,6 +59,25 @@ export function productionPerTick(facilities: ProductionFacility[], resourceName
         const prod = f.produces.find((p) => p.resource.name === resourceName);
         return prod ? sum + prod.quantity * f.scale : sum;
     }, 0);
+}
+
+// ── Re-export types from the shared function ─────────────────────────────────
+export type { ConsumptionBreakdownItem, ConsumptionInfo } from '@/simulation/market/consumptionSources';
+
+export function totalConsumptionPerTick(
+    assets: AgentPlanetAssets,
+    ships: ConsumptionShipInfo[],
+    planetId: string,
+    resourceName: string,
+): ConsumptionInfo {
+    return computeConsumptionBreakdown(
+        assets.productionFacilities,
+        assets.managementFacilities,
+        assets.shipConstructionFacilities,
+        ships,
+        planetId,
+        resourceName,
+    );
 }
 
 export function getResourceByName(resourceName: string) {

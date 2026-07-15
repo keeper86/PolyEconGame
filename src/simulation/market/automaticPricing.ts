@@ -22,7 +22,9 @@ import type {
     Planet,
 } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
+import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
+import { computeAllConsumptionRates, toConsumptionShipInfo } from './consumptionSources';
 
 // ── Config resolvers ──────────────────────────────────────────────────────────
 // Each takes an optional config + the resource (to pick service-appropriate defaults),
@@ -93,75 +95,31 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     // ── Input reserve (sell-side retainment) ──────────────────────────────────
+    // Use the shared consumption function for raw rates, then multiply by
+    // each resource's configured inputBufferTargetTicks.
+
+    const shipsForConsumption = agent.ships.map(toConsumptionShipInfo);
+
+    const consumptionRates = computeAllConsumptionRates(
+        assets.productionFacilities,
+        assets.managementFacilities,
+        assets.shipConstructionFacilities,
+        shipsForConsumption,
+        planet.id,
+    );
 
     const inputReserve = new Map<string, number>();
-
-    for (const facility of assets.productionFacilities) {
-        for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
-            const bidCfg = resolveBidConfigForResource(assets, resource);
-            const target = quantity * facility.scale * bidCfg.inputBufferTargetTicks;
-            inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
-        }
-    }
-    for (const facility of assets.managementFacilities) {
-        for (const { resource, quantity } of facility.needs) {
-            if (resource.form === 'landBoundResource') {
-                continue;
-            }
-            const bidCfg = resolveBidConfigForResource(assets, resource);
-            const target = quantity * facility.scale * bidCfg.inputBufferTargetTicks;
-            inputReserve.set(resource.name, (inputReserve.get(resource.name) ?? 0) + target);
-        }
-    }
-    for (const facility of [
-        ...assets.productionFacilities,
-        ...assets.managementFacilities,
-        ...assets.shipConstructionFacilities,
-    ]) {
-        if (facility.construction === null) {
-            continue;
-        }
-        const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
-        const target = facility.construction.maximumConstructionServiceConsumption * cfg.inputBufferTargetTicks;
-        inputReserve.set(
-            constructionServiceResourceType.name,
-            (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
-        );
-    }
-    for (const ship of agent.ships) {
-        if (
-            ship.type.type === 'construction' &&
-            ship.state.type === 'pre-fabrication' &&
-            ship.state.planetId === planet.id &&
-            ship.state.buildingTarget !== null &&
-            ship.state.buildingTarget.construction !== null
-        ) {
-            const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
-            const target =
-                ship.state.buildingTarget.construction.maximumConstructionServiceConsumption *
-                cfg.inputBufferTargetTicks;
-            inputReserve.set(
-                constructionServiceResourceType.name,
-                (inputReserve.get(constructionServiceResourceType.name) ?? 0) + target,
+    for (const [resourceName, rate] of consumptionRates) {
+        const resource = RESOURCES_BY_NAME.get(resourceName);
+        if (!resource) {
+            console.warn(
+                `automaticPricing: unknown resource "${resourceName}" in consumption rates, skipping input reserve calculation.`,
             );
-        }
-    }
-
-    for (const facility of assets.shipConstructionFacilities) {
-        if (facility.construction !== null) {
             continue;
         }
-        if (facility.produces) {
-            const ratePerTick = Math.min(1, Math.sqrt(facility.scale) / facility.produces.buildingTime);
-            for (const need of facility.produces.buildingCost) {
-                const bidCfg = resolveBidConfigForResource(assets, need.resource);
-                const target = need.quantity * ratePerTick * bidCfg.inputBufferTargetTicks;
-                inputReserve.set(need.resource.name, (inputReserve.get(need.resource.name) ?? 0) + target);
-            }
-        }
+        const bidCfg = resolveBidConfigForResource(assets, resource);
+        const target = rate * bidCfg.inputBufferTargetTicks;
+        inputReserve.set(resourceName, target);
     }
 
     // ── Sell-side automated offers ───────────────────────────────────────────
