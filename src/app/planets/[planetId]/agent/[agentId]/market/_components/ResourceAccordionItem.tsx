@@ -3,6 +3,7 @@
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
@@ -10,11 +11,10 @@ import { PRICE_FLOOR } from '@/simulation/constants';
 import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/currencyResources';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { useMutation } from '@tanstack/react-query';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 import BuySection from './BuySection';
-import MarketDetailsSection from './MarketDetailsSection';
+import MarketStepChart from './MarketStepChart';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
 import ResourceTrigger from './ResourceTrigger';
 import SellSection from './SellSection';
@@ -23,10 +23,9 @@ import type { ResourceAccordionItemProps } from './marketTypes';
 import {
     autoConfigToLocal,
     BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST,
-    TTL_FEEDBACK,
     localToAutoConfig,
+    TTL_FEEDBACK,
 } from './marketTypes';
-import { Separator } from '@/components/ui/separator';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -40,8 +39,8 @@ export default function ResourceAccordionItem({
     allPlanetDeposits,
     ships,
 }: ResourceAccordionItemProps): React.ReactElement {
-    const bid = assets.market?.buy[resourceName];
-    const offer = assets.market?.sell[resourceName];
+    const bid = assets.market.buy[resourceName];
+    const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
         ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
         : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
@@ -137,7 +136,6 @@ export default function ResourceAccordionItem({
     const [buyAutoConfigErrorMsg, setBuyAutoConfigErrorMsg] = useState<string | null>(null);
     const [sellAutoConfigSuccessMsg, setSellAutoConfigSuccessMsg] = useState<string | null>(null);
     const [sellAutoConfigErrorMsg, setSellAutoConfigErrorMsg] = useState<string | null>(null);
-    const [showMarketDetails, setShowMarketDetails] = useState(false);
 
     const buySuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const buyErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -594,6 +592,12 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
+                    {marketData?.market && (
+                        <MarketStepChart market={marketData.market} agentId={agentId} planetId={planetId} />
+                    )}
+
+                    <Separator />
+
                     <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
                         <BuySection
                             resourceName={resourceName}
@@ -638,25 +642,6 @@ export default function ResourceAccordionItem({
                             planetId={planetId}
                         />
                     </div>
-
-                    {}
-                    <div className='flex items-center justify-between gap-3 pt-2'>
-                        <button
-                            onClick={() => setShowMarketDetails(!showMarketDetails)}
-                            className='flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors'
-                        >
-                            {showMarketDetails ? (
-                                <ChevronUp className='h-3.5 w-3.5' />
-                            ) : (
-                                <ChevronDown className='h-3.5 w-3.5' />
-                            )}
-                            <span>Market details</span>
-                        </button>
-                    </div>
-
-                    {showMarketDetails && (
-                        <MarketDetailsSection agentId={agentId} planetId={planetId} resourceName={resourceName} />
-                    )}
                 </div>
             </AccordionContent>
         </AccordionItem>

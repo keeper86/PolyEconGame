@@ -111,11 +111,7 @@ export default function BuySection({
                         <div className='space-y-0.5'>
                             <Stat
                                 label='Required'
-                                value={
-                                    isFacilityInput
-                                        ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick`
-                                        : '—'
-                                }
+                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
                                 bold
                             />
                             {consumptionInfo.breakdown.map((item, i) => {
@@ -138,11 +134,7 @@ export default function BuySection({
                             })}
                             <Stat
                                 label='Last bought'
-                                value={
-                                    bid?.lastBought !== undefined
-                                        ? formatNumberWithUnit(bid.lastBought, unit)
-                                        : '—'
-                                }
+                                value={bid?.lastBought !== undefined ? formatNumberWithUnit(bid.lastBought, unit) : '—'}
                             />
                             <Stat
                                 label='Spent'
@@ -284,8 +276,7 @@ export default function BuySection({
                                 <div className='space-y-1 text-[11px] text-muted-foreground'>
                                     <div>
                                         {formatNumberWithUnit(consumedPerTick, unit)}
-                                        /tick · Stock:{' '}
-                                        {formatNumberWithUnit(inventoryQty, unit)}
+                                        /tick · Stock: {formatNumberWithUnit(inventoryQty, unit)}
                                         {inventoryInBuyTicks !== null && (
                                             <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
                                         )}
@@ -314,10 +305,7 @@ export default function BuySection({
                                         />
                                         {suggestedStorageTarget !== null && (
                                             <>
-                                                <span>
-                                                    →{' '}
-                                                    {formatNumberWithUnit(suggestedStorageTarget, unit)}
-                                                </span>
+                                                <span>→ {formatNumberWithUnit(suggestedStorageTarget, unit)}</span>
                                                 <Button
                                                     variant='outline'
                                                     className='h-6 text-[11px] px-1.5'

@@ -9,6 +9,7 @@ import {
     Area,
     CartesianGrid,
     ComposedChart,
+    Legend,
     ReferenceArea,
     ReferenceLine,
     ResponsiveContainer,
@@ -68,7 +69,7 @@ function AgentInfoCard({
         return (
             <div style={{ minWidth: '140px' }}>
                 <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontSize: '11px', color: '#737373' }}>—</div>
+                <div style={{ fontSize: '11px', color: '#94a3b8' }}>—</div>
             </div>
         );
     }
@@ -78,14 +79,14 @@ function AgentInfoCard({
         return (
             <div style={{ minWidth: '140px' }}>
                 <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: '#e5e5e5' }}>Population</div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#e2e8f0' }}>Population</div>
                 <div
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
                         gap: '8px',
                         fontSize: '12px',
-                        color: '#d4d4d4',
+                        color: '#94a3b8',
                     }}
                 >
                     <span>{formatNumberWithUnit(meta.quantity, qtyUnit)}</span>
@@ -95,7 +96,7 @@ function AgentInfoCard({
                     style={{
                         fontSize: '11px',
                         marginTop: '1px',
-                        color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#737373',
+                        color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#94a3b8',
                     }}
                 >
                     {meta.fillRate >= 0.99
@@ -111,7 +112,7 @@ function AgentInfoCard({
             <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
 
             {/* Agent name */}
-            <div style={{ fontWeight: 600, fontSize: '13px', color: '#e5e5e5' }}>
+            <div style={{ fontWeight: 600, fontSize: '13px', color: '#e2e8f0' }}>
                 {meta.agentName}
                 {meta.isOwn && (
                     <span
@@ -136,7 +137,7 @@ function AgentInfoCard({
                     justifyContent: 'space-between',
                     gap: '8px',
                     fontSize: '12px',
-                    color: '#d4d4d4',
+                    color: '#94a3b8',
                 }}
             >
                 <span>{meta.quantity === 0 ? 'Out of stock' : `${formatNumberWithUnit(meta.quantity, qtyUnit)}`}</span>
@@ -148,7 +149,7 @@ function AgentInfoCard({
                 style={{
                     fontSize: '11px',
                     marginTop: '1px',
-                    color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#737373',
+                    color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#94a3b8',
                 }}
             >
                 {meta.fillRate >= 0.99
@@ -198,12 +199,12 @@ function ChartTooltip({
         return (
             <div
                 style={{
-                    backgroundColor: '#171717',
-                    border: '1px solid #404040',
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
                     borderRadius: '6px',
                     padding: '8px 12px',
                     fontSize: '12px',
-                    color: '#a3a3a3',
+                    color: '#94a3b8',
                 }}
             >
                 <div>
@@ -220,13 +221,13 @@ function ChartTooltip({
             {/* Volume header (always present) */}
             <div
                 style={{
-                    backgroundColor: '#171717',
-                    border: '1px solid #404040',
+                    backgroundColor: '#1e293b',
+                    border: '1px solid #334155',
                     borderRadius: '6px 6px 0 0',
-                    borderBottom: '1px solid #262626',
+                    borderBottom: '1px solid #334155',
                     padding: '6px 12px',
                     fontSize: '11px',
-                    color: '#a3a3a3',
+                    color: '#94a3b8',
                     textAlign: 'center' as const,
                 }}
             >
@@ -236,8 +237,8 @@ function ChartTooltip({
             {/* Two-column layout */}
             <div
                 style={{
-                    backgroundColor: '#171717',
-                    border: hasOwn ? '2px solid #fbbf24' : '1px solid #404040',
+                    backgroundColor: '#1e293b',
+                    border: hasOwn ? '2px solid #fbbf24' : '1px solid #334155',
                     borderTop: 'none',
                     borderRadius: '0 0 6px 6px',
                     padding: '8px 12px',
@@ -256,7 +257,7 @@ function ChartTooltip({
                 <div
                     style={{
                         width: '1px',
-                        backgroundColor: '#404040',
+                        backgroundColor: '#334155',
                         alignSelf: 'stretch',
                     }}
                 />
@@ -277,7 +278,7 @@ function ChartTooltip({
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
-        const { offers, bids, totalSold, populationBids, resourceName } = market;
+        const { offers, bids, totalSold, populationBids } = market;
 
         // 1. Process Supply (Sorted by price ascending)
         const sortedOffers = [...offers].sort((a, b) => a.offerPrice - b.offerPrice);
@@ -475,8 +476,8 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
     return (
         <div className='h-[140px]'>
             <ResponsiveContainer width='100%' height='100%'>
-                <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#262626' />
+                <ComposedChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray='3 3' stroke='#334155' />
 
                     <XAxis
                         dataKey='volume'
@@ -484,22 +485,71 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         domain={xDomain ?? ['auto', 'auto']}
                         allowDataOverflow={!!xDomain}
                         ticks={xTicks}
-                        stroke='#737373'
-                        fontSize={11}
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={{ stroke: '#334155' }}
                         tickLine={false}
                         tickFormatter={(v) => `${formatNumberWithUnit(v, qtyUnit)}`}
                     />
                     <YAxis
                         type='number'
                         domain={['dataMin - 0.02', 'dataMax + 0.02']}
-                        stroke='#737373'
-                        fontSize={11}
+                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        axisLine={false}
                         tickLine={false}
+                        width={52}
                         tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
                     />
                     <Tooltip
                         content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
-                        cursor={{ stroke: '#525252', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
+                    />
+                    <Legend
+                        verticalAlign='bottom'
+                        content={({ payload }) => {
+                            if (!payload || payload.length === 0) {
+                                return null;
+                            }
+                            const entries = [
+                                { label: 'Supply', stroke: '#6366f1', strokeWidth: 2 },
+                                { label: 'Demand', stroke: '#d41e18', strokeWidth: 2 },
+                            ];
+                            return (
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        gap: 16,
+                                        padding: 0,
+                                        flexWrap: 'wrap',
+                                    }}
+                                >
+                                    {entries.map((e) => (
+                                        <div
+                                            key={e.label}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 5,
+                                                fontSize: 11,
+                                                color: '#94a3b8',
+                                            }}
+                                        >
+                                            <svg width={16} height={10} viewBox='0 0 16 10'>
+                                                <line
+                                                    x1={0}
+                                                    y1={5}
+                                                    x2={16}
+                                                    y2={5}
+                                                    stroke={e.stroke}
+                                                    strokeWidth={e.strokeWidth}
+                                                />
+                                            </svg>
+                                            <span>{e.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        }}
                     />
                     {totalSold > 0 && (
                         <ReferenceLine
