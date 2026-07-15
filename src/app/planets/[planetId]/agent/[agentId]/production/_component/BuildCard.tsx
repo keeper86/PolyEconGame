@@ -97,7 +97,7 @@ function BuildForm({
                 </span>
             }
         >
-            <div className='flex-1'>
+            <div className='flex-1 space-y-2 pb-3'>
                 <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
             </div>
             <div className='relative mt-auto space-y-2'>
@@ -208,7 +208,7 @@ function ConstructionDisplay({
                 </span>
             }
         >
-            <div className='flex-1'>
+            <div className='flex-1 space-y-2 pb-3'>
                 {'needs' in facility && 'produces' in facility ? (
                     <FacilityIORow
                         needs={(facility as ProductionFacility).needs}

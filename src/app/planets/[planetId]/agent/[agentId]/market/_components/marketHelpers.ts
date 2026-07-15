@@ -1,13 +1,14 @@
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import type { ConsumptionInfo, ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
+import type { ConsumptionInfo } from '@/simulation/market/consumptionSources';
 import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 import { autoConfigToLocal } from './marketTypes';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {

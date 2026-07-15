@@ -11,6 +11,7 @@ import React, { useMemo, useState } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -160,6 +161,7 @@ function SimplePriceAreaChart({
     rescaleMode: RescaleMode;
     planetId: string;
 }) {
+    const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
             return data.map((p) => ({
@@ -294,9 +296,30 @@ function SimplePriceAreaChart({
                         if (!payload || payload.length === 0) {
                             return null;
                         }
-                        const priceLabel = rescaleMode === 'relative' ? 'Scaled price' : 'Average Price';
-                        const minMaxLabel = rescaleMode === 'relative' ? 'Scaled min/max' : 'Min/max Price';
-                        const costLabel = rescaleMode === 'relative' ? 'Scaled Cost' : 'Cost estimate';
+                        let priceLabel: string;
+                        let minMaxLabel: string;
+                        let costLabel: string;
+                        if (smallScreen) {
+                            if (rescaleMode === 'relative') {
+                                priceLabel = 'Sca. price';
+                                minMaxLabel = 'Sca. min/max';
+                                costLabel = 'Sca. Cost';
+                            } else {
+                                priceLabel = 'Avg Price';
+                                minMaxLabel = 'Min/max Price';
+                                costLabel = 'Cost est.';
+                            }
+                        } else {
+                            if (rescaleMode === 'relative') {
+                                priceLabel = 'Scaled price';
+                                minMaxLabel = 'Scaled min/max';
+                                costLabel = 'Scaled Cost';
+                            } else {
+                                priceLabel = 'Average Price';
+                                minMaxLabel = 'Min/max Price';
+                                costLabel = 'Cost estimate';
+                            }
+                        }
                         const entries = [
                             {
                                 label: priceLabel,
@@ -668,6 +691,8 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
     const { granularity, setGranularity, currentTick } = useGranularity();
     const [rescaleMode, setRescaleMode] = useState<RescaleMode>('absolute');
 
+    const smallScreen = useIsSmallScreen();
+
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
             {
@@ -744,18 +769,18 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 title={
                     <span className='pb-2'>
                         <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as RescaleMode)}>
-                            <TabsList className='w-full justify-start flex-wrap h-7 gap-1 bg-transparent p-0 border-b border-border'>
+                            <TabsList className='h-6 p-0'>
                                 <TabsTrigger
                                     value='absolute'
-                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                 >
                                     Price
                                 </TabsTrigger>
                                 <TabsTrigger
                                     value='relative'
-                                    className='text-xs bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                 >
-                                    Price/Cost
+                                    {smallScreen ? 'P/C' : 'Price/Cost'}
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>

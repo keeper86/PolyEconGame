@@ -237,7 +237,7 @@ export function FacilityConstructionPanel({
                                 variant='default'
                                 onClick={handleProceedAnyway}
                             >
-                                Proceed Anyway
+                                Proceed anyway
                             </Button>
                         </div>
                     </DialogFooter>

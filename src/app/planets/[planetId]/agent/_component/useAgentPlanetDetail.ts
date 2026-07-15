@@ -10,11 +10,11 @@ import {
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentPlanetDetail } from '@/server/controller/simulation';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef } from 'react';
-import type { ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 
 export type UseAgentPlanetDetailResult = {
     agentId: string;

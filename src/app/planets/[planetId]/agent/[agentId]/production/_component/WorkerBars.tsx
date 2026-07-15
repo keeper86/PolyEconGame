@@ -2,7 +2,7 @@
 
 import React from 'react';
 import type { EducationLevelType } from '@/simulation/population/education';
-import { educationLevels } from '@/simulation/population/education';
+import { educationLevels, educationLevelKeys } from '@/simulation/population/education';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { EDU_COLORS } from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/workforceTheme';
@@ -27,28 +27,22 @@ export function WorkerBars({
     globalMin: number;
     planetId?: string;
     agentId?: string;
-}): React.ReactElement | null {
-    const entries = (Object.entries(workerRequirement) as [EducationLevelType, number | undefined][]).filter(
-        ([, req]) => req && req > 0,
-    );
-
-    if (entries.length === 0) {
-        return null;
-    }
-
+}): React.ReactElement {
     const hasLink = planetId !== undefined && agentId !== undefined;
     const href = hasLink ? `/planets/${planetId}/agent/${agentId}/workforce` : undefined;
 
-    const content = entries.map(([edu, req]) => {
+    const content = educationLevelKeys.map((edu) => {
+        const req = workerRequirement[edu];
         const required = (req ?? 0) * scale;
         const eff = neutral ? 1 : (workerEfficiency[edu] ?? 0);
         const isLimiting = eff <= globalMin && globalMin < 0.99;
+        const hasRequirement = req !== undefined && req > 0;
 
         const bar = (
             <Tooltip key={edu}>
                 <TooltipTrigger asChild>
                     <div
-                        className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} ${hasLink ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : 'cursor-default'} ${borderColor(eff, isLimiting, neutral)}`}
+                        className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} ${hasLink ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : 'cursor-default'} ${borderColor(eff, isLimiting, neutral)} ${hasRequirement ? '' : 'invisible'}`}
                     >
                         <span
                             className={`absolute inset-y-0 left-0 ${fillColor(eff, isLimiting, neutral)} transition-all`}

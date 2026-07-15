@@ -24,7 +24,8 @@ import type {
 import { constructionServiceResourceType } from '../planet/services';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
-import { computeAllConsumptionRates, toConsumptionShipInfo } from './consumptionSources';
+import { computeAllConsumptionRates } from './consumptionSources';
+import { toConsumptionShipInfo } from './consumptionShipInfo';
 
 // ── Config resolvers ──────────────────────────────────────────────────────────
 // Each takes an optional config + the resource (to pick service-appropriate defaults),

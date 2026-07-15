@@ -1,11 +1,11 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import type {
     AgentPlanetAssets,
     AutomatedPricingConfig,
     SellDiagnostics,
     BuyDiagnostics,
 } from '@/simulation/planet/planet';
-import type { ConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 
 export const TTL_FEEDBACK = 5_000;
 

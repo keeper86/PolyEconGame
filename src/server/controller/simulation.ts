@@ -5,12 +5,12 @@ import {
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     TICKS_PER_YEAR,
 } from '@/simulation/constants';
+import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
-import { toConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -454,7 +454,14 @@ const consumptionShipInfoSchema = z.object({
     }),
 });
 
-export type ConsumptionShipInfo = z.infer<typeof consumptionShipInfoSchema>;
+// Compile-time guard: the plain interface must be a subset of what the zod
+// schema can validate (i.e. anything the simulation produces can pass zod).
+// Uses z.input because optional() adds | undefined which the interface lacks.
+type _ConsumptionShipInfoCheck =
+    ConsumptionShipInfo extends z.input<typeof consumptionShipInfoSchema>
+        ? true
+        : { ERROR: 'ConsumptionShipInfo interface has fields the zod schema does not cover — update both' };
+const _consumptionShipInfoCheck: _ConsumptionShipInfoCheck = true;
 
 const agentPlanetDetail = z.object({
     agentId: z.string(),

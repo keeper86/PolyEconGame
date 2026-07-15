@@ -1,59 +1,6 @@
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
-import type { ConstructionShip, Ship, TransportShip } from '../ships/ships';
-
-// ── Slim ship info needed for consumption computation ──────────────────────
-
-export type ConsumptionShipInfo = {
-    id: string;
-    type: { type: string };
-    state: {
-        type: string;
-        planetId: string;
-        cargoGoal: { resource: { name: string }; quantity: number } | null;
-        currentCargo: { resource: { name: string }; quantity: number } | null;
-        buildingTarget: {
-            construction: { maximumConstructionServiceConsumption: number } | null;
-        } | null;
-    };
-};
-
-/**
- * Converts a full Ship to the slim ConsumptionShipInfo needed for consumption
- * computation. Uses proper discriminated union narrowing on ship state type.
- */
-export function toConsumptionShipInfo(ship: Ship): ConsumptionShipInfo {
-    const base: ConsumptionShipInfo['state'] = {
-        type: ship.state.type,
-        planetId: 'planetId' in ship.state ? ship.state.planetId : '',
-        cargoGoal: null,
-        currentCargo: null,
-        buildingTarget: null,
-    };
-
-    const state = ship.state;
-
-    // Transport ship states that carry cargo
-    if (state.type === 'loading' || state.type === 'unloading' || state.type === 'transporting') {
-        const ts = state as TransportShip['state'];
-        if ('cargoGoal' in ts) {
-            base.cargoGoal = ts.cargoGoal;
-        }
-        if ('currentCargo' in ts) {
-            base.currentCargo = ts.currentCargo;
-        }
-    }
-
-    // Construction ship states that carry a building target
-    if (state.type === 'pre-fabrication' || state.type === 'reconstruction') {
-        const cs = state as ConstructionShip['state'];
-        if ('buildingTarget' in cs) {
-            base.buildingTarget = cs.buildingTarget as ConsumptionShipInfo['state']['buildingTarget'];
-        }
-    }
-
-    return { id: ship.id, type: { type: ship.type.type }, state: base };
-}
+import type { ConsumptionShipInfo } from './consumptionShipInfo';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

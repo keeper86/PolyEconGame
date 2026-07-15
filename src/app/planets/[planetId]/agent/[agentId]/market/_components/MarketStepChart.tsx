@@ -1,10 +1,12 @@
 'use client';
 
-import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 import type { Units } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { PlanetMarketSnapshot } from '@/server/controller/planet';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { useMemo } from 'react';
+import type { TooltipProps } from 'recharts';
 import {
     Area,
     CartesianGrid,
@@ -17,13 +19,12 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import { getResourceByName } from './marketHelpers';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface MarketStepChartProps {
-    market: PlanetMarketSnapshot;
+    market?: PlanetMarketSnapshot;
     agentId: string;
     planetId: string;
 }
@@ -57,6 +58,7 @@ function AgentInfoCard({
     sideLabel,
     fillLabel,
     color,
+    small,
 }: {
     meta: AgentMeta | undefined;
     planetId: string;
@@ -64,12 +66,20 @@ function AgentInfoCard({
     sideLabel: string;
     fillLabel: string;
     color: string;
+    small?: boolean;
 }) {
+    const minW = small ? 'auto' : '140px';
+    const labelFs = small ? '10px' : '11px';
+    const nameFs = small ? '11px' : '13px';
+    const rowFs = small ? '10px' : '12px';
+    const fillFs = small ? '10px' : '11px';
+    const clearFs = small ? '9px' : '10px';
+
     if (!meta) {
         return (
-            <div style={{ minWidth: '140px' }}>
-                <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontSize: '11px', color: '#94a3b8' }}>—</div>
+            <div style={{ minWidth: minW }}>
+                <div style={{ fontWeight: 600, fontSize: labelFs, color, marginBottom: '2px' }}>{sideLabel}</div>
+                <div style={{ fontSize: labelFs, color: '#94a3b8' }}>—</div>
             </div>
         );
     }
@@ -77,15 +87,15 @@ function AgentInfoCard({
     // Population demand — no individual agent info
     if (meta.kind === 'population') {
         return (
-            <div style={{ minWidth: '140px' }}>
-                <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: '#e2e8f0' }}>Population</div>
+            <div style={{ minWidth: minW }}>
+                <div style={{ fontWeight: 600, fontSize: labelFs, color, marginBottom: '2px' }}>{sideLabel}</div>
+                <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>Population</div>
                 <div
                     style={{
                         display: 'flex',
                         justifyContent: 'space-between',
-                        gap: '8px',
-                        fontSize: '12px',
+                        gap: small ? '4px' : '8px',
+                        fontSize: rowFs,
                         color: '#94a3b8',
                     }}
                 >
@@ -94,7 +104,7 @@ function AgentInfoCard({
                 </div>
                 <div
                     style={{
-                        fontSize: '11px',
+                        fontSize: fillFs,
                         marginTop: '1px',
                         color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#94a3b8',
                     }}
@@ -108,17 +118,17 @@ function AgentInfoCard({
     }
 
     return (
-        <div style={{ minWidth: '140px' }}>
-            <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
+        <div style={{ minWidth: minW }}>
+            <div style={{ fontWeight: 600, fontSize: labelFs, color, marginBottom: '2px' }}>{sideLabel}</div>
 
             {/* Agent name */}
-            <div style={{ fontWeight: 600, fontSize: '13px', color: '#e2e8f0' }}>
+            <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>
                 {meta.agentName}
                 {meta.isOwn && (
                     <span
                         style={{
                             marginLeft: '4px',
-                            fontSize: '10px',
+                            fontSize: small ? '9px' : '10px',
                             fontWeight: 700,
                             color: '#fbbf24',
                             textTransform: 'uppercase' as const,
@@ -135,8 +145,8 @@ function AgentInfoCard({
                 style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    gap: '8px',
-                    fontSize: '12px',
+                    gap: small ? '4px' : '8px',
+                    fontSize: rowFs,
                     color: '#94a3b8',
                 }}
             >
@@ -147,7 +157,7 @@ function AgentInfoCard({
             {/* Fill rate */}
             <div
                 style={{
-                    fontSize: '11px',
+                    fontSize: fillFs,
                     marginTop: '1px',
                     color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#94a3b8',
                 }}
@@ -159,13 +169,13 @@ function AgentInfoCard({
 
             {/* Clearing indicator for own position */}
             {meta.isOwn && meta.fillRate >= 0.99 && (
-                <div style={{ fontSize: '10px', color: '#4ade80', fontWeight: 600 }}>✓ Fully cleared</div>
+                <div style={{ fontSize: clearFs, color: '#4ade80', fontWeight: 600 }}>✓ Fully cleared</div>
             )}
             {meta.isOwn && meta.fillRate > 0 && meta.fillRate < 0.99 && (
-                <div style={{ fontSize: '10px', color: '#fbbf24', fontWeight: 600 }}>⏳ Partially cleared</div>
+                <div style={{ fontSize: clearFs, color: '#fbbf24', fontWeight: 600 }}>⏳ Partially cleared</div>
             )}
             {meta.isOwn && meta.fillRate === 0 && (
-                <div style={{ fontSize: '10px', color: '#ef4444', fontWeight: 600 }}>✗ Not cleared</div>
+                <div style={{ fontSize: clearFs, color: '#ef4444', fontWeight: 600 }}>✗ Not cleared</div>
             )}
         </div>
     );
@@ -180,6 +190,8 @@ function ChartTooltip({
     planetId,
     resourceName,
 }: TooltipProps<number, string> & { planetId: string; resourceName: string }) {
+    const isSmallScreen = useIsSmallScreen();
+
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -202,8 +214,8 @@ function ChartTooltip({
                     backgroundColor: '#1e293b',
                     border: '1px solid #334155',
                     borderRadius: '6px',
-                    padding: '8px 12px',
-                    fontSize: '12px',
+                    padding: isSmallScreen ? '4px 8px' : '8px 12px',
+                    fontSize: isSmallScreen ? '10px' : '12px',
                     color: '#94a3b8',
                 }}
             >
@@ -225,8 +237,8 @@ function ChartTooltip({
                     border: '1px solid #334155',
                     borderRadius: '6px 6px 0 0',
                     borderBottom: '1px solid #334155',
-                    padding: '6px 12px',
-                    fontSize: '11px',
+                    padding: isSmallScreen ? '4px 8px' : '6px 12px',
+                    fontSize: isSmallScreen ? '10px' : '11px',
                     color: '#94a3b8',
                     textAlign: 'center' as const,
                 }}
@@ -234,16 +246,21 @@ function ChartTooltip({
                 Volume: {formatNumberWithUnit(vol, 'none')} {qtyUnit}
             </div>
 
-            {/* Two-column layout */}
+            {/* Layout: side-by-side on desktop, stacked on small screens */}
             <div
                 style={{
                     backgroundColor: '#1e293b',
-                    border: hasOwn ? '2px solid #fbbf24' : '1px solid #334155',
-                    borderTop: 'none',
+                    borderTopWidth: 0,
+                    borderRightWidth: hasOwn ? '2px' : '1px',
+                    borderBottomWidth: hasOwn ? '2px' : '1px',
+                    borderLeftWidth: hasOwn ? '2px' : '1px',
+                    borderStyle: 'solid',
+                    borderColor: hasOwn ? '#fbbf24' : '#334155',
                     borderRadius: '0 0 6px 6px',
-                    padding: '8px 12px',
+                    padding: isSmallScreen ? '6px 8px' : '8px 12px',
                     display: 'flex',
-                    gap: '16px',
+                    flexDirection: isSmallScreen ? 'column' : 'row',
+                    gap: isSmallScreen ? '6px' : '16px',
                 }}
             >
                 <AgentInfoCard
@@ -253,13 +270,14 @@ function ChartTooltip({
                     sideLabel='Supply'
                     fillLabel='Sold'
                     color='#818cf8'
+                    small={isSmallScreen}
                 />
                 <div
-                    style={{
-                        width: '1px',
-                        backgroundColor: '#334155',
-                        alignSelf: 'stretch',
-                    }}
+                    style={
+                        isSmallScreen
+                            ? { height: '1px', backgroundColor: '#334155', alignSelf: 'stretch' }
+                            : { width: '1px', backgroundColor: '#334155', alignSelf: 'stretch' }
+                    }
                 />
                 <AgentInfoCard
                     meta={demandMeta}
@@ -268,6 +286,7 @@ function ChartTooltip({
                     sideLabel='Demand'
                     fillLabel='Bought'
                     color='#ef4444'
+                    small={isSmallScreen}
                 />
             </div>
         </div>
@@ -277,7 +296,18 @@ function ChartTooltip({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
+    const isLoading = !market;
+
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
+        if (!market) {
+            return {
+                chartData: [],
+                xDomain: undefined,
+                xTicks: undefined,
+                ownSupplyArea: undefined,
+                ownDemandArea: undefined,
+            };
+        }
         const { offers, bids, totalSold, populationBids } = market;
 
         // 1. Process Supply (Sorted by price ascending)
@@ -478,12 +508,37 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
         return { chartData: croppedData, xDomain, xTicks, ownSupplyArea, ownDemandArea };
     }, [market, agentId]);
 
-    const resource = getResourceByName(market.resourceName);
+    const resource = market ? getResourceByName(market.resourceName) : undefined;
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
-    const totalSold = market.totalSold;
+    const totalSold = market?.totalSold ?? 0;
+
+    // Enforce minimum width for own-position highlights (in data units)
+    const minOwnAreaWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.0025 : 0;
+    const supplyArea = ownSupplyArea
+        ? (() => {
+              const width = ownSupplyArea.x2 - ownSupplyArea.x1;
+              if (width >= minOwnAreaWidth) {
+                  return ownSupplyArea;
+              }
+              const mid = (ownSupplyArea.x1 + ownSupplyArea.x2) / 2;
+              const halfWidth = minOwnAreaWidth / 2;
+              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownSupplyArea.y };
+          })()
+        : undefined;
+    const demandArea = ownDemandArea
+        ? (() => {
+              const width = ownDemandArea.x2 - ownDemandArea.x1;
+              if (width >= minOwnAreaWidth) {
+                  return ownDemandArea;
+              }
+              const mid = (ownDemandArea.x1 + ownDemandArea.x2) / 2;
+              const halfWidth = minOwnAreaWidth / 2;
+              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownDemandArea.y };
+          })()
+        : undefined;
 
     return (
-        <div className='h-[140px]'>
+        <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none h-[140px]' : 'h-[140px]'}>
             <ResponsiveContainer width='100%' height='100%'>
                 <ComposedChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#334155' />
@@ -508,10 +563,12 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         width={52}
                         tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
                     />
-                    <Tooltip
-                        content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
-                        cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    />
+                    {market && (
+                        <Tooltip
+                            content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
+                            cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        />
+                    )}
                     <Legend
                         verticalAlign='bottom'
                         content={({ payload }) => {
@@ -521,6 +578,8 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             const entries = [
                                 { label: 'Supply', stroke: '#6366f1', strokeWidth: 2 },
                                 { label: 'Demand', stroke: '#d41e18', strokeWidth: 2 },
+                                { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2 },
+                                { label: 'Own', stroke: '#fbbf24', strokeWidth: 2 },
                             ];
                             return (
                                 <div
@@ -595,10 +654,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         isAnimationActive={false}
                     />
 
-                    {ownSupplyArea && (
+                    {supplyArea && (
                         <ReferenceArea
-                            x1={ownSupplyArea.x1}
-                            x2={ownSupplyArea.x2}
+                            x1={supplyArea.x1}
+                            x2={supplyArea.x2}
+                            y2={supplyArea.y}
                             stroke='#fbbf24'
                             strokeWidth={2}
                             strokeOpacity={0.9}
@@ -607,10 +667,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         />
                     )}
 
-                    {ownDemandArea && (
+                    {demandArea && (
                         <ReferenceArea
-                            x1={ownDemandArea.x1}
-                            x2={ownDemandArea.x2}
+                            x1={demandArea.x1}
+                            x2={demandArea.x2}
+                            y2={demandArea.y}
                             stroke='#fbbf24'
                             strokeWidth={2}
                             strokeOpacity={0.9}
