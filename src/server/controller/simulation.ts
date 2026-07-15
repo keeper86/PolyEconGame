@@ -9,8 +9,8 @@ import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/mar
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
+import type { ConstructionShip, Ship, TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
-import { toConsumptionShipInfo } from '@/simulation/market/consumptionSources';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
 import {
@@ -455,6 +455,39 @@ const consumptionShipInfoSchema = z.object({
 });
 
 export type ConsumptionShipInfo = z.infer<typeof consumptionShipInfoSchema>;
+
+export function toConsumptionShipInfo(ship: Ship): ConsumptionShipInfo {
+    const base: ConsumptionShipInfo['state'] = {
+        type: ship.state.type,
+        planetId: 'planetId' in ship.state ? ship.state.planetId : '',
+        cargoGoal: null,
+        currentCargo: null,
+        buildingTarget: null,
+    };
+
+    const state = ship.state;
+
+    // Transport ship states that carry cargo
+    if (state.type === 'loading' || state.type === 'unloading' || state.type === 'transporting') {
+        const ts = state as TransportShip['state'];
+        if ('cargoGoal' in ts) {
+            base.cargoGoal = ts.cargoGoal;
+        }
+        if ('currentCargo' in ts) {
+            base.currentCargo = ts.currentCargo;
+        }
+    }
+
+    // Construction ship states that carry a building target
+    if (state.type === 'pre-fabrication' || state.type === 'reconstruction') {
+        const cs = state as ConstructionShip['state'];
+        if ('buildingTarget' in cs) {
+            base.buildingTarget = cs.buildingTarget as ConsumptionShipInfo['state']['buildingTarget'];
+        }
+    }
+
+    return { id: ship.id, type: { type: ship.type.type }, state: base };
+}
 
 const agentPlanetDetail = z.object({
     agentId: z.string(),
