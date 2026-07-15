@@ -1,11 +1,12 @@
 'use client';
 
-import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 import type { Units } from '@/lib/utils';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { PlanetMarketSnapshot } from '@/server/controller/planet';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { useMemo } from 'react';
-import { useIsSmallScreen } from '@/hooks/useMobile';
+import type { TooltipProps } from 'recharts';
 import {
     Area,
     CartesianGrid,
@@ -18,13 +19,12 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import type { TooltipProps } from 'recharts';
 import { getResourceByName } from './marketHelpers';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface MarketStepChartProps {
-    market: PlanetMarketSnapshot;
+    market?: PlanetMarketSnapshot;
     agentId: string;
     planetId: string;
 }
@@ -250,8 +250,12 @@ function ChartTooltip({
             <div
                 style={{
                     backgroundColor: '#1e293b',
-                    border: hasOwn ? '2px solid #fbbf24' : '1px solid #334155',
-                    borderTop: 'none',
+                    borderTopWidth: 0,
+                    borderRightWidth: hasOwn ? '2px' : '1px',
+                    borderBottomWidth: hasOwn ? '2px' : '1px',
+                    borderLeftWidth: hasOwn ? '2px' : '1px',
+                    borderStyle: 'solid',
+                    borderColor: hasOwn ? '#fbbf24' : '#334155',
                     borderRadius: '0 0 6px 6px',
                     padding: isSmallScreen ? '6px 8px' : '8px 12px',
                     display: 'flex',
@@ -292,7 +296,18 @@ function ChartTooltip({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
+    const isLoading = !market;
+
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
+        if (!market) {
+            return {
+                chartData: [],
+                xDomain: undefined,
+                xTicks: undefined,
+                ownSupplyArea: undefined,
+                ownDemandArea: undefined,
+            };
+        }
         const { offers, bids, totalSold, populationBids } = market;
 
         // 1. Process Supply (Sorted by price ascending)
@@ -493,12 +508,37 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
         return { chartData: croppedData, xDomain, xTicks, ownSupplyArea, ownDemandArea };
     }, [market, agentId]);
 
-    const resource = getResourceByName(market.resourceName);
+    const resource = market ? getResourceByName(market.resourceName) : undefined;
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
-    const totalSold = market.totalSold;
+    const totalSold = market?.totalSold ?? 0;
+
+    // Enforce minimum width for own-position highlights (in data units)
+    const minOwnAreaWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.0025 : 0;
+    const supplyArea = ownSupplyArea
+        ? (() => {
+              const width = ownSupplyArea.x2 - ownSupplyArea.x1;
+              if (width >= minOwnAreaWidth) {
+                  return ownSupplyArea;
+              }
+              const mid = (ownSupplyArea.x1 + ownSupplyArea.x2) / 2;
+              const halfWidth = minOwnAreaWidth / 2;
+              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownSupplyArea.y };
+          })()
+        : undefined;
+    const demandArea = ownDemandArea
+        ? (() => {
+              const width = ownDemandArea.x2 - ownDemandArea.x1;
+              if (width >= minOwnAreaWidth) {
+                  return ownDemandArea;
+              }
+              const mid = (ownDemandArea.x1 + ownDemandArea.x2) / 2;
+              const halfWidth = minOwnAreaWidth / 2;
+              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownDemandArea.y };
+          })()
+        : undefined;
 
     return (
-        <div className='h-[140px]'>
+        <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none h-[140px]' : 'h-[140px]'}>
             <ResponsiveContainer width='100%' height='100%'>
                 <ComposedChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray='3 3' stroke='#334155' />
@@ -523,10 +563,12 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         width={52}
                         tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
                     />
-                    <Tooltip
-                        content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
-                        cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
-                    />
+                    {market && (
+                        <Tooltip
+                            content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
+                            cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
+                        />
+                    )}
                     <Legend
                         verticalAlign='bottom'
                         content={({ payload }) => {
@@ -537,6 +579,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                                 { label: 'Supply', stroke: '#6366f1', strokeWidth: 2 },
                                 { label: 'Demand', stroke: '#d41e18', strokeWidth: 2 },
                                 { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2 },
+                                { label: 'Own', stroke: '#fbbf24', strokeWidth: 2 },
                             ];
                             return (
                                 <div
@@ -611,10 +654,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         isAnimationActive={false}
                     />
 
-                    {ownSupplyArea && (
+                    {supplyArea && (
                         <ReferenceArea
-                            x1={ownSupplyArea.x1}
-                            x2={ownSupplyArea.x2}
+                            x1={supplyArea.x1}
+                            x2={supplyArea.x2}
+                            y2={supplyArea.y}
                             stroke='#fbbf24'
                             strokeWidth={2}
                             strokeOpacity={0.9}
@@ -623,10 +667,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         />
                     )}
 
-                    {ownDemandArea && (
+                    {demandArea && (
                         <ReferenceArea
-                            x1={ownDemandArea.x1}
-                            x2={ownDemandArea.x2}
+                            x1={demandArea.x1}
+                            x2={demandArea.x2}
+                            y2={demandArea.y}
                             stroke='#fbbf24'
                             strokeWidth={2}
                             strokeOpacity={0.9}

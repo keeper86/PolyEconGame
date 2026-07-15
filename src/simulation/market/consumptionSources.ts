@@ -1,27 +1,8 @@
+import type { ConsumptionShipInfo } from 'src/server/controller/simulation';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ConstructionShip, Ship, TransportShip } from '../ships/ships';
 
-// ── Slim ship info needed for consumption computation ──────────────────────
-
-export type ConsumptionShipInfo = {
-    id: string;
-    type: { type: string };
-    state: {
-        type: string;
-        planetId: string;
-        cargoGoal: { resource: { name: string }; quantity: number } | null;
-        currentCargo: { resource: { name: string }; quantity: number } | null;
-        buildingTarget: {
-            construction: { maximumConstructionServiceConsumption: number } | null;
-        } | null;
-    };
-};
-
-/**
- * Converts a full Ship to the slim ConsumptionShipInfo needed for consumption
- * computation. Uses proper discriminated union narrowing on ship state type.
- */
 export function toConsumptionShipInfo(ship: Ship): ConsumptionShipInfo {
     const base: ConsumptionShipInfo['state'] = {
         type: ship.state.type,
