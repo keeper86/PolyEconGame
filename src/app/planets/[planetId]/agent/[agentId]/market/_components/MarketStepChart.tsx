@@ -393,23 +393,32 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
             new Set([...supplyPoints.map((p) => p.volume), ...demandPoints.map((p) => p.volume)]),
         ).sort((a, b) => a - b);
 
-        const getActivePoint = (points: StepDataPoint[], vol: number) => {
-            const match = points.find((p) => p.volume >= vol);
-            return match ?? null;
-        };
+        // Two-pointer single pass: supplyPoints and demandPoints are sorted by volume ascending,
+        // so we advance indices monotonically rather than doing an O(n²) linear search per volume.
+        const fullData: StepDataPoint[] = [];
+        let supplyIdx = 0;
+        let demandIdx = 0;
 
-        const fullData: StepDataPoint[] = allVolumes.map((vol) => {
-            const supplyPt = getActivePoint(supplyPoints, vol);
-            const demandPt = getActivePoint(demandPoints, vol);
-            return {
+        for (const vol of allVolumes) {
+            while (supplyIdx < supplyPoints.length && supplyPoints[supplyIdx].volume < vol) {
+                supplyIdx++;
+            }
+            while (demandIdx < demandPoints.length && demandPoints[demandIdx].volume < vol) {
+                demandIdx++;
+            }
+
+            const supplyPt = supplyIdx < supplyPoints.length ? supplyPoints[supplyIdx] : null;
+            const demandPt = demandIdx < demandPoints.length ? demandPoints[demandIdx] : null;
+
+            fullData.push({
                 volume: Math.round(vol * 100) / 100,
                 Supply: supplyPt?.Supply ?? null,
                 Demand: demandPt?.Demand ?? null,
                 // Attach active agent meta continuously (not just at exact step boundaries)
                 supplyAgent: supplyPt?.supplyAgent,
                 demandAgent: demandPt?.demandAgent,
-            };
-        });
+            });
+        }
 
         // 4. Compute x-axis domain centered around totalSold, crop data
         let xDomain: [number, number] | undefined;

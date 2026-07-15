@@ -22,6 +22,7 @@ import type {
     Planet,
 } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
+import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { computeAllConsumptionRates, toConsumptionShipInfo } from './consumptionSources';
 
@@ -109,7 +110,13 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const inputReserve = new Map<string, number>();
     for (const [resourceName, rate] of consumptionRates) {
-        const resource = { name: resourceName } as Resource;
+        const resource = RESOURCES_BY_NAME.get(resourceName);
+        if (!resource) {
+            console.warn(
+                `automaticPricing: unknown resource "${resourceName}" in consumption rates, skipping input reserve calculation.`,
+            );
+            continue;
+        }
         const bidCfg = resolveBidConfigForResource(assets, resource);
         const target = rate * bidCfg.inputBufferTargetTicks;
         inputReserve.set(resourceName, target);

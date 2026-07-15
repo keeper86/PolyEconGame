@@ -593,7 +593,10 @@ export default function ResourceAccordionItem({
                     <Separator />
 
                     {marketData?.market && (
-                        <MarketStepChart market={marketData.market} agentId={agentId} planetId={planetId} />
+                        <span className='flex flex-col gap-3 text-xs font-medium text-muted-foreground'>
+                            <span className=''>Daily market clearance chart </span>
+                            <MarketStepChart market={marketData.market} agentId={agentId} planetId={planetId} />
+                        </span>
                     )}
 
                     <Separator />
