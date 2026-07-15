@@ -537,6 +537,60 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
           })()
         : undefined;
 
+    const hasSupply = chartData.some((d) => d.Supply !== null);
+    const hasDemand = chartData.some((d) => d.Demand !== null);
+    const hasOwn = !!supplyArea || !!demandArea;
+
+    const renderLegend = ({ payload }: { payload?: unknown[] }) => {
+        if (!payload || payload.length === 0) {
+            return null;
+        }
+        const entries = [
+            { label: 'Supply', stroke: '#6366f1', strokeWidth: 2, disabled: !hasSupply },
+            { label: 'Demand', stroke: '#d41e18', strokeWidth: 2, disabled: !hasDemand },
+            { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
+            { label: 'Own', stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
+        ];
+        return (
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: 16,
+                    padding: 0,
+                    flexWrap: 'wrap',
+                }}
+            >
+                {entries.map((e) => (
+                    <div
+                        key={e.label}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            fontSize: 11,
+                            color: '#94a3b8',
+                            opacity: e.disabled ? 0.35 : 1,
+                            filter: e.disabled ? 'grayscale(1)' : 'none',
+                        }}
+                    >
+                        <svg width={16} height={10} viewBox='0 0 16 10'>
+                            <line
+                                x1={0}
+                                y1={5}
+                                x2={16}
+                                y2={5}
+                                stroke={e.stroke}
+                                strokeWidth={e.strokeWidth}
+                            />
+                        </svg>
+                        <span>{e.label}</span>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none h-[140px]' : 'h-[140px]'}>
             <ResponsiveContainer width='100%' height='100%'>
@@ -571,53 +625,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                     )}
                     <Legend
                         verticalAlign='bottom'
-                        content={({ payload }) => {
-                            if (!payload || payload.length === 0) {
-                                return null;
-                            }
-                            const entries = [
-                                { label: 'Supply', stroke: '#6366f1', strokeWidth: 2 },
-                                { label: 'Demand', stroke: '#d41e18', strokeWidth: 2 },
-                                { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2 },
-                                { label: 'Own', stroke: '#fbbf24', strokeWidth: 2 },
-                            ];
-                            return (
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        gap: 16,
-                                        padding: 0,
-                                        flexWrap: 'wrap',
-                                    }}
-                                >
-                                    {entries.map((e) => (
-                                        <div
-                                            key={e.label}
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 5,
-                                                fontSize: 11,
-                                                color: '#94a3b8',
-                                            }}
-                                        >
-                                            <svg width={16} height={10} viewBox='0 0 16 10'>
-                                                <line
-                                                    x1={0}
-                                                    y1={5}
-                                                    x2={16}
-                                                    y2={5}
-                                                    stroke={e.stroke}
-                                                    strokeWidth={e.strokeWidth}
-                                                />
-                                            </svg>
-                                            <span>{e.label}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        }}
+                        content={renderLegend}
                     />
                     {totalSold > 0 && (
                         <ReferenceLine

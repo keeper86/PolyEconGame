@@ -13,15 +13,14 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useTour } from '../tour/TourContext';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
-import { mapTickToDate } from './TickDisplay';
-import { useTour } from '../tour/TourContext';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -66,7 +65,9 @@ export function FoundingPage() {
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
-
+    const { data: agentDetail } = useQuery(
+        trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId! }, { enabled: !!createdAgentId }),
+    );
     const onCarouselSelect = useCallback(
         (api: CarouselApi) => {
             if (!api || !planetsQuery.data) {
@@ -105,7 +106,7 @@ export function FoundingPage() {
                 // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
                 await updateSession({ agentId: data.agentId, planetId: data.planetId });
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
-                setFoundedAtTick(data.tick);
+                setFoundedAtTick(Math.max(tick, data.tick));
                 setCreatedAgentId(data.agentId);
                 toast.success('Company registered');
             },
@@ -118,17 +119,12 @@ export function FoundingPage() {
     );
 
     useEffect(() => {
-        if (foundedAtTick === null || !createdAgentId) {
-            return;
+        if (agentDetail?.agent && createdAgentId) {
+            router.push(
+                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
+            );
         }
-        if (tick > foundedAtTick) {
-            setTimeout(() => {
-                router.push(
-                    `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
-                );
-            }, 100);
-        }
-    }, [tick, foundedAtTick, createdAgentId, planetId, router]);
+    }, [agentDetail, createdAgentId, planetId, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
