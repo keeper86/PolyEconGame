@@ -4,16 +4,13 @@ import { useGameConfig } from '@/components/client/GameConfigContext';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -26,9 +23,9 @@ import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useMutation } from '@tanstack/react-query';
-import { Clock, Timer } from 'lucide-react';
+import { AlertTriangle, Clock, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import React from 'react';
+import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 
 export function ConstructionCompactRow({
@@ -56,6 +53,8 @@ export function ConstructionCompactRow({
             },
         }),
     );
+
+    const [showCancelDialog, setShowCancelDialog] = useState(false);
 
     const cs = facility.construction;
 
@@ -155,28 +154,43 @@ export function ConstructionCompactRow({
             </div>
 
             <div className='mt-auto space-y-2'>
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='w-full text-xs gap-1'
-                            disabled={cancelMutation.isPending || isPendingCancel}
-                        >
-                            {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel Construction'}
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Cancel construction?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                All construction progress will be permanently lost. There is no refund for construction
-                                services already invested.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Keep building</AlertDialogCancel>
-                            <AlertDialogAction
+                <Button
+                    size='sm'
+                    variant='destructive'
+                    className='w-full text-xs gap-1'
+                    disabled={cancelMutation.isPending || isPendingCancel}
+                    onClick={() => setShowCancelDialog(true)}
+                >
+                    {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
+                </Button>
+            </div>
+
+            <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className='flex items-center gap-2'>
+                            <AlertTriangle className='h-5 w-5 text-amber-600 dark:text-amber-400' />
+                            Cancel construction?
+                        </DialogTitle>
+                        <DialogDescription>
+                            All construction progress will be permanently lost. There is no refund for construction
+                            services already invested.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <div className='flex gap-2 pt-1 w-full'>
+                            <Button
+                                size='sm'
+                                variant='destructive'
+                                className='flex-1 text-xs gap-1'
+                                onClick={() => setShowCancelDialog(false)}
+                            >
+                                Keep building
+                            </Button>
+                            <Button
+                                size='sm'
+                                variant='outline'
+                                className='flex-1 text-xs gap-1'
                                 onClick={() => {
                                     addPending({
                                         type: 'cancel',
@@ -186,14 +200,15 @@ export function ConstructionCompactRow({
                                         triggerTick: currentTick,
                                     });
                                     cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
+                                    setShowCancelDialog(false);
                                 }}
                             >
-                                Cancel construction
-                            </AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </div>
+                                Cancel Construction
+                            </Button>
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

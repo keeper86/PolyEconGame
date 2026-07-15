@@ -517,10 +517,9 @@ export function ActiveFacilityCard({
                         ) : (
                             <>
                                 {operatingScaleSection}
-                                <Separator />
+
                                 <div className='flex gap-2 pt-1'>
                                     <Button
-                                        variant='outline'
                                         size='sm'
                                         className='flex-1 text-xs gap-1'
                                         disabled={facility.construction !== null}
