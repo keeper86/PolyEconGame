@@ -1,5 +1,5 @@
 import type { MarketOverviewRow } from '@/server/controller/planet';
-import type { ConsumptionShipInfo } from '@/server/controller/simulation';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import type {
     AgentPlanetAssets,
     AutomatedPricingConfig,

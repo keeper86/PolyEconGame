@@ -1,6 +1,6 @@
-import type { ConsumptionShipInfo } from 'src/server/controller/simulation';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
+import type { ConsumptionShipInfo } from './consumptionShipInfo';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 

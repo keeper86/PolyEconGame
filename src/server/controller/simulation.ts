@@ -5,11 +5,11 @@ import {
     ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS,
     TICKS_PER_YEAR,
 } from '@/simulation/constants';
+import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
-import type { ConstructionShip, Ship, TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';
 import { LOAN_TYPES, totalOutstandingLoans } from '../../simulation/financial/loanTypes';
@@ -454,40 +454,14 @@ const consumptionShipInfoSchema = z.object({
     }),
 });
 
-export type ConsumptionShipInfo = z.infer<typeof consumptionShipInfoSchema>;
-
-export function toConsumptionShipInfo(ship: Ship): ConsumptionShipInfo {
-    const base: ConsumptionShipInfo['state'] = {
-        type: ship.state.type,
-        planetId: 'planetId' in ship.state ? ship.state.planetId : '',
-        cargoGoal: null,
-        currentCargo: null,
-        buildingTarget: null,
-    };
-
-    const state = ship.state;
-
-    // Transport ship states that carry cargo
-    if (state.type === 'loading' || state.type === 'unloading' || state.type === 'transporting') {
-        const ts = state as TransportShip['state'];
-        if ('cargoGoal' in ts) {
-            base.cargoGoal = ts.cargoGoal;
-        }
-        if ('currentCargo' in ts) {
-            base.currentCargo = ts.currentCargo;
-        }
-    }
-
-    // Construction ship states that carry a building target
-    if (state.type === 'pre-fabrication' || state.type === 'reconstruction') {
-        const cs = state as ConstructionShip['state'];
-        if ('buildingTarget' in cs) {
-            base.buildingTarget = cs.buildingTarget as ConsumptionShipInfo['state']['buildingTarget'];
-        }
-    }
-
-    return { id: ship.id, type: { type: ship.type.type }, state: base };
-}
+// Compile-time guard: the plain interface must be a subset of what the zod
+// schema can validate (i.e. anything the simulation produces can pass zod).
+// Uses z.input because optional() adds | undefined which the interface lacks.
+type _ConsumptionShipInfoCheck =
+    ConsumptionShipInfo extends z.input<typeof consumptionShipInfoSchema>
+        ? true
+        : { ERROR: 'ConsumptionShipInfo interface has fields the zod schema does not cover — update both' };
+const _consumptionShipInfoCheck: _ConsumptionShipInfoCheck = true;
 
 const agentPlanetDetail = z.object({
     agentId: z.string(),

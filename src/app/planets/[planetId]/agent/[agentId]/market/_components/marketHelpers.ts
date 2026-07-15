@@ -8,7 +8,7 @@ import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 import { autoConfigToLocal } from './marketTypes';
-import type { ConsumptionShipInfo } from '@/server/controller/simulation';
+import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
