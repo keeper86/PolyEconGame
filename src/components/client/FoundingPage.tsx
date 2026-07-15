@@ -98,18 +98,16 @@ export function FoundingPage() {
     }, [planetId, planetsQuery.data]);
 
     const tick = useSimulationTick();
-    const tickRef = useRef(tick);
-    tickRef.current = tick;
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
             onSuccess: async (data) => {
-                setFoundedAtTick(tickRef.current);
-                setCreatedAgentId(data.agentId);
-                toast.success('Company registered');
                 // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
                 await updateSession({ agentId: data.agentId, planetId: data.planetId });
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
+                setFoundedAtTick(data.tick);
+                setCreatedAgentId(data.agentId);
+                toast.success('Company registered');
             },
             onError: (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -124,9 +122,11 @@ export function FoundingPage() {
             return;
         }
         if (tick > foundedAtTick) {
-            router.push(
-                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
-            );
+            setTimeout(() => {
+                router.push(
+                    `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
+                );
+            }, 100);
         }
     }, [tick, foundedAtTick, createdAgentId, planetId, router]);
 
@@ -145,8 +145,7 @@ export function FoundingPage() {
             <Page title='Company registered.'>
                 <div className='flex items-center gap-3 text-muted-foreground'>
                     <Spinner className='h-5 w-5' />
-                    <span>Waiting for the next tick to take effect…</span>
-                    <span className='text-sm'> {mapTickToDate(foundedAtTick + 1)}</span>
+                    <span>Necessary paperwork is being processed…</span>
                 </div>
             </Page>
         );
