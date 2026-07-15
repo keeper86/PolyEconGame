@@ -2,7 +2,7 @@
 
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { Units } from '@/lib/utils';
-import type { AgentBid, AgentOffer } from '@/server/controller/planet';
+import type { PlanetMarketSnapshot } from '@/server/controller/planet';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { useMemo } from 'react';
 import {
@@ -22,19 +22,16 @@ import { getResourceByName } from './marketHelpers';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 interface MarketStepChartProps {
-    offers: AgentOffer[];
-    bids: AgentBid[];
-    totalSold: number;
+    market: PlanetMarketSnapshot;
     agentId: string;
     planetId: string;
-    resourceName: string;
 }
 
 type AgentMeta = {
     agentId: string;
     agentName: string;
     isOwn: boolean;
-    kind: 'offer' | 'bid';
+    kind: 'offer' | 'bid' | 'population';
     price: number;
     quantity: number;
     /** Sold (for offers) or bought (for bids) */
@@ -51,8 +48,6 @@ type StepDataPoint = {
     supplyAgent?: AgentMeta;
     demandAgent?: AgentMeta;
 };
-
-// ── Mini card for one side (supply or demand) ──────────────────────────────────
 
 function AgentInfoCard({
     meta,
@@ -74,6 +69,39 @@ function AgentInfoCard({
             <div style={{ minWidth: '140px' }}>
                 <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
                 <div style={{ fontSize: '11px', color: '#737373' }}>—</div>
+            </div>
+        );
+    }
+
+    // Population demand — no individual agent info
+    if (meta.kind === 'population') {
+        return (
+            <div style={{ minWidth: '140px' }}>
+                <div style={{ fontWeight: 600, fontSize: '11px', color, marginBottom: '2px' }}>{sideLabel}</div>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: '#e5e5e5' }}>Population</div>
+                <div
+                    style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        fontSize: '12px',
+                        color: '#d4d4d4',
+                    }}
+                >
+                    <span>{formatNumberWithUnit(meta.quantity, qtyUnit)}</span>
+                    <span>{formatNumberWithUnit(meta.price, 'currency', planetId)}</span>
+                </div>
+                <div
+                    style={{
+                        fontSize: '11px',
+                        marginTop: '1px',
+                        color: meta.fillRate >= 0.99 ? '#4ade80' : meta.fillRate > 0 ? '#fbbf24' : '#737373',
+                    }}
+                >
+                    {meta.fillRate >= 0.99
+                        ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (100%)`
+                        : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (${(meta.fillRate * 100).toFixed(1)}%)`}
+                </div>
             </div>
         );
     }
@@ -247,15 +275,10 @@ function ChartTooltip({
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-export default function MarketStepChart({
-    offers,
-    bids,
-    totalSold,
-    agentId,
-    planetId,
-    resourceName,
-}: MarketStepChartProps) {
+export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
+        const { offers, bids, totalSold, populationBids, resourceName } = market;
+
         // 1. Process Supply (Sorted by price ascending)
         const sortedOffers = [...offers].sort((a, b) => a.offerPrice - b.offerPrice);
         const supplyPoints: StepDataPoint[] = [];
@@ -288,33 +311,81 @@ export default function MarketStepChart({
         });
 
         // 2. Process Demand (Sorted by bid price descending)
+        // Combine agent bids and population bids into a unified demand list
         const sortedBids = [...bids].sort((a, b) => b.bidPrice - a.bidPrice);
         const demandPoints: StepDataPoint[] = [];
 
         let cumDemand = 0;
-        if (sortedBids.length > 0) {
-            demandPoints.push({ volume: 0, Supply: null, Demand: sortedBids[0].bidPrice });
-        }
+        if (sortedBids.length > 0 || (populationBids && populationBids.length > 0)) {
+            // Build unified demand entries: agent bids + population bins
+            const demandEntries: {
+                price: number;
+                quantity: number;
+                filled: number;
+                fillRate: number;
+                kind: 'bid' | 'population';
+                agentId?: string;
+                agentName?: string;
+                isOwn?: boolean;
+                priceMid?: number;
+            }[] = [];
 
-        sortedBids.forEach((bid) => {
-            cumDemand += bid.demandedQuantity;
-            const meta: AgentMeta = {
-                agentId: bid.agentId,
-                agentName: bid.agentName,
-                isOwn: bid.agentId === agentId,
-                kind: 'bid',
-                price: bid.bidPrice,
-                quantity: bid.demandedQuantity,
-                filled: bid.lastBought,
-                fillRate: bid.fillRatio,
-            };
-            demandPoints.push({
-                volume: cumDemand,
-                Supply: null,
-                Demand: bid.bidPrice,
-                demandAgent: meta,
+            sortedBids.forEach((bid) => {
+                demandEntries.push({
+                    price: bid.bidPrice,
+                    quantity: bid.demandedQuantity,
+                    filled: bid.lastBought,
+                    fillRate: bid.fillRatio,
+                    kind: 'bid',
+                    agentId: bid.agentId,
+                    agentName: bid.agentName,
+                    isOwn: bid.agentId === agentId,
+                });
             });
-        });
+
+            if (populationBids) {
+                // Sort population bins by priceMid descending (highest willingness to pay first)
+                const sortedPopulationBids = [...populationBids].sort((a, b) => b.priceMid - a.priceMid);
+                sortedPopulationBids.forEach((bin) => {
+                    if (bin.demandedQuantity > 0) {
+                        demandEntries.push({
+                            price: bin.priceMid,
+                            quantity: bin.demandedQuantity,
+                            filled: bin.lastBought,
+                            fillRate: bin.fillRatio,
+                            kind: 'population',
+                        });
+                    }
+                });
+            }
+
+            // Sort unified demand by price descending
+            demandEntries.sort((a, b) => b.price - a.price);
+
+            if (demandEntries.length > 0) {
+                demandPoints.push({ volume: 0, Supply: null, Demand: demandEntries[0].price });
+            }
+
+            demandEntries.forEach((entry) => {
+                cumDemand += entry.quantity;
+                const meta: AgentMeta = {
+                    agentId: entry.agentId ?? 'population',
+                    agentName: entry.agentName ?? 'Population',
+                    isOwn: entry.isOwn ?? false,
+                    kind: entry.kind,
+                    price: entry.price,
+                    quantity: entry.quantity,
+                    filled: entry.filled,
+                    fillRate: entry.fillRate,
+                };
+                demandPoints.push({
+                    volume: cumDemand,
+                    Supply: null,
+                    Demand: entry.price,
+                    demandAgent: meta,
+                });
+            });
+        }
 
         // 3. Combine steps onto unified timeline
         const allVolumes = Array.from(
@@ -395,10 +466,11 @@ export default function MarketStepChart({
         }
 
         return { chartData: croppedData, xDomain, xTicks, ownSupplyArea, ownDemandArea };
-    }, [offers, bids, totalSold, agentId]);
+    }, [market, agentId]);
 
-    const resource = getResourceByName(resourceName);
+    const resource = getResourceByName(market.resourceName);
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
+    const totalSold = market.totalSold;
 
     return (
         <div className='h-[140px]'>
@@ -426,7 +498,7 @@ export default function MarketStepChart({
                         tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
                     />
                     <Tooltip
-                        content={<ChartTooltip planetId={planetId} resourceName={resourceName} />}
+                        content={<ChartTooltip planetId={planetId} resourceName={market.resourceName} />}
                         cursor={{ stroke: '#525252', strokeWidth: 1, strokeDasharray: '4 4' }}
                     />
                     {totalSold > 0 && (
@@ -463,7 +535,7 @@ export default function MarketStepChart({
                         activeDot={{ r: 4 }}
                         isAnimationActive={false}
                     />
-                    {/* "You Are Here" — supply */}
+
                     {ownSupplyArea && (
                         <ReferenceArea
                             x1={ownSupplyArea.x1}
@@ -476,7 +548,6 @@ export default function MarketStepChart({
                         />
                     )}
 
-                    {/* "You Are Here" — demand */}
                     {ownDemandArea && (
                         <ReferenceArea
                             x1={ownDemandArea.x1}

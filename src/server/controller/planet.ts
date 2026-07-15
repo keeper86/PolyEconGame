@@ -487,7 +487,7 @@ const agentBidSchema = z.object({
 export type AgentBid = z.infer<typeof agentBidSchema>;
 
 const marketSnapshotSchema = z.object({
-    planetName: z.string(),
+    planetId: z.string(),
     resourceName: z.string(),
     clearingPrice: z.number(),
     totalDemand: z.number(),
@@ -591,7 +591,7 @@ export const getPlanetMarket = () =>
             return {
                 tick,
                 market: {
-                    planetName: planet.name,
+                    planetId: planet.id,
                     resourceName: input.resourceName,
                     clearingPrice,
                     totalDemand,

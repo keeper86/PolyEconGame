@@ -21,6 +21,8 @@ export function ShipyardsTab({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
+
+    // TODO: Use light endpoint for this
     const { data: constructionMarket } = useQuery(
         trpc.simulation.getPlanetMarket.queryOptions({
             planetId,

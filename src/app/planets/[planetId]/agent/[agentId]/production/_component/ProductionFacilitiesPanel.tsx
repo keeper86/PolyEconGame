@@ -30,6 +30,7 @@ export default function ProductionFacilitiesPanel({
 }): React.ReactElement {
     const trpc = useTRPC();
 
+    // TODO: Use light endpoint for this
     const { data: constructionMarket } = useQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );

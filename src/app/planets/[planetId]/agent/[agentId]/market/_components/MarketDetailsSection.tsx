@@ -41,14 +41,7 @@ export default function MarketDetailsSection({
 
     return (
         <div className='space-y-4'>
-            <MarketStepChart
-                offers={market.offers}
-                bids={market.bids}
-                totalSold={market.totalSold}
-                agentId={agentId}
-                planetId={planetId}
-                resourceName={resourceName}
-            />
+            <MarketStepChart market={market} agentId={agentId} planetId={planetId} />
             <span className='text-xs font-medium text-muted-foreground'>
                 <h4 className='text-sm font-semibold mb-1'>Agent supply</h4>
                 {market.offers.length} active seller{market.offers.length !== 1 ? 's' : ''}
