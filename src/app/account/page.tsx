@@ -1,10 +1,11 @@
 'use client';
 import { AvatarUploadDialog } from '@/app/account/AvatarUploadDialog';
+import { InteractivePaperworkProcess } from '@/components/client/FakePaperWorkProcess';
 import { Page } from '@/components/client/Page';
 import { useTour } from '@/components/tour/TourContext';
+import { Button } from '@/components/ui/button';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSession } from 'next-auth/react';
-import { Button } from '@/components/ui/button';
 
 export default function AccountPage() {
     const session = useSession();
@@ -35,6 +36,10 @@ export default function AccountPage() {
                 >
                     Restart Tutorial
                 </Button>
+
+                <span className='w-full'>
+                    <InteractivePaperworkProcess />
+                </span>
             </div>
         </Page>
     );

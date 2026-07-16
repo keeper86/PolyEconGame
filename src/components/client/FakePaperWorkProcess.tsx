@@ -2,32 +2,28 @@ import { Check, ChevronRight, Loader2 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const SERIOUS_POOL = [
-    'Submitting corporate charter to planetary administration...',
-    'Opening reserve accounts with Central Bank...',
-    'Securing initial financial rights...',
-    'Securing initial labor rights...',
-    'Analyzing planetary macro-economic liquidity corridors...',
-    'Syncing sub-orbital supply chain telemetry...',
-    'Verifying multi-signature cryptographic escrow vaults...',
-    'Establishing secure, quantum-encrypted planetary VPN pipelines...',
-    'Structuring corporate bond collateralization frameworks...',
-    'Conducting deep-space market penetration feasibility sweeps...',
-    'Registering with local planetary labor unions...',
-    'Signing digital ownership deeds...',
-    'Evaluating market conditions...',
+    'Analyzing planetary macro-economic liquidity corridors.',
+    'Syncing sub-orbital supply chain telemetry.',
+    'Verifying multi-signature cryptographic escrow vaults.',
+    'Establishing secure, quantum-encrypted planetary VPN pipelines.',
+    'Structuring corporate bond collateralization frameworks.',
+    'Conducting deep-space market penetration feasibility sweeps.',
+    'Registering with local planetary labor unions.',
+    'Signing digital ownership deeds.',
+    'Evaluating market conditions.',
 ];
 
 const FUNNY_POOL = [
-    'Bribing planetary customs officials (allocating slush fund)...',
-    'Optimizing corporate liability waivers for accidental airlock depressurization...',
-    'Routing initial capital through three different offshore asteroid belts...',
-    'Filing planetary environmental impact forms in triplicate...',
-    'Negotiating minimum nutrient-paste requirements with local union reps...',
-    'Purging space-barnacles from the corporate servers...',
-    'Drafting non-disclosure agreements for sentient planetary flora...',
-    'Scheduling mandatory, unpaid virtual synergy seminars...',
-    'Sourcing unpaid interns from regional cryogenic storage facilities...',
-    'Bathing the mainframe server racks in holy incense to appease the machine spirit...',
+    'Bribing planetary customs officials (allocating slush fund).',
+    'Optimizing corporate liability waivers for accidental airlock depressurization.',
+    'Routing initial capital through three different offshore asteroid belts.',
+    'Filing planetary environmental impact forms in triplicate.',
+    'Negotiating minimum nutrient-paste requirements with local union reps.',
+    'Purging space-barnacles from the corporate servers.',
+    'Drafting non-disclosure agreements for sentient planetary flora.',
+    'Scheduling mandatory, unpaid virtual synergy seminars.',
+    'Sourcing unpaid interns from regional cryogenic storage facilities.',
+    'Bathing the mainframe server racks in holy incense to appease the machine spirit.',
     'Anesthetizing the legal department.',
     'Translating corporate bylaws into Neo-Sumerian for local magistrates.',
     'Re-calibrating the quantum breakroom microwave.',
@@ -44,20 +40,36 @@ const FUNNY_POOL = [
 ];
 
 const META_POOL = [
-    'Consulting an authentic, adaptive AI collaborator with a touch of wit...',
-    'Injecting CSS resets directly into the local fabric of space-time...',
-    'Checking if the developer accidentally committed the API keys to GitHub...',
-    'Blaming the database. It’s always the database...',
-    'Garbage collecting unused existential consciousness threads...',
-    'Running npm install --force on the planetary infrastructure...',
-    'Trying to figure out why useEffect is running twice on startup...',
-    'Parsing stringified JSON payloads with mild existential dread...',
-    "Applying emergency hotfixes directly in production (don't tell anyone)...",
+    'Consulting an authentic, adaptive AI collaborator with a touch of wit.',
+    'Injecting CSS resets directly into the local fabric of space-time.',
+    'Checking if the developer accidentally committed the API keys to GitHub.',
+    'Blaming the database. It’s always the database.',
+    'Garbage collecting unused existential consciousness threads.',
+    'Running npm install --force on the planetary infrastructure.',
+    'Trying to figure out why useEffect is running twice on startup.',
+    'Parsing stringified JSON payloads with mild existential dread.',
+    "Applying emergency hotfixes directly in production (don't tell anyone).",
 ];
 
-const STATIC_FIRST_STEPS = ['Registering Corporate Entity.'];
+const STATIC_FIRST_STEPS = [
+    'Registering Corporate Entity.',
+    'Securing initial financial rights.',
+    'Opening reserve accounts with Central Bank.',
+    'Securing initial labor rights.',
+    'Submitting corporate charter to planetary administration.',
+];
 
-const STATIC_LAST_STEPS = ['Awaiting final planetary registry approval (this may take a while)...'];
+const STATIC_LAST_STEPS = [
+    'Awaiting final planetary registry approval (this may take a while)...',
+    'But usually...',
+    '...not that long.',
+    'Still awaiting final planetary registry approval (this may take a while)...',
+    'Maybe you try to reload the page?',
+    'At this point, I cannot promise that something will happen.',
+    'Waiting... Waiting... Waiting...',
+];
+
+const STATIC_LAST_STEP_DELAYS = [10000, 2000, 3000, 10000, 10000, 20000];
 
 export function getRegistrySteps(): string[] {
     // Shufflers
@@ -65,15 +77,11 @@ export function getRegistrySteps(): string[] {
         return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);
     };
 
-    // Recipe: 2 Serious logs, 1 Funny log, 1 Meta log
     const seriousLogs = drawRandom(SERIOUS_POOL, 6);
-    const funnyLogs = drawRandom(FUNNY_POOL, 6);
+    const funnyLogs = drawRandom(FUNNY_POOL, 7);
     const metaLogs = drawRandom(META_POOL, 3);
 
-    // Combine them and shuffle the dynamic middle part so they don't always appear in the same order
-    const dynamicMiddle = [...seriousLogs, ...funnyLogs, ...metaLogs].sort(() => 0.5 - Math.random());
-
-    return [...STATIC_FIRST_STEPS, ...dynamicMiddle, ...STATIC_LAST_STEPS];
+    return [...STATIC_FIRST_STEPS, ...seriousLogs, ...funnyLogs, ...metaLogs, ...STATIC_LAST_STEPS];
 }
 
 interface TypewriterStepProps {
@@ -81,10 +89,18 @@ interface TypewriterStepProps {
     isActive: boolean;
     isCompleted: boolean;
     isLastStep: boolean;
+    processingDelay: number;
     onStepComplete: () => void;
 }
 
-function TypewriterStep({ text, isActive, isCompleted, isLastStep, onStepComplete }: TypewriterStepProps) {
+function TypewriterStep({
+    text,
+    isActive,
+    isCompleted,
+    isLastStep,
+    processingDelay,
+    onStepComplete,
+}: TypewriterStepProps) {
     const [typedText, setTypedText] = useState('');
     const [isTyping, setIsTyping] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -116,9 +132,12 @@ function TypewriterStep({ text, isActive, isCompleted, isLastStep, onStepComplet
                 setTypedText(text.slice(0, currentIndex + 1));
                 currentIndex++;
                 // Natural typing pacing with slight random variation
-                let nextDelay = Math.random() * 20 + 25;
+                let nextDelay = Math.random() * 50 + 20;
                 if (Math.random() < 0.005) {
-                    nextDelay = 250;
+                    nextDelay += 200;
+                }
+                if (Math.random() < 0.001) {
+                    nextDelay += 500;
                 }
                 timeoutId = setTimeout(typeCharacter, nextDelay);
             } else {
@@ -140,13 +159,12 @@ function TypewriterStep({ text, isActive, isCompleted, isLastStep, onStepComplet
             return;
         } // Keep spinning indefinitely on the final tick step until page redirected
 
-        const processDelay = Math.floor(Math.random() * 800) + 500; // 500ms to 1300ms
         const timer = setTimeout(() => {
             onStepComplete();
-        }, processDelay);
+        }, processingDelay);
 
         return () => clearTimeout(timer);
-    }, [isActive, isProcessing, isLastStep, onStepComplete]);
+    }, [isActive, isProcessing, isLastStep, onStepComplete, processingDelay]);
 
     // Handle status icons
     let icon = <div className='h-4 w-4 shrink-0' />;
@@ -187,6 +205,8 @@ export function InteractivePaperworkProcess() {
     const steps = useMemo(() => getRegistrySteps(), []);
     const cardRef = useRef<HTMLDivElement>(null);
 
+    const stepsBeforeLast = steps.length - STATIC_LAST_STEPS.length;
+
     // Only render steps that have already been reached
     const visibleSteps = steps.slice(0, currentStep + 1);
 
@@ -211,6 +231,13 @@ export function InteractivePaperworkProcess() {
                 const isActive = index === currentStep;
                 const isLastStep = index === steps.length - 1;
 
+                const lastStepIndex = index - stepsBeforeLast;
+                const indexFactor = 0.5 + index / steps.length;
+                const processingDelay =
+                    lastStepIndex >= 0 && lastStepIndex < STATIC_LAST_STEP_DELAYS.length
+                        ? STATIC_LAST_STEP_DELAYS[lastStepIndex] * indexFactor
+                        : Math.floor(Math.random() * 2000) + 1000 * indexFactor;
+
                 return (
                     <TypewriterStep
                         key={step}
@@ -218,6 +245,7 @@ export function InteractivePaperworkProcess() {
                         isActive={isActive}
                         isCompleted={isCompleted}
                         isLastStep={isLastStep}
+                        processingDelay={processingDelay}
                         onStepComplete={() => setCurrentStep((prev) => prev + 1)}
                     />
                 );

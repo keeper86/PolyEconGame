@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, CheckCircle2, AlertCircle, RotateCcw } from 'lucide-react';
+import { AlertCircle, Anchor, Building2, CheckCircle2, HardHat, Package, RotateCcw, Ship, ShoppingCart, Wrench } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -100,6 +100,19 @@ export default function BuySection({
                     <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                 </Label>
 
+                <span className='flex items-end h-full gap-4 sm:gap-8 px-2.5 py-1.5 text-[10px] text-muted-foreground'>
+                    <span className='tabular-nums'>
+                        <span className='font-medium'>Required:</span>{' '}
+                        {isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
+                    </span>
+                    <span className='tabular-nums'>
+                        <span className='font-medium'>Stock:</span> {formatNumberWithUnit(inventoryQty, unit)}
+                        {inventoryInBuyTicks !== null && (
+                            <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
+                        )}
+                    </span>
+                </span>
+
                 <Switch
                     id={`bid-auto-${resourceName}`}
                     checked={local.bidAutomated}
@@ -108,25 +121,11 @@ export default function BuySection({
                 />
             </div>
 
-            {/* Always-visible compact stats row */}
-            <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30 mb-2'>
-                <span className='tabular-nums'>
-                    <span className='font-medium'>Required:</span>{' '}
-                    {isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
-                </span>
-                <span className='tabular-nums'>
-                    <span className='font-medium'>Stock:</span> {formatNumberWithUnit(inventoryQty, unit)}
-                    {inventoryInBuyTicks !== null && (
-                        <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                    )}
-                </span>
-            </div>
-
             {/* Collapsible: everything below is only visible when buying is active */}
             {local.bidAutomated && (
                 <>
                     <div className='pb-0'>
-                        <div className='grid grid-cols-1 sm:grid-cols-[1fr_2fr] gap-4'>
+                        <div className='grid grid-cols-1 sm:grid-cols-[1fr_1fr] gap-4'>
                             <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
                                 <div className='space-y-0.5'>
                                     <Stat
@@ -139,18 +138,25 @@ export default function BuySection({
                                         bold
                                     />
                                     {consumptionInfo.breakdown.map((item, i) => {
-                                        const emoji =
+                                        const Icon =
                                             item.sourceType === 'production'
-                                                ? '🏭'
+                                                ? Package
                                                 : item.sourceType === 'management'
-                                                  ? '📋'
+                                                  ? Building2
                                                   : item.sourceType === 'ship_construction'
-                                                    ? '🚢'
-                                                    : '🔧';
+                                                    ? Anchor
+                                                    : item.sourceType === 'construction_service'
+                                                      ? HardHat
+                                                      : item.sourceType === 'construction_ship'
+                                                        ? HardHat
+                                                        : item.sourceType === 'transport_ship'
+                                                          ? Ship
+                                                          : Wrench;
                                         return (
                                             <Stat
                                                 key={i}
-                                                label={`${emoji} ${item.sourceName}`}
+                                                icon={<Icon className='h-3 w-3' />}
+                                                label={item.sourceName}
                                                 value={`${formatNumberWithUnit(item.ratePerTick, unit)}/tick`}
                                                 indent
                                             />
