@@ -269,7 +269,7 @@ function ChartTooltip({
                     qtyUnit={qtyUnit}
                     sideLabel='Supply'
                     fillLabel='Sold'
-                    color='#818cf8'
+                    color='#38bdf8'
                     small={isSmallScreen}
                 />
                 <div
@@ -546,8 +546,8 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
             return null;
         }
         const entries = [
-            { label: 'Supply', stroke: '#6366f1', strokeWidth: 2, disabled: !hasSupply },
-            { label: 'Demand', stroke: '#d41e18', strokeWidth: 2, disabled: !hasDemand },
+            { label: 'Supply', stroke: '#38bdf8', strokeWidth: 2, disabled: !hasSupply },
+            { label: 'Demand', stroke: '#ef444496', strokeWidth: 2, disabled: !hasDemand },
             { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
             { label: 'Own', stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
         ];
@@ -575,14 +575,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         }}
                     >
                         <svg width={16} height={10} viewBox='0 0 16 10'>
-                            <line
-                                x1={0}
-                                y1={5}
-                                x2={16}
-                                y2={5}
-                                stroke={e.stroke}
-                                strokeWidth={e.strokeWidth}
-                            />
+                            <line x1={0} y1={5} x2={16} y2={5} stroke={e.stroke} strokeWidth={e.strokeWidth} />
                         </svg>
                         <span>{e.label}</span>
                     </div>
@@ -623,10 +616,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             cursor={{ stroke: '#475569', strokeWidth: 1, strokeDasharray: '4 4' }}
                         />
                     )}
-                    <Legend
-                        verticalAlign='bottom'
-                        content={renderLegend}
-                    />
+                    <Legend verticalAlign='bottom' content={renderLegend} />
                     {totalSold > 0 && (
                         <ReferenceLine
                             x={totalSold}
@@ -644,8 +634,8 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                     <Area
                         type='stepBefore'
                         dataKey='Supply'
-                        stroke='#6366f1'
-                        fill='#6365f144'
+                        stroke='#38bdf8'
+                        fill='#38bdf833'
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
@@ -654,8 +644,8 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                     <Area
                         type='stepBefore'
                         dataKey='Demand'
-                        stroke='#d41e18'
-                        fill='#d41e183a'
+                        stroke='#ef4444'
+                        fill='#ef44442a'
                         strokeWidth={2}
                         dot={false}
                         activeDot={{ r: 4 }}
