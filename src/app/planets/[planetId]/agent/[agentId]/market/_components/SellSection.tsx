@@ -102,263 +102,279 @@ export default function SellSection({
                 />
             </div>
 
-            <div className='pb-0'>
-                <div className='space-y-3 pt-3'>
-                    {/* Always-visible info box — all rows rendered to prevent layout shifts */}
-                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
-                        <div className='space-y-0.5'>
-                            <Stat
-                                label='Production'
-                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
-                                bold
-                            />
-                            <Stat
-                                label='Stock'
-                                value={
-                                    isFacilityOutput && producedPerTick > 0
-                                        ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
-                                        : formatNumberWithUnit(inventoryQty, unit)
-                                }
-                            />
-                            <Stat
-                                label='Last sold'
-                                value={offer?.lastSold !== undefined ? formatNumberWithUnit(offer.lastSold, unit) : '—'}
-                            />
-                            <Stat
-                                label='Revenue'
-                                value={
-                                    offer?.lastRevenue !== undefined
-                                        ? formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)
-                                        : '—'
-                                }
-                            />
-                            <Stat
-                                label='Sell-through'
-                                value={
-                                    offer?.diagnostics
-                                        ? `${Math.round(offer.diagnostics.sellThroughRate * 100)}% (target ${Math.round(offer.diagnostics.targetSellThrough * 100)}%)`
-                                        : '—'
-                                }
-                                valueClassName={
-                                    offer?.diagnostics
-                                        ? offer.diagnostics.sellThroughRate >= offer.diagnostics.targetSellThrough
-                                            ? 'text-green-600'
-                                            : 'text-red-500'
-                                        : ''
-                                }
-                            />
-                            <Stat
-                                label='Selling'
-                                value={
-                                    offer?.diagnostics
-                                        ? `${offer.diagnostics.effectiveQuantity.toFixed(0)} / tick`
-                                        : '—'
-                                }
-                            />
-                            <Stat
-                                label='Surplus'
-                                value={
-                                    offer?.diagnostics?.surplusRatio !== undefined
-                                        ? `${Math.round(offer.diagnostics.surplusRatio * 100)}%`
-                                        : '—'
-                                }
-                            />
-                            <Stat
-                                label='Price'
-                                value={
-                                    offer?.diagnostics
-                                        ? `${offer.diagnostics.oldPrice.toFixed(2)} → ${offer.diagnostics.newPrice.toFixed(2)}`
-                                        : '—'
-                                }
-                            />
-                            <Stat
-                                label='Market / Cost floor'
-                                value={
-                                    offer?.diagnostics
-                                        ? `${offer.diagnostics.marketPrice.toFixed(2)} / ${offer.diagnostics.costFloor.toFixed(2)}`
-                                        : '—'
-                                }
-                            />
+            {/* Always-visible compact stats row */}
+            <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30 mb-2'>
+                <span className='tabular-nums'>
+                    <span className='font-medium'>Production:</span>{' '}
+                    {isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                </span>
+                <span className='tabular-nums'>
+                    <span className='font-medium'>Stock:</span>{' '}
+                    {isFacilityOutput && producedPerTick > 0
+                        ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
+                        : formatNumberWithUnit(inventoryQty, unit)}
+                </span>
+            </div>
+
+            {/* Collapsible: everything below is only visible when selling is active */}
+            {local.offerAutomated && (
+                <div className='pb-0'>
+                    <div className='space-y-3 pt-3'>
+                        <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
+                            <div className='space-y-0.5'>
+                                <Stat
+                                    label='Production'
+                                    value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                    bold
+                                />
+                                <Stat
+                                    label='Stock'
+                                    value={
+                                        isFacilityOutput && producedPerTick > 0
+                                            ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
+                                            : formatNumberWithUnit(inventoryQty, unit)
+                                    }
+                                />
+                                <Stat
+                                    label='Last sold'
+                                    value={offer?.lastSold !== undefined ? formatNumberWithUnit(offer.lastSold, unit) : '—'}
+                                />
+                                <Stat
+                                    label='Revenue'
+                                    value={
+                                        offer?.lastRevenue !== undefined
+                                            ? formatNumberWithUnit(offer.lastRevenue, 'currency', planetId)
+                                            : '—'
+                                    }
+                                />
+                                <Stat
+                                    label='Sell-through'
+                                    value={
+                                        offer?.diagnostics
+                                            ? `${Math.round(offer.diagnostics.sellThroughRate * 100)}% (target ${Math.round(offer.diagnostics.targetSellThrough * 100)}%)`
+                                            : '—'
+                                    }
+                                    valueClassName={
+                                        offer?.diagnostics
+                                            ? offer.diagnostics.sellThroughRate >= offer.diagnostics.targetSellThrough
+                                                ? 'text-green-600'
+                                                : 'text-red-500'
+                                            : ''
+                                    }
+                                />
+                                <Stat
+                                    label='Selling'
+                                    value={
+                                        offer?.diagnostics
+                                            ? `${offer.diagnostics.effectiveQuantity.toFixed(0)} / tick`
+                                            : '—'
+                                    }
+                                />
+                                <Stat
+                                    label='Surplus'
+                                    value={
+                                        offer?.diagnostics?.surplusRatio !== undefined
+                                            ? `${Math.round(offer.diagnostics.surplusRatio * 100)}%`
+                                            : '—'
+                                    }
+                                />
+                                <Stat
+                                    label='Price'
+                                    value={
+                                        offer?.diagnostics
+                                            ? `${offer.diagnostics.oldPrice.toFixed(2)} → ${offer.diagnostics.newPrice.toFixed(2)}`
+                                            : '—'
+                                    }
+                                />
+                                <Stat
+                                    label='Market / Cost floor'
+                                    value={
+                                        offer?.diagnostics
+                                            ? `${offer.diagnostics.marketPrice.toFixed(2)} / ${offer.diagnostics.costFloor.toFixed(2)}`
+                                            : '—'
+                                    }
+                                />
+                            </div>
+                            {sellStaleReason && (
+                                <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1 mt-1'>
+                                    {sellStaleReason}
+                                </div>
+                            )}
                         </div>
-                        {sellStaleReason && (
-                            <div className='text-[10px] text-muted-foreground italic border-t border-border/40 pt-1 mt-1'>
-                                {sellStaleReason}
+
+                        <AutoConfigPanel
+                            mode='sell'
+                            committedConfig={offer?.autoConfig}
+                            localConfig={local.sellAutoConfig}
+                            onConfigChange={handleSellConfigChange}
+                            onSave={onSaveSellAutoConfig}
+                            onReset={onResetSellAutoConfig}
+                            isSaving={sellSaving}
+                            successMsg={sellAutoConfigSuccessMsg}
+                            errorMsg={sellAutoConfigErrorMsg}
+                            bufferApplicable={isFacilityOutput}
+                        />
+
+                        <div className='grid grid-cols-2 gap-3'>
+                            {}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                                <Label
+                                    htmlFor={`offer-price-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
+                                    Price / unit
+                                </Label>
+                                <Input
+                                    id={`offer-price-${resourceName}`}
+                                    type='number'
+                                    min={PRICE_FLOOR}
+                                    step='any'
+                                    placeholder={
+                                        offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
+                                    }
+                                    value={local.offerPrice}
+                                    disabled={local.offerAutomated || sellSaving}
+                                    onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
+                                    className={getFieldClassName('offerPrice', local.offerAutomated || sellSaving)}
+                                />
+                                {overviewRow && !local.offerAutomated && (
+                                    <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
+                                        <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-5 text-[10px] px-1.5 py-0'
+                                            disabled={sellSaving}
+                                            onClick={() =>
+                                                onLocalChange(resourceName, {
+                                                    offerPrice: overviewRow.clearingPrice.toFixed(2),
+                                                })
+                                            }
+                                        >
+                                            Use
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {}
+                            <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
+                                <Label
+                                    htmlFor={`offer-retainment-${resourceName}`}
+                                    className='text-[11px] text-muted-foreground'
+                                >
+                                    Retainment (keep ≥)
+                                </Label>
+                                <Input
+                                    id={`offer-retainment-${resourceName}`}
+                                    type='number'
+                                    min={0}
+                                    step={1}
+                                    placeholder={
+                                        offer?.offerRetainment !== undefined
+                                            ? String(Math.round(offer.offerRetainment))
+                                            : 'e.g. 0'
+                                    }
+                                    value={local.offerRetainment}
+                                    disabled={local.offerAutomated || sellSaving}
+                                    onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
+                                    className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
+                                />
+                                {}
+                                {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
+                                    <div
+                                        className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
+                                    >
+                                        {effectiveSellQty === 0
+                                            ? 'Nothing to sell — order inactive'
+                                            : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
+                                    </div>
+                                )}
+                                {retainmentPresets && !local.offerAutomated && (
+                                    <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
+                                        <span className='shrink-0'>Keep:</span>
+                                        <div className='flex gap-1 ml-auto'>
+                                            {retainmentPresets.map(({ label, qty }) => (
+                                                <Button
+                                                    key={label}
+                                                    variant='outline'
+                                                    size='sm'
+                                                    className='h-5 text-[10px] px-1.5 py-0'
+                                                    disabled={sellSaving}
+                                                    onClick={() =>
+                                                        onLocalChange(resourceName, {
+                                                            offerRetainment: String(qty),
+                                                        })
+                                                    }
+                                                >
+                                                    {label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {}
+                        {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
+                            <div className='space-y-1'>
+                                {local.validationErrors.offerPrice && (
+                                    <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                                        <AlertCircle className='h-3 w-3' />
+                                        Price: {local.validationErrors.offerPrice}
+                                    </div>
+                                )}
+                                {local.validationErrors.offerRetainment && (
+                                    <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                                        <AlertCircle className='h-3 w-3' />
+                                        Retainment: {local.validationErrors.offerRetainment}
+                                    </div>
+                                )}
                             </div>
                         )}
-                    </div>
 
-                    <AutoConfigPanel
-                        mode='sell'
-                        committedConfig={offer?.autoConfig}
-                        localConfig={local.sellAutoConfig}
-                        onConfigChange={handleSellConfigChange}
-                        onSave={onSaveSellAutoConfig}
-                        onReset={onResetSellAutoConfig}
-                        isSaving={sellSaving}
-                        successMsg={sellAutoConfigSuccessMsg}
-                        errorMsg={sellAutoConfigErrorMsg}
-                        bufferApplicable={isFacilityOutput}
-                    />
-
-                    <div className='grid grid-cols-2 gap-3'>
                         {}
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label
-                                htmlFor={`offer-price-${resourceName}`}
-                                className='text-[11px] text-muted-foreground'
-                            >
-                                Price / unit
-                            </Label>
-                            <Input
-                                id={`offer-price-${resourceName}`}
-                                type='number'
-                                min={PRICE_FLOOR}
-                                step='any'
-                                placeholder={
-                                    offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
-                                }
-                                value={local.offerPrice}
-                                disabled={local.offerAutomated || sellSaving}
-                                onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                                className={getFieldClassName('offerPrice', local.offerAutomated || sellSaving)}
-                            />
-                            {overviewRow && !local.offerAutomated && (
-                                <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                    <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
+                        <div className='flex items-center justify-between gap-3 pt-2'>
+                            <div className='flex items-center gap-3'>
+                                {sellSuccessMsg && (
+                                    <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
+                                        <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
+                                    </span>
+                                )}
+                                {sellErrorMsg && (
+                                    <span className='text-xs text-destructive flex items-center gap-1'>
+                                        <AlertCircle className='h-3.5 w-3.5' />
+                                        <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
+                                    </span>
+                                )}
+                            </div>
+                            <div className='flex items-center gap-2'>
+                                {hasDirtySellFields && (
                                     <Button
                                         variant='outline'
                                         size='sm'
-                                        className='h-5 text-[10px] px-1.5 py-0'
+                                        className='h-7 text-[11px] px-2'
+                                        onClick={onResetSell}
                                         disabled={sellSaving}
-                                        onClick={() =>
-                                            onLocalChange(resourceName, {
-                                                offerPrice: overviewRow.clearingPrice.toFixed(2),
-                                            })
-                                        }
                                     >
-                                        Use
+                                        <RotateCcw className='h-3 w-3 mr-1' />
+                                        Reset
                                     </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        {}
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label
-                                htmlFor={`offer-retainment-${resourceName}`}
-                                className='text-[11px] text-muted-foreground'
-                            >
-                                Retainment (keep ≥)
-                            </Label>
-                            <Input
-                                id={`offer-retainment-${resourceName}`}
-                                type='number'
-                                min={0}
-                                step={1}
-                                placeholder={
-                                    offer?.offerRetainment !== undefined
-                                        ? String(Math.round(offer.offerRetainment))
-                                        : 'e.g. 0'
-                                }
-                                value={local.offerRetainment}
-                                disabled={local.offerAutomated || sellSaving}
-                                onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
-                                className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
-                            />
-                            {}
-                            {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
-                                <div
-                                    className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
-                                >
-                                    {effectiveSellQty === 0
-                                        ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
-                                </div>
-                            )}
-                            {retainmentPresets && !local.offerAutomated && (
-                                <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
-                                    <span className='shrink-0'>Keep:</span>
-                                    <div className='flex gap-1 ml-auto'>
-                                        {retainmentPresets.map(({ label, qty }) => (
-                                            <Button
-                                                key={label}
-                                                variant='outline'
-                                                size='sm'
-                                                className='h-5 text-[10px] px-1.5 py-0'
-                                                disabled={sellSaving}
-                                                onClick={() =>
-                                                    onLocalChange(resourceName, {
-                                                        offerRetainment: String(qty),
-                                                    })
-                                                }
-                                            >
-                                                {label}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {}
-                    {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
-                        <div className='space-y-1'>
-                            {local.validationErrors.offerPrice && (
-                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                    <AlertCircle className='h-3 w-3' />
-                                    Price: {local.validationErrors.offerPrice}
-                                </div>
-                            )}
-                            {local.validationErrors.offerRetainment && (
-                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                    <AlertCircle className='h-3 w-3' />
-                                    Retainment: {local.validationErrors.offerRetainment}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {}
-                    <div className='flex items-center justify-between gap-3 pt-2'>
-                        <div className='flex items-center gap-3'>
-                            {sellSuccessMsg && (
-                                <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                                    <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
-                                </span>
-                            )}
-                            {sellErrorMsg && (
-                                <span className='text-xs text-destructive flex items-center gap-1'>
-                                    <AlertCircle className='h-3.5 w-3.5' />
-                                    <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
-                                </span>
-                            )}
-                        </div>
-                        <div className='flex items-center gap-2'>
-                            {hasDirtySellFields && (
+                                )}
                                 <Button
-                                    variant='outline'
                                     size='sm'
-                                    className='h-7 text-[11px] px-2'
-                                    onClick={onResetSell}
-                                    disabled={sellSaving}
+                                    className='h-7 text-[11px] px-3'
+                                    onClick={onSaveSell}
+                                    disabled={!hasDirtySellFields || !!hasValidationErrors || sellSaving}
                                 >
-                                    <RotateCcw className='h-3 w-3 mr-1' />
-                                    Reset
+                                    {sellSaving ? 'Saving…' : 'Save Sell'}
                                 </Button>
-                            )}
-                            <Button
-                                size='sm'
-                                className='h-7 text-[11px] px-3'
-                                onClick={onSaveSell}
-                                disabled={!hasDirtySellFields || !!hasValidationErrors || sellSaving}
-                            >
-                                {sellSaving ? 'Saving…' : 'Save Sell'}
-                            </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

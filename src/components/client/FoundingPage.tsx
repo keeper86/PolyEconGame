@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useTour } from '../tour/TourContext';
+import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
 
@@ -26,7 +27,7 @@ function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
 
     return (
-        <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5  pointer-events-none rounded-b-xl'>
+        <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5 pointer-events-none rounded-b-xl'>
             <button
                 type='button'
                 onClick={scrollPrev}
@@ -68,6 +69,7 @@ export function FoundingPage() {
     const { data: agentDetail } = useQuery(
         trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId! }, { enabled: !!createdAgentId }),
     );
+
     const onCarouselSelect = useCallback(
         (api: CarouselApi) => {
             if (!api || !planetsQuery.data) {
@@ -103,7 +105,6 @@ export function FoundingPage() {
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
             onSuccess: async (data) => {
-                // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
                 await updateSession({ agentId: data.agentId, planetId: data.planetId });
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
                 setFoundedAtTick(Math.max(tick, data.tick));
@@ -118,13 +119,14 @@ export function FoundingPage() {
         }),
     );
 
+    // Immediate redirect as soon as the agent details are successfully fetched from the server
     useEffect(() => {
-        if (agentDetail?.agent && createdAgentId) {
+        if (agentDetail?.agent) {
             router.push(
-                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
+                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentDetail.agent.agentId)}/financial` as unknown as '/',
             );
         }
-    }, [agentDetail, createdAgentId, planetId, router]);
+    }, [agentDetail, planetId, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -138,11 +140,8 @@ export function FoundingPage() {
 
     if (foundedAtTick !== null) {
         return (
-            <Page title='Company registered.'>
-                <div className='flex items-center gap-3 text-muted-foreground'>
-                    <Spinner className='h-5 w-5' />
-                    <span>Necessary paperwork is being processed…</span>
-                </div>
+            <Page title='Register your Company'>
+                <InteractivePaperworkProcess />
             </Page>
         );
     }
