@@ -45,7 +45,7 @@ function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string
             <span className='tabular-nums whitespace-nowrap font-bold text-foreground text-md pr-1'>
                 {formatNumberWithUnit(data.deposits, 'none')}
             </span>
-            <Image src={currencyIconPath} alt='' width={10} height={10} className='shrink-0' aria-hidden />
+            <Image src={currencyIconPath} alt='' width={10} height={10} className='shrink-0' aria-hidden='true' />
         </div>
     );
 }

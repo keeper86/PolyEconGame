@@ -31,7 +31,15 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
                 className={isSub ? 'font-normal text-muted-foreground' : 'text-md'}
                 onClick={handleClick}
             >
-                <Link href={route.path as unknown as '/'} aria-disabled={!showRoute(route)}>
+                <Link
+                    href={route.path as unknown as '/'}
+                    aria-disabled={!showRoute(route) ? 'true' : undefined}
+                    onClick={(e) => {
+                        if (!showRoute(route)) {
+                            e.preventDefault();
+                        }
+                    }}
+                >
                     {route.icon && !isSub
                         ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
                         : null}

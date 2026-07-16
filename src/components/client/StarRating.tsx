@@ -29,19 +29,41 @@ function getStarButtonClass(onChange: ((level: number) => void) | undefined) {
     return onChange ? `${base} cursor-pointer` : base;
 }
 
+function StarIcon({
+    star,
+    level,
+    onChange,
+}: {
+    star: number;
+    level: number | undefined;
+    onChange: ((level: number) => void) | undefined;
+}) {
+    if (onChange) {
+        return (
+            <button
+                key={star}
+                type='button'
+                onClick={() => onChange(star)}
+                className={getStarButtonClass(onChange)}
+                aria-label={`Set level to ${star}`}
+            >
+                <Star className={`w-6 h-6 ${getStarClass(level, star)}`} />
+            </button>
+        );
+    }
+
+    return (
+        <span key={star} className={getStarButtonClass(onChange)}>
+            <Star className={`w-6 h-6 ${getStarClass(level, star)}`} />
+        </span>
+    );
+}
+
 export function StarRating({ level, maxStars = 3, onChange, onDelete }: StarRatingProps) {
     return (
         <div className='flex gap-1 items-center'>
             {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
-                <button
-                    key={star}
-                    type='button'
-                    onClick={() => onChange && onChange(star)}
-                    className={getStarButtonClass(onChange)}
-                    aria-label={onChange ? `Set level to ${star}` : undefined}
-                >
-                    <Star className={`w-6 h-6 ${getStarClass(level, star)}`} />
-                </button>
+                <StarIcon key={star} star={star} level={level} onChange={onChange} />
             ))}
             {onDelete && (
                 <button

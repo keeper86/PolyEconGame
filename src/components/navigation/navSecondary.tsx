@@ -36,7 +36,12 @@ export function NavSecondary({ ...props }: React.ComponentPropsWithoutRef<typeof
                                     >
                                         <Link
                                             href={item.path as unknown as '/'}
-                                            aria-disabled={!(item.isPublic === true || loggedIn)}
+                                            aria-disabled={!(item.isPublic === true || loggedIn) ? 'true' : undefined}
+                                            onClick={(e) => {
+                                                if (!(item.isPublic === true || loggedIn)) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
                                         >
                                             {item.icon && <item.icon width={16} height={16} />}
                                             <span>{item.label}</span>

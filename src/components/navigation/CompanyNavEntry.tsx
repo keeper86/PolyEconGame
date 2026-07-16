@@ -42,7 +42,7 @@ export function CompanyNavEntry() {
                                 onClick={handleClick}
                             >
                                 {href ? (
-                                    <Link href={href} aria-disabled={!href}>
+                                    <Link href={href}>
                                         <Icon width={14} height={14} />
                                         {label}
                                     </Link>

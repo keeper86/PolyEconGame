@@ -36,8 +36,11 @@ export default function TransportForm({
     return (
         <form onSubmit={submit} className='space-y-3'>
             <div>
-                <label className='block text-sm'>From</label>
+                <label htmlFor='transport-from' className='block text-sm'>
+                    From
+                </label>
                 <select
+                    id='transport-from'
                     value={from}
                     onChange={(e) => setFrom(e.target.value)}
                     className='w-full mt-1 p-2 border rounded'
@@ -51,8 +54,15 @@ export default function TransportForm({
             </div>
 
             <div>
-                <label className='block text-sm'>To</label>
-                <select value={to} onChange={(e) => setTo(e.target.value)} className='w-full mt-1 p-2 border rounded'>
+                <label htmlFor='transport-to' className='block text-sm'>
+                    To
+                </label>
+                <select
+                    id='transport-to'
+                    value={to}
+                    onChange={(e) => setTo(e.target.value)}
+                    className='w-full mt-1 p-2 border rounded'
+                >
                     {planets.map((p) => (
                         <option value={p.id} key={p.id}>
                             {p.name}
@@ -62,8 +72,11 @@ export default function TransportForm({
             </div>
 
             <div>
-                <label className='block text-sm'>Metal</label>
+                <label htmlFor='transport-metal' className='block text-sm'>
+                    Metal
+                </label>
                 <input
+                    id='transport-metal'
                     type='number'
                     value={metal}
                     onChange={(e) => setMetal(Number(e.target.value))}
@@ -72,8 +85,11 @@ export default function TransportForm({
             </div>
 
             <div>
-                <label className='block text-sm'>Energy</label>
+                <label htmlFor='transport-energy' className='block text-sm'>
+                    Energy
+                </label>
                 <input
+                    id='transport-energy'
                     type='number'
                     value={energy}
                     onChange={(e) => setEnergy(Number(e.target.value))}
@@ -82,8 +98,11 @@ export default function TransportForm({
             </div>
 
             <div>
-                <label className='block text-sm'>ETA (ticks)</label>
+                <label htmlFor='transport-eta' className='block text-sm'>
+                    ETA (ticks)
+                </label>
                 <input
+                    id='transport-eta'
                     type='number'
                     value={eta}
                     onChange={(e) => setEta(Number(e.target.value))}

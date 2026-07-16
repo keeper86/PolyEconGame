@@ -167,7 +167,7 @@ export function FoundingPage() {
                         disabled={createAgentMutation.isPending}
                         name='company-name'
                         autoComplete='organization'
-                        aria-invalid={agentNameError ? true : undefined}
+                        aria-invalid={agentNameError ? 'true' : undefined}
                     />
                 </div>
 
@@ -192,6 +192,7 @@ export function FoundingPage() {
                                             <button
                                                 type='button'
                                                 onClick={() => setPlanetId(p.planetId)}
+                                                aria-label={`Select ${p.name}`}
                                                 className={`relative isolate overflow-hidden rounded-xl border text-left w-full transition-all ${
                                                     isSelected
                                                         ? 'ring-2 ring-primary border-primary shadow-lg'
@@ -206,7 +207,7 @@ export function FoundingPage() {
                                                         height={720}
                                                         className='absolute -top-8 -right-8 -z-10 pointer-events-none select-none w-86 h-86 object-contain opacity-40'
                                                         unoptimized
-                                                        aria-hidden
+                                                        aria-hidden='true'
                                                     />
                                                 )}
 
@@ -300,7 +301,7 @@ export function FoundingPage() {
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className='flex flex-wrap gap-1.5' aria-hidden>
+                                                            <div className='flex flex-wrap gap-1.5' aria-hidden='true'>
                                                                 <span className='opacity-0 select-none pointer-events-none text-xs border border-transparent px-2 py-0.5 rounded-md'>
                                                                     &nbsp;
                                                                 </span>
