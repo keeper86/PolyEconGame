@@ -370,7 +370,7 @@ function BufferAreaChart({
                                     const value = payload?.[key];
                                     // Skip rendering if the data value is null/undefined (e.g. ghost-only months)
                                     if (value == null || typeof value !== 'number') {
-                                        return null;
+                                        return <circle key={`${key}_${monthIdx}_null`} r={0} visibility='hidden' />;
                                     }
                                     // Larger dot for live data point (fractional monthIdx)
                                     if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
@@ -417,7 +417,13 @@ function BufferAreaChart({
                                         const value = payload?.[ghostKey];
                                         // Skip rendering if the ghost data value is null/undefined (e.g. current-data-only months)
                                         if (value == null || typeof value !== 'number') {
-                                            return null;
+                                            return (
+                                                <circle
+                                                    key={`${ghostKey}_${payload?.monthIdx}_null`}
+                                                    r={0}
+                                                    visibility='hidden'
+                                                />
+                                            );
                                         }
                                         if (cx != null && !isNaN(cx)) {
                                             return (
@@ -432,7 +438,13 @@ function BufferAreaChart({
                                                 />
                                             );
                                         }
-                                        return null;
+                                        return (
+                                            <circle
+                                                key={`${ghostKey}_${payload?.monthIdx}_invis`}
+                                                r={0}
+                                                visibility='hidden'
+                                            />
+                                        );
                                     }}
                                     activeDot={false}
                                     legendType='none'
