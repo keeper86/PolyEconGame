@@ -603,7 +603,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+                    <div className='flex flex-col gap-4'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}

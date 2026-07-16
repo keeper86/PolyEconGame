@@ -21,7 +21,7 @@ export default function MarketPage() {
         isOwnAgentUnknown,
         myAgentId,
     } = useAgentPlanetDetail();
-    const [showAll, setShowAll] = useState(false);
+    const [showRelevant, setShowRelevant] = useState(true);
 
     return (
         <Page
@@ -30,9 +30,9 @@ export default function MarketPage() {
                 <div className='flex items-center justify-between gap-3'>
                     <div className='flex items-center gap-2'>
                         <Label htmlFor='show-all-resources' className='text-xs text-muted-foreground cursor-pointer'>
-                            Show all resources
+                            Only relevant resources
                         </Label>
-                        <Switch id='show-all-resources' checked={showAll} onCheckedChange={setShowAll} />
+                        <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />
                     </div>
                 </div>
             }
@@ -53,7 +53,7 @@ export default function MarketPage() {
                             planetId={planetId}
                             assets={assets}
                             allPlanetDeposits={detail?.allPlanetDeposits}
-                            showAll={showAll}
+                            showAll={!showRelevant}
                             ships={ships}
                         />
                     </div>
