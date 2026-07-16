@@ -123,10 +123,10 @@ export function FoundingPage() {
     useEffect(() => {
         if (agentDetail?.agent) {
             router.push(
-                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentDetail.agent.agentId)}/financial` as unknown as '/',
+                `/planets/${encodeURIComponent(agentDetail.agent.associatedPlanetId)}/agent/${encodeURIComponent(agentDetail.agent.agentId)}/financial` as unknown as '/',
             );
         }
-    }, [agentDetail, planetId, router]);
+    }, [agentDetail, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();

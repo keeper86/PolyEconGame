@@ -124,7 +124,9 @@ export default function SellSection({
                             <div className='space-y-0.5'>
                                 <Stat
                                     label='Production'
-                                    value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                    value={
+                                        isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'
+                                    }
                                     bold
                                 />
                                 <Stat
@@ -137,7 +139,9 @@ export default function SellSection({
                                 />
                                 <Stat
                                     label='Last sold'
-                                    value={offer?.lastSold !== undefined ? formatNumberWithUnit(offer.lastSold, unit) : '—'}
+                                    value={
+                                        offer?.lastSold !== undefined ? formatNumberWithUnit(offer.lastSold, unit) : '—'
+                                    }
                                 />
                                 <Stat
                                     label='Revenue'
@@ -281,15 +285,17 @@ export default function SellSection({
                                     className={getFieldClassName('offerRetainment', local.offerAutomated || sellSaving)}
                                 />
                                 {}
-                                {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
-                                    <div
-                                        className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
-                                    >
-                                        {effectiveSellQty === 0
-                                            ? 'Nothing to sell — order inactive'
-                                            : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
-                                    </div>
-                                )}
+                                {!isCurrency &&
+                                    offer?.offerRetainment !== undefined &&
+                                    effectiveSellQty !== undefined && (
+                                        <div
+                                            className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
+                                        >
+                                            {effectiveSellQty === 0
+                                                ? 'Nothing to sell — order inactive'
+                                                : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
+                                        </div>
+                                    )}
                                 {retainmentPresets && !local.offerAutomated && (
                                     <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
                                         <span className='shrink-0'>Keep:</span>
