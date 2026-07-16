@@ -367,6 +367,11 @@ function BufferAreaChart({
                                 dot={(props: { cx: number; cy: number; payload: ChartPoint }) => {
                                     const { cx, cy, payload } = props;
                                     const monthIdx = payload?.monthIdx;
+                                    const value = payload?.[key];
+                                    // Skip rendering if the data value is null/undefined (e.g. ghost-only months)
+                                    if (value == null || typeof value !== 'number') {
+                                        return null;
+                                    }
                                     // Larger dot for live data point (fractional monthIdx)
                                     if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
                                         return (
@@ -406,7 +411,29 @@ function BufferAreaChart({
                                     strokeOpacity={0.5}
                                     strokeDasharray='4 2'
                                     fill='none'
-                                    dot={{ r: 2, fill: BUFFER_COLORS[key], fillOpacity: 0.4, stroke: 'none' }}
+                                    dot={(props: { cx: number; cy: number; payload: ChartPoint }) => {
+                                        const { cx, cy, payload } = props;
+                                        const ghostKey = `ghost${key.charAt(0).toUpperCase() + key.slice(1)}`;
+                                        const value = payload?.[ghostKey];
+                                        // Skip rendering if the ghost data value is null/undefined (e.g. current-data-only months)
+                                        if (value == null || typeof value !== 'number') {
+                                            return null;
+                                        }
+                                        if (cx != null && !isNaN(cx)) {
+                                            return (
+                                                <circle
+                                                    key={`${ghostKey}_${payload?.monthIdx}`}
+                                                    cx={cx}
+                                                    cy={cy}
+                                                    r={2}
+                                                    fill={BUFFER_COLORS[key]}
+                                                    fillOpacity={0.4}
+                                                    stroke='none'
+                                                />
+                                            );
+                                        }
+                                        return null;
+                                    }}
                                     activeDot={false}
                                     legendType='none'
                                     isAnimationActive={false}
