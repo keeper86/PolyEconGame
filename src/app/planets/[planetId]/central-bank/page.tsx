@@ -49,13 +49,14 @@ export default function CentralBankPage() {
 
     return (
         <Page title='Central Bank'>
-            <Card>
-                <CardContent className='px-3 py-3 space-y-3'>
-                    <BankPanel bank={economy.bank} planetId={planetId} />
-                    <Separator />
-                    <LicensePanel agentId={agentId} planetId={planetId} isOwnAgent={true} licenses={licenses} />
-                </CardContent>
-            </Card>
+            <span className='flex flex-col gap-3'>
+                <Card>
+                    <CardContent className='px-3 py-3 space-y-3'>
+                        <BankPanel bank={economy.bank} planetId={planetId} />
+                    </CardContent>
+                </Card>
+                <LicensePanel agentId={agentId} planetId={planetId} isOwnAgent={true} licenses={licenses} />
+            </span>
         </Page>
     );
 }
