@@ -102,9 +102,23 @@ export default function SellSection({
                 />
             </div>
 
+            {/* Always-visible compact stats row */}
+            <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30 mb-2'>
+                <span className='tabular-nums'>
+                    <span className='font-medium'>Production:</span>{' '}
+                    {isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                </span>
+                <span className='tabular-nums'>
+                    <span className='font-medium'>Stock:</span>{' '}
+                    {isFacilityOutput && producedPerTick > 0
+                        ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
+                        : formatNumberWithUnit(inventoryQty, unit)}
+                </span>
+            </div>
+
+            {/* Collapsible: everything below is only visible when selling is active */}
             <div className='pb-0'>
                 <div className='space-y-3 pt-3'>
-                    {/* Always-visible info box — all rows rendered to prevent layout shifts */}
                     <div className='rounded-md bg-muted/50 px-2.5 py-1.5'>
                         <div className='space-y-0.5'>
                             <Stat

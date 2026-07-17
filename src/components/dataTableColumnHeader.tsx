@@ -25,9 +25,9 @@ export function DataTableColumnHeader({
                 <button type='button' className='flex items-center gap-2' onClick={onSort}>
                     <span>{title}</span>
                     {isSorted ? (
-                        <span aria-hidden>{sortDir === 'asc' ? '▲' : '▼'}</span>
+                        <span aria-hidden='true'>{sortDir === 'asc' ? '▲' : '▼'}</span>
                     ) : (
-                        <span className='opacity-50' aria-hidden>
+                        <span className='opacity-50' aria-hidden='true'>
                             ⇅
                         </span>
                     )}

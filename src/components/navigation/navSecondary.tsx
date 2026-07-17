@@ -34,13 +34,20 @@ export function NavSecondary({ ...props }: React.ComponentPropsWithoutRef<typeof
                                         size='sm'
                                         onClick={() => isMobile && setOpenMobile(false)}
                                     >
-                                        <Link
-                                            href={item.path as unknown as '/'}
-                                            aria-disabled={!(item.isPublic === true || loggedIn)}
-                                        >
-                                            {item.icon && <item.icon width={16} height={16} />}
-                                            <span>{item.label}</span>
-                                        </Link>
+                                        {item.isPublic === true || loggedIn ? (
+                                            <Link href={item.path as unknown as '/'}>
+                                                {item.icon && <item.icon width={16} height={16} />}
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        ) : (
+                                            <span
+                                                className='flex items-center gap-2 opacity-50 cursor-not-allowed'
+                                                aria-disabled='true'
+                                            >
+                                                {item.icon && <item.icon width={16} height={16} />}
+                                                <span>{item.label}</span>
+                                            </span>
+                                        )}
                                     </SidebarMenuButton>
                                 </SidebarMenuItem>
                             ),

@@ -37,6 +37,7 @@ import z from 'zod';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+import { getLatestTick } from '@/simulation/workerClient/manager';
 
 const userId = z.object({
     userId: z.string(),
@@ -241,7 +242,7 @@ export const createAgent = () => {
                 planetId: z.string().min(1),
             }),
         )
-        .output(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(z.object({ tick: z.number(), agentId: z.string(), planetId: z.string() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -287,7 +288,7 @@ export const createAgent = () => {
 
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 
-            return { agentId: createdId, planetId: input.planetId };
+            return { tick: getLatestTick(), agentId: createdId, planetId: input.planetId };
         });
 };
 

@@ -302,12 +302,7 @@ export const getAgentDetail = () =>
                 agent: z
                     .object({
                         agentId: z.string(),
-                        name: z.string(),
-                        balance: z.number(),
-                        storage: z.record(z.string(), z.number()),
-                        production: z.record(z.string(), z.number()),
-                        consumption: z.record(z.string(), z.number()),
-                        agentSummary: z.any(),
+                        associatedPlanetId: z.string(),
                     })
                     .nullable(),
             }),
@@ -318,23 +313,12 @@ export const getAgentDetail = () =>
             if (!agent) {
                 return { tick, agent: null };
             }
-            const { shipCapitalMarket } = getShipCapitalMarketSync();
-            const { planets } = getAllPlanetsSync();
+
             return profileReturn('getAgentDetail', {
                 tick,
                 agent: {
                     agentId: agent.id,
-                    name: agent.name,
-                    balance: agent.assets
-                        ? Object.values(agent.assets).reduce(
-                              (sum, pa) => sum + (pa.deposits ?? 0) - totalOutstandingLoans(pa.activeLoans ?? []),
-                              0,
-                          )
-                        : 0,
-                    storage: computeAgentStorage(agent),
-                    production: computeAgentProduction(agent),
-                    consumption: computeAgentConsumption(agent),
-                    agentSummary: summariseAgentBlob(agent.id, agent, shipCapitalMarket, planets),
+                    associatedPlanetId: agent.associatedPlanetId,
                 },
             });
         });

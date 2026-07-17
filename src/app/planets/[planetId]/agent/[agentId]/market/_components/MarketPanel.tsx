@@ -374,7 +374,7 @@ export default function MarketPanel({
                                                       return sortConfig.direction === 'asc' ? cmp : -cmp;
                                                   })
                                             ).map(({ name }) => (
-                                                <motion.div key={name} layout>
+                                                <motion.div key={name} layout={!openItem}>
                                                     <ResourceAccordionItem
                                                         resourceName={name}
                                                         agentId={agentId}

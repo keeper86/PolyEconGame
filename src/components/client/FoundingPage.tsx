@@ -13,21 +13,21 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useTour } from '../tour/TourContext';
+import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
-import { mapTickToDate } from './TickDisplay';
-import { useTour } from '../tour/TourContext';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
 
     return (
-        <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5  pointer-events-none rounded-b-xl'>
+        <div className='absolute bottom-0 left-0 right-0 z-10 flex items-center justify-between p-3 sm:p-5 pointer-events-none rounded-b-xl'>
             <button
                 type='button'
                 onClick={scrollPrev}
@@ -66,6 +66,9 @@ export function FoundingPage() {
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const { data: agentDetail } = useQuery(
+        trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId ?? '' }, { enabled: !!createdAgentId }),
+    );
 
     const onCarouselSelect = useCallback(
         (api: CarouselApi) => {
@@ -98,18 +101,15 @@ export function FoundingPage() {
     }, [planetId, planetsQuery.data]);
 
     const tick = useSimulationTick();
-    const tickRef = useRef(tick);
-    tickRef.current = tick;
 
     const createAgentMutation = useMutation(
         trpc.createAgent.mutationOptions({
             onSuccess: async (data) => {
-                setFoundedAtTick(tickRef.current);
-                setCreatedAgentId(data.agentId);
-                toast.success('Company registered');
-                // Refresh the session so useAgentId() picks up the new agentId/planetId immediately
                 await updateSession({ agentId: data.agentId, planetId: data.planetId });
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
+                setFoundedAtTick(Math.max(tick, data.tick));
+                setCreatedAgentId(data.agentId);
+                toast.success('Company registered');
             },
             onError: (err: unknown) => {
                 const message = err instanceof Error ? err.message : 'An unexpected error occurred';
@@ -119,16 +119,14 @@ export function FoundingPage() {
         }),
     );
 
+    // Immediate redirect as soon as the agent details are successfully fetched from the server
     useEffect(() => {
-        if (foundedAtTick === null || !createdAgentId) {
-            return;
-        }
-        if (tick > foundedAtTick) {
+        if (agentDetail?.agent) {
             router.push(
-                `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(createdAgentId)}/financial` as unknown as '/',
+                `/planets/${encodeURIComponent(agentDetail.agent.associatedPlanetId)}/agent/${encodeURIComponent(agentDetail.agent.agentId)}/financial` as unknown as '/',
             );
         }
-    }, [tick, foundedAtTick, createdAgentId, planetId, router]);
+    }, [agentDetail, router]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -142,12 +140,8 @@ export function FoundingPage() {
 
     if (foundedAtTick !== null) {
         return (
-            <Page title='Company registered.'>
-                <div className='flex items-center gap-3 text-muted-foreground'>
-                    <Spinner className='h-5 w-5' />
-                    <span>Waiting for the next tick to take effect…</span>
-                    <span className='text-sm'> {mapTickToDate(foundedAtTick + 1)}</span>
-                </div>
+            <Page title='Register your Company'>
+                <InteractivePaperworkProcess />
             </Page>
         );
     }
@@ -172,7 +166,7 @@ export function FoundingPage() {
                         disabled={createAgentMutation.isPending}
                         name='company-name'
                         autoComplete='organization'
-                        aria-invalid={agentNameError ? true : undefined}
+                        aria-invalid={agentNameError ? 'true' : undefined}
                     />
                 </div>
 
@@ -197,6 +191,7 @@ export function FoundingPage() {
                                             <button
                                                 type='button'
                                                 onClick={() => setPlanetId(p.planetId)}
+                                                aria-label={`Select ${p.name}`}
                                                 className={`relative isolate overflow-hidden rounded-xl border text-left w-full transition-all ${
                                                     isSelected
                                                         ? 'ring-2 ring-primary border-primary shadow-lg'
@@ -211,7 +206,7 @@ export function FoundingPage() {
                                                         height={720}
                                                         className='absolute -top-8 -right-8 -z-10 pointer-events-none select-none w-86 h-86 object-contain opacity-40'
                                                         unoptimized
-                                                        aria-hidden
+                                                        aria-hidden='true'
                                                     />
                                                 )}
 
@@ -305,7 +300,7 @@ export function FoundingPage() {
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className='flex flex-wrap gap-1.5' aria-hidden>
+                                                            <div className='flex flex-wrap gap-1.5' aria-hidden='true'>
                                                                 <span className='opacity-0 select-none pointer-events-none text-xs border border-transparent px-2 py-0.5 rounded-md'>
                                                                     &nbsp;
                                                                 </span>

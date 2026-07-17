@@ -10,23 +10,12 @@ import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
-import { LicensePanel } from '../../_component/LicensePanel';
 import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
 
 export default function FinancialPage() {
-    const {
-        agentId,
-        planetId,
-        detail,
-        assets,
-        isLoading,
-        hasNoAssets,
-        isOwnAgent,
-        isOwnAgentUnknown,
-        myAgentId,
-        tick,
-    } = useAgentPlanetDetail();
+    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId, tick } =
+        useAgentPlanetDetail();
 
     const trpc = useTRPC();
 
@@ -83,12 +72,6 @@ export default function FinancialPage() {
                                 <LoanPanel agentId={agentId} planetId={planetId} deposits={assets.deposits ?? 0} />
                             </CardContent>
                         </Card>
-                        <LicensePanel
-                            agentId={agentId}
-                            planetId={detail?.planetId ?? ''}
-                            isOwnAgent={isOwnAgent}
-                            licenses={assets.licenses}
-                        />
                     </span>
                 ) : null}
             </AgentAccessGuard>
