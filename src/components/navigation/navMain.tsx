@@ -31,20 +31,21 @@ function RenderNavEntry(route: RouteMetadata, opts?: { isSub?: boolean }): JSX.E
                 className={isSub ? 'font-normal text-muted-foreground' : 'text-md'}
                 onClick={handleClick}
             >
-                <Link
-                    href={route.path as unknown as '/'}
-                    aria-disabled={!showRoute(route) ? 'true' : undefined}
-                    onClick={(e) => {
-                        if (!showRoute(route)) {
-                            e.preventDefault();
-                        }
-                    }}
-                >
-                    {route.icon && !isSub
-                        ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
-                        : null}
-                    <span>{route.label}</span>
-                </Link>
+                {showRoute(route) ? (
+                    <Link href={route.path as unknown as '/'}>
+                        {route.icon && !isSub
+                            ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
+                            : null}
+                        <span>{route.label}</span>
+                    </Link>
+                ) : (
+                    <span className='flex items-center gap-2 opacity-50 cursor-not-allowed' aria-disabled='true'>
+                        {route.icon && !isSub
+                            ? React.createElement(route.icon as ElementType, { width: 16, height: 16 })
+                            : null}
+                        <span>{route.label}</span>
+                    </span>
+                )}
             </SidebarMenuButton>
         </SidebarMenuItem>
     );

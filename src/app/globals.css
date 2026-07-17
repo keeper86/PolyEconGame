@@ -1,7 +1,7 @@
 html {
-    scrollbar-width: none;
+    scrollbar-width: thin;
     scrollbar-color: #7a7a7a transparent;
-    scrollbar-gutter: auto;
+    scrollbar-gutter: stable;
 }
 @import 'tailwindcss';
 @tailwind base;

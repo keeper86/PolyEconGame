@@ -203,7 +203,7 @@ function TypewriterStep({
 export function InteractivePaperworkProcess() {
     const [currentStep, setCurrentStep] = useState(0);
     const steps = useMemo(() => getRegistrySteps(), []);
-    const cardRef = useRef<HTMLDivElement>(null);
+    const cardRef = useRef<HTMLSpanElement>(null);
 
     const stepsBeforeLast = steps.length - STATIC_LAST_STEPS.length;
 
@@ -240,7 +240,7 @@ export function InteractivePaperworkProcess() {
 
                 return (
                     <TypewriterStep
-                        key={step}
+                        key={`${index}-${step}`}
                         text={step}
                         isActive={isActive}
                         isCompleted={isCompleted}

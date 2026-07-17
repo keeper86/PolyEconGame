@@ -67,7 +67,7 @@ export function FoundingPage() {
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
     const { data: agentDetail } = useQuery(
-        trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId! }, { enabled: !!createdAgentId }),
+        trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId ?? '' }, { enabled: !!createdAgentId }),
     );
 
     const onCarouselSelect = useCallback(
