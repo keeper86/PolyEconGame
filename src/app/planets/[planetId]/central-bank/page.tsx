@@ -1,14 +1,13 @@
 'use client';
 
+import { LicensePanel } from '@/app/planets/[planetId]/agent/_component/LicensePanel';
 import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useParams } from 'next/navigation';
 import BankPanel from './_components/BankPanel';
-import { LicensePanel } from '@/app/planets/[planetId]/agent/_component/LicensePanel';
 
 export default function CentralBankPage() {
     const params = useParams();
