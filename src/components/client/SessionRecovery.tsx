@@ -17,6 +17,7 @@ const STORAGE_KEY = 'session-recovery-reload';
 export function SessionRecovery() {
     const { status, data: session } = useSession();
     const wasAuthenticated = useRef(status === 'authenticated');
+    const previousStatus = useRef(status);
     const isSigningOut = useRef(false);
 
     useEffect(() => {
@@ -24,10 +25,12 @@ export function SessionRecovery() {
             wasAuthenticated.current = true;
         }
 
-        // Track deliberate sign-outs (session data becomes null during signOut)
-        if (status === 'loading' && session === null) {
+        // Track deliberate sign-outs: transition from 'authenticated' → 'loading' with null session.
+        // This avoids setting the flag on initial page load when status is also 'loading' with null session.
+        if (previousStatus.current === 'authenticated' && status === 'loading' && session === null) {
             isSigningOut.current = true;
         }
+        previousStatus.current = status;
 
         if (status === 'unauthenticated' && wasAuthenticated.current && !isSigningOut.current) {
             const lastReload = sessionStorage.getItem(STORAGE_KEY);

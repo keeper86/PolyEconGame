@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { usePendingActions, useRemovePendingByResource, resolveMarketPendingActions } from '@/hooks/useActionOverlay';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
@@ -168,6 +168,7 @@ export default function MarketPanel({
     // ── Market pending action resolution ────────────────────────────────────
     const pendingActionsAll = usePendingActions(agentId, planetId);
     const removePendingByResource = useRemovePendingByResource();
+    const currentTick = useSimulationTick();
 
     useEffect(() => {
         const remaining = resolveMarketPendingActions(pendingActionsAll, buyBids, sellOffers);
@@ -183,7 +184,7 @@ export default function MarketPanel({
             }
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(buyBids), JSON.stringify(sellOffers), agentId, planetId, removePendingByResource]);
+    }, [currentTick, agentId, planetId, removePendingByResource]);
     // ── End market pending action resolution ────────────────────────────────
 
     const hasAnyDirty = useMemo(
@@ -265,7 +266,7 @@ export default function MarketPanel({
             return next;
         });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [JSON.stringify(buyBids), JSON.stringify(sellOffers), JSON.stringify(resources.map((r) => r.name))]);
+    }, [JSON.stringify(resources.map((r) => r.name)), currentTick]);
 
     const handleLocalChange = (name: string, patch: Partial<import('./marketTypes').LocalResourceState>) => {
         setLocalStates((prev) => {

@@ -198,9 +198,17 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
 
     const addPending = useCallback((action: PendingAction) => {
         const current = readAll();
+        const actionKey = agentPlanetKey(action);
         let next: PendingAction[];
         if (action.type === 'scaleChange' && action.facilityId) {
-            next = current.filter((a) => !(a.type === 'scaleChange' && a.facilityId === action.facilityId));
+            next = current.filter(
+                (a) =>
+                    !(
+                        agentPlanetKey(a) === actionKey &&
+                        a.type === 'scaleChange' &&
+                        a.facilityId === action.facilityId
+                    ),
+            );
         } else if (
             (action.type === 'marketBuyPrice' ||
                 action.type === 'marketBuyAutomation' ||
@@ -208,7 +216,14 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             action.resourceName
         ) {
             // Replace any existing pending action of the same sub-type for this resource
-            next = current.filter((a) => !(a.type === action.type && a.resourceName === action.resourceName));
+            next = current.filter(
+                (a) =>
+                    !(
+                        agentPlanetKey(a) === actionKey &&
+                        a.type === action.type &&
+                        a.resourceName === action.resourceName
+                    ),
+            );
         } else if (
             (action.type === 'marketSellPrice' ||
                 action.type === 'marketSellAutomation' ||
@@ -216,7 +231,14 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             action.resourceName
         ) {
             // Replace any existing pending action of the same sub-type for this resource
-            next = current.filter((a) => !(a.type === action.type && a.resourceName === action.resourceName));
+            next = current.filter(
+                (a) =>
+                    !(
+                        agentPlanetKey(a) === actionKey &&
+                        a.type === action.type &&
+                        a.resourceName === action.resourceName
+                    ),
+            );
         } else {
             next = [...current];
         }
