@@ -27,6 +27,7 @@ export type UseAgentPlanetDetailResult = {
     hasNoAssets: boolean;
     isOwnAgent: boolean;
     isOwnAgentUnknown: boolean;
+    isAuthenticatedWithoutAgentId: boolean;
     myAgentId: ReturnType<typeof useAgentId>;
 };
 
@@ -110,6 +111,7 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         hasNoAssets: !isLoading && data !== undefined && detail === null,
         isOwnAgent: myAgentId.agentId === agentId,
         isOwnAgentUnknown: myAgentId.agentId === null && myAgentId.status !== 'authenticated',
+        isAuthenticatedWithoutAgentId: myAgentId.agentId === null && myAgentId.status === 'authenticated',
         myAgentId,
     };
 }

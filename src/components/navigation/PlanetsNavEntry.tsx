@@ -95,7 +95,11 @@ export function PlanetsNavEntry() {
         <SidebarMenuItem>
             <Collapsible open={open} onOpenChange={(next) => hasCompany && setOpen(next)}>
                 <CollapsibleTrigger asChild>
-                    <SidebarMenuButton size='default' className='text-md w-full' disabled={!hasCompany}>
+                    <SidebarMenuButton
+                        size='default'
+                        className='text-md w-full'
+                        disabled={!hasCompany || !activePlanet}
+                    >
                         {activePlanet ? (
                             <PlanetIcon planetId={activePlanet.planetId} />
                         ) : (

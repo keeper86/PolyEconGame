@@ -12,28 +12,28 @@ type Options = {
 };
 
 type Result = {
-    openItem: string | undefined;
+    openItem: string;
 
-    onValueChange: (value: string | undefined) => void;
+    onValueChange: (value: string) => void;
 
-    hashItem: string | undefined;
+    hashItem: string;
 };
 
-function readHash(fromSlug: (slug: string) => string | undefined): string | undefined {
+function readHash(fromSlug: (slug: string) => string | undefined): string {
     if (typeof window === 'undefined') {
-        return undefined;
+        return '';
     }
     const slug = window.location.hash.slice(1);
     if (!slug) {
-        return undefined;
+        return '';
     }
-    return fromSlug(slug) ?? undefined;
+    return fromSlug(slug) ?? '';
 }
 
 export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Options = {}): Result {
-    const [hashItem, setHashItem] = useState<string | undefined>(() => readHash(fromSlug));
+    const [hashItem, setHashItem] = useState<string>(() => readHash(fromSlug));
 
-    const [openItem, setOpenItem] = useState<string | undefined>(() => readHash(fromSlug) ?? undefined);
+    const [openItem, setOpenItem] = useState<string>(() => readHash(fromSlug));
 
     // On mount, open the accordion item matching the URL hash.
     useEffect(() => {
@@ -42,7 +42,7 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
             setHashItem(value);
             setOpenItem(value);
         } else {
-            setHashItem(undefined);
+            setHashItem('');
         }
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,13 +74,13 @@ export function useHashAccordion({ toSlug = (v) => v, fromSlug = (s) => s }: Opt
     }, [openItem, toSlug]);
 
     const onValueChange = useCallback(
-        (value: string | undefined) => {
+        (value: string) => {
             setOpenItem(value);
             // Allow scrolling again if the accordion is re-opened to a different item.
             if (!value) {
                 lastScrolledItem.current = undefined;
             }
-            setHashItem(undefined);
+            setHashItem('');
             if (value) {
                 window.history.replaceState(null, '', `#${toSlug(value)}`);
             } else {

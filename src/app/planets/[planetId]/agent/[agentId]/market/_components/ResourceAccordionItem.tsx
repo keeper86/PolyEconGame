@@ -4,7 +4,8 @@ import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/
 import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useAddPendingAction, usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
+import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
@@ -141,6 +142,12 @@ export default function ResourceAccordionItem({
     const buyErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const sellSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const sellErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // ── Pending market actions ──────────────────────────────────────────────
+    const addPending = useAddPendingAction();
+    const removePendingByResource = useRemovePendingByResource();
+    const currentTick = useSimulationTick();
+    const pendingActions = usePendingActions(agentId, planetId);
 
     const resource = getResourceByName(resourceName);
 
@@ -304,6 +311,10 @@ export default function ResourceAccordionItem({
                 }
                 setSellErrorMsg(errorMessage);
                 setSellSuccessMsg(null);
+                // Remove pending action on error (we remove all sell sub-types)
+                removePendingByResource(agentId, planetId, resourceName, 'marketSellPrice');
+                removePendingByResource(agentId, planetId, resourceName, 'marketSellAutomation');
+                removePendingByResource(agentId, planetId, resourceName, 'marketSellAutoConfig');
             },
         }),
     );
@@ -326,6 +337,10 @@ export default function ResourceAccordionItem({
                 }
                 setBuyErrorMsg(errorMessage);
                 setBuySuccessMsg(null);
+                // Remove pending action on error (we remove all buy sub-types)
+                removePendingByResource(agentId, planetId, resourceName, 'marketBuyPrice');
+                removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutomation');
+                removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutoConfig');
             },
         }),
     );
@@ -343,10 +358,13 @@ export default function ResourceAccordionItem({
                     savedOfferRetainment: '',
                     savedOfferAutomated: false,
                 });
+                // Remove cancel pending on success; resolution handles the rest
+                removePendingByResource(agentId, planetId, resourceName, 'marketCancelSell');
             },
             onError: (err) => {
                 setSellErrorMsg(err instanceof Error ? err.message : 'Failed to cancel offer');
                 setSellSuccessMsg(null);
+                removePendingByResource(agentId, planetId, resourceName, 'marketCancelSell');
             },
         }),
     );
@@ -364,16 +382,23 @@ export default function ResourceAccordionItem({
                     savedBidStorageTarget: '',
                     savedBidAutomated: false,
                 });
+                // Remove cancel pending on success
+                removePendingByResource(agentId, planetId, resourceName, 'marketCancelBuy');
             },
             onError: (err) => {
                 setBuyErrorMsg(err instanceof Error ? err.message : 'Failed to cancel bid');
                 setBuySuccessMsg(null);
+                removePendingByResource(agentId, planetId, resourceName, 'marketCancelBuy');
             },
         }),
     );
 
-    const buySaving = buyMutation.isPending || cancelBuyBidMutation.isPending;
-    const sellSaving = sellMutation.isPending || cancelSellOfferMutation.isPending;
+    const [buyPriceSaving, setBuyPriceSaving] = useState(false);
+    const [buyAutomationSaving, setBuyAutomationSaving] = useState(false);
+    const [buyAutoConfigSaving, setBuyAutoConfigSaving] = useState(false);
+    const [sellPriceSaving, setSellPriceSaving] = useState(false);
+    const [sellAutomationSaving, setSellAutomationSaving] = useState(false);
+    const [sellAutoConfigSaving, setSellAutoConfigSaving] = useState(false);
 
     const handleSaveBuy = () => {
         setBuySuccessMsg(null);
@@ -413,7 +438,25 @@ export default function ResourceAccordionItem({
             },
         };
 
-        buyMutation.mutate({ agentId, planetId, bids: buyPayload });
+        // Add pending action before mutation (price/quantity zone)
+        addPending({
+            type: 'marketBuyPrice',
+            agentId,
+            planetId,
+            resourceName,
+            submittedBidPrice: isNaN(bidPrice) ? undefined : bidPrice,
+            submittedBidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
+            triggerTick: currentTick,
+        });
+
+        setBuyPriceSaving(true);
+        buyMutation.mutate(
+            { agentId, planetId, bids: buyPayload },
+            {
+                onSuccess: () => setBuyPriceSaving(false),
+                onError: () => setBuyPriceSaving(false),
+            },
+        );
     };
 
     const handleSaveSell = () => {
@@ -443,7 +486,25 @@ export default function ResourceAccordionItem({
             },
         };
 
-        sellMutation.mutate({ agentId, planetId, offers: sellPayload });
+        // Add pending action before mutation (price/retainment zone)
+        addPending({
+            type: 'marketSellPrice',
+            agentId,
+            planetId,
+            resourceName,
+            submittedOfferPrice: isNaN(offerPrice) ? undefined : offerPrice,
+            submittedOfferRetainment: isNaN(offerRetainment) ? undefined : offerRetainment,
+            triggerTick: currentTick,
+        });
+
+        setSellPriceSaving(true);
+        sellMutation.mutate(
+            { agentId, planetId, offers: sellPayload },
+            {
+                onSuccess: () => setSellPriceSaving(false),
+                onError: () => setSellPriceSaving(false),
+            },
+        );
     };
 
     const handleResetBuy = () => {
@@ -466,18 +527,104 @@ export default function ResourceAccordionItem({
 
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
+
+        // Add pending action for automation toggle
+        addPending({
+            type: 'marketBuyAutomation',
+            agentId,
+            planetId,
+            resourceName,
+            submittedBidAutomated: automated,
+            triggerTick: currentTick,
+        });
+
+        setBuyAutomationSaving(true);
         const buyPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
-        buyMutation.mutate({ agentId, planetId, bids: buyPayload });
+        buyMutation.mutate(
+            { agentId, planetId, bids: buyPayload },
+            {
+                onSuccess: () => {
+                    setBuyAutomationSaving(false);
+                    setBuySuccessMsg('Buy bids saved. Changes take effect on the next market tick.');
+                    setBuyErrorMsg(null);
+                },
+                onError: (err) => {
+                    setBuyAutomationSaving(false);
+                    let errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                    if (errorMessage.includes('Insufficient deposits')) {
+                        errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                    }
+                    setBuyErrorMsg(errorMessage);
+                    setBuySuccessMsg(null);
+                    removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutomation');
+                },
+            },
+        );
     };
 
     const handleSellAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { offerAutomated: automated, savedOfferAutomated: automated });
+
+        // Add pending action for automation toggle
+        addPending({
+            type: 'marketSellAutomation',
+            agentId,
+            planetId,
+            resourceName,
+            submittedOfferAutomated: automated,
+            triggerTick: currentTick,
+        });
+
+        setSellAutomationSaving(true);
         const sellPayload: Record<string, { automated?: boolean }> = {
             [resourceName]: { automated },
         };
-        sellMutation.mutate({ agentId, planetId, offers: sellPayload });
+        sellMutation.mutate(
+            { agentId, planetId, offers: sellPayload },
+            {
+                onSuccess: () => {
+                    setSellAutomationSaving(false);
+                    setSellSuccessMsg('Sell offers saved. Changes take effect on the next market tick.');
+                    setSellErrorMsg(null);
+                },
+                onError: (err) => {
+                    setSellAutomationSaving(false);
+                    let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
+                    if (errorMessage.includes('Insufficient deposits')) {
+                        errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                    }
+                    setSellErrorMsg(errorMessage);
+                    setSellSuccessMsg(null);
+                    removePendingByResource(agentId, planetId, resourceName, 'marketSellAutomation');
+                },
+            },
+        );
+    };
+
+    // ── Cancel bid/offer handlers with pending actions ──────────────────────
+
+    const handleCancelBid = () => {
+        addPending({
+            type: 'marketCancelBuy',
+            agentId,
+            planetId,
+            resourceName,
+            triggerTick: currentTick,
+        });
+        cancelBuyBidMutation.mutate({ agentId, planetId, resourceName });
+    };
+
+    const handleCancelOffer = () => {
+        addPending({
+            type: 'marketCancelSell',
+            agentId,
+            planetId,
+            resourceName,
+            triggerTick: currentTick,
+        });
+        cancelSellOfferMutation.mutate({ agentId, planetId, resourceName });
     };
 
     // ── Auto-config save / reset handlers ────────────────────────────────────
@@ -490,14 +637,28 @@ export default function ResourceAccordionItem({
             {
                 [resourceName]: { autoConfig },
             };
+
+        // Add pending action for auto-config save
+        addPending({
+            type: 'marketBuyAutoConfig',
+            agentId,
+            planetId,
+            resourceName,
+            triggerTick: currentTick,
+        });
+
+        setBuyAutoConfigSaving(true);
         buyMutation.mutate(
             { agentId, planetId, bids: buyPayload },
             {
                 onSuccess: () => {
+                    setBuyAutoConfigSaving(false);
                     setBuyAutoConfigSuccessMsg('Auto-config saved.');
                 },
                 onError: (err) => {
+                    setBuyAutoConfigSaving(false);
                     setBuyAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                    removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutoConfig');
                 },
             },
         );
@@ -519,14 +680,28 @@ export default function ResourceAccordionItem({
         > = {
             [resourceName]: { autoConfig },
         };
+
+        // Add pending action for auto-config save
+        addPending({
+            type: 'marketSellAutoConfig',
+            agentId,
+            planetId,
+            resourceName,
+            triggerTick: currentTick,
+        });
+
+        setSellAutoConfigSaving(true);
         sellMutation.mutate(
             { agentId, planetId, offers: sellPayload },
             {
                 onSuccess: () => {
+                    setSellAutoConfigSaving(false);
                     setSellAutoConfigSuccessMsg('Auto-config saved.');
                 },
                 onError: (err) => {
+                    setSellAutoConfigSaving(false);
                     setSellAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                    removePendingByResource(agentId, planetId, resourceName, 'marketSellAutoConfig');
                 },
             },
         );
@@ -537,6 +712,61 @@ export default function ResourceAccordionItem({
         setSellAutoConfigSuccessMsg(null);
         setSellAutoConfigErrorMsg(null);
     };
+
+    // ── Granular overlay messages ──────────────────────────────────────────
+    // Zone 1: Automation toggle
+    // Zone 2: Auto-config
+    // Zone 3: Price/quantity inputs + save/reset
+    // Each zone can be independently in "Saving…" (mutation in flight) or "Awaiting next day…" (pending).
+
+    const pendingBuyPriceAction = pendingActions.find(
+        (a) => a.type === 'marketBuyPrice' && a.resourceName === resourceName,
+    );
+    const pendingBuyAutomationAction = pendingActions.find(
+        (a) => a.type === 'marketBuyAutomation' && a.resourceName === resourceName,
+    );
+    const pendingBuyAutoConfigAction = pendingActions.find(
+        (a) => a.type === 'marketBuyAutoConfig' && a.resourceName === resourceName,
+    );
+    const pendingSellPriceAction = pendingActions.find(
+        (a) => a.type === 'marketSellPrice' && a.resourceName === resourceName,
+    );
+    const pendingSellAutomationAction = pendingActions.find(
+        (a) => a.type === 'marketSellAutomation' && a.resourceName === resourceName,
+    );
+    const pendingSellAutoConfigAction = pendingActions.find(
+        (a) => a.type === 'marketSellAutoConfig' && a.resourceName === resourceName,
+    );
+
+    // Buy overlays — each zone uses its own granular saving flag
+    const buyAutomationOverlay = buyAutomationSaving
+        ? 'Saving…'
+        : pendingBuyAutomationAction
+          ? 'Awaiting next day…'
+          : null;
+
+    const buyPriceOverlay = buyPriceSaving ? 'Saving…' : pendingBuyPriceAction ? 'Awaiting next day…' : null;
+
+    const buyAutoConfigOverlay = buyAutoConfigSaving
+        ? 'Saving…'
+        : pendingBuyAutoConfigAction
+          ? 'Awaiting next day…'
+          : null;
+
+    // Sell overlays — each zone uses its own granular saving flag
+    const sellAutomationOverlay = sellAutomationSaving
+        ? 'Saving…'
+        : pendingSellAutomationAction
+          ? 'Awaiting next day…'
+          : null;
+
+    const sellPriceOverlay = sellPriceSaving ? 'Saving…' : pendingSellPriceAction ? 'Awaiting next day…' : null;
+
+    const sellAutoConfigOverlay = sellAutoConfigSaving
+        ? 'Saving…'
+        : pendingSellAutoConfigAction
+          ? 'Awaiting next day…'
+          : null;
 
     return (
         <AccordionItem value={resourceName} id={resourceNameToSlug(resourceName)}>
@@ -603,7 +833,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <div className='flex flex-col gap-4'>
+                    <div className='flex flex-row flex-wrap gap-4'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}
@@ -613,17 +843,22 @@ export default function ResourceAccordionItem({
                             onLocalChange={onLocalChange}
                             onSaveBuy={handleSaveBuy}
                             onResetBuy={handleResetBuy}
-                            onCancelBid={() => cancelBuyBidMutation.mutate({ agentId, planetId, resourceName })}
+                            onCancelBid={handleCancelBid}
                             onAutomationChange={handleBuyAutomationChange}
                             onSaveBuyAutoConfig={handleSaveBuyAutoConfig}
                             onResetBuyAutoConfig={handleResetBuyAutoConfig}
-                            buySaving={buySaving}
+                            buyAutomationSaving={buyAutomationSaving}
+                            buyPriceSaving={buyPriceSaving}
+                            buyAutoConfigSaving={buyAutoConfigSaving}
                             buyAutoConfigSuccessMsg={buyAutoConfigSuccessMsg}
                             buyAutoConfigErrorMsg={buyAutoConfigErrorMsg}
                             buySuccessMsg={buySuccessMsg}
                             buyErrorMsg={buyErrorMsg}
                             planetId={planetId}
                             ships={ships}
+                            buyAutomationOverlay={buyAutomationOverlay}
+                            buyAutoConfigOverlay={buyAutoConfigOverlay}
+                            buyPriceOverlay={buyPriceOverlay}
                         />
 
                         <SellSection
@@ -635,16 +870,21 @@ export default function ResourceAccordionItem({
                             onLocalChange={onLocalChange}
                             onSaveSell={handleSaveSell}
                             onResetSell={handleResetSell}
-                            onCancelOffer={() => cancelSellOfferMutation.mutate({ agentId, planetId, resourceName })}
+                            onCancelOffer={handleCancelOffer}
                             onAutomationChange={handleSellAutomationChange}
                             onSaveSellAutoConfig={handleSaveSellAutoConfig}
                             onResetSellAutoConfig={handleResetSellAutoConfig}
-                            sellSaving={sellSaving}
+                            sellAutomationSaving={sellAutomationSaving}
+                            sellPriceSaving={sellPriceSaving}
+                            sellAutoConfigSaving={sellAutoConfigSaving}
                             sellAutoConfigSuccessMsg={sellAutoConfigSuccessMsg}
                             sellAutoConfigErrorMsg={sellAutoConfigErrorMsg}
                             sellSuccessMsg={sellSuccessMsg}
                             sellErrorMsg={sellErrorMsg}
                             planetId={planetId}
+                            sellAutomationOverlay={sellAutomationOverlay}
+                            sellAutoConfigOverlay={sellAutoConfigOverlay}
+                            sellPriceOverlay={sellPriceOverlay}
                         />
                     </div>
                 </div>

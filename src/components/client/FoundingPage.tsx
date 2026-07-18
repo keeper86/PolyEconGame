@@ -205,6 +205,7 @@ export function FoundingPage() {
                                                         width={720}
                                                         height={720}
                                                         className='absolute -top-8 -right-8 -z-10 pointer-events-none select-none w-86 h-86 object-contain opacity-40'
+                                                        priority
                                                         unoptimized
                                                         aria-hidden='true'
                                                     />

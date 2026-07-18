@@ -132,7 +132,7 @@ function TypewriterStep({
                 setTypedText(text.slice(0, currentIndex + 1));
                 currentIndex++;
                 // Natural typing pacing with slight random variation
-                let nextDelay = Math.random() * 50 + 20;
+                let nextDelay = Math.random() * 40 + 2;
                 if (Math.random() < 0.005) {
                     nextDelay += 200;
                 }

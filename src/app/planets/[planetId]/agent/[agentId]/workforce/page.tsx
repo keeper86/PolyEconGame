@@ -17,8 +17,18 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { Separator } from '@radix-ui/react-dropdown-menu';
 
 export default function WorkforcePage() {
-    const { agentId, planetId, detail, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        detail,
+        assets,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+    } = useAgentPlanetDetail();
 
     const trpc = useTRPC();
     const { data: economyData } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));
@@ -30,6 +40,7 @@ export default function WorkforcePage() {
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
+                isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
                 hasNoAssets={hasNoAssets}
                 detailLoading={isLoading}
                 agentId={agentId}

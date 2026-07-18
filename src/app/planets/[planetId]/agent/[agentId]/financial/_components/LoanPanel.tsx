@@ -2,6 +2,7 @@
 
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useAddPendingAction, usePendingActions, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
@@ -13,6 +14,8 @@ import CreditButton from './CreditButton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { useTour } from '@/components/tour/TourContext';
+import { Spinner } from '@/components/ui/spinner';
+import { Button } from '@/components/ui/button';
 
 type Props = {
     agentId: string;
@@ -34,6 +37,29 @@ const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
     consolidated: 'Consolidated',
 };
 
+const LOAN_REQUEST_PENDING_KEY = '__loan_request__';
+
+function overlayMessage(isSending: boolean, isAwaitingTick: boolean): string | null {
+    if (isSending) {
+        return 'Sending request…';
+    }
+    if (isAwaitingTick) {
+        return 'Awaiting next day…';
+    }
+    return null;
+}
+
+function PendingOverlay({ message }: { message: string }) {
+    return (
+        <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
+            <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                <Spinner className='h-4 w-4' />
+                {message}
+            </span>
+        </div>
+    );
+}
+
 function LoanRow({
     loan,
     deposits,
@@ -51,16 +77,28 @@ function LoanRow({
 }) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
+    const removePendingByKey = useRemovePendingByKey();
+    const currentTick = useSimulationTick();
+
+    const repayPendingKey = `__loan_repay__${loan.id}`;
+
+    const pendingActions = usePendingActions(agentId, planetId);
+    const hasPendingRepay = pendingActions.some(
+        (a) => a.type === 'loanRepay' && a.loanId === loan.id && a.facilityKey === repayPendingKey,
+    );
 
     const repayMutation = useMutation(
         trpc.repayLoan.mutationOptions({
             onSuccess: (result) => {
                 onRepaid(result.repaidAmount);
+                removePendingByKey(agentId, planetId, repayPendingKey);
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
             },
             onError: (err) => {
+                removePendingByKey(agentId, planetId, repayPendingKey);
                 onError(err instanceof Error ? err.message : 'Repayment failed');
             },
         }),
@@ -68,20 +106,25 @@ function LoanRow({
 
     const pct = loan.annualInterestRate * 100;
 
-    return (
-        <div className='text-xs'>
-            <div className='flex items-center justify-between gap-2'>
-                <span className='flex items-center'>
-                    <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
-                </span>
+    const isSending = repayMutation.isPending;
+    const isAwaitingTick = hasPendingRepay && !isSending;
+    const overlayMsg = overlayMessage(isSending, isAwaitingTick);
 
-                <span>Loan Rate {pct.toFixed(1)} %</span>
-                {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
-                {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
+    return (
+        <div className='space-y-2 relative'>
+            <div className='text-xs'>
+                <div className='flex items-center justify-between gap-2'>
+                    <span className='flex items-center'>
+                        <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
+                    </span>
+                    <span>Loan Rate {pct.toFixed(1)} %</span>
+                    {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
+                    {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
+                </div>
             </div>
 
             {loan.earlyRepaymentAllowed && (
-                <div className='flex gap-1.5 mt-1'>
+                <div className='flex gap-1.5'>
                     {([0.25, 0.5, 1] as const).map((fraction) => {
                         const amount = Math.floor(loan.remainingPrincipal * fraction);
                         const canAfford = deposits >= amount;
@@ -97,12 +140,24 @@ function LoanRow({
                                     repayMutation.isPending || !canAfford || amount === 0 || !loan.earlyRepaymentAllowed
                                 }
                                 planetId={planetId}
-                                onClick={() => repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction })}
+                                onClick={() => {
+                                    addPending({
+                                        type: 'loanRepay',
+                                        agentId,
+                                        planetId,
+                                        triggerTick: currentTick,
+                                        facilityKey: repayPendingKey,
+                                        loanId: loan.id,
+                                    });
+                                    repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction });
+                                }}
                             />
                         );
                     })}
                 </div>
             )}
+
+            {overlayMsg && <PendingOverlay message={overlayMsg} />}
         </div>
     );
 }
@@ -111,15 +166,21 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
+    const addPending = useAddPendingAction();
+    const removePendingByKey = useRemovePendingByKey();
+    const currentTick = useSimulationTick();
 
     const { data: conditionsData, isLoading } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
 
-    const currentTick = useSimulationTick();
-
     const conditions = conditionsData?.conditions ?? null;
     const activeLoans = conditionsData?.activeLoans ?? [];
+
+    const pendingActions = usePendingActions(agentId, planetId);
+    const hasPendingLoanRequest = pendingActions.some(
+        (a) => a.type === 'loanRequest' && a.facilityKey === LOAN_REQUEST_PENDING_KEY,
+    );
 
     const requestLoanMutation = useMutation(
         trpc.requestLoan.mutationOptions({
@@ -139,10 +200,15 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 }
             },
             onError: (err) => {
+                removePendingByKey(agentId, planetId, LOAN_REQUEST_PENDING_KEY);
                 toast.error(err instanceof Error ? err.message : 'Loan request failed');
             },
         }),
     );
+
+    const isSendingLoan = requestLoanMutation.isPending;
+    const isAwaitingLoan = hasPendingLoanRequest && !isSendingLoan;
+    const loanOverlayMsg = overlayMessage(isSendingLoan, isAwaitingLoan);
 
     return (
         <div className='space-y-3' data-tour='financial-loan-panel'>
@@ -155,17 +221,14 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 </p>
             )}
 
-            {conditions && (conditions.maxLoanAmount > 0 || !conditions.isNewAgent) && (
-                <div className='space-y-2'>
-                    <p className='text-sm font-semibold flex items-center gap-2'>
-                        <HandCoins className='h-4 w-4 text-muted-foreground' />
-                        Request a loan
-                    </p>
+            <p className='text-sm font-semibold flex items-center gap-2'>
+                <HandCoins className='h-4 w-4 text-muted-foreground' />
+                Request a loan
+            </p>
+            {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (
+                <div className='space-y-2 relative'>
                     {conditions.isNewAgent ? (
                         <>
-                            <p className='text-xs text-muted-foreground'>
-                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
-                            </p>
                             <span data-tour='starter-loan'>
                                 <CreditButton
                                     variant='starter'
@@ -175,6 +238,13 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
                                     onClick={() => {
+                                        addPending({
+                                            type: 'loanRequest',
+                                            agentId,
+                                            planetId,
+                                            triggerTick: currentTick,
+                                            facilityKey: LOAN_REQUEST_PENDING_KEY,
+                                        });
                                         requestLoanMutation.mutate({
                                             agentId,
                                             planetId,
@@ -183,6 +253,9 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     }}
                                 />
                             </span>
+                            <p className='text-xs text-muted-foreground'>
+                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
+                            </p>
                         </>
                     ) : (
                         <>
@@ -209,6 +282,13 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                             disabled={conditions.maxLoanAmount === 0}
                                             planetId={planetId}
                                             onClick={() => {
+                                                addPending({
+                                                    type: 'loanRequest',
+                                                    agentId,
+                                                    planetId,
+                                                    triggerTick: currentTick,
+                                                    facilityKey: LOAN_REQUEST_PENDING_KEY,
+                                                });
                                                 requestLoanMutation.mutate({ agentId, planetId, amount });
                                             }}
                                         />
@@ -217,14 +297,26 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                             </div>
                         </>
                     )}
+
+                    {loanOverlayMsg && <PendingOverlay message={loanOverlayMsg} />}
                 </div>
             )}
 
             {conditions && conditions.maxLoanAmount === 0 && !conditions.isNewAgent ? (
-                <p className='text-xs text-muted-foreground'>
-                    The bank is not offering additional credit at this time. Improve your cash flow (increase revenue or
-                    reduce costs) to unlock further borrowing.
-                </p>
+                <div className='flex flex-col gap-2'>
+                    <Button
+                        variant='outline'
+                        disabled
+                        className='w-full h-[42px] flex items-center gap-2 border-muted-foreground/30 bg-muted/20 cursor-not-allowed'
+                    >
+                        <HandCoins className='h-[42px] w-[42px]' />
+                        <span className='text-md'>No additional credit available</span>
+                    </Button>
+                    <span className='text-[10px] right-0 text-muted-foreground'>
+                        Improve your cash flow (increase revenue or reduce costs) or raise your asset evaluation to
+                        unlock further borrowing.
+                    </span>
+                </div>
             ) : (
                 <p className='text-xs text-muted-foreground'>
                     The funds will be credited to your account after the current tick completes.

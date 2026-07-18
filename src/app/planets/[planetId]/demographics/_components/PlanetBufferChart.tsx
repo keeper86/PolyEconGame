@@ -366,30 +366,23 @@ function BufferAreaChart({
                                 fill={`url(#grad${key})`}
                                 dot={(props: { cx: number; cy: number; payload: ChartPoint }) => {
                                     const { cx, cy, payload } = props;
+                                    const tick = payload?.tick;
                                     const monthIdx = payload?.monthIdx;
                                     const value = payload?.[key];
                                     // Skip rendering if the data value is null/undefined (e.g. ghost-only months)
                                     if (value == null || typeof value !== 'number') {
-                                        return <circle key={`${key}_${monthIdx}_null`} r={0} visibility='hidden' />;
+                                        return <circle key={`${key}_${tick}_null`} r={0} visibility='hidden' />;
                                     }
                                     // Larger dot for live data point (fractional monthIdx)
                                     if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
                                         return (
-                                            <circle
-                                                key={`${key}_${monthIdx}_live`}
-                                                cx={cx}
-                                                cy={cy}
-                                                r={3.5}
-                                                fill={color}
-                                            />
+                                            <circle key={`${key}_${tick}_live`} cx={cx} cy={cy} r={3.5} fill={color} />
                                         );
                                     }
                                     if (cx != null && !isNaN(cx)) {
-                                        return (
-                                            <circle key={`${key}_${monthIdx}`} cx={cx} cy={cy} r={2.5} fill={color} />
-                                        );
+                                        return <circle key={`${key}_${tick}`} cx={cx} cy={cy} r={2.5} fill={color} />;
                                     }
-                                    return <circle key={`${key}_${monthIdx}_hidden`} r={0} visibility='hidden' />;
+                                    return <circle key={`${key}_${tick}_hidden`} r={0} visibility='hidden' />;
                                 }}
                                 activeDot={{ r: 3 }}
                                 isAnimationActive={false}
@@ -414,21 +407,18 @@ function BufferAreaChart({
                                     dot={(props: { cx: number; cy: number; payload: ChartPoint }) => {
                                         const { cx, cy, payload } = props;
                                         const ghostKey = `ghost${key.charAt(0).toUpperCase() + key.slice(1)}`;
+                                        const tick = payload?.tick;
                                         const value = payload?.[ghostKey];
                                         // Skip rendering if the ghost data value is null/undefined (e.g. current-data-only months)
                                         if (value == null || typeof value !== 'number') {
                                             return (
-                                                <circle
-                                                    key={`${ghostKey}_${payload?.monthIdx}_null`}
-                                                    r={0}
-                                                    visibility='hidden'
-                                                />
+                                                <circle key={`${ghostKey}_${tick}_null`} r={0} visibility='hidden' />
                                             );
                                         }
                                         if (cx != null && !isNaN(cx)) {
                                             return (
                                                 <circle
-                                                    key={`${ghostKey}_${payload?.monthIdx}`}
+                                                    key={`${ghostKey}_${tick}`}
                                                     cx={cx}
                                                     cy={cy}
                                                     r={2}
@@ -438,13 +428,7 @@ function BufferAreaChart({
                                                 />
                                             );
                                         }
-                                        return (
-                                            <circle
-                                                key={`${ghostKey}_${payload?.monthIdx}_invis`}
-                                                r={0}
-                                                visibility='hidden'
-                                            />
-                                        );
+                                        return <circle key={`${ghostKey}_${tick}_invis`} r={0} visibility='hidden' />;
                                     }}
                                     activeDot={false}
                                     legendType='none'

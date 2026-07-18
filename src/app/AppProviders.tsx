@@ -10,6 +10,7 @@ import { SessionProvider } from 'next-auth/react';
 import { useEffect } from 'react';
 import { useLogger } from '../hooks/useLogger';
 import { SimulationOfflineBanner } from '@/components/client/SimulationOfflineBanner';
+import { SessionRecovery } from '@/components/client/SessionRecovery';
 
 function makeQueryClient() {
     return new QueryClient({
@@ -60,7 +61,8 @@ export default function AppProviders({ children, session }: { children: React.Re
             <TRPCProvider trpcClient={trpcClient} queryClient={queryClient}>
                 <AttachLoggerToQueryClient queryClient={queryClient} />
                 <SimulationOfflineBanner />
-                <SessionProvider session={session} refetchOnWindowFocus={true} refetchInterval={5 * 60}>
+                <SessionProvider session={session} refetchOnWindowFocus={true} refetchInterval={10 * 60}>
+                    <SessionRecovery />
                     <SimulationTickPoller />
                     <PendingActionProvider>
                         <TourProvider>{children}</TourProvider>

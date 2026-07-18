@@ -222,7 +222,9 @@ export type BuySectionProps = {
     onAutomationChange: (automated: boolean) => void;
     onSaveBuyAutoConfig: () => void;
     onResetBuyAutoConfig: () => void;
-    buySaving: boolean;
+    buyPriceSaving: boolean;
+    buyAutomationSaving: boolean;
+    buyAutoConfigSaving: boolean;
     buyAutoConfigSuccessMsg: string | null;
     buyAutoConfigErrorMsg: string | null;
     buySuccessMsg: string | null;
@@ -230,6 +232,12 @@ export type BuySectionProps = {
 
     planetId: string;
     ships: ConsumptionShipInfo[];
+    /** Overlay message for the automation zone (Switch + header) */
+    buyAutomationOverlay?: string | null;
+    /** Overlay message for the auto-config zone */
+    buyAutoConfigOverlay?: string | null;
+    /** Overlay message for the price/quantity inputs zone */
+    buyPriceOverlay?: string | null;
 };
 
 export type SellSectionProps = {
@@ -245,11 +253,19 @@ export type SellSectionProps = {
     onAutomationChange: (automated: boolean) => void;
     onSaveSellAutoConfig: () => void;
     onResetSellAutoConfig: () => void;
-    sellSaving: boolean;
+    sellPriceSaving: boolean;
+    sellAutomationSaving: boolean;
+    sellAutoConfigSaving: boolean;
     sellAutoConfigSuccessMsg: string | null;
     sellAutoConfigErrorMsg: string | null;
     sellSuccessMsg: string | null;
     sellErrorMsg: string | null;
 
     planetId: string;
+    /** Overlay message for the automation zone (Switch + header) */
+    sellAutomationOverlay?: string | null;
+    /** Overlay message for the auto-config zone */
+    sellAutoConfigOverlay?: string | null;
+    /** Overlay message for the price/quantity inputs zone */
+    sellPriceOverlay?: string | null;
 };

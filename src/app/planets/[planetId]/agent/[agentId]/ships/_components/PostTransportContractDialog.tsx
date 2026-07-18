@@ -115,7 +115,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                     </div>
                     <div className='grid grid-cols-2 gap-3'>
                         <div className='space-y-1.5'>
-                            <Label>Max Duration (ticks)</Label>
+                            <Label>Max Duration (days)</Label>
                             <Input
                                 type='number'
                                 min={1}
@@ -125,7 +125,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                             />
                         </div>
                         <div className='space-y-1.5'>
-                            <Label>Expires in (ticks)</Label>
+                            <Label>Expires in (days)</Label>
                             <Input
                                 type='number'
                                 min={1}

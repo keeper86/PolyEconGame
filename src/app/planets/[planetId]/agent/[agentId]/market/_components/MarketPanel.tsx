@@ -4,6 +4,7 @@ import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
+import { usePendingActions, useRemovePendingByResource, resolveMarketPendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
@@ -23,6 +24,7 @@ import {
     slugToResourceName,
 } from './marketHelpers';
 import type { LocalResourceState, Props } from './marketTypes';
+import { isAutoConfigDirty } from './marketTypes';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
 
@@ -163,6 +165,27 @@ export default function MarketPanel({
         buildInitialState(resources, buyBids, sellOffers),
     );
 
+    // ── Market pending action resolution ────────────────────────────────────
+    const pendingActionsAll = usePendingActions(agentId, planetId);
+    const removePendingByResource = useRemovePendingByResource();
+
+    useEffect(() => {
+        const remaining = resolveMarketPendingActions(pendingActionsAll, buyBids, sellOffers);
+        if (remaining.length === pendingActionsAll.length) {
+            return; // nothing resolved
+        }
+
+        // Identify which actions were resolved and remove them
+        const resolved = pendingActionsAll.filter((a) => !remaining.includes(a));
+        for (const action of resolved) {
+            if (action.resourceName) {
+                removePendingByResource(agentId, planetId, action.resourceName, action.type);
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [JSON.stringify(buyBids), JSON.stringify(sellOffers), agentId, planetId, removePendingByResource]);
+    // ── End market pending action resolution ────────────────────────────────
+
     const hasAnyDirty = useMemo(
         () => Object.values(localStates).some((s) => Object.values(s.dirtyFields).some(Boolean)),
         [localStates],
@@ -196,6 +219,47 @@ export default function MarketPanel({
                 if (p.dirtyFields.bidStorageTarget) {
                     next[name].bidStorageTarget = p.bidStorageTarget;
                     next[name].dirtyFields.bidStorageTarget = p.bidStorageTarget !== next[name].savedBidStorageTarget;
+                }
+
+                // Preserve unsaved auto-config changes across tick re-renders
+                if (p.buyAutoConfig && isAutoConfigDirty(p.buyAutoConfig, buyBids[name]?.autoConfig)) {
+                    next[name].buyAutoConfig = p.buyAutoConfig;
+                }
+                if (p.sellAutoConfig && isAutoConfigDirty(p.sellAutoConfig, sellOffers[name]?.autoConfig)) {
+                    next[name].sellAutoConfig = p.sellAutoConfig;
+                }
+
+                // Preserve saved* fields that were set by recent mutations but haven't
+                // yet been reflected by the server (tick hasn't processed them yet).
+                // Without this, a successful save appears to "jump back" until the next tick.
+                if (p.savedOfferPrice !== next[name].savedOfferPrice) {
+                    next[name].savedOfferPrice = p.savedOfferPrice;
+                }
+                if (p.savedOfferRetainment !== next[name].savedOfferRetainment) {
+                    next[name].savedOfferRetainment = p.savedOfferRetainment;
+                }
+                if (p.savedBidPrice !== next[name].savedBidPrice) {
+                    next[name].savedBidPrice = p.savedBidPrice;
+                }
+                if (p.savedBidStorageTarget !== next[name].savedBidStorageTarget) {
+                    next[name].savedBidStorageTarget = p.savedBidStorageTarget;
+                }
+                if (p.savedBidAutomated !== next[name].savedBidAutomated) {
+                    next[name].savedBidAutomated = p.savedBidAutomated;
+                }
+                if (p.savedOfferAutomated !== next[name].savedOfferAutomated) {
+                    next[name].savedOfferAutomated = p.savedOfferAutomated;
+                }
+
+                // Preserve bidAutomated/offerAutomated values when a mutation is pending
+                // (saved differs from server → user's toggle hasn't been processed yet).
+                // Without this, clicking the automation switch right before a tick arrives
+                // causes it to snap back to the old server value.
+                if (p.savedBidAutomated !== next[name].bidAutomated) {
+                    next[name].bidAutomated = p.bidAutomated;
+                }
+                if (p.savedOfferAutomated !== next[name].offerAutomated) {
+                    next[name].offerAutomated = p.offerAutomated;
                 }
             }
             return next;
@@ -288,7 +352,7 @@ export default function MarketPanel({
 
     const handleTabChange = (value: string) => {
         setActiveTab(value);
-        handleOpenChange(undefined);
+        handleOpenChange('');
         window.history.replaceState(null, '', `#${value}`);
     };
 

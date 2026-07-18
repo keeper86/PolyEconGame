@@ -6,8 +6,17 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Page } from '@/components/client/Page';
 
 export default function StoragePage() {
-    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        assets,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+    } = useAgentPlanetDetail();
 
     return (
         <Page title={`Storage Overview`}>
@@ -15,6 +24,7 @@ export default function StoragePage() {
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
+                isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
                 hasNoAssets={hasNoAssets}
                 detailLoading={isLoading}
                 agentId={agentId}
