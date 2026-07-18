@@ -6,8 +6,17 @@ import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
 import { Page } from '@/components/client/Page';
 
 export default function ProductionPage() {
-    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        assets,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+    } = useAgentPlanetDetail();
 
     return (
         <Page title={`Production Management`}>
@@ -15,6 +24,7 @@ export default function ProductionPage() {
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
+                isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
                 hasNoAssets={hasNoAssets}
                 detailLoading={isLoading}
                 agentId={agentId}

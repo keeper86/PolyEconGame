@@ -19,6 +19,8 @@ export const assetManifest = {
     cement_plant: '/images/facilities/cement_plant.webp',
     centauri: '/images/planets/centauri.webp',
     centauri_large: '/images/planets/centauri_large.webp',
+    alpha_centauri: '/images/planets/centauri.webp',
+    alpha_centauri_large: '/images/planets/centauri_large.webp',
     clay: '/images/products/clay.webp',
     clay_deposit: '/images/products/clay_deposit.webp',
     clay_mine: '/images/facilities/clay_mine.webp',

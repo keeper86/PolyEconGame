@@ -52,6 +52,10 @@ export function handleSetSellOffers(
         const offer = assets.market.sell[resourceName];
         if (update.offerPrice !== undefined && update.offerPrice > 0) {
             offer.offerPrice = Math.max(PRICE_FLOOR, update.offerPrice);
+        } else if (update.automated === false) {
+            // When automation is turned off, clear stale offer values
+            delete offer.offerPrice;
+            delete offer.offerRetainment;
         }
         if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
             offer.offerRetainment = update.offerRetainment;
@@ -176,6 +180,10 @@ export function handleSetBuyBids(
         const bid = assets.market.buy[resourceName];
         if (update.bidPrice !== undefined && update.bidPrice > 0) {
             bid.bidPrice = update.bidPrice;
+        } else if (update.automated === false) {
+            // When automation is turned off, clear stale bid values
+            delete bid.bidPrice;
+            delete bid.bidStorageTarget;
         }
         if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
             bid.bidStorageTarget = update.bidStorageTarget;

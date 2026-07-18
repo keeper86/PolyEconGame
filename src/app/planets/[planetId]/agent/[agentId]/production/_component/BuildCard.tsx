@@ -65,7 +65,7 @@ function BuildForm({
     const sending = buildMutation.isPending;
 
     // Overlay message for pending states
-    const overlayMessage = awaitingTick ? 'Awaiting tick…' : sending ? 'Sending build…' : null;
+    const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
 
     return (
         <FacilityCardShell
@@ -226,7 +226,7 @@ function ConstructionDisplay({
                     <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
                         <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
                             <Spinner className='h-4 w-4' />
-                            {isPending ? 'Cancellation pending…' : 'Awaiting tick…'}
+                            {isPending ? 'Cancellation pending…' : 'Awaiting next day…'}
                         </span>
                     </div>
                 )}

@@ -12,7 +12,13 @@ export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: n
                 className='rounded-full overflow-hidden shrink-0 inline-block relative'
                 style={{ width: size, height: size }}
             >
-                <Image src='/images/planets/centauri.webp' alt={planetId} fill className='object-cover' />
+                <Image
+                    src='/images/planets/centauri.webp'
+                    alt={planetId}
+                    fill
+                    sizes={`${size}px`}
+                    className='object-cover'
+                />
             </span>
         );
     }
@@ -26,7 +32,7 @@ export function PlanetIcon({ planetId, size = 24 }: { planetId: string; size?: n
             className='rounded-full overflow-hidden shrink-0 inline-block relative'
             style={{ width: size, height: size }}
         >
-            <Image src={src} alt={planetId} fill className='object-cover' />
+            <Image src={src} alt={planetId} fill sizes={`${size}px`} className='object-cover' />
         </span>
     );
 }

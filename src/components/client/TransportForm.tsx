@@ -99,7 +99,7 @@ export default function TransportForm({
 
             <div>
                 <label htmlFor='transport-eta' className='block text-sm'>
-                    ETA (ticks)
+                    ETA (days)
                 </label>
                 <input
                     id='transport-eta'

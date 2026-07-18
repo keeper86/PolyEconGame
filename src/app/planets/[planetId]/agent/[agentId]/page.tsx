@@ -18,8 +18,17 @@ function QuickStatCard({ label, value }: { label: string; value: string }) {
 }
 
 export default function AgentPlanetOverviewPage() {
-    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        assets,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+    } = useAgentPlanetDetail();
 
     const subPageHref = (segment: string) =>
         `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as unknown as '/';
@@ -29,6 +38,7 @@ export default function AgentPlanetOverviewPage() {
             isLoading={myAgentId.isLoading}
             isOwnAgent={isOwnAgent}
             isOwnAgentUnknown={isOwnAgentUnknown}
+            isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
             hasNoAssets={hasNoAssets}
             detailLoading={isLoading}
             agentId={agentId}

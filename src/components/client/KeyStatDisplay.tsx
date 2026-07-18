@@ -42,10 +42,18 @@ function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string
     return (
         <div className='flex items-center text-sm text-muted-foreground text-outline-strong'>
             <span className='pr-2'>Deposits</span>
-            <span className='tabular-nums whitespace-nowrap font-bold text-foreground text-md pr-1'>
+            <span className='tabular-nums whitespace-nowrap font-bold text-foreground text-md'>
                 {formatNumberWithUnit(data.deposits, 'none')}
             </span>
-            <Image src={currencyIconPath} alt='' width={10} height={10} className='shrink-0' aria-hidden='true' />
+            <Image
+                src={currencyIconPath}
+                alt=''
+                width={12}
+                height={12}
+                style={{ width: 12, height: 12 }}
+                className='shrink-0'
+                aria-hidden='true'
+            />
         </div>
     );
 }

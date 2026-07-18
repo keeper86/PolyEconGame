@@ -19,6 +19,7 @@ export default function MarketPage() {
         hasNoAssets,
         isOwnAgent,
         isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
         myAgentId,
     } = useAgentPlanetDetail();
     const [showRelevant, setShowRelevant] = useState(true);
@@ -41,6 +42,7 @@ export default function MarketPage() {
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
+                isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
                 hasNoAssets={hasNoAssets}
                 detailLoading={isLoading}
                 agentId={agentId}

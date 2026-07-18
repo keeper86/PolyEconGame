@@ -259,11 +259,11 @@ export function ActiveFacilityCard({
     const overlayMessage = expandMutation.isPending
         ? 'Expanding…'
         : expandPending
-          ? 'Awaiting tick…'
+          ? 'Awaiting next day…'
           : contractMutation.isPending
             ? 'Reducing…'
             : contractPending
-              ? 'Awaiting tick…'
+              ? 'Awaiting next day…'
               : pendingCancelAction
                 ? 'Cancellation pending…'
                 : null;
@@ -378,7 +378,7 @@ export function ActiveFacilityCard({
                                 planetId={planetId}
                                 label='Expand to scale'
                                 confirmLabel='Confirm Expand'
-                                pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting tick…'}
+                                pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting next day…'}
                                 isPending={expandMutation.isPending || expandPending}
                                 financials={financials}
                                 onCancel={() => setShowExpand(false)}

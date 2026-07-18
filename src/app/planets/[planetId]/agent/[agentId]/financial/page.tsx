@@ -14,8 +14,18 @@ import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
 
 export default function FinancialPage() {
-    const { agentId, planetId, assets, isLoading, hasNoAssets, isOwnAgent, isOwnAgentUnknown, myAgentId, tick } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        assets,
+        isLoading,
+        hasNoAssets,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+        tick,
+    } = useAgentPlanetDetail();
 
     const trpc = useTRPC();
 
@@ -39,6 +49,7 @@ export default function FinancialPage() {
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
+                isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
                 hasNoAssets={hasNoAssets}
                 detailLoading={isLoading}
                 agentId={agentId}

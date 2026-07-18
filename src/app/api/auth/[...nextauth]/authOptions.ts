@@ -47,46 +47,52 @@ export const authOptions: AuthOptions = {
             return true;
         },
         async jwt(thing) {
-            const { token, account, profile, trigger, session: newSession } = thing;
+            try {
+                const { token, account, profile, trigger, session: newSession } = thing;
 
-            // When the client calls updateSession(), persist the new values into the JWT.
-            if (trigger === 'update' && newSession) {
-                if (newSession.agentId !== undefined) {
-                    token.agentId = newSession.agentId;
+                // When the client calls updateSession(), persist the new values into the JWT.
+                if (trigger === 'update' && newSession) {
+                    if (newSession.agentId !== undefined) {
+                        token.agentId = newSession.agentId;
+                    }
+                    if (newSession.planetId !== undefined) {
+                        token.planetId = newSession.planetId;
+                    }
+                    // Add other fields here if they should also be updateable from the client
                 }
-                if (newSession.planetId !== undefined) {
-                    token.planetId = newSession.planetId;
-                }
-                // Add other fields here if they should also be updateable from the client
-            }
 
-            if (account) {
-                token.accessToken = account.access_token;
-                token.idToken = account.id_token;
-                token.userId = account.providerAccountId || profile?.sub;
+                if (account) {
+                    token.accessToken = account.access_token;
+                    token.idToken = account.id_token;
+                    token.userId = account.providerAccountId || profile?.sub;
 
-                // Fetch user_data once on sign-in and store in JWT to avoid a DB query on every request.
-                if (token.userId) {
-                    try {
-                        const row = await db('user_data').where({ user_id: token.userId }).first();
-                        if (row) {
-                            token.displayName = row.display_name;
-                            token.email = row.email;
-                            token.hasAssessmentPublished = row.has_assessment_published;
-                            token.agentId = row.agent_id ?? null;
-                            token.planetId = row.planet_id ?? null;
-                        } else {
-                            logger.debug(
-                                { component: 'auth-jwt' },
-                                `No user_data found for ${token.userId} during token enrichment;`,
-                            );
+                    // Fetch user_data once on sign-in and store in JWT to avoid a DB query on every request.
+                    if (token.userId) {
+                        try {
+                            const row = await db('user_data').where({ user_id: token.userId }).first();
+                            if (row) {
+                                token.displayName = row.display_name;
+                                token.email = row.email;
+                                token.hasAssessmentPublished = row.has_assessment_published;
+                                token.agentId = row.agent_id ?? null;
+                                token.planetId = row.planet_id ?? null;
+                            } else {
+                                logger.debug(
+                                    { component: 'auth-jwt' },
+                                    `No user_data found for ${token.userId} during token enrichment;`,
+                                );
+                            }
+                        } catch (err) {
+                            logger.error({ component: 'auth-jwt', err }, 'Failed to load user_data on jwt callback');
                         }
-                    } catch (err) {
-                        logger.error({ component: 'auth-jwt', err }, 'Failed to load user_data on jwt callback');
                     }
                 }
+                return token;
+            } catch (error) {
+                logger.error({ component: 'auth-jwt', err: error }, 'Unhandled error in jwt callback');
+                // Return the token unchanged so the server doesn't crash
+                return thing.token;
             }
-            return token;
         },
         async session({ session, token }) {
             session.type = 'next-auth';
