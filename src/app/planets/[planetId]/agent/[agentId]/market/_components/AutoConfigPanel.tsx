@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, type Units } from '@/lib/utils';
@@ -53,23 +54,56 @@ type RangeSliderDef = {
     isPercent?: boolean;
 };
 
-const BUY_VOLUME_SLIDERS: SliderDef[] = [
-    { key: 'inventorySmoothingMaxExtra', label: 'Max buy rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
-    { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
-    { key: 'freeBuyQuantity', label: 'Free buy qty / tick', min: 0, max: 10000, step: 1, defaultVal: 0 },
-    { key: 'freeBuyQuantitySmoothingMaxExtra', label: 'Free buy smoothing', min: 0, max: 20, step: 1, defaultVal: 2 },
+/** A group of sliders rendered together, optionally preceded by a <Separator /> */
+type SliderGroupDef = {
+    /** Shown as a small muted label above the group. If omitted, no label is rendered. */
+    label?: string;
+    sliders: SliderDef[];
+    /** If true, this entire group is subject to the `bufferApplicable` prop (dimmed/disabled when false) */
+    isBufferGroup?: boolean;
+};
+
+const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
+    {
+        label: 'Input buffer',
+        isBufferGroup: true,
+        sliders: [
+            { key: 'inventorySmoothingMaxExtra', label: 'Max buy rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
+            { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
+        ],
+    },
+    {
+        label: 'Free quantity',
+        isBufferGroup: false,
+        sliders: [
+            { key: 'freeBuyQuantity', label: 'Free buy quantity (total)', min: 0, max: 10000, step: 1, defaultVal: 0 },
+            { key: 'freeBuyQuantitySmoothingMaxExtra', label: 'Free buy fill days', min: 0, max: 20, step: 1, defaultVal: 2 },
+        ],
+    },
 ];
 
-const SELL_VOLUME_SLIDERS: SliderDef[] = [
-    { key: 'inventorySmoothingMaxExtra', label: 'Max sell rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
-    { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
-    { key: 'freeSellQuantity', label: 'Free sell qty / tick', min: 0, max: 10000, step: 1, defaultVal: 0 },
-    { key: 'freeSellQuantitySmoothingMaxExtra', label: 'Free sell smoothing', min: 0, max: 20, step: 1, defaultVal: 2 },
+const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
+    {
+        label: 'Output buffer',
+        isBufferGroup: true,
+        sliders: [
+            { key: 'inventorySmoothingMaxExtra', label: 'Max sell rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
+            { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
+        ],
+    },
+    {
+        label: 'Free quantity',
+        isBufferGroup: false,
+        sliders: [
+            { key: 'freeSellQuantity', label: 'Free sell quantity (total)', min: 0, max: 10000, step: 1, defaultVal: 0 },
+            { key: 'freeSellQuantitySmoothingMaxExtra', label: 'Free sell fill days', min: 0, max: 20, step: 1, defaultVal: 2 },
+        ],
+    },
 ];
 
 const PRICE_ADJUST_RANGE: RangeSliderDef = {
     keys: ['priceAdjustMaxDown', 'priceAdjustMaxUp'],
-    label: 'Price adjust range',
+    label: 'Adjustment speed',
     min: 0.5,
     max: 1.5,
     step: 0.01,
@@ -90,7 +124,7 @@ const BUY_PRICING_SLIDERS: SliderDef[] = [
 
 const P_C_RATIO_RANGE_SELL: RangeSliderDef = {
     keys: ['automatedCostFloorBuffer', 'bidOfferMaxCostMultiplier'],
-    label: 'P/C ratio range',
+    label: 'Price/Cost range',
     min: 0,
     max: 10,
     step: 0.25,
@@ -99,7 +133,7 @@ const P_C_RATIO_RANGE_SELL: RangeSliderDef = {
 
 const P_C_RATIO_RANGE_BUY: RangeSliderDef = {
     keys: ['automatedCostFloorBuffer', 'bidOfferMaxCostMultiplier'],
-    label: 'P/C ratio range',
+    label: 'Price/Cost range',
     min: 0,
     max: 10,
     step: 0.25,
@@ -473,7 +507,7 @@ export function AutoConfigPanel({
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
 }): React.ReactElement {
-    const volumeSliders = mode === 'buy' ? BUY_VOLUME_SLIDERS : SELL_VOLUME_SLIDERS;
+    const volumeGroups = mode === 'buy' ? BUY_VOLUME_GROUPS : SELL_VOLUME_GROUPS;
     const pricingSliders = mode === 'buy' ? BUY_PRICING_SLIDERS : SELL_PRICING_SLIDERS;
     const pricingRangeSliders = useMemo(
         () => (mode === 'buy' ? [PRICE_ADJUST_RANGE, P_C_RATIO_RANGE_BUY] : [PRICE_ADJUST_RANGE, P_C_RATIO_RANGE_SELL]),
@@ -484,6 +518,8 @@ export function AutoConfigPanel({
     const detectPricingPreset = mode === 'buy' ? detectPricingBuyPreset : detectPricingSellPreset;
     const pricingPresetMap = mode === 'buy' ? PRICING_BUY_PRESETS : PRICING_SELL_PRESETS;
 
+    // Flatten for set/key checks
+    const volumeSliders = useMemo(() => volumeGroups.flatMap((g) => g.sliders), [volumeGroups]);
     const volumeKeys = useMemo(() => new Set(volumeSliders.map((s) => s.key)), [volumeSliders]);
     const pricingKeys = useMemo(
         () => new Set([...pricingSliders.map((s) => s.key), ...pricingRangeSliders.flatMap((r) => r.keys)]),
@@ -569,7 +605,7 @@ export function AutoConfigPanel({
     return (
         <div className='space-y-3 pt-2'>
             {/* ── Volume Strategy Row ─────────────────────────────────────────── */}
-            <div className={`rounded-md border bg-muted/30 p-2.5 space-y-2 ${!bufferApplicable ? 'opacity-50' : ''}`}>
+            <div className='rounded-md border bg-muted/30 p-2.5 space-y-2'>
                 <PresetButtonRow
                     label='Volume Strategy'
                     presets={VOLUME_PRESET_ORDER}
@@ -598,24 +634,42 @@ export function AutoConfigPanel({
 
                 {/* Volume sliders (always visible, disabled when preset is not custom) */}
                 <div
-                    className={`space-y-2 pt-1 border-t border-border/40${activeVolumePreset !== 'custom' ? ' opacity-50' : ''}`}
+                    className='space-y-3 pt-1 border-t border-border/40'
                     onClick={() => {
                         if (activeVolumePreset !== 'custom') {
                             setActiveVolumePreset('custom');
                         }
                     }}
                 >
-                    {volumeSliders.map((def) =>
-                        renderSingleSlider(
-                            def,
-                            localConfig,
-                            committedConfig,
-                            isSaving,
-                            bufferApplicable,
-                            handleSliderChange,
-                            activeVolumePreset !== 'custom',
-                        ),
-                    )}
+                    {volumeGroups.map((group, gi) => (
+                        <React.Fragment key={group.label ?? gi}>
+                            {gi > 0 && <Separator className='my-1' />}
+                            <div
+                                className={
+                                    group.isBufferGroup && !bufferApplicable
+                                        ? 'space-y-2 opacity-50'
+                                        : 'space-y-2'
+                                }
+                            >
+                                {group.label && (
+                                    <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
+                                        {group.label}
+                                    </Label>
+                                )}
+                                {group.sliders.map((def) =>
+                                    renderSingleSlider(
+                                        def,
+                                        localConfig,
+                                        committedConfig,
+                                        isSaving,
+                                        bufferApplicable,
+                                        handleSliderChange,
+                                        activeVolumePreset !== 'custom',
+                                    ),
+                                )}
+                            </div>
+                        </React.Fragment>
+                    ))}
                 </div>
             </div>
 

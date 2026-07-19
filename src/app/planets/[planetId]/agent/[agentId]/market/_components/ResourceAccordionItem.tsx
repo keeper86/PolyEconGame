@@ -1,7 +1,7 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction, usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
@@ -817,14 +817,20 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <span className='flex flex-col gap-3 text-xs font-medium text-muted-foreground'>
-                        <span className=''>Daily market clearance chart </span>
-                        <MarketStepChart
-                            market={marketData?.market ?? undefined}
-                            agentId={agentId}
-                            planetId={planetId}
-                        />
-                    </span>
+                    <Accordion type='single' collapsible defaultValue='market-step-chart' className='-pb-2'>
+                        <AccordionItem value='market-step-chart' className='border-b-0'>
+                            <AccordionTrigger className='py-2 text-xs font-medium text-muted-foreground hover:no-underline'>
+                                Daily market clearance chart
+                            </AccordionTrigger>
+                            <AccordionContent className='pt-1 pb-0'>
+                                <MarketStepChart
+                                    market={marketData?.market ?? undefined}
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
 
                     <Separator />
 

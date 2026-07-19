@@ -1,4 +1,11 @@
-import React from 'react';
+import { Stat } from '@/components/client/Stat';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     AlertCircle,
     Anchor,
@@ -11,17 +18,10 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Spinner } from '@/components/ui/spinner';
-import { Stat } from '@/components/client/Stat';
-import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import type { BuySectionProps } from './marketTypes';
-import { totalConsumptionPerTick, getResourceByName } from './marketHelpers';
+import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
+import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
+import type { BuySectionProps } from './marketTypes';
 
 export default function BuySection({
     resourceName,
@@ -257,28 +257,6 @@ export default function BuySection({
                                 >
                                     Use
                                 </Button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                        <Label className='text-[11px] text-muted-foreground'>
-                            {isCurrency ? 'Deposit target' : 'Storage target (computed)'}
-                        </Label>
-                        {bid?.bidStorageTarget !== undefined && (
-                            <div className='text-[11px] tabular-nums font-medium'>
-                                {formatNumberWithUnit(bid.bidStorageTarget, unit)} / tick
-                            </div>
-                        )}
-                        {isFacilityInput && (
-                            <div className='text-[11px] text-muted-foreground'>
-                                <div>
-                                    Required: {formatNumberWithUnit(consumedPerTick, unit)}
-                                    /tick · Stock: {formatNumberWithUnit(inventoryQty, unit)}
-                                    {inventoryInBuyTicks !== null && (
-                                        <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                                    )}
-                                </div>
                             </div>
                         )}
                     </div>

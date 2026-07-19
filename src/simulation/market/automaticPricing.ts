@@ -306,10 +306,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const bidCfg = resolveBidConfig(bid.autoConfig, resource);
 
-        // Add free buy quantity to storage target (treat as additional per-tick consumption)
-        // The free buy quantity is treated as an additional per-tick consumption rate,
-        // multiplied by inputBufferTargetTicks to get the extra storage target contribution.
-        const freeBuyContribution = bidCfg.freeBuyQuantity * bidCfg.inputBufferTargetTicks;
+        const freeBuyFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+        const freeBuyContribution = (bidCfg.freeBuyQuantity / freeBuyFillDays) * bidCfg.inputBufferTargetTicks;
         const adjustedStorageTarget = storageTarget + freeBuyContribution;
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
@@ -399,9 +397,12 @@ export function adjustOfferPrice(
     const retainment = offer.offerRetainment ?? 0;
     const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
 
-    // Add free sell quantity to effective quantity (additive to production surplus)
+    // Add free sell quantity to effective quantity (absolute quantity smoothed over days)
+    // Convert absolute order amount to per-tick rate by dividing by fill days.
+    const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
     const freeSellQty = cfg.freeSellQuantity;
-    const effectiveQuantity = freeSellQty > 0 ? baseEffectiveQuantity + freeSellQty : baseEffectiveQuantity;
+    const freeSellPerTick = freeSellQty > 0 ? freeSellQty / freeSellFillDays : 0;
+    const effectiveQuantity = freeSellPerTick > 0 ? baseEffectiveQuantity + freeSellPerTick : baseEffectiveQuantity;
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {

@@ -1,14 +1,14 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
 import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
-import { getResourceByName, productionPerTick, sellFulfillmentClass } from './marketHelpers';
+import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 
 export default function SellSection({
@@ -201,30 +201,6 @@ export default function SellSection({
                                     >
                                         Use
                                     </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label className='text-[11px] text-muted-foreground'>Offering (computed)</Label>
-                            {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
-                                <div
-                                    className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
-                                >
-                                    {effectiveSellQty === 0
-                                        ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
-                                </div>
-                            )}
-                            {isFacilityOutput && (
-                                <div className='text-[11px] text-muted-foreground'>
-                                    Production: {formatNumberWithUnit(producedPerTick, unit)}/tick · Stock:{' '}
-                                    {formatNumberWithUnit(inventoryQty, unit)}
-                                    {producedPerTick > 0 && (
-                                        <span className='ml-1'>
-                                            ({(inventoryQty / producedPerTick).toFixed(1)} ticks)
-                                        </span>
-                                    )}
                                 </div>
                             )}
                         </div>

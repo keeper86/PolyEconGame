@@ -184,11 +184,11 @@ export interface AutomatedPricingConfig {
     bidOfferMaxCostMultiplier?: number; // default: BID_OFFER_MAX_COST_MULTIPLIER (6)
     inventorySmoothingMaxExtra?: number; // default: INVENTORY_SMOOTHING_MAX_EXTRA (2)
 
-    // Free quantity (additive on top of facility-derived quantities)
-    freeBuyQuantity?: number; // additional flat buy quantity per tick (absolute units)
-    freeSellQuantity?: number; // additional flat sell quantity per tick (absolute units)
-    freeBuyQuantitySmoothingMaxExtra?: number; // smoothing for free buy qty, default 2
-    freeSellQuantitySmoothingMaxExtra?: number; // smoothing for free sell qty, default 2
+    // Free quantity (absolute order amount, smoothed over days)
+    freeBuyQuantity?: number; // absolute total quantity to buy (spread over fill days)
+    freeSellQuantity?: number; // absolute total quantity to sell (spread over fill days)
+    freeBuyQuantitySmoothingMaxExtra?: number; // days the buy order takes to fill, default 2
+    freeSellQuantitySmoothingMaxExtra?: number; // days the sell order takes to fill, default 2
 
     // Sell-side
     outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)
