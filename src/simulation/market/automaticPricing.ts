@@ -3,6 +3,7 @@ import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
+    FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -42,6 +43,8 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
         targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 0.5,
+        freeSellQuantity: c.freeSellQuantity ?? 0,
+        freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -57,6 +60,8 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
             c.inputBufferTargetTicks ??
             (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
         targetFillRate: c.targetFillRate ?? 0.9,
+        freeBuyQuantity: c.freeBuyQuantity ?? 0,
+        freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -301,21 +306,27 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const bidCfg = resolveBidConfig(bid.autoConfig, resource);
 
-        const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-        const shortfall = Math.max(0, storageTarget - currentInventory);
+        // Add free buy quantity to storage target (treat as additional per-tick consumption)
+        // The free buy quantity is treated as an additional per-tick consumption rate,
+        // multiplied by inputBufferTargetTicks to get the extra storage target contribution.
+        const freeBuyContribution = bidCfg.freeBuyQuantity * bidCfg.inputBufferTargetTicks;
+        const adjustedStorageTarget = storageTarget + freeBuyContribution;
 
-        const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
+        const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+        const shortfall = Math.max(0, adjustedStorageTarget - currentInventory);
+
+        const baseRateConsumption = adjustedStorageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
-        let smoothedTarget = storageTarget;
+        let smoothedTarget = adjustedStorageTarget;
         if (
             baseRateConsumption > EPSILON &&
-            storageTarget > EPSILON &&
+            adjustedStorageTarget > EPSILON &&
             shortfall > EPSILON &&
             resource.form !== 'services'
         ) {
-            const fillRatio = Math.min(1, currentInventory / storageTarget);
+            const fillRatio = Math.min(1, currentInventory / adjustedStorageTarget);
             const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
-            smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);
+            smoothedTarget = Math.min(adjustedStorageTarget, currentInventory + smoothedDemand);
             smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
         }
 
@@ -328,6 +339,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     `This may lead to unstable pricing. Setting bid ceiling to PRICE_FLOOR.`,
             );
         }
+
         adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
@@ -385,7 +397,11 @@ export function adjustOfferPrice(
     }
 
     const retainment = offer.offerRetainment ?? 0;
-    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
+    const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
+
+    // Add free sell quantity to effective quantity (additive to production surplus)
+    const freeSellQty = cfg.freeSellQuantity;
+    const effectiveQuantity = freeSellQty > 0 ? baseEffectiveQuantity + freeSellQty : baseEffectiveQuantity;
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {

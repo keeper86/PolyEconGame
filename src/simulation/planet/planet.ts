@@ -184,6 +184,12 @@ export interface AutomatedPricingConfig {
     bidOfferMaxCostMultiplier?: number; // default: BID_OFFER_MAX_COST_MULTIPLIER (6)
     inventorySmoothingMaxExtra?: number; // default: INVENTORY_SMOOTHING_MAX_EXTRA (2)
 
+    // Free quantity (additive on top of facility-derived quantities)
+    freeBuyQuantity?: number; // additional flat buy quantity per tick (absolute units)
+    freeSellQuantity?: number; // additional flat sell quantity per tick (absolute units)
+    freeBuyQuantitySmoothingMaxExtra?: number; // smoothing for free buy qty, default 2
+    freeSellQuantitySmoothingMaxExtra?: number; // smoothing for free sell qty, default 2
+
     // Sell-side
     outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)
     targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)

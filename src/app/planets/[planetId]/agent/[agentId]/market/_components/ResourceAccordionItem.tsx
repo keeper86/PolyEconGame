@@ -410,13 +410,12 @@ export default function ResourceAccordionItem({
         }
 
         const bidPrice = parseFloat(local.bidPrice);
-        const bidStorageTarget = parseFloat(local.bidStorageTarget);
 
-        if (!isNaN(bidPrice) || !isNaN(bidStorageTarget)) {
+        if (!isNaN(bidPrice) && bidPrice > 0) {
             const validation = validateBuyBid(
                 {
-                    bidPrice: isNaN(bidPrice) ? undefined : bidPrice,
-                    bidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
+                    bidPrice,
+                    bidStorageTarget: undefined,
                 },
                 resource,
                 assets,
@@ -431,21 +430,20 @@ export default function ResourceAccordionItem({
             }
         }
 
-        const buyPayload: Record<string, { bidPrice?: number; bidStorageTarget?: number }> = {
+        const buyPayload: Record<string, { bidPrice?: number }> = {
             [resourceName]: {
                 ...(!isNaN(bidPrice) && bidPrice > 0 && { bidPrice }),
-                ...(!isNaN(bidStorageTarget) && bidStorageTarget >= 0 && { bidStorageTarget }),
             },
         };
 
-        // Add pending action before mutation (price/quantity zone)
+        // Add pending action before mutation (price zone)
         addPending({
             type: 'marketBuyPrice',
             agentId,
             planetId,
             resourceName,
             submittedBidPrice: isNaN(bidPrice) ? undefined : bidPrice,
-            submittedBidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
+            submittedBidStorageTarget: undefined,
             triggerTick: currentTick,
         });
 
@@ -469,31 +467,28 @@ export default function ResourceAccordionItem({
         }
 
         const offerPrice = parseFloat(local.offerPrice);
-        const offerRetainment = parseFloat(local.offerRetainment);
 
         if (!isNaN(offerPrice)) {
-            const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, inventoryQty);
+            const validation = validateSellOffer(offerPrice, inventoryQty);
             if (!validation.isValid) {
                 setSellErrorMsg(`Sell validation failed: ${validation.error}`);
                 return;
             }
         }
 
-        const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number }> = {
+        const sellPayload: Record<string, { offerPrice?: number }> = {
             [resourceName]: {
                 ...(!isNaN(offerPrice) && offerPrice >= PRICE_FLOOR && { offerPrice }),
-                ...(!isNaN(offerRetainment) && offerRetainment >= 0 && { offerRetainment }),
             },
         };
 
-        // Add pending action before mutation (price/retainment zone)
+        // Add pending action before mutation (price zone)
         addPending({
             type: 'marketSellPrice',
             agentId,
             planetId,
             resourceName,
             submittedOfferPrice: isNaN(offerPrice) ? undefined : offerPrice,
-            submittedOfferRetainment: isNaN(offerRetainment) ? undefined : offerRetainment,
             triggerTick: currentTick,
         });
 

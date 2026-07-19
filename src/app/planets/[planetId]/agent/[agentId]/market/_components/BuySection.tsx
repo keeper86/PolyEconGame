@@ -20,7 +20,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { BuySectionProps } from './marketTypes';
-import { totalConsumptionPerTick, buyFulfillmentClass, getResourceByName } from './marketHelpers';
+import { totalConsumptionPerTick, getResourceByName } from './marketHelpers';
 import { AutoConfigPanel } from './AutoConfigPanel';
 
 export default function BuySection({
@@ -66,10 +66,6 @@ export default function BuySection({
             ? 'Storage target met — no bid placed last tick'
             : null;
 
-    const targetBuffer = parseFloat(local.targetBufferTicks);
-    const suggestedStorageTarget =
-        isFacilityInput && !isNaN(targetBuffer) && targetBuffer >= 0 ? Math.ceil(targetBuffer * consumedPerTick) : null;
-
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
         (bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : 0);
@@ -80,21 +76,16 @@ export default function BuySection({
         onLocalChange(resourceName, { buyAutoConfig: updatedBuyAutoConfig });
     };
 
-    const hasDirtyBuyFields = local.dirtyFields.bidPrice || local.dirtyFields.bidStorageTarget;
+    const hasDirtyBuyFields = local.dirtyFields.bidPrice;
 
-    const hasValidationErrors = local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget;
+    const hasValidationErrors = !!local.validationErrors.bidPrice;
 
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
         }
-        const hasError =
-            fieldName === 'bidPrice'
-                ? !!local.validationErrors.bidPrice
-                : fieldName === 'bidStorageTarget'
-                  ? !!local.validationErrors.bidStorageTarget
-                  : false;
+        const hasError = fieldName === 'bidPrice' && !!local.validationErrors.bidPrice;
 
         if (hasError) {
             return `${baseClass} border-red-500 bg-red-50 dark:bg-red-950/30`;
@@ -243,11 +234,11 @@ export default function BuySection({
                             step='any'
                             placeholder={bid?.bidPrice !== undefined ? bid.bidPrice.toFixed(2) : 'e.g. 1.50'}
                             value={local.bidPrice}
-                            disabled={local.bidAutomated || buyPriceSaving}
+                            disabled={buyPriceSaving}
                             onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
-                            className={getFieldClassName('bidPrice', local.bidAutomated || buyPriceSaving)}
+                            className={getFieldClassName('bidPrice', buyPriceSaving)}
                         />
-                        {overviewRow && !local.bidAutomated && (
+                        {overviewRow && (
                             <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
                                 <span>
                                     Current price:{' '}
@@ -271,81 +262,21 @@ export default function BuySection({
                     </div>
 
                     <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                        <Label htmlFor={`bid-target-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                            {isCurrency ? 'Deposit target' : 'Storage target'}
+                        <Label className='text-[11px] text-muted-foreground'>
+                            {isCurrency ? 'Deposit target' : 'Storage target (computed)'}
                         </Label>
-                        <Input
-                            id={`bid-target-${resourceName}`}
-                            type='number'
-                            min={0}
-                            step={1}
-                            placeholder={
-                                bid?.bidStorageTarget !== undefined
-                                    ? String(Math.round(bid.bidStorageTarget))
-                                    : 'e.g. 500'
-                            }
-                            value={local.bidStorageTarget}
-                            disabled={local.bidAutomated || buyPriceSaving}
-                            onChange={(e) => onLocalChange(resourceName, { bidStorageTarget: e.target.value })}
-                            className={getFieldClassName('bidStorageTarget', local.bidAutomated || buyPriceSaving)}
-                        />
-
-                        {bid?.bidStorageTarget !== undefined && effectiveBuyQty !== undefined && (
-                            <div
-                                className={`text-[11px] tabular-nums font-medium ${buyFulfillmentClass(inventoryQty, bid.bidStorageTarget)}`}
-                            >
-                                {effectiveBuyQty === 0
-                                    ? 'Target met — order inactive'
-                                    : `Buy ${formatNumberWithUnit(effectiveBuyQty, unit)} / tick`}
+                        {bid?.bidStorageTarget !== undefined && (
+                            <div className='text-[11px] tabular-nums font-medium'>
+                                {formatNumberWithUnit(bid.bidStorageTarget, unit)} / tick
                             </div>
                         )}
                         {isFacilityInput && (
-                            <div className='space-y-1 text-[11px] text-muted-foreground'>
+                            <div className='text-[11px] text-muted-foreground'>
                                 <div>
-                                    {formatNumberWithUnit(consumedPerTick, unit)}
+                                    Required: {formatNumberWithUnit(consumedPerTick, unit)}
                                     /tick · Stock: {formatNumberWithUnit(inventoryQty, unit)}
                                     {inventoryInBuyTicks !== null && (
                                         <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                                    )}
-                                </div>
-                                <div className='flex items-center gap-1.5'>
-                                    <Label
-                                        htmlFor={`buf-ticks-${resourceName}`}
-                                        className='text-[11px] text-muted-foreground shrink-0'
-                                    >
-                                        Target (days)
-                                    </Label>
-                                    <Input
-                                        id={`buf-ticks-${resourceName}`}
-                                        type='number'
-                                        min={0}
-                                        step={1}
-                                        placeholder='e.g. 30'
-                                        value={local.targetBufferTicks}
-                                        disabled={local.bidAutomated || buyPriceSaving}
-                                        onChange={(e) =>
-                                            onLocalChange(resourceName, {
-                                                targetBufferTicks: e.target.value,
-                                            })
-                                        }
-                                        className='h-6 w-32 text-[11px] tabular-nums'
-                                    />
-                                    {suggestedStorageTarget !== null && (
-                                        <>
-                                            <span>→ {formatNumberWithUnit(suggestedStorageTarget, unit)}</span>
-                                            <Button
-                                                variant='outline'
-                                                className='h-6 text-[11px] px-1.5'
-                                                disabled={local.bidAutomated || buyPriceSaving}
-                                                onClick={() =>
-                                                    onLocalChange(resourceName, {
-                                                        bidStorageTarget: String(suggestedStorageTarget),
-                                                    })
-                                                }
-                                            >
-                                                Use
-                                            </Button>
-                                        </>
                                     )}
                                 </div>
                             </div>

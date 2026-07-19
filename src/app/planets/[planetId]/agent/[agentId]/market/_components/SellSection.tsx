@@ -45,17 +45,6 @@ export default function SellSection({
     const effectiveSellQty =
         offer?.offerRetainment !== undefined ? Math.max(0, inventoryQty - offer.offerRetainment) : undefined;
 
-    const retainmentPresets =
-        isFacilityOutput && producedPerTick > 0
-            ? ([
-                  { label: '0', qty: 0 },
-                  { label: '5 ticks', qty: Math.ceil(producedPerTick * 5) },
-                  { label: '10 ticks', qty: Math.ceil(producedPerTick * 10) },
-              ] as const)
-            : inventoryQty > 0
-              ? ([{ label: '0', qty: 0 }] as const)
-              : null;
-
     const sellStaleReason =
         local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
             ? 'Output buffer full — nothing offered for sale last tick'
@@ -192,11 +181,11 @@ export default function SellSection({
                                     offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
                                 }
                                 value={local.offerPrice}
-                                disabled={local.offerAutomated || sellPriceSaving}
+                                disabled={sellPriceSaving}
                                 onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                                className={getFieldClassName('offerPrice', local.offerAutomated || sellPriceSaving)}
+                                className={getFieldClassName('offerPrice', sellPriceSaving)}
                             />
-                            {overviewRow && !local.offerAutomated && (
+                            {overviewRow && (
                                 <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
                                     <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
                                     <Button
@@ -217,31 +206,8 @@ export default function SellSection({
                         </div>
 
                         <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label
-                                htmlFor={`offer-retainment-${resourceName}`}
-                                className='text-[11px] text-muted-foreground'
-                            >
-                                Retainment (keep ≥)
-                            </Label>
-                            <Input
-                                id={`offer-retainment-${resourceName}`}
-                                type='number'
-                                min={0}
-                                step={1}
-                                placeholder={
-                                    offer?.offerRetainment !== undefined
-                                        ? String(Math.round(offer.offerRetainment))
-                                        : 'e.g. 0'
-                                }
-                                value={local.offerRetainment}
-                                disabled={local.offerAutomated || sellPriceSaving}
-                                onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
-                                className={getFieldClassName(
-                                    'offerRetainment',
-                                    local.offerAutomated || sellPriceSaving,
-                                )}
-                            />
-                            {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
+                            <Label className='text-[11px] text-muted-foreground'>Offering (computed)</Label>
+                            {offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
                                 <div
                                     className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
                                 >
@@ -250,27 +216,15 @@ export default function SellSection({
                                         : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
                                 </div>
                             )}
-                            {retainmentPresets && !local.offerAutomated && (
-                                <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
-                                    <span className='shrink-0'>Keep:</span>
-                                    <div className='flex gap-1 ml-auto'>
-                                        {retainmentPresets.map(({ label, qty }) => (
-                                            <Button
-                                                key={label}
-                                                variant='outline'
-                                                size='sm'
-                                                className='h-5 text-[10px] px-1.5 py-0'
-                                                disabled={sellPriceSaving}
-                                                onClick={() =>
-                                                    onLocalChange(resourceName, {
-                                                        offerRetainment: String(qty),
-                                                    })
-                                                }
-                                            >
-                                                {label}
-                                            </Button>
-                                        ))}
-                                    </div>
+                            {isFacilityOutput && (
+                                <div className='text-[11px] text-muted-foreground'>
+                                    Production: {formatNumberWithUnit(producedPerTick, unit)}/tick · Stock:{' '}
+                                    {formatNumberWithUnit(inventoryQty, unit)}
+                                    {producedPerTick > 0 && (
+                                        <span className='ml-1'>
+                                            ({(inventoryQty / producedPerTick).toFixed(1)} ticks)
+                                        </span>
+                                    )}
                                 </div>
                             )}
                         </div>

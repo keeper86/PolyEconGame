@@ -20,6 +20,10 @@ export type AutoConfigLocalState = {
     automatedCostFloorBuffer: string;
     inputBufferTargetTicks: string;
     targetFillRate: string;
+    freeBuyQuantity: string;
+    freeSellQuantity: string;
+    freeBuyQuantitySmoothingMaxExtra: string;
+    freeSellQuantitySmoothingMaxExtra: string;
 };
 
 export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
@@ -34,6 +38,10 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
         automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
         targetFillRate: config?.targetFillRate?.toString() ?? '',
+        freeBuyQuantity: config?.freeBuyQuantity?.toString() ?? '',
+        freeSellQuantity: config?.freeSellQuantity?.toString() ?? '',
+        freeBuyQuantitySmoothingMaxExtra: config?.freeBuyQuantitySmoothingMaxExtra?.toString() ?? '',
+        freeSellQuantitySmoothingMaxExtra: config?.freeSellQuantitySmoothingMaxExtra?.toString() ?? '',
     };
 }
 
@@ -50,6 +58,10 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'freeBuyQuantity',
+        'freeSellQuantity',
+        'freeBuyQuantitySmoothingMaxExtra',
+        'freeSellQuantitySmoothingMaxExtra',
     ];
     let hasAny = false;
     for (const key of keys) {
@@ -75,6 +87,10 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'freeBuyQuantity',
+        'freeSellQuantity',
+        'freeBuyQuantitySmoothingMaxExtra',
+        'freeSellQuantitySmoothingMaxExtra',
     ];
     for (const key of keys) {
         const localVal = local[key] !== '' ? parseFloat(local[key]) : undefined;

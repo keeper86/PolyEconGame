@@ -56,11 +56,15 @@ type RangeSliderDef = {
 const BUY_VOLUME_SLIDERS: SliderDef[] = [
     { key: 'inventorySmoothingMaxExtra', label: 'Max buy rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
     { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
+    { key: 'freeBuyQuantity', label: 'Free buy qty / tick', min: 0, max: 10000, step: 1, defaultVal: 0 },
+    { key: 'freeBuyQuantitySmoothingMaxExtra', label: 'Free buy smoothing', min: 0, max: 20, step: 1, defaultVal: 2 },
 ];
 
 const SELL_VOLUME_SLIDERS: SliderDef[] = [
     { key: 'inventorySmoothingMaxExtra', label: 'Max sell rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
     { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
+    { key: 'freeSellQuantity', label: 'Free sell qty / tick', min: 0, max: 10000, step: 1, defaultVal: 0 },
+    { key: 'freeSellQuantitySmoothingMaxExtra', label: 'Free sell smoothing', min: 0, max: 20, step: 1, defaultVal: 2 },
 ];
 
 const PRICE_ADJUST_RANGE: RangeSliderDef = {
