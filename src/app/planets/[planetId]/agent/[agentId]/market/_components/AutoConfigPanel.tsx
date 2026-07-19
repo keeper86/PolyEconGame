@@ -7,6 +7,7 @@ import { Slider } from '@/components/ui/slider';
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, type Units } from '@/lib/utils';
 import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
+import { Spinner } from '@/components/ui/spinner';
 import { AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
@@ -382,6 +383,10 @@ function PresetButtonRow<T extends string>({
     activePreset,
     onSelect,
     isSaving,
+    /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
+    manualPricingSlot,
+    /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
+    manualPriceOverlay,
 }: {
     label: string;
     presets: readonly T[];
@@ -389,10 +394,29 @@ function PresetButtonRow<T extends string>({
     activePreset: T;
     onSelect: (preset: T) => void;
     isSaving: boolean;
+    /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
+    manualPricingSlot?: React.ReactNode;
+    /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
+    manualPriceOverlay?: string | null;
 }): React.ReactElement {
+    const overlay = (message: string | null | undefined) =>
+        message ? (
+            <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
+                <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                    <Spinner className='h-4 w-4' />
+                    {message}
+                </span>
+            </div>
+        ) : null;
     return (
         <div className='space-y-1'>
             <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>{label}</Label>
+            {manualPricingSlot && (
+                <div className='relative'>
+                    {manualPricingSlot}
+                    {overlay(manualPriceOverlay)}
+                </div>
+            )}
             <div className='flex flex-wrap gap-1'>
                 {presets.map((preset) => {
                     const isActive = preset === activePreset;
@@ -524,6 +548,8 @@ export function AutoConfigPanel({
     planetId = '',
     staleReason,
     consumptionBreakdown,
+    manualPricingSlot,
+    manualPriceOverlay,
 }: {
     mode: 'buy' | 'sell';
     committedConfig: AutomatedPricingConfig | undefined;
@@ -541,6 +567,10 @@ export function AutoConfigPanel({
     staleReason?: string | null;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
+    /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
+    manualPricingSlot?: React.ReactNode;
+    /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
+    manualPriceOverlay?: string | null;
 }): React.ReactElement {
     const volumeGroups = mode === 'buy' ? BUY_VOLUME_GROUPS : SELL_VOLUME_GROUPS;
     const pricingSliders = mode === 'buy' ? BUY_PRICING_SLIDERS : SELL_PRICING_SLIDERS;
@@ -715,6 +745,8 @@ export function AutoConfigPanel({
                     activePreset={activePricingPreset}
                     onSelect={handlePricingPresetSelect}
                     isSaving={isSaving}
+                    manualPricingSlot={manualPricingSlot}
+                    manualPriceOverlay={manualPriceOverlay}
                 />
 
                 {/* Pricing sliders (always visible, disabled when preset is not custom) */}
