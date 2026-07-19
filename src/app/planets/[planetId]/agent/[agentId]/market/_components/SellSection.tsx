@@ -1,3 +1,4 @@
+import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,7 +81,7 @@ export default function SellSection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -93,7 +94,7 @@ export default function SellSection({
         ) : null;
 
     return (
-        <div className='flex-1 min-w-[300px]'>
+        <div className='flex-1 min-w-[250px]'>
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
                 <div className='flex items-center gap-6 pl-2'>
@@ -107,20 +108,6 @@ export default function SellSection({
                         onCheckedChange={(v) => onAutomationChange(v)}
                     />
                 </div>
-
-                {/* Always-visible compact stats row */}
-                <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30 mb-2'>
-                    <span className='tabular-nums'>
-                        <span className='font-medium'>Production:</span>{' '}
-                        {isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
-                    </span>
-                    <span className='tabular-nums'>
-                        <span className='font-medium'>Stock:</span>{' '}
-                        {isFacilityOutput && producedPerTick > 0
-                            ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
-                            : formatNumberWithUnit(inventoryQty, unit)}
-                    </span>
-                </div>
                 {overlay(sellAutomationOverlay)}
             </div>
 
@@ -128,16 +115,25 @@ export default function SellSection({
             <div className='relative'>
                 <div className='pb-0'>
                     <div className='space-y-3 pt-3'>
-                        <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30'>
-                            <span className='tabular-nums'>
-                                <span className='font-medium'>Last sold:</span>{' '}
-                                {formatNumberWithUnit(offer?.lastSold, unit)}
-                            </span>
-
-                            <span className='tabular-nums'>
-                                <span className='font-medium'>Revenue:</span>{' '}
-                                {formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
-                            </span>
+                        <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
+                            <Stat
+                                label='Production'
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                bold
+                            />
+                            <Stat
+                                label='Stock (days)'
+                                value={
+                                    isFacilityOutput && producedPerTick > 0
+                                        ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
+                                        : '—'
+                                }
+                            />
+                            <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
+                            <Stat
+                                label='Revenue'
+                                value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
+                            />
                         </div>
 
                         <AutoConfigPanel

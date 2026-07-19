@@ -817,7 +817,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <Accordion type='single' collapsible defaultValue='market-step-chart' className='-pb-2'>
+                    <Accordion type='single' collapsible defaultValue='' className='-pb-2'>
                         <AccordionItem value='market-step-chart' className='border-b-0'>
                             <AccordionTrigger className='py-2 text-xs font-medium text-muted-foreground hover:no-underline'>
                                 Daily market clearance chart

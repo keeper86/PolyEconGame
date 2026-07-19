@@ -96,7 +96,7 @@ export default function BuySection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -109,7 +109,7 @@ export default function BuySection({
         ) : null;
 
     return (
-        <div className='flex-1 min-w-[300px] '>
+        <div className='flex-1 min-w-[250px] '>
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
                 <div className='flex items-center justify-start gap-2'>
@@ -125,19 +125,6 @@ export default function BuySection({
                     >
                         <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
                     </Label>
-
-                    <span className='flex items-end h-full gap-4 sm:gap-8 px-2.5 py-1.5 text-[10px] text-muted-foreground'>
-                        <span className='tabular-nums'>
-                            <span className='font-medium'>Required:</span>{' '}
-                            {isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
-                        </span>
-                        <span className='tabular-nums'>
-                            <span className='font-medium'>Stock:</span> {formatNumberWithUnit(inventoryQty, unit)}
-                            {inventoryInBuyTicks !== null && (
-                                <span className='ml-1'>({inventoryInBuyTicks.toFixed(1)} ticks)</span>
-                            )}
-                        </span>
-                    </span>
                 </div>
                 {overlay(buyAutomationOverlay)}
             </div>
@@ -145,23 +132,22 @@ export default function BuySection({
             <div className='relative'>
                 <div className='pb-0'>
                     <div className='space-y-3 pt-3'>
-                        {/* Compact activity stats */}
-                        {(bid?.lastBought !== undefined || bid?.lastSpent !== undefined) && (
-                            <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30'>
-                                {bid?.lastBought !== undefined && (
-                                    <span className='tabular-nums'>
-                                        <span className='font-medium'>Last bought:</span>{' '}
-                                        {formatNumberWithUnit(bid.lastBought, unit)}
-                                    </span>
-                                )}
-                                {bid?.lastSpent !== undefined && (
-                                    <span className='tabular-nums'>
-                                        <span className='font-medium'>Spent:</span>{' '}
-                                        {formatNumberWithUnit(bid.lastSpent, 'currency', planetId)}
-                                    </span>
-                                )}
-                            </div>
-                        )}
+                        <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
+                            <Stat
+                                label='Required'
+                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
+                                bold
+                            />
+                            <Stat
+                                label='Stock'
+                                value={`${formatNumberWithUnit(inventoryQty, unit)}${inventoryInBuyTicks !== null ? ` (${inventoryInBuyTicks.toFixed(1)} ticks)` : ''}`}
+                            />
+                            <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit)} />
+                            <Stat
+                                label='Last spent'
+                                value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId)}
+                            />
+                        </div>
 
                         <AutoConfigPanel
                             mode='buy'

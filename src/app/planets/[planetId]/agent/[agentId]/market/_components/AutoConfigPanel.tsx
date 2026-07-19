@@ -65,11 +65,18 @@ type SliderGroupDef = {
 
 const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
     {
-        label: 'Input buffer',
+        label: 'Production Needs',
         isBufferGroup: true,
         sliders: [
-            { key: 'inventorySmoothingMaxExtra', label: 'Max buy rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
             { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
+            {
+                key: 'inventorySmoothingMaxExtra',
+                label: 'Max buy rate (days)',
+                min: 0,
+                max: 20,
+                step: 1,
+                defaultVal: 2,
+            },
         ],
     },
     {
@@ -77,7 +84,14 @@ const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
         isBufferGroup: false,
         sliders: [
             { key: 'freeBuyQuantity', label: 'Free buy quantity (total)', min: 0, max: 10000, step: 1, defaultVal: 0 },
-            { key: 'freeBuyQuantitySmoothingMaxExtra', label: 'Free buy fill days', min: 0, max: 20, step: 1, defaultVal: 2 },
+            {
+                key: 'freeBuyQuantitySmoothingMaxExtra',
+                label: 'Free buy fill days',
+                min: 0,
+                max: 20,
+                step: 1,
+                defaultVal: 2,
+            },
         ],
     },
 ];
@@ -87,7 +101,14 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
         label: 'Output buffer',
         isBufferGroup: true,
         sliders: [
-            { key: 'inventorySmoothingMaxExtra', label: 'Max sell rate (days)', min: 0, max: 20, step: 1, defaultVal: 2 },
+            {
+                key: 'inventorySmoothingMaxExtra',
+                label: 'Max sell rate (days)',
+                min: 0,
+                max: 20,
+                step: 1,
+                defaultVal: 2,
+            },
             { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
         ],
     },
@@ -95,8 +116,22 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
         label: 'Free quantity',
         isBufferGroup: false,
         sliders: [
-            { key: 'freeSellQuantity', label: 'Free sell quantity (total)', min: 0, max: 10000, step: 1, defaultVal: 0 },
-            { key: 'freeSellQuantitySmoothingMaxExtra', label: 'Free sell fill days', min: 0, max: 20, step: 1, defaultVal: 2 },
+            {
+                key: 'freeSellQuantity',
+                label: 'Free sell quantity (total)',
+                min: 0,
+                max: 10000,
+                step: 1,
+                defaultVal: 0,
+            },
+            {
+                key: 'freeSellQuantitySmoothingMaxExtra',
+                label: 'Free sell fill days',
+                min: 0,
+                max: 20,
+                step: 1,
+                defaultVal: 2,
+            },
         ],
     },
 ];
@@ -646,9 +681,7 @@ export function AutoConfigPanel({
                             {gi > 0 && <Separator className='my-1' />}
                             <div
                                 className={
-                                    group.isBufferGroup && !bufferApplicable
-                                        ? 'space-y-2 opacity-50'
-                                        : 'space-y-2'
+                                    group.isBufferGroup && !bufferApplicable ? 'space-y-2 opacity-50' : 'space-y-2'
                                 }
                             >
                                 {group.label && (
