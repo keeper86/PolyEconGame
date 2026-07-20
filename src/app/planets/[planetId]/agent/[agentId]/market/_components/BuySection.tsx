@@ -131,7 +131,7 @@ export default function BuySection({
                         className={getFieldClassName('bidPrice', buyPriceSaving) + ` text-right`}
                     />
                 </span>
-                <span className='flex items-center justify-between gap-1 '>
+                <span className='flex items-center justify-end gap-1 '>
                     {overviewRow &&
                         costFloor > 0 &&
                         quickPrices.map((price) => (
@@ -139,7 +139,7 @@ export default function BuySection({
                                 key={price}
                                 variant='outline'
                                 size='sm'
-                                className='h-6 text-[10px] text-right'
+                                className='h-6 text-[9px] text-right px-0.5 -py-0.5'
                                 disabled={buyPriceSaving}
                                 onClick={() => onLocalChange(resourceName, { bidPrice: price.toFixed(2) })}
                             >
