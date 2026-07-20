@@ -191,7 +191,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
-
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
 
     for (const facility of [
@@ -288,8 +287,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     for (const resourceName of Object.keys(assets.market.buy)) {
-        if (assets.market.buy[resourceName].automated && !aggregatedBuyTargets.has(resourceName)) {
-            assets.market.buy[resourceName].bidStorageTarget = 0;
+        const bid = assets.market.buy[resourceName];
+        if (bid.automated && !aggregatedBuyTargets.has(resourceName)) {
+            const bidCfg = resolveBidConfig(bid.autoConfig, bid.resource);
+            if (bidCfg.freeBuyQuantity > 0) {
+                const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+                const fillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+                const freeBuyPerTick =
+                    currentInventory < bidCfg.freeBuyQuantity
+                        ? bidCfg.freeBuyQuantity / fillDays
+                        : 0;
+                aggregatedBuyTargets.set(resourceName, { resource: bid.resource, storageTarget: freeBuyPerTick });
+            } else {
+                bid.bidStorageTarget = 0;
+            }
         }
     }
 
@@ -308,12 +319,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
-        const freeBuyFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
-        const freeBuyPerTick =
-            bidCfg.freeBuyQuantity > 0 && currentInventory < storageTarget + bidCfg.freeBuyQuantity
-                ? bidCfg.freeBuyQuantity / freeBuyFillDays
-                : 0;
-        const shortfall = Math.max(0, storageTarget - currentInventory) + freeBuyPerTick;
+        const shortfall = Math.max(0, storageTarget - currentInventory);
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;

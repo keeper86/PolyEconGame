@@ -653,6 +653,10 @@ const autoConfigSchema = z
         automatedCostFloorBuffer: z.number().min(-1).optional(),
         inputBufferTargetTicks: z.number().positive().optional(),
         targetFillRate: z.number().min(0).max(1).optional(),
+        freeBuyQuantity: z.number().min(0).optional(),
+        freeSellQuantity: z.number().min(0).optional(),
+        freeBuyQuantitySmoothingMaxExtra: z.number().min(0).optional(),
+        freeSellQuantitySmoothingMaxExtra: z.number().min(0).optional(),
     })
     .optional();
 

@@ -4,8 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import { AlertCircle, RotateCcw, Tag } from 'lucide-react';
-import React from 'react';
+import { AlertCircle, Package, RotateCcw, Tag } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
@@ -72,6 +72,32 @@ export default function SellSection({
     };
 
     const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
+
+    const productionBreakdown = useMemo(
+        () =>
+            isFacilityOutput && (
+                <div className='space-y-0.5'>
+                    <Stat label='Production' value={`${formatNumberWithUnit(producedPerTick, unit)}/tick`} bold />
+                    {assets.productionFacilities.map((f, i) => {
+                        const prod = f.produces.find((p) => p.resource.name === resourceName);
+                        if (!prod) {
+                            return null;
+                        }
+                        const rate = prod.quantity * f.scale;
+                        return (
+                            <Stat
+                                key={i}
+                                icon={<Package className='h-3 w-3' />}
+                                label={f.name}
+                                value={`${formatNumberWithUnit(rate, unit)}/tick`}
+                                indent
+                            />
+                        );
+                    })}
+                </div>
+            ),
+        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities],
+    );
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -190,16 +216,24 @@ export default function SellSection({
                                 bold
                             />
                             <Stat
-                                label='Stock (days)'
+                                label='Stock'
                                 value={
                                     isFacilityOutput && producedPerTick > 0
                                         ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
                                         : '—'
                                 }
                             />
+                            <Stat
+                                label='Last offered'
+                                value={formatNumberWithUnit(offer?.diagnostics?.effectiveQuantity, unit)}
+                            />
+                            <Stat
+                                label='Last price'
+                                value={formatNumberWithUnit(offer?.diagnostics?.oldPrice, 'currency', planetId)}
+                            />
                             <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
                             <Stat
-                                label='Revenue'
+                                label='Last revenue'
                                 value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
                             />
                         </div>
@@ -216,6 +250,7 @@ export default function SellSection({
                             staleReason={sellStaleReason}
                             manualPricingSlot={manualPricing}
                             manualPriceOverlay={sellPriceOverlay}
+                            productionBreakdown={productionBreakdown || undefined}
                         />
                     </div>
                 </div>

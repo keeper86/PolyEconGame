@@ -138,6 +138,33 @@ describe('automaticPricing — buy side', () => {
         expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
 
+    it('freeBuyQuantity adds extra quantity when inventory is at the buffer target', () => {
+        const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
+        const bufferTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+
+        // Fill exactly to the buffer target (smoothed demand would be 0 since shortfall is 0)
+        putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, bufferTarget);
+
+        // First automaticPricing run: creates the buy entry without autoConfig
+        automaticPricing(agentMap(buyer), planet);
+
+        const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const baselineTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
+        // With full buffer, the target should be ≤ inventory (smoothing reduces it further)
+        expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
+
+        // Config free buy quantity
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { freeBuyQuantity: 100, freeBuyQuantitySmoothingMaxExtra: 2 };
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
+        // freeBuyPerTick = 100 / 2 = 50, so bidStorageTarget should be at least inventoryQty + 50
+        expect(newTarget).toBeGreaterThanOrEqual(inventoryQty + 49);
+    });
+
     it('bootstraps bidPrice from market price on first tick', () => {
         planet.marketPrices[COAL] = 2.0;
         planet.marketPrices[steelResourceType.name] = 8.0;

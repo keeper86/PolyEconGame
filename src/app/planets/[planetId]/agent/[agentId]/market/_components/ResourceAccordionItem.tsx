@@ -1,7 +1,8 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction, usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
@@ -252,6 +253,7 @@ export default function ResourceAccordionItem({
     const [sellPriceSaving, setSellPriceSaving] = useState(false);
     const [sellAutomationSaving, setSellAutomationSaving] = useState(false);
     const [sellAutoConfigSaving, setSellAutoConfigSaving] = useState(false);
+    const [chartOpen, setChartOpen] = useState(false);
 
     const handleSaveBuy = () => {
         if (!resource) {
@@ -692,21 +694,6 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <Accordion type='single' collapsible defaultValue='' className=''>
-                        <AccordionItem value='market-step-chart' className=''>
-                            <AccordionTrigger className='text-xs font-medium text-muted-foreground hover:no-underline'>
-                                Daily market clearance chart
-                            </AccordionTrigger>
-                            <AccordionContent className='pt-1 pb-4'>
-                                <MarketStepChart
-                                    market={marketData?.market ?? undefined}
-                                    agentId={agentId}
-                                    planetId={planetId}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-
                     <div className='flex flex-row flex-wrap gap-4'>
                         <BuySection
                             resourceName={resourceName}
@@ -753,6 +740,19 @@ export default function ResourceAccordionItem({
                             sellPriceOverlay={sellPriceOverlay}
                         />
                     </div>
+
+                    <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
+                        <CollapsibleTrigger className='text-xs font-medium text-muted-foreground hover:no-underline flex items-center gap-1'>
+                            Daily market clearance chart
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className='pt-1 pb-4'>
+                            <MarketStepChart
+                                market={marketData?.market ?? undefined}
+                                agentId={agentId}
+                                planetId={planetId}
+                            />
+                        </CollapsibleContent>
+                    </Collapsible>
                 </div>
             </AccordionContent>
         </AccordionItem>

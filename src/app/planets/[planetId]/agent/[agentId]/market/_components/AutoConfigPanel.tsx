@@ -77,6 +77,7 @@ const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
                 max: 20,
                 step: 1,
                 defaultVal: 2,
+                displayTransform: (v) => v + 1,
             },
         ],
     },
@@ -109,6 +110,7 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
                 max: 20,
                 step: 1,
                 defaultVal: 2,
+                displayTransform: (v) => v + 1,
             },
             { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
         ],
@@ -243,7 +245,7 @@ function renderSingleSlider(
                 <Label className='text-[11px] text-muted-foreground'>{def.label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
                     {fmt(clampedVal)}
-                    <span className={`ml-1 ${showCommitted ? '' : 'invisible'}`}>
+                    <span className={`ml-1 ${showCommitted ? '' : ''}`}>
                         (current: {showCommitted ? fmt(committed) : '-'})
                     </span>
                 </span>
@@ -429,6 +431,7 @@ export function AutoConfigPanel({
     bufferApplicable = true,
     staleReason,
     consumptionBreakdown,
+    productionBreakdown,
     manualPricingSlot,
     manualPriceOverlay,
 }: {
@@ -443,6 +446,8 @@ export function AutoConfigPanel({
     staleReason?: string | null;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
+    /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. production breakdown for sell mode) */
+    productionBreakdown?: React.ReactNode;
     /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
     manualPricingSlot?: React.ReactNode;
     /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
@@ -565,7 +570,9 @@ export function AutoConfigPanel({
 
                     <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
                         <div className='space-y-0.5'>
-                            {consumptionBreakdown ? consumptionBreakdown : <Stat label='Consumption' value='-' />}
+                            {mode === 'buy'
+                                ? (consumptionBreakdown ?? <Stat label='Consumption' value='-' />)
+                                : (productionBreakdown ?? <Stat label='Production' value='-' />)}
                         </div>
                     </div>
 

@@ -7,7 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { AlertCircle, Anchor, Building2, HardHat, Package, RotateCcw, Ship, ShoppingCart, Wrench } from 'lucide-react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import type { BuySectionProps } from './marketTypes';
@@ -38,7 +38,10 @@ export default function BuySection({
 
     const isCurrency = resourceName.startsWith('CUR_');
 
-    const consumptionInfo = totalConsumptionPerTick(assets, ships ?? [], planetId, resourceName);
+    const consumptionInfo = useMemo(
+        () => totalConsumptionPerTick(assets, ships ?? [], planetId, resourceName),
+        [assets, ships, planetId, resourceName],
+    );
     const consumedPerTick = consumptionInfo.totalPerTick;
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
