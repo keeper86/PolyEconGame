@@ -128,38 +128,26 @@ export type MarketOfferEntry = {
 
 export type LocalResourceState = {
     offerPrice: string;
-
-    offerRetainment: string;
     offerAutomated: boolean;
     bidPrice: string;
-
-    bidStorageTarget: string;
     bidAutomated: boolean;
-
-    targetBufferTicks: string;
 
     buyAutoConfig: AutoConfigLocalState;
     sellAutoConfig: AutoConfigLocalState;
 
     dirtyFields: {
         offerPrice: boolean;
-        offerRetainment: boolean;
         bidPrice: boolean;
-        bidStorageTarget: boolean;
     };
 
     validationErrors: {
         offerPrice?: string;
-        offerRetainment?: string;
         bidPrice?: string;
-        bidStorageTarget?: string;
     };
 
     savedOfferPrice: string;
-    savedOfferRetainment: string;
     savedOfferAutomated: boolean;
     savedBidPrice: string;
-    savedBidStorageTarget: string;
     savedBidAutomated: boolean;
 };
 

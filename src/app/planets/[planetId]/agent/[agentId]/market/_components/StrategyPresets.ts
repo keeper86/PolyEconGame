@@ -6,9 +6,9 @@ export type VolumePresetType = 'just-in-time' | 'balanced' | 'stockpile' | 'cust
 export type PricingPresetType = 'liquidation' | 'market-rate' | 'premium' | 'custom';
 
 export const VOLUME_PRESET_LABELS: Record<VolumePresetType, string> = {
-    'just-in-time': 'Just-in-Time',
+    'just-in-time': 'Lean',
     'balanced': 'Balanced',
-    'stockpile': 'Stockpile',
+    'stockpile': 'Hoard',
     'custom': '⚙️',
 };
 

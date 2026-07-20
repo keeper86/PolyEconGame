@@ -252,13 +252,6 @@ export default function ResourceAccordionItem({
             }
         }
 
-        if (local.offerRetainment !== '') {
-            const offerRetainment = parseFloat(local.offerRetainment);
-            if (!isNaN(offerRetainment) && offerRetainment < 0) {
-                validationErrors.offerRetainment = 'Retainment must be non-negative';
-            }
-        }
-
         if (local.bidPrice !== '') {
             const bidPrice = parseFloat(local.bidPrice);
             if (!isNaN(bidPrice)) {
@@ -269,21 +262,12 @@ export default function ResourceAccordionItem({
             }
         }
 
-        if (local.bidStorageTarget !== '') {
-            const bidStorageTarget = parseFloat(local.bidStorageTarget);
-            if (!isNaN(bidStorageTarget) && bidStorageTarget < 0) {
-                validationErrors.bidStorageTarget = 'Storage target must be non-negative';
-            }
-        }
-
         if (JSON.stringify(validationErrors) !== JSON.stringify(local.validationErrors)) {
             onLocalChange(resourceName, { validationErrors });
         }
     }, [
         local.offerPrice,
-        local.offerRetainment,
         local.bidPrice,
-        local.bidStorageTarget,
         resource,
         inventoryQty,
         assets,
@@ -300,7 +284,6 @@ export default function ResourceAccordionItem({
                 setSellErrorMsg(null);
                 onLocalChange(resourceName, {
                     savedOfferPrice: local.offerPrice,
-                    savedOfferRetainment: local.offerRetainment,
                     savedOfferAutomated: local.offerAutomated,
                 });
             },
@@ -326,7 +309,6 @@ export default function ResourceAccordionItem({
                 setBuyErrorMsg(null);
                 onLocalChange(resourceName, {
                     savedBidPrice: local.bidPrice,
-                    savedBidStorageTarget: local.bidStorageTarget,
                     savedBidAutomated: local.bidAutomated,
                 });
             },
@@ -352,10 +334,8 @@ export default function ResourceAccordionItem({
                 setSellErrorMsg(null);
                 onLocalChange(resourceName, {
                     offerPrice: '',
-                    offerRetainment: '',
                     offerAutomated: false,
                     savedOfferPrice: '',
-                    savedOfferRetainment: '',
                     savedOfferAutomated: false,
                 });
                 // Remove cancel pending on success; resolution handles the rest
@@ -376,10 +356,8 @@ export default function ResourceAccordionItem({
                 setBuyErrorMsg(null);
                 onLocalChange(resourceName, {
                     bidPrice: '',
-                    bidStorageTarget: '',
                     bidAutomated: false,
                     savedBidPrice: '',
-                    savedBidStorageTarget: '',
                     savedBidAutomated: false,
                 });
                 // Remove cancel pending on success
@@ -505,7 +483,6 @@ export default function ResourceAccordionItem({
     const handleResetBuy = () => {
         onLocalChange(resourceName, {
             bidPrice: local.savedBidPrice,
-            bidStorageTarget: local.savedBidStorageTarget,
         });
         setBuySuccessMsg(null);
         setBuyErrorMsg(null);
@@ -514,7 +491,6 @@ export default function ResourceAccordionItem({
     const handleResetSell = () => {
         onLocalChange(resourceName, {
             offerPrice: local.savedOfferPrice,
-            offerRetainment: local.savedOfferRetainment,
         });
         setSellSuccessMsg(null);
         setSellErrorMsg(null);

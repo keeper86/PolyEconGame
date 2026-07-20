@@ -56,21 +56,16 @@ export default function SellSection({
         onLocalChange(resourceName, { sellAutoConfig: updatedSellAutoConfig });
     };
 
-    const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment;
+    const hasDirtySellFields = local.dirtyFields.offerPrice;
 
-    const hasValidationErrors = local.validationErrors.offerPrice || local.validationErrors.offerRetainment;
+    const hasValidationErrors = !!local.validationErrors.offerPrice;
 
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
         const baseClass = 'h-8 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
         }
-        const hasError =
-            fieldName === 'offerPrice'
-                ? !!local.validationErrors.offerPrice
-                : fieldName === 'offerRetainment'
-                  ? !!local.validationErrors.offerRetainment
-                  : false;
+        const hasError = fieldName === 'offerPrice' && !!local.validationErrors.offerPrice;
 
         if (hasError) {
             return `${baseClass} border-red-500 bg-red-50 dark:bg-red-950/30`;
@@ -148,20 +143,10 @@ export default function SellSection({
                     </div>
                 </div>
 
-                {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
-                    <div className='space-y-1'>
-                        {local.validationErrors.offerPrice && (
-                            <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                <AlertCircle className='h-3 w-3' />
-                                Price: {local.validationErrors.offerPrice}
-                            </div>
-                        )}
-                        {local.validationErrors.offerRetainment && (
-                            <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                <AlertCircle className='h-3 w-3' />
-                                Retainment: {local.validationErrors.offerRetainment}
-                            </div>
-                        )}
+                {local.validationErrors.offerPrice && (
+                    <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                        <AlertCircle className='h-3 w-3' />
+                        Price: {local.validationErrors.offerPrice}
                     </div>
                 )}
 

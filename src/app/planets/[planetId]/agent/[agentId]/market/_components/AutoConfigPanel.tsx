@@ -426,7 +426,7 @@ function PresetButtonRow<T extends string>({
                 {label}
             </Label>
             <div className='flex flex-wrap gap-1'>
-                {presets.map((preset) => {
+                {presets.map((preset, index) => {
                     const isActive = preset === activePreset;
                     const isCustom = preset === ('custom' as unknown as T);
                     return (
@@ -434,7 +434,7 @@ function PresetButtonRow<T extends string>({
                             key={preset}
                             variant={isActive ? 'default' : 'outline'}
                             size='sm'
-                            className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''}`}
+                            className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === presets.length - 1 ? 'ml-auto' : ''}`}
                             disabled={isSaving}
                             onClick={() => onSelect(preset)}
                         >

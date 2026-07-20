@@ -199,20 +199,10 @@ export default function BuySection({
                 </Alert>
             )}
 
-            {(local.validationErrors.bidPrice || local.validationErrors.bidStorageTarget) && (
-                <div className='space-y-1'>
-                    {local.validationErrors.bidPrice && (
-                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                            <AlertCircle className='h-3 w-3' />
-                            Price: {local.validationErrors.bidPrice}
-                        </div>
-                    )}
-                    {local.validationErrors.bidStorageTarget && (
-                        <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                            <AlertCircle className='h-3 w-3' />
-                            Storage target: {local.validationErrors.bidStorageTarget}
-                        </div>
-                    )}
+            {local.validationErrors.bidPrice && (
+                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                    <AlertCircle className='h-3 w-3' />
+                    Price: {local.validationErrors.bidPrice}
                 </div>
             )}
 

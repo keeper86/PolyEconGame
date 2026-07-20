@@ -193,38 +193,29 @@ export function buildInitialState(
         const offer = sellOffers[name];
 
         const offerPrice = offer?.offerPrice !== undefined ? String(offer.offerPrice) : '';
-        const offerRetainment = offer?.offerRetainment !== undefined ? String(Math.round(offer.offerRetainment)) : '';
         const offerAutomated = offer?.automated ?? false;
         const bidPrice = bid?.bidPrice !== undefined ? String(bid.bidPrice) : '';
-        const bidStorageTarget = bid?.bidStorageTarget !== undefined ? String(Math.round(bid.bidStorageTarget)) : '';
         const bidAutomated = bid?.automated ?? false;
 
         result[name] = {
             offerPrice,
-            offerRetainment,
             offerAutomated,
             bidPrice,
-            bidStorageTarget,
             bidAutomated,
-            targetBufferTicks: '',
 
             buyAutoConfig: autoConfigToLocal(bid?.autoConfig),
             sellAutoConfig: autoConfigToLocal(offer?.autoConfig),
 
             dirtyFields: {
                 offerPrice: false,
-                offerRetainment: false,
                 bidPrice: false,
-                bidStorageTarget: false,
             },
 
             validationErrors: {},
 
             savedOfferPrice: offerPrice,
-            savedOfferRetainment: offerRetainment,
             savedOfferAutomated: offerAutomated,
             savedBidPrice: bidPrice,
-            savedBidStorageTarget: bidStorageTarget,
             savedBidAutomated: bidAutomated,
         };
     }
