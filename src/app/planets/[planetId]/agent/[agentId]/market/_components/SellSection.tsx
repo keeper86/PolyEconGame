@@ -94,7 +94,7 @@ export default function SellSection({
             : [];
 
     const manualPricing = (
-        <span className='flex flex-row flex-grow gap-2 items-center py-2'>
+        <div className='flex flex-row flex-grow gap-2 items-center py-2'>
             <div className='flex flex-col flex-grow gap-1'>
                 <span className='flex flex-row items-center gap-1'>
                     <Button
@@ -155,7 +155,7 @@ export default function SellSection({
                     Price: {local.validationErrors.offerPrice}
                 </div>
             )}
-        </span>
+        </div>
     );
 
     return (

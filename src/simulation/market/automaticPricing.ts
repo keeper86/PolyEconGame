@@ -306,25 +306,27 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const bidCfg = resolveBidConfig(bid.autoConfig, resource);
 
-        const freeBuyFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
-        const freeBuyContribution = (bidCfg.freeBuyQuantity / freeBuyFillDays) * bidCfg.inputBufferTargetTicks;
-        const adjustedStorageTarget = storageTarget + freeBuyContribution;
-
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-        const shortfall = Math.max(0, adjustedStorageTarget - currentInventory);
 
-        const baseRateConsumption = adjustedStorageTarget / bidCfg.inputBufferTargetTicks;
+        const freeBuyFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+        const freeBuyPerTick =
+            bidCfg.freeBuyQuantity > 0 && currentInventory < storageTarget + bidCfg.freeBuyQuantity
+                ? bidCfg.freeBuyQuantity / freeBuyFillDays
+                : 0;
+        const shortfall = Math.max(0, storageTarget - currentInventory) + freeBuyPerTick;
+
+        const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
-        let smoothedTarget = adjustedStorageTarget;
+        let smoothedTarget = storageTarget;
         if (
             baseRateConsumption > EPSILON &&
-            adjustedStorageTarget > EPSILON &&
+            storageTarget > EPSILON &&
             shortfall > EPSILON &&
             resource.form !== 'services'
         ) {
-            const fillRatio = Math.min(1, currentInventory / adjustedStorageTarget);
+            const fillRatio = Math.min(1, currentInventory / storageTarget);
             const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
-            smoothedTarget = Math.min(adjustedStorageTarget, currentInventory + smoothedDemand);
+            smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);
             smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
         }
 
@@ -401,8 +403,9 @@ export function adjustOfferPrice(
     // Convert absolute order amount to per-tick rate by dividing by fill days.
     const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
     const freeSellQty = cfg.freeSellQuantity;
-    const freeSellPerTick = freeSellQty > 0 ? freeSellQty / freeSellFillDays : 0;
-    const effectiveQuantity = freeSellPerTick > 0 ? baseEffectiveQuantity + freeSellPerTick : baseEffectiveQuantity;
+    const freeSellPerTick = freeSellQty > 0 && baseEffectiveQuantity < freeSellQty ? freeSellQty / freeSellFillDays : 0;
+    const effectiveQuantity =
+        freeSellPerTick > 0 ? Math.min(baseEffectiveQuantity + freeSellPerTick, inventoryQty) : baseEffectiveQuantity;
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {

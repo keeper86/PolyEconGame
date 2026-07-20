@@ -89,7 +89,7 @@ const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
             {
                 key: 'freeBuyQuantitySmoothingMaxExtra',
                 label: 'Free buy fill days',
-                min: 0,
+                min: 1,
                 max: 20,
                 step: 1,
                 defaultVal: 2,
@@ -129,7 +129,7 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
             {
                 key: 'freeSellQuantitySmoothingMaxExtra',
                 label: 'Free sell fill days',
-                min: 0,
+                min: 1,
                 max: 20,
                 step: 1,
                 defaultVal: 2,
@@ -646,7 +646,7 @@ export function AutoConfigPanel({
     return (
         <div className='space-y-3 pt-2'>
             {/* ── Volume Strategy Row ─────────────────────────────────────────── */}
-            <Collapsible defaultOpen={true} className='rounded-md border bg-muted/30'>
+            <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
                 <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                     <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
                         Volume Strategy
@@ -746,7 +746,7 @@ export function AutoConfigPanel({
             </Collapsible>
 
             {/* ── Pricing Strategy Row ────────────────────────────────────────── */}
-            <Collapsible defaultOpen={true} className='rounded-md border bg-muted/30'>
+            <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
                 <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                     <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
                         Pricing Strategy

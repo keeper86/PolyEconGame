@@ -292,9 +292,14 @@ export default function ResourceAccordionItem({
             }
         }
 
+        if (isNaN(bidPrice) || bidPrice <= 0) {
+            toast.error(`Buy validation failed: Invalid bid price.`);
+            return;
+        }
+
         const buyPayload: Record<string, { bidPrice?: number }> = {
             [resourceName]: {
-                ...(!isNaN(bidPrice) && bidPrice > 0 && { bidPrice }),
+                bidPrice,
             },
         };
 
@@ -335,9 +340,14 @@ export default function ResourceAccordionItem({
             }
         }
 
+        if (isNaN(offerPrice) || offerPrice < PRICE_FLOOR) {
+            toast.error(`Sell validation failed: Invalid offer price.`);
+            return;
+        }
+
         const sellPayload: Record<string, { offerPrice?: number }> = {
             [resourceName]: {
-                ...(!isNaN(offerPrice) && offerPrice >= PRICE_FLOOR && { offerPrice }),
+                offerPrice,
             },
         };
 
@@ -682,12 +692,12 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <Accordion type='single' collapsible defaultValue='' className='-pb-2'>
-                        <AccordionItem value='market-step-chart' className='border-b-0'>
-                            <AccordionTrigger className='py-2 text-xs font-medium text-muted-foreground hover:no-underline'>
+                    <Accordion type='single' collapsible defaultValue='' className=''>
+                        <AccordionItem value='market-step-chart' className=''>
+                            <AccordionTrigger className='text-xs font-medium text-muted-foreground hover:no-underline'>
                                 Daily market clearance chart
                             </AccordionTrigger>
-                            <AccordionContent className='pt-1 pb-0'>
+                            <AccordionContent className='pt-1 pb-4'>
                                 <MarketStepChart
                                     market={marketData?.market ?? undefined}
                                     agentId={agentId}
@@ -696,8 +706,6 @@ export default function ResourceAccordionItem({
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>
-
-                    <Separator />
 
                     <div className='flex flex-row flex-wrap gap-4'>
                         <BuySection
