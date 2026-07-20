@@ -137,9 +137,9 @@ export default function BuySection({
                         quickPrices.map((price) => (
                             <Button
                                 key={price}
-                                variant='outline'
+                                variant='secondary'
                                 size='sm'
-                                className='h-6 text-[9px] text-right px-0.5 -py-0.5'
+                                className='h-6 text-[9px] text-right px-1 py-0'
                                 disabled={buyPriceSaving}
                                 onClick={() => onLocalChange(resourceName, { bidPrice: price.toFixed(2) })}
                             >

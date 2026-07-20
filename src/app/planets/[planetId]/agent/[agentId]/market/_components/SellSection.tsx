@@ -1,11 +1,9 @@
 import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import { PRICE_FLOOR } from '@/simulation/constants';
 import { AlertCircle, RotateCcw, Tag } from 'lucide-react';
 import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
@@ -57,7 +55,7 @@ export default function SellSection({
     const hasValidationErrors = !!local.validationErrors.offerPrice;
 
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
-        const baseClass = 'h-8 text-sm tabular-nums';
+        const baseClass = 'h-7 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
         }
@@ -96,84 +94,66 @@ export default function SellSection({
             : [];
 
     const manualPricing = (
-        <>
-            <div className='space-y-3'>
-                <div className='grid grid-cols-2 gap-3'>
-                    <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                        <Label htmlFor={`offer-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                            Price / unit
-                        </Label>
-                        <Input
-                            id={`offer-price-${resourceName}`}
-                            type='number'
-                            min={PRICE_FLOOR}
-                            step='any'
-                            placeholder={
-                                offer?.offerPrice !== undefined
-                                    ? offer.offerPrice.toFixed(2)
-                                    : (defaultPrice ?? 'e.g. 1.50')
-                            }
-                            value={local.offerPrice}
-                            disabled={sellPriceSaving}
-                            onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                            className={getFieldClassName('offerPrice', sellPriceSaving)}
-                        />
-                        {overviewRow && costFloor > 0 && (
-                            <div className='flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground'>
-                                {quickPrices.map((price) => (
-                                    <Button
-                                        key={price}
-                                        variant='outline'
-                                        size='sm'
-                                        className='h-5 text-[10px] px-1.5 py-0'
-                                        disabled={sellPriceSaving}
-                                        onClick={() =>
-                                            onLocalChange(resourceName, {
-                                                offerPrice: price.toFixed(2),
-                                            })
-                                        }
-                                    >
-                                        {price.toFixed(2)}
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {local.validationErrors.offerPrice && (
-                    <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                        <AlertCircle className='h-3 w-3' />
-                        Price: {local.validationErrors.offerPrice}
-                    </div>
-                )}
-
-                <div className='flex items-center justify-between gap-3 pt-2'>
-                    <div className='flex items-center gap-2'>
-                        {hasDirtySellFields && (
+        <span className='flex flex-row flex-grow gap-2 items-center py-2'>
+            <div className='flex flex-col flex-grow gap-1'>
+                <span className='flex flex-row items-center gap-1'>
+                    <Button
+                        className='h-7 text-[11px] p-0 px-1'
+                        variant='ghost'
+                        size='sm'
+                        onClick={onResetSell}
+                        disabled={sellPriceSaving || !hasDirtySellFields}
+                    >
+                        <RotateCcw className='h-5 w-5' />
+                    </Button>
+                    <Input
+                        id={`offer-price-${resourceName}`}
+                        type='number'
+                        min={0.01}
+                        step='any'
+                        placeholder={
+                            offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : (defaultPrice ?? 'e.g. 1.50')
+                        }
+                        value={local.offerPrice}
+                        disabled={sellPriceSaving}
+                        onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
+                        className={getFieldClassName('offerPrice', sellPriceSaving) + ` text-right`}
+                    />
+                </span>
+                <span className='flex items-center justify-end gap-1 '>
+                    {overviewRow &&
+                        costFloor > 0 &&
+                        quickPrices.map((price) => (
                             <Button
-                                variant='outline'
+                                key={price}
+                                variant='secondary'
                                 size='sm'
-                                className='h-7 text-[11px] px-2'
-                                onClick={onResetSell}
+                                className='h-6 text-[9px] text-right px-1 py-0'
                                 disabled={sellPriceSaving}
+                                onClick={() => onLocalChange(resourceName, { offerPrice: price.toFixed(2) })}
                             >
-                                <RotateCcw className='h-3 w-3 mr-1' />
-                                Reset
+                                {formatNumberWithUnit(price, 'currency', planetId)}
                             </Button>
-                        )}
-                        <Button
-                            size='sm'
-                            className='h-7 text-[11px] px-3'
-                            onClick={onSaveSell}
-                            disabled={!hasDirtySellFields || !!hasValidationErrors || sellPriceSaving}
-                        >
-                            {sellPriceSaving ? 'Saving…' : 'Save Sell'}
-                        </Button>
-                    </div>
-                </div>
+                        ))}
+                </span>
             </div>
-        </>
+
+            <Button
+                size='sm'
+                className='h-14 w-14 text-[11px] '
+                onClick={onSaveSell}
+                disabled={!hasDirtySellFields || !!hasValidationErrors || sellPriceSaving}
+            >
+                {sellPriceSaving ? 'Setting…' : 'Set'}
+            </Button>
+
+            {local.validationErrors.offerPrice && (
+                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                    <AlertCircle className='h-3 w-3' />
+                    Price: {local.validationErrors.offerPrice}
+                </div>
+            )}
+        </span>
     );
 
     return (
