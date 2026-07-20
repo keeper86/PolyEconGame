@@ -694,7 +694,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <div className='flex flex-row flex-wrap gap-4'>
+                    <div className='flex flex-row flex-wrap gap-8'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}
@@ -741,18 +741,15 @@ export default function ResourceAccordionItem({
                         />
                     </div>
 
-                    <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
-                        <CollapsibleTrigger className='text-xs font-medium text-muted-foreground hover:no-underline flex items-center gap-1'>
-                            Daily market clearance chart
-                        </CollapsibleTrigger>
-                        <CollapsibleContent className='pt-1 pb-4'>
-                            <MarketStepChart
-                                market={marketData?.market ?? undefined}
-                                agentId={agentId}
-                                planetId={planetId}
-                            />
-                        </CollapsibleContent>
-                    </Collapsible>
+                    <div className='flex flex-col gap-3'>
+                        <span className='text-xs font-medium text-muted-foreground'>Daily market clearance chart</span>
+
+                        <MarketStepChart
+                            market={marketData?.market ?? undefined}
+                            agentId={agentId}
+                            planetId={planetId}
+                        />
+                    </div>
                 </div>
             </AccordionContent>
         </AccordionItem>

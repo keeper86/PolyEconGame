@@ -290,18 +290,24 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const resourceName of Object.keys(assets.market.buy)) {
         const bid = assets.market.buy[resourceName];
-        if (!bid.automated) continue;
+        if (!bid.automated) {
+            continue;
+        }
 
         const bidCfg = resolveBidConfig(bid.autoConfig, bid.resource);
         if (bidCfg.freeBuyQuantity > 0) {
             const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-            const fillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
-            const freeBuyPerTick = currentInventory < bidCfg.freeBuyQuantity ? bidCfg.freeBuyQuantity / fillDays : 0;
+            // freeBuyQuantity is an absolute additional inventory target
+            const freeBuyTarget = currentInventory < bidCfg.freeBuyQuantity ? bidCfg.freeBuyQuantity : 0;
             const existing = aggregatedBuyTargets.get(resourceName);
             if (existing) {
-                existing.freeTarget += freeBuyPerTick;
+                existing.freeTarget += freeBuyTarget;
             } else {
-                aggregatedBuyTargets.set(resourceName, { resource: bid.resource, storageTarget: 0, freeTarget: freeBuyPerTick });
+                aggregatedBuyTargets.set(resourceName, {
+                    resource: bid.resource,
+                    storageTarget: 0,
+                    freeTarget: freeBuyTarget,
+                });
             }
         } else if (!aggregatedBuyTargets.has(resourceName)) {
             bid.bidStorageTarget = 0;
@@ -323,7 +329,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
-        const shortfall = Math.max(0, storageTarget - currentInventory) + freeTarget;
+        const shortfall = Math.max(0, storageTarget - currentInventory);
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
@@ -340,8 +346,18 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
         }
 
-        // Free target is always added after smoothing; smoothing only applies to structural demand
-        smoothedShortfall += freeTarget;
+        if (freeTarget > EPSILON && resource.form !== 'services') {
+            const freeFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+            const freeFillRate = freeTarget / freeFillDays;
+            const freeInventory = Math.max(0, currentInventory - smoothedTarget);
+            const freeRemaining = Math.max(0, freeTarget - freeInventory);
+            const smoothedFreeShortfall = freeRemaining > 0 ? Math.min(freeRemaining, freeFillRate) : 0;
+            smoothedTarget += freeTarget;
+            smoothedShortfall += smoothedFreeShortfall;
+        } else {
+            smoothedTarget += freeTarget;
+            smoothedShortfall += freeTarget;
+        }
 
         const marketPrice = planet.marketPrices[resourceName];
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
@@ -353,7 +369,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             );
         }
 
-        adjustBidPrice(bid, smoothedShortfall, smoothedTarget + freeTarget, marketPrice, bidCeil, costFloor);
+        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(

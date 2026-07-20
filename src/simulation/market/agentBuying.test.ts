@@ -161,8 +161,8 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
-        // freeBuyPerTick = 1000 / 2 = 500, storageTarget = 300 + 500 = 800.
-        // Smoothing scales this back, but should still exceed inventory + buffer
+        // freeBuyQuantity = 1000 (absolute target), smoothed over 2 ticks → 500/tick
+        // structural target ≈ inventory (already full), so smoothedTarget = inventory + 1000
         expect(newTarget).toBeGreaterThan(inventoryQty);
     });
 

@@ -245,8 +245,8 @@ function renderSingleSlider(
                 <Label className='text-[11px] text-muted-foreground'>{def.label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
                     {fmt(clampedVal)}
-                    <span className={`ml-1 ${showCommitted ? '' : ''}`}>
-                        (current: {showCommitted ? fmt(committed) : '-'})
+                    <span className={`ml-1 text-[9px] text-muted-foreground ${showCommitted ? '' : ''}`}>
+                        (now {showCommitted ? fmt(committed) : fmt(clampedVal)})
                     </span>
                 </span>
             </div>
