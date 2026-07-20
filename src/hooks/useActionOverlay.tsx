@@ -367,7 +367,14 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
 
     return (
         <PendingActionContext.Provider
-            value={{ addPending, getPending, updateProcessedAtTick, removePendingById, removePendingByKey, removePendingByResource }}
+            value={{
+                addPending,
+                getPending,
+                updateProcessedAtTick,
+                removePendingById,
+                removePendingByKey,
+                removePendingByResource,
+            }}
         >
             {children}
         </PendingActionContext.Provider>

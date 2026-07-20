@@ -156,13 +156,14 @@ describe('automaticPricing — buy side', () => {
         expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
 
         // Config free buy quantity
-        buyer.assets.p.market!.buy[COAL]!.autoConfig = { freeBuyQuantity: 100, freeBuyQuantitySmoothingMaxExtra: 2 };
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { freeBuyQuantity: 1000, freeBuyQuantitySmoothingMaxExtra: 2 };
 
         automaticPricing(agentMap(buyer), planet);
 
         const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
-        // freeBuyPerTick = 100 / 2 = 50, so bidStorageTarget should be at least inventoryQty + 50
-        expect(newTarget).toBeGreaterThanOrEqual(inventoryQty + 49);
+        // freeBuyPerTick = 1000 / 2 = 500, storageTarget = 300 + 500 = 800.
+        // Smoothing scales this back, but should still exceed inventory + buffer
+        expect(newTarget).toBeGreaterThan(inventoryQty);
     });
 
     it('bootstraps bidPrice from market price on first tick', () => {

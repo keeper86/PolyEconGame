@@ -191,7 +191,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
-    const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number }>();
+    const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number; freeTarget: number }>();
 
     for (const facility of [
         ...assets.productionFacilities,
@@ -223,7 +223,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 if (existing) {
                     existing.storageTarget += facilityTarget;
                 } else {
-                    aggregatedBuyTargets.set(resource.name, { resource, storageTarget: facilityTarget });
+                    aggregatedBuyTargets.set(resource.name, { resource, storageTarget: facilityTarget, freeTarget: 0 });
                 }
             }
         }
@@ -238,6 +238,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 aggregatedBuyTargets.set(constructionServiceResourceType.name, {
                     resource: constructionServiceResourceType,
                     storageTarget: facilityTarget,
+                    freeTarget: 0,
                 });
             }
         }
@@ -262,6 +263,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 aggregatedBuyTargets.set(constructionServiceResourceType.name, {
                     resource: constructionServiceResourceType,
                     storageTarget: shipTarget,
+                    freeTarget: 0,
                 });
             }
         }
@@ -280,7 +282,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 if (existing) {
                     existing.storageTarget += remaining;
                 } else {
-                    aggregatedBuyTargets.set(resource.name, { resource, storageTarget: remaining });
+                    aggregatedBuyTargets.set(resource.name, { resource, storageTarget: remaining, freeTarget: 0 });
                 }
             }
         }
@@ -288,23 +290,25 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const resourceName of Object.keys(assets.market.buy)) {
         const bid = assets.market.buy[resourceName];
-        if (bid.automated && !aggregatedBuyTargets.has(resourceName)) {
-            const bidCfg = resolveBidConfig(bid.autoConfig, bid.resource);
-            if (bidCfg.freeBuyQuantity > 0) {
-                const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-                const fillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
-                const freeBuyPerTick =
-                    currentInventory < bidCfg.freeBuyQuantity
-                        ? bidCfg.freeBuyQuantity / fillDays
-                        : 0;
-                aggregatedBuyTargets.set(resourceName, { resource: bid.resource, storageTarget: freeBuyPerTick });
+        if (!bid.automated) continue;
+
+        const bidCfg = resolveBidConfig(bid.autoConfig, bid.resource);
+        if (bidCfg.freeBuyQuantity > 0) {
+            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+            const fillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+            const freeBuyPerTick = currentInventory < bidCfg.freeBuyQuantity ? bidCfg.freeBuyQuantity / fillDays : 0;
+            const existing = aggregatedBuyTargets.get(resourceName);
+            if (existing) {
+                existing.freeTarget += freeBuyPerTick;
             } else {
-                bid.bidStorageTarget = 0;
+                aggregatedBuyTargets.set(resourceName, { resource: bid.resource, storageTarget: 0, freeTarget: freeBuyPerTick });
             }
+        } else if (!aggregatedBuyTargets.has(resourceName)) {
+            bid.bidStorageTarget = 0;
         }
     }
 
-    for (const [resourceName, { resource, storageTarget }] of aggregatedBuyTargets) {
+    for (const [resourceName, { resource, storageTarget, freeTarget }] of aggregatedBuyTargets) {
         if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
             continue;
         }
@@ -319,7 +323,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
-        const shortfall = Math.max(0, storageTarget - currentInventory);
+        const shortfall = Math.max(0, storageTarget - currentInventory) + freeTarget;
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
@@ -336,6 +340,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
         }
 
+        // Free target is always added after smoothing; smoothing only applies to structural demand
+        smoothedShortfall += freeTarget;
+
         const marketPrice = planet.marketPrices[resourceName];
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
         const bidCeil = Math.min(PRICE_CEIL, costFloor * bidCfg.bidOfferMaxCostMultiplier);
@@ -346,7 +353,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             );
         }
 
-        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
+        adjustBidPrice(bid, smoothedShortfall, smoothedTarget + freeTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(

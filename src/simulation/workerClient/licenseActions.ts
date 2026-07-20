@@ -14,7 +14,12 @@ export function handleAcquireLicense(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'licenseAcquisitionFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'licenseAcquisitionFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -99,5 +104,12 @@ export function handleAcquireLicense(
     console.log(
         `[worker] Agent '${agentId}' acquired '${licenseType}' license on planet '${planetId}' (cost: ${cost})`,
     );
-    safePostMessage({ type: 'licenseAcquired', requestId, agentId, planetId, licenseType, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'licenseAcquired',
+        requestId,
+        agentId,
+        planetId,
+        licenseType,
+        processedAtTick: state.tick,
+    });
 }

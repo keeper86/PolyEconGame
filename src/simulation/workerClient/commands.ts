@@ -611,7 +611,10 @@ export function workerAcquireLicense(opts: {
     planetId: string;
     licenseType: 'commercial' | 'workforce';
     timeoutMs?: number;
-}): Promise<{ result: { agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }; processedAtTick: number }> {
+}): Promise<{
+    result: { agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' };
+    processedAtTick: number;
+}> {
     const { agentId, planetId, licenseType, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'acquireLicense', requestId: randomUUID(), agentId, planetId, licenseType },

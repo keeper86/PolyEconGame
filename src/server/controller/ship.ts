@@ -79,7 +79,10 @@ export const postTransportContract = () =>
             if (!resource) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name' });
             }
-            const { result: contractId } = await workerPostTransportContract({ ...input, cargo: { ...input.cargo, resource } });
+            const { result: contractId } = await workerPostTransportContract({
+                ...input,
+                cargo: { ...input.cargo, resource },
+            });
             return { contractId };
         });
 
@@ -141,7 +144,10 @@ export const dispatchShip = () =>
                 if (!resource) {
                     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name in cargo goal' });
                 }
-                const { result: shipId } = await workerDispatchShip({ ...input, cargoGoal: { ...input.cargoGoal, resource } });
+                const { result: shipId } = await workerDispatchShip({
+                    ...input,
+                    cargoGoal: { ...input.cargoGoal, resource },
+                });
                 return { shipId };
             } else {
                 const { result: shipId } = await workerDispatchShip({ ...input, cargoGoal: null });

@@ -12,7 +12,12 @@ export function handleSetSellOffers(
     const { requestId, agentId, planetId, offers } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'sellOffersFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -80,7 +85,12 @@ export function handleCancelSellOffer(
     const { requestId, agentId, planetId, resourceName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'sellOfferCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -108,7 +118,12 @@ export function handleCancelBuyBid(
     const { requestId, agentId, planetId, resourceName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'buyBidCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];

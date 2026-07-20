@@ -14,7 +14,12 @@ export function handleBuildFacility(
     const { requestId, agentId, planetId, facilityKey, targetScale = 1 } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityBuildFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -74,7 +79,12 @@ export function handleExpandFacility(
     const { requestId, agentId, planetId, facilityId, targetScale } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'facilityExpandFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityExpandFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -89,7 +99,12 @@ export function handleExpandFacility(
     }
     const facility = assets.productionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
-        safePostMessage({ type: 'facilityExpandFailed', requestId, reason: `Facility '${facilityId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityExpandFailed',
+            requestId,
+            reason: `Facility '${facilityId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (facility.construction !== null) {
@@ -133,12 +148,22 @@ export function handleSetFacilityScale(
 ): void {
     const { requestId, agentId, planetId, facilityId, scaleFraction } = action;
     if (scaleFraction < 0 || scaleFraction > 1) {
-        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `scaleFraction must be between 0 and 1`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityScaleSetFailed',
+            requestId,
+            reason: `scaleFraction must be between 0 and 1`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityScaleSetFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -155,7 +180,12 @@ export function handleSetFacilityScale(
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
-        safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: `Facility '${facilityId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityScaleSetFailed',
+            requestId,
+            reason: `Facility '${facilityId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     facility.scale = facility.maxScale * scaleFraction;
@@ -173,7 +203,12 @@ export function handleContractFacility(
     const { requestId, agentId, planetId, facilityId, targetScale } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -190,11 +225,21 @@ export function handleContractFacility(
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
-        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Facility '${facilityId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Facility '${facilityId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (facility.construction !== null) {
-        safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Facility is under construction', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Facility is under construction',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (targetScale >= facility.maxScale) {
@@ -208,7 +253,12 @@ export function handleContractFacility(
     }
     const planet = state.planets.get(planetId);
     if (!planet) {
-        safePostMessage({ type: 'facilityContractFailed', requestId, reason: `Planet '${planetId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: `Planet '${planetId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -276,7 +326,12 @@ export function handleBuildShipConstructionFacility(
     const { requestId, agentId, planetId, facilityName, targetScale = 1 } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipConstructionFacilityBuildFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipConstructionFacilityBuildFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -317,7 +372,13 @@ export function handleBuildShipConstructionFacility(
     console.log(
         `[worker] Agent '${agentId}' built ship construction facility '${facilityName}' (scale ${targetScale}) on planet '${planetId}'`,
     );
-    safePostMessage({ type: 'shipConstructionFacilityBuilt', requestId, agentId, facilityId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'shipConstructionFacilityBuilt',
+        requestId,
+        agentId,
+        facilityId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handleExpandShipConstructionFacility(
@@ -328,7 +389,12 @@ export function handleExpandShipConstructionFacility(
     const { requestId, agentId, planetId, facilityId, targetScale } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipConstructionFacilityExpandFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipConstructionFacilityExpandFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -381,7 +447,13 @@ export function handleExpandShipConstructionFacility(
     console.log(
         `[worker] Agent '${agentId}' expanding ship construction facility '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
     );
-    safePostMessage({ type: 'shipConstructionFacilityExpanded', requestId, agentId, facilityId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'shipConstructionFacilityExpanded',
+        requestId,
+        agentId,
+        facilityId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handleSetShipConstructionTarget(
@@ -392,7 +464,12 @@ export function handleSetShipConstructionTarget(
     const { requestId, agentId, planetId, facilityId, shipTypeName, shipName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipConstructionTargetSetFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipConstructionTargetSetFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -463,7 +540,12 @@ export function handleCancelConstruction(
     const { requestId, agentId, planetId, facilityId } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'constructionCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
@@ -482,7 +564,12 @@ export function handleCancelConstruction(
         facilityIndex === -1 ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId) : -1;
 
     if (facilityIndex === -1 && shipyardIndex === -1) {
-        safePostMessage({ type: 'constructionCancelFailed', requestId, reason: `Facility '${facilityId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionCancelFailed',
+            requestId,
+            reason: `Facility '${facilityId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
 

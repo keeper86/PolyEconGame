@@ -51,7 +51,12 @@ export function handleSetAutomation(
     const { requestId, agentId, automateWorkerAllocation } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'automationFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     agent.automateWorkerAllocation = automateWorkerAllocation;
@@ -69,7 +74,12 @@ export function handleSetWorkerAllocationTargets(
     const { requestId, agentId, planetId, targets } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'workerAllocationFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];

@@ -12,7 +12,12 @@ export function handleLeaseClaim(
     const { requestId, agentId, planetId, resourceName, quantity } = action;
 
     if (quantity <= 0) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Quantity must be positive', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'claimLeaseFailed',
+            requestId,
+            reason: 'Quantity must be positive',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -35,7 +40,12 @@ export function handleQuitClaim(
     const agent = state.agents.get(agentId);
     const planet = state.planets.get(planetId);
     if (!agent || !planet) {
-        safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent or planet not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'claimQuitFailed',
+            requestId,
+            reason: 'Agent or planet not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     let resourceName: string | null = null;
@@ -49,7 +59,12 @@ export function handleQuitClaim(
         }
     }
     if (!existingClaim || !resourceName) {
-        safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Claim '${claimId}' not found for agent`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'claimQuitFailed',
+            requestId,
+            reason: `Claim '${claimId}' not found for agent`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     const entry = planet.resources[resourceName]!;

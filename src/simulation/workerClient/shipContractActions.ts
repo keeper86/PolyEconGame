@@ -22,12 +22,22 @@ export function handlePostTransportContract(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractPostFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractPostFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (assets.deposits < offeredReward) {
@@ -103,42 +113,77 @@ export function handleAcceptTransportContract(
 
     const carrierAgent = state.agents.get(agentId);
     if (!carrierAgent) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const posterAgent = state.agents.get(posterAgentId);
     if (!posterAgent) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Poster agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Poster agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const posterAssets = posterAgent.assets[planetId];
     if (!posterAssets) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract planet not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Contract planet not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const contractIndex = posterAssets.transportContracts.findIndex((c) => c.id === contractId);
     if (contractIndex === -1) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Contract not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const contract = posterAssets.transportContracts[contractIndex];
     if (contract.status !== 'open') {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract is not open', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Contract is not open',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     if (state.tick > contract.expiresAtTick) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Contract has expired', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Contract has expired',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const ship = carrierAgent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: `Ship '${shipId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: `Ship '${shipId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.type.type !== 'transport') {
@@ -151,7 +196,12 @@ export function handleAcceptTransportContract(
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractAcceptFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== contract.fromPlanetId) {
@@ -197,19 +247,34 @@ export function handleCancelTransportContract(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractCancelFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const contractIndex = assets.transportContracts.findIndex((c) => c.id === contractId);
     if (contractIndex === -1) {
-        safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: 'Contract not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'transportContractCancelFailed',
+            requestId,
+            reason: 'Contract not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -230,7 +295,13 @@ export function handleCancelTransportContract(
     releaseFromEscrow(assets.storageFacility, contract.cargo.resource.name, contract.cargo.quantity);
 
     assets.transportContracts.splice(contractIndex, 1);
-    safePostMessage({ type: 'transportContractCancelled', requestId, agentId, contractId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'transportContractCancelled',
+        requestId,
+        agentId,
+        contractId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handlePostConstructionContract(
@@ -251,12 +322,22 @@ export function handlePostConstructionContract(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractPostFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (assets.deposits < offeredReward) {
@@ -315,7 +396,13 @@ export function handlePostConstructionContract(
     };
 
     assets.constructionContracts.push(contract);
-    safePostMessage({ type: 'constructionContractPosted', requestId, agentId, contractId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'constructionContractPosted',
+        requestId,
+        agentId,
+        contractId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handleAcceptConstructionContract(
@@ -327,32 +414,62 @@ export function handleAcceptConstructionContract(
 
     const carrierAgent = state.agents.get(agentId);
     if (!carrierAgent) {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const posterAgent = state.agents.get(posterAgentId);
     if (!posterAgent) {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Poster agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Poster agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const posterAssets = posterAgent.assets[planetId];
     if (!posterAssets) {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract planet not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Contract planet not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const contractIndex = posterAssets.constructionContracts.findIndex((c) => c.id === contractId);
     if (contractIndex === -1) {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Contract not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const contract = posterAssets.constructionContracts[contractIndex];
     if (contract.status !== 'open') {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract is not open', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Contract is not open',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (state.tick > contract.expiresAtTick) {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Contract has expired', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Contract has expired',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -367,7 +484,12 @@ export function handleAcceptConstructionContract(
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractAcceptFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== contract.fromPlanetId) {
@@ -425,7 +547,13 @@ export function handleAcceptConstructionContract(
         posterAgentId,
     };
 
-    safePostMessage({ type: 'constructionContractAccepted', requestId, agentId, contractId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'constructionContractAccepted',
+        requestId,
+        agentId,
+        contractId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handleCancelConstructionContract(
@@ -437,18 +565,33 @@ export function handleCancelConstructionContract(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractCancelFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const contractIndex = assets.constructionContracts.findIndex((c) => c.id === contractId);
     if (contractIndex === -1) {
-        safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Contract not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionContractCancelFailed',
+            requestId,
+            reason: 'Contract not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const contract = assets.constructionContracts[contractIndex];
@@ -466,7 +609,13 @@ export function handleCancelConstructionContract(
     assets.deposits += contract.offeredReward;
 
     assets.constructionContracts.splice(contractIndex, 1);
-    safePostMessage({ type: 'constructionContractCancelled', requestId, agentId, contractId, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'constructionContractCancelled',
+        requestId,
+        agentId,
+        contractId,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handlePostShipBuyingOffer(
@@ -478,19 +627,34 @@ export function handlePostShipBuyingOffer(
 
     const allShipTypeNames = Object.values(shiptypes).flatMap((category) => Object.keys(category));
     if (!allShipTypeNames.includes(shipType)) {
-        safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: `Unknown ship type '${shipType}'`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferPostFailed',
+            requestId,
+            reason: `Unknown ship type '${shipType}'`,
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferPostFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferPostFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -529,42 +693,77 @@ export function handleAcceptShipBuyingOffer(
 
     const sellerAgent = state.agents.get(agentId);
     if (!sellerAgent) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const buyerAgent = state.agents.get(posterAgentId);
     if (!buyerAgent) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Buyer agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Buyer agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const buyerAssets = buyerAgent.assets[planetId];
     if (!buyerAssets) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Offer planet not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Offer planet not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const offerIndex = buyerAssets.shipBuyingOffers.findIndex((o) => o.id === offerId);
     if (offerIndex === -1) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Offer not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Offer not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const offer = buyerAssets.shipBuyingOffers[offerIndex];
     if (offer.status !== 'open') {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Offer is not open', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Offer is not open',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const shipIndex = sellerAgent.ships.findIndex((s) => s.id === shipId);
     if (shipIndex === -1) {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: `Ship '${shipId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: `Ship '${shipId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     const ship = sellerAgent.ships[shipIndex];
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipBuyingOfferAcceptFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.type.type !== 'transport') {
@@ -643,27 +842,52 @@ export function handlePostShipListing(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Ship '${shipId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: `Ship '${shipId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.type === 'derelict') {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Cannot list a derelict ship', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: 'Cannot list a derelict ship',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Ship must be idle to be listed', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: 'Ship must be idle to be listed',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== planetId) {
@@ -676,7 +900,12 @@ export function handlePostShipListing(
         return;
     }
     if (assets.shipListings.some((l) => l.shipId === shipId)) {
-        safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Ship is already listed for sale', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingPostFailed',
+            requestId,
+            reason: 'Ship is already listed for sale',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -705,25 +934,45 @@ export function handleCancelShipListing(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingCancelFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const assets = agent.assets[planetId];
     if (!assets) {
-        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'No assets on planet', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingCancelFailed',
+            requestId,
+            reason: 'No assets on planet',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const listingIndex = assets.shipListings.findIndex((l) => l.id === listingId);
     if (listingIndex === -1) {
-        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Listing not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingCancelFailed',
+            requestId,
+            reason: 'Listing not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const listing = assets.shipListings[listingIndex];
     if (listing.sellerAgentId !== agentId) {
-        safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'You do not own this listing', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingCancelFailed',
+            requestId,
+            reason: 'You do not own this listing',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -745,13 +994,23 @@ export function handleAcceptShipListing(
 
     const buyerAgent = state.agents.get(buyerAgentId);
     if (!buyerAgent) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Buyer agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Buyer agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const sellerAgent = state.agents.get(sellerAgentId);
     if (!sellerAgent) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Seller agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -778,26 +1037,51 @@ export function handleAcceptShipListing(
     }
 
     if (!listing || !sellerAssets) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Listing not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Listing not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (listing.sellerAgentId !== sellerAgentId) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent mismatch', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Seller agent mismatch',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
     const shipIndex = sellerAgent.ships.findIndex((s) => s.id === listing!.shipId);
     if (shipIndex === -1) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship no longer exists', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Ship no longer exists',
+            processedAtTick: state.tick,
+        });
         return;
     }
     const ship = sellerAgent.ships[shipIndex];
     if (ship.state.type !== 'listed') {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Ship is no longer listed', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Ship is no longer listed',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (buyerAssets.deposits < listing.askPrice) {
-        safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Insufficient deposits', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipListingAcceptFailed',
+            requestId,
+            reason: 'Insufficient deposits',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -834,7 +1118,12 @@ export function handleDispatchShip(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -850,15 +1139,30 @@ export function handleDispatchShip(
 
     const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship '${shipId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: `Ship '${shipId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== fromPlanetId) {
-        safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Ship is not on planet '${fromPlanetId}'`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'shipDispatchFailed',
+            requestId,
+            reason: `Ship is not on planet '${fromPlanetId}'`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.type.type !== 'transport') {
@@ -927,7 +1231,12 @@ export function handleDispatchPassengerShip(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -962,7 +1271,12 @@ export function handleDispatchPassengerShip(
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== fromPlanetId) {
@@ -985,7 +1299,12 @@ export function handleDispatchPassengerShip(
     }
 
     if (!Number.isFinite(passengerCount)) {
-        safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Passenger count must be finite', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'passengerShipDispatchFailed',
+            requestId,
+            reason: 'Passenger count must be finite',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -1025,7 +1344,13 @@ export function handleDispatchPassengerShip(
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
-    safePostMessage({ type: 'passengerShipDispatched', requestId, agentId, shipId: ship.id, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'passengerShipDispatched',
+        requestId,
+        agentId,
+        shipId: ship.id,
+        processedAtTick: state.tick,
+    });
 }
 
 export function handleDispatchConstructionShip(
@@ -1037,7 +1362,12 @@ export function handleDispatchConstructionShip(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -1053,11 +1383,21 @@ export function handleDispatchConstructionShip(
 
     const ship = agent.ships.find((s) => s.id === shipId);
     if (!ship) {
-        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: `Ship '${shipId}' not found`, processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: `Ship '${shipId}' not found`,
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.type !== 'idle') {
-        safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Ship is not idle', processedAtTick: state.tick });
+        safePostMessage({
+            type: 'constructionShipDispatchFailed',
+            requestId,
+            reason: 'Ship is not idle',
+            processedAtTick: state.tick,
+        });
         return;
     }
     if (ship.state.planetId !== fromPlanetId) {
@@ -1127,5 +1467,11 @@ export function handleDispatchConstructionShip(
         deadlineTick: state.tick + MAX_DISPATCH_TIMEOUT_TICKS,
     };
 
-    safePostMessage({ type: 'constructionShipDispatched', requestId, agentId, shipId: ship.id, processedAtTick: state.tick });
+    safePostMessage({
+        type: 'constructionShipDispatched',
+        requestId,
+        agentId,
+        shipId: ship.id,
+        processedAtTick: state.tick,
+    });
 }

@@ -287,7 +287,14 @@ export type OutboundMessage =
     | { type: 'agentCreationFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number; processedAtTick: number }
     | { type: 'loanDenied'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'loanRepaid'; requestId: string; agentId: string; loanId: string; amount: number; processedAtTick: number }
+    | {
+          type: 'loanRepaid';
+          requestId: string;
+          agentId: string;
+          loanId: string;
+          amount: number;
+          processedAtTick: number;
+      }
     | { type: 'repayDenied'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'automationSet'; requestId: string; agentId: string; processedAtTick: number }
     | { type: 'automationFailed'; requestId: string; reason: string; processedAtTick: number }
@@ -301,7 +308,14 @@ export type OutboundMessage =
     | { type: 'sellOfferCancelFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'buyBidCancelled'; requestId: string; agentId: string; processedAtTick: number }
     | { type: 'buyBidCancelFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'resourcesClaimed'; requestId: string; agentId: string; arableClaimId: string; waterClaimId: string; processedAtTick: number }
+    | {
+          type: 'resourcesClaimed';
+          requestId: string;
+          agentId: string;
+          arableClaimId: string;
+          waterClaimId: string;
+          processedAtTick: number;
+      }
     | { type: 'resourcesClaimFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
     | { type: 'facilityBuildFailed'; requestId: string; reason: string; processedAtTick: number }
@@ -317,23 +331,65 @@ export type OutboundMessage =
     | { type: 'claimLeaseFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string; processedAtTick: number }
     | { type: 'claimQuitFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'transportContractPosted'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'transportContractPosted';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'transportContractPostFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'transportContractAccepted'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'transportContractAccepted';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'transportContractAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'transportContractCancelled'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'transportContractCancelled';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'transportContractCancelFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'shipDispatched'; requestId: string; agentId: string; shipId: string; processedAtTick: number }
     | { type: 'shipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'passengerShipDispatched'; requestId: string; agentId: string; shipId: string; processedAtTick: number }
     | { type: 'passengerShipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'constructionShipDispatched'; requestId: string; agentId: string; shipId: string; processedAtTick: number }
+    | {
+          type: 'constructionShipDispatched';
+          requestId: string;
+          agentId: string;
+          shipId: string;
+          processedAtTick: number;
+      }
     | { type: 'constructionShipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'constructionContractPosted'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'constructionContractPosted';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'constructionContractPostFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'constructionContractAccepted'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'constructionContractAccepted';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'constructionContractAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'constructionContractCancelled'; requestId: string; agentId: string; contractId: string; processedAtTick: number }
+    | {
+          type: 'constructionContractCancelled';
+          requestId: string;
+          agentId: string;
+          contractId: string;
+          processedAtTick: number;
+      }
     | { type: 'constructionContractCancelFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'shipBuyingOfferPosted'; requestId: string; agentId: string; offerId: string; processedAtTick: number }
     | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string; processedAtTick: number }
@@ -343,13 +399,37 @@ export type OutboundMessage =
     | { type: 'shipListingPostFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'shipListingCancelled'; requestId: string; agentId: string; listingId: string; processedAtTick: number }
     | { type: 'shipListingCancelFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'shipListingAccepted'; requestId: string; buyerAgentId: string; listingId: string; processedAtTick: number }
+    | {
+          type: 'shipListingAccepted';
+          requestId: string;
+          buyerAgentId: string;
+          listingId: string;
+          processedAtTick: number;
+      }
     | { type: 'shipListingAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'shipConstructionFacilityBuilt'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
+    | {
+          type: 'shipConstructionFacilityBuilt';
+          requestId: string;
+          agentId: string;
+          facilityId: string;
+          processedAtTick: number;
+      }
     | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'shipConstructionFacilityExpanded'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
+    | {
+          type: 'shipConstructionFacilityExpanded';
+          requestId: string;
+          agentId: string;
+          facilityId: string;
+          processedAtTick: number;
+      }
     | { type: 'shipConstructionFacilityExpandFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'shipConstructionTargetSet'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
+    | {
+          type: 'shipConstructionTargetSet';
+          requestId: string;
+          agentId: string;
+          facilityId: string;
+          processedAtTick: number;
+      }
     | { type: 'shipConstructionTargetSetFailed'; requestId: string; reason: string; processedAtTick: number }
     | {
           type: 'licenseAcquired';
