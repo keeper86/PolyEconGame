@@ -235,6 +235,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
     let running = true;
 
     function safePostMessage(msg: OutboundMessage): void {
+        // Stamp every message with the current tick for overlay/action resolution.
+        (msg as { processedAtTick?: number }).processedAtTick = state.tick;
         try {
             messagePort?.postMessage(msg);
         } catch (err: unknown) {
@@ -633,7 +635,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getPlanet': {
-                    data = { planet: snap.planets.get(msg.planetId) ?? null };
+                    data = { tick: snap.tick, planet: snap.planets.get(msg.planetId) ?? null };
                     break;
                 }
                 case 'getAllPlanets': {
@@ -642,7 +644,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getAgent': {
-                    data = { agent: snap.agents.get(msg.agentId) ?? null };
+                    data = { tick: snap.tick, agent: snap.agents.get(msg.agentId) ?? null };
                     break;
                 }
                 case 'getAllAgents': {
@@ -654,9 +656,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     const agent = snap.agents.get(msg.agentId);
                     const planet = snap.planets.get(msg.planetId);
                     if (!agent || !planet) {
-                        data = { conditions: null, activeLoans: [] };
+                        data = { tick: snap.tick, conditions: null, activeLoans: [] };
                     } else {
                         data = {
+                            tick: snap.tick,
                             conditions: computeLoanConditions(agent, planet, snap.shipCapitalMarket),
                             activeLoans: agent.assets[msg.planetId]?.activeLoans ?? [],
                         };
@@ -664,7 +667,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getShipCapitalMarket': {
-                    data = { shipCapitalMarket: snap.shipCapitalMarket };
+                    data = { tick: snap.tick, shipCapitalMarket: snap.shipCapitalMarket };
                     break;
                 }
                 case 'getPlanetWithAgents': {
@@ -678,6 +681,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }
                 case 'getTickerEvents': {
                     data = {
+                        tick: snap.tick,
                         tickerEvents: state.tickerEvents,
                     };
                     break;

@@ -44,7 +44,7 @@ export function workerCreateAgent(opts: {
     agentName: string;
     planetId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, agentName, planetId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'createAgent', requestId: randomUUID(), agentId, agentName, planetId },
@@ -58,7 +58,7 @@ export function workerRequestLoan(opts: {
     planetId: string;
     amount: number;
     timeoutMs?: number;
-}): Promise<number> {
+}): Promise<{ result: number; processedAtTick: number }> {
     const { agentId, planetId, amount, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'requestLoan', requestId: randomUUID(), agentId, planetId, amount },
@@ -73,7 +73,7 @@ export function workerRepayLoan(opts: {
     loanId: string;
     fraction: 0.25 | 0.5 | 1;
     timeoutMs?: number;
-}): Promise<number> {
+}): Promise<{ result: number; processedAtTick: number }> {
     const { agentId, planetId, loanId, fraction, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'repayLoan', requestId: randomUUID(), agentId, planetId, loanId, fraction },
@@ -86,7 +86,7 @@ export function workerSetAutomation(opts: {
     agentId: string;
     automateWorkerAllocation: boolean;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, automateWorkerAllocation, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setAutomation', requestId: randomUUID(), agentId, automateWorkerAllocation },
@@ -100,7 +100,7 @@ export function workerSetWorkerAllocationTargets(opts: {
     planetId: string;
     targets: Partial<Record<string, number>>;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, targets, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setWorkerAllocationTargets', requestId: randomUUID(), agentId, planetId, targets },
@@ -117,7 +117,7 @@ export function workerSetSellOffers(opts: {
         { offerPrice?: number; offerRetainment?: number; automated?: boolean; autoConfig?: AutomatedPricingConfig }
     >;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, offers, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setSellOffers', requestId: randomUUID(), agentId, planetId, offers },
@@ -131,7 +131,7 @@ export function workerCancelSellOffer(opts: {
     planetId: string;
     resourceName: string;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, resourceName, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelSellOffer', requestId: randomUUID(), agentId, planetId, resourceName },
@@ -145,7 +145,7 @@ export function workerCancelBuyBid(opts: {
     planetId: string;
     resourceName: string;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, resourceName, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelBuyBid', requestId: randomUUID(), agentId, planetId, resourceName },
@@ -167,7 +167,7 @@ export function workerSetBuyBids(opts: {
         }
     >;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, bids, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setBuyBids', requestId: randomUUID(), agentId, planetId, bids },
@@ -182,7 +182,7 @@ export function workerBuildFacility(opts: {
     facilityKey: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityKey, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey, targetScale },
@@ -197,7 +197,7 @@ export function workerExpandFacility(opts: {
     facilityId: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'expandFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
@@ -212,7 +212,7 @@ export function workerSetFacilityScale(opts: {
     facilityId: string;
     scaleFraction: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityId, scaleFraction, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setFacilityScale', requestId: randomUUID(), agentId, planetId, facilityId, scaleFraction },
@@ -227,7 +227,7 @@ export function workerContractFacility(opts: {
     facilityId: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'contractFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
@@ -242,7 +242,7 @@ export function workerLeaseClaim(opts: {
     resourceName: string;
     quantity: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, resourceName, quantity, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'leaseClaim', requestId: randomUUID(), agentId, planetId, resourceName, quantity },
@@ -256,7 +256,7 @@ export function workerQuitClaim(opts: {
     planetId: string;
     claimId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, claimId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'quitClaim', requestId: randomUUID(), agentId, planetId, claimId },
@@ -274,7 +274,7 @@ export function workerPostTransportContract(opts: {
     offeredReward: number;
     expiresAtTick: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, toPlanetId, cargo, maxDurationInTicks, offeredReward, expiresAtTick, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -300,7 +300,7 @@ export function workerAcceptTransportContract(opts: {
     contractId: string;
     shipId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, posterAgentId, contractId, shipId, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -322,7 +322,7 @@ export function workerCancelTransportContract(opts: {
     planetId: string;
     contractId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, contractId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelTransportContract', requestId: randomUUID(), agentId, planetId, contractId },
@@ -340,7 +340,7 @@ export function workerPostConstructionContract(opts: {
     offeredReward: number;
     expiresAtTick: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const {
         agentId,
         planetId,
@@ -375,7 +375,7 @@ export function workerAcceptConstructionContract(opts: {
     contractId: string;
     shipId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, posterAgentId, contractId, shipId, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -397,7 +397,7 @@ export function workerCancelConstructionContract(opts: {
     planetId: string;
     contractId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, contractId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelConstructionContract', requestId: randomUUID(), agentId, planetId, contractId },
@@ -412,7 +412,7 @@ export function workerPostShipBuyingOffer(opts: {
     shipType: string;
     price: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, shipType, price, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'postShipBuyingOffer', requestId: randomUUID(), agentId, planetId, shipType, price },
@@ -428,7 +428,7 @@ export function workerAcceptShipBuyingOffer(opts: {
     offerId: string;
     shipId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, posterAgentId, offerId, shipId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'acceptShipBuyingOffer', requestId: randomUUID(), agentId, planetId, posterAgentId, offerId, shipId },
@@ -443,7 +443,7 @@ export function workerBuildShipConstructionFacility(opts: {
     facilityName: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityName, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -465,7 +465,7 @@ export function workerExpandShipConstructionFacility(opts: {
     facilityId: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'expandShipConstructionFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
@@ -481,7 +481,7 @@ export function workerSetShipConstructionTarget(opts: {
     shipTypeName: string | null;
     shipName: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, facilityId, shipTypeName, shipName, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -504,7 +504,7 @@ export function workerPostShipListing(opts: {
     shipId: string;
     askPrice: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, shipId, askPrice, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'postShipListing', requestId: randomUUID(), agentId, planetId, shipId, askPrice },
@@ -518,7 +518,7 @@ export function workerCancelShipListing(opts: {
     planetId: string;
     listingId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, planetId, listingId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelShipListing', requestId: randomUUID(), agentId, planetId, listingId },
@@ -533,7 +533,7 @@ export function workerAcceptShipListing(opts: {
     sellerAgentId: string;
     listingId: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { buyerAgentId, buyerPlanetId, sellerAgentId, listingId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'acceptShipListing', requestId: randomUUID(), buyerAgentId, buyerPlanetId, sellerAgentId, listingId },
@@ -549,7 +549,7 @@ export function workerDispatchShip(opts: {
     shipId: string;
     cargoGoal: ResourceQuantity | null;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, fromPlanetId, toPlanetId, shipId, cargoGoal, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'dispatchShip', requestId: randomUUID(), agentId, fromPlanetId, toPlanetId, shipId, cargoGoal },
@@ -565,7 +565,7 @@ export function workerDispatchConstructionShip(opts: {
     shipId: string;
     facilityName?: string;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, fromPlanetId, toPlanetId, shipId, facilityName, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -589,7 +589,7 @@ export function workerDispatchPassengerShip(opts: {
     shipId: string;
     passengerCount: number;
     timeoutMs?: number;
-}): Promise<string> {
+}): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, fromPlanetId, toPlanetId, shipId, passengerCount, timeoutMs } = opts;
     return sendCommandSpec(
         {
@@ -611,7 +611,7 @@ export function workerAcquireLicense(opts: {
     planetId: string;
     licenseType: 'commercial' | 'workforce';
     timeoutMs?: number;
-}): Promise<{ agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }> {
+}): Promise<{ result: { agentId: string; planetId: string; licenseType: 'commercial' | 'workforce' }; processedAtTick: number }> {
     const { agentId, planetId, licenseType, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'acquireLicense', requestId: randomUUID(), agentId, planetId, licenseType },
@@ -625,7 +625,7 @@ export function workerCancelConstruction(opts: {
     planetId: string;
     facilityId: string;
     timeoutMs?: number;
-}): Promise<void> {
+}): Promise<{ result: void; processedAtTick: number }> {
     const { agentId, planetId, facilityId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelConstruction', requestId: randomUUID(), agentId, planetId, facilityId },

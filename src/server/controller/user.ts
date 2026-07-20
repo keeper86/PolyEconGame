@@ -276,7 +276,7 @@ export const createAgent = () => {
                 `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
             );
 
-            const createdId = await workerCreateAgent({
+            const { result: createdId, processedAtTick } = await workerCreateAgent({
                 agentId,
                 agentName,
                 planetId: input.planetId,
@@ -288,7 +288,7 @@ export const createAgent = () => {
 
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 
-            return { tick: getLatestTick(), agentId: createdId, planetId: input.planetId };
+            return { tick: processedAtTick, agentId: createdId, planetId: input.planetId };
         });
 };
 
@@ -321,7 +321,7 @@ export const requestLoan = () => {
                 `User ${userId} requesting loan of ${input.amount} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const grantedAmount = await workerRequestLoan({
+            const { result: grantedAmount } = await workerRequestLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 amount: input.amount,
@@ -360,7 +360,7 @@ export const repayLoan = () => {
                 `User ${userId} repaying loan '${input.loanId}' at fraction ${input.fraction} for agent ${input.agentId}`,
             );
 
-            const repaidAmount = await workerRepayLoan({
+            const { result: repaidAmount } = await workerRepayLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 loanId: input.loanId,
@@ -782,7 +782,7 @@ export const buildFacility = () => {
                 `User ${userId} building '${input.facilityKey}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerBuildFacility({
+            const { result: facilityId } = await workerBuildFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityKey: input.facilityKey,
@@ -831,7 +831,7 @@ export const expandFacility = () => {
                 `User ${userId} expanding facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerExpandFacility({
+            const { result: facilityId } = await workerExpandFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -871,7 +871,7 @@ export const contractFacility = () => {
                 `User ${userId} contracting facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerContractFacility({
+            const { result: facilityId } = await workerContractFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -909,7 +909,7 @@ export const setFacilityScale = () => {
                 `User ${userId} setting facility '${input.facilityId}' scale to ${input.scaleFraction} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerSetFacilityScale({
+            const { result: facilityId } = await workerSetFacilityScale({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -944,7 +944,7 @@ export const buildShipConstructionFacility = () => {
                 { component: 'build-ship-construction-facility' },
                 `User ${userId} building ship construction facility '${input.facilityName}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
-            const facilityId = await workerBuildShipConstructionFacility({
+            const { result: facilityId } = await workerBuildShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityName: input.facilityName,
@@ -974,7 +974,7 @@ export const expandShipConstructionFacility = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const facilityId = await workerExpandShipConstructionFacility({
+            const { result: facilityId } = await workerExpandShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -1005,7 +1005,7 @@ export const setShipConstructionTarget = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const facilityId = await workerSetShipConstructionTarget({
+            const { result: facilityId } = await workerSetShipConstructionTarget({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -1036,7 +1036,7 @@ export const leaseClaim = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const claimId = await workerLeaseClaim({
+            const { result: claimId } = await workerLeaseClaim({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
@@ -1065,7 +1065,7 @@ export const quitClaim = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const claimId = await workerQuitClaim({
+            const { result: claimId } = await workerQuitClaim({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 claimId: input.claimId,
@@ -1099,7 +1099,7 @@ export const acquireLicense = () => {
                 { component: 'acquire-license' },
                 `User ${userId} acquiring '${input.licenseType}' license for agent ${input.agentId} on planet ${input.planetId}`,
             );
-            const result = await workerAcquireLicense({
+            const { result: licenseResult } = await workerAcquireLicense({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 licenseType: input.licenseType,
@@ -1108,6 +1108,6 @@ export const acquireLicense = () => {
                 { component: 'acquire-license' },
                 `Agent ${input.agentId} acquired '${input.licenseType}' license on planet ${input.planetId}`,
             );
-            return result;
+            return licenseResult;
         });
 };
