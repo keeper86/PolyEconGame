@@ -229,11 +229,6 @@ export type BuySectionProps = {
     buyPriceSaving: boolean;
     buyAutomationSaving: boolean;
     buyAutoConfigSaving: boolean;
-    buyAutoConfigSuccessMsg: string | null;
-    buyAutoConfigErrorMsg: string | null;
-    buySuccessMsg: string | null;
-    buyErrorMsg: string | null;
-
     planetId: string;
     ships: ConsumptionShipInfo[];
     /** Overlay message for the automation zone (Switch + header) */
@@ -260,11 +255,6 @@ export type SellSectionProps = {
     sellPriceSaving: boolean;
     sellAutomationSaving: boolean;
     sellAutoConfigSaving: boolean;
-    sellAutoConfigSuccessMsg: string | null;
-    sellAutoConfigErrorMsg: string | null;
-    sellSuccessMsg: string | null;
-    sellErrorMsg: string | null;
-
     planetId: string;
     /** Overlay message for the automation zone (Switch + header) */
     sellAutomationOverlay?: string | null;

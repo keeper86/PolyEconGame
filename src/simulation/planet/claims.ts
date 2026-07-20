@@ -5,7 +5,7 @@ export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'service
 
 export type Resource = {
     name: string;
-    form: 'solid' | 'liquid' | 'gas' | 'landBoundResource' | 'services' | 'currency';
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'landBoundResource' | 'services' | 'currency';
     level: ResourceProcessLevel | 'source' | 'currency';
     volumePerQuantity: number;
     massPerQuantity: number;

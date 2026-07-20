@@ -6,7 +6,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
-import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
+import { AlertCircle, RotateCcw, Tag } from 'lucide-react';
 import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, productionPerTick } from './marketHelpers';
@@ -27,10 +27,6 @@ export default function SellSection({
     sellPriceSaving,
     sellAutomationSaving,
     sellAutoConfigSaving,
-    sellAutoConfigSuccessMsg,
-    sellAutoConfigErrorMsg,
-    sellSuccessMsg,
-    sellErrorMsg,
     planetId,
     sellAutomationOverlay,
     sellAutoConfigOverlay,
@@ -91,9 +87,7 @@ export default function SellSection({
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
     const costFloor =
-        overviewRow && overviewRow.priceCostRatio > 0
-            ? overviewRow.clearingPrice / overviewRow.priceCostRatio
-            : 0;
+        overviewRow && overviewRow.priceCostRatio > 0 ? overviewRow.clearingPrice / overviewRow.priceCostRatio : 0;
     const quickPrices =
         overviewRow && costFloor > 0
             ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
@@ -114,7 +108,11 @@ export default function SellSection({
                             type='number'
                             min={PRICE_FLOOR}
                             step='any'
-                            placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : (defaultPrice ?? 'e.g. 1.50')}
+                            placeholder={
+                                offer?.offerPrice !== undefined
+                                    ? offer.offerPrice.toFixed(2)
+                                    : (defaultPrice ?? 'e.g. 1.50')
+                            }
                             value={local.offerPrice}
                             disabled={sellPriceSaving}
                             onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
@@ -151,19 +149,6 @@ export default function SellSection({
                 )}
 
                 <div className='flex items-center justify-between gap-3 pt-2'>
-                    <div className='flex items-center gap-3'>
-                        {sellSuccessMsg && (
-                            <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                                <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
-                            </span>
-                        )}
-                        {sellErrorMsg && (
-                            <span className='text-xs text-destructive flex items-center gap-1'>
-                                <AlertCircle className='h-3.5 w-3.5' />
-                                <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
-                            </span>
-                        )}
-                    </div>
                     <div className='flex items-center gap-2'>
                         {hasDirtySellFields && (
                             <Button
@@ -242,8 +227,6 @@ export default function SellSection({
                             onSave={onSaveSellAutoConfig}
                             onReset={onResetSellAutoConfig}
                             isSaving={sellAutoConfigSaving}
-                            successMsg={sellAutoConfigSuccessMsg}
-                            errorMsg={sellAutoConfigErrorMsg}
                             bufferApplicable={isFacilityOutput}
                             diagnostics={offer?.diagnostics}
                             unit={unit}

@@ -8,7 +8,7 @@ import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, type Units } from '@/lib/utils';
 import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
 import { Spinner } from '@/components/ui/spinner';
-import { AlertCircle, CheckCircle2, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
 import {
@@ -548,8 +548,6 @@ export function AutoConfigPanel({
     onSave,
     onReset,
     isSaving,
-    successMsg,
-    errorMsg,
     bufferApplicable = true,
     diagnostics,
     unit = 'pieces',
@@ -566,8 +564,6 @@ export function AutoConfigPanel({
     onSave: () => void;
     onReset: () => void;
     isSaving: boolean;
-    successMsg: string | null;
-    errorMsg: string | null;
     bufferApplicable?: boolean;
     diagnostics?: SellDiagnostics | BuyDiagnostics;
     unit?: string;
@@ -805,22 +801,7 @@ export function AutoConfigPanel({
             {/* Stale reason */}
             {staleReason && <div className='text-[10px] text-muted-foreground italic'>{staleReason}</div>}
 
-            {/* Validation & feedback */}
-            {errorMsg && (
-                <div className='text-xs text-destructive flex items-center gap-1'>
-                    <AlertCircle className='h-3 w-3' />
-                    <span>{errorMsg}</span>
-                </div>
-            )}
-
-            <div className='flex items-center justify-between gap-2'>
-                <div className='flex items-center gap-2'>
-                    {successMsg && (
-                        <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                            <CheckCircle2 className='h-3.5 w-3.5' /> {successMsg}
-                        </span>
-                    )}
-                </div>
+            <div className='flex items-center justify-end gap-2'>
                 <div className='flex items-center gap-2'>
                     {hasDirty && (
                         <Button

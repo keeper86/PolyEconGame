@@ -15,9 +15,9 @@ export const VOLUME_PRESET_LABELS: Record<VolumePresetType, string> = {
 export const VOLUME_PRESET_ORDER: VolumePresetType[] = ['just-in-time', 'balanced', 'stockpile', 'custom'];
 
 export const PRICING_PRESET_LABELS: Record<PricingPresetType, string> = {
-    'liquidation': 'Liquidation',
+    'liquidation': 'Slow',
     'market-rate': 'Market Rate',
-    'premium': 'Premium',
+    'premium': 'Fast',
     'custom': '⚙️',
 };
 
