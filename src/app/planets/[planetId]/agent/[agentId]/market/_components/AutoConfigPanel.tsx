@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
@@ -8,7 +9,7 @@ import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit, type Units } from '@/lib/utils';
 import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
 import { Spinner } from '@/components/ui/spinner';
-import { RotateCcw } from 'lucide-react';
+import { ChevronDown, RotateCcw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
 import {
@@ -383,10 +384,6 @@ function PresetButtonRow<T extends string>({
     activePreset,
     onSelect,
     isSaving,
-    /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
-    manualPricingSlot,
-    /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
-    manualPriceOverlay,
 }: {
     label: string;
     presets: readonly T[];
@@ -394,34 +391,9 @@ function PresetButtonRow<T extends string>({
     activePreset: T;
     onSelect: (preset: T) => void;
     isSaving: boolean;
-    /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
-    manualPricingSlot?: React.ReactNode;
-    /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
-    manualPriceOverlay?: string | null;
 }): React.ReactElement {
-    const overlay = (message: string | null | undefined) =>
-        message ? (
-            <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
-                <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                    <Spinner className='h-4 w-4' />
-                    {message}
-                </span>
-            </div>
-        ) : null;
     return (
         <div className='space-y-1'>
-            {manualPricingSlot && (
-                <div className='pb-1.5'>
-                    <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                        Set Price
-                    </Label>
-                    <div className='relative'>
-                        {manualPricingSlot}
-                        {overlay(manualPriceOverlay)}
-                    </div>
-                    <Separator />
-                </div>
-            )}
             <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1'>
                 {label}
             </Label>
@@ -674,157 +646,224 @@ export function AutoConfigPanel({
     return (
         <div className='space-y-3 pt-2'>
             {/* ── Volume Strategy Row ─────────────────────────────────────────── */}
-            <div className='rounded-md border bg-muted/30 p-2.5 space-y-2'>
-                <PresetButtonRow
-                    label='Volume Strategy'
-                    presets={VOLUME_PRESET_ORDER}
-                    labels={VOLUME_PRESET_LABELS}
-                    activePreset={activeVolumePreset}
-                    onSelect={handleVolumePresetSelect}
-                    isSaving={isSaving}
-                />
+            <Collapsible defaultOpen={true} className='rounded-md border bg-muted/30'>
+                <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
+                    <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                        Volume Strategy
+                    </span>
+                    <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
+                </CollapsibleTrigger>
+                <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
+                    <PresetButtonRow
+                        label=''
+                        presets={VOLUME_PRESET_ORDER}
+                        labels={VOLUME_PRESET_LABELS}
+                        activePreset={activeVolumePreset}
+                        onSelect={handleVolumePresetSelect}
+                        isSaving={isSaving}
+                    />
 
-                {diagnostics && (
-                    <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                        {mode === 'sell' && 'sellThroughRate' in diagnostics && (
-                            <SellVolumeDiagnostics diagnostics={diagnostics as SellDiagnostics} unit={unit} />
-                        )}
-                        {mode === 'buy' && 'fillRate' in diagnostics && (
-                            <BuyVolumeDiagnostics diagnostics={diagnostics as BuyDiagnostics} unit={unit} />
-                        )}
+                    {diagnostics && (
+                        <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
+                            {mode === 'sell' && 'sellThroughRate' in diagnostics && (
+                                <SellVolumeDiagnostics diagnostics={diagnostics as SellDiagnostics} unit={unit} />
+                            )}
+                            {mode === 'buy' && 'fillRate' in diagnostics && (
+                                <BuyVolumeDiagnostics diagnostics={diagnostics as BuyDiagnostics} unit={unit} />
+                            )}
+                        </div>
+                    )}
+
+                    {consumptionBreakdown && (
+                        <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
+                            <div className='space-y-0.5'>{consumptionBreakdown}</div>
+                        </div>
+                    )}
+
+                    {/* Volume sliders (always visible, disabled when preset is not custom) */}
+                    <div
+                        className='space-y-3 pt-1'
+                        onClick={() => {
+                            if (activeVolumePreset !== 'custom') {
+                                setActiveVolumePreset('custom');
+                            }
+                        }}
+                    >
+                        {volumeGroups.map((group, gi) => (
+                            <React.Fragment key={group.label ?? gi}>
+                                {gi > 0 && <Separator className='my-1' />}
+                                <div
+                                    className={
+                                        group.isBufferGroup && !bufferApplicable ? 'space-y-2 opacity-50' : 'space-y-2'
+                                    }
+                                >
+                                    {group.label && (
+                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
+                                            {group.label}
+                                        </Label>
+                                    )}
+                                    {group.sliders.map((def) =>
+                                        renderSingleSlider(
+                                            def,
+                                            localConfig,
+                                            committedConfig,
+                                            isSaving,
+                                            bufferApplicable,
+                                            handleSliderChange,
+                                            activeVolumePreset !== 'custom',
+                                        ),
+                                    )}
+                                </div>
+                            </React.Fragment>
+                        ))}
                     </div>
-                )}
-
-                {consumptionBreakdown && (
-                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
-                        <div className='space-y-0.5'>{consumptionBreakdown}</div>
-                    </div>
-                )}
-
-                {/* Volume sliders (always visible, disabled when preset is not custom) */}
-                <div
-                    className='space-y-3 pt-1'
-                    onClick={() => {
-                        if (activeVolumePreset !== 'custom') {
-                            setActiveVolumePreset('custom');
-                        }
-                    }}
-                >
-                    {volumeGroups.map((group, gi) => (
-                        <React.Fragment key={group.label ?? gi}>
-                            {gi > 0 && <Separator className='my-1' />}
-                            <div
-                                className={
-                                    group.isBufferGroup && !bufferApplicable ? 'space-y-2 opacity-50' : 'space-y-2'
-                                }
+                    {/* Save/Reset buttons inside Volume box */}
+                    <div className='flex items-center justify-end gap-2 pt-1'>
+                        <div className='flex items-center gap-2'>
+                            {hasDirty && (
+                                <Button
+                                    variant='outline'
+                                    size='sm'
+                                    className='h-7 text-[11px] px-2'
+                                    onClick={onReset}
+                                    disabled={isSaving}
+                                >
+                                    <RotateCcw className='h-3 w-3 mr-1' />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                size='sm'
+                                className='h-7 text-[11px] px-3'
+                                onClick={onSave}
+                                disabled={!hasDirty || !hasAnyValue || isSaving}
                             >
-                                {group.label && (
-                                    <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                        {group.label}
-                                    </Label>
-                                )}
-                                {group.sliders.map((def) =>
-                                    renderSingleSlider(
-                                        def,
-                                        localConfig,
-                                        committedConfig,
-                                        isSaving,
-                                        bufferApplicable,
-                                        handleSliderChange,
-                                        activeVolumePreset !== 'custom',
-                                    ),
-                                )}
-                            </div>
-                        </React.Fragment>
-                    ))}
-                </div>
-            </div>
+                                {isSaving ? 'Saving…' : 'Save Config'}
+                            </Button>
+                        </div>
+                    </div>
+                </CollapsibleContent>
+            </Collapsible>
 
             {/* ── Pricing Strategy Row ────────────────────────────────────────── */}
-            <div className='rounded-md border bg-muted/30 p-2.5 space-y-2'>
-                <PresetButtonRow
-                    label='Pricing Strategy'
-                    presets={PRICING_PRESET_ORDER}
-                    labels={PRICING_PRESET_LABELS}
-                    activePreset={activePricingPreset}
-                    onSelect={handlePricingPresetSelect}
-                    isSaving={isSaving}
-                    manualPricingSlot={manualPricingSlot}
-                    manualPriceOverlay={manualPriceOverlay}
-                />
+            <Collapsible defaultOpen={true} className='rounded-md border bg-muted/30'>
+                <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
+                    <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                        Pricing Strategy
+                    </span>
+                    <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
+                </CollapsibleTrigger>
+                <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
+                    <PresetButtonRow
+                        label=''
+                        presets={PRICING_PRESET_ORDER}
+                        labels={PRICING_PRESET_LABELS}
+                        activePreset={activePricingPreset}
+                        onSelect={handlePricingPresetSelect}
+                        isSaving={isSaving}
+                    />
 
-                {/* Pricing sliders (always visible, disabled when preset is not custom) */}
-                <div
-                    className={`space-y-2 pt-1${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
-                    onClick={() => {
-                        if (activePricingPreset !== 'custom') {
-                            setActivePricingPreset('custom');
-                        }
-                    }}
-                >
-                    {pricingRangeSliders.map((def) =>
-                        renderRangeSlider(
-                            def,
-                            localConfig,
-                            committedConfig,
-                            isSaving,
-                            handleSliderChange,
-                            activePricingPreset !== 'custom',
-                        ),
-                    )}
-                    {pricingSliders.map((def) =>
-                        renderSingleSlider(
-                            def,
-                            localConfig,
-                            committedConfig,
-                            isSaving,
-                            true,
-                            handleSliderChange,
-                            activePricingPreset !== 'custom',
-                        ),
-                    )}
-                </div>
-
-                {/* Pricing diagnostics — shown only when diagnostics available */}
-                {diagnostics && (
-                    <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                        {mode === 'sell' && 'sellThroughRate' in diagnostics && (
-                            <SellPricingDiagnostics diagnostics={diagnostics as SellDiagnostics} planetId={planetId} />
+                    {/* Pricing sliders (always visible, disabled when preset is not custom) */}
+                    <div
+                        className={`space-y-2 pt-1${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
+                        onClick={() => {
+                            if (activePricingPreset !== 'custom') {
+                                setActivePricingPreset('custom');
+                            }
+                        }}
+                    >
+                        {pricingRangeSliders.map((def) =>
+                            renderRangeSlider(
+                                def,
+                                localConfig,
+                                committedConfig,
+                                isSaving,
+                                handleSliderChange,
+                                activePricingPreset !== 'custom',
+                            ),
                         )}
-                        {mode === 'buy' && 'fillRate' in diagnostics && (
-                            <BuyPricingDiagnostics diagnostics={diagnostics as BuyDiagnostics} planetId={planetId} />
+                        {pricingSliders.map((def) =>
+                            renderSingleSlider(
+                                def,
+                                localConfig,
+                                committedConfig,
+                                isSaving,
+                                true,
+                                handleSliderChange,
+                                activePricingPreset !== 'custom',
+                            ),
                         )}
                     </div>
-                )}
-            </div>
+
+                    {/* Pricing diagnostics — shown only when diagnostics available */}
+                    {diagnostics && (
+                        <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
+                            {mode === 'sell' && 'sellThroughRate' in diagnostics && (
+                                <SellPricingDiagnostics
+                                    diagnostics={diagnostics as SellDiagnostics}
+                                    planetId={planetId}
+                                />
+                            )}
+                            {mode === 'buy' && 'fillRate' in diagnostics && (
+                                <BuyPricingDiagnostics
+                                    diagnostics={diagnostics as BuyDiagnostics}
+                                    planetId={planetId}
+                                />
+                            )}
+                        </div>
+                    )}
+
+                    {/* Save/Reset buttons inside Pricing box */}
+                    <div className='flex items-center justify-end gap-2 pt-1 pb-1.5'>
+                        <div className='flex items-center gap-2'>
+                            {hasDirty && (
+                                <Button
+                                    variant='outline'
+                                    size='sm'
+                                    className='h-7 text-[11px] px-2'
+                                    onClick={onReset}
+                                    disabled={isSaving}
+                                >
+                                    <RotateCcw className='h-3 w-3 mr-1' />
+                                    Reset
+                                </Button>
+                            )}
+                            <Button
+                                size='sm'
+                                className='h-7 text-[11px] px-3'
+                                onClick={onSave}
+                                disabled={!hasDirty || !hasAnyValue || isSaving}
+                            >
+                                {isSaving ? 'Saving…' : 'Save Config'}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <Separator />
+                    {/* Set Price section at bottom of Pricing box */}
+                    {manualPricingSlot && (
+                        <div className='pt-1'>
+                            <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                                Set Price
+                            </Label>
+                            <div className='relative'>
+                                {manualPricingSlot}
+                                {manualPriceOverlay ? (
+                                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
+                                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                            <Spinner className='h-4 w-4' />
+                                            {manualPriceOverlay}
+                                        </span>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    )}
+                </CollapsibleContent>
+            </Collapsible>
 
             {/* Stale reason */}
             {staleReason && <div className='text-[10px] text-muted-foreground italic'>{staleReason}</div>}
-
-            <div className='flex items-center justify-end gap-2'>
-                <div className='flex items-center gap-2'>
-                    {hasDirty && (
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='h-7 text-[11px] px-2'
-                            onClick={onReset}
-                            disabled={isSaving}
-                        >
-                            <RotateCcw className='h-3 w-3 mr-1' />
-                            Reset
-                        </Button>
-                    )}
-                    <Button
-                        size='sm'
-                        className='h-7 text-[11px] px-3'
-                        onClick={onSave}
-                        disabled={!hasDirty || !hasAnyValue || isSaving}
-                    >
-                        {isSaving ? 'Saving…' : 'Save Config'}
-                    </Button>
-                </div>
-            </div>
         </div>
     );
 }

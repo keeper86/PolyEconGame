@@ -112,7 +112,9 @@ export default function SellSection({
                         min={0.01}
                         step='any'
                         placeholder={
-                            offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : (defaultPrice ?? 'e.g. 1.50')
+                            offer?.offerPrice !== undefined
+                                ? offer.offerPrice.toFixed(2)
+                                : (defaultPrice ?? 'e.g. 1.50')
                         }
                         value={local.offerPrice}
                         disabled={sellPriceSaving}
