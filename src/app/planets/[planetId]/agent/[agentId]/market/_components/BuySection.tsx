@@ -81,7 +81,7 @@ export default function BuySection({
     const hasValidationErrors = !!local.validationErrors.bidPrice;
 
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
-        const baseClass = 'h-8 text-sm tabular-nums';
+        const baseClass = 'h-7 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
         }
@@ -109,54 +109,81 @@ export default function BuySection({
         ) : null;
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
+    const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
+    const costFloor =
+        overviewRow && overviewRow.priceCostRatio > 0 ? overviewRow.clearingPrice / overviewRow.priceCostRatio : 0;
+    const quickPrices =
+        overviewRow && costFloor > 0
+            ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
+                  .filter((p) => isFinite(p) && p > 0)
+                  .sort((a, b) => a - b)
+            : [];
+
     const manualPricing = (
         <>
-            <div className='grid grid-cols-2 gap-3'>
-                <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                    <Label htmlFor={`bid-price-${resourceName}`} className='text-[11px] text-muted-foreground'>
-                        Max price / unit
-                    </Label>
-                    <Input
-                        id={`bid-price-${resourceName}`}
-                        type='number'
-                        min={0.01}
-                        step='any'
-                        placeholder={bid?.bidPrice !== undefined ? bid.bidPrice.toFixed(2) : 'e.g. 1.50'}
-                        value={local.bidPrice}
-                        disabled={buyPriceSaving}
-                        onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
-                        className={getFieldClassName('bidPrice', buyPriceSaving)}
-                    />
-                    {overviewRow && (
-                        <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                            <span>
-                                Current price:{' '}
-                                {formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId)}
-                            </span>
+            <span className='flex flex-row flex-grow gap-2 items-center pt-2'>
+                <Input
+                    id={`bid-price-${resourceName}`}
+                    type='number'
+                    min={0.01}
+                    step='any'
+                    placeholder={bid?.bidPrice !== undefined ? bid.bidPrice.toFixed(2) : (defaultPrice ?? 'e.g. 1.50')}
+                    value={local.bidPrice}
+                    disabled={buyPriceSaving}
+                    onChange={(e) => onLocalChange(resourceName, { bidPrice: e.target.value })}
+                    className={getFieldClassName('bidPrice', buyPriceSaving) + ` flex-1 w-[100px] text-right`}
+                />
+                <div className='flex flex-shrink items-center justify-end gap-2'>
+                    <Button
+                        size='sm'
+                        className='h-7 text-[11px] px-3'
+                        onClick={onSaveBuy}
+                        disabled={!hasDirtyBuyFields || !!hasValidationErrors || buyPriceSaving}
+                    >
+                        {buyPriceSaving ? 'Setting…' : 'Set Price'}
+                    </Button>
+                </div>
+            </span>
+
+            <div className='flex items-center justify-between gap-1.5 flex-wrap text-[11px] text-muted-foreground pt-2'>
+                <span className='flex items-center justify-start gap-1'>
+                    {overviewRow &&
+                        costFloor > 0 &&
+                        quickPrices.map((price) => (
                             <Button
+                                key={price}
                                 variant='outline'
                                 size='sm'
-                                className='h-5 text-[10px] px-1.5 py-0'
+                                className='h-5 text-[10px] px-1 text-right'
                                 disabled={buyPriceSaving}
                                 onClick={() =>
                                     onLocalChange(resourceName, {
-                                        bidPrice: overviewRow.clearingPrice.toFixed(2),
+                                        bidPrice: formatNumberWithUnit(price, 'currency', planetId),
                                     })
                                 }
                             >
-                                Use
+                                {formatNumberWithUnit(price, 'currency', planetId)}
                             </Button>
-                        </div>
-                    )}
-                </div>
+                        ))}
+                </span>
+                <Button
+                    className='h-7 text-[11px]'
+                    variant='ghost'
+                    size='sm'
+                    onClick={onResetBuy}
+                    disabled={buyPriceSaving || !hasDirtyBuyFields}
+                >
+                    <RotateCcw className='h-4 w-4' />
+                    Reset
+                </Button>
             </div>
 
             {fundsWarning && (
                 <Alert variant='destructive' className='py-2'>
                     <AlertCircle className='h-3.5 w-3.5' />
                     <AlertDescription className='text-xs'>
-                        Bid cost ({formatNumberWithUnit(totalBidCost, 'currency', planetId)}) exceeds available
-                        deposits ({formatNumberWithUnit(deposits, 'currency', planetId)}).
+                        Bid cost ({formatNumberWithUnit(totalBidCost, 'currency', planetId)}) exceeds available deposits
+                        ({formatNumberWithUnit(deposits, 'currency', planetId)}).
                     </AlertDescription>
                 </Alert>
             )}
@@ -202,28 +229,6 @@ export default function BuySection({
                             <span>{buyErrorMsg}</span>
                         </span>
                     )}
-                </div>
-                <div className='flex items-center gap-2'>
-                    {hasDirtyBuyFields && (
-                        <Button
-                            variant='outline'
-                            size='sm'
-                            className='h-7 text-[11px] px-2'
-                            onClick={onResetBuy}
-                            disabled={buyPriceSaving}
-                        >
-                            <RotateCcw className='h-3 w-3 mr-1' />
-                            Reset
-                        </Button>
-                    )}
-                    <Button
-                        size='sm'
-                        className='h-7 text-[11px] px-3'
-                        onClick={onSaveBuy}
-                        disabled={!hasDirtyBuyFields || !!hasValidationErrors || buyPriceSaving}
-                    >
-                        {buyPriceSaving ? 'Saving…' : 'Save Buy'}
-                    </Button>
                 </div>
             </div>
         </>

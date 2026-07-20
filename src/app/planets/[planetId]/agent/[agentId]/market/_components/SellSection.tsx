@@ -94,6 +94,18 @@ export default function SellSection({
         ) : null;
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
+    const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
+    const costFloor =
+        overviewRow && overviewRow.priceCostRatio > 0
+            ? overviewRow.clearingPrice / overviewRow.priceCostRatio
+            : 0;
+    const quickPrices =
+        overviewRow && costFloor > 0
+            ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
+                  .filter((p) => isFinite(p) && p > 0)
+                  .sort((a, b) => a - b)
+            : [];
+
     const manualPricing = (
         <>
             <div className='space-y-3'>
@@ -107,28 +119,30 @@ export default function SellSection({
                             type='number'
                             min={PRICE_FLOOR}
                             step='any'
-                            placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'}
+                            placeholder={offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : (defaultPrice ?? 'e.g. 1.50')}
                             value={local.offerPrice}
                             disabled={sellPriceSaving}
                             onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
                             className={getFieldClassName('offerPrice', sellPriceSaving)}
                         />
-                        {overviewRow && (
-                            <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    className='h-5 text-[10px] px-1.5 py-0'
-                                    disabled={sellPriceSaving}
-                                    onClick={() =>
-                                        onLocalChange(resourceName, {
-                                            offerPrice: overviewRow.clearingPrice.toFixed(2),
-                                        })
-                                    }
-                                >
-                                    Use
-                                </Button>
+                        {overviewRow && costFloor > 0 && (
+                            <div className='flex items-center gap-1.5 flex-wrap text-[11px] text-muted-foreground'>
+                                {quickPrices.map((price) => (
+                                    <Button
+                                        key={price}
+                                        variant='outline'
+                                        size='sm'
+                                        className='h-5 text-[10px] px-1.5 py-0'
+                                        disabled={sellPriceSaving}
+                                        onClick={() =>
+                                            onLocalChange(resourceName, {
+                                                offerPrice: price.toFixed(2),
+                                            })
+                                        }
+                                    >
+                                        {price.toFixed(2)}
+                                    </Button>
+                                ))}
                             </div>
                         )}
                     </div>

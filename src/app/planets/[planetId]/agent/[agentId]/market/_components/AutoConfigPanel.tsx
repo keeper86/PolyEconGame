@@ -410,13 +410,21 @@ function PresetButtonRow<T extends string>({
         ) : null;
     return (
         <div className='space-y-1'>
-            <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>{label}</Label>
             {manualPricingSlot && (
-                <div className='relative'>
-                    {manualPricingSlot}
-                    {overlay(manualPriceOverlay)}
+                <div className='pb-1.5'>
+                    <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                        Set Price
+                    </Label>
+                    <div className='relative'>
+                        {manualPricingSlot}
+                        {overlay(manualPriceOverlay)}
+                    </div>
+                    <Separator />
                 </div>
             )}
+            <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1'>
+                {label}
+            </Label>
             <div className='flex flex-wrap gap-1'>
                 {presets.map((preset) => {
                     const isActive = preset === activePreset;
@@ -699,7 +707,7 @@ export function AutoConfigPanel({
 
                 {/* Volume sliders (always visible, disabled when preset is not custom) */}
                 <div
-                    className='space-y-3 pt-1 border-t border-border/40'
+                    className='space-y-3 pt-1'
                     onClick={() => {
                         if (activeVolumePreset !== 'custom') {
                             setActiveVolumePreset('custom');
@@ -751,7 +759,7 @@ export function AutoConfigPanel({
 
                 {/* Pricing sliders (always visible, disabled when preset is not custom) */}
                 <div
-                    className={`space-y-2 pt-1 border-t border-border/40${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
+                    className={`space-y-2 pt-1${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
                     onClick={() => {
                         if (activePricingPreset !== 'custom') {
                             setActivePricingPreset('custom');

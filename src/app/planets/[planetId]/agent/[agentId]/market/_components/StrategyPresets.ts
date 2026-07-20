@@ -2,34 +2,26 @@ import type { AutoConfigLocalState } from './marketTypes';
 
 // ── Preset types ────────────────────────────────────────────────────────────
 
-export type VolumePresetType = 'just-in-time' | 'active' | 'balanced' | 'stockpile' | 'custom';
-export type PricingPresetType = 'liquidation' | 'aggressive' | 'market-rate' | 'premium' | 'custom';
+export type VolumePresetType = 'just-in-time' | 'balanced' | 'stockpile' | 'custom';
+export type PricingPresetType = 'liquidation' | 'market-rate' | 'premium' | 'custom';
 
 export const VOLUME_PRESET_LABELS: Record<VolumePresetType, string> = {
     'just-in-time': 'Just-in-Time',
-    'active': 'Active',
     'balanced': 'Balanced',
     'stockpile': 'Stockpile',
-    'custom': '⚙️ Custom',
+    'custom': '⚙️',
 };
 
-export const VOLUME_PRESET_ORDER: VolumePresetType[] = ['just-in-time', 'active', 'balanced', 'stockpile', 'custom'];
+export const VOLUME_PRESET_ORDER: VolumePresetType[] = ['just-in-time', 'balanced', 'stockpile', 'custom'];
 
 export const PRICING_PRESET_LABELS: Record<PricingPresetType, string> = {
     'liquidation': 'Liquidation',
-    'aggressive': 'Aggressive',
     'market-rate': 'Market Rate',
     'premium': 'Premium',
-    'custom': '⚙️ Custom',
+    'custom': '⚙️',
 };
 
-export const PRICING_PRESET_ORDER: PricingPresetType[] = [
-    'liquidation',
-    'aggressive',
-    'market-rate',
-    'premium',
-    'custom',
-];
+export const PRICING_PRESET_ORDER: PricingPresetType[] = ['liquidation', 'market-rate', 'premium', 'custom'];
 
 // ─── Volume presets (buy) ───────────────────────────────────────────────────
 
@@ -42,12 +34,6 @@ export const VOLUME_BUY_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vol
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         inputBufferTargetTicks: '5',
-        freeBuyQuantity: '0',
-        freeBuyQuantitySmoothingMaxExtra: '2',
-    },
-    'active': {
-        inventorySmoothingMaxExtra: '1',
-        inputBufferTargetTicks: '15',
         freeBuyQuantity: '0',
         freeBuyQuantitySmoothingMaxExtra: '2',
     },
@@ -76,12 +62,6 @@ export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vo
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         outputBufferMaxTicks: '2',
-        freeSellQuantity: '0',
-        freeSellQuantitySmoothingMaxExtra: '2',
-    },
-    'active': {
-        inventorySmoothingMaxExtra: '1',
-        outputBufferMaxTicks: '5',
         freeSellQuantity: '0',
         freeSellQuantitySmoothingMaxExtra: '2',
     },
@@ -118,13 +98,6 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         bidOfferMaxCostMultiplier: '3',
         automatedCostFloorBuffer: '0',
     },
-    'aggressive': {
-        priceAdjustMaxUp: '1.03',
-        priceAdjustMaxDown: '0.90',
-        targetFillRate: '0.80',
-        bidOfferMaxCostMultiplier: '4',
-        automatedCostFloorBuffer: '0',
-    },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
@@ -159,13 +132,6 @@ export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, 
         automatedCostFloorBuffer: '0.0',
         targetSellThrough: '0.95',
         bidOfferMaxCostMultiplier: '3',
-    },
-    'aggressive': {
-        priceAdjustMaxUp: '1.03',
-        priceAdjustMaxDown: '0.90',
-        automatedCostFloorBuffer: '0.0',
-        targetSellThrough: '0.90',
-        bidOfferMaxCostMultiplier: '4',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
