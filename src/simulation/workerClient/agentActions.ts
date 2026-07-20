@@ -40,7 +40,7 @@ export function handleCreateAgent(
     });
 
     console.log(`[worker] Created agent '${agentName}' (${agentId}) on planet '${planetId}'`);
-    safePostMessage({ type: 'agentCreated', requestId, agentId });
+    safePostMessage({ type: 'agentCreated', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleSetAutomation(
@@ -51,14 +51,14 @@ export function handleSetAutomation(
     const { requestId, agentId, automateWorkerAllocation } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     agent.automateWorkerAllocation = automateWorkerAllocation;
     console.log(
         `[worker] Automation updated for agent '${agentId}': ` + `workerAllocation=${automateWorkerAllocation}`,
     );
-    safePostMessage({ type: 'automationSet', requestId, agentId });
+    safePostMessage({ type: 'automationSet', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleSetWorkerAllocationTargets(
@@ -69,7 +69,7 @@ export function handleSetWorkerAllocationTargets(
     const { requestId, agentId, planetId, targets } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -78,6 +78,7 @@ export function handleSetWorkerAllocationTargets(
             type: 'workerAllocationFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -88,7 +89,7 @@ export function handleSetWorkerAllocationTargets(
         }
     }
     console.log(`[worker] Worker allocation targets updated for agent '${agentId}' on '${planetId}'`);
-    safePostMessage({ type: 'workerAllocationSet', requestId, agentId });
+    safePostMessage({ type: 'workerAllocationSet', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleAgentAction(

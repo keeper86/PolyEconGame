@@ -213,9 +213,6 @@ export default function SellSection({
                             onReset={onResetSellAutoConfig}
                             isSaving={sellAutoConfigSaving}
                             bufferApplicable={isFacilityOutput}
-                            diagnostics={offer?.diagnostics}
-                            unit={unit}
-                            planetId={planetId}
                             staleReason={sellStaleReason}
                             manualPricingSlot={manualPricing}
                             manualPriceOverlay={sellPriceOverlay}

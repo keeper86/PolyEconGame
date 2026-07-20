@@ -1,14 +1,13 @@
 'use client';
 
+import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Stat } from '@/components/client/Stat';
-import { formatNumberWithUnit, type Units } from '@/lib/utils';
-import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
 import { Spinner } from '@/components/ui/spinner';
+import type { AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { ChevronDown, RotateCcw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
@@ -419,138 +418,6 @@ function PresetButtonRow<T extends string>({
     );
 }
 
-// ── Diagnostics helpers ───────────────────────────────────────────────────────
-
-function SellVolumeDiagnostics({
-    diagnostics,
-    unit,
-}: {
-    diagnostics: SellDiagnostics | undefined;
-    unit: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Selling'
-                value={
-                    diagnostics
-                        ? `${formatNumberWithUnit(diagnostics.effectiveQuantity, unit as Units)} / tick`
-                        : '-'
-                }
-            />
-            <Stat
-                label='Surplus'
-                value={diagnostics?.surplusRatio !== undefined ? `${Math.round(diagnostics.surplusRatio * 100)}%` : '-'}
-            />
-        </>
-    );
-}
-
-function SellPricingDiagnostics({
-    diagnostics,
-    planetId,
-}: {
-    diagnostics: SellDiagnostics | undefined;
-    planetId: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Sell-through'
-                value={
-                    diagnostics
-                        ? `${Math.round(diagnostics.sellThroughRate * 100)}% (target ${Math.round(diagnostics.targetSellThrough * 100)}%)`
-                        : '-'
-                }
-                valueClassName={
-                    diagnostics && diagnostics.sellThroughRate >= diagnostics.targetSellThrough
-                        ? 'text-green-600'
-                        : 'text-red-500'
-                }
-            />
-            <Stat
-                label='Price'
-                value={
-                    diagnostics
-                        ? `${formatNumberWithUnit(diagnostics.oldPrice, 'currency', planetId)} → ${formatNumberWithUnit(diagnostics.newPrice, 'currency', planetId)}`
-                        : '-'
-                }
-            />
-            <Stat
-                label='Market / Cost floor'
-                value={
-                    diagnostics
-                        ? `${formatNumberWithUnit(diagnostics.marketPrice, 'currency', planetId)} / ${formatNumberWithUnit(diagnostics.costFloor, 'currency', planetId)}`
-                        : '-'
-                }
-            />
-        </>
-    );
-}
-
-function BuyVolumeDiagnostics({
-    diagnostics,
-    unit,
-}: {
-    diagnostics: BuyDiagnostics | undefined;
-    unit: string;
-}): React.ReactElement {
-    return (
-        <Stat
-            label='Shortfall'
-            value={
-                diagnostics
-                    ? `${formatNumberWithUnit(diagnostics.shortfall, unit as Units)} / ${formatNumberWithUnit(diagnostics.storageTarget, unit as Units)}`
-                    : '-'
-            }
-        />
-    );
-}
-
-function BuyPricingDiagnostics({
-    diagnostics,
-    planetId,
-}: {
-    diagnostics: BuyDiagnostics | undefined;
-    planetId: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Fill rate'
-                value={
-                    diagnostics
-                        ? `${Math.round(diagnostics.fillRate * 100)}% (target ${Math.round(diagnostics.targetFillRate * 100)}%)`
-                        : '-'
-                }
-                valueClassName={
-                    diagnostics && diagnostics.fillRate >= diagnostics.targetFillRate
-                        ? 'text-green-600'
-                        : 'text-red-500'
-                }
-            />
-            <Stat
-                label='Bid price'
-                value={
-                    diagnostics
-                        ? `${formatNumberWithUnit(diagnostics.oldBidPrice, 'currency', planetId)} → ${formatNumberWithUnit(diagnostics.newBidPrice, 'currency', planetId)}`
-                        : '-'
-                }
-            />
-            <Stat
-                label='Market / Ceiling'
-                value={
-                    diagnostics
-                        ? `${formatNumberWithUnit(diagnostics.marketPrice, 'currency', planetId)} / ${formatNumberWithUnit(diagnostics.ceilingPrice, 'currency', planetId)}`
-                        : '-'
-                }
-            />
-        </>
-    );
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export function AutoConfigPanel({
     mode,
     committedConfig,
@@ -560,9 +427,6 @@ export function AutoConfigPanel({
     onReset,
     isSaving,
     bufferApplicable = true,
-    diagnostics,
-    unit = 'pieces',
-    planetId = '',
     staleReason,
     consumptionBreakdown,
     manualPricingSlot,
@@ -576,9 +440,6 @@ export function AutoConfigPanel({
     onReset: () => void;
     isSaving: boolean;
     bufferApplicable?: boolean;
-    diagnostics?: SellDiagnostics | BuyDiagnostics;
-    unit?: string;
-    planetId?: string;
     staleReason?: string | null;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
@@ -702,15 +563,6 @@ export function AutoConfigPanel({
                         isSaving={isSaving}
                     />
 
-                    <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                        {mode === 'sell' && (
-                            <SellVolumeDiagnostics diagnostics={diagnostics as SellDiagnostics | undefined} unit={unit} />
-                        )}
-                        {mode === 'buy' && (
-                            <BuyVolumeDiagnostics diagnostics={diagnostics as BuyDiagnostics | undefined} unit={unit} />
-                        )}
-                    </div>
-
                     <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
                         <div className='space-y-0.5'>
                             {consumptionBreakdown ? consumptionBreakdown : <Stat label='Consumption' value='-' />}
@@ -830,22 +682,6 @@ export function AutoConfigPanel({
                         )}
                     </div>
 
-                    {/* Pricing diagnostics — always rendered */}
-                    <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                        {mode === 'sell' && (
-                            <SellPricingDiagnostics
-                                diagnostics={diagnostics as SellDiagnostics | undefined}
-                                planetId={planetId}
-                            />
-                        )}
-                        {mode === 'buy' && (
-                            <BuyPricingDiagnostics
-                                diagnostics={diagnostics as BuyDiagnostics | undefined}
-                                planetId={planetId}
-                            />
-                        )}
-                    </div>
-
                     {/* Save/Reset buttons inside Pricing box */}
                     <div className='flex items-center justify-end gap-2 pt-1 pb-1.5'>
                         <div className='flex items-center gap-2'>
@@ -884,7 +720,9 @@ export function AutoConfigPanel({
                             )}
                             <div
                                 className={`absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg transition-opacity duration-200 ${
-                                    manualPriceOverlay ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+                                    manualPriceOverlay
+                                        ? 'opacity-100 pointer-events-auto'
+                                        : 'opacity-0 pointer-events-none'
                                 }`}
                             >
                                 <span className='flex items-center gap-2 text-sm font-medium text-foreground'>

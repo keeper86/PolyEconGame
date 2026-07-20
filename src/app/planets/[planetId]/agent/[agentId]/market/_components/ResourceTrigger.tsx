@@ -1,13 +1,12 @@
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Bot } from 'lucide-react';
-import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
+import { Badge } from '@/components/ui/badge';
+import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import React from 'react';
+import { getColumnClasses } from './columnConfig';
+import { getResourceByName } from './marketHelpers';
 import type { ResourceTriggerProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
-import { getResourceByName } from './marketHelpers';
-import { getColumnClasses } from './columnConfig';
-import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 
 function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
     for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
@@ -134,16 +133,15 @@ export default function ResourceTrigger({
                         {hasActiveBid && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-blue-500'
-                                title={bid?.automated ? 'Auto buy' : 'Active buy bid'}
+                                title={bid?.automated ? 'Buying' : 'Active buy bid'}
                             />
                         )}
                         {hasActiveOffer && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-green-500'
-                                title={offer?.automated ? 'Auto sell' : 'Active sell offer'}
+                                title={offer?.automated ? 'Selling' : 'Active sell offer'}
                             />
                         )}
-                        {(bid?.automated || offer?.automated) && <Bot className='h-3 w-3 text-purple-500' />}
                         {bid?.storageFullWarning && (
                             <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
                                 full

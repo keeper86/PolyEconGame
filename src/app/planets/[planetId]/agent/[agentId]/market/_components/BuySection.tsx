@@ -222,7 +222,12 @@ export default function BuySection({
                                 label='Stock'
                                 value={`${inventoryInBuyTicks ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
                             />
-                            <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit)} />
+                            <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
+                            <Stat
+                                label='Last price'
+                                value={formatNumberWithUnit(bid?.diagnostics?.oldBidPrice, 'currency', planetId)}
+                            />
+                            <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit, planetId)} />
                             <Stat
                                 label='Last spent'
                                 value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId)}
@@ -238,9 +243,6 @@ export default function BuySection({
                             onReset={onResetBuyAutoConfig}
                             isSaving={buyAutoConfigSaving}
                             bufferApplicable={isFacilityInput}
-                            diagnostics={bid?.diagnostics}
-                            unit={unit}
-                            planetId={planetId}
                             staleReason={buyStaleReason}
                             consumptionBreakdown={
                                 isFacilityInput && (

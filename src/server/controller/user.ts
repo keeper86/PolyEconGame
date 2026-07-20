@@ -1,35 +1,35 @@
-import { revalidateTag } from 'next/cache';
-import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import {
     CURRENCY_RESOURCE_PREFIX,
     getCurrencyResource,
     isCurrencyResource,
 } from '@/simulation/market/currencyResources';
+import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import {
+    workerAcquireLicense,
     workerBuildFacility,
+    workerBuildShipConstructionFacility,
     workerCancelBuyBid,
     workerCancelConstruction,
     workerCancelSellOffer,
     workerContractFacility,
     workerCreateAgent,
-    workerLeaseClaim,
     workerExpandFacility,
-    workerSetFacilityScale,
+    workerExpandShipConstructionFacility,
+    workerLeaseClaim,
     workerQuitClaim,
-    workerRequestLoan,
     workerRepayLoan,
+    workerRequestLoan,
     workerSetAutomation,
     workerSetBuyBids,
+    workerSetFacilityScale,
     workerSetSellOffers,
-    workerSetWorkerAllocationTargets,
-    workerBuildShipConstructionFacility,
-    workerExpandShipConstructionFacility,
     workerSetShipConstructionTarget,
-    workerAcquireLicense,
+    workerSetWorkerAllocationTargets,
 } from '@/simulation/workerClient/commands';
 import { getAgentSync } from '@/simulation/workerClient/syncQueries';
+import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -37,7 +37,6 @@ import z from 'zod';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
-import { getLatestTick } from '@/simulation/workerClient/manager';
 
 const userId = z.object({
     userId: z.string(),

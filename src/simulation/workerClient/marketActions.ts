@@ -12,7 +12,7 @@ export function handleSetSellOffers(
     const { requestId, agentId, planetId, offers } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -21,6 +21,7 @@ export function handleSetSellOffers(
             type: 'sellOffersFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -68,7 +69,7 @@ export function handleSetSellOffers(
         }
     }
     console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
-    safePostMessage({ type: 'sellOffersSet', requestId, agentId });
+    safePostMessage({ type: 'sellOffersSet', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleCancelSellOffer(
@@ -79,7 +80,7 @@ export function handleCancelSellOffer(
     const { requestId, agentId, planetId, resourceName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -88,6 +89,7 @@ export function handleCancelSellOffer(
             type: 'sellOfferCancelFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -95,7 +97,7 @@ export function handleCancelSellOffer(
         delete assets.market.sell[resourceName];
     }
     console.log(`[worker] Sell offer cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`);
-    safePostMessage({ type: 'sellOfferCancelled', requestId, agentId });
+    safePostMessage({ type: 'sellOfferCancelled', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleCancelBuyBid(
@@ -106,7 +108,7 @@ export function handleCancelBuyBid(
     const { requestId, agentId, planetId, resourceName } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -115,6 +117,7 @@ export function handleCancelBuyBid(
             type: 'buyBidCancelFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -129,7 +132,7 @@ export function handleCancelBuyBid(
         bid.lastEffectiveQty = 0;
     }
     console.log(`[worker] Buy bid cancelled for agent '${agentId}' on '${planetId}' resource '${resourceName}'`);
-    safePostMessage({ type: 'buyBidCancelled', requestId, agentId });
+    safePostMessage({ type: 'buyBidCancelled', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleSetBuyBids(
@@ -140,7 +143,7 @@ export function handleSetBuyBids(
     const { requestId, agentId, planetId, bids } = action;
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -149,6 +152,7 @@ export function handleSetBuyBids(
             type: 'buyBidsFailed',
             requestId,
             reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -196,7 +200,7 @@ export function handleSetBuyBids(
         }
     }
     console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);
-    safePostMessage({ type: 'buyBidsSet', requestId, agentId });
+    safePostMessage({ type: 'buyBidsSet', requestId, agentId, processedAtTick: state.tick });
 }
 
 export function handleMarketAction(

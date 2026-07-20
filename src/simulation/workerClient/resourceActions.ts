@@ -12,18 +12,18 @@ export function handleLeaseClaim(
     const { requestId, agentId, planetId, resourceName, quantity } = action;
 
     if (quantity <= 0) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Quantity must be positive' });
+        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Quantity must be positive', processedAtTick: state.tick });
         return;
     }
 
     const result = leaseClaim(state, agentId, planetId, resourceName, quantity);
     if (!result.ok) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: result.reason });
+        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: result.reason, processedAtTick: state.tick });
         return;
     }
 
     console.log(`[worker] Agent '${agentId}' leased ${quantity} of '${resourceName}' on planet '${planetId}'`);
-    safePostMessage({ type: 'claimLeased', requestId, agentId, claimId: result.claimId });
+    safePostMessage({ type: 'claimLeased', requestId, agentId, claimId: result.claimId, processedAtTick: state.tick });
 }
 
 export function handleQuitClaim(
@@ -35,7 +35,7 @@ export function handleQuitClaim(
     const agent = state.agents.get(agentId);
     const planet = state.planets.get(planetId);
     if (!agent || !planet) {
-        safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent or planet not found' });
+        safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent or planet not found', processedAtTick: state.tick });
         return;
     }
     let resourceName: string | null = null;
@@ -49,7 +49,7 @@ export function handleQuitClaim(
         }
     }
     if (!existingClaim || !resourceName) {
-        safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Claim '${claimId}' not found for agent` });
+        safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Claim '${claimId}' not found for agent`, processedAtTick: state.tick });
         return;
     }
     const entry = planet.resources[resourceName]!;
@@ -60,7 +60,7 @@ export function handleQuitClaim(
         entry.claims = entry.claims.filter((c) => c.id !== claimId);
     }
     console.log(`[worker] Agent '${agentId}' quit claim '${claimId}' on planet '${planetId}'`);
-    safePostMessage({ type: 'claimQuit', requestId, agentId, claimId });
+    safePostMessage({ type: 'claimQuit', requestId, agentId, claimId, processedAtTick: state.tick });
 }
 
 export function handleResourceAction(

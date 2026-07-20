@@ -16,6 +16,7 @@ export function handleRequestLoan(
             type: 'loanDenied',
             requestId,
             reason: 'Agent or planet not found',
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -25,6 +26,7 @@ export function handleRequestLoan(
             type: 'loanDenied',
             requestId,
             reason: `Requested amount ${amount} exceeds approved limit ${conditions.maxLoanAmount}`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -35,6 +37,7 @@ export function handleRequestLoan(
             type: 'loanDenied',
             requestId,
             reason: `Agent '${agentId}' has no asset record for planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -44,7 +47,7 @@ export function handleRequestLoan(
         agent.starterLoanTaken = true;
     }
     console.log(`[worker] Loan of ${amount} granted to agent '${agentId}' on planet '${planetId}'`);
-    safePostMessage({ type: 'loanGranted', requestId, agentId, amount });
+    safePostMessage({ type: 'loanGranted', requestId, agentId, amount, processedAtTick: state.tick });
 }
 
 export function handleRepayLoan(
@@ -56,7 +59,7 @@ export function handleRepayLoan(
     const agent = state.agents.get(agentId);
     const planet = state.planets.get(planetId);
     if (!agent || !planet) {
-        safePostMessage({ type: 'repayDenied', requestId, reason: 'Agent or planet not found' });
+        safePostMessage({ type: 'repayDenied', requestId, reason: 'Agent or planet not found', processedAtTick: state.tick });
         return;
     }
     const assets = agent.assets[planetId];
@@ -65,21 +68,22 @@ export function handleRepayLoan(
             type: 'repayDenied',
             requestId,
             reason: `Agent has no asset record for planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
     const loan = assets.activeLoans.find((l) => l.id === loanId);
     if (!loan) {
-        safePostMessage({ type: 'repayDenied', requestId, reason: `Loan '${loanId}' not found` });
+        safePostMessage({ type: 'repayDenied', requestId, reason: `Loan '${loanId}' not found`, processedAtTick: state.tick });
         return;
     }
     if (!loan.earlyRepaymentAllowed) {
-        safePostMessage({ type: 'repayDenied', requestId, reason: `Early repayment is not allowed for this loan` });
+        safePostMessage({ type: 'repayDenied', requestId, reason: `Early repayment is not allowed for this loan`, processedAtTick: state.tick });
         return;
     }
     const amount = Math.floor(loan.remainingPrincipal * fraction);
     if (amount <= 0) {
-        safePostMessage({ type: 'repayDenied', requestId, reason: 'Repayment amount is zero' });
+        safePostMessage({ type: 'repayDenied', requestId, reason: 'Repayment amount is zero', processedAtTick: state.tick });
         return;
     }
     if (assets.deposits < amount) {
@@ -87,6 +91,7 @@ export function handleRepayLoan(
             type: 'repayDenied',
             requestId,
             reason: `Insufficient deposits (have ${assets.deposits}, need ${amount})`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -103,7 +108,7 @@ export function handleRepayLoan(
     planet.bank.equity = planet.bank.deposits - planet.bank.loans;
 
     console.log(`[worker] Loan '${loanId}' repaid ${actualRepayment} by agent '${agentId}' on planet '${planetId}'`);
-    safePostMessage({ type: 'loanRepaid', requestId, agentId, loanId, amount: actualRepayment });
+    safePostMessage({ type: 'loanRepaid', requestId, agentId, loanId, amount: actualRepayment, processedAtTick: state.tick });
 }
 
 export function handleFinancialAction(
