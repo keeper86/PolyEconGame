@@ -2,78 +2,80 @@ import type { AutoConfigLocalState } from './marketTypes';
 
 // ── Preset types ────────────────────────────────────────────────────────────
 
-export type VolumePresetType = 'just-in-time' | 'active' | 'balanced' | 'stockpile' | 'custom';
-export type PricingPresetType = 'liquidation' | 'aggressive' | 'market-rate' | 'premium' | 'custom';
+export type VolumePresetType = 'just-in-time' | 'balanced' | 'stockpile' | 'custom';
+export type PricingPresetType = 'liquidation' | 'market-rate' | 'premium' | 'custom';
 
 export const VOLUME_PRESET_LABELS: Record<VolumePresetType, string> = {
-    'just-in-time': 'Just-in-Time',
-    'active': 'Active',
+    'just-in-time': 'Lean',
     'balanced': 'Balanced',
-    'stockpile': 'Stockpile',
-    'custom': '⚙️ Custom',
+    'stockpile': 'Hoard',
+    'custom': '⚙️',
 };
 
-export const VOLUME_PRESET_ORDER: VolumePresetType[] = ['just-in-time', 'active', 'balanced', 'stockpile', 'custom'];
+export const VOLUME_PRESET_ORDER: VolumePresetType[] = ['just-in-time', 'balanced', 'stockpile', 'custom'];
 
 export const PRICING_PRESET_LABELS: Record<PricingPresetType, string> = {
-    'liquidation': 'Liquidation',
-    'aggressive': 'Aggressive',
+    'liquidation': 'Slow',
     'market-rate': 'Market Rate',
-    'premium': 'Premium',
-    'custom': '⚙️ Custom',
+    'premium': 'Fast',
+    'custom': '⚙️',
 };
 
-export const PRICING_PRESET_ORDER: PricingPresetType[] = [
-    'liquidation',
-    'aggressive',
-    'market-rate',
-    'premium',
-    'custom',
-];
+export const PRICING_PRESET_ORDER: PricingPresetType[] = ['liquidation', 'market-rate', 'premium', 'custom'];
 
 // ─── Volume presets (buy) ───────────────────────────────────────────────────
 
-export type VolumeBuyValues = Pick<AutoConfigLocalState, 'inventorySmoothingMaxExtra' | 'inputBufferTargetTicks'>;
+export type VolumeBuyValues = Pick<
+    AutoConfigLocalState,
+    'inventorySmoothingMaxExtra' | 'inputBufferTargetTicks' | 'freeBuyQuantity' | 'freeBuyQuantitySmoothingMaxExtra'
+>;
 
 export const VOLUME_BUY_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, VolumeBuyValues> = {
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         inputBufferTargetTicks: '5',
-    },
-    'active': {
-        inventorySmoothingMaxExtra: '1',
-        inputBufferTargetTicks: '15',
+        freeBuyQuantity: '0',
+        freeBuyQuantitySmoothingMaxExtra: '2',
     },
     'balanced': {
         inventorySmoothingMaxExtra: '2',
         inputBufferTargetTicks: '30',
+        freeBuyQuantity: '0',
+        freeBuyQuantitySmoothingMaxExtra: '2',
     },
     'stockpile': {
         inventorySmoothingMaxExtra: '5',
         inputBufferTargetTicks: '60',
+        freeBuyQuantity: '0',
+        freeBuyQuantitySmoothingMaxExtra: '2',
     },
 };
 
 // ─── Volume presets (sell) ──────────────────────────────────────────────────
 
-export type VolumeSellValues = Pick<AutoConfigLocalState, 'inventorySmoothingMaxExtra' | 'outputBufferMaxTicks'>;
+export type VolumeSellValues = Pick<
+    AutoConfigLocalState,
+    'inventorySmoothingMaxExtra' | 'outputBufferMaxTicks' | 'freeSellQuantity' | 'freeSellQuantitySmoothingMaxExtra'
+>;
 
 export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, VolumeSellValues> = {
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         outputBufferMaxTicks: '2',
-    },
-    'active': {
-        inventorySmoothingMaxExtra: '1',
-        outputBufferMaxTicks: '5',
+        freeSellQuantity: '0',
+        freeSellQuantitySmoothingMaxExtra: '2',
     },
     'balanced': {
         inventorySmoothingMaxExtra: '2',
         outputBufferMaxTicks: '20',
+        freeSellQuantity: '0',
+        freeSellQuantitySmoothingMaxExtra: '2',
     },
     'stockpile': {
         inventorySmoothingMaxExtra: '5',
         outputBufferMaxTicks: '60',
+        freeSellQuantity: '0',
+        freeSellQuantitySmoothingMaxExtra: '2',
     },
 };
 
@@ -94,13 +96,6 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxDown: '0.80',
         targetFillRate: '0.70',
         bidOfferMaxCostMultiplier: '3',
-        automatedCostFloorBuffer: '0',
-    },
-    'aggressive': {
-        priceAdjustMaxUp: '1.03',
-        priceAdjustMaxDown: '0.90',
-        targetFillRate: '0.80',
-        bidOfferMaxCostMultiplier: '4',
         automatedCostFloorBuffer: '0',
     },
     'market-rate': {
@@ -138,13 +133,6 @@ export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, 
         targetSellThrough: '0.95',
         bidOfferMaxCostMultiplier: '3',
     },
-    'aggressive': {
-        priceAdjustMaxUp: '1.03',
-        priceAdjustMaxDown: '0.90',
-        automatedCostFloorBuffer: '0.0',
-        targetSellThrough: '0.90',
-        bidOfferMaxCostMultiplier: '4',
-    },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
@@ -163,9 +151,19 @@ export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, 
 
 // ─── Detection helpers ──────────────────────────────────────────────────────
 
-const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = ['inventorySmoothingMaxExtra', 'inputBufferTargetTicks'];
+const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = [
+    'inventorySmoothingMaxExtra',
+    'inputBufferTargetTicks',
+    'freeBuyQuantity',
+    'freeBuyQuantitySmoothingMaxExtra',
+];
 
-const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = ['inventorySmoothingMaxExtra', 'outputBufferMaxTicks'];
+const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = [
+    'inventorySmoothingMaxExtra',
+    'outputBufferMaxTicks',
+    'freeSellQuantity',
+    'freeSellQuantitySmoothingMaxExtra',
+];
 
 const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
     'priceAdjustMaxUp',

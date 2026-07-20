@@ -20,6 +20,10 @@ export type AutoConfigLocalState = {
     automatedCostFloorBuffer: string;
     inputBufferTargetTicks: string;
     targetFillRate: string;
+    freeBuyQuantity: string;
+    freeSellQuantity: string;
+    freeBuyQuantitySmoothingMaxExtra: string;
+    freeSellQuantitySmoothingMaxExtra: string;
 };
 
 export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
@@ -34,6 +38,10 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
         automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
         targetFillRate: config?.targetFillRate?.toString() ?? '',
+        freeBuyQuantity: config?.freeBuyQuantity?.toString() ?? '',
+        freeSellQuantity: config?.freeSellQuantity?.toString() ?? '',
+        freeBuyQuantitySmoothingMaxExtra: config?.freeBuyQuantitySmoothingMaxExtra?.toString() ?? '',
+        freeSellQuantitySmoothingMaxExtra: config?.freeSellQuantitySmoothingMaxExtra?.toString() ?? '',
     };
 }
 
@@ -50,6 +58,10 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'freeBuyQuantity',
+        'freeSellQuantity',
+        'freeBuyQuantitySmoothingMaxExtra',
+        'freeSellQuantitySmoothingMaxExtra',
     ];
     let hasAny = false;
     for (const key of keys) {
@@ -75,6 +87,10 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'freeBuyQuantity',
+        'freeSellQuantity',
+        'freeBuyQuantitySmoothingMaxExtra',
+        'freeSellQuantitySmoothingMaxExtra',
     ];
     for (const key of keys) {
         const localVal = local[key] !== '' ? parseFloat(local[key]) : undefined;
@@ -112,38 +128,26 @@ export type MarketOfferEntry = {
 
 export type LocalResourceState = {
     offerPrice: string;
-
-    offerRetainment: string;
     offerAutomated: boolean;
     bidPrice: string;
-
-    bidStorageTarget: string;
     bidAutomated: boolean;
-
-    targetBufferTicks: string;
 
     buyAutoConfig: AutoConfigLocalState;
     sellAutoConfig: AutoConfigLocalState;
 
     dirtyFields: {
         offerPrice: boolean;
-        offerRetainment: boolean;
         bidPrice: boolean;
-        bidStorageTarget: boolean;
     };
 
     validationErrors: {
         offerPrice?: string;
-        offerRetainment?: string;
         bidPrice?: string;
-        bidStorageTarget?: string;
     };
 
     savedOfferPrice: string;
-    savedOfferRetainment: string;
     savedOfferAutomated: boolean;
     savedBidPrice: string;
-    savedBidStorageTarget: string;
     savedBidAutomated: boolean;
 };
 
@@ -225,11 +229,6 @@ export type BuySectionProps = {
     buyPriceSaving: boolean;
     buyAutomationSaving: boolean;
     buyAutoConfigSaving: boolean;
-    buyAutoConfigSuccessMsg: string | null;
-    buyAutoConfigErrorMsg: string | null;
-    buySuccessMsg: string | null;
-    buyErrorMsg: string | null;
-
     planetId: string;
     ships: ConsumptionShipInfo[];
     /** Overlay message for the automation zone (Switch + header) */
@@ -256,11 +255,6 @@ export type SellSectionProps = {
     sellPriceSaving: boolean;
     sellAutomationSaving: boolean;
     sellAutoConfigSaving: boolean;
-    sellAutoConfigSuccessMsg: string | null;
-    sellAutoConfigErrorMsg: string | null;
-    sellSuccessMsg: string | null;
-    sellErrorMsg: string | null;
-
     planetId: string;
     /** Overlay message for the automation zone (Switch + header) */
     sellAutomationOverlay?: string | null;

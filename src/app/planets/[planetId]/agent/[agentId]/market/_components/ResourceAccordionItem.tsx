@@ -1,7 +1,7 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction, usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
@@ -13,7 +13,8 @@ import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/c
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
+import { toast } from 'sonner';
 import BuySection from './BuySection';
 import MarketStepChart from './MarketStepChart';
 import ProductPriceHistoryChart from './ProductPriceHistoryChart';
@@ -21,12 +22,7 @@ import ResourceTrigger from './ResourceTrigger';
 import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
-import {
-    autoConfigToLocal,
-    BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST,
-    localToAutoConfig,
-    TTL_FEEDBACK,
-} from './marketTypes';
+import { autoConfigToLocal, BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST, localToAutoConfig } from './marketTypes';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -129,20 +125,6 @@ export default function ResourceAccordionItem({
         }
     };
 
-    const [buySuccessMsg, setBuySuccessMsg] = useState<string | null>(null);
-    const [buyErrorMsg, setBuyErrorMsg] = useState<string | null>(null);
-    const [sellSuccessMsg, setSellSuccessMsg] = useState<string | null>(null);
-    const [sellErrorMsg, setSellErrorMsg] = useState<string | null>(null);
-    const [buyAutoConfigSuccessMsg, setBuyAutoConfigSuccessMsg] = useState<string | null>(null);
-    const [buyAutoConfigErrorMsg, setBuyAutoConfigErrorMsg] = useState<string | null>(null);
-    const [sellAutoConfigSuccessMsg, setSellAutoConfigSuccessMsg] = useState<string | null>(null);
-    const [sellAutoConfigErrorMsg, setSellAutoConfigErrorMsg] = useState<string | null>(null);
-
-    const buySuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const buyErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const sellSuccessTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const sellErrorTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
     // ── Pending market actions ──────────────────────────────────────────────
     const addPending = useAddPendingAction();
     const removePendingByResource = useRemovePendingByResource();
@@ -154,163 +136,33 @@ export default function ResourceAccordionItem({
     const issuingPlanetId = resourceName.startsWith('CUR_') ? resourceName.slice(4) : null;
     const displayName = issuingPlanetId ? currencyMapping[issuingPlanetId]?.resource.name : undefined;
 
-    useEffect(() => {
-        return () => {
-            if (buySuccessTimeoutRef.current) {
-                clearTimeout(buySuccessTimeoutRef.current);
-            }
-            if (buyErrorTimeoutRef.current) {
-                clearTimeout(buyErrorTimeoutRef.current);
-            }
-            if (sellSuccessTimeoutRef.current) {
-                clearTimeout(sellSuccessTimeoutRef.current);
-            }
-            if (sellErrorTimeoutRef.current) {
-                clearTimeout(sellErrorTimeoutRef.current);
-            }
-        };
-    }, []);
-
-    useEffect(() => {
-        if (buySuccessMsg) {
-            if (buySuccessTimeoutRef.current) {
-                clearTimeout(buySuccessTimeoutRef.current);
-            }
-            buySuccessTimeoutRef.current = setTimeout(() => {
-                setBuySuccessMsg(null);
-            }, TTL_FEEDBACK);
-        }
-        return () => {
-            if (buySuccessTimeoutRef.current) {
-                clearTimeout(buySuccessTimeoutRef.current);
-            }
-        };
-    }, [buySuccessMsg]);
-
-    useEffect(() => {
-        if (buyErrorMsg) {
-            if (buyErrorTimeoutRef.current) {
-                clearTimeout(buyErrorTimeoutRef.current);
-            }
-            buyErrorTimeoutRef.current = setTimeout(() => {
-                setBuyErrorMsg(null);
-            }, TTL_FEEDBACK);
-        }
-        return () => {
-            if (buyErrorTimeoutRef.current) {
-                clearTimeout(buyErrorTimeoutRef.current);
-            }
-        };
-    }, [buyErrorMsg]);
-
-    useEffect(() => {
-        if (sellSuccessMsg) {
-            if (sellSuccessTimeoutRef.current) {
-                clearTimeout(sellSuccessTimeoutRef.current);
-            }
-            sellSuccessTimeoutRef.current = setTimeout(() => {
-                setSellSuccessMsg(null);
-            }, TTL_FEEDBACK);
-        }
-        return () => {
-            if (sellSuccessTimeoutRef.current) {
-                clearTimeout(sellSuccessTimeoutRef.current);
-            }
-        };
-    }, [sellSuccessMsg]);
-
-    useEffect(() => {
-        if (sellErrorMsg) {
-            if (sellErrorTimeoutRef.current) {
-                clearTimeout(sellErrorTimeoutRef.current);
-            }
-            sellErrorTimeoutRef.current = setTimeout(() => {
-                setSellErrorMsg(null);
-            }, TTL_FEEDBACK);
-        }
-        return () => {
-            if (sellErrorTimeoutRef.current) {
-                clearTimeout(sellErrorTimeoutRef.current);
-            }
-        };
-    }, [sellErrorMsg]);
-
-    useEffect(() => {
-        if (!resource) {
-            return;
-        }
-
-        const validationErrors: typeof local.validationErrors = {};
-
-        if (local.offerPrice !== '') {
-            const offerPrice = parseFloat(local.offerPrice);
-            if (!isNaN(offerPrice)) {
-                const validation = validateSellOffer(offerPrice, inventoryQty);
-                if (!validation.isValid) {
-                    validationErrors.offerPrice = validation.error;
-                }
-            }
-        }
-
-        if (local.offerRetainment !== '') {
-            const offerRetainment = parseFloat(local.offerRetainment);
-            if (!isNaN(offerRetainment) && offerRetainment < 0) {
-                validationErrors.offerRetainment = 'Retainment must be non-negative';
-            }
-        }
-
-        if (local.bidPrice !== '') {
-            const bidPrice = parseFloat(local.bidPrice);
-            if (!isNaN(bidPrice)) {
-                const validation = validateBuyBid({ bidPrice, bidStorageTarget: undefined }, resource, assets);
-                if (!validation.isValid) {
-                    validationErrors.bidPrice = validation.error;
-                }
-            }
-        }
-
-        if (local.bidStorageTarget !== '') {
-            const bidStorageTarget = parseFloat(local.bidStorageTarget);
-            if (!isNaN(bidStorageTarget) && bidStorageTarget < 0) {
-                validationErrors.bidStorageTarget = 'Storage target must be non-negative';
-            }
-        }
-
-        if (JSON.stringify(validationErrors) !== JSON.stringify(local.validationErrors)) {
-            onLocalChange(resourceName, { validationErrors });
-        }
-    }, [
-        local.offerPrice,
-        local.offerRetainment,
-        local.bidPrice,
-        local.bidStorageTarget,
-        resource,
-        inventoryQty,
-        assets,
-        local,
-        resourceName,
-        onLocalChange,
-        local.validationErrors,
-    ]);
-
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
             onSuccess: () => {
-                setSellSuccessMsg('Sell offers saved. Changes take effect on the next market tick.');
-                setSellErrorMsg(null);
+                toast.success('Sell offers saved. Changes take effect on the next market tick.');
                 onLocalChange(resourceName, {
                     savedOfferPrice: local.offerPrice,
-                    savedOfferRetainment: local.offerRetainment,
                     savedOfferAutomated: local.offerAutomated,
                 });
             },
             onError: (err) => {
-                let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
+                const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
                 if (errorMessage.includes('Insufficient deposits')) {
-                    errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                    toast.error(
+                        <span>
+                            {errorMessage}. You can borrow funds on the{' '}
+                            <a
+                                href={`/planets/${planetId}/agent/${agentId}/financial`}
+                                className='underline font-medium hover:text-blue-700'
+                            >
+                                Financial page
+                            </a>
+                            .
+                        </span>,
+                    );
+                } else {
+                    toast.error(errorMessage);
                 }
-                setSellErrorMsg(errorMessage);
-                setSellSuccessMsg(null);
                 // Remove pending action on error (we remove all sell sub-types)
                 removePendingByResource(agentId, planetId, resourceName, 'marketSellPrice');
                 removePendingByResource(agentId, planetId, resourceName, 'marketSellAutomation');
@@ -322,21 +174,30 @@ export default function ResourceAccordionItem({
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
             onSuccess: () => {
-                setBuySuccessMsg('Buy bids saved. Changes take effect on the next market tick.');
-                setBuyErrorMsg(null);
+                toast.success('Buy bids saved. Changes take effect on the next market tick.');
                 onLocalChange(resourceName, {
                     savedBidPrice: local.bidPrice,
-                    savedBidStorageTarget: local.bidStorageTarget,
                     savedBidAutomated: local.bidAutomated,
                 });
             },
             onError: (err) => {
-                let errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
                 if (errorMessage.includes('Insufficient deposits')) {
-                    errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                    toast.error(
+                        <span>
+                            {errorMessage}. You can borrow funds on the{' '}
+                            <a
+                                href={`/planets/${planetId}/agent/${agentId}/financial`}
+                                className='underline font-medium hover:text-blue-700'
+                            >
+                                Financial page
+                            </a>
+                            .
+                        </span>,
+                    );
+                } else {
+                    toast.error(errorMessage);
                 }
-                setBuyErrorMsg(errorMessage);
-                setBuySuccessMsg(null);
                 // Remove pending action on error (we remove all buy sub-types)
                 removePendingByResource(agentId, planetId, resourceName, 'marketBuyPrice');
                 removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutomation');
@@ -348,22 +209,18 @@ export default function ResourceAccordionItem({
     const cancelSellOfferMutation = useMutation(
         trpc.cancelSellOffer.mutationOptions({
             onSuccess: () => {
-                setSellSuccessMsg('Sell offer cancelled.');
-                setSellErrorMsg(null);
+                toast.success('Sell offer cancelled.');
                 onLocalChange(resourceName, {
                     offerPrice: '',
-                    offerRetainment: '',
                     offerAutomated: false,
                     savedOfferPrice: '',
-                    savedOfferRetainment: '',
                     savedOfferAutomated: false,
                 });
                 // Remove cancel pending on success; resolution handles the rest
                 removePendingByResource(agentId, planetId, resourceName, 'marketCancelSell');
             },
             onError: (err) => {
-                setSellErrorMsg(err instanceof Error ? err.message : 'Failed to cancel offer');
-                setSellSuccessMsg(null);
+                toast.error(err instanceof Error ? err.message : 'Failed to cancel offer');
                 removePendingByResource(agentId, planetId, resourceName, 'marketCancelSell');
             },
         }),
@@ -372,22 +229,18 @@ export default function ResourceAccordionItem({
     const cancelBuyBidMutation = useMutation(
         trpc.cancelBuyBid.mutationOptions({
             onSuccess: () => {
-                setBuySuccessMsg('Buy bid cancelled.');
-                setBuyErrorMsg(null);
+                toast.success('Buy bid cancelled.');
                 onLocalChange(resourceName, {
                     bidPrice: '',
-                    bidStorageTarget: '',
                     bidAutomated: false,
                     savedBidPrice: '',
-                    savedBidStorageTarget: '',
                     savedBidAutomated: false,
                 });
                 // Remove cancel pending on success
                 removePendingByResource(agentId, planetId, resourceName, 'marketCancelBuy');
             },
             onError: (err) => {
-                setBuyErrorMsg(err instanceof Error ? err.message : 'Failed to cancel bid');
-                setBuySuccessMsg(null);
+                toast.error(err instanceof Error ? err.message : 'Failed to cancel bid');
                 removePendingByResource(agentId, planetId, resourceName, 'marketCancelBuy');
             },
         }),
@@ -401,51 +254,63 @@ export default function ResourceAccordionItem({
     const [sellAutoConfigSaving, setSellAutoConfigSaving] = useState(false);
 
     const handleSaveBuy = () => {
-        setBuySuccessMsg(null);
-        setBuyErrorMsg(null);
-
         if (!resource) {
-            setBuyErrorMsg(`Unknown resource: ${resourceName}`);
+            toast.error(`Unknown resource: ${resourceName}`);
             return;
         }
 
         const bidPrice = parseFloat(local.bidPrice);
-        const bidStorageTarget = parseFloat(local.bidStorageTarget);
 
-        if (!isNaN(bidPrice) || !isNaN(bidStorageTarget)) {
+        if (!isNaN(bidPrice) && bidPrice > 0) {
             const validation = validateBuyBid(
                 {
-                    bidPrice: isNaN(bidPrice) ? undefined : bidPrice,
-                    bidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
+                    bidPrice,
+                    bidStorageTarget: undefined,
                 },
                 resource,
                 assets,
             );
             if (!validation.isValid) {
-                let errorText = validation.error;
+                const errorText = validation.error;
                 if (errorText && errorText.includes('Insufficient deposits')) {
-                    errorText = `${errorText}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                    toast.error(
+                        <span>
+                            Buy validation failed: {errorText}. You can borrow funds on the{' '}
+                            <a
+                                href={`/planets/${planetId}/agent/${agentId}/financial`}
+                                className='underline font-medium hover:text-blue-700'
+                            >
+                                Financial page
+                            </a>
+                            .
+                        </span>,
+                    );
+                } else {
+                    toast.error(`Buy validation failed: ${errorText}`);
                 }
-                setBuyErrorMsg(`Buy validation failed: ${errorText}`);
                 return;
             }
         }
 
-        const buyPayload: Record<string, { bidPrice?: number; bidStorageTarget?: number }> = {
+        if (isNaN(bidPrice) || bidPrice <= 0) {
+            toast.error(`Buy validation failed: Invalid bid price.`);
+            return;
+        }
+
+        const buyPayload: Record<string, { bidPrice?: number }> = {
             [resourceName]: {
-                ...(!isNaN(bidPrice) && bidPrice > 0 && { bidPrice }),
-                ...(!isNaN(bidStorageTarget) && bidStorageTarget >= 0 && { bidStorageTarget }),
+                bidPrice,
             },
         };
 
-        // Add pending action before mutation (price/quantity zone)
+        // Add pending action before mutation (price zone)
         addPending({
             type: 'marketBuyPrice',
             agentId,
             planetId,
             resourceName,
             submittedBidPrice: isNaN(bidPrice) ? undefined : bidPrice,
-            submittedBidStorageTarget: isNaN(bidStorageTarget) ? undefined : bidStorageTarget,
+            submittedBidStorageTarget: undefined,
             triggerTick: currentTick,
         });
 
@@ -460,40 +325,39 @@ export default function ResourceAccordionItem({
     };
 
     const handleSaveSell = () => {
-        setSellSuccessMsg(null);
-        setSellErrorMsg(null);
-
         if (!resource) {
-            setSellErrorMsg(`Unknown resource: ${resourceName}`);
+            toast.error(`Unknown resource: ${resourceName}`);
             return;
         }
 
         const offerPrice = parseFloat(local.offerPrice);
-        const offerRetainment = parseFloat(local.offerRetainment);
 
         if (!isNaN(offerPrice)) {
-            const validation = validateSellOffer(!isNaN(offerPrice) ? offerPrice : undefined, inventoryQty);
+            const validation = validateSellOffer(offerPrice, inventoryQty);
             if (!validation.isValid) {
-                setSellErrorMsg(`Sell validation failed: ${validation.error}`);
+                toast.error(`Sell validation failed: ${validation.error}`);
                 return;
             }
         }
 
-        const sellPayload: Record<string, { offerPrice?: number; offerRetainment?: number }> = {
+        if (isNaN(offerPrice) || offerPrice < PRICE_FLOOR) {
+            toast.error(`Sell validation failed: Invalid offer price.`);
+            return;
+        }
+
+        const sellPayload: Record<string, { offerPrice?: number }> = {
             [resourceName]: {
-                ...(!isNaN(offerPrice) && offerPrice >= PRICE_FLOOR && { offerPrice }),
-                ...(!isNaN(offerRetainment) && offerRetainment >= 0 && { offerRetainment }),
+                offerPrice,
             },
         };
 
-        // Add pending action before mutation (price/retainment zone)
+        // Add pending action before mutation (price zone)
         addPending({
             type: 'marketSellPrice',
             agentId,
             planetId,
             resourceName,
             submittedOfferPrice: isNaN(offerPrice) ? undefined : offerPrice,
-            submittedOfferRetainment: isNaN(offerRetainment) ? undefined : offerRetainment,
             triggerTick: currentTick,
         });
 
@@ -510,19 +374,13 @@ export default function ResourceAccordionItem({
     const handleResetBuy = () => {
         onLocalChange(resourceName, {
             bidPrice: local.savedBidPrice,
-            bidStorageTarget: local.savedBidStorageTarget,
         });
-        setBuySuccessMsg(null);
-        setBuyErrorMsg(null);
     };
 
     const handleResetSell = () => {
         onLocalChange(resourceName, {
             offerPrice: local.savedOfferPrice,
-            offerRetainment: local.savedOfferRetainment,
         });
-        setSellSuccessMsg(null);
-        setSellErrorMsg(null);
     };
 
     const handleBuyAutomationChange = (automated: boolean) => {
@@ -547,17 +405,27 @@ export default function ResourceAccordionItem({
             {
                 onSuccess: () => {
                     setBuyAutomationSaving(false);
-                    setBuySuccessMsg('Buy bids saved. Changes take effect on the next market tick.');
-                    setBuyErrorMsg(null);
+                    toast.success('Buy bids saved. Changes take effect on the next market tick.');
                 },
                 onError: (err) => {
                     setBuyAutomationSaving(false);
-                    let errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                    const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
                     if (errorMessage.includes('Insufficient deposits')) {
-                        errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                        toast.error(
+                            <span>
+                                {errorMessage}. You can borrow funds on the{' '}
+                                <a
+                                    href={`/planets/${planetId}/agent/${agentId}/financial`}
+                                    className='underline font-medium hover:text-blue-700'
+                                >
+                                    Financial page
+                                </a>
+                                .
+                            </span>,
+                        );
+                    } else {
+                        toast.error(errorMessage);
                     }
-                    setBuyErrorMsg(errorMessage);
-                    setBuySuccessMsg(null);
                     removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutomation');
                 },
             },
@@ -586,17 +454,27 @@ export default function ResourceAccordionItem({
             {
                 onSuccess: () => {
                     setSellAutomationSaving(false);
-                    setSellSuccessMsg('Sell offers saved. Changes take effect on the next market tick.');
-                    setSellErrorMsg(null);
+                    toast.success('Sell offers saved. Changes take effect on the next market tick.');
                 },
                 onError: (err) => {
                     setSellAutomationSaving(false);
-                    let errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
+                    const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
                     if (errorMessage.includes('Insufficient deposits')) {
-                        errorMessage = `${errorMessage}. You can borrow funds on the <a href="/planets/${planetId}/agent/${agentId}/financial" class="underline font-medium hover:text-blue-700">Financial page</a>.`;
+                        toast.error(
+                            <span>
+                                {errorMessage}. You can borrow funds on the{' '}
+                                <a
+                                    href={`/planets/${planetId}/agent/${agentId}/financial`}
+                                    className='underline font-medium hover:text-blue-700'
+                                >
+                                    Financial page
+                                </a>
+                                .
+                            </span>,
+                        );
+                    } else {
+                        toast.error(errorMessage);
                     }
-                    setSellErrorMsg(errorMessage);
-                    setSellSuccessMsg(null);
                     removePendingByResource(agentId, planetId, resourceName, 'marketSellAutomation');
                 },
             },
@@ -630,8 +508,6 @@ export default function ResourceAccordionItem({
     // ── Auto-config save / reset handlers ────────────────────────────────────
 
     const handleSaveBuyAutoConfig = () => {
-        setBuyAutoConfigSuccessMsg(null);
-        setBuyAutoConfigErrorMsg(null);
         const autoConfig = localToAutoConfig(local.buyAutoConfig);
         const buyPayload: Record<string, { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }> =
             {
@@ -653,11 +529,11 @@ export default function ResourceAccordionItem({
             {
                 onSuccess: () => {
                     setBuyAutoConfigSaving(false);
-                    setBuyAutoConfigSuccessMsg('Auto-config saved.');
+                    toast.success('Auto-config saved.');
                 },
                 onError: (err) => {
                     setBuyAutoConfigSaving(false);
-                    setBuyAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                    toast.error(err instanceof Error ? err.message : 'Failed to save');
                     removePendingByResource(agentId, planetId, resourceName, 'marketBuyAutoConfig');
                 },
             },
@@ -666,13 +542,9 @@ export default function ResourceAccordionItem({
 
     const handleResetBuyAutoConfig = () => {
         onLocalChange(resourceName, { buyAutoConfig: autoConfigToLocal(bid?.autoConfig) });
-        setBuyAutoConfigSuccessMsg(null);
-        setBuyAutoConfigErrorMsg(null);
     };
 
     const handleSaveSellAutoConfig = () => {
-        setSellAutoConfigSuccessMsg(null);
-        setSellAutoConfigErrorMsg(null);
         const autoConfig = localToAutoConfig(local.sellAutoConfig);
         const sellPayload: Record<
             string,
@@ -696,11 +568,11 @@ export default function ResourceAccordionItem({
             {
                 onSuccess: () => {
                     setSellAutoConfigSaving(false);
-                    setSellAutoConfigSuccessMsg('Auto-config saved.');
+                    toast.success('Auto-config saved.');
                 },
                 onError: (err) => {
                     setSellAutoConfigSaving(false);
-                    setSellAutoConfigErrorMsg(err instanceof Error ? err.message : 'Failed to save');
+                    toast.error(err instanceof Error ? err.message : 'Failed to save');
                     removePendingByResource(agentId, planetId, resourceName, 'marketSellAutoConfig');
                 },
             },
@@ -709,8 +581,6 @@ export default function ResourceAccordionItem({
 
     const handleResetSellAutoConfig = () => {
         onLocalChange(resourceName, { sellAutoConfig: autoConfigToLocal(offer?.autoConfig) });
-        setSellAutoConfigSuccessMsg(null);
-        setSellAutoConfigErrorMsg(null);
     };
 
     // ── Granular overlay messages ──────────────────────────────────────────
@@ -822,16 +692,20 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <span className='flex flex-col gap-3 text-xs font-medium text-muted-foreground'>
-                        <span className=''>Daily market clearance chart </span>
-                        <MarketStepChart
-                            market={marketData?.market ?? undefined}
-                            agentId={agentId}
-                            planetId={planetId}
-                        />
-                    </span>
-
-                    <Separator />
+                    <Accordion type='single' collapsible defaultValue='' className=''>
+                        <AccordionItem value='market-step-chart' className=''>
+                            <AccordionTrigger className='text-xs font-medium text-muted-foreground hover:no-underline'>
+                                Daily market clearance chart
+                            </AccordionTrigger>
+                            <AccordionContent className='pt-1 pb-4'>
+                                <MarketStepChart
+                                    market={marketData?.market ?? undefined}
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
 
                     <div className='flex flex-row flex-wrap gap-4'>
                         <BuySection
@@ -850,10 +724,6 @@ export default function ResourceAccordionItem({
                             buyAutomationSaving={buyAutomationSaving}
                             buyPriceSaving={buyPriceSaving}
                             buyAutoConfigSaving={buyAutoConfigSaving}
-                            buyAutoConfigSuccessMsg={buyAutoConfigSuccessMsg}
-                            buyAutoConfigErrorMsg={buyAutoConfigErrorMsg}
-                            buySuccessMsg={buySuccessMsg}
-                            buyErrorMsg={buyErrorMsg}
                             planetId={planetId}
                             ships={ships}
                             buyAutomationOverlay={buyAutomationOverlay}
@@ -877,10 +747,6 @@ export default function ResourceAccordionItem({
                             sellAutomationSaving={sellAutomationSaving}
                             sellPriceSaving={sellPriceSaving}
                             sellAutoConfigSaving={sellAutoConfigSaving}
-                            sellAutoConfigSuccessMsg={sellAutoConfigSuccessMsg}
-                            sellAutoConfigErrorMsg={sellAutoConfigErrorMsg}
-                            sellSuccessMsg={sellSuccessMsg}
-                            sellErrorMsg={sellErrorMsg}
                             planetId={planetId}
                             sellAutomationOverlay={sellAutomationOverlay}
                             sellAutoConfigOverlay={sellAutoConfigOverlay}

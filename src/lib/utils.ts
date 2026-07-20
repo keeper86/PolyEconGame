@@ -11,7 +11,7 @@ import { formatNumbers } from '@/simulation/utils/numberFormat';
 
 export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'percent' | 'm3' | 'days' | 'none';
 
-export function resourceFormToUnit(form: ResourceType): Exclude<Units, 'currency'> {
+export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Units, 'currency'> {
     switch (form) {
         case 'solid':
         case 'pieces':

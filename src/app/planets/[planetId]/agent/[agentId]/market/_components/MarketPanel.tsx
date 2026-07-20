@@ -203,23 +203,13 @@ export default function MarketPanel({
                     continue;
                 }
 
-                next[name].targetBufferTicks = p.targetBufferTicks;
-
                 if (p.dirtyFields.offerPrice) {
                     next[name].offerPrice = p.offerPrice;
                     next[name].dirtyFields.offerPrice = p.offerPrice !== next[name].savedOfferPrice;
                 }
-                if (p.dirtyFields.offerRetainment) {
-                    next[name].offerRetainment = p.offerRetainment;
-                    next[name].dirtyFields.offerRetainment = p.offerRetainment !== next[name].savedOfferRetainment;
-                }
                 if (p.dirtyFields.bidPrice) {
                     next[name].bidPrice = p.bidPrice;
                     next[name].dirtyFields.bidPrice = p.bidPrice !== next[name].savedBidPrice;
-                }
-                if (p.dirtyFields.bidStorageTarget) {
-                    next[name].bidStorageTarget = p.bidStorageTarget;
-                    next[name].dirtyFields.bidStorageTarget = p.bidStorageTarget !== next[name].savedBidStorageTarget;
                 }
 
                 // Preserve unsaved auto-config changes across tick re-renders
@@ -236,14 +226,8 @@ export default function MarketPanel({
                 if (p.savedOfferPrice !== next[name].savedOfferPrice) {
                     next[name].savedOfferPrice = p.savedOfferPrice;
                 }
-                if (p.savedOfferRetainment !== next[name].savedOfferRetainment) {
-                    next[name].savedOfferRetainment = p.savedOfferRetainment;
-                }
                 if (p.savedBidPrice !== next[name].savedBidPrice) {
                     next[name].savedBidPrice = p.savedBidPrice;
-                }
-                if (p.savedBidStorageTarget !== next[name].savedBidStorageTarget) {
-                    next[name].savedBidStorageTarget = p.savedBidStorageTarget;
                 }
                 if (p.savedBidAutomated !== next[name].savedBidAutomated) {
                     next[name].savedBidAutomated = p.savedBidAutomated;
@@ -277,26 +261,16 @@ export default function MarketPanel({
             // When a saved* field is included in the patch, use the new saved value for comparison.
             // Otherwise fall back to the old saved value.
             const newSavedOfferPrice = 'savedOfferPrice' in patch ? patch.savedOfferPrice : current.savedOfferPrice;
-            const newSavedOfferRetainment =
-                'savedOfferRetainment' in patch ? patch.savedOfferRetainment : current.savedOfferRetainment;
             const newSavedBidPrice = 'savedBidPrice' in patch ? patch.savedBidPrice : current.savedBidPrice;
-            const newSavedBidStorageTarget =
-                'savedBidStorageTarget' in patch ? patch.savedBidStorageTarget : current.savedBidStorageTarget;
 
             const dirtyFields = { ...current.dirtyFields };
 
             if ('offerPrice' in patch) {
                 dirtyFields.offerPrice = patch.offerPrice !== newSavedOfferPrice;
             }
-            if ('offerRetainment' in patch) {
-                dirtyFields.offerRetainment = patch.offerRetainment !== newSavedOfferRetainment;
-            }
 
             if ('bidPrice' in patch) {
                 dirtyFields.bidPrice = patch.bidPrice !== newSavedBidPrice;
-            }
-            if ('bidStorageTarget' in patch) {
-                dirtyFields.bidStorageTarget = patch.bidStorageTarget !== newSavedBidStorageTarget;
             }
 
             return {

@@ -3,6 +3,7 @@ import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
+    FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -42,6 +43,8 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
         targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 0.5,
+        freeSellQuantity: c.freeSellQuantity ?? 0,
+        freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -57,6 +60,8 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
             c.inputBufferTargetTicks ??
             (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
         targetFillRate: c.targetFillRate ?? 0.9,
+        freeBuyQuantity: c.freeBuyQuantity ?? 0,
+        freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -302,7 +307,13 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const bidCfg = resolveBidConfig(bid.autoConfig, resource);
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
-        const shortfall = Math.max(0, storageTarget - currentInventory);
+
+        const freeBuyFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+        const freeBuyPerTick =
+            bidCfg.freeBuyQuantity > 0 && currentInventory < storageTarget + bidCfg.freeBuyQuantity
+                ? bidCfg.freeBuyQuantity / freeBuyFillDays
+                : 0;
+        const shortfall = Math.max(0, storageTarget - currentInventory) + freeBuyPerTick;
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         let smoothedShortfall = shortfall;
@@ -328,6 +339,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     `This may lead to unstable pricing. Setting bid ceiling to PRICE_FLOOR.`,
             );
         }
+
         adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
@@ -385,7 +397,15 @@ export function adjustOfferPrice(
     }
 
     const retainment = offer.offerRetainment ?? 0;
-    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
+    const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
+
+    // Add free sell quantity to effective quantity (absolute quantity smoothed over days)
+    // Convert absolute order amount to per-tick rate by dividing by fill days.
+    const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
+    const freeSellQty = cfg.freeSellQuantity;
+    const freeSellPerTick = freeSellQty > 0 && baseEffectiveQuantity < freeSellQty ? freeSellQty / freeSellFillDays : 0;
+    const effectiveQuantity =
+        freeSellPerTick > 0 ? Math.min(baseEffectiveQuantity + freeSellPerTick, inventoryQty) : baseEffectiveQuantity;
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {

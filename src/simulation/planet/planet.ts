@@ -184,6 +184,12 @@ export interface AutomatedPricingConfig {
     bidOfferMaxCostMultiplier?: number; // default: BID_OFFER_MAX_COST_MULTIPLIER (6)
     inventorySmoothingMaxExtra?: number; // default: INVENTORY_SMOOTHING_MAX_EXTRA (2)
 
+    // Free quantity (absolute order amount, smoothed over days)
+    freeBuyQuantity?: number; // absolute total quantity to buy (spread over fill days)
+    freeSellQuantity?: number; // absolute total quantity to sell (spread over fill days)
+    freeBuyQuantitySmoothingMaxExtra?: number; // days the buy order takes to fill, default 2
+    freeSellQuantitySmoothingMaxExtra?: number; // days the sell order takes to fill, default 2
+
     // Sell-side
     outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)
     targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)

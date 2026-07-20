@@ -1,14 +1,13 @@
+import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import { PRICE_FLOOR } from '@/simulation/constants';
-import { AlertCircle, CheckCircle2, RotateCcw, Tag } from 'lucide-react';
+import { AlertCircle, RotateCcw, Tag } from 'lucide-react';
 import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
-import { getResourceByName, productionPerTick, sellFulfillmentClass } from './marketHelpers';
+import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 
 export default function SellSection({
@@ -26,10 +25,6 @@ export default function SellSection({
     sellPriceSaving,
     sellAutomationSaving,
     sellAutoConfigSaving,
-    sellAutoConfigSuccessMsg,
-    sellAutoConfigErrorMsg,
-    sellSuccessMsg,
-    sellErrorMsg,
     planetId,
     sellAutomationOverlay,
     sellAutoConfigOverlay,
@@ -45,17 +40,6 @@ export default function SellSection({
     const effectiveSellQty =
         offer?.offerRetainment !== undefined ? Math.max(0, inventoryQty - offer.offerRetainment) : undefined;
 
-    const retainmentPresets =
-        isFacilityOutput && producedPerTick > 0
-            ? ([
-                  { label: '0', qty: 0 },
-                  { label: '5 ticks', qty: Math.ceil(producedPerTick * 5) },
-                  { label: '10 ticks', qty: Math.ceil(producedPerTick * 10) },
-              ] as const)
-            : inventoryQty > 0
-              ? ([{ label: '0', qty: 0 }] as const)
-              : null;
-
     const sellStaleReason =
         local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
             ? 'Output buffer full — nothing offered for sale last tick'
@@ -66,21 +50,16 @@ export default function SellSection({
         onLocalChange(resourceName, { sellAutoConfig: updatedSellAutoConfig });
     };
 
-    const hasDirtySellFields = local.dirtyFields.offerPrice || local.dirtyFields.offerRetainment;
+    const hasDirtySellFields = local.dirtyFields.offerPrice;
 
-    const hasValidationErrors = local.validationErrors.offerPrice || local.validationErrors.offerRetainment;
+    const hasValidationErrors = !!local.validationErrors.offerPrice;
 
     const getFieldClassName = (fieldName: keyof typeof local.dirtyFields, isDisabled: boolean) => {
-        const baseClass = 'h-8 text-sm tabular-nums';
+        const baseClass = 'h-7 text-sm tabular-nums';
         if (isDisabled) {
             return `${baseClass} opacity-50`;
         }
-        const hasError =
-            fieldName === 'offerPrice'
-                ? !!local.validationErrors.offerPrice
-                : fieldName === 'offerRetainment'
-                  ? !!local.validationErrors.offerRetainment
-                  : false;
+        const hasError = fieldName === 'offerPrice' && !!local.validationErrors.offerPrice;
 
         if (hasError) {
             return `${baseClass} border-red-500 bg-red-50 dark:bg-red-950/30`;
@@ -91,7 +70,7 @@ export default function SellSection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form ?? 'pieces');
+    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -103,8 +82,84 @@ export default function SellSection({
             </div>
         ) : null;
 
+    // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
+    const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
+    const costFloor =
+        overviewRow && overviewRow.priceCostRatio > 0 ? overviewRow.clearingPrice / overviewRow.priceCostRatio : 0;
+    const quickPrices =
+        overviewRow && costFloor > 0
+            ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
+                  .filter((p) => isFinite(p) && p > 0)
+                  .sort((a, b) => a - b)
+            : [];
+
+    const manualPricing = (
+        <div className='flex flex-row flex-grow gap-2 items-center py-2'>
+            <div className='flex flex-col flex-grow gap-1'>
+                <span className='flex flex-row items-center gap-1'>
+                    <Button
+                        className='h-7 text-[11px] p-0 px-1'
+                        variant='ghost'
+                        size='sm'
+                        onClick={onResetSell}
+                        disabled={sellPriceSaving || !hasDirtySellFields}
+                    >
+                        <RotateCcw className='h-5 w-5' />
+                    </Button>
+                    <Input
+                        id={`offer-price-${resourceName}`}
+                        type='number'
+                        min={0.01}
+                        step='any'
+                        placeholder={
+                            offer?.offerPrice !== undefined
+                                ? offer.offerPrice.toFixed(2)
+                                : (defaultPrice ?? 'e.g. 1.50')
+                        }
+                        value={local.offerPrice}
+                        disabled={sellPriceSaving}
+                        onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
+                        className={getFieldClassName('offerPrice', sellPriceSaving) + ` text-right`}
+                    />
+                </span>
+                <span className='flex items-center justify-end gap-1 '>
+                    {overviewRow &&
+                        costFloor > 0 &&
+                        quickPrices.map((price) => (
+                            <Button
+                                key={price}
+                                variant='secondary'
+                                size='sm'
+                                className='h-6 text-[9px] text-right px-1 py-0'
+                                disabled={sellPriceSaving}
+                                onClick={() => onLocalChange(resourceName, { offerPrice: price.toFixed(2) })}
+                            >
+                                {formatNumberWithUnit(price, 'currency', planetId)}
+                            </Button>
+                        ))}
+                </span>
+            </div>
+
+            <Button
+                size='sm'
+                className='h-14 w-14 text-[11px] '
+                onClick={onSaveSell}
+                disabled={!hasDirtySellFields || !!hasValidationErrors || sellPriceSaving}
+            >
+                {sellPriceSaving ? 'Setting…' : 'Set'}
+            </Button>
+
+            {local.validationErrors.offerPrice && (
+                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
+                    <AlertCircle className='h-3 w-3' />
+                    Price: {local.validationErrors.offerPrice}
+                </div>
+            )}
+        </div>
+    );
+
     return (
-        <div className='flex-1 min-w-[300px]'>
+        <div className='flex-1 min-w-[250px]'>
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
                 <div className='flex items-center gap-6 pl-2'>
@@ -118,20 +173,6 @@ export default function SellSection({
                         onCheckedChange={(v) => onAutomationChange(v)}
                     />
                 </div>
-
-                {/* Always-visible compact stats row */}
-                <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30 mb-2'>
-                    <span className='tabular-nums'>
-                        <span className='font-medium'>Production:</span>{' '}
-                        {isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
-                    </span>
-                    <span className='tabular-nums'>
-                        <span className='font-medium'>Stock:</span>{' '}
-                        {isFacilityOutput && producedPerTick > 0
-                            ? `${formatNumberWithUnit(inventoryQty, unit)} (${(inventoryQty / producedPerTick).toFixed(1)} ticks)`
-                            : formatNumberWithUnit(inventoryQty, unit)}
-                    </span>
-                </div>
                 {overlay(sellAutomationOverlay)}
             </div>
 
@@ -139,16 +180,25 @@ export default function SellSection({
             <div className='relative'>
                 <div className='pb-0'>
                     <div className='space-y-3 pt-3'>
-                        <div className='flex items-center gap-4 px-2.5 py-1.5 text-xs text-muted-foreground border rounded-md bg-muted/30'>
-                            <span className='tabular-nums'>
-                                <span className='font-medium'>Last sold:</span>{' '}
-                                {formatNumberWithUnit(offer?.lastSold, unit)}
-                            </span>
-
-                            <span className='tabular-nums'>
-                                <span className='font-medium'>Revenue:</span>{' '}
-                                {formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
-                            </span>
+                        <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
+                            <Stat
+                                label='Production'
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                bold
+                            />
+                            <Stat
+                                label='Stock (days)'
+                                value={
+                                    isFacilityOutput && producedPerTick > 0
+                                        ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
+                                        : '—'
+                                }
+                            />
+                            <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
+                            <Stat
+                                label='Revenue'
+                                value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
+                            />
                         </div>
 
                         <AutoConfigPanel
@@ -159,179 +209,17 @@ export default function SellSection({
                             onSave={onSaveSellAutoConfig}
                             onReset={onResetSellAutoConfig}
                             isSaving={sellAutoConfigSaving}
-                            successMsg={sellAutoConfigSuccessMsg}
-                            errorMsg={sellAutoConfigErrorMsg}
                             bufferApplicable={isFacilityOutput}
                             diagnostics={offer?.diagnostics}
                             unit={unit}
                             planetId={planetId}
                             staleReason={sellStaleReason}
+                            manualPricingSlot={manualPricing}
+                            manualPriceOverlay={sellPriceOverlay}
                         />
                     </div>
                 </div>
                 {overlay(sellAutoConfigOverlay)}
-            </div>
-
-            {/* ─── Zone 3: Price/Retainment inputs + Save/Reset ─── */}
-            <div className='relative'>
-                <div className='space-y-3 pt-3'>
-                    <div className='grid grid-cols-2 gap-3'>
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label
-                                htmlFor={`offer-price-${resourceName}`}
-                                className='text-[11px] text-muted-foreground'
-                            >
-                                Price / unit
-                            </Label>
-                            <Input
-                                id={`offer-price-${resourceName}`}
-                                type='number'
-                                min={PRICE_FLOOR}
-                                step='any'
-                                placeholder={
-                                    offer?.offerPrice !== undefined ? offer.offerPrice.toFixed(2) : 'e.g. 1.50'
-                                }
-                                value={local.offerPrice}
-                                disabled={local.offerAutomated || sellPriceSaving}
-                                onChange={(e) => onLocalChange(resourceName, { offerPrice: e.target.value })}
-                                className={getFieldClassName('offerPrice', local.offerAutomated || sellPriceSaving)}
-                            />
-                            {overviewRow && !local.offerAutomated && (
-                                <div className='flex items-center gap-1.5 text-[11px] text-muted-foreground'>
-                                    <span>Clearing: {overviewRow.clearingPrice.toFixed(2)}</span>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        className='h-5 text-[10px] px-1.5 py-0'
-                                        disabled={sellPriceSaving}
-                                        onClick={() =>
-                                            onLocalChange(resourceName, {
-                                                offerPrice: overviewRow.clearingPrice.toFixed(2),
-                                            })
-                                        }
-                                    >
-                                        Use
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className='rounded-md border bg-muted/30 p-2.5 space-y-1.5'>
-                            <Label
-                                htmlFor={`offer-retainment-${resourceName}`}
-                                className='text-[11px] text-muted-foreground'
-                            >
-                                Retainment (keep ≥)
-                            </Label>
-                            <Input
-                                id={`offer-retainment-${resourceName}`}
-                                type='number'
-                                min={0}
-                                step={1}
-                                placeholder={
-                                    offer?.offerRetainment !== undefined
-                                        ? String(Math.round(offer.offerRetainment))
-                                        : 'e.g. 0'
-                                }
-                                value={local.offerRetainment}
-                                disabled={local.offerAutomated || sellPriceSaving}
-                                onChange={(e) => onLocalChange(resourceName, { offerRetainment: e.target.value })}
-                                className={getFieldClassName(
-                                    'offerRetainment',
-                                    local.offerAutomated || sellPriceSaving,
-                                )}
-                            />
-                            {!isCurrency && offer?.offerRetainment !== undefined && effectiveSellQty !== undefined && (
-                                <div
-                                    className={`text-[11px] tabular-nums font-medium ${sellFulfillmentClass(inventoryQty, offer.offerRetainment)}`}
-                                >
-                                    {effectiveSellQty === 0
-                                        ? 'Nothing to sell — order inactive'
-                                        : `Sell ${formatNumberWithUnit(effectiveSellQty, unit)} / tick`}
-                                </div>
-                            )}
-                            {retainmentPresets && !local.offerAutomated && (
-                                <div className='flex items-center gap-1 text-[11px] text-muted-foreground'>
-                                    <span className='shrink-0'>Keep:</span>
-                                    <div className='flex gap-1 ml-auto'>
-                                        {retainmentPresets.map(({ label, qty }) => (
-                                            <Button
-                                                key={label}
-                                                variant='outline'
-                                                size='sm'
-                                                className='h-5 text-[10px] px-1.5 py-0'
-                                                disabled={sellPriceSaving}
-                                                onClick={() =>
-                                                    onLocalChange(resourceName, {
-                                                        offerRetainment: String(qty),
-                                                    })
-                                                }
-                                            >
-                                                {label}
-                                            </Button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {(local.validationErrors.offerPrice || local.validationErrors.offerRetainment) && (
-                        <div className='space-y-1'>
-                            {local.validationErrors.offerPrice && (
-                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                    <AlertCircle className='h-3 w-3' />
-                                    Price: {local.validationErrors.offerPrice}
-                                </div>
-                            )}
-                            {local.validationErrors.offerRetainment && (
-                                <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
-                                    <AlertCircle className='h-3 w-3' />
-                                    Retainment: {local.validationErrors.offerRetainment}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <div className='flex items-center justify-between gap-3 pt-2'>
-                        <div className='flex items-center gap-3'>
-                            {sellSuccessMsg && (
-                                <span className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
-                                    <CheckCircle2 className='h-3.5 w-3.5' /> {sellSuccessMsg}
-                                </span>
-                            )}
-                            {sellErrorMsg && (
-                                <span className='text-xs text-destructive flex items-center gap-1'>
-                                    <AlertCircle className='h-3.5 w-3.5' />
-                                    <span dangerouslySetInnerHTML={{ __html: sellErrorMsg }} />
-                                </span>
-                            )}
-                        </div>
-                        <div className='flex items-center gap-2'>
-                            {hasDirtySellFields && (
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    className='h-7 text-[11px] px-2'
-                                    onClick={onResetSell}
-                                    disabled={sellPriceSaving}
-                                >
-                                    <RotateCcw className='h-3 w-3 mr-1' />
-                                    Reset
-                                </Button>
-                            )}
-                            <Button
-                                size='sm'
-                                className='h-7 text-[11px] px-3'
-                                onClick={onSaveSell}
-                                disabled={!hasDirtySellFields || !!hasValidationErrors || sellPriceSaving}
-                            >
-                                {sellPriceSaving ? 'Saving…' : 'Save Sell'}
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-                {overlay(sellPriceOverlay)}
             </div>
         </div>
     );
