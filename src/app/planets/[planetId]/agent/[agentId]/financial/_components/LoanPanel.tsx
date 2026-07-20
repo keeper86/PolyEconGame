@@ -7,7 +7,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { LOAN_TERM_TICKS, type Loan } from '@/simulation/financial/loanTypes';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, HandCoins, Landmark } from 'lucide-react';
+import { Ban, ChevronDown, HandCoins, Landmark } from 'lucide-react';
 import React from 'react';
 import { toast } from 'sonner';
 import CreditButton from './CreditButton';
@@ -309,7 +309,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                         disabled
                         className='w-full h-[42px] flex items-center gap-2 border-muted-foreground/30 bg-muted/20 cursor-not-allowed'
                     >
-                        <HandCoins className='h-[42px] w-[42px]' />
+                        <Ban className='h-5 w-5 text-muted-foreground' />
                         <span className='text-md'>No additional credit available</span>
                     </Button>
                     <span className='text-[10px] right-0 text-muted-foreground'>
