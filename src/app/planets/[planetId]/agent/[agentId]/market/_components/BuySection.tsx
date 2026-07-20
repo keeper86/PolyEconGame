@@ -215,12 +215,12 @@ export default function BuySection({
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
                                 label='Required'
-                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/tick` : '—'}
+                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/day` : '—'}
                                 bold
                             />
                             <Stat
                                 label='Stock'
-                                value={`${formatNumberWithUnit(inventoryQty, unit)}${inventoryInBuyTicks !== null ? ` (${inventoryInBuyTicks.toFixed(1)} ticks)` : ''}`}
+                                value={`${inventoryInBuyTicks ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
                             />
                             <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit)} />
                             <Stat

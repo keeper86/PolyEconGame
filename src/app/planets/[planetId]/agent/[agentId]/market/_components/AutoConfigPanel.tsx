@@ -67,7 +67,7 @@ type SliderGroupDef = {
 
 const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
     {
-        label: 'Production Needs',
+        label: 'Combined Needs',
         isBufferGroup: true,
         sliders: [
             { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },

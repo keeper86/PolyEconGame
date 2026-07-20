@@ -9,6 +9,7 @@ import React from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
+import { Label } from '@/components/ui/label';
 
 export default function SellSection({
     resourceName,
@@ -160,18 +161,20 @@ export default function SellSection({
 
     return (
         <div className='flex-1 min-w-[250px]'>
-            {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
-                <div className='flex items-center gap-6 pl-2'>
-                    <div className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left'>
-                        <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
-                    </div>
+                <div className='flex items-center justify-start gap-2'>
                     <Switch
                         id={`offer-auto-${resourceName}`}
                         checked={local.offerAutomated}
                         disabled={sellAutomationSaving}
                         onCheckedChange={(v) => onAutomationChange(v)}
                     />
+                    <Label
+                        htmlFor={`offer-auto-${resourceName}`}
+                        className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
+                    >
+                        <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
+                    </Label>
                 </div>
                 {overlay(sellAutomationOverlay)}
             </div>
@@ -183,7 +186,7 @@ export default function SellSection({
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
                                 label='Production'
-                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/day` : '—'}
                                 bold
                             />
                             <Stat
