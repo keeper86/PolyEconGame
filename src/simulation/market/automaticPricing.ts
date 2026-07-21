@@ -329,35 +329,33 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
 
-        const shortfall = Math.max(0, storageTarget - currentInventory);
+        let totalShortfall = Math.max(0, storageTarget - currentInventory);
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
-        let smoothedShortfall = shortfall;
-        let smoothedTarget = storageTarget;
         if (
             baseRateConsumption > EPSILON &&
             storageTarget > EPSILON &&
-            shortfall > EPSILON &&
+            totalShortfall > EPSILON &&
             resource.form !== 'services'
         ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
             const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
-            smoothedTarget = Math.min(storageTarget, currentInventory + smoothedDemand);
-            smoothedShortfall = Math.max(0, smoothedTarget - currentInventory);
+            totalShortfall = Math.min(totalShortfall, smoothedDemand);
         }
 
-        if (freeTarget > EPSILON && resource.form !== 'services') {
-            const freeFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
-            const freeFillRate = freeTarget / freeFillDays;
-            const freeInventory = Math.max(0, currentInventory - smoothedTarget);
-            const freeRemaining = Math.max(0, freeTarget - freeInventory);
-            const smoothedFreeShortfall = freeRemaining > 0 ? Math.min(freeRemaining, freeFillRate) : 0;
-            smoothedTarget += freeTarget;
-            smoothedShortfall += smoothedFreeShortfall;
-        } else {
-            smoothedTarget += freeTarget;
-            smoothedShortfall += freeTarget;
+        if (freeTarget > EPSILON) {
+            if (resource.form !== 'services') {
+                const freeFillDays = Math.max(1, bidCfg.freeBuyQuantitySmoothingMaxExtra);
+                const freeFillRate = freeTarget / freeFillDays;
+                const freeInventory = Math.max(0, currentInventory - storageTarget);
+                const freeRemaining = Math.max(0, freeTarget - freeInventory);
+                totalShortfall += freeRemaining > 0 ? Math.min(freeRemaining, freeFillRate) : 0;
+            } else {
+                totalShortfall += freeTarget;
+            }
         }
+
+        const smoothedTarget = totalShortfall > EPSILON ? currentInventory + totalShortfall : storageTarget;
 
         const marketPrice = planet.marketPrices[resourceName];
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
@@ -369,7 +367,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             );
         }
 
-        adjustBidPrice(bid, smoothedShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
+        adjustBidPrice(bid, totalShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(

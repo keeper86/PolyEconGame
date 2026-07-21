@@ -472,7 +472,7 @@ export const setSellOffers = () => {
                 ),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -531,11 +531,13 @@ export const setSellOffers = () => {
                 `User ${userId} setting sell offers for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            await workerSetSellOffers({
+            const { processedAtTick } = await workerSetSellOffers({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 offers: input.offers,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -548,7 +550,7 @@ export const cancelSellOffer = () => {
                 resourceName: z.string().min(1),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -565,11 +567,13 @@ export const cancelSellOffer = () => {
                 `User ${userId} cancelling sell offer for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
             );
 
-            await workerCancelSellOffer({
+            const { processedAtTick } = await workerCancelSellOffer({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -582,7 +586,7 @@ export const cancelBuyBid = () => {
                 resourceName: z.string().min(1),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -599,11 +603,13 @@ export const cancelBuyBid = () => {
                 `User ${userId} cancelling buy bid for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
             );
 
-            await workerCancelBuyBid({
+            const { processedAtTick } = await workerCancelBuyBid({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -660,7 +666,7 @@ const autoConfigSchema = z
     })
     .optional();
 
-const buyBid = z.object({
+export const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),
@@ -678,7 +684,7 @@ export const setBuyBids = () => {
                 bids: z.record(z.string(), buyBid),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -741,11 +747,13 @@ export const setBuyBids = () => {
                 `User ${userId} setting buy bids for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            await workerSetBuyBids({
+            const { processedAtTick } = await workerSetBuyBids({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 bids: input.bids,
             });
+
+            return { processedAtTick };
         });
 };
 

@@ -15,6 +15,7 @@ export default function MarketPage() {
         detail,
         assets,
         ships,
+        tick,
         isLoading,
         hasNoAssets,
         isOwnAgent,
@@ -57,6 +58,7 @@ export default function MarketPage() {
                             allPlanetDeposits={detail?.allPlanetDeposits}
                             showAll={!showRelevant}
                             ships={ships}
+                            dataTick={tick}
                         />
                     </div>
                 ) : null}
