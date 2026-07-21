@@ -11,7 +11,67 @@ import React, { useMemo } from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import type { BuySectionProps } from './marketTypes';
+import type { BuyDiagnostics } from '@/simulation/planet/planet';
 
+type BuyStatusKind =
+    | 'filled'
+    | 'partial_no_supply'
+    | 'partial_low_price'
+    | 'not_filled_low_price'
+    | 'not_filled_no_supply'
+    | 'no_bid'
+    | 'target_met'
+    | 'off';
+
+function buyStatus(
+    automated: boolean,
+    diagnostics: BuyDiagnostics | undefined,
+    lastBought: number | undefined,
+): { kind: BuyStatusKind; text: string; className: string } {
+    if (!automated) {
+        return {
+            kind: 'off',
+            text: 'Off.',
+            className: '',
+        };
+    }
+    if (!diagnostics) {
+        return {
+            kind: 'no_bid',
+            text: 'No bid.',
+            className: 'bg-muted text-muted-foreground border-muted-foreground/30',
+        };
+    }
+    if (diagnostics.shortfall === 0) {
+        return {
+            kind: 'target_met',
+            text: 'Inactive. Target met.',
+            className: 'bg-muted text-muted-foreground border-muted-foreground/30',
+        };
+    }
+    const fillRate = lastBought && diagnostics.shortfall > 0 ? lastBought / diagnostics.shortfall : 0;
+    if (lastBought && lastBought > 0 && fillRate >= diagnostics.targetFillRate) {
+        return {
+            kind: 'filled',
+            text: 'filled',
+            className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+        };
+    }
+    if (lastBought && lastBought > 0 && fillRate < diagnostics.targetFillRate) {
+        return {
+            kind: 'partial_no_supply',
+            text: 'Partial. No supply.',
+            className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+        };
+    }
+    return {
+        kind: 'not_filled_low_price',
+        text: 'Not filled. Low price.',
+        className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+    };
+}
+
+// TODO: buyStatus needs market data to show better badges
 export default function BuySection({
     resourceName,
     bid,
@@ -45,14 +105,6 @@ export default function BuySection({
     const consumedPerTick = consumptionInfo.totalPerTick;
     const isFacilityInput = !isCurrency && consumedPerTick > 0;
     const inventoryInBuyTicks = isFacilityInput ? inventoryQty / consumedPerTick : null;
-
-    const effectiveBuyQty =
-        bid?.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - inventoryQty) : undefined;
-
-    const buyStaleReason =
-        local.bidAutomated && effectiveBuyQty !== undefined && effectiveBuyQty === 0
-            ? 'Storage target met — no bid placed last tick'
-            : null;
 
     const totalBidCost =
         (bid?.bidPrice ?? 0) *
@@ -95,6 +147,11 @@ export default function BuySection({
                 </span>
             </div>
         ) : null;
+
+    const status = useMemo(
+        () => buyStatus(local.bidAutomated, bid?.diagnostics, bid?.lastBought),
+        [local.bidAutomated, bid?.diagnostics, bid?.lastBought],
+    );
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
@@ -195,19 +252,28 @@ export default function BuySection({
         <div className='flex-1 min-w-[250px] '>
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
-                <div className='flex items-center justify-start gap-2'>
-                    <Switch
-                        id={`bid-auto-${resourceName}`}
-                        checked={local.bidAutomated}
-                        disabled={buyAutomationSaving}
-                        onCheckedChange={(v) => onAutomationChange(v)}
-                    />
-                    <Label
-                        htmlFor={`bid-auto-${resourceName}`}
-                        className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
-                    >
-                        <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
-                    </Label>
+                <div className='flex items-center justify-between gap-2'>
+                    <div className='flex items-center justify-start gap-2'>
+                        <Switch
+                            id={`bid-auto-${resourceName}`}
+                            checked={local.bidAutomated}
+                            disabled={buyAutomationSaving}
+                            onCheckedChange={(v) => onAutomationChange(v)}
+                        />
+                        <Label
+                            htmlFor={`bid-auto-${resourceName}`}
+                            className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
+                        >
+                            <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
+                        </Label>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                        <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${status.className}`}
+                        >
+                            {status.text}
+                        </span>
+                    </div>
                 </div>
                 {overlay(buyAutomationOverlay)}
             </div>
@@ -228,7 +294,7 @@ export default function BuySection({
                             <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
                             <Stat
                                 label='Last price'
-                                value={formatNumberWithUnit(bid?.diagnostics?.oldBidPrice, 'currency', planetId)}
+                                value={formatNumberWithUnit(bid?.diagnostics?.newBidPrice, 'currency', planetId)}
                             />
                             <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit, planetId)} />
                             <Stat
@@ -246,7 +312,6 @@ export default function BuySection({
                             onReset={onResetBuyAutoConfig}
                             isSaving={buyAutoConfigSaving}
                             bufferApplicable={isFacilityInput}
-                            staleReason={buyStaleReason}
                             consumptionBreakdown={
                                 isFacilityInput && (
                                     <div className='space-y-0.5'>

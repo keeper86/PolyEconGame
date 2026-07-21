@@ -429,7 +429,6 @@ export function AutoConfigPanel({
     onReset,
     isSaving,
     bufferApplicable = true,
-    staleReason,
     consumptionBreakdown,
     productionBreakdown,
     manualPricingSlot,
@@ -443,7 +442,6 @@ export function AutoConfigPanel({
     onReset: () => void;
     isSaving: boolean;
     bufferApplicable?: boolean;
-    staleReason?: string | null;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. production breakdown for sell mode) */
@@ -741,9 +739,6 @@ export function AutoConfigPanel({
                     </div>
                 </CollapsibleContent>
             </Collapsible>
-
-            {/* Stale reason — always rendered */}
-            <div className='text-[10px] text-muted-foreground italic'>{staleReason ?? '-'}</div>
         </div>
     );
 }
