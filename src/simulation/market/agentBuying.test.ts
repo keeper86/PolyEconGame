@@ -5,9 +5,10 @@ import {
     INVENTORY_SMOOTHING_MAX_EXTRA,
     OUTPUT_BUFFER_MAX_TICKS,
     PRICE_CEIL,
+    PRICE_FLOOR,
 } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
@@ -358,6 +359,192 @@ describe('automaticPricing — buy side', () => {
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
+    });
+    it('custom priceAdjustMaxUp raises bid faster when fill rate is low', () => {
+        planet.marketPrices[COAL] = 1.0;
+        planet.marketPrices[steelResourceType.name] = 8.0;
+
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+
+        // Set aggressive priceAdjustMaxUp
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxUp: 1.2 } as AutomatedPricingConfig;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        // With priceAdjustMaxUp=1.20 and fillRate=0, baseFactor = PRICE_ADJUST_MAX_UP (1.20)
+        // Without overDeviation kicking in, factor should be exactly 1.20
+        expect(newPrice).toBeCloseTo(firstBidPrice * 1.2, 5);
+    });
+
+    it('custom priceAdjustMaxDown lowers bid slower when fill rate is high', () => {
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+
+        // Custom conservative priceAdjustMaxDown = 0.98
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxDown: 0.98 } as AutomatedPricingConfig;
+        const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        // With fillRate=1.0 (≥ targetFillRate=0.9), baseFactor = priceAdjustMaxDown = 0.98
+        expect(newPrice).toBeCloseTo(firstBidPrice * 0.98, 5);
+    });
+
+    it('custom targetFillRate changes the threshold where bid switches from up to down', () => {
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+
+        // Set fill rate to 0.8 with targetFillRate=0.5 → fillRate (0.8) >= target (0.5) → bid should go down
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { targetFillRate: 0.5 } as AutomatedPricingConfig;
+        const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget * 0.8;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        // fillRate=0.8 > target=0.5 → downward adjustment
+        expect(newPrice).toBeLessThan(firstBidPrice);
+    });
+
+    it('custom inputBufferTargetTicks changes the buffer size', () => {
+        const buyer = makeSteelProducer();
+        buyer.assets.p.market = {
+            sell: {},
+            buy: {
+                [COAL]: {
+                    resource: coalResourceType,
+                    automated: true,
+                    autoConfig: { inputBufferTargetTicks: 60 } as AutomatedPricingConfig,
+                },
+            },
+        };
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
+        const rawTarget = coalNeed.quantity * facility.scale * 60; // using custom 60 ticks
+        const baseRate = rawTarget / 60;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
+    });
+
+    it('custom costSpringStrength strengthens the ceiling spring', () => {
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+
+        // Set bid price near the ceiling to trigger ceiling spring
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = {
+            costSpringStrength: 2.0,
+            bidOfferMaxCostMultiplier: 1.5,
+        } as AutomatedPricingConfig;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = 0; // unfilled → bid up
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
+        expect(diagnostics).toBeDefined();
+        // costFloor = 1.0, bidOfferMaxCostMultiplier=1.5 → ceilingPrice = 1.5
+        // bidPrice > ceilingPrice → overDeviation > 0 → ceilingSpring > 0
+        expect(diagnostics!.ceilingSpring).toBeGreaterThan(0);
+    });
+
+    it('custom bidOfferMaxCostMultiplier changes the bid ceiling', () => {
+        planet.lastProductionCostFloors[COAL] = 1.0;
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+
+        // With multiplier=3 and costFloor=1.0, ceilingPrice=3.0
+        // current bidPrice may already be above that
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = {
+            bidOfferMaxCostMultiplier: 3,
+        } as AutomatedPricingConfig;
+
+        // Set price well above ceiling to see the spring effect
+        buyer.assets.p.market!.buy[COAL]!.bidPrice = 10;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = 10; // filled → downward pressure
+        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = 10;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        // With ceilingPrice=3.0 and bidPrice=10: overDeviation = sqrt(10/3 - 1) = sqrt(2.33) ≈ 1.527
+        // ceilingSpring = COST_SPRING_STRENGTH * 1.527 ≈ 0.153
+        // fillRate=1.0 ≥ targetFillRate=0.9 → baseFactor = PRICE_ADJUST_MAX_DOWN = 0.95
+        // netFactor = 0.95 - 0.153 = 0.797
+        // newPrice ≈ 10 * 0.797 = 7.97, which is > PRICE_FLOOR
+        expect(newPrice).toBeLessThan(10);
+        expect(newPrice).toBeGreaterThan(PRICE_FLOOR);
+    });
+
+    it('freeBuyQuantity with services skips smoothing', () => {
+        // Use a service resource — smoothing is skipped for services
+        const serviceResource = {
+            name: 'TestService',
+            form: 'services' as const,
+            level: 'source' as const,
+            volumePerQuantity: 0,
+            massPerQuantity: 0,
+        };
+        const planet = makePlanet();
+        planet.marketPrices[serviceResource.name] = 5;
+
+        const agent = makeAgent('service-buyer');
+        agent.assets.p.deposits = 1_000_000;
+        agent.assets.p.market = {
+            sell: {},
+            buy: {
+                [serviceResource.name]: {
+                    resource: serviceResource,
+                    automated: true,
+                    bidPrice: 5, // pre-set price so diagnostics are computed
+                    autoConfig: { freeBuyQuantity: 1000 } as AutomatedPricingConfig,
+                },
+            },
+        };
+
+        automaticPricing(agentMap(agent), planet);
+
+        const bid = agent.assets.p.market!.buy[serviceResource.name]!;
+        // For services, freeTarget is added directly without smoothing
+        // freeTarget = 1000, storageTarget = 0, totalShortfall = 0 + 1000 = 1000
+        // Since services skip smoothing: totalShortfall directly adds freeTarget
+        expect(bid.bidStorageTarget).toBeGreaterThan(0);
+        const diagnostics = bid.diagnostics;
+        expect(diagnostics).toBeDefined();
+        expect(diagnostics!.shortfall).toBeGreaterThan(0);
+    });
+
+    it('partial config — only overrides priceAdjustMaxUp, others use defaults', () => {
+        planet.marketPrices[COAL] = 1.0;
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+        const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+
+        // Only override priceAdjustMaxUp, leave everything else as defaults
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxUp: 1.15 } as AutomatedPricingConfig;
+        buyer.assets.p.market!.buy[COAL]!.lastBought = 0;
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
+        expect(diagnostics).toBeDefined();
+        // targetFillRate should be default 0.9
+        expect(diagnostics!.targetFillRate).toBe(0.9);
+        // priceAdjustMaxUp=1.15 applied → factor should reflect that
+        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
+        expect(newPrice).toBeCloseTo(firstBidPrice * 1.15, 5);
     });
 });
 

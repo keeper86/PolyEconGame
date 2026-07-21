@@ -797,6 +797,7 @@ export default function ResourceAccordionItem({
                         />
                     </div>
 
+                    <Separator />
                     <div className='flex flex-col gap-4'>
                         <span className='text-xs font-medium text-muted-foreground'>Daily market clearance chart</span>
 

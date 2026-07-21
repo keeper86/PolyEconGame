@@ -19,6 +19,7 @@ type BuyStatusKind =
     | 'partial_low_price'
     | 'not_filled_low_price'
     | 'not_filled_no_supply'
+    | 'not_filled'
     | 'no_bid'
     | 'target_met'
     | 'off';
@@ -27,6 +28,7 @@ function buyStatus(
     automated: boolean,
     diagnostics: BuyDiagnostics | undefined,
     lastBought: number | undefined,
+    overviewRow: { totalSupply: number } | undefined,
 ): { kind: BuyStatusKind; text: string; className: string } {
     if (!automated) {
         return {
@@ -50,28 +52,57 @@ function buyStatus(
         };
     }
     const fillRate = lastBought && diagnostics.shortfall > 0 ? lastBought / diagnostics.shortfall : 0;
+    const noSupply = (overviewRow?.totalSupply ?? 0) <= 0;
+    const lowPrice = diagnostics.newBidPrice < diagnostics.marketPrice;
+
     if (lastBought && lastBought > 0 && fillRate >= diagnostics.targetFillRate) {
         return {
             kind: 'filled',
-            text: 'filled',
+            text: 'Filled.',
             className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
         };
     }
     if (lastBought && lastBought > 0 && fillRate < diagnostics.targetFillRate) {
+        if (noSupply) {
+            return {
+                kind: 'partial_no_supply',
+                text: 'Partial. No supply.',
+                className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+            };
+        }
+        if (lowPrice) {
+            return {
+                kind: 'partial_low_price',
+                text: 'Partial. Low price.',
+                className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+            };
+        }
         return {
             kind: 'partial_no_supply',
             text: 'Partial. No supply.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }
+    if (noSupply) {
+        return {
+            kind: 'not_filled_no_supply',
+            text: 'Not filled. No supply.',
+            className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+        };
+    }
+    if (lowPrice) {
+        return {
+            kind: 'not_filled_low_price',
+            text: 'Not filled. Low price.',
+            className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+        };
+    }
     return {
-        kind: 'not_filled_low_price',
-        text: 'Not filled. Low price.',
+        kind: 'not_filled',
+        text: 'Not filled.',
         className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
     };
 }
-
-// TODO: buyStatus needs market data to show better badges
 export default function BuySection({
     resourceName,
     bid,
@@ -149,8 +180,8 @@ export default function BuySection({
         ) : null;
 
     const status = useMemo(
-        () => buyStatus(local.bidAutomated, bid?.diagnostics, bid?.lastBought),
-        [local.bidAutomated, bid?.diagnostics, bid?.lastBought],
+        () => buyStatus(local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow),
+        [local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow],
     );
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──

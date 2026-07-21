@@ -11,38 +11,79 @@ import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 import { Label } from '@/components/ui/label';
 
-type SellStatusKind = 'offering' | 'sold' | 'partial' | 'not_sold' | 'no_offer';
+type SellStatusKind =
+    | 'offering'
+    | 'sold'
+    | 'partial_no_demand'
+    | 'partial_high_price'
+    | 'partial'
+    | 'not_sold_no_demand'
+    | 'not_sold_high_price'
+    | 'not_sold'
+    | 'no_offer';
 
 function sellStatus(
     automated: boolean,
     diagnostics: import('@/simulation/planet/planet').SellDiagnostics | undefined,
     lastSold: number | undefined,
+    overviewRow: { totalDemand: number } | undefined,
 ): { kind: SellStatusKind; text: string; className: string } {
     if (!automated || !diagnostics) {
         return {
             kind: 'no_offer',
-            text: 'no offer',
+            text: 'No offer.',
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
     const sellThroughRate = diagnostics.effectiveQuantity > 0 ? (lastSold ?? 0) / diagnostics.effectiveQuantity : 0;
+    const noDemand = (overviewRow?.totalDemand ?? 0) <= 0;
+    const highPrice = diagnostics.newPrice > diagnostics.marketPrice;
+
     if (lastSold && lastSold > 0 && sellThroughRate >= diagnostics.targetSellThrough) {
         return {
             kind: 'sold',
-            text: 'sold',
+            text: 'Sold.',
             className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
         };
     }
     if (lastSold && lastSold > 0 && sellThroughRate < diagnostics.targetSellThrough) {
+        if (noDemand) {
+            return {
+                kind: 'partial_no_demand',
+                text: 'Partial. No demand.',
+                className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+            };
+        }
+        if (highPrice) {
+            return {
+                kind: 'partial_high_price',
+                text: 'Partial. High price.',
+                className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+            };
+        }
         return {
             kind: 'partial',
-            text: 'partially sold',
+            text: 'Partially sold.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+        };
+    }
+    if (noDemand) {
+        return {
+            kind: 'not_sold_no_demand',
+            text: 'Not sold. No demand.',
+            className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+        };
+    }
+    if (highPrice) {
+        return {
+            kind: 'not_sold_high_price',
+            text: 'Not sold. High price.',
+            className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     return {
         kind: 'not_sold',
-        text: 'not sold',
+        text: 'Not sold.',
         className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
     };
 }
@@ -138,8 +179,8 @@ export default function SellSection({
         ) : null;
 
     const status = useMemo(
-        () => sellStatus(local.offerAutomated, offer?.diagnostics, offer?.lastSold),
-        [local.offerAutomated, offer?.diagnostics, offer?.lastSold],
+        () => sellStatus(local.offerAutomated, offer?.diagnostics, offer?.lastSold, overviewRow),
+        [local.offerAutomated, offer?.diagnostics, offer?.lastSold, overviewRow],
     );
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
