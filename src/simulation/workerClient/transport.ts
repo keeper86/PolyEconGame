@@ -142,7 +142,7 @@ export function sendCommandSpec<
                 const successMsg = msg as TSuccess & { processedAtTick: number };
                 entry.resolve({
                     result: spec.extract(successMsg),
-                    processedAtTick: successMsg.processedAtTick ?? 0,
+                    processedAtTick: successMsg.processedAtTick,
                 });
             }
         });

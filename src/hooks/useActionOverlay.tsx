@@ -21,11 +21,6 @@ export type PendingAction = {
     planetId: string;
     triggerTick: number;
 
-    /**
-     * The tick at which the worker processed this action.
-     * Set when the success response arrives from the worker.
-     * Used for robust tick-based overlay removal.
-     */
     processedAtTick?: number;
 
     type:
@@ -158,10 +153,6 @@ export interface PendingActionMatch {
 interface PendingActionContextValue {
     addPending: (action: PendingAction) => void;
     getPending: (agentId: string, planetId: string) => PendingAction[];
-    /**
-     * Update the processedAtTick on a pending action identified by the given criteria.
-     * Used in mutation onSuccess callbacks to attach the authoritative worker tick.
-     */
     updateProcessedAtTick: (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => void;
     removePendingById: (
         agentId: string,

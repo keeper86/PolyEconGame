@@ -289,7 +289,7 @@ export default function BuySection({
                             />
                             <Stat
                                 label='Stock'
-                                value={`${inventoryInBuyTicks ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
+                                value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
                             />
                             <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
                             <Stat
@@ -317,7 +317,7 @@ export default function BuySection({
                                     <div className='space-y-0.5'>
                                         <Stat
                                             label='Required'
-                                            value={`${formatNumberWithUnit(consumedPerTick, unit)}/tick`}
+                                            value={`${formatNumberWithUnit(consumedPerTick, unit)}/day`}
                                             bold
                                         />
                                         {consumptionInfo.breakdown.map((item, i) => {
@@ -340,7 +340,7 @@ export default function BuySection({
                                                     key={i}
                                                     icon={<Icon className='h-3 w-3' />}
                                                     label={item.sourceName}
-                                                    value={`${formatNumberWithUnit(item.ratePerTick, unit)}/tick`}
+                                                    value={`${formatNumberWithUnit(item.ratePerTick, unit)}/day`}
                                                     indent
                                                 />
                                             );
