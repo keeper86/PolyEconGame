@@ -106,17 +106,17 @@ export default function SellSection({
             isFacilityOutput && (
                 <div className='space-y-0.5'>
                     <Stat label='Production' value={`${formatNumberWithUnit(producedPerTick, unit)}/day`} bold />
-                    {assets.productionFacilities.map((f, i) => {
-                        const prod = f.produces.find((p) => p.resource.name === resourceName);
+                    {assets.productionFacilities.map((facility) => {
+                        const prod = facility.produces.find((p) => p.resource.name === resourceName);
                         if (!prod) {
                             return null;
                         }
-                        const rate = prod.quantity * f.scale;
+                        const rate = prod.quantity * facility.scale;
                         return (
                             <Stat
-                                key={f.id}
+                                key={facility.id}
                                 icon={<Package className='h-3 w-3' />}
-                                label={f.name}
+                                label={facility.name}
                                 value={`${formatNumberWithUnit(rate, unit)}/day`}
                                 indent
                             />
