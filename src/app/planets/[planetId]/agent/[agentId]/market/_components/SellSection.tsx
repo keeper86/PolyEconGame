@@ -331,6 +331,7 @@ export default function SellSection({
                             onReset={onResetSellAutoConfig}
                             isSaving={sellAutoConfigSaving}
                             bufferApplicable={isFacilityOutput}
+                            diagnostics={offer?.diagnostics}
                             manualPricingSlot={manualPricing}
                             manualPriceOverlay={sellPriceOverlay}
                             productionBreakdown={productionBreakdown || undefined}

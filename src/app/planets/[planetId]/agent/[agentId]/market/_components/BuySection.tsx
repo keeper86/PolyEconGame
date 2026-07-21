@@ -343,6 +343,7 @@ export default function BuySection({
                             onReset={onResetBuyAutoConfig}
                             isSaving={buyAutoConfigSaving}
                             bufferApplicable={isFacilityInput}
+                            diagnostics={bid?.diagnostics}
                             consumptionBreakdown={
                                 isFacilityInput && (
                                     <div className='space-y-0.5'>

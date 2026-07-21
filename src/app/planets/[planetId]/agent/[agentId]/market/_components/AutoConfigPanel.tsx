@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import type { AutomatedPricingConfig } from '@/simulation/planet/planet';
+import type { AutomatedPricingConfig, BuyDiagnostics, SellDiagnostics } from '@/simulation/planet/planet';
 import { ChevronDown, RotateCcw } from 'lucide-react';
+import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
 import {
@@ -433,6 +434,7 @@ export function AutoConfigPanel({
     productionBreakdown,
     manualPricingSlot,
     manualPriceOverlay,
+    diagnostics,
 }: {
     mode: 'buy' | 'sell';
     committedConfig: AutomatedPricingConfig | undefined;
@@ -450,6 +452,8 @@ export function AutoConfigPanel({
     manualPricingSlot?: React.ReactNode;
     /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
     manualPriceOverlay?: string | null;
+    /** Diagnostics from the last tick's automated pricing run, used for the formula visualisation pop-up */
+    diagnostics?: SellDiagnostics | BuyDiagnostics;
 }): React.ReactElement {
     const volumeGroups = mode === 'buy' ? BUY_VOLUME_GROUPS : SELL_VOLUME_GROUPS;
     const pricingSliders = mode === 'buy' ? BUY_PRICING_SLIDERS : SELL_PRICING_SLIDERS;
@@ -688,7 +692,8 @@ export function AutoConfigPanel({
                     </div>
 
                     {/* Save/Reset buttons inside Pricing box */}
-                    <div className='flex items-center justify-end gap-2 pt-1 pb-1.5'>
+                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
+                        <PriceAlgorithmDialog mode={mode} diagnostics={diagnostics} />
                         <div className='flex items-center gap-2'>
                             <Button
                                 variant='outline'
