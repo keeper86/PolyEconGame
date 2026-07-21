@@ -4,7 +4,7 @@ import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigationGuard } from '@/hooks/useNavigationGuard';
-import { usePendingActions, useRemovePendingByResource, resolveMarketPendingActions } from '@/hooks/useActionOverlay';
+import { usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
@@ -27,6 +27,8 @@ import type { LocalResourceState, Props } from './marketTypes';
 import { isAutoConfigDirty } from './marketTypes';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
+
+export type MarketPanelProps = Props & { dataTick: number };
 
 const COLUMN_AREA_OVERHEAD = 96 + LABEL_COLUMN_WIDTH;
 
@@ -65,7 +67,8 @@ export default function MarketPanel({
     allPlanetDeposits,
     showAll,
     ships,
-}: Props): React.ReactElement {
+    dataTick,
+}: MarketPanelProps): React.ReactElement {
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
 
@@ -165,26 +168,31 @@ export default function MarketPanel({
         buildInitialState(resources, buyBids, sellOffers),
     );
 
-    // ── Market pending action resolution ────────────────────────────────────
-    const pendingActionsAll = usePendingActions(agentId, planetId);
-    const removePendingByResource = useRemovePendingByResource();
+    // `currentTick` from the heartbeat for the setLocalStates re-initialization effect
     const currentTick = useSimulationTick();
 
-    useEffect(() => {
-        const remaining = resolveMarketPendingActions(pendingActionsAll, buyBids, sellOffers);
-        if (remaining.length === pendingActionsAll.length) {
-            return; // nothing resolved
-        }
+    // ── Market pending action resolution (tick-based) ──────────────────────
+    // Actions are resolved when the data tick has advanced past the worker's
+    // processedAtTick. No predicate-based comparison is needed.
+    const pendingActionsAll = usePendingActions(agentId, planetId);
+    const removePendingByResource = useRemovePendingByResource();
+    const prevDataTickRef = useRef<number>(0);
 
-        // Identify which actions were resolved and remove them
-        const resolved = pendingActionsAll.filter((a) => !remaining.includes(a));
-        for (const action of resolved) {
-            if (action.resourceName) {
+    useEffect(() => {
+        if (dataTick <= 0 || dataTick === prevDataTickRef.current) {
+            return; // no new data
+        }
+        prevDataTickRef.current = dataTick;
+
+        for (const action of pendingActionsAll) {
+            if (!action.resourceName) {
+                continue;
+            }
+            if (action.processedAtTick != null && dataTick >= action.processedAtTick + 1) {
                 removePendingByResource(agentId, planetId, action.resourceName, action.type);
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentTick, agentId, planetId, removePendingByResource]);
+    }, [dataTick, pendingActionsAll, agentId, planetId, removePendingByResource]);
     // ── End market pending action resolution ────────────────────────────────
 
     const hasAnyDirty = useMemo(

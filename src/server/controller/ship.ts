@@ -79,7 +79,10 @@ export const postTransportContract = () =>
             if (!resource) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name' });
             }
-            const contractId = await workerPostTransportContract({ ...input, cargo: { ...input.cargo, resource } });
+            const { result: contractId } = await workerPostTransportContract({
+                ...input,
+                cargo: { ...input.cargo, resource },
+            });
             return { contractId };
         });
 
@@ -97,7 +100,7 @@ export const acceptTransportContract = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const contractId = await workerAcceptTransportContract(input);
+            const { result: contractId } = await workerAcceptTransportContract(input);
             return { contractId };
         });
 
@@ -113,7 +116,7 @@ export const cancelTransportContract = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const contractId = await workerCancelTransportContract(input);
+            const { result: contractId } = await workerCancelTransportContract(input);
             return { contractId };
         });
 
@@ -141,10 +144,13 @@ export const dispatchShip = () =>
                 if (!resource) {
                     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name in cargo goal' });
                 }
-                const shipId = await workerDispatchShip({ ...input, cargoGoal: { ...input.cargoGoal, resource } });
+                const { result: shipId } = await workerDispatchShip({
+                    ...input,
+                    cargoGoal: { ...input.cargoGoal, resource },
+                });
                 return { shipId };
             } else {
-                const shipId = await workerDispatchShip({ ...input, cargoGoal: null });
+                const { result: shipId } = await workerDispatchShip({ ...input, cargoGoal: null });
                 return { shipId };
             }
         });
@@ -163,7 +169,7 @@ export const dispatchConstructionShip = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipId = await workerDispatchConstructionShip(input);
+            const { result: shipId } = await workerDispatchConstructionShip(input);
             return { shipId };
         });
 
@@ -181,7 +187,7 @@ export const dispatchPassengerShip = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const shipId = await workerDispatchPassengerShip(input);
+            const { result: shipId } = await workerDispatchPassengerShip(input);
             return { shipId };
         });
 
@@ -198,7 +204,7 @@ export const postShipBuyingOffer = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const offerId = await workerPostShipBuyingOffer(input);
+            const { result: offerId } = await workerPostShipBuyingOffer(input);
             return { offerId };
         });
 
@@ -216,7 +222,7 @@ export const acceptShipBuyingOffer = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const offerId = await workerAcceptShipBuyingOffer(input);
+            const { result: offerId } = await workerAcceptShipBuyingOffer(input);
             return { offerId };
         });
 
@@ -252,7 +258,7 @@ export const postShipListing = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const listingId = await workerPostShipListing(input);
+            const { result: listingId } = await workerPostShipListing(input);
             return { listingId };
         });
 
@@ -268,7 +274,7 @@ export const cancelShipListing = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const listingId = await workerCancelShipListing(input);
+            const { result: listingId } = await workerCancelShipListing(input);
             return { listingId };
         });
 
@@ -285,7 +291,7 @@ export const acceptShipListing = () =>
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.buyerAgentId);
-            const listingId = await workerAcceptShipListing(input);
+            const { result: listingId } = await workerAcceptShipListing(input);
             return { listingId };
         });
 

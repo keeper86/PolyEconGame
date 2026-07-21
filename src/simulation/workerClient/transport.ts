@@ -114,12 +114,12 @@ export function sendCommandSpec<
     message: TInbound,
     spec: CommandSpec<TInbound, TSuccess, TFailure, TResult>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<TResult> {
+): Promise<{ result: TResult; processedAtTick: number }> {
     ensureQueryResponseListener();
 
     const { requestId } = message;
 
-    return new Promise<TResult>((resolve, reject) => {
+    return new Promise<{ result: TResult; processedAtTick: number }>((resolve, reject) => {
         const unsubscribe = onWorkerMessage((msg: OutboundMessage) => {
             if (msg.type !== spec.successType && msg.type !== spec.failureType) {
                 return;
@@ -139,7 +139,11 @@ export function sendCommandSpec<
             if (msg.type === spec.failureType) {
                 entry.reject(new Error((msg as TFailure).reason));
             } else {
-                entry.resolve(spec.extract(msg as TSuccess));
+                const successMsg = msg as TSuccess & { processedAtTick: number };
+                entry.resolve({
+                    result: spec.extract(successMsg),
+                    processedAtTick: successMsg.processedAtTick,
+                });
             }
         });
 

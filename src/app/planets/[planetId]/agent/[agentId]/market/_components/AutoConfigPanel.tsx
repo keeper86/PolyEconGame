@@ -1,14 +1,13 @@
 'use client';
 
+import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
-import { Stat } from '@/components/client/Stat';
-import { formatNumberWithUnit, type Units } from '@/lib/utils';
-import type { AutomatedPricingConfig, SellDiagnostics, BuyDiagnostics } from '@/simulation/planet/planet';
 import { Spinner } from '@/components/ui/spinner';
+import type { AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { ChevronDown, RotateCcw } from 'lucide-react';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
@@ -67,7 +66,7 @@ type SliderGroupDef = {
 
 const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
     {
-        label: 'Production Needs',
+        label: 'Combined Needs',
         isBufferGroup: true,
         sliders: [
             { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
@@ -78,6 +77,7 @@ const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
                 max: 20,
                 step: 1,
                 defaultVal: 2,
+                displayTransform: (v) => v + 1,
             },
         ],
     },
@@ -110,6 +110,7 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
                 max: 20,
                 step: 1,
                 defaultVal: 2,
+                displayTransform: (v) => v + 1,
             },
             { key: 'outputBufferMaxTicks', label: 'Output buffer (days)', min: 1, max: 120, step: 1, defaultVal: 20 },
         ],
@@ -244,7 +245,9 @@ function renderSingleSlider(
                 <Label className='text-[11px] text-muted-foreground'>{def.label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
                     {fmt(clampedVal)}
-                    {showCommitted && <span className='text-muted-foreground ml-1'>(current: {fmt(committed)})</span>}
+                    <span className={`ml-1 text-[9px] text-muted-foreground ${showCommitted ? '' : ''}`}>
+                        (now {showCommitted ? fmt(committed) : fmt(clampedVal)})
+                    </span>
                 </span>
             </div>
             <div className='relative'>
@@ -261,16 +264,16 @@ function renderSingleSlider(
                     disabled={sliderDisabled}
                     className='w-full'
                 />
-                {committedFraction !== undefined && (
-                    <div
-                        className='absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none'
-                        style={{
-                            left: `${committedFraction * 100}%`,
-                            transform: 'translateX(-50%)',
-                            top: '2px',
-                        }}
-                    />
-                )}
+                <div
+                    className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                        committedFraction !== undefined ? '' : 'opacity-0'
+                    }`}
+                    style={{
+                        left: `${(committedFraction ?? 0) * 100}%`,
+                        transform: 'translateX(-50%)',
+                        top: '2px',
+                    }}
+                />
             </div>
             <div className='flex justify-between text-[9px] text-muted-foreground'>
                 <span>{fmt(def.min)}</span>
@@ -319,12 +322,10 @@ function renderRangeSlider(
                 <Label className='text-[11px] text-muted-foreground'>{def.label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
                     {fmt(clampedLow)} — {fmt(clampedHigh)}
-                    {(showCommittedLow || showCommittedHigh) && (
-                        <span className='text-muted-foreground ml-1'>
-                            (current: {showCommittedLow ? fmt(committedLow!) : fmt(clampedLow)} —{' '}
-                            {showCommittedHigh ? fmt(committedHigh!) : fmt(clampedHigh)})
-                        </span>
-                    )}
+                    <span className={`ml-1 ${showCommittedLow || showCommittedHigh ? '' : 'invisible'}`}>
+                        (current: {showCommittedLow ? fmt(committedLow!) : fmt(clampedLow)} —{' '}
+                        {showCommittedHigh ? fmt(committedHigh!) : fmt(clampedHigh)})
+                    </span>
                 </span>
             </div>
             <div className='relative'>
@@ -346,26 +347,26 @@ function renderRangeSlider(
                     disabled={isSaving || presetDisabled}
                     className='w-full'
                 />
-                {commitFracLow !== undefined && (
-                    <div
-                        className='absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none'
-                        style={{
-                            left: `${commitFracLow * 100}%`,
-                            transform: 'translateX(-50%)',
-                            top: '2px',
-                        }}
-                    />
-                )}
-                {commitFracHigh !== undefined && (
-                    <div
-                        className='absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none'
-                        style={{
-                            left: `${commitFracHigh * 100}%`,
-                            transform: 'translateX(-50%)',
-                            top: '2px',
-                        }}
-                    />
-                )}
+                <div
+                    className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                        commitFracLow !== undefined ? '' : 'opacity-0'
+                    }`}
+                    style={{
+                        left: `${(commitFracLow ?? 0) * 100}%`,
+                        transform: 'translateX(-50%)',
+                        top: '2px',
+                    }}
+                />
+                <div
+                    className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                        commitFracHigh !== undefined ? '' : 'opacity-0'
+                    }`}
+                    style={{
+                        left: `${(commitFracHigh ?? 0) * 100}%`,
+                        transform: 'translateX(-50%)',
+                        top: '2px',
+                    }}
+                />
             </div>
             <div className='flex justify-between text-[9px] text-muted-foreground'>
                 <span>{fmt(def.min)}</span>
@@ -419,99 +420,6 @@ function PresetButtonRow<T extends string>({
     );
 }
 
-// ── Diagnostics helpers ───────────────────────────────────────────────────────
-
-function SellVolumeDiagnostics({
-    diagnostics,
-    unit,
-}: {
-    diagnostics: SellDiagnostics;
-    unit: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Selling'
-                value={`${formatNumberWithUnit(diagnostics.effectiveQuantity, unit as Units)} / tick`}
-            />
-            {diagnostics.surplusRatio !== undefined && (
-                <Stat label='Surplus' value={`${Math.round(diagnostics.surplusRatio * 100)}%`} />
-            )}
-        </>
-    );
-}
-
-function SellPricingDiagnostics({
-    diagnostics,
-    planetId,
-}: {
-    diagnostics: SellDiagnostics;
-    planetId: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Sell-through'
-                value={`${Math.round(diagnostics.sellThroughRate * 100)}% (target ${Math.round(diagnostics.targetSellThrough * 100)}%)`}
-                valueClassName={
-                    diagnostics.sellThroughRate >= diagnostics.targetSellThrough ? 'text-green-600' : 'text-red-500'
-                }
-            />
-            <Stat
-                label='Price'
-                value={`${formatNumberWithUnit(diagnostics.oldPrice, 'currency', planetId)} → ${formatNumberWithUnit(diagnostics.newPrice, 'currency', planetId)}`}
-            />
-            <Stat
-                label='Market / Cost floor'
-                value={`${formatNumberWithUnit(diagnostics.marketPrice, 'currency', planetId)} / ${formatNumberWithUnit(diagnostics.costFloor, 'currency', planetId)}`}
-            />
-        </>
-    );
-}
-
-function BuyVolumeDiagnostics({
-    diagnostics,
-    unit,
-}: {
-    diagnostics: BuyDiagnostics;
-    unit: string;
-}): React.ReactElement {
-    return (
-        <Stat
-            label='Shortfall'
-            value={`${formatNumberWithUnit(diagnostics.shortfall, unit as Units)} / ${formatNumberWithUnit(diagnostics.storageTarget, unit as Units)}`}
-        />
-    );
-}
-
-function BuyPricingDiagnostics({
-    diagnostics,
-    planetId,
-}: {
-    diagnostics: BuyDiagnostics;
-    planetId: string;
-}): React.ReactElement {
-    return (
-        <>
-            <Stat
-                label='Fill rate'
-                value={`${Math.round(diagnostics.fillRate * 100)}% (target ${Math.round(diagnostics.targetFillRate * 100)}%)`}
-                valueClassName={diagnostics.fillRate >= diagnostics.targetFillRate ? 'text-green-600' : 'text-red-500'}
-            />
-            <Stat
-                label='Bid price'
-                value={`${formatNumberWithUnit(diagnostics.oldBidPrice, 'currency', planetId)} → ${formatNumberWithUnit(diagnostics.newBidPrice, 'currency', planetId)}`}
-            />
-            <Stat
-                label='Market / Ceiling'
-                value={`${formatNumberWithUnit(diagnostics.marketPrice, 'currency', planetId)} / ${formatNumberWithUnit(diagnostics.ceilingPrice, 'currency', planetId)}`}
-            />
-        </>
-    );
-}
-
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export function AutoConfigPanel({
     mode,
     committedConfig,
@@ -521,11 +429,8 @@ export function AutoConfigPanel({
     onReset,
     isSaving,
     bufferApplicable = true,
-    diagnostics,
-    unit = 'pieces',
-    planetId = '',
-    staleReason,
     consumptionBreakdown,
+    productionBreakdown,
     manualPricingSlot,
     manualPriceOverlay,
 }: {
@@ -537,12 +442,10 @@ export function AutoConfigPanel({
     onReset: () => void;
     isSaving: boolean;
     bufferApplicable?: boolean;
-    diagnostics?: SellDiagnostics | BuyDiagnostics;
-    unit?: string;
-    planetId?: string;
-    staleReason?: string | null;
     /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. consumption breakdown for buy mode) */
     consumptionBreakdown?: React.ReactNode;
+    /** ReactNode to render as normal Stats inside the Volume Strategy box (e.g. production breakdown for sell mode) */
+    productionBreakdown?: React.ReactNode;
     /** Slot for manual price/quantity inputs rendered inside the Pricing Strategy box */
     manualPricingSlot?: React.ReactNode;
     /** Overlay message for the manual pricing zone (e.g. "Saving…" or "Awaiting next day…") */
@@ -663,22 +566,13 @@ export function AutoConfigPanel({
                         isSaving={isSaving}
                     />
 
-                    {diagnostics && (
-                        <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                            {mode === 'sell' && 'sellThroughRate' in diagnostics && (
-                                <SellVolumeDiagnostics diagnostics={diagnostics as SellDiagnostics} unit={unit} />
-                            )}
-                            {mode === 'buy' && 'fillRate' in diagnostics && (
-                                <BuyVolumeDiagnostics diagnostics={diagnostics as BuyDiagnostics} unit={unit} />
-                            )}
+                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
+                        <div className='space-y-0.5'>
+                            {mode === 'buy'
+                                ? (consumptionBreakdown ?? <Stat label='Consumption' value='-' />)
+                                : (productionBreakdown ?? <Stat label='Production' value='-' />)}
                         </div>
-                    )}
-
-                    {consumptionBreakdown && (
-                        <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
-                            <div className='space-y-0.5'>{consumptionBreakdown}</div>
-                        </div>
-                    )}
+                    </div>
 
                     {/* Volume sliders (always visible, disabled when preset is not custom) */}
                     <div
@@ -720,18 +614,16 @@ export function AutoConfigPanel({
                     {/* Save/Reset buttons inside Volume box */}
                     <div className='flex items-center justify-end gap-2 pt-1'>
                         <div className='flex items-center gap-2'>
-                            {hasDirty && (
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    className='h-7 text-[11px] px-2'
-                                    onClick={onReset}
-                                    disabled={isSaving}
-                                >
-                                    <RotateCcw className='h-3 w-3 mr-1' />
-                                    Reset
-                                </Button>
-                            )}
+                            <Button
+                                variant='outline'
+                                size='sm'
+                                className={`h-7 text-[11px] px-2 ${hasDirty ? '' : 'invisible'}`}
+                                onClick={onReset}
+                                disabled={isSaving}
+                            >
+                                <RotateCcw className='h-3 w-3 mr-1' />
+                                Reset
+                            </Button>
                             <Button
                                 size='sm'
                                 className='h-7 text-[11px] px-3'
@@ -795,39 +687,19 @@ export function AutoConfigPanel({
                         )}
                     </div>
 
-                    {/* Pricing diagnostics — shown only when diagnostics available */}
-                    {diagnostics && (
-                        <div className='space-y-0.5 pt-1.5 border-t border-border/40'>
-                            {mode === 'sell' && 'sellThroughRate' in diagnostics && (
-                                <SellPricingDiagnostics
-                                    diagnostics={diagnostics as SellDiagnostics}
-                                    planetId={planetId}
-                                />
-                            )}
-                            {mode === 'buy' && 'fillRate' in diagnostics && (
-                                <BuyPricingDiagnostics
-                                    diagnostics={diagnostics as BuyDiagnostics}
-                                    planetId={planetId}
-                                />
-                            )}
-                        </div>
-                    )}
-
                     {/* Save/Reset buttons inside Pricing box */}
                     <div className='flex items-center justify-end gap-2 pt-1 pb-1.5'>
                         <div className='flex items-center gap-2'>
-                            {hasDirty && (
-                                <Button
-                                    variant='outline'
-                                    size='sm'
-                                    className='h-7 text-[11px] px-2'
-                                    onClick={onReset}
-                                    disabled={isSaving}
-                                >
-                                    <RotateCcw className='h-3 w-3 mr-1' />
-                                    Reset
-                                </Button>
-                            )}
+                            <Button
+                                variant='outline'
+                                size='sm'
+                                className={`h-7 text-[11px] px-2 ${hasDirty ? '' : 'invisible'}`}
+                                onClick={onReset}
+                                disabled={isSaving}
+                            >
+                                <RotateCcw className='h-3 w-3 mr-1' />
+                                Reset
+                            </Button>
                             <Button
                                 size='sm'
                                 className='h-7 text-[11px] px-3'
@@ -841,29 +713,32 @@ export function AutoConfigPanel({
 
                     <Separator />
                     {/* Set Price section at bottom of Pricing box */}
-                    {manualPricingSlot && (
-                        <div className='pt-1'>
-                            <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                Set Price
-                            </Label>
-                            <div className='relative'>
-                                {manualPricingSlot}
-                                {manualPriceOverlay ? (
-                                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
-                                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                                            <Spinner className='h-4 w-4' />
-                                            {manualPriceOverlay}
-                                        </span>
-                                    </div>
-                                ) : null}
+                    <div className='pt-1'>
+                        <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                            Set Price
+                        </Label>
+                        <div className='relative'>
+                            {manualPricingSlot ? (
+                                manualPricingSlot
+                            ) : (
+                                <div className='text-[11px] text-muted-foreground py-1'>-</div>
+                            )}
+                            <div
+                                className={`absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg transition-opacity duration-200 ${
+                                    manualPriceOverlay
+                                        ? 'opacity-100 pointer-events-auto'
+                                        : 'opacity-0 pointer-events-none'
+                                }`}
+                            >
+                                <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                    {manualPriceOverlay && <Spinner className='h-4 w-4' />}
+                                    {manualPriceOverlay ?? '-'}
+                                </span>
                             </div>
                         </div>
-                    )}
+                    </div>
                 </CollapsibleContent>
             </Collapsible>
-
-            {/* Stale reason */}
-            {staleReason && <div className='text-[10px] text-muted-foreground italic'>{staleReason}</div>}
         </div>
     );
 }

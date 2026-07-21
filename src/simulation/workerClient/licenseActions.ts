@@ -14,7 +14,12 @@ export function handleAcquireLicense(
 
     const agent = state.agents.get(agentId);
     if (!agent) {
-        safePostMessage({ type: 'licenseAcquisitionFailed', requestId, reason: 'Agent not found' });
+        safePostMessage({
+            type: 'licenseAcquisitionFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
         return;
     }
 
@@ -24,6 +29,7 @@ export function handleAcquireLicense(
             type: 'licenseAcquisitionFailed',
             requestId,
             reason: `Planet '${planetId}' not found`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -41,6 +47,7 @@ export function handleAcquireLicense(
             type: 'licenseAcquisitionFailed',
             requestId,
             reason: `A commercial license must be acquired before a workforce license on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -50,6 +57,7 @@ export function handleAcquireLicense(
             type: 'licenseAcquisitionFailed',
             requestId,
             reason: `Agent already holds a '${licenseType}' license on planet '${planetId}'`,
+            processedAtTick: state.tick,
         });
         return;
     }
@@ -65,6 +73,7 @@ export function handleAcquireLicense(
                 type: 'licenseAcquisitionFailed',
                 requestId,
                 reason: `Insufficient deposits. Required: ${cost}, available: ${assets.deposits}`,
+                processedAtTick: state.tick,
             });
             return;
         }
@@ -95,5 +104,12 @@ export function handleAcquireLicense(
     console.log(
         `[worker] Agent '${agentId}' acquired '${licenseType}' license on planet '${planetId}' (cost: ${cost})`,
     );
-    safePostMessage({ type: 'licenseAcquired', requestId, agentId, planetId, licenseType });
+    safePostMessage({
+        type: 'licenseAcquired',
+        requestId,
+        agentId,
+        planetId,
+        licenseType,
+        processedAtTick: state.tick,
+    });
 }

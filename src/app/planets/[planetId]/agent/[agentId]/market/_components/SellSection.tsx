@@ -4,11 +4,48 @@ import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
-import { AlertCircle, RotateCcw, Tag } from 'lucide-react';
-import React from 'react';
+import { AlertCircle, Package, RotateCcw, Tag } from 'lucide-react';
+import React, { useMemo } from 'react';
 import { AutoConfigPanel } from './AutoConfigPanel';
 import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
+import { Label } from '@/components/ui/label';
+
+type SellStatusKind = 'offering' | 'sold' | 'partial' | 'not_sold' | 'no_offer';
+
+function sellStatus(
+    automated: boolean,
+    diagnostics: import('@/simulation/planet/planet').SellDiagnostics | undefined,
+    lastSold: number | undefined,
+): { kind: SellStatusKind; text: string; className: string } {
+    if (!automated || !diagnostics) {
+        return {
+            kind: 'no_offer',
+            text: 'no offer',
+            className: 'bg-muted text-muted-foreground border-muted-foreground/30',
+        };
+    }
+    const sellThroughRate = diagnostics.effectiveQuantity > 0 ? (lastSold ?? 0) / diagnostics.effectiveQuantity : 0;
+    if (lastSold && lastSold > 0 && sellThroughRate >= diagnostics.targetSellThrough) {
+        return {
+            kind: 'sold',
+            text: 'sold',
+            className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
+        };
+    }
+    if (lastSold && lastSold > 0 && sellThroughRate < diagnostics.targetSellThrough) {
+        return {
+            kind: 'partial',
+            text: 'partially sold',
+            className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
+        };
+    }
+    return {
+        kind: 'not_sold',
+        text: 'not sold',
+        className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
+    };
+}
 
 export default function SellSection({
     resourceName,
@@ -37,14 +74,6 @@ export default function SellSection({
 
     const isFacilityOutput = !isCurrency && producedPerTick > 0;
 
-    const effectiveSellQty =
-        offer?.offerRetainment !== undefined ? Math.max(0, inventoryQty - offer.offerRetainment) : undefined;
-
-    const sellStaleReason =
-        local.offerAutomated && effectiveSellQty !== undefined && effectiveSellQty === 0
-            ? 'Output buffer full — nothing offered for sale last tick'
-            : null;
-
     const handleSellConfigChange = (patch: Record<string, string>) => {
         const updatedSellAutoConfig = { ...local.sellAutoConfig, ...patch } as typeof local.sellAutoConfig;
         onLocalChange(resourceName, { sellAutoConfig: updatedSellAutoConfig });
@@ -72,6 +101,32 @@ export default function SellSection({
 
     const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
 
+    const productionBreakdown = useMemo(
+        () =>
+            isFacilityOutput && (
+                <div className='space-y-0.5'>
+                    <Stat label='Production' value={`${formatNumberWithUnit(producedPerTick, unit)}/day`} bold />
+                    {assets.productionFacilities.map((facility) => {
+                        const prod = facility.produces.find((p) => p.resource.name === resourceName);
+                        if (!prod) {
+                            return null;
+                        }
+                        const rate = prod.quantity * facility.scale;
+                        return (
+                            <Stat
+                                key={facility.id}
+                                icon={<Package className='h-3 w-3' />}
+                                label={facility.name}
+                                value={`${formatNumberWithUnit(rate, unit)}/day`}
+                                indent
+                            />
+                        );
+                    })}
+                </div>
+            ),
+        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities],
+    );
+
     const overlay = (message: string | null | undefined) =>
         message ? (
             <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-lg'>
@@ -81,6 +136,11 @@ export default function SellSection({
                 </span>
             </div>
         ) : null;
+
+    const status = useMemo(
+        () => sellStatus(local.offerAutomated, offer?.diagnostics, offer?.lastSold),
+        [local.offerAutomated, offer?.diagnostics, offer?.lastSold],
+    );
 
     // ── Manual pricing slot (rendered inside AutoConfigPanel's Pricing Strategy box) ──
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
@@ -160,18 +220,30 @@ export default function SellSection({
 
     return (
         <div className='flex-1 min-w-[250px]'>
-            {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
-                <div className='flex items-center gap-6 pl-2'>
-                    <div className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left'>
-                        <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
+                <div className='flex items-center justify-between gap-2'>
+                    <div className='flex items-center justify-start gap-2'>
+                        <Switch
+                            id={`offer-auto-${resourceName}`}
+                            checked={local.offerAutomated}
+                            disabled={sellAutomationSaving}
+                            onCheckedChange={(v) => onAutomationChange(v)}
+                        />
+                        <Label
+                            htmlFor={`offer-auto-${resourceName}`}
+                            className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
+                        >
+                            <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
+                        </Label>
                     </div>
-                    <Switch
-                        id={`offer-auto-${resourceName}`}
-                        checked={local.offerAutomated}
-                        disabled={sellAutomationSaving}
-                        onCheckedChange={(v) => onAutomationChange(v)}
-                    />
+
+                    <div className='flex items-center gap-2'>
+                        <span
+                            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${status.className}`}
+                        >
+                            {status.text}
+                        </span>
+                    </div>
                 </div>
                 {overlay(sellAutomationOverlay)}
             </div>
@@ -183,20 +255,28 @@ export default function SellSection({
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
                                 label='Production'
-                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/tick` : '—'}
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/day` : '—'}
                                 bold
                             />
                             <Stat
-                                label='Stock (days)'
+                                label='Stock'
                                 value={
                                     isFacilityOutput && producedPerTick > 0
                                         ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
                                         : '—'
                                 }
                             />
+                            <Stat
+                                label='Last offered'
+                                value={formatNumberWithUnit(offer?.diagnostics?.effectiveQuantity, unit)}
+                            />
+                            <Stat
+                                label='Last price'
+                                value={formatNumberWithUnit(offer?.diagnostics?.newPrice, 'currency', planetId)}
+                            />
                             <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
                             <Stat
-                                label='Revenue'
+                                label='Last revenue'
                                 value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
                             />
                         </div>
@@ -210,12 +290,9 @@ export default function SellSection({
                             onReset={onResetSellAutoConfig}
                             isSaving={sellAutoConfigSaving}
                             bufferApplicable={isFacilityOutput}
-                            diagnostics={offer?.diagnostics}
-                            unit={unit}
-                            planetId={planetId}
-                            staleReason={sellStaleReason}
                             manualPricingSlot={manualPricing}
                             manualPriceOverlay={sellPriceOverlay}
+                            productionBreakdown={productionBreakdown || undefined}
                         />
                     </div>
                 </div>

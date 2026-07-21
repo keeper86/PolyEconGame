@@ -138,6 +138,76 @@ describe('automaticPricing — buy side', () => {
         expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
 
+    it('freeBuyQuantity adds extra quantity when inventory is at the buffer target', () => {
+        const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
+        const bufferTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+
+        // Fill exactly to the buffer target (smoothed demand would be 0 since shortfall is 0)
+        putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, bufferTarget);
+
+        // First automaticPricing run: creates the buy entry without autoConfig
+        automaticPricing(agentMap(buyer), planet);
+
+        const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const baselineTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
+        // With full buffer, the target should be ≤ inventory (smoothing reduces it further)
+        expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
+
+        // Config free buy quantity
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = { freeBuyQuantity: 1000, freeBuyQuantitySmoothingMaxExtra: 2 };
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
+        // freeBuyQuantity = 1000 (absolute target), smoothed over 2 ticks → 500/tick
+        // structural target ≈ inventory (already full), so smoothedTarget = inventory + 500
+        expect(newTarget).toBeGreaterThan(inventoryQty);
+
+        // After the fix: diagnostics.shortfall should equal bidStorageTarget - inventory (both per-tick)
+        const effectiveQty = Math.max(0, newTarget - inventoryQty);
+        const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
+        expect(diagnostics).toBeDefined();
+        // With freeBuyQuantitySmoothingMaxExtra=2, per-tick = 1000/2 = 500
+        // freeInventory = max(0, inventory - storageTarget) = 0 (inventory ≈ storageTarget when full)
+        // freeRemaining = max(0, 1000 - 0) = 1000
+        // smoothedFreeShortfall = min(1000, 500) = 500
+        // So diagnostics.shortfall should be close to 500
+        expect(diagnostics!.shortfall).toBeGreaterThan(0);
+        expect(diagnostics!.shortfall).toBeCloseTo(effectiveQty, 0);
+    });
+
+    it('freeBuyQuantity diagnostics.shortfall matches effective bid qty with combined buffer + free demand', () => {
+        const buyer = makeSteelProducer();
+
+        // Put some but not all inventory — structural shortfall exists
+        putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, 100);
+
+        // First run to initialise the buy entry
+        automaticPricing(agentMap(buyer), planet);
+
+        // Add free buy quantity with a large smoothing window
+        buyer.assets.p.market!.buy[COAL]!.autoConfig = {
+            freeBuyQuantity: 6000,
+            freeBuyQuantitySmoothingMaxExtra: 30, // 30 days → 200/tick
+        };
+
+        automaticPricing(agentMap(buyer), planet);
+
+        const inventoryQty = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventoryQty);
+        const diagnostics = bid.diagnostics;
+
+        expect(diagnostics).toBeDefined();
+        // diagnostics.shortfall (from code = totalShortfall) must equal effectiveQty (bidStorageTarget - inventory)
+        // This was the bug: diagnostics showed the smoothed per-tick amount while the bid used the full unsmoothed target
+        expect(diagnostics!.shortfall).toBeCloseTo(effectiveQty, 0);
+        // The effective quantity should be less than the full freeTarget, proving smoothing is applied
+        expect(effectiveQty).toBeLessThan(6000);
+    });
+
     it('bootstraps bidPrice from market price on first tick', () => {
         planet.marketPrices[COAL] = 2.0;
         planet.marketPrices[steelResourceType.name] = 8.0;

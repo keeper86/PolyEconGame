@@ -19,14 +19,14 @@ export type WorkerQuery =
 export interface WorkerQueryResult {
     getCurrentTick: { tick: number };
     getFullState: { tick: number; planets: Planet[]; agents: Agent[] };
-    getPlanet: { planet: Planet | null };
+    getPlanet: { tick: number; planet: Planet | null };
     getAllPlanets: { tick: number; planets: Planet[] };
-    getAgent: { agent: Agent | null };
+    getAgent: { tick: number; agent: Agent | null };
     getAllAgents: { tick: number; agents: Agent[] };
-    getLoanConditions: { conditions: LoanConditions | null; activeLoans: Loan[] };
-    getShipCapitalMarket: { shipCapitalMarket: ShipCapitalMarket };
+    getLoanConditions: { tick: number; conditions: LoanConditions | null; activeLoans: Loan[] };
+    getShipCapitalMarket: { tick: number; shipCapitalMarket: ShipCapitalMarket };
     getPlanetWithAgents: { tick: number; planet: Planet | null; agents: Agent[] };
-    getTickerEvents: { tickerEvents: TickerEvent[] };
+    getTickerEvents: { tick: number; tickerEvents: TickerEvent[] };
 }
 
 export type WorkerQueryMessage = WorkerQuery & { requestId: string };

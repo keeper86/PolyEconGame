@@ -1,35 +1,35 @@
-import { revalidateTag } from 'next/cache';
-import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import {
     CURRENCY_RESOURCE_PREFIX,
     getCurrencyResource,
     isCurrencyResource,
 } from '@/simulation/market/currencyResources';
+import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import {
+    workerAcquireLicense,
     workerBuildFacility,
+    workerBuildShipConstructionFacility,
     workerCancelBuyBid,
     workerCancelConstruction,
     workerCancelSellOffer,
     workerContractFacility,
     workerCreateAgent,
-    workerLeaseClaim,
     workerExpandFacility,
-    workerSetFacilityScale,
+    workerExpandShipConstructionFacility,
+    workerLeaseClaim,
     workerQuitClaim,
-    workerRequestLoan,
     workerRepayLoan,
+    workerRequestLoan,
     workerSetAutomation,
     workerSetBuyBids,
+    workerSetFacilityScale,
     workerSetSellOffers,
-    workerSetWorkerAllocationTargets,
-    workerBuildShipConstructionFacility,
-    workerExpandShipConstructionFacility,
     workerSetShipConstructionTarget,
-    workerAcquireLicense,
+    workerSetWorkerAllocationTargets,
 } from '@/simulation/workerClient/commands';
 import { getAgentSync } from '@/simulation/workerClient/syncQueries';
+import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -37,7 +37,6 @@ import z from 'zod';
 import { db } from '../db';
 import { logger } from '../logger';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
-import { getLatestTick } from '@/simulation/workerClient/manager';
 
 const userId = z.object({
     userId: z.string(),
@@ -276,7 +275,7 @@ export const createAgent = () => {
                 `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
             );
 
-            const createdId = await workerCreateAgent({
+            const { result: createdId, processedAtTick } = await workerCreateAgent({
                 agentId,
                 agentName,
                 planetId: input.planetId,
@@ -288,7 +287,7 @@ export const createAgent = () => {
 
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 
-            return { tick: getLatestTick(), agentId: createdId, planetId: input.planetId };
+            return { tick: processedAtTick, agentId: createdId, planetId: input.planetId };
         });
 };
 
@@ -321,7 +320,7 @@ export const requestLoan = () => {
                 `User ${userId} requesting loan of ${input.amount} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const grantedAmount = await workerRequestLoan({
+            const { result: grantedAmount } = await workerRequestLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 amount: input.amount,
@@ -360,7 +359,7 @@ export const repayLoan = () => {
                 `User ${userId} repaying loan '${input.loanId}' at fraction ${input.fraction} for agent ${input.agentId}`,
             );
 
-            const repaidAmount = await workerRepayLoan({
+            const { result: repaidAmount } = await workerRepayLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 loanId: input.loanId,
@@ -473,7 +472,7 @@ export const setSellOffers = () => {
                 ),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -532,11 +531,13 @@ export const setSellOffers = () => {
                 `User ${userId} setting sell offers for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            await workerSetSellOffers({
+            const { processedAtTick } = await workerSetSellOffers({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 offers: input.offers,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -549,7 +550,7 @@ export const cancelSellOffer = () => {
                 resourceName: z.string().min(1),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -566,11 +567,13 @@ export const cancelSellOffer = () => {
                 `User ${userId} cancelling sell offer for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
             );
 
-            await workerCancelSellOffer({
+            const { processedAtTick } = await workerCancelSellOffer({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -583,7 +586,7 @@ export const cancelBuyBid = () => {
                 resourceName: z.string().min(1),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -600,11 +603,13 @@ export const cancelBuyBid = () => {
                 `User ${userId} cancelling buy bid for agent ${input.agentId} on planet ${input.planetId} resource ${input.resourceName}`,
             );
 
-            await workerCancelBuyBid({
+            const { processedAtTick } = await workerCancelBuyBid({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -654,10 +659,14 @@ const autoConfigSchema = z
         automatedCostFloorBuffer: z.number().min(-1).optional(),
         inputBufferTargetTicks: z.number().positive().optional(),
         targetFillRate: z.number().min(0).max(1).optional(),
+        freeBuyQuantity: z.number().min(0).optional(),
+        freeSellQuantity: z.number().min(0).optional(),
+        freeBuyQuantitySmoothingMaxExtra: z.number().min(0).optional(),
+        freeSellQuantitySmoothingMaxExtra: z.number().min(0).optional(),
     })
     .optional();
 
-const buyBid = z.object({
+export const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),
@@ -675,7 +684,7 @@ export const setBuyBids = () => {
                 bids: z.record(z.string(), buyBid),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -738,11 +747,13 @@ export const setBuyBids = () => {
                 `User ${userId} setting buy bids for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            await workerSetBuyBids({
+            const { processedAtTick } = await workerSetBuyBids({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 bids: input.bids,
             });
+
+            return { processedAtTick };
         });
 };
 
@@ -782,7 +793,7 @@ export const buildFacility = () => {
                 `User ${userId} building '${input.facilityKey}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerBuildFacility({
+            const { result: facilityId } = await workerBuildFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityKey: input.facilityKey,
@@ -831,7 +842,7 @@ export const expandFacility = () => {
                 `User ${userId} expanding facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerExpandFacility({
+            const { result: facilityId } = await workerExpandFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -871,7 +882,7 @@ export const contractFacility = () => {
                 `User ${userId} contracting facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerContractFacility({
+            const { result: facilityId } = await workerContractFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -909,7 +920,7 @@ export const setFacilityScale = () => {
                 `User ${userId} setting facility '${input.facilityId}' scale to ${input.scaleFraction} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const facilityId = await workerSetFacilityScale({
+            const { result: facilityId } = await workerSetFacilityScale({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -944,7 +955,7 @@ export const buildShipConstructionFacility = () => {
                 { component: 'build-ship-construction-facility' },
                 `User ${userId} building ship construction facility '${input.facilityName}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
-            const facilityId = await workerBuildShipConstructionFacility({
+            const { result: facilityId } = await workerBuildShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityName: input.facilityName,
@@ -974,7 +985,7 @@ export const expandShipConstructionFacility = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const facilityId = await workerExpandShipConstructionFacility({
+            const { result: facilityId } = await workerExpandShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -1005,7 +1016,7 @@ export const setShipConstructionTarget = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const facilityId = await workerSetShipConstructionTarget({
+            const { result: facilityId } = await workerSetShipConstructionTarget({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
@@ -1036,7 +1047,7 @@ export const leaseClaim = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const claimId = await workerLeaseClaim({
+            const { result: claimId } = await workerLeaseClaim({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 resourceName: input.resourceName,
@@ -1065,7 +1076,7 @@ export const quitClaim = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const claimId = await workerQuitClaim({
+            const { result: claimId } = await workerQuitClaim({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 claimId: input.claimId,
@@ -1099,7 +1110,7 @@ export const acquireLicense = () => {
                 { component: 'acquire-license' },
                 `User ${userId} acquiring '${input.licenseType}' license for agent ${input.agentId} on planet ${input.planetId}`,
             );
-            const result = await workerAcquireLicense({
+            const { result: licenseResult } = await workerAcquireLicense({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 licenseType: input.licenseType,
@@ -1108,6 +1119,6 @@ export const acquireLicense = () => {
                 { component: 'acquire-license' },
                 `Agent ${input.agentId} acquired '${input.licenseType}' license on planet ${input.planetId}`,
             );
-            return result;
+            return licenseResult;
         });
 };

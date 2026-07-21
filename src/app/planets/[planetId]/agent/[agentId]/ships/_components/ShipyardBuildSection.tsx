@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { useTRPC } from '@/lib/trpc';
+import { toast } from 'sonner';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import { Anchor, PlusCircle, Users, Zap } from 'lucide-react';
@@ -40,6 +41,7 @@ export function ShipyardBuildSection({
     const buildMutation = useMutation(
         trpc.buildShipConstructionFacility.mutationOptions({
             onSuccess: () => {
+                toast.success('Shipyard construction ordered. Changes take effect on the next tick.');
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
                 });
@@ -47,6 +49,9 @@ export function ShipyardBuildSection({
                 setShipyardName('');
                 setTargetScale(1);
                 onBuilt();
+            },
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Shipyard build failed');
             },
         }),
     );

@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { toast } from 'sonner';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
@@ -83,10 +84,12 @@ export function ActiveFacilityCard({
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
             onSuccess: () => {
+                toast.success('Expansion ordered. Changes take effect on the next tick.');
                 setShowExpand(false);
                 onExpanded();
             },
-            onError: () => {
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Expand failed');
                 removePendingById(agentId, planetId, facility.id, 'expand');
             },
         }),
@@ -95,9 +98,11 @@ export function ActiveFacilityCard({
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
             onSuccess: () => {
+                toast.success('Operating scale updated. Changes take effect on the next tick.');
                 // pending action gets resolved by predicate check in useAgentPlanetDetail
             },
-            onError: () => {
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Scale change failed');
                 removePendingById(agentId, planetId, facility.id, 'scaleChange');
             },
         }),
@@ -106,10 +111,12 @@ export function ActiveFacilityCard({
     const contractMutation = useMutation(
         trpc.contractFacility.mutationOptions({
             onSuccess: () => {
+                toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
                 setShowReduce(false);
                 onExpanded();
             },
-            onError: () => {
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Contract failed');
                 removePendingById(agentId, planetId, facility.id, 'contract');
             },
         }),

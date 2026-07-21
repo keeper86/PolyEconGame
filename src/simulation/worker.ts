@@ -223,6 +223,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                         type: 'agentCreationFailed',
                         requestId: (action as { requestId: string }).requestId,
                         reason: err instanceof Error ? err.message : String(err),
+                        processedAtTick: state.tick,
                     });
                 }
             }
@@ -633,7 +634,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getPlanet': {
-                    data = { planet: snap.planets.get(msg.planetId) ?? null };
+                    data = { tick: snap.tick, planet: snap.planets.get(msg.planetId) ?? null };
                     break;
                 }
                 case 'getAllPlanets': {
@@ -642,7 +643,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getAgent': {
-                    data = { agent: snap.agents.get(msg.agentId) ?? null };
+                    data = { tick: snap.tick, agent: snap.agents.get(msg.agentId) ?? null };
                     break;
                 }
                 case 'getAllAgents': {
@@ -654,9 +655,10 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     const agent = snap.agents.get(msg.agentId);
                     const planet = snap.planets.get(msg.planetId);
                     if (!agent || !planet) {
-                        data = { conditions: null, activeLoans: [] };
+                        data = { tick: snap.tick, conditions: null, activeLoans: [] };
                     } else {
                         data = {
+                            tick: snap.tick,
                             conditions: computeLoanConditions(agent, planet, snap.shipCapitalMarket),
                             activeLoans: agent.assets[msg.planetId]?.activeLoans ?? [],
                         };
@@ -664,7 +666,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     break;
                 }
                 case 'getShipCapitalMarket': {
-                    data = { shipCapitalMarket: snap.shipCapitalMarket };
+                    data = { tick: snap.tick, shipCapitalMarket: snap.shipCapitalMarket };
                     break;
                 }
                 case 'getPlanetWithAgents': {
@@ -678,6 +680,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 }
                 case 'getTickerEvents': {
                     data = {
+                        tick: snap.tick,
                         tickerEvents: state.tickerEvents,
                     };
                     break;
@@ -743,7 +746,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const { requestId, agentId, agentName, planetId } = msg;
 
             if (state.agents.has(agentId)) {
-                safePostMessage({ type: 'agentCreationFailed', requestId, reason: 'Agent ID already exists' });
+                safePostMessage({
+                    type: 'agentCreationFailed',
+                    requestId,
+                    reason: 'Agent ID already exists',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -751,6 +759,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'agentCreationFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -759,6 +768,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'agentCreationFailed',
                     requestId,
                     reason: 'Agent name cannot be empty',
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -773,6 +783,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'agentCreationFailed',
                     requestId,
                     reason: `Agent name '${agentName}' already exists`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -789,15 +800,30 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const { requestId, agentId, planetId, amount } = msg;
 
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'loanDenied', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'loanDenied',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'loanDenied', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'loanDenied',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (typeof amount !== 'number' || amount <= 0) {
-                safePostMessage({ type: 'loanDenied', requestId, reason: 'Loan amount must be a positive number' });
+                safePostMessage({
+                    type: 'loanDenied',
+                    requestId,
+                    reason: 'Loan amount must be a positive number',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'requestLoan', requestId, agentId, planetId, amount });
@@ -811,19 +837,39 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'repayLoan') {
             const { requestId, agentId, planetId, loanId, fraction } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'repayDenied', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'repayDenied',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'repayDenied', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'repayDenied',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (typeof loanId !== 'string' || loanId.trim() === '') {
-                safePostMessage({ type: 'repayDenied', requestId, reason: 'loanId must be a non-empty string' });
+                safePostMessage({
+                    type: 'repayDenied',
+                    requestId,
+                    reason: 'loanId must be a non-empty string',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (typeof fraction !== 'number' || fraction <= 0 || fraction > 1) {
-                safePostMessage({ type: 'repayDenied', requestId, reason: 'fraction must be a number in (0, 1]' });
+                safePostMessage({
+                    type: 'repayDenied',
+                    requestId,
+                    reason: 'fraction must be a number in (0, 1]',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'repayLoan', requestId, agentId, planetId, loanId, fraction });
@@ -836,7 +882,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setAutomation') {
             const { requestId, agentId, automateWorkerAllocation } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'automationFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'automationFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({
@@ -855,7 +906,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setWorkerAllocationTargets') {
             const { requestId, agentId, planetId, targets } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'workerAllocationFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'workerAllocationFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -863,6 +919,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'workerAllocationFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -877,11 +934,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setSellOffers') {
             const { requestId, agentId, planetId, offers } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'sellOffersFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'sellOffersFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'sellOffersFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'sellOffersFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'setSellOffers', requestId, agentId, planetId, offers });
@@ -895,7 +962,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelSellOffer') {
             const { requestId, agentId, planetId, resourceName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'sellOfferCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'sellOfferCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -903,6 +975,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'sellOfferCancelFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -917,7 +990,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelBuyBid') {
             const { requestId, agentId, planetId, resourceName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'buyBidCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'buyBidCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -925,6 +1003,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'buyBidCancelFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -939,11 +1018,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setBuyBids') {
             const { requestId, agentId, planetId, bids } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'buyBidsFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'buyBidsFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'buyBidsFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'buyBidsFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'setBuyBids', requestId, agentId, planetId, bids });
@@ -957,11 +1046,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'leaseClaim') {
             const { requestId, agentId, planetId, resourceName, quantity } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'claimLeaseFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'claimLeaseFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'claimLeaseFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'leaseClaim', requestId, agentId, planetId, resourceName, quantity });
@@ -974,11 +1073,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'quitClaim') {
             const { requestId, agentId, planetId, claimId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'claimQuitFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'claimQuitFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'claimQuitFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'claimQuitFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'quitClaim', requestId, agentId, planetId, claimId });
@@ -991,7 +1100,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'buildShipConstructionFacility') {
             const { requestId, agentId, planetId, facilityName, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipConstructionFacilityBuildFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipConstructionFacilityBuildFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -999,6 +1113,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'shipConstructionFacilityBuildFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1019,7 +1134,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'expandShipConstructionFacility') {
             const { requestId, agentId, planetId, facilityId, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipConstructionFacilityExpandFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipConstructionFacilityExpandFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1027,6 +1147,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'shipConstructionFacilityExpandFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1047,7 +1168,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setShipConstructionTarget') {
             const { requestId, agentId, planetId, facilityId, shipTypeName, shipName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipConstructionTargetSetFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipConstructionTargetSetFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1055,6 +1181,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'shipConstructionTargetSetFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1076,11 +1203,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'buildFacility') {
             const { requestId, agentId, planetId, facilityKey, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'facilityBuildFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'facilityBuildFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'facilityBuildFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'buildFacility', requestId, agentId, planetId, facilityKey, targetScale });
@@ -1094,11 +1231,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'expandFacility') {
             const { requestId, agentId, planetId, facilityId, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'facilityExpandFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'facilityExpandFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'facilityExpandFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'facilityExpandFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'expandFacility', requestId, agentId, planetId, facilityId, targetScale });
@@ -1112,7 +1259,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'setFacilityScale') {
             const { requestId, agentId, planetId, facilityId, scaleFraction } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'facilityScaleSetFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'facilityScaleSetFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1120,6 +1272,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'facilityScaleSetFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1134,7 +1287,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'contractFacility') {
             const { requestId, agentId, planetId, facilityId, targetScale } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'facilityContractFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'facilityContractFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1142,6 +1300,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'facilityContractFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1165,7 +1324,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 expiresAtTick,
             } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'transportContractPostFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'transportContractPostFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1173,6 +1337,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'transportContractPostFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1196,7 +1361,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'acceptTransportContract') {
             const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'transportContractAcceptFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'transportContractAcceptFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1204,6 +1374,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'transportContractAcceptFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1225,7 +1396,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelTransportContract') {
             const { requestId, agentId, planetId, contractId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'transportContractCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'transportContractCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1233,6 +1409,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'transportContractCancelFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1246,11 +1423,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'dispatchShip') {
             const { requestId, agentId, fromPlanetId, toPlanetId, shipId, cargoGoal } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipDispatchFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipDispatchFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(toPlanetId)) {
-                safePostMessage({ type: 'shipDispatchFailed', requestId, reason: `Planet '${toPlanetId}' not found` });
+                safePostMessage({
+                    type: 'shipDispatchFailed',
+                    requestId,
+                    reason: `Planet '${toPlanetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({
@@ -1271,7 +1458,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'dispatchConstructionShip') {
             const { requestId, agentId, fromPlanetId, toPlanetId, shipId, facilityName } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'constructionShipDispatchFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'constructionShipDispatchFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(toPlanetId)) {
@@ -1279,6 +1471,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'constructionShipDispatchFailed',
                     requestId,
                     reason: `Planet '${toPlanetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1300,7 +1493,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'dispatchPassengerShip') {
             const { requestId, agentId, fromPlanetId, toPlanetId, shipId, passengerCount } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'passengerShipDispatchFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'passengerShipDispatchFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(toPlanetId)) {
@@ -1308,6 +1506,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'passengerShipDispatchFailed',
                     requestId,
                     reason: `Planet '${toPlanetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1338,7 +1537,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 expiresAtTick,
             } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'constructionContractPostFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'constructionContractPostFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1346,6 +1550,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'constructionContractPostFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1369,7 +1574,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'acceptConstructionContract') {
             const { requestId, agentId, planetId, posterAgentId, contractId, shipId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'constructionContractAcceptFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'constructionContractAcceptFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1377,6 +1587,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'constructionContractAcceptFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1398,7 +1609,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelConstructionContract') {
             const { requestId, agentId, planetId, contractId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'constructionContractCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'constructionContractCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1406,6 +1622,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'constructionContractCancelFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1419,7 +1636,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'postShipBuyingOffer') {
             const { requestId, agentId, planetId, shipType, price } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipBuyingOfferPostFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipBuyingOfferPostFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1427,6 +1649,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'shipBuyingOfferPostFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1440,7 +1663,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'acceptShipBuyingOffer') {
             const { requestId, agentId, planetId, posterAgentId, offerId, shipId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipBuyingOfferAcceptFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipBuyingOfferAcceptFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1448,6 +1676,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'shipBuyingOfferAcceptFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1469,11 +1698,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'postShipListing') {
             const { requestId, agentId, planetId, shipId, askPrice } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipListingPostFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
-                safePostMessage({ type: 'shipListingPostFailed', requestId, reason: `Planet '${planetId}' not found` });
+                safePostMessage({
+                    type: 'shipListingPostFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'postShipListing', requestId, agentId, planetId, shipId, askPrice });
@@ -1486,7 +1725,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelShipListing') {
             const { requestId, agentId, planetId, listingId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'shipListingCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'shipListingCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({ type: 'cancelShipListing', requestId, agentId, planetId, listingId });
@@ -1499,11 +1743,21 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'acceptShipListing') {
             const { requestId, buyerAgentId, buyerPlanetId, sellerAgentId, listingId } = msg;
             if (!state.agents.has(buyerAgentId)) {
-                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Buyer agent not found' });
+                safePostMessage({
+                    type: 'shipListingAcceptFailed',
+                    requestId,
+                    reason: 'Buyer agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.agents.has(sellerAgentId)) {
-                safePostMessage({ type: 'shipListingAcceptFailed', requestId, reason: 'Seller agent not found' });
+                safePostMessage({
+                    type: 'shipListingAcceptFailed',
+                    requestId,
+                    reason: 'Seller agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             pendingActions.push({
@@ -1523,7 +1777,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'cancelConstruction') {
             const { requestId, agentId, planetId, facilityId } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'constructionCancelFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'constructionCancelFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1531,6 +1790,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'constructionCancelFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }
@@ -1544,7 +1804,12 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (msg.type === 'acquireLicense') {
             const { requestId, agentId, planetId, licenseType } = msg;
             if (!state.agents.has(agentId)) {
-                safePostMessage({ type: 'licenseAcquisitionFailed', requestId, reason: 'Agent not found' });
+                safePostMessage({
+                    type: 'licenseAcquisitionFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
                 return;
             }
             if (!state.planets.has(planetId)) {
@@ -1552,6 +1817,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     type: 'licenseAcquisitionFailed',
                     requestId,
                     reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
                 });
                 return;
             }

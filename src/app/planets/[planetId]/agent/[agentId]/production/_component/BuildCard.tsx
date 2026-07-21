@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { toast } from 'sonner';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
@@ -51,9 +52,11 @@ function BuildForm({
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
             onSuccess: () => {
+                toast.success('Construction ordered. Changes take effect on the next tick.');
                 onBuilt();
             },
-            onError: () => {
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Build failed');
                 // Mutation failed — remove pending action so the UI shows no loading state
                 removePendingByKey(agentId, planetId, entry.name);
             },

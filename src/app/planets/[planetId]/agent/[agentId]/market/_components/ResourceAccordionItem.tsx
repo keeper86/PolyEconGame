@@ -1,10 +1,15 @@
 'use client';
 
 import { MARKET_COLUMNS } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/columnConfig';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useAddPendingAction, usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
+import {
+    useAddPendingAction,
+    usePendingActions,
+    useRemovePendingByResource,
+    useUpdateProcessedAtTick,
+} from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
@@ -128,6 +133,7 @@ export default function ResourceAccordionItem({
     // ── Pending market actions ──────────────────────────────────────────────
     const addPending = useAddPendingAction();
     const removePendingByResource = useRemovePendingByResource();
+    const updateProcessedAtTick = useUpdateProcessedAtTick();
     const currentTick = useSimulationTick();
     const pendingActions = usePendingActions(agentId, planetId);
 
@@ -138,12 +144,32 @@ export default function ResourceAccordionItem({
 
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 toast.success('Sell offers saved. Changes take effect on the next market tick.');
                 onLocalChange(resourceName, {
                     savedOfferPrice: local.offerPrice,
                     savedOfferAutomated: local.offerAutomated,
                 });
+                if (data) {
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketSellPrice', resourceName },
+                        data.processedAtTick,
+                    );
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketSellAutomation', resourceName },
+                        data.processedAtTick,
+                    );
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketSellAutoConfig', resourceName },
+                        data.processedAtTick,
+                    );
+                }
             },
             onError: (err) => {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
@@ -173,12 +199,32 @@ export default function ResourceAccordionItem({
 
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 toast.success('Buy bids saved. Changes take effect on the next market tick.');
                 onLocalChange(resourceName, {
                     savedBidPrice: local.bidPrice,
                     savedBidAutomated: local.bidAutomated,
                 });
+                if (data) {
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketBuyPrice', resourceName },
+                        data.processedAtTick,
+                    );
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketBuyAutomation', resourceName },
+                        data.processedAtTick,
+                    );
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketBuyAutoConfig', resourceName },
+                        data.processedAtTick,
+                    );
+                }
             },
             onError: (err) => {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
@@ -208,7 +254,7 @@ export default function ResourceAccordionItem({
 
     const cancelSellOfferMutation = useMutation(
         trpc.cancelSellOffer.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 toast.success('Sell offer cancelled.');
                 onLocalChange(resourceName, {
                     offerPrice: '',
@@ -216,8 +262,14 @@ export default function ResourceAccordionItem({
                     savedOfferPrice: '',
                     savedOfferAutomated: false,
                 });
-                // Remove cancel pending on success; resolution handles the rest
-                removePendingByResource(agentId, planetId, resourceName, 'marketCancelSell');
+                if (data) {
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketCancelSell', resourceName },
+                        data.processedAtTick,
+                    );
+                }
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Failed to cancel offer');
@@ -228,7 +280,7 @@ export default function ResourceAccordionItem({
 
     const cancelBuyBidMutation = useMutation(
         trpc.cancelBuyBid.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
                 toast.success('Buy bid cancelled.');
                 onLocalChange(resourceName, {
                     bidPrice: '',
@@ -236,8 +288,14 @@ export default function ResourceAccordionItem({
                     savedBidPrice: '',
                     savedBidAutomated: false,
                 });
-                // Remove cancel pending on success
-                removePendingByResource(agentId, planetId, resourceName, 'marketCancelBuy');
+                if (data) {
+                    updateProcessedAtTick(
+                        agentId,
+                        planetId,
+                        { type: 'marketCancelBuy', resourceName },
+                        data.processedAtTick,
+                    );
+                }
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Failed to cancel bid');
@@ -692,22 +750,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
 
-                    <Accordion type='single' collapsible defaultValue='' className=''>
-                        <AccordionItem value='market-step-chart' className=''>
-                            <AccordionTrigger className='text-xs font-medium text-muted-foreground hover:no-underline'>
-                                Daily market clearance chart
-                            </AccordionTrigger>
-                            <AccordionContent className='pt-1 pb-4'>
-                                <MarketStepChart
-                                    market={marketData?.market ?? undefined}
-                                    agentId={agentId}
-                                    planetId={planetId}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    </Accordion>
-
-                    <div className='flex flex-row flex-wrap gap-4'>
+                    <div className='flex flex-row flex-wrap gap-8'>
                         <BuySection
                             resourceName={resourceName}
                             bid={bid}
@@ -751,6 +794,16 @@ export default function ResourceAccordionItem({
                             sellAutomationOverlay={sellAutomationOverlay}
                             sellAutoConfigOverlay={sellAutoConfigOverlay}
                             sellPriceOverlay={sellPriceOverlay}
+                        />
+                    </div>
+
+                    <div className='flex flex-col gap-4'>
+                        <span className='text-xs font-medium text-muted-foreground'>Daily market clearance chart</span>
+
+                        <MarketStepChart
+                            market={marketData?.market ?? undefined}
+                            agentId={agentId}
+                            planetId={planetId}
                         />
                     </div>
                 </div>

@@ -24,6 +24,10 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 continue;
             }
 
+            if (offer.offerPrice === undefined) {
+                continue;
+            }
+
             const free = queryStorageFacility(assets.storageFacility, resourceName);
 
             const validatedOffer = validateAndPrepareSellOffer(offer, free);

@@ -21,6 +21,8 @@ export type PendingAction = {
     planetId: string;
     triggerTick: number;
 
+    processedAtTick?: number;
+
     type:
         | 'build'
         | 'expand'
@@ -136,9 +138,22 @@ function agentPlanetKey(a: PendingAction): string {
 
 // ── Context ──────────────────────────────────────────────────────────────────
 
+export interface PendingActionMatch {
+    type: PendingAction['type'];
+    /** For action types that have a facilityKey (build). */
+    facilityKey?: string;
+    /** For action types that have a facilityId (expand, contract, scaleChange, cancel). */
+    facilityId?: string;
+    /** For action types that have a resourceName (market buy/sell). */
+    resourceName?: string;
+    /** For action types that have a loanId (loanRepay). */
+    loanId?: string;
+}
+
 interface PendingActionContextValue {
     addPending: (action: PendingAction) => void;
     getPending: (agentId: string, planetId: string) => PendingAction[];
+    updateProcessedAtTick: (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => void;
     removePendingById: (
         agentId: string,
         planetId: string,
@@ -157,6 +172,7 @@ interface PendingActionContextValue {
 const PendingActionContext = createContext<PendingActionContextValue>({
     addPending: () => {},
     getPending: () => [],
+    updateProcessedAtTick: () => {},
     removePendingById: () => {},
     removePendingByKey: () => {},
     removePendingByResource: () => {},
@@ -308,9 +324,48 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         [],
     );
 
+    const updateProcessedAtTick = useCallback(
+        (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => {
+            const key = `${agentId}|${planetId}`;
+            const current = readAll();
+            const next = current.map((a) => {
+                if (agentPlanetKey(a) !== key) {
+                    return a;
+                }
+                if (a.type !== match.type) {
+                    return a;
+                }
+                // Match by the identifying field that uniquely pins this action
+                if (match.facilityKey && a.facilityKey !== match.facilityKey) {
+                    return a;
+                }
+                if (match.facilityId && a.facilityId !== match.facilityId) {
+                    return a;
+                }
+                if (match.resourceName && a.resourceName !== match.resourceName) {
+                    return a;
+                }
+                if (match.loanId && a.loanId !== match.loanId) {
+                    return a;
+                }
+                return { ...a, processedAtTick: tick };
+            });
+            writeAll(next);
+            setAllActions(next);
+        },
+        [],
+    );
+
     return (
         <PendingActionContext.Provider
-            value={{ addPending, getPending, removePendingById, removePendingByKey, removePendingByResource }}
+            value={{
+                addPending,
+                getPending,
+                updateProcessedAtTick,
+                removePendingById,
+                removePendingByKey,
+                removePendingByResource,
+            }}
         >
             {children}
         </PendingActionContext.Provider>
@@ -337,6 +392,10 @@ export function useRemovePendingByKey() {
 
 export function useRemovePendingByResource() {
     return useContext(PendingActionContext).removePendingByResource;
+}
+
+export function useUpdateProcessedAtTick() {
+    return useContext(PendingActionContext).updateProcessedAtTick;
 }
 
 // ── Resolution ───────────────────────────────────────────────────────────────

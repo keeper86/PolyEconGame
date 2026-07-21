@@ -19,6 +19,7 @@ import { useAddPendingAction, useRemovePendingById } from '@/hooks/useActionOver
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { toast } from 'sonner';
 import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
@@ -46,9 +47,11 @@ export function ConstructionCompactRow({
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
             onSuccess: () => {
+                toast.success('Construction cancelled.');
                 // Pending action will be resolved by predicate check
             },
-            onError: () => {
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Cancel failed');
                 removePendingById(agentId, planetId, facility.id);
             },
         }),
