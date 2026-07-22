@@ -5,6 +5,10 @@ import {
     detectPricingSellPreset,
     detectVolumeBuyPreset,
     detectVolumeSellPreset,
+    PRICING_BUY_PRESETS,
+    PRICING_SELL_PRESETS,
+    VOLUME_BUY_PRESETS,
+    VOLUME_SELL_PRESETS,
 } from './StrategyPresets';
 
 function emptyLocal(): AutoConfigLocalState {
@@ -32,32 +36,17 @@ function localWith(overrides: Partial<AutoConfigLocalState>): AutoConfigLocalSta
 
 describe('detectVolumeBuyPreset', () => {
     it('detects just-in-time preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '0',
-            inputBufferTargetTicks: '5',
-            freeBuyQuantity: '0',
-            freeBuyQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_BUY_PRESETS['just-in-time']);
         expect(detectVolumeBuyPreset(local)).toBe('just-in-time');
     });
 
     it('detects balanced preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '2',
-            inputBufferTargetTicks: '30',
-            freeBuyQuantity: '0',
-            freeBuyQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_BUY_PRESETS['balanced']);
         expect(detectVolumeBuyPreset(local)).toBe('balanced');
     });
 
     it('detects stockpile preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '5',
-            inputBufferTargetTicks: '60',
-            freeBuyQuantity: '0',
-            freeBuyQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_BUY_PRESETS['stockpile']);
         expect(detectVolumeBuyPreset(local)).toBe('stockpile');
     });
 
@@ -78,32 +67,17 @@ describe('detectVolumeBuyPreset', () => {
 
 describe('detectVolumeSellPreset', () => {
     it('detects just-in-time preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '0',
-            outputBufferMaxTicks: '2',
-            freeSellQuantity: '0',
-            freeSellQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_SELL_PRESETS['just-in-time']);
         expect(detectVolumeSellPreset(local)).toBe('just-in-time');
     });
 
     it('detects balanced preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '2',
-            outputBufferMaxTicks: '20',
-            freeSellQuantity: '0',
-            freeSellQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_SELL_PRESETS['balanced']);
         expect(detectVolumeSellPreset(local)).toBe('balanced');
     });
 
     it('detects stockpile preset', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '5',
-            outputBufferMaxTicks: '60',
-            freeSellQuantity: '0',
-            freeSellQuantitySmoothingMaxExtra: '2',
-        });
+        const local = localWith(VOLUME_SELL_PRESETS['stockpile']);
         expect(detectVolumeSellPreset(local)).toBe('stockpile');
     });
 
@@ -120,35 +94,17 @@ describe('detectVolumeSellPreset', () => {
 
 describe('detectPricingBuyPreset', () => {
     it('detects liquidation preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.01',
-            priceAdjustMaxDown: '0.80',
-            targetFillRate: '0.70',
-            bidOfferMaxCostMultiplier: '3',
-            automatedCostFloorBuffer: '0',
-        });
+        const local = localWith(PRICING_BUY_PRESETS['liquidation']);
         expect(detectPricingBuyPreset(local)).toBe('liquidation');
     });
 
     it('detects market-rate preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.05',
-            priceAdjustMaxDown: '0.95',
-            targetFillRate: '0.90',
-            bidOfferMaxCostMultiplier: '6',
-            automatedCostFloorBuffer: '0',
-        });
+        const local = localWith(PRICING_BUY_PRESETS['market-rate']);
         expect(detectPricingBuyPreset(local)).toBe('market-rate');
     });
 
     it('detects premium preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.15',
-            priceAdjustMaxDown: '0.98',
-            targetFillRate: '0.95',
-            bidOfferMaxCostMultiplier: '10',
-            automatedCostFloorBuffer: '0',
-        });
+        const local = localWith(PRICING_BUY_PRESETS['premium']);
         expect(detectPricingBuyPreset(local)).toBe('premium');
     });
 
@@ -158,7 +114,6 @@ describe('detectPricingBuyPreset', () => {
             priceAdjustMaxDown: '0.90',
             targetFillRate: '0.80',
             bidOfferMaxCostMultiplier: '8',
-            automatedCostFloorBuffer: '0',
         });
         expect(detectPricingBuyPreset(local)).toBe('custom');
     });
@@ -166,35 +121,17 @@ describe('detectPricingBuyPreset', () => {
 
 describe('detectPricingSellPreset', () => {
     it('detects liquidation preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.01',
-            priceAdjustMaxDown: '0.80',
-            automatedCostFloorBuffer: '0.0',
-            targetSellThrough: '0.95',
-            bidOfferMaxCostMultiplier: '3',
-        });
+        const local = localWith(PRICING_SELL_PRESETS['liquidation']);
         expect(detectPricingSellPreset(local)).toBe('liquidation');
     });
 
     it('detects market-rate preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.05',
-            priceAdjustMaxDown: '0.95',
-            automatedCostFloorBuffer: '0.5',
-            targetSellThrough: '0.85',
-            bidOfferMaxCostMultiplier: '6',
-        });
+        const local = localWith(PRICING_SELL_PRESETS['market-rate']);
         expect(detectPricingSellPreset(local)).toBe('market-rate');
     });
 
     it('detects premium preset', () => {
-        const local = localWith({
-            priceAdjustMaxUp: '1.15',
-            priceAdjustMaxDown: '0.98',
-            automatedCostFloorBuffer: '1.5',
-            targetSellThrough: '0.50',
-            bidOfferMaxCostMultiplier: '10',
-        });
+        const local = localWith(PRICING_SELL_PRESETS['premium']);
         expect(detectPricingSellPreset(local)).toBe('premium');
     });
 
@@ -204,7 +141,6 @@ describe('detectPricingSellPreset', () => {
             priceAdjustMaxDown: '0.93',
             automatedCostFloorBuffer: '0.5',
             targetSellThrough: '0.85',
-            bidOfferMaxCostMultiplier: '6',
         });
         expect(detectPricingSellPreset(local)).toBe('custom');
     });
