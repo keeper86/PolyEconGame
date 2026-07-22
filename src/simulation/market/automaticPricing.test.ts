@@ -122,7 +122,7 @@ describe('resolveOfferConfig — config resolution', () => {
                 inventorySmoothingMaxExtra: 5,
                 outputBufferMaxTicks: 40,
                 targetSellThrough: 0.8,
-                automatedCostFloorBuffer: 1.0,
+                automatedCostFloorBuffer: 1.5,
                 freeSellQuantity: 0,
                 freeSellQuantitySmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
@@ -481,7 +481,7 @@ describe('automaticPricing — sell-side config overrides', () => {
         const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
 
         // Set price slightly above costFloor but well within the brake zone
-        // brakeZoneTop = costFloor * (1 + automatedCostFloorBuffer) = costFloor * 1.5
+        // brakeZoneTop = costFloor * automatedCostFloorBuffer = costFloor * 1.5
         // With PRIOR_PRICE = costFloor * 1.2, we're inside the zone: deviation = sqrt(brakeZoneTop / price - 1) = sqrt(1.5/1.2 - 1) = sqrt(0.25) = 0.5
         const PRIOR_PRICE = costPerUnit * 1.2;
 
@@ -515,7 +515,7 @@ describe('automaticPricing — sell-side config overrides', () => {
                     lastSold: 0, // zero sell-through → downward pressure
                     autoConfig: {
                         costSpringStrength: 0.5,
-                        automatedCostFloorBuffer: 1.0, // brakeZoneTop = costFloor * 2.0
+                        automatedCostFloorBuffer: 2.0, // brakeZoneTop = costFloor * 2.0
                     } as AutomatedPricingConfig,
                 },
             },
@@ -527,7 +527,7 @@ describe('automaticPricing — sell-side config overrides', () => {
         const diagnostics = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.diagnostics;
         expect(diagnostics).toBeDefined();
         // deviation = sqrt(1.0 / 0.2) = sqrt(5) ≈ 2.236 – wait let me recalculate
-        // brakeZoneTop = 4.2 * 2.0 = 8.4, PRIOR_PRICE = 4.2 * 1.2 = 5.04
+        // brakeZoneTop = 4.2 * 2.0 = 8.4, PRIOR_PRICE = 4.2 * 1.2 = 5.04 -- with cfg.automatedCostFloorBuffer = 2.0
         // costSpringDeviation = sqrt(8.4/5.04 - 1) = sqrt(0.6667) ≈ 0.816
         // costSpringStrength * deviation = 0.5 * 0.816 = 0.408
         // netFactor without overDeviation = 0.95 + 0.408 = 1.358

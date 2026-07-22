@@ -42,7 +42,7 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
         outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
         targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
-        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 0.5,
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 1.5,
         freeSellQuantity: c.freeSellQuantity ?? 0,
         freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -464,7 +464,7 @@ export function adjustOfferPrice(
     const sellThrough = sold / effectiveQuantity;
     const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
 
-    const brakeZoneTop = costFloor * (1 + cfg.automatedCostFloorBuffer);
+    const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
 
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
 

@@ -44,6 +44,7 @@ type SliderDef = {
     defaultVal: number;
     isPercent?: boolean;
     displayTransform?: (v: number) => number;
+    inverted?: boolean;
 };
 
 type RangeSliderDef = {
@@ -68,7 +69,7 @@ type SliderGroupDef = {
 const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
     {
         label: 'Combined Needs',
-        isBufferGroup: false,
+        isBufferGroup: true,
         sliders: [
             { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
             {
@@ -143,8 +144,8 @@ const SELL_VOLUME_GROUPS: SliderGroupDef[] = [
 const PRICE_ADJUST_RANGE: RangeSliderDef = {
     keys: ['priceAdjustMaxDown', 'priceAdjustMaxUp'],
     label: 'Adjustment speed',
-    min: 0.5,
-    max: 1.5,
+    min: 0.8,
+    max: 1.2,
     step: 0.01,
     defaultVals: [0.95, 1.05],
 };
@@ -163,17 +164,18 @@ const BUY_PRICING_SLIDERS: SliderDef[] = [
 
 const COST_FLOOR_BUFFER_SLIDER: SliderDef = {
     key: 'automatedCostFloorBuffer',
-    label: 'Cost floor buffer',
+    label: 'Soft min ask (in est. cost)',
     min: 0,
-    max: 5,
+    max: 10,
     step: 0.25,
     defaultVal: 1.5,
+    inverted: true,
 };
 
 const BID_OFFER_MULTIPLIER_SLIDER: SliderDef = {
     key: 'bidOfferMaxCostMultiplier',
-    label: 'Max bid multiplier',
-    min: 0.5,
+    label: 'Soft max bid (in est. cost)',
+    min: 0,
     max: 10,
     step: 0.25,
     defaultVal: 6,
@@ -230,6 +232,12 @@ function renderSingleSlider(
     const committedClamped = committed !== undefined ? Math.max(def.min, Math.min(def.max, committed)) : undefined;
     const committedFraction =
         committedClamped !== undefined ? (committedClamped - def.min) / (def.max - def.min) : undefined;
+    const committedFractionInverted = committedFraction !== undefined ? 1 - committedFraction : undefined;
+
+    // Radix inverted flips the visual fill direction but also flips value mapping.
+    // We invert the values going in/out so that 0 remains left, 5 remains right,
+    // and only the track fill direction is visually inverted.
+    const invertedSliderVal = def.inverted ? def.max - clampedVal + def.min : clampedVal;
 
     const isBufferSlider = BUFFER_KEYS.has(def.key);
     const sliderDisabled = isSaving || presetDisabled || (isBufferSlider && !bufferApplicable);
@@ -256,21 +264,23 @@ function renderSingleSlider(
                     min={def.min}
                     max={def.max}
                     step={def.step}
-                    value={[clampedVal]}
+                    value={[invertedSliderVal]}
                     onValueChange={([v]) => {
                         if (v !== undefined) {
-                            onConfigChange({ [def.key]: String(v) });
+                            const actualVal = def.inverted ? def.max - v + def.min : v;
+                            onConfigChange({ [def.key]: String(actualVal) });
                         }
                     }}
                     disabled={sliderDisabled}
                     className='w-full'
+                    inverted={def.inverted}
                 />
                 <div
                     className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
                         committedFraction !== undefined ? '' : 'opacity-0'
                     }`}
                     style={{
-                        left: `${(committedFraction ?? 0) * 100}%`,
+                        left: `${((def.inverted ? committedFractionInverted : committedFraction) ?? 0) * 100}%`,
                         transform: 'translateX(-50%)',
                         top: '2px',
                     }}

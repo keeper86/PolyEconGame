@@ -118,19 +118,19 @@ export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, 
     'liquidation': {
         priceAdjustMaxUp: '1.01',
         priceAdjustMaxDown: '0.80',
-        automatedCostFloorBuffer: '0.0',
+        automatedCostFloorBuffer: '1.0',
         targetSellThrough: '0.95',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
-        automatedCostFloorBuffer: '0.5',
+        automatedCostFloorBuffer: '1.5',
         targetSellThrough: '0.85',
     },
     'premium': {
         priceAdjustMaxUp: '1.15',
         priceAdjustMaxDown: '0.98',
-        automatedCostFloorBuffer: '1.5',
+        automatedCostFloorBuffer: '2.5',
         targetSellThrough: '0.50',
     },
 };
