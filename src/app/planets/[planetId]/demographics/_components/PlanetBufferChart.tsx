@@ -377,7 +377,13 @@ function BufferAreaChart({
                                     // Larger dot for live data point (fractional monthIdx)
                                     if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
                                         return (
-                                            <circle key={`${key}_${dotKey}_live`} cx={cx} cy={cy} r={3.5} fill={color} />
+                                            <circle
+                                                key={`${key}_${dotKey}_live`}
+                                                cx={cx}
+                                                cy={cy}
+                                                r={3.5}
+                                                fill={color}
+                                            />
                                         );
                                     }
                                     if (cx != null && !isNaN(cx)) {
@@ -413,7 +419,11 @@ function BufferAreaChart({
                                         // Skip rendering if the ghost data value is null/undefined (e.g. current-data-only months)
                                         if (value == null || typeof value !== 'number') {
                                             return (
-                                                <circle key={`${ghostKey}_${monthIdx}_null`} r={0} visibility='hidden' />
+                                                <circle
+                                                    key={`${ghostKey}_${monthIdx}_null`}
+                                                    r={0}
+                                                    visibility='hidden'
+                                                />
                                             );
                                         }
                                         if (cx != null && !isNaN(cx)) {
@@ -429,7 +439,9 @@ function BufferAreaChart({
                                                 />
                                             );
                                         }
-                                        return <circle key={`${ghostKey}_${monthIdx}_invis`} r={0} visibility='hidden' />;
+                                        return (
+                                            <circle key={`${ghostKey}_${monthIdx}_invis`} r={0} visibility='hidden' />
+                                        );
                                     }}
                                     activeDot={false}
                                     legendType='none'

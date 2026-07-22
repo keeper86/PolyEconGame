@@ -31,10 +31,11 @@ export default function PlanetAgentsLeaderboardPage() {
     const planetId = (params?.planetId as string) ?? '';
 
     const [showAll, setShowAll] = useState(false);
+    const [hideAutomated, setHideAutomated] = useState(true);
 
     const trpc = useTRPC();
     const { isLoading, data } = useSimulationQuery(
-        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll }),
+        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll, hideAutomated }),
     );
 
     const [sortKey, setSortKey] = useState<SortKey>('normalizedBalance');
@@ -71,12 +72,27 @@ export default function PlanetAgentsLeaderboardPage() {
         <Page
             title='Companies'
             headerComponent={
-                <>
-                    <Label htmlFor='show-all-companies' className='text-xs text-muted-foreground cursor-pointer'>
-                        Show all companies
-                    </Label>
-                    <Switch id='show-all-companies' checked={showAll} onCheckedChange={setShowAll} />{' '}
-                </>
+                <span className='flex flex-col items-end gap-2'>
+                    <span className='flex items-center gap-2'>
+                        <Label htmlFor='show-all-companies' className='text-xs text-muted-foreground cursor-pointer'>
+                            Show all companies
+                        </Label>
+                        <Switch id='show-all-companies' checked={showAll} onCheckedChange={setShowAll} />{' '}
+                    </span>
+                    <span className='flex items-center gap-2'>
+                        <Label
+                            htmlFor='hide-automated-companies'
+                            className='text-xs text-muted-foreground cursor-pointer'
+                        >
+                            Hide automated agents
+                        </Label>
+                        <Switch
+                            id='hide-automated-companies'
+                            checked={hideAutomated}
+                            onCheckedChange={setHideAutomated}
+                        />
+                    </span>
+                </span>
             }
         >
             <Table>

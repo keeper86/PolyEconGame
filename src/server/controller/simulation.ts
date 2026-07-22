@@ -231,7 +231,13 @@ export const getLatestAgents = () =>
 
 export const getAgentListSummaries = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string().optional(), showAll: z.boolean().default(false) }))
+        .input(
+            z.object({
+                planetId: z.string().optional(),
+                showAll: z.boolean().default(false),
+                hideAutomated: z.boolean().default(false),
+            }),
+        )
         .output(
             z.object({
                 tick: z.number(),
@@ -270,7 +276,12 @@ export const getAgentListSummaries = () =>
             const { planets } = getAllPlanetsSync();
 
             const resultAgents = agents
-                .filter((agent) => input.showAll || (input.planetId && agent.assets[input.planetId]))
+                .filter((agent) => {
+                    if (input.hideAutomated && (agent.automated || agent.agentRole)) {
+                        return false;
+                    }
+                    return input.showAll || (input.planetId && agent.assets[input.planetId]);
+                })
                 .map((a: Agent) => {
                     const summary = summariseAgentBlob(a.id, a, shipCapitalMarket, planets);
                     let normalizedBalance = summary.balance;

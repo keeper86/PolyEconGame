@@ -68,7 +68,7 @@ type SliderGroupDef = {
 const BUY_VOLUME_GROUPS: SliderGroupDef[] = [
     {
         label: 'Combined Needs',
-        isBufferGroup: true,
+        isBufferGroup: false,
         sliders: [
             { key: 'inputBufferTargetTicks', label: 'Input buffer (days)', min: 1, max: 120, step: 1, defaultVal: 30 },
             {
@@ -469,7 +469,12 @@ export function AutoConfigPanel({
     const volumeSliders = useMemo(() => volumeGroups.flatMap((g) => g.sliders), [volumeGroups]);
     const volumeKeys = useMemo(() => new Set(volumeSliders.map((s) => s.key)), [volumeSliders]);
     const pricingKeys = useMemo(
-        () => new Set([...pricingSliders.map((s) => s.key), ...pricingRangeSliders.flatMap((r) => r.keys), pricingPcSlider.key]),
+        () =>
+            new Set([
+                ...pricingSliders.map((s) => s.key),
+                ...pricingRangeSliders.flatMap((r) => r.keys),
+                pricingPcSlider.key,
+            ]),
         [pricingSliders, pricingRangeSliders, pricingPcSlider.key],
     );
 

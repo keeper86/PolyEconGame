@@ -83,10 +83,7 @@ export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vo
 
 export type PricingBuyValues = Pick<
     AutoConfigLocalState,
-    | 'priceAdjustMaxUp'
-    | 'priceAdjustMaxDown'
-    | 'targetFillRate'
-    | 'bidOfferMaxCostMultiplier'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'targetFillRate' | 'bidOfferMaxCostMultiplier'
 >;
 
 export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
@@ -114,10 +111,7 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
 
 export type PricingSellValues = Pick<
     AutoConfigLocalState,
-    | 'priceAdjustMaxUp'
-    | 'priceAdjustMaxDown'
-    | 'automatedCostFloorBuffer'
-    | 'targetSellThrough'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'automatedCostFloorBuffer' | 'targetSellThrough'
 >;
 
 export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingSellValues> = {
