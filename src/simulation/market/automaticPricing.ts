@@ -466,12 +466,9 @@ export function adjustOfferPrice(
 
     const brakeZoneTop = costFloor * (1 + cfg.automatedCostFloorBuffer);
 
-    const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (cfg.bidOfferMaxCostMultiplier - 1) : PRICE_CEIL;
-
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
-    const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
 
-    const netFactor = factor + cfg.costSpringStrength * deviation - cfg.costSpringStrength * overDeviation;
+    const netFactor = factor + cfg.costSpringStrength * deviation;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
@@ -485,7 +482,7 @@ export function adjustOfferPrice(
         targetSellThrough: cfg.targetSellThrough ?? 0.9,
         baseFactor: factor,
         costSpringDeviation: deviation,
-        overDeviation,
+        overDeviation: 0,
         netFactor,
         oldPrice,
         newPrice: offer.offerPrice,

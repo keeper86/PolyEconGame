@@ -241,7 +241,6 @@ export const getAgentListSummaries = () =>
                         name: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
-
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),

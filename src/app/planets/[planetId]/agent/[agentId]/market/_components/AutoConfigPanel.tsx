@@ -9,9 +9,9 @@ import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
 import type { AutomatedPricingConfig, BuyDiagnostics, SellDiagnostics } from '@/simulation/planet/planet';
 import { ChevronDown, RotateCcw } from 'lucide-react';
-import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
 import React, { useCallback, useMemo } from 'react';
 import type { AutoConfigLocalState } from './marketTypes';
+import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
 import {
     detectPricingBuyPreset,
     detectPricingSellPreset,
@@ -161,22 +161,22 @@ const BUY_PRICING_SLIDERS: SliderDef[] = [
     },
 ];
 
-const P_C_RATIO_RANGE_SELL: RangeSliderDef = {
-    keys: ['automatedCostFloorBuffer', 'bidOfferMaxCostMultiplier'],
-    label: 'Price/Cost range',
+const COST_FLOOR_BUFFER_SLIDER: SliderDef = {
+    key: 'automatedCostFloorBuffer',
+    label: 'Cost floor buffer',
     min: 0,
-    max: 10,
+    max: 5,
     step: 0.25,
-    defaultVals: [1.5, 6],
+    defaultVal: 1.5,
 };
 
-const P_C_RATIO_RANGE_BUY: RangeSliderDef = {
-    keys: ['automatedCostFloorBuffer', 'bidOfferMaxCostMultiplier'],
-    label: 'Price/Cost range',
-    min: 0,
+const BID_OFFER_MULTIPLIER_SLIDER: SliderDef = {
+    key: 'bidOfferMaxCostMultiplier',
+    label: 'Max bid multiplier',
+    min: 0.5,
     max: 10,
     step: 0.25,
-    defaultVals: [0, 6],
+    defaultVal: 6,
 };
 
 const SELL_PRICING_SLIDERS: SliderDef[] = [
@@ -457,10 +457,9 @@ export function AutoConfigPanel({
 }): React.ReactElement {
     const volumeGroups = mode === 'buy' ? BUY_VOLUME_GROUPS : SELL_VOLUME_GROUPS;
     const pricingSliders = mode === 'buy' ? BUY_PRICING_SLIDERS : SELL_PRICING_SLIDERS;
-    const pricingRangeSliders = useMemo(
-        () => (mode === 'buy' ? [PRICE_ADJUST_RANGE, P_C_RATIO_RANGE_BUY] : [PRICE_ADJUST_RANGE, P_C_RATIO_RANGE_SELL]),
-        [mode],
-    );
+    const pricingRangeSliders = useMemo(() => [PRICE_ADJUST_RANGE], []);
+
+    const pricingPcSlider = mode === 'buy' ? BID_OFFER_MULTIPLIER_SLIDER : COST_FLOOR_BUFFER_SLIDER;
 
     const detectVolumePreset = mode === 'buy' ? detectVolumeBuyPreset : detectVolumeSellPreset;
     const detectPricingPreset = mode === 'buy' ? detectPricingBuyPreset : detectPricingSellPreset;
@@ -470,8 +469,8 @@ export function AutoConfigPanel({
     const volumeSliders = useMemo(() => volumeGroups.flatMap((g) => g.sliders), [volumeGroups]);
     const volumeKeys = useMemo(() => new Set(volumeSliders.map((s) => s.key)), [volumeSliders]);
     const pricingKeys = useMemo(
-        () => new Set([...pricingSliders.map((s) => s.key), ...pricingRangeSliders.flatMap((r) => r.keys)]),
-        [pricingSliders, pricingRangeSliders],
+        () => new Set([...pricingSliders.map((s) => s.key), ...pricingRangeSliders.flatMap((r) => r.keys), pricingPcSlider.key]),
+        [pricingSliders, pricingRangeSliders, pricingPcSlider.key],
     );
 
     // Detect initial presets from localConfig
@@ -539,8 +538,9 @@ export function AutoConfigPanel({
             ...volumeSliders.map((s) => s.key),
             ...pricingSliders.map((s) => s.key),
             ...pricingRangeSliders.flatMap((r) => r.keys),
+            pricingPcSlider.key,
         ],
-        [volumeSliders, pricingSliders, pricingRangeSliders],
+        [volumeSliders, pricingSliders, pricingRangeSliders, pricingPcSlider.key],
     );
 
     const hasDirty = allSliderKeys.some((key) => {
@@ -677,6 +677,15 @@ export function AutoConfigPanel({
                                 handleSliderChange,
                                 activePricingPreset !== 'custom',
                             ),
+                        )}
+                        {renderSingleSlider(
+                            pricingPcSlider,
+                            localConfig,
+                            committedConfig,
+                            isSaving,
+                            true,
+                            handleSliderChange,
+                            activePricingPreset !== 'custom',
                         )}
                         {pricingSliders.map((def) =>
                             renderSingleSlider(

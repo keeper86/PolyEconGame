@@ -87,7 +87,6 @@ export type PricingBuyValues = Pick<
     | 'priceAdjustMaxDown'
     | 'targetFillRate'
     | 'bidOfferMaxCostMultiplier'
-    | 'automatedCostFloorBuffer'
 >;
 
 export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
@@ -96,21 +95,18 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxDown: '0.80',
         targetFillRate: '0.70',
         bidOfferMaxCostMultiplier: '3',
-        automatedCostFloorBuffer: '0',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
         targetFillRate: '0.90',
         bidOfferMaxCostMultiplier: '6',
-        automatedCostFloorBuffer: '0',
     },
     'premium': {
         priceAdjustMaxUp: '1.15',
         priceAdjustMaxDown: '0.98',
         targetFillRate: '0.95',
         bidOfferMaxCostMultiplier: '10',
-        automatedCostFloorBuffer: '0',
     },
 };
 
@@ -122,7 +118,6 @@ export type PricingSellValues = Pick<
     | 'priceAdjustMaxDown'
     | 'automatedCostFloorBuffer'
     | 'targetSellThrough'
-    | 'bidOfferMaxCostMultiplier'
 >;
 
 export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingSellValues> = {
@@ -131,21 +126,18 @@ export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, 
         priceAdjustMaxDown: '0.80',
         automatedCostFloorBuffer: '0.0',
         targetSellThrough: '0.95',
-        bidOfferMaxCostMultiplier: '3',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
         automatedCostFloorBuffer: '0.5',
         targetSellThrough: '0.85',
-        bidOfferMaxCostMultiplier: '6',
     },
     'premium': {
         priceAdjustMaxUp: '1.15',
         priceAdjustMaxDown: '0.98',
         automatedCostFloorBuffer: '1.5',
         targetSellThrough: '0.50',
-        bidOfferMaxCostMultiplier: '10',
     },
 };
 
@@ -170,7 +162,6 @@ const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
     'priceAdjustMaxDown',
     'targetFillRate',
     'bidOfferMaxCostMultiplier',
-    'automatedCostFloorBuffer',
 ];
 
 const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
@@ -178,7 +169,6 @@ const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
     'priceAdjustMaxDown',
     'automatedCostFloorBuffer',
     'targetSellThrough',
-    'bidOfferMaxCostMultiplier',
 ];
 
 function matchesPreset(
