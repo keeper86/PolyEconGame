@@ -238,10 +238,6 @@ function ConstructionDisplay({
     );
 }
 
-/**
- * BuildCard handles both the build form (when an unowned facility is being built)
- * and the construction progress display (when a new facility is being built).
- */
 export function BuildCard({
     entry,
     facility,
