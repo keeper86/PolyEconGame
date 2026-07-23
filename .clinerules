@@ -5,6 +5,7 @@
 - Avoid comments! If a comment seems necessary, restructure or rename instead.
 - If you see a comment that seems unnecessary, delete it.
 - Avoid optional properties. We are in dev only — no need for backwards-compatibility.
+- Run 'npm run test:all' to run all tests.
 
 ## Overview
 

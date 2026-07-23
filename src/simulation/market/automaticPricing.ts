@@ -42,7 +42,7 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
         outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
         targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
-        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 0.5,
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 1.5,
         freeSellQuantity: c.freeSellQuantity ?? 0,
         freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -464,14 +464,11 @@ export function adjustOfferPrice(
     const sellThrough = sold / effectiveQuantity;
     const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
 
-    const brakeZoneTop = costFloor * (1 + cfg.automatedCostFloorBuffer);
-
-    const overPriceGuard = costFloor > PRICE_FLOOR ? costFloor * (cfg.bidOfferMaxCostMultiplier - 1) : PRICE_CEIL;
+    const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
 
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
-    const overDeviation = Math.sqrt(Math.max(0, price / overPriceGuard - 1));
 
-    const netFactor = factor + cfg.costSpringStrength * deviation - cfg.costSpringStrength * overDeviation;
+    const netFactor = factor + cfg.costSpringStrength * deviation;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
@@ -485,7 +482,7 @@ export function adjustOfferPrice(
         targetSellThrough: cfg.targetSellThrough ?? 0.9,
         baseFactor: factor,
         costSpringDeviation: deviation,
-        overDeviation,
+        overDeviation: 0,
         netFactor,
         oldPrice,
         newPrice: offer.offerPrice,

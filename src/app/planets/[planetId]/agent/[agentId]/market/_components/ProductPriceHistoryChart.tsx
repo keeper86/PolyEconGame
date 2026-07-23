@@ -101,14 +101,14 @@ const tooltipValueFormatter = (
         avgPrice: 'Avg price',
         minPrice: 'Min price',
         maxPrice: 'Max price',
-        priceFloor: 'Cost estimate',
+        priceFloor: 'Estimated Cost',
     };
     if (rescaleMode === 'relative') {
         const labelMap: Record<string, string> = {
             avgPrice: 'Rescaled price',
             minPrice: 'Rescaled Min price',
             maxPrice: 'Rescaled Max price',
-            priceFloor: 'Cost estimate (1)',
+            priceFloor: 'Resc.est. cost (1)',
         };
         const label = labelMap[_name] ?? _name;
         return [`${value.toFixed(2)}×`, label];
@@ -307,7 +307,7 @@ function SimplePriceAreaChart({
                             } else {
                                 priceLabel = 'Avg Price';
                                 minMaxLabel = 'Min/max Price';
-                                costLabel = 'Cost est.';
+                                costLabel = 'Est. Cost';
                             }
                         } else {
                             if (rescaleMode === 'relative') {
@@ -317,7 +317,7 @@ function SimplePriceAreaChart({
                             } else {
                                 priceLabel = 'Average Price';
                                 minMaxLabel = 'Min/max Price';
-                                costLabel = 'Cost estimate';
+                                costLabel = 'Estimated Cost';
                             }
                         }
                         const entries = [

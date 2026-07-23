@@ -14,7 +14,15 @@ import {
     type FinancialPoint,
 } from './financialChartLogic';
 
-export default function AgentFinancialCharts({ agentId, planetId }: { agentId: string; planetId: string }) {
+export default function AgentFinancialCharts({
+    agentId,
+    planetId,
+    onlyBalances = false,
+}: {
+    agentId: string;
+    planetId: string;
+    onlyBalances?: boolean;
+}) {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -70,13 +78,15 @@ export default function AgentFinancialCharts({ agentId, planetId }: { agentId: s
                 currentTick={currentTick}
             />
             <div
-                className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
+                className={`grid grid-cols-1 gap-4 md:grid-cols-${onlyBalances ? '1' : '2'} ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
             >
-                <ExpensesRevenueChart
-                    data={activeData}
-                    ghostData={granularity === 'monthly' ? activeGhostData : undefined}
-                    granularity={granularity}
-                />
+                {!onlyBalances && (
+                    <ExpensesRevenueChart
+                        data={activeData}
+                        ghostData={granularity === 'monthly' ? activeGhostData : undefined}
+                        granularity={granularity}
+                    />
+                )}
                 <BalanceFlowChart
                     data={activeData}
                     ghostData={granularity === 'monthly' ? activeGhostData : undefined}

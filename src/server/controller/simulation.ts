@@ -231,7 +231,13 @@ export const getLatestAgents = () =>
 
 export const getAgentListSummaries = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string().optional(), showAll: z.boolean().default(false) }))
+        .input(
+            z.object({
+                planetId: z.string().optional(),
+                showAll: z.boolean().default(false),
+                hideAutomated: z.boolean().default(false),
+            }),
+        )
         .output(
             z.object({
                 tick: z.number(),
@@ -241,7 +247,6 @@ export const getAgentListSummaries = () =>
                         name: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
-
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
@@ -271,7 +276,12 @@ export const getAgentListSummaries = () =>
             const { planets } = getAllPlanetsSync();
 
             const resultAgents = agents
-                .filter((agent) => input.showAll || (input.planetId && agent.assets[input.planetId]))
+                .filter((agent) => {
+                    if (input.hideAutomated && (agent.automated || agent.agentRole)) {
+                        return false;
+                    }
+                    return input.showAll || (input.planetId && agent.assets[input.planetId]);
+                })
                 .map((a: Agent) => {
                     const summary = summariseAgentBlob(a.id, a, shipCapitalMarket, planets);
                     let normalizedBalance = summary.balance;
@@ -413,7 +423,7 @@ export const getPlanetDetail = () =>
 
 const consumptionShipInfoSchema = z.object({
     id: z.string(),
-    type: z.object({ type: z.string() }),
+    type: z.object({ type: z.string(), name: z.string() }),
     state: z.object({
         type: z.string(),
         planetId: z.string(),
@@ -452,6 +462,7 @@ const agentPlanetDetail = z.object({
     agentName: z.string(),
     planetId: z.string(),
     automateWorkerAllocation: z.boolean(),
+    foundedTick: z.number(),
     assets: z.any(),
     allPlanetDeposits: z.record(z.string(), z.number()),
     ships: z.array(consumptionShipInfoSchema),
@@ -504,6 +515,7 @@ export const getAgentPlanetDetail = () =>
                     agentName: agent.name,
                     planetId: input.planetId,
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
+                    foundedTick: agent.foundedTick,
                     assets,
                     allPlanetDeposits,
                     ships,

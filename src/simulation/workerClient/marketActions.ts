@@ -62,6 +62,7 @@ export function handleSetSellOffers(
             // When automation is turned off, clear stale offer values
             delete offer.offerPrice;
             delete offer.offerRetainment;
+            delete offer.diagnostics;
         }
         if (update.offerRetainment !== undefined && update.offerRetainment >= 0) {
             offer.offerRetainment = update.offerRetainment;
@@ -142,6 +143,7 @@ export function handleCancelBuyBid(
         delete bid.bidStorageTarget;
         delete bid.automated;
         delete bid.autoConfig;
+        delete bid.diagnostics;
         bid.lastBought = 0;
         bid.lastSpent = 0;
         bid.lastEffectiveQty = 0;
@@ -203,6 +205,7 @@ export function handleSetBuyBids(
             // When automation is turned off, clear stale bid values
             delete bid.bidPrice;
             delete bid.bidStorageTarget;
+            delete bid.diagnostics;
         }
         if (update.bidStorageTarget !== undefined && update.bidStorageTarget >= 0) {
             bid.bidStorageTarget = update.bidStorageTarget;

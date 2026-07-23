@@ -83,11 +83,7 @@ export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vo
 
 export type PricingBuyValues = Pick<
     AutoConfigLocalState,
-    | 'priceAdjustMaxUp'
-    | 'priceAdjustMaxDown'
-    | 'targetFillRate'
-    | 'bidOfferMaxCostMultiplier'
-    | 'automatedCostFloorBuffer'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'targetFillRate' | 'bidOfferMaxCostMultiplier'
 >;
 
 export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
@@ -96,21 +92,18 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxDown: '0.80',
         targetFillRate: '0.70',
         bidOfferMaxCostMultiplier: '3',
-        automatedCostFloorBuffer: '0',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
         targetFillRate: '0.90',
         bidOfferMaxCostMultiplier: '6',
-        automatedCostFloorBuffer: '0',
     },
     'premium': {
         priceAdjustMaxUp: '1.15',
         priceAdjustMaxDown: '0.98',
         targetFillRate: '0.95',
         bidOfferMaxCostMultiplier: '10',
-        automatedCostFloorBuffer: '0',
     },
 };
 
@@ -118,34 +111,27 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
 
 export type PricingSellValues = Pick<
     AutoConfigLocalState,
-    | 'priceAdjustMaxUp'
-    | 'priceAdjustMaxDown'
-    | 'automatedCostFloorBuffer'
-    | 'targetSellThrough'
-    | 'bidOfferMaxCostMultiplier'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'automatedCostFloorBuffer' | 'targetSellThrough'
 >;
 
 export const PRICING_SELL_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: '1.01',
         priceAdjustMaxDown: '0.80',
-        automatedCostFloorBuffer: '0.0',
+        automatedCostFloorBuffer: '1.0',
         targetSellThrough: '0.95',
-        bidOfferMaxCostMultiplier: '3',
     },
     'market-rate': {
         priceAdjustMaxUp: '1.05',
         priceAdjustMaxDown: '0.95',
-        automatedCostFloorBuffer: '0.5',
+        automatedCostFloorBuffer: '1.5',
         targetSellThrough: '0.85',
-        bidOfferMaxCostMultiplier: '6',
     },
     'premium': {
         priceAdjustMaxUp: '1.15',
         priceAdjustMaxDown: '0.98',
-        automatedCostFloorBuffer: '1.5',
+        automatedCostFloorBuffer: '2.5',
         targetSellThrough: '0.50',
-        bidOfferMaxCostMultiplier: '10',
     },
 };
 
@@ -170,7 +156,6 @@ const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
     'priceAdjustMaxDown',
     'targetFillRate',
     'bidOfferMaxCostMultiplier',
-    'automatedCostFloorBuffer',
 ];
 
 const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
@@ -178,7 +163,6 @@ const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
     'priceAdjustMaxDown',
     'automatedCostFloorBuffer',
     'targetSellThrough',
-    'bidOfferMaxCostMultiplier',
 ];
 
 function matchesPreset(

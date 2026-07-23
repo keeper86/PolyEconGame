@@ -1,16 +1,19 @@
 import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 export function FacilityOrShipIcon({
     facilityOrShipName,
     size = 280,
     suffix = '',
     buildProgress,
+    badge,
 }: {
     facilityOrShipName: string;
     size?: number;
     suffix?: string;
     buildProgress?: number;
+    badge?: number;
 }) {
     let src: string;
     if (suffix && suffix !== '') {
@@ -21,6 +24,20 @@ export function FacilityOrShipIcon({
 
     const width = size;
     const height = (size * 2) / 3;
+
+    const badgeOverlay = badge ? (
+        <div
+            className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/20 text-outline-strong'
+            style={{
+                width: '27%',
+                height: '25%',
+                fontSize: `${size * 0.095}px`,
+                lineHeight: 1,
+            }}
+        >
+            {formatNumberWithUnit(badge, 'none')}
+        </div>
+    ) : null;
 
     if (buildProgress !== undefined) {
         const fillPct = Math.min(1, Math.max(0, buildProgress)) * 100;
@@ -45,6 +62,7 @@ export function FacilityOrShipIcon({
                         sizes={`(max-width: ${width}px) 100vw, ${width}px`}
                     />
                 </span>
+                {badgeOverlay}
             </span>
         );
     }
@@ -61,6 +79,7 @@ export function FacilityOrShipIcon({
                 className='object-contain'
                 sizes={`(max-width: ${size}px) 100vw, ${size}px`}
             />
+            {badgeOverlay}
         </span>
     );
 }
