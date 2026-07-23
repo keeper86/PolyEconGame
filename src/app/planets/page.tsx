@@ -10,6 +10,7 @@ import { ProductQuantity } from '@/components/client/ProductQuantity';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Page } from '@/components/client/Page';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -47,18 +48,11 @@ export default function PlanetsPage() {
     const planetSummaries = data?.planets ?? [];
 
     return (
-        <div className='container py-6 space-y-6'>
-            <div>
-                <h1 className='text-2xl font-bold tracking-tight'>Planets</h1>
-                <p className='text-sm text-muted-foreground mt-1'>
-                    Explore the celestial bodies of the PolyEcon universe
-                </p>
-            </div>
-
+        <Page title='Planets'>
             {isLoading || planetSummaries.length === 0 ? (
                 <div className='text-sm text-muted-foreground'>Waiting for simulation data…</div>
             ) : (
-                <div className='max-w-lg mx-auto'>
+                <div className='max-w-lg'>
                     <Carousel>
                         <CarouselContent>
                             {planetSummaries.map((p) => {
@@ -178,6 +172,6 @@ export default function PlanetsPage() {
                     </Carousel>
                 </div>
             )}
-        </div>
+        </Page>
     );
 }
