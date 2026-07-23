@@ -1,12 +1,22 @@
 'use client';
 
-import { assetManifest, getAssetPath } from '@/lib/assetManifest';
-import Image from 'next/image';
-import { useMemo } from 'react';
+import { assetManifest } from '@/lib/assetManifest';
+import { CATEGORY_ORDER, getCategoryForLogoKey } from '@/lib/companyLogoCategorization';
+import { useState } from 'react';
+import { CompanyLogo } from './CompanyLogo';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const COMPANY_LOGO_KEYS = (Object.keys(assetManifest) as (keyof typeof assetManifest)[]).filter((k) =>
     k.startsWith('company_icon_'),
 );
+
+const LOGOS_BY_CATEGORY = Object.fromEntries(
+    CATEGORY_ORDER.map((category) => [
+        category,
+        COMPANY_LOGO_KEYS.filter((key) => getCategoryForLogoKey(key) === category),
+    ]),
+) as Record<string, string[]>;
 
 export function CompanyLogoChooser({
     selectedLogo,
@@ -15,39 +25,58 @@ export function CompanyLogoChooser({
     selectedLogo: string;
     onSelect: (key: string) => void;
 }) {
-    const logoKeys = useMemo(() => COMPANY_LOGO_KEYS, []);
-    console.log(logoKeys);
+    const [open, setOpen] = useState(false);
 
     return (
         <div className='grid gap-2'>
-            <label className='text-sm font-medium'>Company Logo</label>
-            <div className='grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-48 overflow-y-auto p-2 border rounded-md'>
-                {logoKeys.map((key) => {
-                    const isSelected = selectedLogo === key;
-                    const src = getAssetPath(key);
-                    return (
-                        <button
-                            key={key}
-                            type='button'
-                            onClick={() => onSelect(key)}
-                            className={`relative w-full aspect-square rounded-md border overflow-hidden transition-all ${
-                                isSelected
-                                    ? 'ring-2 ring-primary border-primary'
-                                    : 'border-border hover:border-muted-foreground/50'
-                            }`}
-                        >
-                            <Image
-                                src={src}
-                                alt=''
-                                width={64}
-                                height={64}
-                                className='object-contain w-full h-full'
-                                unoptimized
-                            />
-                        </button>
-                    );
-                })}
-            </div>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    <button type='button' className=''>
+                        <CompanyLogo logoKey={selectedLogo} size={36} />
+                    </button>
+                </DialogTrigger>
+                <DialogContent className='max-w-2xl max-h-[80vh] flex flex-col'>
+                    <DialogHeader>
+                        <DialogTitle>Choose Company Logo</DialogTitle>
+                    </DialogHeader>
+                    <Tabs defaultValue={CATEGORY_ORDER[0]} className='flex flex-col min-h-0 flex-1'>
+                        <TabsList className='flex-wrap h-auto'>
+                            {CATEGORY_ORDER.map((category) => (
+                                <TabsTrigger key={category} value={category} className='text-xs'>
+                                    {category}
+                                    <span className='ml-1 text-muted-foreground'>
+                                        ({LOGOS_BY_CATEGORY[category].length})
+                                    </span>
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
+                        {CATEGORY_ORDER.map((category) => (
+                            <TabsContent key={category} value={category} className='overflow-y-auto min-h-0 flex-1'>
+                                <div className='grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 p-1'>
+                                    {LOGOS_BY_CATEGORY[category].map((key) => {
+                                        const isSelected = selectedLogo === key;
+                                        return (
+                                            <button
+                                                key={key}
+                                                type='button'
+                                                onClick={() => {
+                                                    onSelect(key);
+                                                    setOpen(false);
+                                                }}
+                                                className={`flex items-center justify-center p-1.5 rounded-md border transition-all  hover:bg-accent ${
+                                                    isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
+                                                }`}
+                                            >
+                                                <CompanyLogo logoKey={key} size={16} />
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

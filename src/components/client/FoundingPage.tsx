@@ -19,10 +19,10 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useTour } from '../tour/TourContext';
-import { CompanyLogoChooser } from './CompanyLogoChooser';
 import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
+import { CompanyLogoChooser } from './CompanyLogoChooser';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -60,7 +60,7 @@ export function FoundingPage() {
     const queryClient = useQueryClient();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
-    const [logo, setLogo] = useState('ai_company');
+    const [logo, setLogo] = useState('unknown');
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
     const [enableTour, setEnableTour] = useState(false);
@@ -153,7 +153,7 @@ export function FoundingPage() {
     return (
         <Page title='Register your Company'>
             <form onSubmit={handleSubmit} className='grid gap-6 max-w-lg'>
-                <div className='grid gap-2'>
+                <div className='flex flex-row gap-4'>
                     <Input
                         placeholder='Your company name'
                         value={agentName}
@@ -169,7 +169,9 @@ export function FoundingPage() {
                         name='company-name'
                         autoComplete='organization'
                         aria-invalid={agentNameError ? 'true' : undefined}
+                        className='flex-grow'
                     />
+                    <CompanyLogoChooser selectedLogo={logo} onSelect={setLogo} />
                 </div>
 
                 <div className='grid gap-2'>
@@ -320,8 +322,6 @@ export function FoundingPage() {
                         </Carousel>
                     )}
                 </div>
-
-                <CompanyLogoChooser selectedLogo={logo} onSelect={setLogo} />
 
                 <div className='flex items-center gap-2'>
                     <Checkbox
