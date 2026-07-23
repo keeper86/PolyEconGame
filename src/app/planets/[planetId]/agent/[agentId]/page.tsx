@@ -28,15 +28,17 @@ function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
                 {groups.map(([name, count]) => (
                     <FacilityOrShipListCard key={name} name={name} count={count} />
                 ))}
-                {groups.length === 0 && <FacilityOrShipListCard key={'no_facilities'} name={'No facilities'} />}
+                {groups.length === 0 && <FacilityOrShipListCard key={'no_facilities'} name={'No facilities'} unknown />}
             </div>
         </div>
     );
 }
 
 function ShipFleet({
+    planetId,
     ships,
 }: {
+    planetId: string;
     ships: { id: string; type: { type: string; name: string }; state: { type: string; planetId: string } }[];
 }) {
     return (
@@ -50,7 +52,9 @@ function ShipFleet({
                         subtitle={`${ship.state.type}${ship.state.planetId ? ` at ${ship.state.planetId}` : ''}`}
                     />
                 ))}
-                {ships.length === 0 && <FacilityOrShipListCard key={'no_ships'} name={'No ships (on this planet)'} />}
+                {ships.length === 0 && (
+                    <FacilityOrShipListCard key={'no_ships'} name={'No ships (on ' + planetId + ')'} unknown />
+                )}
             </div>
         </div>
     );
@@ -93,7 +97,7 @@ export default function AgentPlanetOverviewPage() {
 
                 <FacilityBreakdown facilities={facilities} />
 
-                <ShipFleet ships={ships} />
+                <ShipFleet ships={ships} planetId={planetId} />
 
                 <div className='rounded-lg border p-3'>
                     <AgentFinancialCharts agentId={agentId} planetId={planetId} onlyBalances={true} />

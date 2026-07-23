@@ -116,6 +116,7 @@ export const assetManifest = {
     suerte: '/images/planets/suerte.webp',
     suerte_large: '/images/planets/suerte_large.webp',
     textile_mill: '/images/facilities/textile_mill.webp',
+    unknown: '/images/products/question_mark.webp',
     vehicle: '/images/products/vehicle.webp',
     vehicle_factory: '/images/facilities/vehicle_factory.webp',
     water: '/images/products/water.webp',

@@ -25,19 +25,17 @@ export function FacilityOrShipIcon({
     const width = size;
     const height = (size * 2) / 3;
 
-    // The badge overlays the top right corner, taking up exactly 15% x 15%
-    // Font size scales with the component size to safely fit ~4 characters
     const badgeOverlay = badge ? (
         <div
-            className='absolute top-0 right-0 z-10 flex items-center justify-center text-xs text-foreground'
+            className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/20 text-outline-strong'
             style={{
-                width: '25%',
+                width: '27%',
                 height: '25%',
-                fontSize: `${size * 0.075}px`,
+                fontSize: `${size * 0.095}px`,
                 lineHeight: 1,
             }}
         >
-            {formatNumberWithUnit(23424, 'none')}
+            {formatNumberWithUnit(badge, 'none')}
         </div>
     ) : null;
 
