@@ -423,7 +423,7 @@ export const getPlanetDetail = () =>
 
 const consumptionShipInfoSchema = z.object({
     id: z.string(),
-    type: z.object({ type: z.string() }),
+    type: z.object({ type: z.string(), name: z.string() }),
     state: z.object({
         type: z.string(),
         planetId: z.string(),
@@ -462,6 +462,7 @@ const agentPlanetDetail = z.object({
     agentName: z.string(),
     planetId: z.string(),
     automateWorkerAllocation: z.boolean(),
+    foundedTick: z.number(),
     assets: z.any(),
     allPlanetDeposits: z.record(z.string(), z.number()),
     ships: z.array(consumptionShipInfoSchema),
@@ -514,6 +515,7 @@ export const getAgentPlanetDetail = () =>
                     agentName: agent.name,
                     planetId: input.planetId,
                     automateWorkerAllocation: agent.automateWorkerAllocation ?? false,
+                    foundedTick: agent.foundedTick,
                     assets,
                     allPlanetDeposits,
                     ships,

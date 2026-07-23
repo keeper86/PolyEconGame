@@ -7,7 +7,7 @@ import type { ConstructionShip, Ship, TransportShip } from '../ships/ships';
 
 export type ConsumptionShipInfo = {
     id: string;
-    type: { type: string };
+    type: { type: string; name: string };
     state: {
         type: string;
         planetId: string;
@@ -49,5 +49,5 @@ export function toConsumptionShipInfo(ship: Ship): ConsumptionShipInfo {
         }
     }
 
-    return { id: ship.id, type: { type: ship.type.type }, state: base };
+    return { id: ship.id, type: { type: ship.type.type, name: ship.type.name }, state: base };
 }

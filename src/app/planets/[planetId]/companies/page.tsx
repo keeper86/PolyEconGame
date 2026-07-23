@@ -121,7 +121,9 @@ export default function PlanetAgentsLeaderboardPage() {
                             <TableCell className='text-muted-foreground tabular-nums'>{i + 1}</TableCell>
                             <TableCell>
                                 <Link
-                                    href={`/agents/${encodeURIComponent(agent.agentId)}` as never}
+                                    href={
+                                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agent.agentId)}` as never
+                                    }
                                     className='font-medium hover:underline'
                                 >
                                     {agent.name}

@@ -41,12 +41,12 @@ describe('detectVolumeBuyPreset', () => {
     });
 
     it('detects balanced preset', () => {
-        const local = localWith(VOLUME_BUY_PRESETS['balanced']);
+        const local = localWith(VOLUME_BUY_PRESETS.balanced);
         expect(detectVolumeBuyPreset(local)).toBe('balanced');
     });
 
     it('detects stockpile preset', () => {
-        const local = localWith(VOLUME_BUY_PRESETS['stockpile']);
+        const local = localWith(VOLUME_BUY_PRESETS.stockpile);
         expect(detectVolumeBuyPreset(local)).toBe('stockpile');
     });
 
@@ -72,12 +72,12 @@ describe('detectVolumeSellPreset', () => {
     });
 
     it('detects balanced preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS['balanced']);
+        const local = localWith(VOLUME_SELL_PRESETS.balanced);
         expect(detectVolumeSellPreset(local)).toBe('balanced');
     });
 
     it('detects stockpile preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS['stockpile']);
+        const local = localWith(VOLUME_SELL_PRESETS.stockpile);
         expect(detectVolumeSellPreset(local)).toBe('stockpile');
     });
 
@@ -94,7 +94,7 @@ describe('detectVolumeSellPreset', () => {
 
 describe('detectPricingBuyPreset', () => {
     it('detects liquidation preset', () => {
-        const local = localWith(PRICING_BUY_PRESETS['liquidation']);
+        const local = localWith(PRICING_BUY_PRESETS.liquidation);
         expect(detectPricingBuyPreset(local)).toBe('liquidation');
     });
 
@@ -104,7 +104,7 @@ describe('detectPricingBuyPreset', () => {
     });
 
     it('detects premium preset', () => {
-        const local = localWith(PRICING_BUY_PRESETS['premium']);
+        const local = localWith(PRICING_BUY_PRESETS.premium);
         expect(detectPricingBuyPreset(local)).toBe('premium');
     });
 
@@ -121,7 +121,7 @@ describe('detectPricingBuyPreset', () => {
 
 describe('detectPricingSellPreset', () => {
     it('detects liquidation preset', () => {
-        const local = localWith(PRICING_SELL_PRESETS['liquidation']);
+        const local = localWith(PRICING_SELL_PRESETS.liquidation);
         expect(detectPricingSellPreset(local)).toBe('liquidation');
     });
 
@@ -131,7 +131,7 @@ describe('detectPricingSellPreset', () => {
     });
 
     it('detects premium preset', () => {
-        const local = localWith(PRICING_SELL_PRESETS['premium']);
+        const local = localWith(PRICING_SELL_PRESETS.premium);
         expect(detectPricingSellPreset(local)).toBe('premium');
     });
 
