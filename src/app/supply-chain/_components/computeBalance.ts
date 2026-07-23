@@ -1,22 +1,5 @@
-import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import {
-    administrativeServiceResourceType,
-    constructionServiceResourceType,
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-} from '@/simulation/planet/services';
-
-const POPULATION_DEMANDED_SERVICES = [
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    administrativeServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-    constructionServiceResourceType,
-];
+import { computePopulationServiceDemand } from './populationDemandHelper';
 
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
@@ -131,11 +114,10 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
     }
 
     if (population > 0) {
-        for (const svc of POPULATION_DEMANDED_SERVICES) {
-            const r = getOrCreate(svc.name, 'services', 'services', false);
-            const rate =
-                getServiceDefinitionByResourceName(svc.name)?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
-            r.populationDemandPerTick += population * rate;
+        const populationDemand = computePopulationServiceDemand(population);
+        for (const [resourceName, demandPerTick] of Object.entries(populationDemand)) {
+            const r = getOrCreate(resourceName, 'services', 'services', false);
+            r.populationDemandPerTick += demandPerTick;
         }
     }
 

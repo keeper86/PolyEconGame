@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { computeSupplyChainBalance, type FacilityInfo, type ResourceBalance } from './computeBalance';
 import DependencyGraph from './DependencyGraph';
 import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/productionFacilities';
-import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
+import { solveSupplyChain, type SolverResult, type SolverObjective } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
 import PricingLab from './pricingLab/PricingLab';
@@ -261,7 +261,6 @@ function BottleneckPanel({
 const OBJECTIVE_LABELS: Record<SolverObjective, string> = {
     scale: 'Minimise Total Scale',
     labor: 'Minimise Total Workers',
-    power: 'Minimise Power Consumption',
 };
 
 function SolverTab({
@@ -343,7 +342,7 @@ function SolverTab({
             <div className='space-y-2'>
                 <Label className='font-semibold'>Objective</Label>
                 <div className='flex flex-wrap gap-2'>
-                    {(['scale', 'labor', 'power'] as const).map((obj) => (
+                    {(['scale', 'labor'] as const).map((obj) => (
                         <button
                             key={obj}
                             onClick={() => setObjective(obj)}
@@ -437,24 +436,6 @@ function SolverTab({
                                         <CardTitle className='text-sm'>Infeasibility Diagnostics</CardTitle>
                                     </CardHeader>
                                     <CardContent className='px-4 pb-3 space-y-4 text-sm'>
-                                        {}
-                                        <div>
-                                            <p className='font-medium mb-1'>Power constraint</p>
-                                            {result.diagnostic.feasibleWithoutPower ? (
-                                                <p className='text-amber-700 text-xs'>
-                                                    ✓ Feasible when power constraint is removed →{' '}
-                                                    <strong>power balance is blocking the solution.</strong> You need a
-                                                    Coal Power Plant (or other power producer) in the allowed
-                                                    facilities.
-                                                </p>
-                                            ) : (
-                                                <p className='text-xs text-muted-foreground'>
-                                                    Still infeasible without power constraint — power is not the root
-                                                    cause.
-                                                </p>
-                                            )}
-                                        </div>
-
                                         {}
                                         <div>
                                             <p className='font-medium mb-1'>Service constraints</p>

@@ -1,17 +1,11 @@
-import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
+import { allServices } from '@/simulation/market/serviceDefinitions';
 import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import {
-    administrativeServiceResourceType,
-    constructionServiceResourceType,
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-} from '@/simulation/planet/services';
+import { constructionServiceResourceType } from '@/simulation/planet/services';
 import type { Model, SolveResult } from 'javascript-lp-solver';
 import solver from 'javascript-lp-solver';
+import { computePopulationServiceDemand } from './populationDemandHelper';
 
-export type SolverObjective = 'scale' | 'labor' | 'power';
+export type SolverObjective = 'scale' | 'labor';
 
 export interface SolverConfig {
     population: number;
@@ -31,8 +25,6 @@ export interface ServiceDiagnostic {
 }
 
 export interface SolverDiagnostic {
-    feasibleWithoutPower: boolean;
-
     per_service: ServiceDiagnostic[];
 
     unproducableResources: string[];
@@ -59,15 +51,6 @@ export interface SolverResult {
     diagnostic?: SolverDiagnostic;
 }
 
-const DEMANDED_SERVICES = [
-    groceryServiceResourceType,
-    healthcareServiceResourceType,
-    administrativeServiceResourceType,
-    logisticsServiceResourceType,
-    retailServiceResourceType,
-    constructionServiceResourceType,
-];
-
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
 
@@ -75,7 +58,7 @@ function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
-const POWER_CONSTRAINT_KEY = 'power__balance';
+const CONSTRUCTION_DEMAND_COEFF = 0.5;
 
 function buildLPModel(config: SolverConfig): Model {
     const { population, allowedFacilities, objective } = config;
@@ -83,12 +66,16 @@ function buildLPModel(config: SolverConfig): Model {
     const constraints: Model['constraints'] = {};
     const variables: Model['variables'] = {};
 
-    constraints[POWER_CONSTRAINT_KEY] = { max: 0 };
+    const populationDemand = computePopulationServiceDemand(population);
 
     for (const entry of ALL_FACILITY_ENTRIES) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
 
         if (!allowedFacilities.has(f.name)) {
+            continue;
+        }
+
+        if (f.name === 'Coal Power Plant') {
             continue;
         }
 
@@ -99,13 +86,10 @@ function buildLPModel(config: SolverConfig): Model {
                 (f.workerRequirement.primary ?? 0) +
                 (f.workerRequirement.secondary ?? 0) +
                 (f.workerRequirement.tertiary ?? 0);
-        } else if (objective === 'power') {
-            cost = Math.max(0, f.powerConsumptionPerTick);
         }
 
         const varCoeffs: Record<string, number> = {
             obj: cost,
-            [POWER_CONSTRAINT_KEY]: f.powerConsumptionPerTick,
         };
 
         for (const prod of f.produces) {
@@ -135,12 +119,37 @@ function buildLPModel(config: SolverConfig): Model {
         variables[f.name] = varCoeffs;
     }
 
-    for (const svc of DEMANDED_SERVICES) {
-        const key = resourceConstraintKey(svc.name);
+    for (const service of allServices) {
+        const key = resourceConstraintKey(service.resource.name);
         if (constraints[key]) {
-            const def = getServiceDefinitionByResourceName(svc.name);
-            const perPerson = def?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
-            (constraints[key] as { min?: number; max?: number }).min = population * perPerson;
+            const demand = populationDemand[service.resource.name] ?? 0;
+            if (demand > 0) {
+                (constraints[key] as { min?: number; max?: number }).min = demand;
+            }
+        }
+    }
+
+    if (constraints[resourceConstraintKey(constructionServiceResourceType.name)]) {
+        let constructionDemand = 0;
+        for (const entry of ALL_FACILITY_ENTRIES) {
+            const f = entry.factory(TOOL_PLANET, TOOL_ID);
+            if (!allowedFacilities.has(f.name)) {
+                continue;
+            }
+            if (f.name === 'Coal Power Plant') {
+                continue;
+            }
+            if (f.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) {
+                continue;
+            }
+            if (f.name in variables) {
+                constructionDemand += CONSTRUCTION_DEMAND_COEFF;
+            }
+        }
+        if (constructionDemand > 0) {
+            const key = resourceConstraintKey(constructionServiceResourceType.name);
+            const existing = (constraints[key] as { min?: number }).min ?? 0;
+            (constraints[key] as { min?: number }).min = existing + constructionDemand;
         }
     }
 
@@ -155,14 +164,6 @@ function buildLPModel(config: SolverConfig): Model {
 }
 
 function diagnoseInfeasibility(config: SolverConfig): SolverDiagnostic {
-    const modelNoPower = buildLPModel(config);
-    delete (modelNoPower.constraints as Record<string, unknown>)[POWER_CONSTRAINT_KEY];
-    for (const varCoeffs of Object.values(modelNoPower.variables)) {
-        delete (varCoeffs as Record<string, unknown>)[POWER_CONSTRAINT_KEY];
-    }
-    const rawNoPower = solver.Solve(modelNoPower) as SolveResult;
-    const feasibleWithoutPower = rawNoPower.feasible;
-
     const fullModel = buildLPModel(config);
     const registeredConstraints = Object.keys(fullModel.constraints);
 
@@ -179,41 +180,50 @@ function diagnoseInfeasibility(config: SolverConfig): SolverDiagnostic {
         .filter(([, max]) => max <= 0)
         .map(([key]) => key.replace(/^res__/, ''));
 
-    const per_service: ServiceDiagnostic[] = DEMANDED_SERVICES.map((svc) => {
-        const key = resourceConstraintKey(svc.name);
+    const per_service = allServices.map((svc) => {
+        const key = resourceConstraintKey(svc.resource.name);
         const constraintRegistered = key in fullModel.constraints;
 
         const hasProducer = ALL_FACILITY_ENTRIES.some((entry) => {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
-            return config.allowedFacilities.has(f.name) && f.produces.some((p) => p.resource.name === svc.name);
+            return (
+                config.allowedFacilities.has(f.name) && f.produces.some((p) => p.resource.name === svc.resource.name)
+            );
         });
 
-        const isolatedModel = buildLPModel(config);
-        delete (isolatedModel.constraints as Record<string, unknown>)[POWER_CONSTRAINT_KEY];
-        for (const varCoeffs of Object.values(isolatedModel.variables)) {
-            delete (varCoeffs as Record<string, unknown>)[POWER_CONSTRAINT_KEY];
-        }
-
-        for (const otherSvc of DEMANDED_SERVICES) {
-            if (otherSvc.name === svc.name) {
-                continue;
-            }
-            const otherKey = resourceConstraintKey(otherSvc.name);
-            if (otherKey in isolatedModel.constraints) {
-                (isolatedModel.constraints[otherKey] as { min?: number }).min = 0;
-            }
-        }
+        const isolatedModel = buildLPConfigForService(config, svc.resource.name);
         const rawIsolated = solver.Solve(isolatedModel) as SolveResult;
 
         return {
-            serviceName: svc.name,
+            serviceName: svc.resource.name,
             hasProducer,
             constraintRegistered,
             feasibleInIsolation: rawIsolated.feasible,
         };
     });
 
-    return { feasibleWithoutPower, per_service, unproducableResources, registeredConstraints };
+    return { per_service, unproducableResources, registeredConstraints };
+}
+
+function buildLPConfigForService(config: SolverConfig, serviceName: string): Model {
+    const model = buildLPModel(config);
+
+    for (const otherService of allServices) {
+        if (otherService.resource.name === serviceName) {
+            continue;
+        }
+        const otherKey = resourceConstraintKey(otherService.resource.name);
+        if (otherKey in model.constraints) {
+            (model.constraints[otherKey] as { min?: number }).min = 0;
+        }
+    }
+
+    const constructKey = resourceConstraintKey(constructionServiceResourceType.name);
+    if (constructKey in model.constraints && constructionServiceResourceType.name !== serviceName) {
+        (model.constraints[constructKey] as { min?: number }).min = 0;
+    }
+
+    return model;
 }
 
 export function solveSupplyChain(config: SolverConfig): SolverResult {
@@ -238,22 +248,21 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
         }
     }
 
+    const populationDemand = computePopulationServiceDemand(config.population);
     const serviceCoverage: Record<string, number> = {};
-    for (const svc of DEMANDED_SERVICES) {
+    for (const service of allServices) {
         let supplyPerTick = 0;
         for (const entry of ALL_FACILITY_ENTRIES) {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             const scale = scales[f.name] ?? 0;
             for (const prod of f.produces) {
-                if (prod.resource.name === svc.name) {
+                if (prod.resource.name === service.resource.name) {
                     supplyPerTick += prod.quantity * scale;
                 }
             }
         }
-        const def = getServiceDefinitionByResourceName(svc.name);
-        const perPerson = def?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0;
-        const demandForSvc = config.population * perPerson;
-        serviceCoverage[svc.name] = demandForSvc > 0 ? supplyPerTick / demandForSvc : 1;
+        const demandForSvc = populationDemand[service.resource.name] ?? 0;
+        serviceCoverage[service.resource.name] = demandForSvc > 0 ? supplyPerTick / demandForSvc : 1;
     }
 
     const rawWorkerTotals = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
