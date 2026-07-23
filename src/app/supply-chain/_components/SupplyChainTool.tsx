@@ -17,6 +17,7 @@ import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/
 import { solveSupplyChain, type SolverObjective, type SolverResult } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
+import PricingLab from './pricingLab/PricingLab';
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;
@@ -747,6 +748,7 @@ export default function SupplyChainTool() {
                     <TabsTrigger value='graph'>Dependency Graph</TabsTrigger>
                     <TabsTrigger value='solver'>Auto-Solver</TabsTrigger>
                     <TabsTrigger value='live'>Live State</TabsTrigger>
+                    <TabsTrigger value='pricing'>Pricing Lab</TabsTrigger>
                 </TabsList>
 
                 {}
@@ -980,6 +982,9 @@ export default function SupplyChainTool() {
                 {}
                 <TabsContent value='live' className='mt-4'>
                     <LiveStateTab onApplyScales={(newScales) => setScales(newScales)} />
+                </TabsContent>
+                <TabsContent value='pricing' className='mt-4'>
+                    <PricingLab />
                 </TabsContent>
             </Tabs>
         </div>

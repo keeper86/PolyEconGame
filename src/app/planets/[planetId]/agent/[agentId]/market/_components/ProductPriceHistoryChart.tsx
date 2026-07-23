@@ -260,6 +260,16 @@ function SimplePriceAreaChart({
                         if (filtered.length === 0) {
                             return null;
                         }
+                        const seriesOrder = ['maxPrice', 'avgPrice', 'minPrice', 'priceFloor'];
+                        const seriesColor: Record<string, string> = {
+                            maxPrice: '#38bdf8',
+                            minPrice: '#38bdf8',
+                            avgPrice: '#f59e0b',
+                            priceFloor: '#ef4444',
+                        };
+                        filtered.sort(
+                            (a, b) => seriesOrder.indexOf(a.name as string) - seriesOrder.indexOf(b.name as string),
+                        );
                         return (
                             <div
                                 style={{
@@ -281,7 +291,7 @@ function SimplePriceAreaChart({
                                         planetId,
                                     );
                                     return (
-                                        <div key={p.name} style={{ color: '#e2e8f0' }}>
+                                        <div key={p.name} style={{ color: seriesColor[p.name as string] ?? '#e2e8f0' }}>
                                             {name}: {val}
                                         </div>
                                     );

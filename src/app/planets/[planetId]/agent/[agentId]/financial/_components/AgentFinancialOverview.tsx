@@ -2,7 +2,7 @@
 
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { Coins, ShoppingCart, Scale, TrendingDown, TrendingUp, Users } from 'lucide-react';
+import { Coins, Package, ShoppingCart, Scale, TrendingDown, TrendingUp, Users, Trash } from 'lucide-react';
 import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
@@ -22,6 +22,7 @@ type Props = {
         facilitiesCollateral: number;
     };
     monthAcc: MonthAccumulator;
+    lastMonthAcc: MonthAccumulator;
     planetId: string;
     agentId: string;
 };
@@ -72,6 +73,7 @@ export default function AgentFinancialOverview({
     loans,
     loanConditions,
     monthAcc,
+    lastMonthAcc,
     planetId,
 }: Props): React.ReactElement {
     const netPosition = deposits - loans;
@@ -80,6 +82,14 @@ export default function AgentFinancialOverview({
     const currentMonthlyWages = monthAcc.wages;
     const currentMonthlyPurchases = monthAcc.purchases;
     const currentMonthlyClaimPayments = monthAcc.claimPayments;
+    const currentMonthlyDepreciation = Object.values(monthAcc.depreciatedServices).reduce(
+        (sum, entry) => sum + entry.value,
+        0,
+    );
+    const lastMonthlyDepreciation = Object.values(lastMonthAcc.depreciatedServices).reduce(
+        (sum, entry) => sum + entry.value,
+        0,
+    );
     const currentNetCashFlow =
         currentMonthlyRevenue - currentMonthlyWages - currentMonthlyPurchases - currentMonthlyClaimPayments;
 
@@ -165,6 +175,19 @@ export default function AgentFinancialOverview({
                         }
                         valueClassName={cashFlowColor(currentNetCashFlow)}
                     />
+                    <Stat
+                        label='Depreciation*'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyDepreciation}
+                                subValue={lastMonthlyDepreciation}
+                                planetId={planetId}
+                                subValueClassName={mutedCashFlowColor(loanConditions.monthlyNetCashFlow)}
+                            />
+                        }
+                        icon={<Trash className='h-3 w-3' />}
+                        valueClassName={currentMonthlyDepreciation === 0 ? 'text-muted-foreground' : 'text-red-500'}
+                    />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
@@ -208,6 +231,12 @@ export default function AgentFinancialOverview({
                         label='Ships value'
                         value={formatNumberWithUnit(loanConditions.shipsCollateral, 'currency', planetId)}
                         icon={<GoRocket className='h-3 w-3' />}
+                        valueClassName={'text-muted-foreground'}
+                    />
+                    <Stat
+                        label='Storage value'
+                        value={formatNumberWithUnit(loanConditions.storageCollateral, 'currency', planetId)}
+                        icon={<Package className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                 </div>
