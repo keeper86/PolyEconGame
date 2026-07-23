@@ -21,9 +21,11 @@ const LOGOS_BY_CATEGORY = Object.fromEntries(
 export function CompanyLogoChooser({
     selectedLogo,
     onSelect,
+    showPrompt,
 }: {
     selectedLogo: string;
     onSelect: (key: string) => void;
+    showPrompt?: boolean;
 }) {
     const [open, setOpen] = useState(false);
 
@@ -31,8 +33,19 @@ export function CompanyLogoChooser({
         <div className='grid gap-2'>
             <Dialog open={open} onOpenChange={setOpen}>
                 <DialogTrigger asChild>
-                    <button type='button' className=''>
-                        <CompanyLogo logoKey={selectedLogo} size={36} />
+                    <button
+                        type='button'
+                        className={`relative rounded-lg transition-all ${showPrompt ? 'ring-2 ring-destructive animate-pulse' : ''}`}
+                    >
+                        <CompanyLogo logoKey={selectedLogo} size={36} className='hover:scale-115' />
+                        {showPrompt && (
+                            <span className='absolute -top-1.5 -right-1.5 flex h-4 w-4'>
+                                <span className='animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75' />
+                                <span className='relative inline-flex rounded-full h-4 w-4 bg-destructive text-destructive-foreground text-[10px] font-bold items-center justify-center'>
+                                    !
+                                </span>
+                            </span>
+                        )}
                     </button>
                 </DialogTrigger>
                 <DialogContent className='max-w-2xl max-h-[80vh] flex flex-col'>
@@ -67,7 +80,7 @@ export function CompanyLogoChooser({
                                                     isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
                                                 }`}
                                             >
-                                                <CompanyLogo logoKey={key} size={16} />
+                                                <CompanyLogo logoKey={key} size={42} className='hover:scale-115' />
                                             </button>
                                         );
                                     })}

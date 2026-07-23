@@ -7,7 +7,7 @@ import type { AutomatedPricingConfig } from '../planet/planet';
 export type InboundMessage =
     | { type: 'ping' }
     | { type: 'createShip'; from: string; to: string; cargo: { metal: number; energy: number }; eta?: number }
-    | { type: 'createAgent'; requestId: string; agentId: string; agentName: string; planetId: string; logo?: string }
+    | { type: 'createAgent'; requestId: string; agentId: string; agentName: string; planetId: string; logo: string }
     | { type: 'requestLoan'; requestId: string; agentId: string; planetId: string; amount: number }
     | {
           type: 'repayLoan';
@@ -452,7 +452,7 @@ export type PendingAction =
           agentId: string;
           agentName: string;
           planetId: string;
-          logo?: string;
+          logo: string;
       }
     | {
           type: 'requestLoan';

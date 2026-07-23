@@ -5,13 +5,11 @@ export function CompanyLogo({ logoKey, size = 32, className }: { logoKey: string
     const src = getAssetPath(logoKey);
 
     return (
-        <Image
-            src={src}
-            alt=''
-            width={size}
-            height={size}
-            className={`object-contain hover:scale-110 ${className ?? ''}`}
-            unoptimized
-        />
+        <span
+            className={`rounded overflow-hidden shrink-0 inline-block relative ${className ?? ''}`}
+            style={{ width: size, height: size }}
+        >
+            <Image src={src} alt='' fill sizes={`${size}px`} className='object-contain' unoptimized />
+        </span>
     );
 }

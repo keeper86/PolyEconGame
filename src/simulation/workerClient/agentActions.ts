@@ -10,7 +10,7 @@ export function handleCreateAgent(
 ): void {
     const { requestId, agentId, agentName, planetId, logo } = action;
 
-    const newAgent: Agent = makeAgent(agentId, planetId, agentName, { logo: logo ?? 'ai_company' });
+    const newAgent: Agent = makeAgent(agentId, planetId, agentName, { logo });
     newAgent.automated = false;
     newAgent.automateWorkerAllocation = false;
     newAgent.foundedTick = state.tick;

@@ -43,7 +43,7 @@ export function workerCreateAgent(opts: {
     agentId: string;
     agentName: string;
     planetId: string;
-    logo?: string;
+    logo: string;
     timeoutMs?: number;
 }): Promise<{ result: string; processedAtTick: number }> {
     const { agentId, agentName, planetId, logo, timeoutMs } = opts;

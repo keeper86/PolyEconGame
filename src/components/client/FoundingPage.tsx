@@ -65,6 +65,7 @@ export function FoundingPage() {
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
     const [enableTour, setEnableTour] = useState(false);
     const [agentNameError, setAgentNameError] = useState<string | null>(null);
+    const [showLogoPrompt, setShowLogoPrompt] = useState(false);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
@@ -136,6 +137,11 @@ export function FoundingPage() {
         if (!planetId) {
             return;
         }
+        if (!logo || logo === 'unknown') {
+            setShowLogoPrompt(true);
+            toast.error('Please select a company logo');
+            return;
+        }
         setTourActive(enableTour);
         createAgentMutation.mutate({ agentName: agentName.trim(), planetId, logo });
     };
@@ -171,7 +177,14 @@ export function FoundingPage() {
                         aria-invalid={agentNameError ? 'true' : undefined}
                         className='flex-grow'
                     />
-                    <CompanyLogoChooser selectedLogo={logo} onSelect={setLogo} />
+                    <CompanyLogoChooser
+                        selectedLogo={logo}
+                        onSelect={(key) => {
+                            setLogo(key);
+                            setShowLogoPrompt(false);
+                        }}
+                        showPrompt={showLogoPrompt}
+                    />
                 </div>
 
                 <div className='grid gap-2'>

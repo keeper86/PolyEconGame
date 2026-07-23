@@ -239,7 +239,7 @@ export const createAgent = () => {
             z.object({
                 agentName: z.string().min(1).max(64),
                 planetId: z.string().min(1),
-                logo: z.string().optional(),
+                logo: z.string().min(1),
             }),
         )
         .output(z.object({ tick: z.number(), agentId: z.string(), planetId: z.string() }))

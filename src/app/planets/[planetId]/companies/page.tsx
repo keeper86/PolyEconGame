@@ -3,18 +3,17 @@
 import { Page } from '@/components/client/Page';
 import { useParams } from 'next/navigation';
 
+import { CompanyLogo } from '@/components/client/CompanyLogo';
 import { DataTableColumnHeader } from '@/components/dataTableColumnHeader';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { getAssetPath } from '@/lib/assetManifest';
 import type { AgentListSummary } from '@/simulation/snapshotRepository';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 
 type AgentRow = AgentListSummary & { normalizedBalance: number };
 
@@ -123,14 +122,14 @@ export default function PlanetAgentsLeaderboardPage() {
                         <TableRow key={agent.agentId}>
                             <TableCell className='text-muted-foreground tabular-nums'>{i + 1}</TableCell>
                             <TableCell>
-                                <Image
-                                    src={getAssetPath(agent.logo)}
-                                    alt=''
-                                    width={32}
-                                    height={32}
-                                    className='rounded-sm object-contain'
-                                    unoptimized
-                                />
+                                <Link
+                                    href={
+                                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agent.agentId)}` as never
+                                    }
+                                    className='font-medium hover:scale-110 transition-all'
+                                >
+                                    <CompanyLogo logoKey={agent.logo} size={28} />
+                                </Link>
                             </TableCell>
                             <TableCell>
                                 <Link
