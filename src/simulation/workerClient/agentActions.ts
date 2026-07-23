@@ -8,9 +8,9 @@ export function handleCreateAgent(
     action: Extract<PendingAction, { type: 'createAgent' }>,
     safePostMessage: (msg: OutboundMessage) => void,
 ): void {
-    const { requestId, agentId, agentName, planetId } = action;
+    const { requestId, agentId, agentName, planetId, logo } = action;
 
-    const newAgent: Agent = makeAgent(agentId, planetId, agentName);
+    const newAgent: Agent = makeAgent(agentId, planetId, agentName, { logo: logo ?? 'ai_company' });
     newAgent.automated = false;
     newAgent.automateWorkerAllocation = false;
     newAgent.foundedTick = state.tick;

@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { getAssetPath } from '@/lib/assetManifest';
 import type { AgentListSummary } from '@/simulation/snapshotRepository';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { Label } from '@/components/ui/label';
@@ -99,6 +101,7 @@ export default function PlanetAgentsLeaderboardPage() {
                 <TableHeader>
                     <TableRow>
                         <TableHead className='w-12'>#</TableHead>
+                        <TableHead className='w-12' />
                         <TableHead>Company</TableHead>
                         <TableHead>Home Planet</TableHead>
                         <TableHead>
@@ -119,6 +122,16 @@ export default function PlanetAgentsLeaderboardPage() {
                     {sorted.map((agent, i) => (
                         <TableRow key={agent.agentId}>
                             <TableCell className='text-muted-foreground tabular-nums'>{i + 1}</TableCell>
+                            <TableCell>
+                                <Image
+                                    src={getAssetPath(agent.logo)}
+                                    alt=''
+                                    width={32}
+                                    height={32}
+                                    className='rounded-sm object-contain'
+                                    unoptimized
+                                />
+                            </TableCell>
                             <TableCell>
                                 <Link
                                     href={

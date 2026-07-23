@@ -245,6 +245,7 @@ export const getAgentListSummaries = () =>
                     z.object({
                         agentId: z.string(),
                         name: z.string(),
+                        logo: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
                         normalizedBalance: z.number(),

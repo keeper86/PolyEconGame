@@ -368,6 +368,7 @@ export function makeAgent(id = 'agent-1', planetId = 'p', name = 'Agent 1', over
     return {
         id,
         name,
+        logo: 'ai_company',
         foundedTick: 0,
         starterLoanTaken: false,
         associatedPlanetId: planetId,

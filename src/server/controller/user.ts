@@ -239,6 +239,7 @@ export const createAgent = () => {
             z.object({
                 agentName: z.string().min(1).max(64),
                 planetId: z.string().min(1),
+                logo: z.string().optional(),
             }),
         )
         .output(z.object({ tick: z.number(), agentId: z.string(), planetId: z.string() }))
@@ -279,6 +280,7 @@ export const createAgent = () => {
                 agentId,
                 agentName,
                 planetId: input.planetId,
+                logo: input.logo,
             });
 
             await db('user_data').where({ user_id: userId }).update({ agent_id: createdId, planet_id: input.planetId });

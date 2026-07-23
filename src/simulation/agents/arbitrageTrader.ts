@@ -21,6 +21,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
 
                 automated: true,
                 automateWorkerAllocation: true,
+                logo: 'ai_company',
                 foundedTick: 0,
                 starterLoanTaken: true,
                 associatedPlanetId: homePlanet.id,

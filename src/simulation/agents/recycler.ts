@@ -42,6 +42,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
         name: `Recycler (${planetName})`,
         automated: true,
         automateWorkerAllocation: false,
+        logo: 'ai_company',
         foundedTick: 0,
         starterLoanTaken: true,
         associatedPlanetId: planetId,

@@ -19,6 +19,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useTour } from '../tour/TourContext';
+import { CompanyLogoChooser } from './CompanyLogoChooser';
 import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
@@ -59,6 +60,7 @@ export function FoundingPage() {
     const queryClient = useQueryClient();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
+    const [logo, setLogo] = useState('ai_company');
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
     const [enableTour, setEnableTour] = useState(false);
@@ -135,7 +137,7 @@ export function FoundingPage() {
             return;
         }
         setTourActive(enableTour);
-        createAgentMutation.mutate({ agentName: agentName.trim(), planetId });
+        createAgentMutation.mutate({ agentName: agentName.trim(), planetId, logo });
     };
 
     if (foundedAtTick !== null) {
@@ -318,6 +320,8 @@ export function FoundingPage() {
                         </Carousel>
                     )}
                 </div>
+
+                <CompanyLogoChooser selectedLogo={logo} onSelect={setLogo} />
 
                 <div className='flex items-center gap-2'>
                     <Checkbox
