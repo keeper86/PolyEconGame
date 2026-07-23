@@ -44,6 +44,7 @@ import {
 
 type BuyStatusKind =
     | 'filled'
+    | 'partial'
     | 'partial_no_supply'
     | 'partial_low_price'
     | 'not_filled_low_price'
@@ -107,8 +108,8 @@ function buyStatus(
             };
         }
         return {
-            kind: 'partial_no_supply',
-            text: 'Partial. No supply.',
+            kind: 'partial',
+            text: 'Partially filled.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }

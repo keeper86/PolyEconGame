@@ -145,7 +145,6 @@ export default function PlanetsPage() {
                                                                     claim.name,
                                                                 );
                                                                 if (!resource) {
-                                                                    console.warn(`Resource not found: ${claim.name}`);
                                                                     return null;
                                                                 }
                                                                 return (
