@@ -344,6 +344,7 @@ export const getAgentOverview = () =>
                     .object({
                         agentId: z.string(),
                         name: z.string(),
+                        logo: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
                         shipCount: z.number(),
@@ -382,6 +383,7 @@ export const getAgentOverview = () =>
                 overview: {
                     agentId: agent.id,
                     name: agent.name,
+                    logo: agent.logo,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
                     balance: agent.assets
                         ? Object.values(agent.assets).reduce(

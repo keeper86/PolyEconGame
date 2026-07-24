@@ -104,16 +104,7 @@ export default function PlanetAgentsLeaderboardPage() {
                         <TableHead>Company</TableHead>
                         <TableHead>Home Planet</TableHead>
                         <TableHead>
-                            <DataTableColumnHeader title='Net Balance' {...col('normalizedBalance')} />
-                        </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Workers' {...col('totalWorkers')} />
-                        </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Facilities' {...col('facilityCount')} />
-                        </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Ships' {...col('shipCount')} />
+                            <DataTableColumnHeader title='Net Worth' {...col('normalizedBalance')} />
                         </TableHead>
                     </TableRow>
                 </TableHeader>
@@ -145,11 +136,6 @@ export default function PlanetAgentsLeaderboardPage() {
                             <TableCell className='tabular-nums'>
                                 {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
                             </TableCell>
-                            <TableCell className='tabular-nums'>
-                                {formatNumberWithUnit(agent.totalWorkers, 'persons')}
-                            </TableCell>
-                            <TableCell className='tabular-nums'>{agent.facilityCount}</TableCell>
-                            <TableCell className='tabular-nums'>{agent.shipCount}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

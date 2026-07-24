@@ -23,7 +23,7 @@ import { Separator } from '../ui/separator';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const mainLogo = (
-        <Image src={logo} alt='Game Logo' width={120} height={120} className='rounded-lg border border-black' />
+        <Image src={logo} alt='Game Logo' width={140} height={140} className='rounded-lg border border-black' />
     );
     return (
         <Sidebar variant='inset' {...props}>

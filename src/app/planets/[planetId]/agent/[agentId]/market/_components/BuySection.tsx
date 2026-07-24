@@ -96,14 +96,14 @@ function buyStatus(
         if (noSupply) {
             return {
                 kind: 'partial_no_supply',
-                text: 'Partial. No supply.',
+                text: 'Partial. Insufficient supply',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         if (lowPrice) {
             return {
                 kind: 'partial_low_price',
-                text: 'Partial. Low price.',
+                text: 'Partial. Price too low',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
@@ -116,14 +116,14 @@ function buyStatus(
     if (noSupply) {
         return {
             kind: 'not_filled_no_supply',
-            text: 'Not filled. No supply.',
+            text: 'Not filled. Insufficient supply',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     if (lowPrice) {
         return {
             kind: 'not_filled_low_price',
-            text: 'Not filled. Low price.',
+            text: 'Not filled. Price too low',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
