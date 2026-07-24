@@ -81,6 +81,58 @@ export function totalConsumptionPerTick(
     );
 }
 
+/** Result of clamping an area to a visible domain */
+export type ClampedArea = {
+    x1: number;
+    x2: number;
+    y: number;
+    clipped: boolean;
+};
+
+/**
+ * Clamp a rectangular area to a visible x-domain.
+ * - Fully outside → thin indicator band at nearest boundary edge.
+ * - Partially outside → clamped edges.
+ * - Ensures a minimum visual width via `minWidth`.
+ */
+export function clampArea(
+    area: { x1: number; x2: number; y: number } | undefined,
+    domain: [number, number] | undefined,
+    minWidth?: number,
+    indicatorWidth?: number,
+): ClampedArea | undefined {
+    if (!area || !domain) {
+        return undefined;
+    }
+    const [xMin, xMax] = domain;
+    const resolvedMinW = minWidth ?? (xMax - xMin) * 0.0025;
+    const resolvedIndicatorW = indicatorWidth ?? (xMax - xMin) * 0.005;
+
+    // Ensure minimum visual width
+    const width = area.x2 - area.x1;
+    if (width < resolvedMinW) {
+        const mid = (area.x1 + area.x2) / 2;
+        const half = resolvedMinW / 2;
+        area = { x1: Math.max(0, mid - half), x2: mid + half, y: area.y };
+    }
+
+    // Fully outside left
+    if (area.x2 <= xMin) {
+        return { x1: xMin, x2: xMin + resolvedIndicatorW, y: area.y, clipped: true };
+    }
+    // Fully outside right
+    if (area.x1 >= xMax) {
+        return { x1: xMax - resolvedIndicatorW, x2: xMax, y: area.y, clipped: true };
+    }
+    // Partially overlapping
+    return {
+        x1: Math.max(xMin, area.x1),
+        x2: Math.min(xMax, area.x2),
+        y: area.y,
+        clipped: area.x1 < xMin || area.x2 > xMax,
+    };
+}
+
 export function getResourceByName(resourceName: string) {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
         return getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));

@@ -19,7 +19,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { getResourceByName } from './marketHelpers';
+import { clampArea, getResourceByName } from './marketHelpers';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -512,47 +512,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
     const totalSold = market?.totalSold ?? 0;
 
-    // Enforce minimum width for own-position highlights (in data units)
     const minOwnAreaWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.0025 : 0;
     const indicatorBandWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.005 : 0;
 
-    const clampArea = (
-        area: { x1: number; x2: number; y: number } | undefined,
-        domain: [number, number] | undefined,
-        indicatorWidth: number,
-    ): { x1: number; x2: number; y: number; clipped: boolean } | undefined => {
-        if (!area || !domain) {
-            return undefined;
-        }
-        const [xMin, xMax] = domain;
-
-        // Ensure minimum visual width
-        const width = area.x2 - area.x1;
-        if (width < minOwnAreaWidth) {
-            const mid = (area.x1 + area.x2) / 2;
-            const halfWidth = minOwnAreaWidth / 2;
-            area = { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: area.y };
-        }
-
-        // Fully outside left — indicator at left boundary
-        if (area.x2 <= xMin) {
-            return { x1: xMin, x2: xMin + indicatorWidth, y: area.y, clipped: true };
-        }
-        // Fully outside right — indicator at right boundary
-        if (area.x1 >= xMax) {
-            return { x1: xMax - indicatorWidth, x2: xMax, y: area.y, clipped: true };
-        }
-        // Partially outside — clamp to domain
-        return {
-            x1: Math.max(xMin, area.x1),
-            x2: Math.min(xMax, area.x2),
-            y: area.y,
-            clipped: area.x1 < xMin || area.x2 > xMax,
-        };
-    };
-
-    const supplyArea = clampArea(ownSupplyArea, xDomain, indicatorBandWidth);
-    const demandArea = clampArea(ownDemandArea, xDomain, indicatorBandWidth);
+    const supplyArea = clampArea(ownSupplyArea, xDomain, minOwnAreaWidth, indicatorBandWidth);
+    const demandArea = clampArea(ownDemandArea, xDomain, minOwnAreaWidth, indicatorBandWidth);
 
     const hasSupply = chartData.some((d) => d.Supply !== null);
     const hasDemand = chartData.some((d) => d.Demand !== null);
