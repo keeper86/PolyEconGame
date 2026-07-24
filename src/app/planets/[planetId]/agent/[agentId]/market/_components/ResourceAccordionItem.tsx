@@ -731,22 +731,24 @@ export default function ResourceAccordionItem({
                     )}
 
                     <Separator />
-                    <ProductPriceHistoryChart
-                        planetId={planetId}
-                        productName={resourceName}
-                        live={
-                            marketData?.market
-                                ? {
-                                      tick: marketData.tick,
-                                      price: marketData.market.clearingPrice,
-                                      avgPrice: marketData.market.currentMonthStats?.avgPrice,
-                                      minPrice: marketData.market.currentMonthStats?.minPrice,
-                                      maxPrice: marketData.market.currentMonthStats?.maxPrice,
-                                      priceFloor: marketData.market.currentMonthStats?.priceFloor,
-                                  }
-                                : undefined
-                        }
-                    />
+                    <div data-tour='market-price-chart'>
+                        <ProductPriceHistoryChart
+                            planetId={planetId}
+                            productName={resourceName}
+                            live={
+                                marketData?.market
+                                    ? {
+                                          tick: marketData.tick,
+                                          price: marketData.market.clearingPrice,
+                                          avgPrice: marketData.market.currentMonthStats?.avgPrice,
+                                          minPrice: marketData.market.currentMonthStats?.minPrice,
+                                          maxPrice: marketData.market.currentMonthStats?.maxPrice,
+                                          priceFloor: marketData.market.currentMonthStats?.priceFloor,
+                                      }
+                                    : undefined
+                            }
+                        />
+                    </div>
 
                     <Separator />
 

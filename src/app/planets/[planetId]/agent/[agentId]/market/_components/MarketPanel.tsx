@@ -341,7 +341,10 @@ export default function MarketPanel({
 
     return (
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
-            <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
+            <TabsList
+                className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'
+                data-tour='market-tabs'
+            >
                 {resourceGroups.map(({ level, label, resources: levelResources }) => (
                     <TabsTrigger
                         key={level}
@@ -408,6 +411,7 @@ export default function MarketPanel({
                                             value={openItem}
                                             onValueChange={handleOpenChange}
                                             className='w-full'
+                                            data-tour='market-accordion'
                                         >
                                             {(sortConfig.column === null
                                                 ? levelResources

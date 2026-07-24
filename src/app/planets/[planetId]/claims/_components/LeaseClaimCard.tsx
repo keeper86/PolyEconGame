@@ -44,7 +44,7 @@ export function LeaseClaimCard({
     );
 
     return (
-        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col'>
+        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col' data-tour='claims-lease'>
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

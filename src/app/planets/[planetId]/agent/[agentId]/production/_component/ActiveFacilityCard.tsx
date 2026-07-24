@@ -276,7 +276,7 @@ export function ActiveFacilityCard({
                 : null;
 
     return (
-        <FacilityCardShell
+        <FacilityCardShell data-tour='production-active'
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
             headerContent={

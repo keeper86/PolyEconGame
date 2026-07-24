@@ -19,9 +19,6 @@ const Joyride = dynamic(() => import('react-joyride').then((mod) => mod.Joyride)
 }) as React.ComponentType<Props>;
 
 function pathToPageRoute(pathname: string): PageRoute | null {
-    if (pathname.includes('/central-bank')) {
-        return 'central-bank';
-    }
     if (pathname.includes('/financial')) {
         return 'financial';
     }
@@ -96,15 +93,6 @@ export function TourJoyride() {
         }
     }, [currentPageRoute]);
 
-    // Get the current step's target selector (only the step we're about to show)
-    const currentStepTarget = useMemo<string | null>(() => {
-        const step = steps[currentStepIndex];
-        if (!step || !step.target || step.target === 'body' || typeof step.target !== 'string') {
-            return null;
-        }
-        return step.target;
-    }, [steps, currentStepIndex]);
-
     // ── MutationObserver for target readiness ─────────────────────────
     // Waits only for the current step's target element to be present in the DOM
     // before allowing Joyride to render. This prevents the overlay from blocking
@@ -116,14 +104,18 @@ export function TourJoyride() {
             return;
         }
 
-        // Body-target or no-target steps (e.g. navigation steps) have no real targets to wait for
-        if (!currentStepTarget) {
+        const step = steps[currentStepIndex];
+        const target = step?.target;
+        const targetSelector = target && target !== 'body' && typeof target === 'string' ? target : null;
+
+        // Body-target or no-target steps have no real targets to wait for
+        if (!targetSelector) {
             setTargetsReady(true);
             return;
         }
 
         // Quick check — maybe the target is already in the DOM
-        if (document.querySelector(currentStepTarget)) {
+        if (document.querySelector(targetSelector)) {
             setTargetsReady(true);
             return;
         }
@@ -133,7 +125,7 @@ export function TourJoyride() {
 
         // Observe DOM for the current step's target to appear
         const observer = new MutationObserver(() => {
-            if (document.querySelector(currentStepTarget)) {
+            if (document.querySelector(targetSelector)) {
                 observer.disconnect();
                 setTargetsReady(true);
             }
@@ -141,17 +133,23 @@ export function TourJoyride() {
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Safety timeout: show tour after 10s even if targets are missing
+        // Safety timeout: if the target still doesn't exist after 10s, skip this step.
+        // Don't force targetsReady=true with a missing target — that blocks the screen.
         const timeout = setTimeout(() => {
             observer.disconnect();
-            setTargetsReady(true);
+            if (!document.querySelector(targetSelector)) {
+                // Target unreachable — skip to next step
+                setCurrentStepIndex(currentStepIndex + 1);
+            } else {
+                setTargetsReady(true);
+            }
         }, 10_000);
 
         return () => {
             observer.disconnect();
             clearTimeout(timeout);
         };
-    }, [isTourActive, steps, currentStepTarget]);
+    }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex]);
 
     // ── Navigation guard: block accidental navigation away from the tour ────
     // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.

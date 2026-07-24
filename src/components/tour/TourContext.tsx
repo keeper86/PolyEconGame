@@ -41,7 +41,6 @@ type TourContextValue = {
 };
 
 const PAGE_ORDER: PageRoute[] = [
-    'central-bank',
     'financial',
     'workforce',
     'claims',
@@ -66,7 +65,12 @@ function loadStorage(): TourStorage {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
             const parsed = JSON.parse(raw) as TourStorage;
-            return { ...defaultStorage, ...parsed, completedActions: parsed.completedActions ?? [] };
+            const merged = { ...defaultStorage, ...parsed, completedActions: parsed.completedActions ?? [] };
+            // Clamp currentPageIndex to valid range (PAGE_ORDER may have changed)
+            if (merged.currentPageIndex >= PAGE_ORDER.length) {
+                merged.currentPageIndex = 0;
+            }
+            return merged;
         }
     } catch {
         console.warn('[tour] Failed to load tour storage from localStorage');
@@ -138,9 +142,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }, [persist]);
 
     const resetTour = useCallback(() => {
-        // Reset to financial page (index 1), preserving completedActions so
+        // Reset to financial page (index 0), preserving completedActions so
         // already-completed steps (e.g. starter loan) are skipped.
-        persist({ active: true, currentPageIndex: 1, completed: false });
+        persist({ active: true, currentPageIndex: 0, completed: false });
     }, [persist]);
 
     const markActionCompleted = useCallback((action: string) => {
@@ -170,9 +174,6 @@ export function TourProvider({ children }: { children: ReactNode }) {
 
             let path = '';
             switch (nextPage) {
-                case 'central-bank':
-                    path = `${basePath}/central-bank`;
-                    break;
                 case 'financial':
                     path = `${basePath}/agent/${encodeURIComponent(agentId)}/financial`;
                     break;

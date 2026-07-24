@@ -105,6 +105,7 @@ export function LevelBuildSection({
                 className='min-w-[300px] flex items-center justify-center cursor-pointer border-dashed text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors'
                 style={{ minHeight: '160px' }}
                 onClick={() => onModeChange({ type: 'selecting' })}
+                data-tour='production-build'
             >
                 <CardContent className='flex flex-col items-center gap-2 p-6'>
                     <PlusCircle className='h-8 w-8' />

@@ -63,7 +63,7 @@ export function FoundingPage() {
     const [logo, setLogo] = useState('unknown');
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
-    const [enableTour, setEnableTour] = useState(false);
+    const [enableTour, setEnableTour] = useState(true);
     const [agentNameError, setAgentNameError] = useState<string | null>(null);
     const [showLogoPrompt, setShowLogoPrompt] = useState(false);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);

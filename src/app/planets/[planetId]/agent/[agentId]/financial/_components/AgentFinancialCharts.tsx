@@ -69,7 +69,7 @@ export default function AgentFinancialCharts({
               : (decadeData?.history ?? []);
 
     return (
-        <div className='space-y-2'>
+        <div className='space-y-2' data-tour='financial-charts'>
             <GranularityHeader
                 title='Details'
                 icon={<Search className='h-4 w-4 text-muted-foreground' />}

@@ -28,7 +28,7 @@ export function TourTooltip({
         <Card
             {...(tooltipProps as React.HTMLAttributes<HTMLDivElement>)}
             role='alertdialog'
-            className='min-w-[320px] max-w-[420px] shadow-xl border bg-card text-card-foreground'
+            className='min-w-[320px] max-w-[420px] max-h-[80vh] overflow-y-auto shadow-xl border bg-card text-card-foreground'
         >
             {/* Close button */}
             <button

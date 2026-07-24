@@ -26,18 +26,21 @@ export default function AgentShipsPage() {
                             <TabsTrigger
                                 value='shipyards'
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                data-tour='ships-shipyards'
                             >
                                 Shipyards
                             </TabsTrigger>
                             <TabsTrigger
                                 value='my-ships'
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                data-tour='ships-my-ships'
                             >
                                 My Ships
                             </TabsTrigger>
                             <TabsTrigger
                                 value='marketplace'
                                 className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                data-tour='ships-marketplace'
                             >
                                 Marketplace
                             </TabsTrigger>

@@ -105,7 +105,11 @@ export default function ProductResolutionPanel({
     }
 
     if (allNames.size === 0) {
-        return <div className='text-xs text-muted-foreground'>No product resolution data available.</div>;
+        return (
+            <div className='space-y-3' data-tour='financial-product-resolution'>
+                <div className='text-xs text-muted-foreground'>No product resolution data available.</div>
+            </div>
+        );
     }
 
     const sortedNames = Array.from(allNames).sort();
@@ -139,7 +143,7 @@ export default function ProductResolutionPanel({
     depreciatedEntries.sort((a, b) => b[1].value - a[1].value);
 
     return (
-        <div className='space-y-3'>
+        <div className='space-y-3' data-tour='financial-product-resolution'>
             <div className='flex flex-wrap gap-4'>
                 <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
                     <p className='text-xs font-medium text-muted-foreground'>
