@@ -243,6 +243,7 @@ export function TourJoyride() {
 
     return (
         <Joyride
+            key={`joyride-${steps.length}-${currentStepIndex}`}
             steps={steps}
             run={isTourActive}
             continuous
