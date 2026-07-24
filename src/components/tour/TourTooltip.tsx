@@ -23,6 +23,7 @@ export function TourTooltip({
     skipProps: _skipProps,
 }: TooltipRenderProps) {
     const { title, content } = step;
+    const isBlocking = (step.data as Record<string, unknown> | undefined)?.blocking === true;
 
     return (
         <Card
@@ -65,7 +66,7 @@ export function TourTooltip({
                         </Button>
                     )}
 
-                    {continuous && (
+                    {continuous && !isBlocking && (
                         <Button
                             {...primaryProps}
                             data-action='primary'

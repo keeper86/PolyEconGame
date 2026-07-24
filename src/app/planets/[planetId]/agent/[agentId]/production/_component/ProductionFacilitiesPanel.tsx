@@ -85,7 +85,10 @@ export default function ProductionFacilitiesPanel({
     return (
         <div className='space-y-4'>
             <Tabs value={activeTab} onValueChange={handleTabChange}>
-                <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2' data-tour='production-tabs'>
+                <TabsList
+                    className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'
+                    data-tour='production-tabs'
+                >
                     {FACILITY_LEVELS.map((level) => {
                         const levelFacilities = facilitiesByLevel[level];
                         const ownedActive = levelFacilities.filter((e) => {

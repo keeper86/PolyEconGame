@@ -119,11 +119,12 @@ export const coalMine = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: coalResourceType, quantity: 500 }],
 });
 
+export const oilWellName = 'Oil Well';
 export const oilWell = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Oil Well',
+    name: oilWellName,
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 10,

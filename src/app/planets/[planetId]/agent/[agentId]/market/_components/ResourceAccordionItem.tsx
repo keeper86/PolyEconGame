@@ -18,6 +18,7 @@ import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/c
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { useMutation } from '@tanstack/react-query';
 import { useParams } from 'next/navigation';
+import { useTour } from '@/components/tour/TourContext';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import BuySection from './BuySection';
@@ -441,8 +442,15 @@ export default function ResourceAccordionItem({
         });
     };
 
+    const { isTourActive: marketIsTourActive, markActionCompleted: marketMarkActionCompleted } = useTour();
+
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
+
+        // Tour: mark enable-buy-construction as completed when user enables automated buying for Construction
+        if (automated && resourceName === 'Construction' && marketIsTourActive) {
+            marketMarkActionCompleted('enable-buy-construction');
+        }
 
         // Add pending action for automation toggle
         addPending({
@@ -696,9 +704,20 @@ export default function ResourceAccordionItem({
           ? 'Awaiting next day…'
           : null;
 
+    const prevOpenRef = React.useRef(isOpen);
+    React.useEffect(() => {
+        if (isOpen && !prevOpenRef.current && resourceName === 'Construction' && marketIsTourActive) {
+            marketMarkActionCompleted('expand-construction-accordion');
+        }
+        prevOpenRef.current = isOpen;
+    }, [isOpen, resourceName, marketIsTourActive, marketMarkActionCompleted]);
+
     return (
         <AccordionItem value={resourceName} id={resourceNameToSlug(resourceName)}>
-            <AccordionTrigger className='hover:no-underline px-1'>
+            <AccordionTrigger
+                className='hover:no-underline px-1'
+                {...(resourceName === 'Construction' ? { 'data-tour': 'market-accordion-construction' } : {})}
+            >
                 <ResourceTrigger
                     name={resourceName}
                     displayName={displayName}

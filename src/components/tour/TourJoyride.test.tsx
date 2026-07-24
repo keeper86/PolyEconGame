@@ -87,7 +87,7 @@ beforeEach(() => {
     mockQuerySelector(true);
 
     (useAgentId as ReturnType<typeof vi.fn>).mockReturnValue({ agentId: 'agent-1' });
-    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/planets/planet-1/central-bank');
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/planets/planet-1/agent/agent-1/financial');
     (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ planetId: 'planet-1' });
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({ push: vi.fn() });
 
@@ -105,9 +105,9 @@ beforeEach(() => {
 
     (getStepsForPage as ReturnType<typeof vi.fn>).mockReturnValue([
         {
-            target: '[data-tour="bank-panel"]',
-            content: 'Step 1',
-            title: 'Step 1',
+            target: 'body',
+            content: 'Welcome',
+            title: 'Welcome',
         },
         {
             target: 'body',
@@ -325,7 +325,7 @@ describe('TourJoyride', () => {
         expect(mockCompleteTour).not.toHaveBeenCalled();
         // goToNextPage is called inside setTimeout(0) — flush all pending timers
         vi.runAllTimers();
-        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        expect(mockGoToNextPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1');
         vi.useRealTimers();
     });
 
@@ -344,7 +344,7 @@ describe('TourJoyride', () => {
         expect(mockCompleteTour).not.toHaveBeenCalled();
         // goToNextPage is called inside setTimeout(0) — flush all pending timers
         vi.runAllTimers();
-        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        expect(mockGoToNextPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1');
         vi.useRealTimers();
     });
 
@@ -381,7 +381,7 @@ describe('TourJoyride', () => {
     // ── getStepsForPage called correctly ───────────────────────────────
     it('calls getStepsForPage with correct arguments without routerPush', () => {
         renderTourJoyride();
-        expect(getStepsForPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1', []);
+        expect(getStepsForPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1', []);
     });
 
     // ── safeStepIndex clamping ────────────────────────────────────────

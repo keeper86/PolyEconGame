@@ -334,7 +334,7 @@ export default function BuySection({
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
                 <div className='flex items-center justify-between gap-2'>
-                    <div className='flex items-center justify-start gap-2'>
+                    <div className='flex items-center justify-start gap-2' data-tour='market-buy-switch'>
                         <Switch
                             id={`bid-auto-${resourceName}`}
                             checked={local.bidAutomated}

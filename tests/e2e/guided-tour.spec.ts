@@ -48,14 +48,13 @@ test.describe('Guided Tour E2E', () => {
         // 2. Financial — Step 0: Welcome popup
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Welcome to PolyEconGame');
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Welcome to Game');
         await page.locator('button[data-action="primary"]').click();
 
         // ==================================================================
         // 3. Financial — Step 1: Take the starter loan (blocking step)
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        // The blocking step targets the starter-loan button
         await expect(page.locator('[role="alertdialog"]')).toContainText('Take your starter loan');
 
         // Click the starter loan button

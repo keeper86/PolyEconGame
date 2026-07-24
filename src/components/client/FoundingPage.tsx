@@ -346,7 +346,7 @@ export function FoundingPage() {
                         onCheckedChange={(checked) => setEnableTour(checked === true)}
                     />
                     <Label htmlFor='enable-tour' className='text-sm text-muted-foreground cursor-pointer'>
-                        Show me a guided tour after founding
+                        Show a guided tour
                     </Label>
                 </div>
 

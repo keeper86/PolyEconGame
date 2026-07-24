@@ -18,6 +18,7 @@ import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityIORow } from './FacilityIORow';
 import { WorkerBars } from './WorkerBars';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
+import { oilWellName } from '@/simulation/planet/productionFacilities';
 
 function BuildForm({
     entry,
@@ -69,11 +70,12 @@ function BuildForm({
 
     // Overlay message for pending states
     const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
-
+    const isOilWell = entry.name === oilWellName;
     return (
         <FacilityCardShell
+            data-tour={isOilWell ? 'build-oil-well' : undefined}
             className='max-w-[600px]'
-            contentClassName='flex flex-col flex-1 gap-2'
+            contentClassName={'flex flex-col flex-1 gap-2'}
             icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>

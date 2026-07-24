@@ -350,6 +350,7 @@ export default function MarketPanel({
                         key={level}
                         value={level}
                         disabled={levelResources.length === 0}
+                        {...(level === 'services' ? { 'data-tour': 'market-tab-services' } : {})}
                         className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed'
                     >
                         {label}

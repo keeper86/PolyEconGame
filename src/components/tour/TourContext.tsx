@@ -40,15 +40,7 @@ type TourContextValue = {
     markActionCompleted: (action: string) => void;
 };
 
-const PAGE_ORDER: PageRoute[] = [
-    'financial',
-    'workforce',
-    'claims',
-    'production',
-    'storage',
-    'market',
-    'ships',
-];
+const PAGE_ORDER: PageRoute[] = ['financial', 'workforce', 'market', 'production', 'claims', 'storage', 'ships'];
 
 const defaultStorage: TourStorage = {
     active: false,
