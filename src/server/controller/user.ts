@@ -28,7 +28,7 @@ import {
     workerSetShipConstructionTarget,
     workerSetWorkerAllocationTargets,
 } from '@/simulation/workerClient/commands';
-import { getAgentSync } from '@/simulation/workerClient/syncQueries';
+import { getAgentSync, getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
@@ -268,6 +268,15 @@ export const createAgent = () => {
                 throw new TRPCError({
                     code: 'BAD_REQUEST',
                     message: 'Agent name must contain at least one letter or digit',
+                });
+            }
+
+            const { agents } = getAllAgentsSync();
+            const logoAlreadyUsed = agents.some((a) => !a.automated && !a.agentRole && a.logo === input.logo);
+            if (logoAlreadyUsed) {
+                throw new TRPCError({
+                    code: 'CONFLICT',
+                    message: 'This logo is already taken by another company',
                 });
             }
 

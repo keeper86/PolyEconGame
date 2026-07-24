@@ -50,6 +50,7 @@ import {
     getProductPriceHistory,
     getRawAgents,
     getTickerEvents,
+    getUsedLogos,
     generateNewsReport,
 } from './controller/simulation';
 
@@ -110,6 +111,7 @@ const simulationRouter = trpcRoot.router({
     getTickerEvents: getTickerEvents(),
     getArbitrageForResources: getArbitrageForResources(),
     getRawAgents: getRawAgents(),
+    getUsedLogos: getUsedLogos(),
     generateNewsReport: generateNewsReport(),
 });
 

@@ -729,6 +729,19 @@ export const getAgentFinancialHistory = () =>
             };
         });
 
+export const getUsedLogos = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(z.object({ usedLogos: z.array(z.string()) }))
+        .query(async () => {
+            const { agents } = getAllAgentsSync();
+            const usedLogos = agents
+                .filter((a) => !a.automated && !a.agentRole)
+                .map((a) => a.logo)
+                .filter((l): l is string => !!l);
+            return { usedLogos };
+        });
+
 export const generateNewsReport = () =>
     protectedProcedure
         .input(z.void())

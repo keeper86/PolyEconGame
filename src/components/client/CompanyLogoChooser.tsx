@@ -1,5 +1,6 @@
 'use client';
 
+import { Lock } from 'lucide-react';
 import { assetManifest } from '@/lib/assetManifest';
 import { CATEGORY_ORDER, getCategoryForLogoKey } from '@/lib/companyLogoCategorization';
 import { useState } from 'react';
@@ -22,11 +23,14 @@ export function CompanyLogoChooser({
     selectedLogo,
     onSelect,
     showPrompt,
+    usedLogos = [],
 }: {
     selectedLogo: string;
     onSelect: (key: string) => void;
     showPrompt?: boolean;
+    usedLogos?: string[];
 }) {
+    const usedLogosSet = new Set(usedLogos);
     const [open, setOpen] = useState(false);
 
     return (
@@ -35,7 +39,7 @@ export function CompanyLogoChooser({
                 <DialogTrigger asChild>
                     <button
                         type='button'
-                        className={`relative rounded-lg transition-all ${showPrompt ? 'ring-2 ring-destructive animate-pulse' : ''}`}
+                        className={`relative rounded-lg transition-all cursor-pointer ${showPrompt ? 'ring-2 ring-destructive animate-pulse' : ''}`}
                     >
                         <CompanyLogo logoKey={selectedLogo} size={36} className='hover:scale-115' />
                         {showPrompt && (
@@ -68,19 +72,33 @@ export function CompanyLogoChooser({
                                 <div className='grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-1.5 p-1'>
                                     {LOGOS_BY_CATEGORY[category].map((key) => {
                                         const isSelected = selectedLogo === key;
+                                        const isTaken = usedLogosSet.has(key);
                                         return (
                                             <button
                                                 key={key}
                                                 type='button'
+                                                disabled={isTaken}
+                                                title={isTaken ? 'Already taken by another company' : undefined}
                                                 onClick={() => {
-                                                    onSelect(key);
-                                                    setOpen(false);
+                                                    if (!isTaken) {
+                                                        onSelect(key);
+                                                        setOpen(false);
+                                                    }
                                                 }}
-                                                className={`flex items-center justify-center p-1.5 rounded-md border transition-all  hover:bg-accent ${
+                                                className={`relative flex items-center justify-center p-1.5 rounded-md border transition-all ${
+                                                    isTaken
+                                                        ? 'border-border opacity-30 cursor-not-allowed'
+                                                        : 'hover:bg-accent'
+                                                } ${
                                                     isSelected ? 'ring-2 ring-primary border-primary' : 'border-border'
                                                 }`}
                                             >
                                                 <CompanyLogo logoKey={key} size={42} className='hover:scale-115' />
+                                                {isTaken && (
+                                                    <span className='absolute inset-0 flex items-center justify-center'>
+                                                        <Lock className='w-[32px] h-[32px] text-foreground bg-background/80 rounded-full p-0.5' />
+                                                    </span>
+                                                )}
                                             </button>
                                         );
                                     })}

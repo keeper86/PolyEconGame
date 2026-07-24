@@ -790,8 +790,8 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
         { resource: concreteResourceType, quantity: 60 },
         { resource: steelResourceType, quantity: 30 },
         { resource: machineryResourceType, quantity: 1 },
-        { resource: administrativeServiceResourceType, quantity: 1 },
-        { resource: logisticsServiceResourceType, quantity: 1 },
+        { resource: administrativeServiceResourceType, quantity: 5 },
+        { resource: logisticsServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: constructionServiceResourceType, quantity: 50 }],
 });
@@ -809,8 +809,8 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
         tertiary: 10,
     },
     needs: [
-        { resource: processedFoodResourceType, quantity: 30 },
-        { resource: beverageResourceType, quantity: 20 },
+        { resource: processedFoodResourceType, quantity: 20 },
+        { resource: beverageResourceType, quantity: 10 },
         { resource: logisticsServiceResourceType, quantity: 5 },
         { resource: administrativeServiceResourceType, quantity: 5 },
     ],

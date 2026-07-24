@@ -69,6 +69,8 @@ export function FoundingPage() {
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const usedLogosQuery = useQuery(trpc.simulation.getUsedLogos.queryOptions());
+    const usedLogos = usedLogosQuery.data?.usedLogos ?? [];
     const { data: agentDetail } = useQuery(
         trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId ?? '' }, { enabled: !!createdAgentId }),
     );
@@ -184,6 +186,7 @@ export function FoundingPage() {
                             setShowLogoPrompt(false);
                         }}
                         showPrompt={showLogoPrompt}
+                        usedLogos={usedLogos}
                     />
                 </div>
 
