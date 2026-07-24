@@ -4,6 +4,7 @@ import { Page } from '@/components/client/Page';
 import { useParams } from 'next/navigation';
 
 import { CompanyLogo } from '@/components/client/CompanyLogo';
+import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { DataTableColumnHeader } from '@/components/dataTableColumnHeader';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -15,7 +16,7 @@ import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
 
-type AgentRow = AgentListSummary & { normalizedBalance: number };
+type AgentRow = AgentListSummary & { normalizedBalance: number; rank: number };
 
 type SortKey = 'normalizedBalance' | 'totalWorkers' | 'facilityCount' | 'shipCount';
 type SortDir = 'asc' | 'desc';
@@ -36,7 +37,7 @@ export default function PlanetAgentsLeaderboardPage() {
 
     const trpc = useTRPC();
     const { isLoading, data } = useSimulationQuery(
-        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll, hideAutomated }),
+        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll, hideAutomated: false }),
     );
 
     const [sortKey, setSortKey] = useState<SortKey>('normalizedBalance');
@@ -51,8 +52,19 @@ export default function PlanetAgentsLeaderboardPage() {
         }
     };
 
-    const agents: AgentRow[] = data?.agents ?? [];
-    const sorted = sortAgents(agents, sortKey, sortDir);
+    // Build rows with pre-filter ranks, then sort, then apply client-side filter
+    const agentsWithBalance: AgentRow[] = (data?.agents ?? []).map((a, i) => ({
+        ...a,
+        normalizedBalance: a.normalizedBalance,
+        rank: i + 1,
+    }));
+
+    // Sort and assign ranks based on current sort
+    let sorted = sortAgents(agentsWithBalance, sortKey, sortDir);
+    sorted = sorted.map((agent, i) => ({ ...agent, rank: i + 1 }));
+
+    // Filter out automated / role-based agents client-side, keeping original ranks
+    const filtered = hideAutomated ? sorted.filter((a) => !a.automated && !a.agentRole) : sorted;
 
     const col = (key: SortKey) => ({
         sortable: true as const,
@@ -65,7 +77,7 @@ export default function PlanetAgentsLeaderboardPage() {
         return <div className='text-sm text-muted-foreground'>Waiting for simulation data…</div>;
     }
 
-    if (agents.length === 0) {
+    if (agentsWithBalance.length === 0) {
         return <div className='text-sm text-muted-foreground'>No companies found.</div>;
     }
 
@@ -99,19 +111,23 @@ export default function PlanetAgentsLeaderboardPage() {
             <Table>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className='w-12'>#</TableHead>
-                        <TableHead className='w-12' />
+                        <TableHead className='w-12 text-right'>#</TableHead>
+                        <TableHead className='w-10' />
                         <TableHead>Company</TableHead>
-                        <TableHead>Home Planet</TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Net Worth' {...col('normalizedBalance')} />
+                        <TableHead className='text-right'>
+                            <DataTableColumnHeader
+                                title='Net Worth'
+                                className='justify-end'
+                                {...col('normalizedBalance')}
+                            />
                         </TableHead>
+                        <TableHead className='w-10' />
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {sorted.map((agent, i) => (
+                    {filtered.map((agent) => (
                         <TableRow key={agent.agentId}>
-                            <TableCell className='text-muted-foreground tabular-nums'>{i + 1}</TableCell>
+                            <TableCell className='text-muted-foreground tabular-nums text-right'>{agent.rank}</TableCell>
                             <TableCell>
                                 <Link
                                     href={
@@ -132,9 +148,11 @@ export default function PlanetAgentsLeaderboardPage() {
                                     {agent.name}
                                 </Link>
                             </TableCell>
-                            <TableCell className='text-muted-foreground'>{agent.associatedPlanetId}</TableCell>
-                            <TableCell className='tabular-nums'>
+                            <TableCell className='tabular-nums text-right'>
                                 {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
+                            </TableCell>
+                            <TableCell>
+                                <PlanetIcon planetId={agent.associatedPlanetId} size={24} />
                             </TableCell>
                         </TableRow>
                     ))}

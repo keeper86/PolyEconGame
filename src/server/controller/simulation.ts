@@ -248,6 +248,8 @@ export const getAgentListSummaries = () =>
                         logo: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
+                        automated: z.boolean(),
+                        agentRole: z.enum(['shipbuilder', 'arbitrage_trader']).optional(),
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
