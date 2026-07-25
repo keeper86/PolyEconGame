@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { toast } from 'sonner';
+import { useTour } from '@/components/tour/TourContext';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
@@ -42,6 +43,7 @@ function BuildForm({
     const addPending = useAddPendingAction();
     const removePendingByKey = useRemovePendingByKey();
     const currentTick = useSimulationTick();
+    const { isTourActive, markActionCompleted } = useTour();
 
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
@@ -54,6 +56,9 @@ function BuildForm({
         trpc.buildFacility.mutationOptions({
             onSuccess: () => {
                 toast.success('Construction ordered. Changes take effect on the next tick.');
+                if (isTourActive && isOilWell) {
+                    markActionCompleted('build-oil-well');
+                }
                 onBuilt();
             },
             onError: (err) => {
@@ -72,76 +77,77 @@ function BuildForm({
     const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
     const isOilWell = entry.name === oilWellName;
     return (
-        <FacilityCardShell
-            data-tour={isOilWell ? 'build-oil-well' : undefined}
-            className='max-w-[600px]'
-            contentClassName={'flex flex-col flex-1 gap-2'}
-            icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
-            headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{entry.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                new
-                            </Badge>
+        <span data-tour={isOilWell ? 'build-oil-well' : undefined}>
+            <FacilityCardShell
+                className='max-w-[600px]'
+                contentClassName={'flex flex-col flex-1 gap-2'}
+                icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
+                headerContent={
+                    <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                        <div className='flex items-center gap-1 flex-col mb-1'>
+                            <h3 className='font-semibold leading-tight '>{entry.name}</h3>
+                            <span className='flex flex-col items-center gap-1'>
+                                <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                                    new
+                                </Badge>
+                            </span>
+                        </div>
+                        <span className='flex flex-col text-muted-foreground text-xs gap-2'>
+                            Worker Requirement
+                            <WorkerBars
+                                workerRequirement={entry.workerRequirement}
+                                scale={entry.scale}
+                                neutral={true}
+                                workerEfficiency={{}}
+                                globalMin={0}
+                                planetId={planetId}
+                                agentId={agentId}
+                            />
                         </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={entry.workerRequirement}
-                            scale={entry.scale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
                     </span>
-                </span>
-            }
-        >
-            <div className='flex-1 space-y-2 pb-3'>
-                <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
-            </div>
-            <div className='relative mt-auto space-y-2'>
-                <Separator />
-                <FacilityConstructionPanel
-                    facilityType={facilityType}
-                    fromScale={0}
-                    constructionServicePrice={constructionServicePrice}
-                    planetId={planetId}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Sending build…'
-                    isPending={sending}
-                    financials={financials}
-                    onCancel={onCancel}
-                    onConfirm={(targetScale) => {
-                        addPending({
-                            type: 'build',
-                            agentId,
-                            planetId,
-                            facilityKey: entry.name,
-                            triggerTick: currentTick,
-                        });
-                        buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
-                    }}
-                    onScaleChange={setPreviewScale}
-                />
+                }
+            >
+                <div className='flex-1 space-y-2 pb-3'>
+                    <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
+                </div>
+                <div className='relative mt-auto space-y-2'>
+                    <Separator />
+                    <FacilityConstructionPanel
+                        facilityType={facilityType}
+                        fromScale={0}
+                        constructionServicePrice={constructionServicePrice}
+                        planetId={planetId}
+                        label='Build at scale'
+                        confirmLabel='Build'
+                        pendingLabel='Sending build…'
+                        isPending={sending}
+                        financials={financials}
+                        onCancel={onCancel}
+                        onConfirm={(targetScale) => {
+                            addPending({
+                                type: 'build',
+                                agentId,
+                                planetId,
+                                facilityKey: entry.name,
+                                triggerTick: currentTick,
+                            });
+                            buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
+                        }}
+                        onScaleChange={setPreviewScale}
+                    />
 
-                {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
-                {overlayMessage && (
-                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Spinner className='h-4 w-4' />
-                            {overlayMessage}
-                        </span>
-                    </div>
-                )}
-            </div>
-        </FacilityCardShell>
+                    {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
+                    {overlayMessage && (
+                        <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
+                            <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                                <Spinner className='h-4 w-4' />
+                                {overlayMessage}
+                            </span>
+                        </div>
+                    )}
+                </div>
+            </FacilityCardShell>
+        </span>
     );
 }
 

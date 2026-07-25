@@ -96,7 +96,7 @@ export default function AgentFinancialOverview({
     return (
         <div className='space-y-3' data-tour='financial-overview'>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-                <div className='grid grid-cols-1 gap-x-6 gap-y-1'>
+                <div className='grid grid-cols-1 gap-x-6 gap-y-1' data-tour='financial-cash-flow'>
                     <span className=' text-xs font-semibold text-muted-foreground'>
                         Monthly flow: <span className='text-foreground'>current </span> (last)
                     </span>
@@ -189,7 +189,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyDepreciation === 0 ? 'text-muted-foreground' : 'text-red-500'}
                     />
                 </div>
-                <div className='grid grid-cols-1 gap-y-1'>
+                <div className='grid grid-cols-1 gap-y-1' data-tour='financial-positions'>
                     <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
                     <Stat
                         label='Firm deposits'

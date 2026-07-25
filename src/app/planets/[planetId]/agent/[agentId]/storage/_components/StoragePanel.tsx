@@ -422,7 +422,7 @@ export function StoragePanel({ assets, planetId, agentId }: Props): React.ReactE
             <Card ref={cardRef}>
                 <CardContent className='p-3'>
                     {/* Capacity bars */}
-                    <div className='flex items-center gap-3 mb-3 text-[10px]'>
+                    <div className='flex items-center gap-3 mb-3 text-[10px]' data-tour='storage-capacity'>
                         <div className='flex items-center gap-1 flex-1'>
                             <span className='text-muted-foreground shrink-0'>Volume:</span>
                             <span
@@ -462,7 +462,7 @@ export function StoragePanel({ assets, planetId, agentId }: Props): React.ReactE
                     </div>
 
                     {/* Column headers */}
-                    <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
+                    <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b' data-tour='storage-inventory'>
                         <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
                             <div className='w-6 shrink-0' />
                             <button

@@ -97,10 +97,15 @@ export function TourJoyride() {
     // Waits only for the current step's target element to be present in the DOM
     // before allowing Joyride to render. This prevents the overlay from blocking
     // the page while async data (useSimulationQuery) is still loading.
+    // Also re-checks if the target disappears (e.g., component re-render) and waits
+    // for it to reappear, preventing Joyride from mispositioning to the top-left.
+    const targetSelectorRef = useRef<string | null>(null);
+
     useEffect(() => {
         // If tour not active or no steps, no need to wait
         if (!isTourActive || steps.length === 0) {
             setTargetsReady(true);
+            targetSelectorRef.current = null;
             return;
         }
 
@@ -111,8 +116,11 @@ export function TourJoyride() {
         // Body-target or no-target steps have no real targets to wait for
         if (!targetSelector) {
             setTargetsReady(true);
+            targetSelectorRef.current = null;
             return;
         }
+
+        targetSelectorRef.current = targetSelector;
 
         // Quick check — maybe the target is already in the DOM
         if (document.querySelector(targetSelector)) {
@@ -133,8 +141,7 @@ export function TourJoyride() {
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Safety timeout: if the target still doesn't exist after 10s, skip this step.
-        // Don't force targetsReady=true with a missing target — that blocks the screen.
+        // Safety timeout: if the target still doesn't exist after 5s, skip this step.
         const timeout = setTimeout(() => {
             observer.disconnect();
             if (!document.querySelector(targetSelector)) {
@@ -143,13 +150,45 @@ export function TourJoyride() {
             } else {
                 setTargetsReady(true);
             }
-        }, 10_000);
+        }, 5_000);
 
         return () => {
             observer.disconnect();
             clearTimeout(timeout);
         };
     }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex]);
+
+    // ── Target-presence watchdog ──────────────────────────────────────────
+    // After Joyride renders with a target, continuously verify the target is still
+    // in the DOM. If it disappears (re-render), hide Joyride and wait for it to
+    // reappear. This prevents the overlay + tooltip from mispositioning.
+    useEffect(() => {
+        if (!isTourActive || !targetsReady) {
+            return;
+        }
+
+        const selector = targetSelectorRef.current;
+        if (!selector) {
+            return;
+        }
+
+        // Poll every 200ms for presence. This is lightweight and catches
+        // brief unmount/remount cycles (e.g., React reconciliation).
+        const interval = setInterval(() => {
+            setTargetsReady(!!document.querySelector(selector));
+        }, 200);
+
+        // Also watch for mutations
+        const observer = new MutationObserver(() => {
+            setTargetsReady(!!document.querySelector(selector));
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        return () => {
+            clearInterval(interval);
+            observer.disconnect();
+        };
+    }, [isTourActive, targetsReady]);
 
     // ── Navigation guard: block accidental navigation away from the tour ────
     // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.
@@ -217,7 +256,9 @@ export function TourJoyride() {
             }
 
             // For everything else (e.g. "close" button, "skipped", or normal "finished" on last step)
-            completeTour();
+            // Defer to allow Joyride's internal cleanup (overlay removal) to complete
+            // before React unmounts the component.
+            setTimeout(() => completeTour(), 0);
             return;
         }
 

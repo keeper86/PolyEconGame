@@ -3,7 +3,7 @@
 import { useTour } from '@/components/tour/TourContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePendingActions } from '@/hooks/useActionOverlay';
-import { oilWell, type FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
+import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
 import { PlusCircle } from 'lucide-react';
 import React from 'react';
 import { BuildCard, type Mode } from './BuildCard';
