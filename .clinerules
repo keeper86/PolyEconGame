@@ -8,6 +8,7 @@
 - Run 'npm run test:all' to run all tests.
 - Do not run 'npm run build', there is always a dev server running. server crashes, building fails randomly.
 - When you fix a bug, most likely you will also want to add a test.
+- Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
 
 ## Overview
 

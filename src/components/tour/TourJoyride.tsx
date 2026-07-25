@@ -51,13 +51,9 @@ export function TourJoyride() {
     const { agentId: resolvedAgentId } = useAgentId() as { agentId: string | null };
 
     const [mounted, setMounted] = useState(false);
-    // When navigating between tour pages, we must immediately stop rendering
-    // joyride to remove its overlay, then navigate. Otherwise joyride's overlay
-    // blocks the page after clicking a navigation step.
-    const [navigating, setNavigating] = useState(false);
-    // Wait for all data-tour target elements to be present in the DOM before
-    // rendering Joyride. This prevents the overlay from blocking the page while
-    // async data (useSimulationQuery) is still loading.
+    // Wait for the current step's data-tour target element to be present in the
+    // DOM before rendering Joyride. This prevents the overlay from blocking the
+    // page while async data (useSimulationQuery) is still loading.
     const [targetsReady, setTargetsReady] = useState(false);
 
     useEffect(() => {
@@ -81,14 +77,14 @@ export function TourJoyride() {
         return getStepsForPage(currentPageRoute, planetId, agentId, completedActions);
     }, [currentPageRoute, planetId, agentId, completedActions]);
 
-    // ── Navigating reset ─────────────────────────────────────────────
-    // When the page route changes (inter-page navigation completed),
-    // reset navigating and targetsReady so the tour re-appears.
+    // ── Route-change reset ──────────────────────────────────────────────
+    // When the page route changes, reset targetsReady so Joyride is hidden
+    // until the new page's data-tour elements appear in the DOM. The
+    // MutationObserver effect will automatically re-detect them.
     const prevPageRouteRef = useRef(currentPageRoute);
     useEffect(() => {
         if (prevPageRouteRef.current !== currentPageRoute) {
             prevPageRouteRef.current = currentPageRoute;
-            setNavigating(false);
             setTargetsReady(false);
         }
     }, [currentPageRoute]);
@@ -97,8 +93,7 @@ export function TourJoyride() {
     // Waits only for the current step's target element to be present in the DOM
     // before allowing Joyride to render. This prevents the overlay from blocking
     // the page while async data (useSimulationQuery) is still loading.
-    // Also re-checks if the target disappears (e.g., component re-render) and waits
-    // for it to reappear, preventing Joyride from mispositioning to the top-left.
+    // A timeout fallback ensures the tour doesn't get stuck if the target never appears.
     const targetSelectorRef = useRef<string | null>(null);
 
     useEffect(() => {
@@ -111,6 +106,7 @@ export function TourJoyride() {
 
         const step = steps[currentStepIndex];
         const target = step?.target;
+        const stepData = (step as { data?: Record<string, unknown> })?.data ?? {};
         const targetSelector = target && target !== 'body' && typeof target === 'string' ? target : null;
 
         // Body-target or no-target steps have no real targets to wait for
@@ -131,65 +127,30 @@ export function TourJoyride() {
         // Target doesn't exist yet — hide Joyride until it appears
         setTargetsReady(false);
 
-        // Observe DOM for the current step's target to appear
+        // Observe DOM for the current step's target to appear.
+        // Also set a timeout as fallback: if the target hasn't appeared
+        // within timeoutMs (default 30s, configurable via step data),
+        // show Joyride anyway so the tour doesn't get stuck.
+        const timeoutMs = (stepData.timeoutMs as number) ?? 30000;
+        const timeoutId = setTimeout(() => {
+            setTargetsReady(true);
+        }, timeoutMs);
+
         const observer = new MutationObserver(() => {
             if (document.querySelector(targetSelector)) {
                 observer.disconnect();
+                clearTimeout(timeoutId);
                 setTargetsReady(true);
             }
         });
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Safety timeout: if the target still doesn't exist after 5s, skip this step.
-        const timeout = setTimeout(() => {
-            observer.disconnect();
-            if (!document.querySelector(targetSelector)) {
-                // Target unreachable — skip to next step
-                setCurrentStepIndex(currentStepIndex + 1);
-            } else {
-                setTargetsReady(true);
-            }
-        }, 5_000);
-
         return () => {
             observer.disconnect();
-            clearTimeout(timeout);
+            clearTimeout(timeoutId);
         };
     }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex]);
-
-    // ── Target-presence watchdog ──────────────────────────────────────────
-    // After Joyride renders with a target, continuously verify the target is still
-    // in the DOM. If it disappears (re-render), hide Joyride and wait for it to
-    // reappear. This prevents the overlay + tooltip from mispositioning.
-    useEffect(() => {
-        if (!isTourActive || !targetsReady) {
-            return;
-        }
-
-        const selector = targetSelectorRef.current;
-        if (!selector) {
-            return;
-        }
-
-        // Poll every 200ms for presence. This is lightweight and catches
-        // brief unmount/remount cycles (e.g., React reconciliation).
-        const interval = setInterval(() => {
-            setTargetsReady(!!document.querySelector(selector));
-        }, 200);
-
-        // Also watch for mutations
-        const observer = new MutationObserver(() => {
-            setTargetsReady(!!document.querySelector(selector));
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-
-        return () => {
-            clearInterval(interval);
-            observer.disconnect();
-        };
-    }, [isTourActive, targetsReady]);
-
     // ── Navigation guard: block accidental navigation away from the tour ────
     // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.
     const handleGuardForceLeave = useCallback(() => {
@@ -204,7 +165,7 @@ export function TourJoyride() {
 
     // If the tour is not active, not mounted yet, or we're not on a tour page, render nothing.
     // Also hide joyride during inter-page navigation or while waiting for DOM targets.
-    if (!mounted || !isTourActive || !currentPageRoute || !planetId || navigating || !targetsReady) {
+    if (!mounted || !isTourActive || !currentPageRoute || !planetId || !targetsReady) {
         return null;
     }
 
@@ -246,12 +207,13 @@ export function TourJoyride() {
             // For nav-step finished: goToNextPage handles navigation.
             // We still need to complete the tour here for non-nav steps (e.g. final "Tour Complete" step).
             if (status === 'finished' && isNavStep) {
-                // Navigation step finished — navigate first, then tour ends elsewhere
-                setNavigating(true);
-                setCurrentStepIndex(0);
-
-                goToNextPage(currentPageRoute, planetId, agentId);
-
+                // Hide joyride overlay first, then navigate after React has removed
+                // Joyride from the DOM. Without the deferral, the overlay persists
+                // during page transition and blocks the new page.
+                setTargetsReady(false);
+                setTimeout(() => {
+                    goToNextPage(currentPageRoute, planetId, agentId);
+                }, 0);
                 return;
             }
 
@@ -259,14 +221,18 @@ export function TourJoyride() {
             return;
         }
 
-        // Navigation steps: before navigating, stop rendering joyride entirely
-        // so its overlay is removed. The component will re-mount on the next page.
+        // Navigation steps: hide Joyride immediately so the overlay is removed
+        // before the new page starts rendering. The route change effect will
+        // reset targetsReady and the MutationObserver will re-detect targets.
+        // goToNextPage resets the step index to 0 via persist.
         if (type === 'step:after' && isNavStep && action === 'next') {
-            setNavigating(true);
-            setCurrentStepIndex(0);
-
-            goToNextPage(currentPageRoute, planetId, agentId);
-
+            // Hide joyride overlay first, then navigate after React has removed
+            // Joyride from the DOM. Without the deferral, the overlay persists
+            // during page transition and blocks the new page.
+            setTargetsReady(false);
+            setTimeout(() => {
+                goToNextPage(currentPageRoute, planetId, agentId);
+            }, 0);
             return;
         }
 
@@ -283,27 +249,34 @@ export function TourJoyride() {
     };
 
     return (
-        <Joyride
-            key={`joyride-${steps.length}-${currentStepIndex}`}
-            steps={steps}
-            run={isTourActive}
-            continuous
-            stepIndex={safeStepIndex}
-            onEvent={handleOnEvent}
-            tooltipComponent={TourTooltip}
-            options={{
-                spotlightPadding: 8,
-                overlayClickAction: false,
-                blockTargetInteraction: true,
-            }}
-            locale={{
-                back: 'Back',
-                close: 'Close',
-                last: 'Finish',
-                next: 'Next',
-                open: 'Open the dialog',
-                skip: 'Skip tour',
-            }}
-        />
+        <>
+            {/*
+                Invisible anchor for centered/informational tooltip steps.
+                Avoids spotlighting the entire <body> which would overlay
+                and disable all user interaction.
+            */}
+            <div data-tour='tour-modal-anchor' className='fixed left-1/2 top-1/2 size-0' aria-hidden='true' />
+            <Joyride
+                steps={steps}
+                run={isTourActive}
+                continuous
+                stepIndex={safeStepIndex}
+                onEvent={handleOnEvent}
+                tooltipComponent={TourTooltip}
+                options={{
+                    spotlightPadding: 8,
+                    overlayClickAction: false,
+                    blockTargetInteraction: true,
+                }}
+                locale={{
+                    back: 'Back',
+                    close: 'Close',
+                    last: 'Finish',
+                    next: 'Next',
+                    open: 'Open the dialog',
+                    skip: 'Skip tour',
+                }}
+            />
+        </>
     );
 }

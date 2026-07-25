@@ -77,7 +77,7 @@ function BuildForm({
     const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
     const isOilWell = entry.name === oilWellName;
     return (
-        <span data-tour={isOilWell ? 'build-oil-well' : undefined}>
+        <span>
             <FacilityCardShell
                 className='max-w-[600px]'
                 contentClassName={'flex flex-col flex-1 gap-2'}
@@ -110,7 +110,7 @@ function BuildForm({
                 <div className='flex-1 space-y-2 pb-3'>
                     <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
                 </div>
-                <div className='relative mt-auto space-y-2'>
+                <div className='relative mt-auto space-y-2' data-tour={isOilWell ? 'build-oil-well' : undefined}>
                     <Separator />
                     <FacilityConstructionPanel
                         facilityType={facilityType}

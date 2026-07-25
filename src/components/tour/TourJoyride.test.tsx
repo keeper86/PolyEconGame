@@ -331,7 +331,8 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
+        // setCurrentStepIndex is NOT called here — goToNextPage resets the index via persist
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
         expect(mockCompleteTour).not.toHaveBeenCalled();
         // goToNextPage is called inside setTimeout(0) — advance just enough
         vi.advanceTimersByTime(10);
@@ -350,7 +351,8 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
-        expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
+        // setCurrentStepIndex is NOT called here — goToNextPage resets the index via persist
+        expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
         expect(mockCompleteTour).not.toHaveBeenCalled();
         // goToNextPage is called inside setTimeout(0) — advance just enough
         vi.advanceTimersByTime(10);
