@@ -85,7 +85,7 @@ describe('computeLoanConditions', () => {
         expect(result.maxLoanAmount).toBe(0);
     });
 
-    it('cash-flow negative with storage: limit = storageCollateral − existingLoans', () => {
+    it('cash-flow negative with storage: storageCollateral is computed but not included in maxLoanAmount', () => {
         const planet = makePlanet();
         planet.marketPrices.wheat = 10;
         const resource = {
@@ -103,10 +103,10 @@ describe('computeLoanConditions', () => {
         const result = computeLoanConditions(agent, planet);
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
         expect(result.storageCollateral).toBeCloseTo(expectedCollateral);
-        expect(result.maxLoanAmount).toBe(Math.floor(expectedCollateral - 1));
+        expect(result.maxLoanAmount).toBe(0);
     });
 
-    it('storage collateral adds to credit limit for profitable agents', () => {
+    it('storage collateral is computed but not added to credit limit for profitable agents', () => {
         const planet = makePlanet();
         planet.marketPrices.iron = 20;
         const resource = {
@@ -126,7 +126,7 @@ describe('computeLoanConditions', () => {
 
         const collateral = 50 * 20 * LOAN_COLLATERAL_FACTOR;
         expect(withStorage.storageCollateral).toBeCloseTo(collateral);
-        expect(withStorage.maxLoanAmount).toBe(withoutStorage.maxLoanAmount + Math.floor(collateral));
+        expect(withStorage.maxLoanAmount).toBe(withoutStorage.maxLoanAmount);
     });
 
     it('ignores storage items with zero quantity in collateral', () => {
