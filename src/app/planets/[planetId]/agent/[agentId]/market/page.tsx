@@ -31,7 +31,11 @@ export default function MarketPage() {
             headerComponent={
                 <div className='flex items-center justify-between gap-3'>
                     <div className='flex items-center gap-2'>
-                        <Label htmlFor='show-all-resources' className='text-xs text-muted-foreground cursor-pointer'>
+                        <Label
+                            htmlFor='show-all-resources'
+                            className='text-xs text-muted-foreground cursor-pointer'
+                            data-tour='market-relevant-toggle'
+                        >
                             Only relevant resources
                         </Label>
                         <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />

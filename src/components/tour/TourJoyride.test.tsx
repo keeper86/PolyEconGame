@@ -87,7 +87,7 @@ beforeEach(() => {
     mockQuerySelector(true);
 
     (useAgentId as ReturnType<typeof vi.fn>).mockReturnValue({ agentId: 'agent-1' });
-    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/planets/planet-1/central-bank');
+    (usePathname as ReturnType<typeof vi.fn>).mockReturnValue('/planets/planet-1/agent/agent-1/financial');
     (useParams as ReturnType<typeof vi.fn>).mockReturnValue({ planetId: 'planet-1' });
     (useRouter as ReturnType<typeof vi.fn>).mockReturnValue({ push: vi.fn() });
 
@@ -105,9 +105,9 @@ beforeEach(() => {
 
     (getStepsForPage as ReturnType<typeof vi.fn>).mockReturnValue([
         {
-            target: '[data-tour="bank-panel"]',
-            content: 'Step 1',
-            title: 'Step 1',
+            target: 'body',
+            content: 'Welcome',
+            title: 'Welcome',
         },
         {
             target: 'body',
@@ -262,6 +262,7 @@ describe('TourJoyride', () => {
 
     // ── Tour completion: finished (non-nav step) ────────────────────────
     it('calls completeTour on status "finished" for non-nav step', () => {
+        vi.useFakeTimers();
         (getStepsForPage as ReturnType<typeof vi.fn>).mockReturnValue([
             {
                 target: '[data-tour="bank-panel"]',
@@ -278,12 +279,16 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
+        // Advance just enough to flush the setTimeout(0) that calls completeTour
+        vi.advanceTimersByTime(10);
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
         expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
+        vi.useRealTimers();
     });
 
     // ── Tour completion: skipped ────────────────────────────────────────
     it('calls completeTour on status "skipped"', () => {
+        vi.useFakeTimers();
         const { onEvent } = renderTourJoyride();
         simulateEvent(onEvent, {
             action: 'skip',
@@ -292,12 +297,15 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
+        vi.advanceTimersByTime(10);
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
         expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
+        vi.useRealTimers();
     });
 
     // ── Tour completion: close action ───────────────────────────────────
     it('calls completeTour on action "close"', () => {
+        vi.useFakeTimers();
         const { onEvent } = renderTourJoyride();
         simulateEvent(onEvent, {
             action: 'close',
@@ -306,8 +314,10 @@ describe('TourJoyride', () => {
             type: 'step:after',
         });
 
+        vi.advanceTimersByTime(10);
         expect(mockCompleteTour).toHaveBeenCalledTimes(1);
         expect(mockSetCurrentStepIndex).not.toHaveBeenCalled();
+        vi.useRealTimers();
     });
 
     // ── Nav step: "next" triggers navigation, not completeTour ──────────
@@ -323,9 +333,9 @@ describe('TourJoyride', () => {
 
         expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
         expect(mockCompleteTour).not.toHaveBeenCalled();
-        // goToNextPage is called inside setTimeout(0) — flush all pending timers
-        vi.runAllTimers();
-        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        // goToNextPage is called inside setTimeout(0) — advance just enough
+        vi.advanceTimersByTime(10);
+        expect(mockGoToNextPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1');
         vi.useRealTimers();
     });
 
@@ -342,9 +352,9 @@ describe('TourJoyride', () => {
 
         expect(mockSetCurrentStepIndex).toHaveBeenCalledWith(0);
         expect(mockCompleteTour).not.toHaveBeenCalled();
-        // goToNextPage is called inside setTimeout(0) — flush all pending timers
-        vi.runAllTimers();
-        expect(mockGoToNextPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1');
+        // goToNextPage is called inside setTimeout(0) — advance just enough
+        vi.advanceTimersByTime(10);
+        expect(mockGoToNextPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1');
         vi.useRealTimers();
     });
 
@@ -381,7 +391,7 @@ describe('TourJoyride', () => {
     // ── getStepsForPage called correctly ───────────────────────────────
     it('calls getStepsForPage with correct arguments without routerPush', () => {
         renderTourJoyride();
-        expect(getStepsForPage).toHaveBeenCalledWith('central-bank', 'planet-1', 'agent-1', []);
+        expect(getStepsForPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1', []);
     });
 
     // ── safeStepIndex clamping ────────────────────────────────────────

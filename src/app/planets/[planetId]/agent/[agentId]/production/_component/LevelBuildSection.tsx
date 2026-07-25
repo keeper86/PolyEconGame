@@ -1,5 +1,6 @@
 'use client';
 
+import { useTour } from '@/components/tour/TourContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePendingActions } from '@/hooks/useActionOverlay';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
@@ -35,6 +36,7 @@ export function LevelBuildSection({
     mode: Mode;
     onModeChange: (mode: Mode) => void;
 }): React.ReactElement {
+    const { isTourActive, markActionCompleted } = useTour();
     const pendingActions = usePendingActions(agentId, planetId);
 
     // Find which catalog keys (facility names) have pending build actions
@@ -104,7 +106,13 @@ export function LevelBuildSection({
             <Card
                 className='min-w-[300px] flex items-center justify-center cursor-pointer border-dashed text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors'
                 style={{ minHeight: '160px' }}
-                onClick={() => onModeChange({ type: 'selecting' })}
+                onClick={() => {
+                    if (isTourActive) {
+                        markActionCompleted('click-plus-build');
+                    }
+                    onModeChange({ type: 'selecting' });
+                }}
+                data-tour='production-build'
             >
                 <CardContent className='flex flex-col items-center gap-2 p-6'>
                     <PlusCircle className='h-8 w-8' />

@@ -1,12 +1,17 @@
 'use client';
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { useAgentId } from '@/hooks/useAgentId';
 import { replacePlanetInPath, usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { Building2, ChevronRight, Globe, Landmark, Users } from 'lucide-react';
+import { Building2, ChevronDown, Globe, Landmark, Users } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -83,7 +88,6 @@ export function PlanetsNavEntry() {
 
     const handlePlanetSelect = (planetId: string) => {
         router.push(replacePlanetInPath(pathname, planetId) as unknown as '/');
-        setOpen(false);
         if (isMobile) {
             setOpenMobile(false);
         }
@@ -93,8 +97,8 @@ export function PlanetsNavEntry() {
 
     return (
         <SidebarMenuItem>
-            <Collapsible open={open} onOpenChange={(next) => hasCompany && setOpen(next)}>
-                <CollapsibleTrigger asChild>
+            <DropdownMenu open={open} onOpenChange={(next) => hasCompany && setOpen(next)}>
+                <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
                         size='default'
                         className='text-md w-full'
@@ -107,38 +111,25 @@ export function PlanetsNavEntry() {
                         )}
                         <span>{activePlanet?.name ?? 'Planets'}</span>
                         {hasCompany && (
-                            <ChevronRight
+                            <ChevronDown
                                 width={14}
                                 height={14}
-                                className='ml-auto transition-transform duration-200 data-[state=open]:rotate-90'
+                                className='ml-auto transition-transform duration-200 data-[state=open]:rotate-180'
                                 data-state={open ? 'open' : 'closed'}
                             />
                         )}
                     </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                    <SidebarMenu className='pl-2 pt-1'>
-                        {planets.length === 0 && (
-                            <SidebarMenuItem>
-                                <span className='px-2 py-1 text-xs text-muted-foreground'>Loading…</span>
-                            </SidebarMenuItem>
-                        )}
-                        {planets.map((planet) => (
-                            <SidebarMenuItem key={planet.planetId}>
-                                <SidebarMenuButton
-                                    size='sm'
-                                    className='font-normal text-muted-foreground'
-                                    isActive={planet.planetId === activePlanetId}
-                                    onClick={() => handlePlanetSelect(planet.planetId)}
-                                >
-                                    <PlanetIcon planetId={planet.planetId} size={24} />
-                                    <span>{planet.name}</span>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
-                    </SidebarMenu>
-                </CollapsibleContent>
-            </Collapsible>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    {planets.length === 0 && <div className='px-2 py-1 text-xs text-muted-foreground'>Loading…</div>}
+                    {planets.map((planet) => (
+                        <DropdownMenuItem key={planet.planetId} onSelect={() => handlePlanetSelect(planet.planetId)}>
+                            <PlanetIcon planetId={planet.planetId} size={24} />
+                            <span>{planet.name}</span>
+                        </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
             <ActivePlanetSubNav planetId={activePlanetId} disabled={subNavDisabled} />
         </SidebarMenuItem>
     );

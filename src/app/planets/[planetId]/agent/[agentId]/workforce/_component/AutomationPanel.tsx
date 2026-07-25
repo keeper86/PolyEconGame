@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
+import { useTour } from '@/components/tour/TourContext';
 
 type Props = {
     agentId: string;
@@ -20,6 +21,7 @@ export default function AutomationPanel({
 }: Props): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const { isTourActive, markActionCompleted } = useTour();
 
     const [expanded, setExpanded] = useState(false);
     const [workerAuto, setWorkerAuto] = useState(initialWorker);
@@ -52,6 +54,11 @@ export default function AutomationPanel({
         setSuccessMsg(null);
         setErrorMsg(null);
 
+        // Mark automation as completed when the user toggles it on during the tour
+        if (value && isTourActive) {
+            markActionCompleted('enable-automation');
+        }
+
         setAutomationMutation.mutate({
             agentId,
             automateWorkerAllocation: value,
@@ -59,7 +66,7 @@ export default function AutomationPanel({
     };
 
     return (
-        <div className='border rounded-md p-3 space-y-3'>
+        <div className='border rounded-md p-3 space-y-3' data-tour='workforce-automation'>
             <button
                 type='button'
                 className='w-full flex items-center justify-between gap-2 cursor-pointer'

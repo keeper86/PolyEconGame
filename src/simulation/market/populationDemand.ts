@@ -1,3 +1,4 @@
+import { BID_OFFER_MAX_COST_MULTIPLIER } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import { educationCenter, groceryChain, hospital, logisticsHub, retailChain } from '../planet/productionFacilities';
@@ -164,7 +165,11 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const referencePrice = planet.marketPrices[service.resource.name] ?? 0;
+                const referencePrice = Math.min(
+                    (planet.productionCosts[service.resource.name] ?? Number.MAX_SAFE_INTEGER) *
+                        BID_OFFER_MAX_COST_MULTIPLIER,
+                    planet.marketPrices[service.resource.name] ?? 0,
+                );
 
                 if (referencePrice <= 0) {
                     continue;

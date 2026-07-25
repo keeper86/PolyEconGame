@@ -19,7 +19,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
-import { getResourceByName } from './marketHelpers';
+import { clampArea, getResourceByName } from './marketHelpers';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -512,30 +512,11 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
     const totalSold = market?.totalSold ?? 0;
 
-    // Enforce minimum width for own-position highlights (in data units)
     const minOwnAreaWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.0025 : 0;
-    const supplyArea = ownSupplyArea
-        ? (() => {
-              const width = ownSupplyArea.x2 - ownSupplyArea.x1;
-              if (width >= minOwnAreaWidth) {
-                  return ownSupplyArea;
-              }
-              const mid = (ownSupplyArea.x1 + ownSupplyArea.x2) / 2;
-              const halfWidth = minOwnAreaWidth / 2;
-              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownSupplyArea.y };
-          })()
-        : undefined;
-    const demandArea = ownDemandArea
-        ? (() => {
-              const width = ownDemandArea.x2 - ownDemandArea.x1;
-              if (width >= minOwnAreaWidth) {
-                  return ownDemandArea;
-              }
-              const mid = (ownDemandArea.x1 + ownDemandArea.x2) / 2;
-              const halfWidth = minOwnAreaWidth / 2;
-              return { x1: Math.max(0, mid - halfWidth), x2: mid + halfWidth, y: ownDemandArea.y };
-          })()
-        : undefined;
+    const indicatorBandWidth = xDomain ? (xDomain[1] - xDomain[0]) * 0.005 : 0;
+
+    const supplyArea = clampArea(ownSupplyArea, xDomain, minOwnAreaWidth, indicatorBandWidth);
+    const demandArea = clampArea(ownDemandArea, xDomain, minOwnAreaWidth, indicatorBandWidth);
 
     const hasSupply = chartData.some((d) => d.Supply !== null);
     const hasDemand = chartData.some((d) => d.Demand !== null);
@@ -662,6 +643,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             strokeOpacity={0.9}
                             fill='#fbbf24'
                             fillOpacity={0.08}
+                            strokeDasharray={supplyArea.clipped ? '4 3' : undefined}
                         />
                     )}
 
@@ -675,6 +657,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             strokeOpacity={0.9}
                             fill='#fbbf24'
                             fillOpacity={0.08}
+                            strokeDasharray={demandArea.clipped ? '4 3' : undefined}
                         />
                     )}
                 </ComposedChart>

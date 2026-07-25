@@ -43,11 +43,12 @@ export function workerCreateAgent(opts: {
     agentId: string;
     agentName: string;
     planetId: string;
+    logo: string;
     timeoutMs?: number;
 }): Promise<{ result: string; processedAtTick: number }> {
-    const { agentId, agentName, planetId, timeoutMs } = opts;
+    const { agentId, agentName, planetId, logo, timeoutMs } = opts;
     return sendCommandSpec(
-        { type: 'createAgent', requestId: randomUUID(), agentId, agentName, planetId },
+        { type: 'createAgent', requestId: randomUUID(), agentId, agentName, planetId, logo },
         createAgentSpec,
         timeoutMs,
     );

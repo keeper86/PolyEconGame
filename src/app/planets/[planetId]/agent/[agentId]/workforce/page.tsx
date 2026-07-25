@@ -106,7 +106,7 @@ export default function WorkforcePage() {
                             allocatedWorkers={assets.allocatedWorkers ?? {}}
                             automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
                         />
-                        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4'>
+                        <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4' data-tour='workforce-charts'>
                             <AgentMetricChart
                                 agentId={agentId}
                                 planetId={planetId}

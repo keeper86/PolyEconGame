@@ -42,6 +42,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
         name: `Recycler (${planetName})`,
         automated: true,
         automateWorkerAllocation: false,
+        logo: 'ai_company',
         foundedTick: 0,
         starterLoanTaken: true,
         associatedPlanetId: planetId,
@@ -136,8 +137,6 @@ export function processFacilityContraction(
     // Add recovered CS to recycler's storage (services have 0 volume/mass, so no overflow possible)
     putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, recoveredCS);
 
-    // Shrink the facility
-    const currentMax = facility.maxScale;
     const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
     facility.maxScale = targetMax;
     facility.scale = targetMax * scaleFraction;
@@ -147,7 +146,7 @@ export function processFacilityContraction(
         planetId: planet.id,
         agentId: agent.id,
         agentName: agent.name,
-        message: `${agent.name} scrapped ${facility.name} on ${planet.name} (maxScale: ${currentMax} → ${targetMax})`,
+        message: `${agent.name} reduced ${facility.name} on ${planet.name}`,
         tick: gameState.tick,
     });
 

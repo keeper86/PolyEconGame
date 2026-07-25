@@ -71,13 +71,11 @@ function ClaimsContent({ planetId }: { planetId: string }) {
                         );
                     }
                     if (agentId && summary.availableCapacity > 0) {
+                        const isOil = summary.resourceName === 'Oil Reservoir';
                         return (
-                            <LeaseClaimCard
-                                key={summary.resourceName}
-                                summary={summary}
-                                agentId={agentId}
-                                planetId={planetId}
-                            />
+                            <span key={summary.resourceName} data-tour={isOil ? 'claims-oil' : undefined}>
+                                <LeaseClaimCard summary={summary} agentId={agentId} planetId={planetId} />
+                            </span>
                         );
                     }
                     return <ReadOnlyClaimCard key={summary.resourceName} summary={summary} />;

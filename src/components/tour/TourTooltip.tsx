@@ -23,12 +23,13 @@ export function TourTooltip({
     skipProps: _skipProps,
 }: TooltipRenderProps) {
     const { title, content } = step;
+    const isBlocking = (step.data as Record<string, unknown> | undefined)?.blocking === true;
 
     return (
         <Card
             {...(tooltipProps as React.HTMLAttributes<HTMLDivElement>)}
             role='alertdialog'
-            className='min-w-[320px] max-w-[420px] shadow-xl border bg-card text-card-foreground'
+            className='min-w-[320px] max-w-[420px] max-h-[80vh] overflow-y-auto shadow-xl border bg-card text-card-foreground'
         >
             {/* Close button */}
             <button
@@ -65,7 +66,7 @@ export function TourTooltip({
                         </Button>
                     )}
 
-                    {continuous && (
+                    {continuous && !isBlocking && (
                         <Button
                             {...primaryProps}
                             data-action='primary'

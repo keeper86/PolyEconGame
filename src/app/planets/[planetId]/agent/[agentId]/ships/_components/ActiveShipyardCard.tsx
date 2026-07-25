@@ -5,6 +5,7 @@ import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { usePlanetId } from '@/hooks/usePlanetId';
@@ -36,6 +37,7 @@ export function ActiveShipyardCard({
     const [shipDialogOpen, setShipDialogOpen] = useState(false);
 
     const isSmallScreen = useIsSmallScreen();
+    const isMobile = isSmallScreen;
 
     const invalidate = () =>
         void queryClient.invalidateQueries({
@@ -147,16 +149,11 @@ export function ActiveShipyardCard({
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.produces !== null ? (
                             <div className='relative inline-flex flex-col items-center gap-1.5 rounded bg-muted px-2 py-1 overflow-hidden'>
-                                <Badge
-                                    variant='outline'
-                                    className='text-[10px] px-1.5 py-0 text-blue-600 border-blue-300'
-                                >
-                                    <FacilityOrShipIcon
-                                        facilityOrShipName={facility.produces.name}
-                                        size={isSmallScreen ? 120 : 180}
-                                        buildProgress={facility.progress}
-                                    />
-                                </Badge>
+                                <FacilityOrShipIcon
+                                    facilityOrShipName={facility.produces.name}
+                                    size={isMobile ? 60 : 80}
+                                    buildProgress={facility.progress}
+                                />
                                 <span className='text-xs font-medium text-center leading-tight max-w-[180px] truncate'>
                                     {facility.shipName}
                                 </span>
@@ -174,15 +171,18 @@ export function ActiveShipyardCard({
                     </div>
                 </div>
                 {facility.produces && (
-                    <div>
-                        <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                            <span>Build progress</span>
-                            <span className='tabular-nums font-medium text-foreground'>
-                                {Math.round(facility.progress * 100)}%
-                            </span>
+                    <>
+                        <div>
+                            <div className='flex justify-between text-xs text-muted-foreground mb-1'>
+                                <span>Build progress</span>
+                                <span className='tabular-nums font-medium text-foreground'>
+                                    {Math.round(facility.progress * 100)}%
+                                </span>
+                            </div>
+                            <Progress value={facility.progress * 100} className='h-2' />
                         </div>
-                        <Progress value={facility.progress * 100} className='h-2' />
-                    </div>
+                        <Separator />
+                    </>
                 )}
             </FacilityCardShell>
         </>

@@ -6,6 +6,7 @@ import {
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { assetManifest } from '@/lib/assetManifest';
 import {
     workerAcquireLicense,
     workerBuildFacility,
@@ -28,7 +29,7 @@ import {
     workerSetShipConstructionTarget,
     workerSetWorkerAllocationTargets,
 } from '@/simulation/workerClient/commands';
-import { getAgentSync } from '@/simulation/workerClient/syncQueries';
+import { getAgentSync, getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
@@ -239,6 +240,7 @@ export const createAgent = () => {
             z.object({
                 agentName: z.string().min(1).max(64),
                 planetId: z.string().min(1),
+                logo: z.string().min(1),
             }),
         )
         .output(z.object({ tick: z.number(), agentId: z.string(), planetId: z.string() }))
@@ -270,6 +272,22 @@ export const createAgent = () => {
                 });
             }
 
+            if (!(input.logo in assetManifest) && !input.logo.startsWith('company_icon_')) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Invalid company logo',
+                });
+            }
+
+            const { agents } = getAllAgentsSync();
+            const logoAlreadyUsed = agents.some((a) => !a.automated && !a.agentRole && a.logo === input.logo);
+            if (logoAlreadyUsed) {
+                throw new TRPCError({
+                    code: 'CONFLICT',
+                    message: 'This logo is already taken by another company',
+                });
+            }
+
             logger.info(
                 { component: 'create-agent' },
                 `Creating agent '${input.agentName}' (${agentId}) on planet '${input.planetId}' for user ${userId}`,
@@ -279,6 +297,7 @@ export const createAgent = () => {
                 agentId,
                 agentName,
                 planetId: input.planetId,
+                logo: input.logo,
             });
 
             await db('user_data').where({ user_id: userId }).update({ agent_id: createdId, planet_id: input.planetId });

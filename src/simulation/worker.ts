@@ -743,7 +743,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         }
 
         if (msg.type === 'createAgent') {
-            const { requestId, agentId, agentName, planetId } = msg;
+            const { requestId, agentId, agentName, planetId, logo } = msg;
 
             if (state.agents.has(agentId)) {
                 safePostMessage({
@@ -788,7 +788,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
 
-            pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId });
+            pendingActions.push({ type: 'createAgent', requestId, agentId, agentName, planetId, logo });
 
             if (!processingTick) {
                 drainActionQueue();

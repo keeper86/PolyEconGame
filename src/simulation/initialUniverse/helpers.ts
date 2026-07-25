@@ -146,6 +146,7 @@ export function makeAgent(opts: {
     planetId: string;
     facilities: ProductionFacility[];
     storage: StorageFacility;
+    logo?: string;
 }): Agent {
     const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
 
@@ -156,6 +157,7 @@ export function makeAgent(opts: {
     return {
         id: opts.id,
         name: opts.name,
+        logo: opts.logo ?? 'ai_company',
         associatedPlanetId: opts.associatedPlanetId,
         ships: [],
         automated: true,

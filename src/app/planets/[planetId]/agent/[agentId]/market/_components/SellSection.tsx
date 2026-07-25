@@ -318,7 +318,7 @@ export default function SellSection({
         <div className='flex-1 min-w-[250px]'>
             <div className='relative'>
                 <div className='flex items-center justify-between gap-2'>
-                    <div className='flex items-center justify-start gap-2'>
+                    <div className='flex items-center justify-start gap-2' data-tour='market-sell-switch'>
                         <Switch
                             id={`offer-auto-${resourceName}`}
                             checked={local.offerAutomated}

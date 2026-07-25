@@ -3,14 +3,16 @@
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
+import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { AcceptShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/AcceptShipBuyingOfferDialog';
 import { AcceptTransportContractDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/AcceptTransportContractDialog';
 import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/PostShipBuyingOfferDialog';
@@ -101,39 +103,50 @@ export function ShipMarketTab({
                 {!contractsLoading && openContracts.length === 0 && (
                     <p className='text-sm text-muted-foreground'>No open transport contracts on this planet.</p>
                 )}
-                {openContracts.map((contract) => {
-                    const isMyContract = contract._agentId === agentId;
-                    const cargoName = contract.cargo.resource.name;
-                    const hasEligibleShip = idleTransportShipsHere.length > 0;
-                    return (
-                        <Card key={contract.id}>
-                            <CardHeader className='pb-2 pt-4 px-4'>
-                                <CardTitle className='text-sm flex items-center justify-between'>
-                                    <span>
-                                        {contract.fromPlanetId} → {contract.toPlanetId}
+                <div className='flex flex-row gap-3 flex-wrap'>
+                    {openContracts.map((contract) => {
+                        const isMyContract = contract._agentId === agentId;
+                        const cargoName = contract.cargo.resource.name;
+                        const hasEligibleShip = idleTransportShipsHere.length > 0;
+                        return (
+                            <FacilityCardShell
+                                key={contract.id}
+                                contentClassName='flex flex-col flex-1 gap-2'
+                                icon={
+                                    <div className='text-xs font-bold text-muted-foreground flex items-center justify-center h-12 w-12 rounded bg-muted'>
+                                        {contract.fromPlanetId}
+                                        <br />→<br />
+                                        {contract.toPlanetId}
+                                    </div>
+                                }
+                                headerContent={
+                                    <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                                        <div className='flex items-center gap-1 flex-col mb-1'>
+                                            <h3 className='font-semibold leading-tight text-sm'>
+                                                {contract.fromPlanetId} → {contract.toPlanetId}
+                                            </h3>
+                                            <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                                                {contract.status}
+                                            </Badge>
+                                        </div>
                                     </span>
-                                    <Badge variant='outline'>{contract.status}</Badge>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className='px-4 pb-4 flex items-end justify-between gap-4'>
-                                <div className='text-sm space-y-0.5'>
+                                }
+                            >
+                                <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
                                     <p>
-                                        <span className='text-muted-foreground'>Cargo:</span> {contract.cargo.quantity}{' '}
-                                        × {cargoName}
+                                        Cargo: {contract.cargo.quantity} × {cargoName}
                                     </p>
-                                    <p>
-                                        <span className='text-muted-foreground'>Reward:</span> {contract.offeredReward}
-                                    </p>
-                                    <p>
-                                        <span className='text-muted-foreground'>Max duration:</span>{' '}
-                                        {contract.maxDurationInTicks} ticks
-                                    </p>
+                                    <p>Reward: {contract.offeredReward}</p>
+                                    <p>Max duration: {contract.maxDurationInTicks} ticks</p>
                                 </div>
-                                <div className='flex gap-2'>
+
+                                <div className='mt-auto space-y-2'>
+                                    <Separator />
                                     {isMyContract && (
                                         <Button
                                             variant='destructive'
                                             size='sm'
+                                            className='w-full text-xs'
                                             disabled={cancelContractMutation.isPending}
                                             onClick={() =>
                                                 cancelContractMutation.mutate({
@@ -150,9 +163,10 @@ export function ShipMarketTab({
                                         <TooltipProvider>
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
-                                                    <span>
+                                                    <span className='block'>
                                                         <Button
                                                             size='sm'
+                                                            className='w-full text-xs'
                                                             disabled={!hasEligibleShip}
                                                             onClick={() => setAcceptContractTarget(contract)}
                                                         >
@@ -169,10 +183,10 @@ export function ShipMarketTab({
                                         </TooltipProvider>
                                     )}
                                 </div>
-                            </CardContent>
-                        </Card>
-                    );
-                })}
+                            </FacilityCardShell>
+                        );
+                    })}
+                </div>
             </section>
 
             <section className='space-y-3'>
@@ -195,108 +209,158 @@ export function ShipMarketTab({
                 {!buyingLoading && !listingsLoading && openBuyingOffers.length === 0 && openListings.length === 0 && (
                     <p className='text-sm text-muted-foreground'>No open ship offers on this planet.</p>
                 )}
+
                 {openListings.length > 0 && (
                     <>
                         <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>For Sale</p>
-                        {openListings.map((listing) => {
-                            const isMyListing = listing._agentId === agentId;
-                            return (
-                                <Card key={listing.id}>
-                                    <CardContent className='px-4 py-4 flex items-center justify-between gap-4'>
-                                        <div className='flex items-center gap-3'>
+                        <div className='flex flex-row gap-3 flex-wrap'>
+                            {openListings.map((listing) => {
+                                const isMyListing = listing._agentId === agentId;
+                                return (
+                                    <FacilityCardShell
+                                        key={listing.id}
+                                        contentClassName='flex flex-col flex-1 gap-2'
+                                        icon={
                                             <FacilityOrShipIcon
                                                 facilityOrShipName={listing.shipTypeName}
                                                 suffix=''
-                                                size={80}
+                                                size={240}
                                             />
-                                            <div className='text-sm space-y-0.5'>
-                                                <p className='font-medium'>{listing.shipName}</p>
-                                                <p className='text-muted-foreground'>{listing.shipTypeName}</p>
-                                                <p>
-                                                    <span className='text-muted-foreground'>Ask price:</span>{' '}
-                                                    {listing.askPrice}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {isMyListing ? (
-                                            <Badge variant='secondary' className='text-xs'>
-                                                Your listing
-                                            </Badge>
-                                        ) : (
-                                            <Button
-                                                size='sm'
-                                                disabled={acceptListingMutation.isPending}
-                                                onClick={() =>
-                                                    acceptListingMutation.mutate({
-                                                        buyerAgentId: agentId,
-                                                        buyerPlanetId: planetId,
-                                                        sellerAgentId: listing._agentId,
-                                                        listingId: listing.id,
-                                                    })
-                                                }
+                                        }
+                                        headerContent={
+                                            <span
+                                                className='flex flex-col gap-2'
+                                                style={{ minHeight: `${defaultHeight}px` }}
                                             >
-                                                Buy
-                                            </Button>
+                                                <div className='flex items-center gap-1 flex-col mb-1'>
+                                                    <h3 className='font-semibold leading-tight'>{listing.shipName}</h3>
+                                                    {isMyListing && (
+                                                        <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
+                                                            Your listing
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </span>
+                                        }
+                                    >
+                                        <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
+                                            <p>{listing.shipTypeName}</p>
+                                            <p>Ask price: {listing.askPrice}</p>
+                                        </div>
+
+                                        {!isMyListing && (
+                                            <div className='mt-auto space-y-2'>
+                                                <Separator />
+                                                <Button
+                                                    size='sm'
+                                                    className='w-full text-xs'
+                                                    disabled={acceptListingMutation.isPending}
+                                                    onClick={() =>
+                                                        acceptListingMutation.mutate({
+                                                            buyerAgentId: agentId,
+                                                            buyerPlanetId: planetId,
+                                                            sellerAgentId: listing._agentId,
+                                                            listingId: listing.id,
+                                                        })
+                                                    }
+                                                >
+                                                    Buy
+                                                </Button>
+                                            </div>
                                         )}
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
+                                    </FacilityCardShell>
+                                );
+                            })}
+                        </div>
                     </>
                 )}
+
                 {openBuyingOffers.length > 0 && (
-                    <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide'>Buy Offers</p>
+                    <>
+                        <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide mt-3'>
+                            Buy Offers
+                        </p>
+                        <div className='flex flex-row gap-3 flex-wrap'>
+                            {openBuyingOffers.map((offer) => {
+                                const isMyOffer = offer._agentId === agentId;
+                                const shipTypeDef = allShipTypesByKey[offer.shipType];
+                                const idleMatchingShips = idleTransportShipsHere.filter(
+                                    (s) => s.type.name === shipTypeDef?.name,
+                                );
+                                const canSell = !isMyOffer && idleMatchingShips.length > 0;
+                                const canSellNoShip = !isMyOffer && idleMatchingShips.length === 0;
+                                return (
+                                    <FacilityCardShell
+                                        key={offer.id}
+                                        contentClassName='flex flex-col flex-1 gap-2'
+                                        icon={
+                                            shipTypeDef ? (
+                                                <FacilityOrShipIcon
+                                                    facilityOrShipName={shipTypeDef.name}
+                                                    suffix=''
+                                                    size={80}
+                                                />
+                                            ) : (
+                                                <div className='h-12 w-12 rounded bg-muted' />
+                                            )
+                                        }
+                                        headerContent={
+                                            <span
+                                                className='flex flex-col gap-2'
+                                                style={{ minHeight: `${defaultHeight}px` }}
+                                            >
+                                                <div className='flex items-center gap-1 flex-col mb-1'>
+                                                    <h3 className='font-semibold leading-tight'>{offer.shipType}</h3>
+                                                    {isMyOffer && (
+                                                        <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
+                                                            Your offer
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                            </span>
+                                        }
+                                    >
+                                        <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
+                                            <p>Offered price: {offer.price}</p>
+                                        </div>
+
+                                        {canSell && (
+                                            <div className='mt-auto space-y-2'>
+                                                <Separator />
+                                                <Button
+                                                    size='sm'
+                                                    className='w-full text-xs'
+                                                    onClick={() => setAcceptBuyingTarget(offer)}
+                                                >
+                                                    Sell
+                                                </Button>
+                                            </div>
+                                        )}
+                                        {canSellNoShip && (
+                                            <div className='mt-auto space-y-2'>
+                                                <Separator />
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <span className='block'>
+                                                                <Button size='sm' className='w-full text-xs' disabled>
+                                                                    Sell
+                                                                </Button>
+                                                            </span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            No idle {offer.shipType} ship available on this planet
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            </div>
+                                        )}
+                                    </FacilityCardShell>
+                                );
+                            })}
+                        </div>
+                    </>
                 )}
-                {openBuyingOffers.map((offer) => {
-                    const isMyOffer = offer._agentId === agentId;
-                    const shipTypeDef = allShipTypesByKey[offer.shipType];
-                    const idleMatchingShips = idleTransportShipsHere.filter((s) => s.type.name === shipTypeDef?.name);
-                    const canSell = !isMyOffer && idleMatchingShips.length > 0;
-                    const canSellNoShip = !isMyOffer && idleMatchingShips.length === 0;
-                    return (
-                        <Card key={offer.id}>
-                            <CardContent className='px-4 py-4 flex items-center justify-between gap-4'>
-                                <div className='flex items-center gap-3'>
-                                    {shipTypeDef && (
-                                        <FacilityOrShipIcon facilityOrShipName={shipTypeDef.name} suffix='' size={80} />
-                                    )}
-                                    <div className='text-sm space-y-0.5'>
-                                        <p className='font-medium'>{offer.shipType}</p>
-                                        <p>
-                                            <span className='text-muted-foreground'>Offered price:</span> {offer.price}
-                                        </p>
-                                    </div>
-                                </div>
-                                {canSell && (
-                                    <Button size='sm' onClick={() => setAcceptBuyingTarget(offer)}>
-                                        Sell
-                                    </Button>
-                                )}
-                                {canSellNoShip && (
-                                    <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <span>
-                                                    <Button size='sm' disabled>
-                                                        Sell
-                                                    </Button>
-                                                </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                No idle {offer.shipType} ship available on this planet
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                )}
-                                {isMyOffer && (
-                                    <Badge variant='secondary' className='text-xs'>
-                                        Your offer
-                                    </Badge>
-                                )}
-                            </CardContent>
-                        </Card>
-                    );
-                })}
             </section>
 
             {acceptContractTarget && (

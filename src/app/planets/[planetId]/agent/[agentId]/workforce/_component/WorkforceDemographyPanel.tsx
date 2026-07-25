@@ -47,9 +47,9 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
     })();
 
     return (
-        <Card>
+        <Card data-tour='workforce-demographics'>
             <CardHeader className='pb-3'>
-                <CardTitle className='flex items-center gap-2 text-base'>
+                <CardTitle className='flex items-center gap-2 text-base' data-tour='workforce-demographics-title'>
                     <Users className='h-4 w-4' />
                     Workforce Demography
                 </CardTitle>

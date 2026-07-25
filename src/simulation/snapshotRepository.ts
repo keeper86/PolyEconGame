@@ -94,8 +94,11 @@ export const computeAgentConsumption = (agent: Agent): Record<string, number> =>
 export type AgentListSummary = {
     agentId: string;
     name: string;
+    logo: string;
     associatedPlanetId: string;
     balance: number;
+    automated: boolean;
+    agentRole?: 'shipbuilder' | 'arbitrage_trader';
     facilityCount: number;
     avgEfficiency: number | null;
     totalWorkers: number;
@@ -176,8 +179,11 @@ export function summariseAgentBlob(
     const result = {
         agentId: agentId || '',
         name: a?.name ?? agentId ?? '',
+        logo: a?.logo ?? 'ai_company',
         associatedPlanetId: a?.associatedPlanetId ?? '',
         balance: netWorth,
+        automated: a?.automated ?? false,
+        agentRole: a?.agentRole ?? undefined,
         facilityCount,
         avgEfficiency: efficiencyN > 0 ? efficiencySum / efficiencyN : null,
         totalWorkers,

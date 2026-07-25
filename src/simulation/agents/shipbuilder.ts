@@ -74,6 +74,7 @@ export function seedShipbuilderAgents(gameState: GameState): void {
             name: `Shipbuilder (${planet.name})`,
             automated: false,
             automateWorkerAllocation: true,
+            logo: 'ai_company',
             foundedTick: 0,
             starterLoanTaken: true,
             associatedPlanetId: planet.id,

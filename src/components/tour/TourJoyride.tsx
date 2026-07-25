@@ -19,9 +19,6 @@ const Joyride = dynamic(() => import('react-joyride').then((mod) => mod.Joyride)
 }) as React.ComponentType<Props>;
 
 function pathToPageRoute(pathname: string): PageRoute | null {
-    if (pathname.includes('/central-bank')) {
-        return 'central-bank';
-    }
     if (pathname.includes('/financial')) {
         return 'financial';
     }
@@ -96,34 +93,37 @@ export function TourJoyride() {
         }
     }, [currentPageRoute]);
 
-    // Get the current step's target selector (only the step we're about to show)
-    const currentStepTarget = useMemo<string | null>(() => {
-        const step = steps[currentStepIndex];
-        if (!step || !step.target || step.target === 'body' || typeof step.target !== 'string') {
-            return null;
-        }
-        return step.target;
-    }, [steps, currentStepIndex]);
-
     // ── MutationObserver for target readiness ─────────────────────────
     // Waits only for the current step's target element to be present in the DOM
     // before allowing Joyride to render. This prevents the overlay from blocking
     // the page while async data (useSimulationQuery) is still loading.
+    // Also re-checks if the target disappears (e.g., component re-render) and waits
+    // for it to reappear, preventing Joyride from mispositioning to the top-left.
+    const targetSelectorRef = useRef<string | null>(null);
+
     useEffect(() => {
         // If tour not active or no steps, no need to wait
         if (!isTourActive || steps.length === 0) {
             setTargetsReady(true);
+            targetSelectorRef.current = null;
             return;
         }
 
-        // Body-target or no-target steps (e.g. navigation steps) have no real targets to wait for
-        if (!currentStepTarget) {
+        const step = steps[currentStepIndex];
+        const target = step?.target;
+        const targetSelector = target && target !== 'body' && typeof target === 'string' ? target : null;
+
+        // Body-target or no-target steps have no real targets to wait for
+        if (!targetSelector) {
             setTargetsReady(true);
+            targetSelectorRef.current = null;
             return;
         }
+
+        targetSelectorRef.current = targetSelector;
 
         // Quick check — maybe the target is already in the DOM
-        if (document.querySelector(currentStepTarget)) {
+        if (document.querySelector(targetSelector)) {
             setTargetsReady(true);
             return;
         }
@@ -133,7 +133,7 @@ export function TourJoyride() {
 
         // Observe DOM for the current step's target to appear
         const observer = new MutationObserver(() => {
-            if (document.querySelector(currentStepTarget)) {
+            if (document.querySelector(targetSelector)) {
                 observer.disconnect();
                 setTargetsReady(true);
             }
@@ -141,17 +141,54 @@ export function TourJoyride() {
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Safety timeout: show tour after 10s even if targets are missing
+        // Safety timeout: if the target still doesn't exist after 5s, skip this step.
         const timeout = setTimeout(() => {
             observer.disconnect();
-            setTargetsReady(true);
-        }, 10_000);
+            if (!document.querySelector(targetSelector)) {
+                // Target unreachable — skip to next step
+                setCurrentStepIndex(currentStepIndex + 1);
+            } else {
+                setTargetsReady(true);
+            }
+        }, 5_000);
 
         return () => {
             observer.disconnect();
             clearTimeout(timeout);
         };
-    }, [isTourActive, steps, currentStepTarget]);
+    }, [isTourActive, steps, currentStepIndex, setCurrentStepIndex]);
+
+    // ── Target-presence watchdog ──────────────────────────────────────────
+    // After Joyride renders with a target, continuously verify the target is still
+    // in the DOM. If it disappears (re-render), hide Joyride and wait for it to
+    // reappear. This prevents the overlay + tooltip from mispositioning.
+    useEffect(() => {
+        if (!isTourActive || !targetsReady) {
+            return;
+        }
+
+        const selector = targetSelectorRef.current;
+        if (!selector) {
+            return;
+        }
+
+        // Poll every 200ms for presence. This is lightweight and catches
+        // brief unmount/remount cycles (e.g., React reconciliation).
+        const interval = setInterval(() => {
+            setTargetsReady(!!document.querySelector(selector));
+        }, 200);
+
+        // Also watch for mutations
+        const observer = new MutationObserver(() => {
+            setTargetsReady(!!document.querySelector(selector));
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        return () => {
+            clearInterval(interval);
+            observer.disconnect();
+        };
+    }, [isTourActive, targetsReady]);
 
     // ── Navigation guard: block accidental navigation away from the tour ────
     // When the user clicks "Leave anyway", end the tour (set localStorage) then let them through.
@@ -212,13 +249,12 @@ export function TourJoyride() {
                 // Navigation step finished — navigate first, then tour ends elsewhere
                 setNavigating(true);
                 setCurrentStepIndex(0);
-                setTimeout(() => {
-                    goToNextPage(currentPageRoute, planetId, agentId);
-                }, 0);
+
+                goToNextPage(currentPageRoute, planetId, agentId);
+
                 return;
             }
 
-            // For everything else (e.g. "close" button, "skipped", or normal "finished" on last step)
             completeTour();
             return;
         }
@@ -228,21 +264,27 @@ export function TourJoyride() {
         if (type === 'step:after' && isNavStep && action === 'next') {
             setNavigating(true);
             setCurrentStepIndex(0);
-            // Schedule navigation after React removes joyride from the DOM
-            setTimeout(() => {
-                goToNextPage(currentPageRoute, planetId, agentId);
-            }, 0);
+
+            goToNextPage(currentPageRoute, planetId, agentId);
+
             return;
         }
 
         // Regular content step — just advance the index (skip blocking steps that advance programmatically)
+        // If this is the last step, the "Finish" button was clicked — complete the tour.
+        // Joyride does not fire status: 'finished' in this case; it just fires step:after with action: 'next'.
         if (type === 'step:after' && action === 'next' && !isBlockingStep) {
-            setCurrentStepIndex(index + 1);
+            if (index === steps.length - 1) {
+                completeTour();
+            } else {
+                setCurrentStepIndex(index + 1);
+            }
         }
     };
 
     return (
         <Joyride
+            key={`joyride-${steps.length}-${currentStepIndex}`}
             steps={steps}
             run={isTourActive}
             continuous

@@ -245,8 +245,11 @@ export const getAgentListSummaries = () =>
                     z.object({
                         agentId: z.string(),
                         name: z.string(),
+                        logo: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
+                        automated: z.boolean(),
+                        agentRole: z.enum(['shipbuilder', 'arbitrage_trader']).optional(),
                         normalizedBalance: z.number(),
                         facilityCount: z.number(),
                         avgEfficiency: z.number().nullable(),
@@ -343,6 +346,7 @@ export const getAgentOverview = () =>
                     .object({
                         agentId: z.string(),
                         name: z.string(),
+                        logo: z.string(),
                         associatedPlanetId: z.string(),
                         balance: z.number(),
                         shipCount: z.number(),
@@ -381,6 +385,7 @@ export const getAgentOverview = () =>
                 overview: {
                     agentId: agent.id,
                     name: agent.name,
+                    logo: agent.logo,
                     associatedPlanetId: agent.associatedPlanetId ?? '',
                     balance: agent.assets
                         ? Object.values(agent.assets).reduce(
@@ -722,6 +727,19 @@ export const getAgentFinancialHistory = () =>
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };
+        });
+
+export const getUsedLogos = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(z.object({ usedLogos: z.array(z.string()) }))
+        .query(async () => {
+            const { agents } = getAllAgentsSync();
+            const usedLogos = agents
+                .filter((a) => !a.automated && !a.agentRole)
+                .map((a) => a.logo)
+                .filter((l): l is string => !!l);
+            return { usedLogos };
         });
 
 export const generateNewsReport = () =>

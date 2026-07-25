@@ -383,6 +383,7 @@ export type Agent = {
     automated: boolean;
     automateWorkerAllocation: boolean;
     name: string;
+    logo: string;
     foundedTick: number;
     starterLoanTaken: boolean;
     associatedPlanetId: string;

@@ -22,6 +22,7 @@ import { useTour } from '../tour/TourContext';
 import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
+import { CompanyLogoChooser } from './CompanyLogoChooser';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -59,13 +60,17 @@ export function FoundingPage() {
     const queryClient = useQueryClient();
     const [agentName, setAgentName] = useState('');
     const [planetId, setPlanetId] = useState('');
+    const [logo, setLogo] = useState('unknown');
     const [foundedAtTick, setFoundedAtTick] = useState<number | null>(null);
     const [createdAgentId, setCreatedAgentId] = useState<string | null>(null);
-    const [enableTour, setEnableTour] = useState(false);
+    const [enableTour, setEnableTour] = useState(true);
     const [agentNameError, setAgentNameError] = useState<string | null>(null);
+    const [showLogoPrompt, setShowLogoPrompt] = useState(false);
     const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
 
     const planetsQuery = useQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const usedLogosQuery = useQuery(trpc.simulation.getUsedLogos.queryOptions());
+    const usedLogos = usedLogosQuery.data?.usedLogos ?? [];
     const { data: agentDetail } = useQuery(
         trpc.simulation.getAgentDetail.queryOptions({ agentId: createdAgentId ?? '' }, { enabled: !!createdAgentId }),
     );
@@ -134,8 +139,13 @@ export function FoundingPage() {
         if (!planetId) {
             return;
         }
+        if (!logo || logo === 'unknown') {
+            setShowLogoPrompt(true);
+            toast.error('Please select a company logo');
+            return;
+        }
         setTourActive(enableTour);
-        createAgentMutation.mutate({ agentName: agentName.trim(), planetId });
+        createAgentMutation.mutate({ agentName: agentName.trim(), planetId, logo });
     };
 
     if (foundedAtTick !== null) {
@@ -151,7 +161,7 @@ export function FoundingPage() {
     return (
         <Page title='Register your Company'>
             <form onSubmit={handleSubmit} className='grid gap-6 max-w-lg'>
-                <div className='grid gap-2'>
+                <div className='flex flex-row gap-4'>
                     <Input
                         placeholder='Your company name'
                         value={agentName}
@@ -167,6 +177,16 @@ export function FoundingPage() {
                         name='company-name'
                         autoComplete='organization'
                         aria-invalid={agentNameError ? 'true' : undefined}
+                        className='flex-grow'
+                    />
+                    <CompanyLogoChooser
+                        selectedLogo={logo}
+                        onSelect={(key) => {
+                            setLogo(key);
+                            setShowLogoPrompt(false);
+                        }}
+                        showPrompt={showLogoPrompt}
+                        usedLogos={usedLogos}
                     />
                 </div>
 
@@ -326,7 +346,7 @@ export function FoundingPage() {
                         onCheckedChange={(checked) => setEnableTour(checked === true)}
                     />
                     <Label htmlFor='enable-tour' className='text-sm text-muted-foreground cursor-pointer'>
-                        Show me a guided tour after founding
+                        Show a guided tour
                     </Label>
                 </div>
 

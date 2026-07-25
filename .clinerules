@@ -6,10 +6,12 @@
 - If you see a comment that seems unnecessary, delete it.
 - Avoid optional properties. We are in dev only — no need for backwards-compatibility.
 - Run 'npm run test:all' to run all tests.
+- Do not run 'npm run build', there is always a dev server running. server crashes, building fails randomly.
+- When you fix a bug, most likely you will also want to add a test.
 
 ## Overview
 
-PolyEconGame is a complex economic simulation game built with Next.js 15, TypeScript, and a sophisticated simulation engine. The game simulates planetary economies with detailed population dynamics, market systems, production chains, and financial systems.
+PolyEconGame is a macro economic simulation game built with Next.js 15, TypeScript. The game simulates planetary economies with detailed population dynamics, market systems, production chains, and financial systems.
 
 ## Architecture
 

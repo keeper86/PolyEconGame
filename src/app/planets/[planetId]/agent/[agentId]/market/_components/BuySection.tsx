@@ -96,14 +96,14 @@ function buyStatus(
         if (noSupply) {
             return {
                 kind: 'partial_no_supply',
-                text: 'Partial. No supply.',
+                text: 'Partial. Insufficient supply',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         if (lowPrice) {
             return {
                 kind: 'partial_low_price',
-                text: 'Partial. Low price.',
+                text: 'Partial. Price too low',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
@@ -116,14 +116,14 @@ function buyStatus(
     if (noSupply) {
         return {
             kind: 'not_filled_no_supply',
-            text: 'Not filled. No supply.',
+            text: 'Not filled. Insufficient supply',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     if (lowPrice) {
         return {
             kind: 'not_filled_low_price',
-            text: 'Not filled. Low price.',
+            text: 'Not filled. Price too low',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
@@ -334,7 +334,7 @@ export default function BuySection({
             {/* ─── Zone 1: Automation toggle + header ─── */}
             <div className='relative'>
                 <div className='flex items-center justify-between gap-2'>
-                    <div className='flex items-center justify-start gap-2'>
+                    <div className='flex items-center justify-start gap-2' data-tour='market-buy-switch'>
                         <Switch
                             id={`bid-auto-${resourceName}`}
                             checked={local.bidAutomated}

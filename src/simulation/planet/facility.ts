@@ -33,7 +33,7 @@ export const getFacilityType = (facility: Facility): FacilityType => {
 };
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
-const constructionCostFactor = 6000;
+const constructionCostFactor = 10000;
 const facilityConstructionMultiplier: Record<FacilityType, number> = {
     raw: 1,
     refined: 2,
@@ -59,7 +59,7 @@ export const calculateCostsForConstruction = (
 
     return {
         cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
-        time: MINIMUM_CONSTRUCTION_TIME_IN_TICKS + 30 * m * Math.log(targetScale / Math.max(1, currentScale)),
+        time: MINIMUM_CONSTRUCTION_TIME_IN_TICKS + 30 * m * Math.log(targetScale - currentScale),
     };
 };
 

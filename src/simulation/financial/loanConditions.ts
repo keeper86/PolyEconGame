@@ -49,10 +49,9 @@ export function computeLoanConditions(
     if (isNewAgent) {
         maxLoanAmount = STARTER_LOAN_AMOUNT;
     } else if (monthlyNetCashFlow <= 0) {
-        maxLoanAmount = Math.max(0, storageCollateral + facilitiesCollateral + shipsCollateral - existingLoans);
+        maxLoanAmount = Math.max(0, facilitiesCollateral + shipsCollateral - existingLoans);
     } else {
-        const projectedCapacity =
-            LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + storageCollateral + facilitiesCollateral + shipsCollateral;
+        const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + facilitiesCollateral + shipsCollateral;
         maxLoanAmount = Math.max(0, projectedCapacity - existingLoans);
         if (maxLoanAmount < existingLoans / 10) {
             maxLoanAmount = 0;

@@ -119,11 +119,12 @@ export const coalMine = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: coalResourceType, quantity: 500 }],
 });
 
+export const oilWellName = 'Oil Well';
 export const oilWell = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Oil Well',
+    name: oilWellName,
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 10,
@@ -131,8 +132,8 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
         secondary: 30,
         tertiary: 5,
     },
-    needs: [{ resource: oilReservoirResourceType, quantity: 0.3 }],
-    produces: [{ resource: crudeOilResourceType, quantity: 300 }],
+    needs: [{ resource: oilReservoirResourceType, quantity: 0.2 }],
+    produces: [{ resource: crudeOilResourceType, quantity: 200 }],
 });
 
 export const loggingCamp = (planetId: string, id: string): ProductionFacility => ({
@@ -147,8 +148,8 @@ export const loggingCamp = (planetId: string, id: string): ProductionFacility =>
         secondary: 10,
         tertiary: 1,
     },
-    needs: [{ resource: forestResourceType, quantity: 400 }],
-    produces: [{ resource: logsResourceType, quantity: 400 }],
+    needs: [{ resource: forestResourceType, quantity: 200 }],
+    produces: [{ resource: logsResourceType, quantity: 200 }],
 });
 
 export const stoneQuarry = (planetId: string, id: string): ProductionFacility => ({
@@ -163,8 +164,8 @@ export const stoneQuarry = (planetId: string, id: string): ProductionFacility =>
         secondary: 10,
         tertiary: 1,
     },
-    needs: [{ resource: stoneDepositResourceType, quantity: 0.4 }],
-    produces: [{ resource: stoneResourceType, quantity: 400 }],
+    needs: [{ resource: stoneDepositResourceType, quantity: 0.2 }],
+    produces: [{ resource: stoneResourceType, quantity: 200 }],
 });
 
 export const copperMine = (planetId: string, id: string): ProductionFacility => ({
@@ -179,8 +180,8 @@ export const copperMine = (planetId: string, id: string): ProductionFacility => 
         secondary: 20,
         tertiary: 1,
     },
-    needs: [{ resource: copperDepositResourceType, quantity: 0.4 }],
-    produces: [{ resource: copperOreResourceType, quantity: 400 }],
+    needs: [{ resource: copperDepositResourceType, quantity: 0.2 }],
+    produces: [{ resource: copperOreResourceType, quantity: 200 }],
 });
 
 export const sandMine = (planetId: string, id: string): ProductionFacility => ({
@@ -227,8 +228,8 @@ export const clayMine = (planetId: string, id: string): ProductionFacility => ({
         secondary: 10,
         tertiary: 0,
     },
-    needs: [{ resource: clayDepositResourceType, quantity: 0.4 }],
-    produces: [{ resource: clayResourceType, quantity: 400 }],
+    needs: [{ resource: clayDepositResourceType, quantity: 0.2 }],
+    produces: [{ resource: clayResourceType, quantity: 200 }],
 });
 
 export const ironSmelter = (planetId: string, id: string): ProductionFacility => ({
@@ -284,8 +285,8 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
         { resource: fuelResourceType, quantity: 60 },
-        { resource: plasticResourceType, quantity: 80 },
-        { resource: chemicalResourceType, quantity: 60 },
+        { resource: plasticResourceType, quantity: 60 },
+        { resource: chemicalResourceType, quantity: 80 },
     ],
 });
 
@@ -378,8 +379,8 @@ export const pesticidePlant = (planetId: string, id: string): ProductionFacility
         tertiary: 10,
     },
     needs: [
-        { resource: chemicalResourceType, quantity: 50 },
-        { resource: waterResourceType, quantity: 80 },
+        { resource: chemicalResourceType, quantity: 40 },
+        { resource: waterResourceType, quantity: 100 },
     ],
     produces: [{ resource: pesticideResourceType, quantity: 30 }],
 });

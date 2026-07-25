@@ -1,5 +1,6 @@
 'use client';
 
+import { useTour } from '@/components/tour/TourContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -10,6 +11,7 @@ import React, { useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
+import { oilReservoirResourceType } from '@/simulation/planet/landBoundResources';
 
 export function LeaseClaimCard({
     summary,
@@ -24,10 +26,13 @@ export function LeaseClaimCard({
     const queryClient = useQueryClient();
     const [tierIndex, setTierIndex] = useState(0);
     const [leased, setLeased] = useState(false);
+    const { isTourActive, markActionCompleted } = useTour();
 
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
+
+    const isOil = summary.resourceName === oilReservoirResourceType.name;
 
     const leaseMutation = useMutation(
         trpc.leaseClaim.mutationOptions({
@@ -39,12 +44,20 @@ export function LeaseClaimCard({
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getAgentClaims.queryKey({ agentId, planetId }),
                 });
+                // Mark the oil lease as completed for the tour blocking step
+                if (isTourActive && isOil) {
+                    markActionCompleted('lease-oil');
+                }
             },
         }),
     );
 
     return (
-        <Card id={resourceNameToSlug(summary.resourceName)} className='flex flex-col'>
+        <Card
+            id={resourceNameToSlug(summary.resourceName)}
+            className='flex flex-col'
+            data-tour={isOil ? 'claims-oil' : 'claims-lease'}
+        >
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

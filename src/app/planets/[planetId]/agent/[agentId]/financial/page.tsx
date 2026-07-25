@@ -64,6 +64,7 @@ export default function FinancialPage() {
                                     loans={totalOutstandingLoans(assets.activeLoans ?? [])}
                                     loanConditions={loanConditions}
                                     monthAcc={assets.monthAcc}
+                                    lastMonthAcc={assets.lastMonthAcc}
                                     planetId={planetId}
                                     agentId={agentId}
                                 />

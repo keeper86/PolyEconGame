@@ -94,7 +94,11 @@ export function ActiveClaimCard({
     const isSustainable = claim.depletionTicksEstimate === null;
 
     return (
-        <Card id={resourceNameToSlug(claim.resourceName)} className='border-emerald-500/30 flex flex-col'>
+        <Card
+            id={resourceNameToSlug(claim.resourceName)}
+            className='border-emerald-500/30 flex flex-col'
+            data-tour='claims-active'
+        >
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>

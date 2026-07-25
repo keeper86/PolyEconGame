@@ -3,7 +3,11 @@
 import { Page } from '@/components/client/Page';
 import { useParams } from 'next/navigation';
 
+import { CompanyLogo } from '@/components/client/CompanyLogo';
+import { PlanetIcon } from '@/components/client/PlanetIcon';
 import { DataTableColumnHeader } from '@/components/dataTableColumnHeader';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -11,10 +15,9 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 
-type AgentRow = AgentListSummary & { normalizedBalance: number };
+type AgentRow = AgentListSummary & { normalizedBalance: number; rank: number };
 
 type SortKey = 'normalizedBalance' | 'totalWorkers' | 'facilityCount' | 'shipCount';
 type SortDir = 'asc' | 'desc';
@@ -29,13 +32,14 @@ function sortAgents(agents: AgentRow[], key: SortKey, dir: SortDir): AgentRow[] 
 export default function PlanetAgentsLeaderboardPage() {
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
+    const smallScreen = useIsSmallScreen();
 
     const [showAll, setShowAll] = useState(false);
     const [hideAutomated, setHideAutomated] = useState(true);
 
     const trpc = useTRPC();
     const { isLoading, data } = useSimulationQuery(
-        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll, hideAutomated }),
+        trpc.simulation.getAgentListSummaries.queryOptions({ planetId, showAll, hideAutomated: false }),
     );
 
     const [sortKey, setSortKey] = useState<SortKey>('normalizedBalance');
@@ -50,8 +54,19 @@ export default function PlanetAgentsLeaderboardPage() {
         }
     };
 
-    const agents: AgentRow[] = data?.agents ?? [];
-    const sorted = sortAgents(agents, sortKey, sortDir);
+    // Build rows with pre-filter ranks, then sort, then apply client-side filter
+    const agentsWithBalance: AgentRow[] = (data?.agents ?? []).map((a, i) => ({
+        ...a,
+        normalizedBalance: a.normalizedBalance,
+        rank: i + 1,
+    }));
+
+    // Sort and assign ranks based on current sort
+    let sorted = sortAgents(agentsWithBalance, sortKey, sortDir);
+    sorted = sorted.map((agent, i) => ({ ...agent, rank: i + 1 }));
+
+    // Filter out automated / role-based agents client-side, keeping original ranks
+    const filtered = hideAutomated ? sorted.filter((a) => !a.automated && !a.agentRole) : sorted;
 
     const col = (key: SortKey) => ({
         sortable: true as const,
@@ -64,7 +79,7 @@ export default function PlanetAgentsLeaderboardPage() {
         return <div className='text-sm text-muted-foreground'>Waiting for simulation data…</div>;
     }
 
-    if (agents.length === 0) {
+    if (agentsWithBalance.length === 0) {
         return <div className='text-sm text-muted-foreground'>No companies found.</div>;
     }
 
@@ -75,16 +90,16 @@ export default function PlanetAgentsLeaderboardPage() {
                 <span className='flex flex-col items-end gap-2'>
                     <span className='flex items-center gap-2'>
                         <Label htmlFor='show-all-companies' className='text-xs text-muted-foreground cursor-pointer'>
-                            Show all companies
+                            {smallScreen ? 'All planets' : 'Show from all planets'}
                         </Label>
                         <Switch id='show-all-companies' checked={showAll} onCheckedChange={setShowAll} />{' '}
                     </span>
                     <span className='flex items-center gap-2'>
                         <Label
                             htmlFor='hide-automated-companies'
-                            className='text-xs text-muted-foreground cursor-pointer'
+                            className='text-xs text-muted-foreground cursor-pointer text-right'
                         >
-                            Hide automated agents
+                            {smallScreen ? 'Hide automated' : 'Hide automated agents'}
                         </Label>
                         <Switch
                             id='hide-automated-companies'
@@ -94,31 +109,40 @@ export default function PlanetAgentsLeaderboardPage() {
                     </span>
                 </span>
             }
+            className='text-outline-strong'
         >
-            <Table>
+            <Table className='text-outline-strong'>
                 <TableHeader>
                     <TableRow>
-                        <TableHead className='w-12'>#</TableHead>
+                        <TableHead className='w-10 text-right'>#</TableHead>
+                        <TableHead className='w-10' />
                         <TableHead>Company</TableHead>
-                        <TableHead>Home Planet</TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Net Balance' {...col('normalizedBalance')} />
+                        <TableHead className='text-right'>
+                            <DataTableColumnHeader
+                                title='Net Worth'
+                                className='justify-end'
+                                {...col('normalizedBalance')}
+                            />
                         </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Workers' {...col('totalWorkers')} />
-                        </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Facilities' {...col('facilityCount')} />
-                        </TableHead>
-                        <TableHead>
-                            <DataTableColumnHeader title='Ships' {...col('shipCount')} />
-                        </TableHead>
+                        <TableHead className='w-8 text-right'>Home</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {sorted.map((agent, i) => (
+                    {filtered.map((agent) => (
                         <TableRow key={agent.agentId}>
-                            <TableCell className='text-muted-foreground tabular-nums'>{i + 1}</TableCell>
+                            <TableCell className='text-muted-foreground tabular-nums text-right'>
+                                {agent.rank}
+                            </TableCell>
+                            <TableCell>
+                                <Link
+                                    href={
+                                        `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agent.agentId)}` as never
+                                    }
+                                    className='font-medium hover:scale-110 transition-all'
+                                >
+                                    <CompanyLogo logoKey={agent.logo} size={28} />
+                                </Link>
+                            </TableCell>
                             <TableCell>
                                 <Link
                                     href={
@@ -129,15 +153,12 @@ export default function PlanetAgentsLeaderboardPage() {
                                     {agent.name}
                                 </Link>
                             </TableCell>
-                            <TableCell className='text-muted-foreground'>{agent.associatedPlanetId}</TableCell>
-                            <TableCell className='tabular-nums'>
+                            <TableCell className='tabular-nums text-right'>
                                 {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
                             </TableCell>
-                            <TableCell className='tabular-nums'>
-                                {formatNumberWithUnit(agent.totalWorkers, 'persons')}
+                            <TableCell className='tabular-nums text-right'>
+                                <PlanetIcon planetId={agent.associatedPlanetId} size={28} />
                             </TableCell>
-                            <TableCell className='tabular-nums'>{agent.facilityCount}</TableCell>
-                            <TableCell className='tabular-nums'>{agent.shipCount}</TableCell>
                         </TableRow>
                     ))}
                 </TableBody>

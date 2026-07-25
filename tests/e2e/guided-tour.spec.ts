@@ -14,7 +14,7 @@ test.use({ trace: 'retain-on-failure' });
 
 test.describe('Guided Tour E2E', () => {
     test.describe.configure({ retries: 0 });
-    test('shows guided tour popups on central bank and financial pages', async ({ page }) => {
+    test('shows guided tour popups on financial page and can proceed through first steps', async ({ page }) => {
         // ==================================================================
         // 1. Create a new agent on the founding page
         // ==================================================================
@@ -37,6 +37,12 @@ test.describe('Guided Tour E2E', () => {
         await foundingForm.fill('Tour Test Company');
         await page.locator('#enable-tour').check();
 
+        // Select a company logo (required)
+        await page.locator('button[aria-label="Choose company logo"]').click();
+        await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+        await page.locator('[role="dialog"] button:not([disabled]):has(img)').first().click();
+        await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
         // Submit the founding form
         await page.locator('button[type="submit"]').click();
 
@@ -45,25 +51,19 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForLoadState('networkidle');
 
         // ==================================================================
-        // 4. Financial — Step 0: Take the starter loan (blocking step)
+        // 2. Financial — Step 0: Welcome popup
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Now take the loan');
-
-        // Click the starter loan button — this triggers advanceToNextStep via the mutation callback
-        await page.locator('[data-tour="starter-loan"]').click();
-
-        // ==================================================================
-        // 5. Financial — Step 1: Loan confirmation
-        // ==================================================================
-        await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Loan taken successfully');
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Welcome to Game');
         await page.locator('button[data-action="primary"]').click();
 
         // ==================================================================
-        // 6. Financial — Step 2: Financial Overview
+        // 3. Financial — Step 1: Take the starter loan (blocking step)
         // ==================================================================
         await page.waitForSelector('[role="alertdialog"]', { timeout: 15000 });
-        await expect(page.locator('[role="alertdialog"]')).toContainText('Financial Overview');
+        await expect(page.locator('[role="alertdialog"]')).toContainText('Take your starter loan');
+
+        // Click the starter loan button
+        await page.locator('[data-tour="starter-loan"]').click();
     });
 });
