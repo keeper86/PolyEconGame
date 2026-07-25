@@ -58,13 +58,7 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
                     const currentClaimQuantity = agentClaims.reduce((sum, c) => sum + c.maximumCapacity, 0);
                     const toReduce = Math.min(excess, currentClaimQuantity);
                     if (toReduce > 0) {
-                        const result = reduceClaim(gameState, agent.id, planet.id, resourceName, toReduce);
-                        if (result.ok) {
-                            console.log(
-                                `[auto-claim] Agent ${agent.id} auto-reduced claim by ${toReduce} of ${resourceName}` +
-                                    ` (required ${required}, oversupply ${Math.abs(shortfall)})`,
-                            );
-                        }
+                        reduceClaim(gameState, agent.id, planet.id, resourceName, toReduce);
                     }
                 }
                 continue;

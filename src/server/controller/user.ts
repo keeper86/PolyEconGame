@@ -6,6 +6,7 @@ import {
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { assetManifest } from '@/lib/assetManifest';
 import {
     workerAcquireLicense,
     workerBuildFacility,
@@ -268,6 +269,13 @@ export const createAgent = () => {
                 throw new TRPCError({
                     code: 'BAD_REQUEST',
                     message: 'Agent name must contain at least one letter or digit',
+                });
+            }
+
+            if (!(input.logo in assetManifest) && !input.logo.startsWith('company_icon_')) {
+                throw new TRPCError({
+                    code: 'BAD_REQUEST',
+                    message: 'Invalid company logo',
                 });
             }
 
