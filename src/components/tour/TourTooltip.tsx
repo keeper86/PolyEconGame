@@ -4,11 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import type { TooltipRenderProps } from 'react-joyride';
 
-/**
- * Custom tooltip component for react-joyride that uses shadcn Card and Button
- * components. This ensures consistent styling with the rest of the app,
- * including dark mode support via CSS variables.
- */
 export function TourTooltip({
     continuous,
     index,
@@ -19,7 +14,6 @@ export function TourTooltip({
     closeProps,
     primaryProps,
     tooltipProps,
-    // skipProps is available but unused; we use closeProps for the Close button instead
     skipProps: _skipProps,
 }: TooltipRenderProps) {
     const { title, content } = step;
@@ -31,7 +25,6 @@ export function TourTooltip({
             role='alertdialog'
             className='min-w-[320px] max-w-[420px] max-h-[80vh] overflow-y-auto shadow-xl border bg-card text-card-foreground'
         >
-            {/* Close button */}
             <button
                 {...closeProps}
                 className='absolute top-3 right-3 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-6 w-6 text-muted-foreground cursor-pointer'
@@ -49,7 +42,6 @@ export function TourTooltip({
             </CardContent>
 
             <CardFooter className='flex items-center justify-between gap-2 pt-2'>
-                {/* Left side: progress indicator */}
                 <div className='flex items-center gap-2'>
                     {size > 1 && (
                         <span className='text-xs text-muted-foreground tabular-nums'>
@@ -58,7 +50,6 @@ export function TourTooltip({
                     )}
                 </div>
 
-                {/* Right side: back / next buttons */}
                 <div className='flex items-center gap-1.5'>
                     {index > 0 && (
                         <Button {...backProps} data-action='back' variant='outline' size='sm' className='text-xs h-8'>

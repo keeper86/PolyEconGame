@@ -9,6 +9,7 @@
 - Do not run 'npm run build', there is always a dev server running. server crashes, building fails randomly.
 - When you fix a bug, most likely you will also want to add a test.
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
+- We do an explicit planning for each feature/refactor. Use the plan, do not think it through a second time.
 
 ## Overview
 

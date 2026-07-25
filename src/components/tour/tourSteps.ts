@@ -1,21 +1,7 @@
 import type { Step as JoyrideStep } from 'react-joyride';
 
-/**
- * Tour steps grouped by page route.
- * Each page returns the steps relevant to that page.
- * Navigation to the next page is handled externally via goToNextPage.
- *
- * PAGE_ORDER: financial → workforce → market → production → claims → storage → ships
- */
-
 type PageRoute = 'financial' | 'workforce' | 'claims' | 'production' | 'storage' | 'market' | 'ships';
 
-/**
- * Get the steps for a given page in the tour.
- *
- * @param completedActions - Set of action keys already completed.
- *   Steps whose `data.actionKey` is in this set will be filtered out.
- */
 export function getStepsForPage(
     page: PageRoute,
     planetId: string,
@@ -28,7 +14,7 @@ export function getStepsForPage(
     switch (page) {
         case 'financial': {
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Welcome to Game (name is work in progress)! This is a living, breathing macro-economic simulation. ' +
                     'You run a company on a dynamic planet. Every action — loans, hiring, production, trades — ' +
@@ -148,7 +134,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Now let\u2019s look at hiring workers. Your company needs a workforce to operate facilities. ' +
                     'We now navigate to the Workforce page. This may take a few seconds.',
@@ -206,7 +192,7 @@ export function getStepsForPage(
             }
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Automation is now enabled! The AI will compute optimal headcount ' +
                     'targets each day based on your facility requirements.',
@@ -276,7 +262,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Worker changes are processed each day, but transitions take time. Newly hired workers ' +
                     'enter an onboarding queue, and departing workers (fired, retired, or voluntarily leaving) ' +
@@ -289,7 +275,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'We need construction services to build facilities. ' +
                     'Let\u2019s go to the market to buy some. ' +
@@ -305,7 +291,6 @@ export function getStepsForPage(
         }
 
         case 'market': {
-            // ── First visit: construction-services focus ──────────────
             steps.push({
                 target: '[data-tour="market-tabs"]',
                 content:
@@ -332,7 +317,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Each resource row shows key data: clearing price, total supply, total demand, ' +
                     'production, and consumption. Click column headers to sort. ' +
@@ -378,7 +363,7 @@ export function getStepsForPage(
             }
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Automated buying is now enabled! The AI will manage purchases for you. ' +
                     'Your facility will always have the construction services it needs.',
@@ -421,7 +406,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Now that we have construction services being bought automatically, ' +
                     'let\u2019s build a facility! ' +
@@ -500,7 +485,7 @@ export function getStepsForPage(
             }
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Your Oil Well build request has been sent! After a day, it will appear as "Under Construction". ' +
                     'Construction consumes Construction Services from your storage each day until complete. ' +
@@ -512,7 +497,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Once construction finishes, the facility becomes active. The card shows: ' +
                     'inputs it consumes (left) and outputs it produces (right), worker efficiency bars, ' +
@@ -525,7 +510,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'You can increase the scale of each facility type. This scales the input, output and worker requirements of the facility. ' +
                     'Use the operating scale slider to set capacity from 0% to 100% temporarily. ',
@@ -536,7 +521,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'The Oil Well needs an Oil Reservoir land claim to extract Crude Oil. ' +
                     'Let\u2019s lease one to supply it. ' +
@@ -553,7 +538,7 @@ export function getStepsForPage(
 
         case 'claims': {
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Land Claims give you access to natural resources on the planet. ' +
                     'Your Oil Well needs access to an Oil Reservoir to extract Crude Oil. ' +
@@ -585,7 +570,7 @@ export function getStepsForPage(
             }
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Your oil claim has been leased! Resources are extracted automatically each day. ' +
                     'The extracted resource flows to your Oil Well, which produces Crude Oil for refining or sale. ' +
@@ -621,7 +606,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Resources form a chain: raw materials (level 0) feed refineries (level 1), ' +
                     'which feed manufacturers (level 2), and so on. You now have: ' +
@@ -635,7 +620,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Your products are stored in your warehouse. Let\u2019s check your inventory. ' +
                     'We now navigate to the Storage page. This may take a few seconds.',
@@ -696,7 +681,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Now let\u2019s revisit the Market to see how things are going. ' +
                     'We now navigate to the Market page. This may take a few seconds.',
@@ -780,7 +765,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     'Here\u2019s the core gameplay loop: ' +
                     '\uD83D\uDC4D Lease land claims to get resources ' +
@@ -798,7 +783,7 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="tour-modal-anchor"]',
+                target: 'body',
                 content:
                     '\uD83C\uDF89 Congratulations! You have completed the guided tour. ' +
                     'You now understand the core mechanics of Game. ' +
