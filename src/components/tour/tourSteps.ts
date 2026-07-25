@@ -1,21 +1,7 @@
 import type { Step as JoyrideStep } from 'react-joyride';
 
-/**
- * Tour steps grouped by page route.
- * Each page returns the steps relevant to that page.
- * Navigation to the next page is handled externally via goToNextPage.
- *
- * PAGE_ORDER: financial → workforce → market → production → claims → storage → ships
- */
-
 type PageRoute = 'financial' | 'workforce' | 'claims' | 'production' | 'storage' | 'market' | 'ships';
 
-/**
- * Get the steps for a given page in the tour.
- *
- * @param completedActions - Set of action keys already completed.
- *   Steps whose `data.actionKey` is in this set will be filtered out.
- */
 export function getStepsForPage(
     page: PageRoute,
     planetId: string,
@@ -44,11 +30,11 @@ export function getStepsForPage(
                 steps.push({
                     target: '[data-tour="starter-loan"]',
                     content:
-                        'Click the green button above to take your starter loan. It provides initial capital ' +
+                        'Click the button above to take your starter loan. It provides initial capital ' +
                         'to build your company infrastructure and hire workers. The loan is credited after ' +
                         'the current day completes.',
                     title: '\uD83C\uDFE6 Take your starter loan',
-                    placement: 'bottom',
+                    placement: 'top',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,
@@ -61,9 +47,9 @@ export function getStepsForPage(
             steps.push({
                 target: '[data-tour="financial-loan-panel"]',
                 content:
-                    'Your loan has been credited to your account! Notice the "Pending" overlay — actions ' +
-                    'are queued and processed on the next day. This is how the simulation works: you queue actions, ' +
-                    'they resolve when time advances.',
+                    'Your loan request has been queued! It will be credited after the current day completes. ' +
+                    'Notice the "Pending" overlay — actions are queued and processed on the next day. ' +
+                    'This is how the simulation works: you queue actions, they resolve when time advances.',
                 title: '\u2705 Loan taken successfully!',
                 placement: 'top',
                 hideOverlay: false,
@@ -98,12 +84,37 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="financial-charts"]',
+                target: '[data-tour="financial-expenses-revenue-chart"]',
                 content:
-                    'The charts below show your financial history over time. Below that, the Product Resolution ' +
-                    'panel breaks down your monthly profit and loss by product. These help you spot trends ' +
-                    'and see which products make you money.',
-                title: '\uD83D\uDCCA Charts & Product P&L',
+                    'This chart breaks down your expenses and revenue over time. ' +
+                    'Track how your operational costs compare to income — revenue should trend up ' +
+                    'as your production grows.',
+                title: '\uD83D\uDCC8 Expenses & Revenue Chart',
+                placement: 'bottom',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="financial-balance-flow-chart"]',
+                content:
+                    'The Balance Flow chart shows your net cash position over time. ' +
+                    'A rising trend means you are building cash reserves. A falling trend signals ' +
+                    'you may need to adjust your operations or take a loan.',
+                title: '\uD83D\uDCC8 Balance Flow Chart',
+                placement: 'bottom',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="financial-product-resolution"]',
+                content:
+                    'The Product Resolution panel breaks down your monthly profit and loss by product. ' +
+                    'See which products make you money and which are costing you.',
+                title: '\uD83D\uDCCA Product P&L',
                 placement: 'bottom',
                 hideOverlay: false,
                 skipBeacon: true,
@@ -124,7 +135,9 @@ export function getStepsForPage(
 
             steps.push({
                 target: 'body',
-                content: 'Now let\u2019s look at hiring workers. Your company needs a workforce to operate facilities.',
+                content:
+                    'Now let\u2019s look at hiring workers. Your company needs a workforce to operate facilities. ' +
+                    'We now navigate to the Workforce page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Workforce',
                 placement: 'center',
                 hideOverlay: false,
@@ -139,9 +152,9 @@ export function getStepsForPage(
             steps.push({
                 target: '[data-tour="workforce-wages"]',
                 content:
-                    'Workers run your facilities. To attract them, you need to set competitive wages. ' +
-                    'Workers are hired from the planet\u2019s population pool. If there are no unemployed ' +
-                    'workers, increase wages to motivate foreign employees to quit.',
+                    'Workers run your facilities. They are hired from the planet\u2019s population pool. ' +
+                    'This panel shows your current wages per education level compared to the planet average ' +
+                    '(shown in parentheses). Wages are managed automatically by the AI.',
                 title: '\uD83D\uDC77 Workforce Management',
                 placement: 'bottom',
                 skipBeacon: true,
@@ -151,20 +164,9 @@ export function getStepsForPage(
             steps.push({
                 target: '[data-tour="workforce-wages"]',
                 content:
-                    'Set wages for each education level. Higher wages attract more skilled employees, ' +
-                    'but also increase your costs. Compare your wages against the global average (shown in parentheses).',
-                title: '\uD83D\uDCB0 Wage Settings',
-                placement: 'bottom',
-                skipBeacon: true,
-                zIndex: 10000,
-            });
-
-            steps.push({
-                target: '[data-tour="workforce-wages"]',
-                content:
                     'Education levels: Uneducated (basic labor), Primary, Secondary (skilled), ' +
-                    'and Tertiary (specialists). Different facilities need different mixes. ' +
-                    'Pay competitive wages or workers will go to your competitors!',
+                    'and Tertiary (specialists). Different facilities need different skill mixes. ' +
+                    'Higher pay attracts more skilled employees but increases your costs.',
                 title: '\uD83C\uDFEB Education Levels',
                 placement: 'bottom',
                 skipBeacon: true,
@@ -225,6 +227,30 @@ export function getStepsForPage(
             });
 
             steps.push({
+                target: '[data-tour="workforce-age-distribution"]',
+                content:
+                    'The age distribution chart breaks down your workforce by age group. ' +
+                    'A balanced age pyramid indicates healthy workforce renewal. ' +
+                    'Too many older workers may signal future retirement waves.',
+                title: '\uD83D\uDCC8 Age Distribution',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="workforce-tenure-chart"]',
+                content:
+                    'The tenure chart shows how long your workers have been employed. ' +
+                    'High tenure means experienced staff, while new hires bring fresh skills. ' +
+                    'Track retention and onboarding trends here.',
+                title: '\uD83D\uDCC8 Tenure per Capita',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
                 target: '[data-tour="workforce-charts"]',
                 content:
                     'These charts track total workers and wage costs over time. ' +
@@ -238,9 +264,9 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'Workers are hired/fired at each day. But newly hired, fired, retired and volutarily ' +
-                    'leaving workers take 3 months to fully join/leave. Newly hired workers enter the onboarding ' +
-                    'queue and workers leaving have all their own 3-month queues. ',
+                    'Worker changes are processed each day, but transitions take time. Newly hired workers ' +
+                    'enter an onboarding queue, and departing workers (fired, retired, or voluntarily leaving) ' +
+                    'each have their own 3-month departure queue. Be patient \u2014 workforce changes are gradual!',
                 title: '\u23F3 Patience pays off',
                 placement: 'center',
                 hideOverlay: false,
@@ -251,7 +277,9 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'We need construction services to build facilities. ' + 'Let\u2019s go to the market to buy some.',
+                    'We need construction services to build facilities. ' +
+                    'Let\u2019s go to the market to buy some. ' +
+                    'We now navigate to the Market page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Market',
                 placement: 'center',
                 hideOverlay: false,
@@ -263,7 +291,6 @@ export function getStepsForPage(
         }
 
         case 'market': {
-            // ── First visit: construction-services focus ──────────────
             steps.push({
                 target: '[data-tour="market-tabs"]',
                 content:
@@ -274,6 +301,7 @@ export function getStepsForPage(
                 placement: 'bottom',
                 skipBeacon: true,
                 zIndex: 10000,
+                data: { timeoutMs: 30000 },
             });
 
             steps.push({
@@ -289,13 +317,14 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="market-tabs"]',
+                target: 'body',
                 content:
                     'Each resource row shows key data: clearing price, total supply, total demand, ' +
                     'production, and consumption. Click column headers to sort. ' +
                     'Click on the Construction Services row to expand it and see buy/sell options.',
                 title: '\uD83D\uDCCA Market Data',
-                placement: 'bottom',
+                placement: 'center',
+                hideOverlay: false,
                 skipBeacon: true,
                 zIndex: 10000,
             });
@@ -320,7 +349,7 @@ export function getStepsForPage(
                     target: '[data-tour="market-buy-switch"]',
                     content:
                         'Toggle this switch to enable automated purchasing. ' +
-                        'The AI will buy construction services each day to keep your stock filled. ' +
+                        'The AI will buy construction services each day to keep your stock filled when you require the resource. ' +
                         'You can configure pricing and volume strategies below.',
                     title: '\uD83D\uDED2 Enable Buy for Construction Services',
                     placement: 'auto',
@@ -369,19 +398,8 @@ export function getStepsForPage(
 
             steps.push({
                 target: '[data-tour="market-relevant-toggle"]',
-                content: 'This toggle filters the market to show only resources you can actually trade.',
+                content: 'This toggle filters the market to show only resources that you require or produce.',
                 title: '\uD83D\uDD0D Relevant Resources',
-                placement: 'bottom',
-                skipBeacon: true,
-                zIndex: 10000,
-            });
-
-            steps.push({
-                target: '[data-tour="market-relevant-toggle"]',
-                content:
-                    'Market orders are processed on the next day. ' +
-                    'You will see pending overlays while waiting for your orders to fill.',
-                title: '\u23F3 Pending Orders',
                 placement: 'bottom',
                 skipBeacon: true,
                 zIndex: 10000,
@@ -391,7 +409,8 @@ export function getStepsForPage(
                 target: 'body',
                 content:
                     'Now that we have construction services being bought automatically, ' +
-                    'let\u2019s build a facility!',
+                    'let\u2019s build a facility! ' +
+                    'We now navigate to the Production page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Production',
                 placement: 'center',
                 hideOverlay: false,
@@ -405,22 +424,23 @@ export function getStepsForPage(
 
         case 'production': {
             steps.push({
-                target: '[data-tour="production-facilities"]',
+                target: '[data-tour="production-tabs"]',
                 content:
                     'Production facilities transform raw materials into refined goods, ' +
                     'manufactured products, and services. This is how value is created \u2014 and how you make profit! ' +
                     'We have construction services ready, so let\u2019s build an Oil Well.',
                 title: '\uD83C\uDFED Production Facilities',
-                placement: 'top',
+                placement: 'bottom',
                 skipBeacon: true,
                 zIndex: 10000,
+                data: { timeoutMs: 30000 },
             });
 
             steps.push({
                 target: '[data-tour="production-tabs"]',
                 content:
                     'Facilities are organized by level: Raw (extraction), Refined (processing), ' +
-                    'Manufactured (assembly), and Services. The Oil Well is a Refined facility ' +
+                    'Manufactured (assembly), and Services. The Oil Well is a Raw Extraction facility ' +
                     '\u2014 the badge count shows how many of each type you own.',
                 title: '\uD83D\uDCC2 Facility Levels',
                 placement: 'bottom',
@@ -433,7 +453,7 @@ export function getStepsForPage(
                     target: '[data-tour="production-build"]',
                     content:
                         'Click the "+ Build facility" card to start constructing a new facility. ' +
-                        'We will build an Oil Well to process crude oil.',
+                        'We will build an Oil Well to extract crude oil.',
                     title: '\uD83D\uDEE0\uFE0F Click to build',
                     placement: 'top',
                     hideOverlay: false,
@@ -449,7 +469,7 @@ export function getStepsForPage(
                 steps.push({
                     target: '[data-tour="build-oil-well"]',
                     content:
-                        'This is the Oil Well. It consumes Crude Oil from a reservoir and produces... Crude Oil! ' +
+                        'This is the Oil Well. It extracts Crude Oil from a land claim (Oil Reservoir). ' +
                         'Click the "Build" button to order construction. ' +
                         'The build uses Construction Services which will be automatically ' +
                         'bought from the market. The build will take a few days to complete.',
@@ -467,7 +487,7 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'Your Oil Well build request has been sent! After a tick, it will appear as "Under Construction". ' +
+                    'Your Oil Well build request has been sent! After a day, it will appear as "Under Construction". ' +
                     'Construction consumes Construction Services from your storage each day until complete. ' +
                     'You can track progress on the card \u2014 the bar fills up as construction progresses.',
                 title: '\u23F3 Construction started',
@@ -492,9 +512,8 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'You can build multiple copies of each facility type to scale production. ' +
-                    'Use the operating scale slider to set capacity from 0% to 100%. ' +
-                    'Also consider upgrading to larger scales for better efficiency.',
+                    'You can increase the scale of each facility type. This scales the input, output and worker requirements of the facility. ' +
+                    'Use the operating scale slider to set capacity from 0% to 100% temporarily. ',
                 title: '\uD83D\uDCE1 Scaling Up',
                 placement: 'center',
                 skipBeacon: true,
@@ -504,8 +523,9 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'The Oil Well needs Crude Oil from a reservoir. ' +
-                    'Let\u2019s lease an Oil Reservoir to supply it.',
+                    'The Oil Well needs an Oil Reservoir land claim to extract Crude Oil. ' +
+                    'Let\u2019s lease one to supply it. ' +
+                    'We now navigate to the Land Claims page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Land Claims',
                 placement: 'center',
                 hideOverlay: false,
@@ -521,23 +541,24 @@ export function getStepsForPage(
                 target: 'body',
                 content:
                     'Land Claims give you access to natural resources on the planet. ' +
-                    'Your Oil Well needs Crude Oil from an Oil Reservoir. ' +
+                    'Your Oil Well needs access to an Oil Reservoir to extract Crude Oil. ' +
                     'Without a claim, the well has nothing to extract!',
                 title: '\uD83C\uDF0D Land Claims',
                 placement: 'center',
                 hideOverlay: false,
                 skipBeacon: true,
                 zIndex: 10000,
+                data: { timeoutMs: 30000 },
             });
 
             if (!completed.has('lease-oil')) {
                 steps.push({
                     target: '[data-tour="claims-oil"]',
                     content:
-                        'Click the "Lease" button on the Oil reservoir card to secure your first resource claim. ' +
-                        'Select a capacity and confirm \u2014 a monthly fee will be charged based on the tier you choose. ' +
-                        'This oil will feed your Oil Well!',
-                    title: '\uD83D\uDD11 Lease Oil reservoir',
+                        'Click the "Lease" button on the Oil Reservoir card to secure your first resource claim. ' +
+                        'Select a capacity and confirm \u2014 a one-time flat cost will be charged based on the tier you choose. ' +
+                        'This reservoir will supply your Oil Well!',
+                    title: '\uD83D\uDD11 Lease Oil Reservoir',
                     placement: 'auto',
                     hideOverlay: false,
                     blockTargetInteraction: false,
@@ -552,7 +573,7 @@ export function getStepsForPage(
                 target: 'body',
                 content:
                     'Your oil claim has been leased! Resources are extracted automatically each day. ' +
-                    'The oil will flow to your Oil Well, which turns it into Crude Oil for refining or sale. ' +
+                    'The extracted resource flows to your Oil Well, which produces Crude Oil for refining or sale. ' +
                     'Notice the active claim card now shows stock levels, extraction rate, and depletion estimate.',
                 title: '\u2705 Oil claim leased successfully!',
                 placement: 'center',
@@ -589,7 +610,7 @@ export function getStepsForPage(
                 content:
                     'Resources form a chain: raw materials (level 0) feed refineries (level 1), ' +
                     'which feed manufacturers (level 2), and so on. You now have: ' +
-                    'Oil Reservoir (raw) \u27A1\uFE0F Oil Well (refined) \u27A1\uFE0F Market. ' +
+                    'Oil Reservoir (raw) \u27A1\uFE0F Oil Well (extraction) \u27A1\uFE0F Market. ' +
                     'Start with basic resources and work your way up the value chain!',
                 title: '\uD83D\uDD17 Resource Chains',
                 placement: 'center',
@@ -600,7 +621,9 @@ export function getStepsForPage(
 
             steps.push({
                 target: 'body',
-                content: 'Your products are stored in your warehouse. Let\u2019s check your inventory.',
+                content:
+                    'Your products are stored in your warehouse. Let\u2019s check your inventory. ' +
+                    'We now navigate to the Storage page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Storage',
                 placement: 'center',
                 hideOverlay: false,
@@ -621,6 +644,7 @@ export function getStepsForPage(
                 placement: 'top',
                 skipBeacon: true,
                 zIndex: 10000,
+                data: { timeoutMs: 30000 },
             });
 
             steps.push({
@@ -658,7 +682,9 @@ export function getStepsForPage(
 
             steps.push({
                 target: 'body',
-                content: 'Now let\u2019s revisit the Market to see how things are going.',
+                content:
+                    'Now let\u2019s revisit the Market to see how things are going. ' +
+                    'We now navigate to the Market page. This may take a few seconds.',
                 title: '\u27A1\uFE0F Next: Market',
                 placement: 'center',
                 hideOverlay: false,
@@ -679,6 +705,7 @@ export function getStepsForPage(
                 placement: 'top',
                 skipBeacon: true,
                 zIndex: 10000,
+                data: { timeoutMs: 30000 },
             });
 
             steps.push({

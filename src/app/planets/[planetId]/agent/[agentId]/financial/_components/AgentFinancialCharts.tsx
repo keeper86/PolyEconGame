@@ -81,17 +81,21 @@ export default function AgentFinancialCharts({
                 className={`grid grid-cols-1 gap-4 md:grid-cols-${onlyBalances ? '1' : '2'} ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
             >
                 {!onlyBalances && (
-                    <ExpensesRevenueChart
+                    <div data-tour='financial-expenses-revenue-chart'>
+                        <ExpensesRevenueChart
+                            data={activeData}
+                            ghostData={granularity === 'monthly' ? activeGhostData : undefined}
+                            granularity={granularity}
+                        />
+                    </div>
+                )}
+                <div data-tour='financial-balance-flow-chart'>
+                    <BalanceFlowChart
                         data={activeData}
                         ghostData={granularity === 'monthly' ? activeGhostData : undefined}
                         granularity={granularity}
                     />
-                )}
-                <BalanceFlowChart
-                    data={activeData}
-                    ghostData={granularity === 'monthly' ? activeGhostData : undefined}
-                    granularity={granularity}
-                />
+                </div>
             </div>
         </div>
     );
