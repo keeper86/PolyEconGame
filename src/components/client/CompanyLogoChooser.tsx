@@ -39,6 +39,7 @@ export function CompanyLogoChooser({
                 <DialogTrigger asChild>
                     <button
                         type='button'
+                        aria-label='Choose company logo'
                         className={`relative rounded-lg transition-all cursor-pointer ${showPrompt ? 'ring-2 ring-destructive animate-pulse' : ''}`}
                     >
                         <CompanyLogo logoKey={selectedLogo} size={36} className='hover:scale-115' />

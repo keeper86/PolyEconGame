@@ -37,6 +37,12 @@ test.describe('Guided Tour E2E', () => {
         await foundingForm.fill('Tour Test Company');
         await page.locator('#enable-tour').check();
 
+        // Select a company logo (required)
+        await page.locator('button[aria-label="Choose company logo"]').click();
+        await page.waitForSelector('[role="dialog"]', { timeout: 5000 });
+        await page.locator('[role="dialog"] button:not([disabled]):has(img)').first().click();
+        await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
+
         // Submit the founding form
         await page.locator('button[type="submit"]').click();
 
