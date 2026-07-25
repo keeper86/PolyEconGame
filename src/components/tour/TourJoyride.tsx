@@ -249,16 +249,13 @@ export function TourJoyride() {
                 // Navigation step finished — navigate first, then tour ends elsewhere
                 setNavigating(true);
                 setCurrentStepIndex(0);
-                setTimeout(() => {
-                    goToNextPage(currentPageRoute, planetId, agentId);
-                }, 0);
+
+                goToNextPage(currentPageRoute, planetId, agentId);
+
                 return;
             }
 
-            // For everything else (e.g. "close" button, "skipped", or normal "finished" on last step)
-            // Defer to allow Joyride's internal cleanup (overlay removal) to complete
-            // before React unmounts the component.
-            setTimeout(() => completeTour(), 0);
+            completeTour();
             return;
         }
 
@@ -267,16 +264,21 @@ export function TourJoyride() {
         if (type === 'step:after' && isNavStep && action === 'next') {
             setNavigating(true);
             setCurrentStepIndex(0);
-            // Schedule navigation after React removes joyride from the DOM
-            setTimeout(() => {
-                goToNextPage(currentPageRoute, planetId, agentId);
-            }, 0);
+
+            goToNextPage(currentPageRoute, planetId, agentId);
+
             return;
         }
 
         // Regular content step — just advance the index (skip blocking steps that advance programmatically)
+        // If this is the last step, the "Finish" button was clicked — complete the tour.
+        // Joyride does not fire status: 'finished' in this case; it just fires step:after with action: 'next'.
         if (type === 'step:after' && action === 'next' && !isBlockingStep) {
-            setCurrentStepIndex(index + 1);
+            if (index === steps.length - 1) {
+                completeTour();
+            } else {
+                setCurrentStepIndex(index + 1);
+            }
         }
     };
 

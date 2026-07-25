@@ -263,260 +263,143 @@ export function getStepsForPage(
         }
 
         case 'market': {
-            const isFirstMarketVisit = !completed.has('build-oil-well');
+            // ── First visit: construction-services focus ──────────────
+            steps.push({
+                target: '[data-tour="market-tabs"]',
+                content:
+                    'The Market is where you buy production inputs and sell finished goods. ' +
+                    'Prices are determined by supply and demand \u2014 just like a real economy! ' +
+                    'We\u2019re here to buy Construction Services, which are needed to build facilities.',
+                title: '\uD83C\uDFEA Market Overview',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
 
-            if (isFirstMarketVisit) {
-                // ── First visit: construction-services focus ──────────────
+            steps.push({
+                target: '[data-tour="market-tab-services"]',
+                content:
+                    'Resources are grouped by level: Raw, Refined, Manufactured, Services, ' +
+                    'and Currency (foreign exchange). Construction Services are in the Services tab. ' +
+                    'Click the Services tab to find them.',
+                title: '\uD83D\uDCC2 Resource Levels',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="market-tabs"]',
+                content:
+                    'Each resource row shows key data: clearing price, total supply, total demand, ' +
+                    'production, and consumption. Click column headers to sort. ' +
+                    'Click on the Construction Services row to expand it and see buy/sell options.',
+                title: '\uD83D\uDCCA Market Data',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            if (!completed.has('expand-construction-accordion')) {
                 steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content:
-                        'The Market is where you buy production inputs and sell finished goods. ' +
-                        'Prices are determined by supply and demand \u2014 just like a real economy! ' +
-                        'We\u2019re here to buy Construction Services, which are needed to build facilities.',
-                    title: '\uD83C\uDFEA Market Overview',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-tab-services"]',
-                    content:
-                        'Resources are grouped by level: Raw, Refined, Manufactured, Services, ' +
-                        'and Currency (foreign exchange). Construction Services are in the Services tab. ' +
-                        'Click the Services tab to find them.',
-                    title: '\uD83D\uDCC2 Resource Levels',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content:
-                        'Each resource row shows key data: clearing price, total supply, total demand, ' +
-                        'production, and consumption. Click column headers to sort. ' +
-                        'Click on the Construction Services row to expand it and see buy/sell options.',
-                    title: '\uD83D\uDCCA Market Data',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                if (!completed.has('expand-construction-accordion')) {
-                    steps.push({
-                        target: '[data-tour="market-accordion-construction"]',
-                        content: 'Click on the Construction Services row to expand it and see buy/sell options.',
-                        title: '\uD83D\uDD0D Expand Construction',
-                        placement: 'top',
-                        hideOverlay: false,
-                        blockTargetInteraction: false,
-                        spotlightPadding: 8,
-                        skipBeacon: true,
-                        zIndex: 10000,
-                        data: { blocking: true, actionKey: 'expand-construction-accordion' },
-                    });
-                }
-
-                if (!completed.has('enable-buy-construction')) {
-                    steps.push({
-                        target: '[data-tour="market-buy-switch"]',
-                        content:
-                            'Toggle this switch to enable automated purchasing. ' +
-                            'The AI will buy construction services each day to keep your stock filled. ' +
-                            'You can configure pricing and volume strategies below.',
-                        title: '\uD83D\uDED2 Enable Buy for Construction Services',
-                        placement: 'auto',
-                        hideOverlay: false,
-                        blockTargetInteraction: false,
-                        spotlightPadding: 8,
-                        skipBeacon: true,
-                        zIndex: 10000,
-                        data: { blocking: true, actionKey: 'enable-buy-construction' },
-                    });
-                }
-
-                steps.push({
-                    target: 'body',
-                    content:
-                        'Automated buying is now enabled! The AI will manage purchases for you. ' +
-                        'Your facility will always have the construction services it needs.',
-                    title: '\u2705 Buy enabled!',
-                    placement: 'center',
-                    hideOverlay: false,
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-sell-switch"]',
-                    content:
-                        'The Sell section lets you place offers to sell your products. ' +
-                        'For now, we focus on buying \u2014 later you will sell your refined goods here.',
-                    title: '\uD83D\uDCE4 Sell & Auto-Sell',
+                    target: '[data-tour="market-accordion-construction"]',
+                    content: 'Click on the Construction Services row to expand it and see buy/sell options.',
+                    title: '\uD83D\uDD0D Expand Construction',
                     placement: 'top',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-price-chart"]',
-                    content:
-                        'Every resource has a price history chart. Use this to spot trends and time your trades. ' +
-                        'The red line is estimated production cost.',
-                    title: '\uD83D\uDCC8 Price History',
-                    placement: 'top',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-relevant-toggle"]',
-                    content: 'This toggle filters the market to show only resources you can actually trade.',
-                    title: '\uD83D\uDD0D Relevant Resources',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-relevant-toggle"]',
-                    content:
-                        'Market orders are processed on the next day. ' +
-                        'You will see pending overlays while waiting for your orders to fill.',
-                    title: '\u23F3 Pending Orders',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content:
-                        'Now that we have construction services being bought automatically, ' +
-                        'let\u2019s build a facility!',
-                    title: '\u27A1\uFE0F Next: Production',
-                    placement: 'center',
                     hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
                     skipBeacon: true,
                     zIndex: 10000,
-                    data: { navStep: true },
-                });
-            } else {
-                // ── Second visit: full market tour ────────────────────────
-                steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content:
-                        'Welcome back to the Market! Now that you have production running, ' +
-                        'you can sell your Crude Oil here and buy other inputs you need.',
-                    title: '\uD83C\uDFEA Market Overview',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content:
-                        'Resources are grouped by level: Raw, Refined, Manufactured, Services, ' +
-                        'and Currency (foreign exchange). Use these tabs to filter what you see.',
-                    title: '\uD83D\uDCC2 Resource Levels',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content:
-                        'Each resource row shows key data: clearing price, total supply, total demand, ' +
-                        'production, and consumption. Click column headers to sort.',
-                    title: '\uD83D\uDCCA Market Data',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content: 'Click any resource row to expand it. This reveals the buy and sell sections.',
-                    title: '\uD83D\uDD0D Expand a Resource',
-                    placement: 'center',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content:
-                        'The Buy section lets you place bids to purchase resources. ' +
-                        'Set a price and quantity, or enable the automation toggle to let the AI manage buying.',
-                    title: '\uD83D\uDED2 Buy & Auto-Buy',
-                    placement: 'center',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content:
-                        'The Sell section lets you place offers to sell your products. ' +
-                        'Set your asking price, or enable auto-sell to let the AI manage pricing.',
-                    title: '\uD83D\uDCE4 Sell & Auto-Sell',
-                    placement: 'center',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content: 'Every resource has a price history chart. Use this to spot trends and time your trades.',
-                    title: '\uD83D\uDCC8 Price History',
-                    placement: 'center',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-tabs"]',
-                    content: 'The "Currency" tab shows foreign exchange markets for interplanetary commerce.',
-                    title: '\uD83D\uDCB1 Currency Markets',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-relevant-toggle"]',
-                    content: 'This toggle filters the market to show only resources you can actually trade.',
-                    title: '\uD83D\uDD0D Relevant Resources',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: '[data-tour="market-relevant-toggle"]',
-                    content:
-                        'Market orders are processed on the next day. ' +
-                        'You will see pending overlays while waiting for your orders to fill.',
-                    title: '\u23F3 Pending Orders',
-                    placement: 'bottom',
-                    skipBeacon: true,
-                    zIndex: 10000,
-                });
-
-                steps.push({
-                    target: 'body',
-                    content: 'Finally, let\u2019s look at Ships \u2014 your gateway to interplanetary trade!',
-                    title: '\u27A1\uFE0F Next: Ships',
-                    placement: 'center',
-                    hideOverlay: false,
-                    skipBeacon: true,
-                    zIndex: 10000,
-                    data: { navStep: true },
+                    data: { blocking: true, actionKey: 'expand-construction-accordion' },
                 });
             }
+
+            if (!completed.has('enable-buy-construction')) {
+                steps.push({
+                    target: '[data-tour="market-buy-switch"]',
+                    content:
+                        'Toggle this switch to enable automated purchasing. ' +
+                        'The AI will buy construction services each day to keep your stock filled. ' +
+                        'You can configure pricing and volume strategies below.',
+                    title: '\uD83D\uDED2 Enable Buy for Construction Services',
+                    placement: 'auto',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'enable-buy-construction' },
+                });
+            }
+
+            steps.push({
+                target: 'body',
+                content:
+                    'Automated buying is now enabled! The AI will manage purchases for you. ' +
+                    'Your facility will always have the construction services it needs.',
+                title: '\u2705 Buy enabled!',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="market-sell-switch"]',
+                content:
+                    'The Sell section lets you place offers to sell your products. ' +
+                    'For now, we focus on buying \u2014 later you will sell your refined goods here.',
+                title: '\uD83D\uDCE4 Sell & Auto-Sell',
+                placement: 'top',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="market-price-chart"]',
+                content:
+                    'Every resource has a price history chart. Use this to spot trends and time your trades. ' +
+                    'The red line is estimated production cost.',
+                title: '\uD83D\uDCC8 Price History',
+                placement: 'top',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="market-relevant-toggle"]',
+                content: 'This toggle filters the market to show only resources you can actually trade.',
+                title: '\uD83D\uDD0D Relevant Resources',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="market-relevant-toggle"]',
+                content:
+                    'Market orders are processed on the next day. ' +
+                    'You will see pending overlays while waiting for your orders to fill.',
+                title: '\u23F3 Pending Orders',
+                placement: 'bottom',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: 'body',
+                content:
+                    'Now that we have construction services being bought automatically, ' +
+                    'let\u2019s build a facility!',
+                title: '\u27A1\uFE0F Next: Production',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+                data: { navStep: true },
+            });
+
             break;
         }
 
@@ -582,38 +465,38 @@ export function getStepsForPage(
             }
 
             steps.push({
-                target: '[data-tour="production-tabs"]',
+                target: 'body',
                 content:
                     'Your Oil Well build request has been sent! After a tick, it will appear as "Under Construction". ' +
                     'Construction consumes Construction Services from your storage each day until complete. ' +
                     'You can track progress on the card \u2014 the bar fills up as construction progresses.',
                 title: '\u23F3 Construction started',
-                placement: 'bottom',
+                placement: 'center',
                 skipBeacon: true,
                 zIndex: 10000,
             });
 
             steps.push({
-                target: '[data-tour="production-active"]',
+                target: 'body',
                 content:
                     'Once construction finishes, the facility becomes active. The card shows: ' +
                     'inputs it consumes (left) and outputs it produces (right), worker efficiency bars, ' +
                     'and a revenue row showing revenue, input costs, wages, and net profit per day. ' +
                     'Keep an eye on input buffers \u2014 if they run out, production stops!',
                 title: '\u2699\uFE0F Active Facility',
-                placement: 'top',
+                placement: 'center',
                 skipBeacon: true,
                 zIndex: 10000,
             });
 
             steps.push({
-                target: '[data-tour="production-active"]',
+                target: 'body',
                 content:
                     'You can build multiple copies of each facility type to scale production. ' +
                     'Use the operating scale slider to set capacity from 0% to 100%. ' +
                     'Also consider upgrading to larger scales for better efficiency.',
                 title: '\uD83D\uDCE1 Scaling Up',
-                placement: 'top',
+                placement: 'center',
                 skipBeacon: true,
                 zIndex: 10000,
             });
