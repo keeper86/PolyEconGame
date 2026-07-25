@@ -112,7 +112,9 @@ export function TourJoyride() {
             if (document.querySelector(targetSelector)) {
                 observer.disconnect();
                 clearTimeout(timeoutId);
-                setTargetsReady(true);
+                requestAnimationFrame(() => {
+                    setTargetsReady(true);
+                });
             }
         });
 
