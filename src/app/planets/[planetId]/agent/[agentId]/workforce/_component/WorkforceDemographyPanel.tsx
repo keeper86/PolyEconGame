@@ -87,7 +87,7 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                             </TabsList>
                         </Tabs>
 
-                        <div>
+                        <div data-tour='workforce-age-distribution'>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
                                 Age distribution
                             </h5>
@@ -98,7 +98,7 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                             />
                         </div>
 
-                        <div>
+                        <div data-tour='workforce-tenure-chart'>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
                                 Tenure per capita (in years)
                             </h5>
