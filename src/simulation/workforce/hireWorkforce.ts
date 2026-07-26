@@ -153,6 +153,9 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
     if (process.env.SIM_DEBUG === '1') {
         assertPopulationWorkforceConsistency(agents, planet, 'performLaborMatching');
     }
+    if (profiler?.isEnabled) {
+        t = profiler.markAndAccum('hireAfter', '  hire_after', t);
+    }
 }
 
 export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);

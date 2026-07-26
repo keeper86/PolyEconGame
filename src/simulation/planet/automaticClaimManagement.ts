@@ -81,12 +81,7 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
             }
 
             const result = leaseClaim(gameState, agent.id, planet.id, resourceName, toAcquire);
-            if (result.ok) {
-                console.debug(
-                    `[auto-claim] Agent ${agent.id} auto-leased ${toAcquire} of ${resourceName}` +
-                        ` (required ${required}, had ${shortfall})`,
-                );
-            } else {
+            if (!result.ok) {
                 console.debug(
                     `[auto-claim] Agent ${agent.id} auto-lease failed for ${toAcquire} of ${resourceName}` +
                         ` (required ${required}, had ${shortfall}). Reason: ${result.reason}`,
