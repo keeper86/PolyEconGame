@@ -7,6 +7,7 @@ export const NAMES: Record<string, string[]> = {
         'Anthracite Mining Corp',
         'Coalfield Ventures',
         'Northern Seam Ltd',
+        'Coal Valley Co',
     ],
     oilWell: [
         'PetroGlobal Corp',
@@ -18,6 +19,8 @@ export const NAMES: Record<string, string[]> = {
         'Deep Horizon Oil',
         'Inland Petroleum Corp',
         'Delta Oil & Gas',
+        'Gulf Coast Oil',
+        'Northern Oil & Gas',
     ],
     loggingCamp: [
         'Great Northern Timber',

@@ -312,7 +312,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     planet_id: planetId,
                     agent_id: agent.id,
                     net_balance: cashBalance,
-                    asset_value: facilitiesValue + shipsValue,
+                    asset_value: facilitiesValue + shipsValue + storageValue,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
                     wages: assets.monthAcc.wages,
