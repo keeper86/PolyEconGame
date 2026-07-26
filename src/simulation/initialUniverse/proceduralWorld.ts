@@ -58,7 +58,7 @@ import {
 } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
-import { NAMES } from './preConfiguredCompanies';
+import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
 
 export const PROC_PLANET_ID = 'earth';
@@ -207,15 +207,10 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {
-        const names = NAMES[facilityType] ?? [];
-        const count = Math.min(target.agentCount, names.length);
-        if (count === 0) {
-            continue;
-        }
+        const names = getNamesFor(facilityType, target.agentCount);
+        const scales = splitScale(target.totalScale, names.length, facilityType);
 
-        const scales = splitScale(target.totalScale, count, facilityType);
-
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < names.length; i++) {
             const name = names[i];
             const id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
             const scale = scales[i];
