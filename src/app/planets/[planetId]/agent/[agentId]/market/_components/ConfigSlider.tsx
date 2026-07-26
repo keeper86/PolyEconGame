@@ -101,6 +101,7 @@ export function ConfigRangeSlider({
     onChange,
     disabled,
     isPercent,
+    pivot,
 }: {
     label: string;
     valueLow: number;
@@ -113,76 +114,174 @@ export function ConfigRangeSlider({
     onChange: (low: number, high: number) => void;
     disabled: boolean;
     isPercent?: boolean;
+    pivot?: number;
 }): React.ReactElement {
     const clampedLow = Math.max(min, Math.min(max, valueLow));
     const clampedHigh = Math.max(min, Math.min(max, valueHigh));
 
     const committedClampedLow = committedLow !== undefined ? Math.max(min, Math.min(max, committedLow)) : undefined;
     const committedClampedHigh = committedHigh !== undefined ? Math.max(min, Math.min(max, committedHigh)) : undefined;
-    const commitFracLow = committedClampedLow !== undefined ? (committedClampedLow - min) / (max - min) : undefined;
-    const commitFracHigh = committedClampedHigh !== undefined ? (committedClampedHigh - min) / (max - min) : undefined;
 
     const showCommittedLow = committedLow !== undefined && committedLow !== clampedLow;
     const showCommittedHigh = committedHigh !== undefined && committedHigh !== clampedHigh;
 
-    const fmt = (v: number): string => {
+    const innerFmt = (v: number): string => {
         if (isPercent) {
             return `${Math.round(v * 100)}%`;
         }
         return v.toFixed(v % 1 === 0 ? 0 : 2);
     };
 
+    // ── Standard (non-pivot) range slider ──────────────────────────────────────
+    if (pivot === undefined) {
+        const commitFracLow = committedClampedLow !== undefined ? (committedClampedLow - min) / (max - min) : undefined;
+        const commitFracHigh =
+            committedClampedHigh !== undefined ? (committedClampedHigh - min) / (max - min) : undefined;
+
+        return (
+            <div className='space-y-1'>
+                <div className='flex items-center justify-between'>
+                    <Label className='text-[11px] text-muted-foreground'>{label}</Label>
+                    <span className='text-[11px] tabular-nums font-medium'>
+                        {innerFmt(clampedLow)} — {innerFmt(clampedHigh)}
+                        <span className='ml-1 text-[9px] text-muted-foreground'>
+                            {showCommittedLow || showCommittedHigh
+                                ? `(current: ${showCommittedLow ? innerFmt(committedLow!) : innerFmt(clampedLow)} — ${showCommittedHigh ? innerFmt(committedHigh!) : innerFmt(clampedHigh)})`
+                                : ''}
+                        </span>
+                    </span>
+                </div>
+                <div className='relative'>
+                    <Slider
+                        min={min}
+                        max={max}
+                        step={step}
+                        value={[clampedLow, clampedHigh]}
+                        onValueChange={([low, high]) => {
+                            if (low !== undefined && high !== undefined) {
+                                onChange(low, high);
+                            }
+                        }}
+                        disabled={disabled}
+                        className='w-full'
+                    />
+                    <div
+                        className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                            commitFracLow !== undefined ? '' : 'opacity-0'
+                        }`}
+                        style={{
+                            left: `${(commitFracLow ?? 0) * 100}%`,
+                            transform: 'translateX(-50%)',
+                            top: '2px',
+                        }}
+                    />
+                    <div
+                        className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                            commitFracHigh !== undefined ? '' : 'opacity-0'
+                        }`}
+                        style={{
+                            left: `${(commitFracHigh ?? 0) * 100}%`,
+                            transform: 'translateX(-50%)',
+                            top: '2px',
+                        }}
+                    />
+                </div>
+                <div className='flex justify-between text-[9px] text-muted-foreground'>
+                    <span>{innerFmt(min)}</span>
+                    <span>{innerFmt(max)}</span>
+                </div>
+            </div>
+        );
+    }
+
+    // ── Pivot (split) range slider ─────────────────────────────────────────────
+    const lowPct = Math.round(((pivot - clampedLow) / (pivot - min)) * 100);
+    const highPct = Math.round(((clampedHigh - pivot) / (max - pivot)) * 100);
+
+    const committedFracLowLocal =
+        committedClampedLow !== undefined ? (committedClampedLow - min) / (pivot - min) : undefined;
+    const committedFracHighLocal =
+        committedClampedHigh !== undefined ? (committedClampedHigh - pivot) / (max - pivot) : undefined;
+
     return (
-        <div className='space-y-1'>
+        <div className={`space-y-1${disabled ? ' opacity-50' : ''}`}>
             <div className='flex items-center justify-between'>
                 <Label className='text-[11px] text-muted-foreground'>{label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
-                    {fmt(clampedLow)} — {fmt(clampedHigh)}
+                    -{lowPct}% / +{highPct}%
                     <span className='ml-1 text-[9px] text-muted-foreground'>
                         {showCommittedLow || showCommittedHigh
-                            ? `(current: ${showCommittedLow ? fmt(committedLow!) : fmt(clampedLow)} — ${showCommittedHigh ? fmt(committedHigh!) : fmt(clampedHigh)})`
+                            ? `(current: ${showCommittedLow ? `-${Math.round(((pivot - committedLow!) / (pivot - min)) * 100)}%` : `-${lowPct}%`} / ${showCommittedHigh ? `+${Math.round(((committedHigh! - pivot) / (max - pivot)) * 100)}%` : `+${highPct}%`})`
                             : ''}
                     </span>
                 </span>
             </div>
-            <div className='relative'>
-                <Slider
-                    min={min}
-                    max={max}
-                    step={step}
-                    value={[clampedLow, clampedHigh]}
-                    onValueChange={([low, high]) => {
-                        if (low !== undefined && high !== undefined) {
-                            onChange(low, high);
-                        }
-                    }}
-                    disabled={disabled}
-                    className='w-full'
-                />
-                <div
-                    className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
-                        commitFracLow !== undefined ? '' : 'opacity-0'
-                    }`}
-                    style={{
-                        left: `${(commitFracLow ?? 0) * 100}%`,
-                        transform: 'translateX(-50%)',
-                        top: '2px',
-                    }}
-                />
-                <div
-                    className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
-                        commitFracHigh !== undefined ? '' : 'opacity-0'
-                    }`}
-                    style={{
-                        left: `${(commitFracHigh ?? 0) * 100}%`,
-                        transform: 'translateX(-50%)',
-                        top: '2px',
-                    }}
-                />
+            <div className='grid grid-cols-[1fr_8px_1fr] gap-0 items-center'>
+                {/* Left slider: min → pivot */}
+                <div className='relative'>
+                    <Slider
+                        min={min}
+                        max={pivot}
+                        step={step}
+                        value={[clampedLow]}
+                        onValueChange={([v]) => {
+                            if (v !== undefined) {
+                                onChange(v, clampedHigh);
+                            }
+                        }}
+                        disabled={disabled}
+                        className='w-full'
+                    />
+                    <div
+                        className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                            committedFracLowLocal !== undefined ? '' : 'opacity-0'
+                        }`}
+                        style={{
+                            left: `${(committedFracLowLocal ?? 0) * 100}%`,
+                            transform: 'translateX(-50%)',
+                            top: '2px',
+                        }}
+                    />
+                </div>
+
+                {/* Center: pivot marker */}
+                <div className='flex flex-col items-center justify-center h-full'>
+                    <div className='w-px h-5 bg-foreground/30' />
+                </div>
+
+                {/* Right slider: pivot → max */}
+                <div className='relative'>
+                    <Slider
+                        min={pivot}
+                        max={max}
+                        step={step}
+                        value={[clampedHigh]}
+                        onValueChange={([v]) => {
+                            if (v !== undefined) {
+                                onChange(clampedLow, v);
+                            }
+                        }}
+                        disabled={disabled}
+                        className='w-full'
+                    />
+                    <div
+                        className={`absolute top-0 w-0.5 h-4 bg-foreground/40 rounded-full pointer-events-none ${
+                            committedFracHighLocal !== undefined ? '' : 'opacity-0'
+                        }`}
+                        style={{
+                            left: `${(committedFracHighLocal ?? 0) * 100}%`,
+                            transform: 'translateX(-50%)',
+                            top: '2px',
+                        }}
+                    />
+                </div>
             </div>
-            <div className='flex justify-between text-[9px] text-muted-foreground'>
-                <span>{fmt(min)}</span>
-                <span>{fmt(max)}</span>
+            <div className='grid grid-cols-[1fr_8px_1fr] gap-0 text-[9px] text-muted-foreground'>
+                <span>{innerFmt(min)}</span>
+                <span className='text-center text-[10px] tabular-nums font-medium text-foreground/60'>
+                    {innerFmt(pivot)}
+                </span>
+                <span className='text-right'>{innerFmt(max)}</span>
             </div>
         </div>
     );

@@ -468,7 +468,7 @@ export default function BuySection({
                                         <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
                                             Combined Needs
                                         </Label>
-                                        <div className={isFacilityInput ? 'space-y-2' : 'space-y-2 opacity-50'}>
+                                        <div className={'space-y-2'}>
                                             <ConfigSlider
                                                 label='Input buffer (days)'
                                                 value={sliderVal('inputBufferTargetTicks', 30)}
@@ -479,11 +479,7 @@ export default function BuySection({
                                                 onChange={(v) =>
                                                     handleSliderChange({ inputBufferTargetTicks: String(v) })
                                                 }
-                                                disabled={
-                                                    buyAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityInput
-                                                }
+                                                disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
                                             />
                                             <ConfigSlider
                                                 label='Max buy rate (days)'
@@ -496,11 +492,7 @@ export default function BuySection({
                                                 onChange={(v) =>
                                                     handleSliderChange({ inventorySmoothingMaxExtra: String(v) })
                                                 }
-                                                disabled={
-                                                    buyAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityInput
-                                                }
+                                                disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
                                             />
                                         </div>
                                     </div>
@@ -610,6 +602,7 @@ export default function BuySection({
                                         min={0.8}
                                         max={1.2}
                                         step={0.01}
+                                        pivot={1.0}
                                         onChange={(low, high) =>
                                             handleSliderChange({
                                                 priceAdjustMaxDown: String(low),

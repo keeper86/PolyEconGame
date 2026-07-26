@@ -567,6 +567,7 @@ export default function SellSection({
                                         min={0.8}
                                         max={1.2}
                                         step={0.01}
+                                        pivot={1.0}
                                         onChange={(low, high) =>
                                             handleSliderChange({
                                                 priceAdjustMaxDown: String(low),
