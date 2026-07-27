@@ -2,7 +2,6 @@ import { BID_OFFER_MAX_COST_MULTIPLIER } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
 import { educationCenter, groceryChain, hospital, logisticsHub, retailChain } from '../planet/productionFacilities';
-import { healthcareServiceResourceType } from '../planet/services';
 import type { ServiceName } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
@@ -172,27 +171,6 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     planet.marketPrices[service.resource.name] ?? 0,
                 );
 
-                if (
-                    planet.id === 'earth' &&
-                    referencePrice >
-                        (planet.lastProductionCostFloors[service.resource.name] ?? 0) * BID_OFFER_MAX_COST_MULTIPLIER
-                ) {
-                    console.error('Production cost: %s', service.resource.name);
-                    console.error('Reference price: %s', referencePrice);
-                    console.error('Production costs: %s', planet.lastProductionCostFloors[service.resource.name]);
-                    console.error('Market prices: %s', planet.marketPrices[service.resource.name]);
-                }
-                if (
-                    planet.id === 'earth' &&
-                    service.resource.name === healthcareServiceResourceType.name &&
-                    referencePrice > 50
-                ) {
-                    console.info('Production cost: %s', service.resource.name);
-                    console.info('Reference price: %s', referencePrice);
-                    console.info('Production costs: %s', planet.lastProductionCostFloors[service.resource.name]);
-                    console.info('Market prices: %s', planet.marketPrices[service.resource.name]);
-                }
-
                 if (referencePrice <= 0) {
                     continue;
                 }
@@ -221,7 +199,8 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     willingPrice = remainingWealth / rate / 1.2;
                     quantityPerPerson = 1.2 * rate;
                 } else if (remainingWealth < quantityPerPerson * willingPrice) {
-                    const affordableQuantity = remainingWealth / willingPrice;
+                    const affordableQuantity = remainingWealth / referencePrice;
+                    willingPrice = referencePrice;
                     quantityPerPerson = Math.min(quantityPerPerson, affordableQuantity);
                 }
 
