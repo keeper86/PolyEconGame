@@ -432,10 +432,7 @@ export default function SellSection({
                                         <ConfigSlider
                                             label='Sell-off smoothing (days)'
                                             value={sliderVal('freeRetainmentSmoothingMaxExtra', 2)}
-                                            committed={committedVal(
-                                                committedConfig,
-                                                'freeRetainmentSmoothingMaxExtra',
-                                            )}
+                                            committed={committedVal(committedConfig, 'freeRetainmentSmoothingMaxExtra')}
                                             min={1}
                                             max={20}
                                             step={1}

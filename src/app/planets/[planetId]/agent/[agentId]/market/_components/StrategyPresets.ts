@@ -53,10 +53,7 @@ export const VOLUME_BUY_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vol
 
 // ─── Volume presets (sell) ──────────────────────────────────────────────────
 
-export type VolumeSellValues = Pick<
-    AutoConfigLocalState,
-    'freeRetainment' | 'freeRetainmentSmoothingMaxExtra'
->;
+export type VolumeSellValues = Pick<AutoConfigLocalState, 'freeRetainment' | 'freeRetainmentSmoothingMaxExtra'>;
 
 export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, VolumeSellValues> = {
     'just-in-time': {
@@ -138,10 +135,7 @@ const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = [
     'freeBuyQuantitySmoothingMaxExtra',
 ];
 
-const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = [
-    'freeRetainment',
-    'freeRetainmentSmoothingMaxExtra',
-];
+const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
 const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
     'priceAdjustMaxUp',
