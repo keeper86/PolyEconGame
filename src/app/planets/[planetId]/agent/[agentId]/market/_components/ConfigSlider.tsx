@@ -195,8 +195,8 @@ export function ConfigRangeSlider({
     }
 
     // ── Pivot (split) range slider ─────────────────────────────────────────────
-    const lowPct = Math.round(((pivot - clampedLow) / (pivot - min)) * 100);
-    const highPct = Math.round(((clampedHigh - pivot) / (max - pivot)) * 100);
+    const lowDisplay = Math.round(clampedLow * 100);
+    const highDisplay = Math.round(clampedHigh * 100);
 
     const committedFracLowLocal =
         committedClampedLow !== undefined ? (committedClampedLow - min) / (pivot - min) : undefined;
@@ -208,25 +208,27 @@ export function ConfigRangeSlider({
             <div className='flex items-center justify-between'>
                 <Label className='text-[11px] text-muted-foreground'>{label}</Label>
                 <span className='text-[11px] tabular-nums font-medium'>
-                    -{lowPct}% / +{highPct}%
+                    {lowDisplay}% / {highDisplay}%
                     <span className='ml-1 text-[9px] text-muted-foreground'>
                         {showCommittedLow || showCommittedHigh
-                            ? `(current: ${showCommittedLow ? `-${Math.round(((pivot - committedLow!) / (pivot - min)) * 100)}%` : `-${lowPct}%`} / ${showCommittedHigh ? `+${Math.round(((committedHigh! - pivot) / (max - pivot)) * 100)}%` : `+${highPct}%`})`
+                            ? `(current: ${showCommittedLow ? `${Math.round(committedLow! * 100)}%` : `${lowDisplay}%`} / ${showCommittedHigh ? `${Math.round(committedHigh! * 100)}%` : `${highDisplay}%`})`
                             : ''}
                     </span>
                 </span>
             </div>
             <div className='grid grid-cols-[1fr_8px_1fr] gap-0 items-center'>
-                {/* Left slider: min → pivot */}
+                {/* Left slider: min → pivot (inverted so fill goes toward pivot) */}
                 <div className='relative'>
                     <Slider
                         min={min}
                         max={pivot}
                         step={step}
-                        value={[clampedLow]}
+                        value={[pivot - clampedLow + min]}
+                        inverted
                         onValueChange={([v]) => {
                             if (v !== undefined) {
-                                onChange(v, clampedHigh);
+                                const actualLow = pivot - v + min;
+                                onChange(actualLow, clampedHigh);
                             }
                         }}
                         disabled={disabled}
@@ -277,11 +279,11 @@ export function ConfigRangeSlider({
                 </div>
             </div>
             <div className='grid grid-cols-[1fr_8px_1fr] gap-0 text-[9px] text-muted-foreground'>
-                <span>{innerFmt(min)}</span>
-                <span className='text-center text-[10px] tabular-nums font-medium text-foreground/60'>
-                    {innerFmt(pivot)}
+                <span>{Math.round(min * 100)}%</span>
+                <span className='text-[10px] font-medium text-foreground/60 whitespace-nowrap translate-x-[-6px]'>
+                    {Math.round(pivot * 100)}%
                 </span>
-                <span className='text-right'>{innerFmt(max)}</span>
+                <span className='text-right'>{Math.round(max * 100)}%</span>
             </div>
         </div>
     );

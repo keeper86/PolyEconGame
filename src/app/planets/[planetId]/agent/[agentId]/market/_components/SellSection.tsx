@@ -116,7 +116,7 @@ function committedVal(
     return typeof raw === 'number' ? raw : undefined;
 }
 
-const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['outputBufferMaxTicks', 'inventorySmoothingMaxExtra']);
+const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['outputBufferMaxTicks', 'inventorySmoothingMaxExtra', 'freeRetainment', 'freeRetainmentSmoothingMaxExtra']);
 
 export default function SellSection({
     resourceName,
@@ -259,11 +259,7 @@ export default function SellSection({
         (patch: Record<string, string>) => {
             const changedKey = Object.keys(patch)[0] as keyof AutoConfigLocalState | undefined;
             if (changedKey) {
-                if (
-                    BUFFER_KEYS.has(changedKey) ||
-                    changedKey === 'freeSellQuantity' ||
-                    changedKey === 'freeSellQuantitySmoothingMaxExtra'
-                ) {
+                if (BUFFER_KEYS.has(changedKey)) {
                     if (activeVolumePreset !== 'custom') {
                         setActiveVolumePreset('custom');
                     }
@@ -281,8 +277,8 @@ export default function SellSection({
     const ALL_AUTO_KEYS: (keyof AutoConfigLocalState)[] = [
         'inventorySmoothingMaxExtra',
         'outputBufferMaxTicks',
-        'freeSellQuantity',
-        'freeSellQuantitySmoothingMaxExtra',
+        'freeRetainment',
+        'freeRetainmentSmoothingMaxExtra',
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
         'automatedCostFloorBuffer',
@@ -464,33 +460,33 @@ export default function SellSection({
 
                                     <Separator className='my-1' />
 
-                                    {/* Free quantity group */}
+                                    {/* Retainment group */}
                                     <div className='space-y-2'>
                                         <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                            Free quantity
+                                            Retainment
                                         </Label>
                                         <ConfigSlider
-                                            label='Free sell quantity (total)'
-                                            value={sliderVal('freeSellQuantity', 0)}
-                                            committed={committedVal(committedConfig, 'freeSellQuantity')}
+                                            label='Free retainment (total)'
+                                            value={sliderVal('freeRetainment', 0)}
+                                            committed={committedVal(committedConfig, 'freeRetainment')}
                                             min={0}
                                             max={10000}
                                             step={1}
-                                            onChange={(v) => handleSliderChange({ freeSellQuantity: String(v) })}
+                                            onChange={(v) => handleSliderChange({ freeRetainment: String(v) })}
                                             disabled={sellAutoConfigSaving || activeVolumePreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Free sell fill days'
-                                            value={sliderVal('freeSellQuantitySmoothingMaxExtra', 2)}
+                                            label='Sell-off smoothing (days)'
+                                            value={sliderVal('freeRetainmentSmoothingMaxExtra', 2)}
                                             committed={committedVal(
                                                 committedConfig,
-                                                'freeSellQuantitySmoothingMaxExtra',
+                                                'freeRetainmentSmoothingMaxExtra',
                                             )}
                                             min={1}
                                             max={20}
                                             step={1}
                                             onChange={(v) =>
-                                                handleSliderChange({ freeSellQuantitySmoothingMaxExtra: String(v) })
+                                                handleSliderChange({ freeRetainmentSmoothingMaxExtra: String(v) })
                                             }
                                             disabled={sellAutoConfigSaving || activeVolumePreset !== 'custom'}
                                         />

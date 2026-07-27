@@ -43,8 +43,8 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
         targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 1.5,
-        freeSellQuantity: c.freeSellQuantity ?? 0,
-        freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+        freeRetainment: c.freeRetainment ?? 0,
+        freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -410,29 +410,33 @@ export function adjustOfferPrice(
         return;
     }
 
-    // Apply sell-side inventory smoothing
-    const rawRetainment = offer.offerRetainment ?? 0;
+    // Apply sell-side inventory smoothing.
+    // freeRetainment ensures the agent always keeps at least this many units in storage.
+    const freeRetainment = cfg.freeRetainment;
+    // Base retainment includes the input-reserve retainment already set upstream plus the floor.
+    const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     let surplusRatio: number | undefined;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
-    if (surplus > EPSILON && baseRate > EPSILON && offer.resource.form !== 'services') {
-        const referenceQty = baseRate * cfg.outputBufferMaxTicks;
-        surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
-        const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
-        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
-        const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
-        offer.offerRetainment = clampedRetainment;
+    if (surplus > EPSILON && offer.resource.form !== 'services') {
+        if (baseRate > EPSILON) {
+            // Producer smoothing: scale the offer rate relative to output buffer
+            const referenceQty = baseRate * cfg.outputBufferMaxTicks;
+            surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
+            const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
+            const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
+            offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
+        } else {
+            // Non-producer smoothing: sell off surplus gradually over smoothing days
+            const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
+            const perTick = surplus / smoothingDays;
+            const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
+            offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
+        }
     }
 
-    const retainment = offer.offerRetainment ?? 0;
-    const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
-
-    // Add free sell quantity to effective quantity (absolute quantity smoothed over days)
-    // Convert absolute order amount to per-tick rate by dividing by fill days.
-    const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
-    const freeSellQty = cfg.freeSellQuantity;
-    const freeSellPerTick = freeSellQty > 0 && baseEffectiveQuantity < freeSellQty ? freeSellQty / freeSellFillDays : 0;
-    const effectiveQuantity =
-        freeSellPerTick > 0 ? Math.min(baseEffectiveQuantity + freeSellPerTick, inventoryQty) : baseEffectiveQuantity;
+    // freeRetainment is always a floor on the final retainment
+    const retainment = Math.max(offer.offerRetainment ?? 0, freeRetainment);
+    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {

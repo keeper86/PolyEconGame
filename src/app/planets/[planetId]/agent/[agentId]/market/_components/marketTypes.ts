@@ -21,9 +21,9 @@ export type AutoConfigLocalState = {
     inputBufferTargetTicks: string;
     targetFillRate: string;
     freeBuyQuantity: string;
-    freeSellQuantity: string;
+    freeRetainment: string;
     freeBuyQuantitySmoothingMaxExtra: string;
-    freeSellQuantitySmoothingMaxExtra: string;
+    freeRetainmentSmoothingMaxExtra: string;
 };
 
 export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
@@ -39,9 +39,9 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
         targetFillRate: config?.targetFillRate?.toString() ?? '',
         freeBuyQuantity: config?.freeBuyQuantity?.toString() ?? '',
-        freeSellQuantity: config?.freeSellQuantity?.toString() ?? '',
+        freeRetainment: config?.freeRetainment?.toString() ?? '',
         freeBuyQuantitySmoothingMaxExtra: config?.freeBuyQuantitySmoothingMaxExtra?.toString() ?? '',
-        freeSellQuantitySmoothingMaxExtra: config?.freeSellQuantitySmoothingMaxExtra?.toString() ?? '',
+        freeRetainmentSmoothingMaxExtra: config?.freeRetainmentSmoothingMaxExtra?.toString() ?? '',
     };
 }
 
@@ -59,9 +59,9 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
         'inputBufferTargetTicks',
         'targetFillRate',
         'freeBuyQuantity',
-        'freeSellQuantity',
+        'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',
-        'freeSellQuantitySmoothingMaxExtra',
+        'freeRetainmentSmoothingMaxExtra',
     ];
     let hasAny = false;
     for (const key of keys) {
@@ -88,9 +88,9 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         'inputBufferTargetTicks',
         'targetFillRate',
         'freeBuyQuantity',
-        'freeSellQuantity',
+        'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',
-        'freeSellQuantitySmoothingMaxExtra',
+        'freeRetainmentSmoothingMaxExtra',
     ];
     for (const key of keys) {
         const localVal = local[key] !== '' ? parseFloat(local[key]) : undefined;

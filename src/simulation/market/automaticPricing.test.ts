@@ -123,8 +123,8 @@ describe('resolveOfferConfig — config resolution', () => {
                 outputBufferMaxTicks: 40,
                 targetSellThrough: 0.8,
                 automatedCostFloorBuffer: 1.5,
-                freeSellQuantity: 0,
-                freeSellQuantitySmoothingMaxExtra: 2,
+                freeRetainment: 0,
+                freeRetainmentSmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2, 10);
@@ -430,7 +430,7 @@ describe('automaticPricing — sell-side config overrides', () => {
         expect(offer!.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
-    it('freeSellQuantity adds extra effective quantity when inventory is low', () => {
+    it('freeRetainment keeps minimum inventory in storage', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'well', scale: 1 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -449,8 +449,8 @@ describe('automaticPricing — sell-side config overrides', () => {
                     offerPrice: 10,
                     lastSold: 5,
                     autoConfig: {
-                        freeSellQuantity: 1000,
-                        freeSellQuantitySmoothingMaxExtra: 5,
+                        freeRetainment: 1000,
+                        freeRetainmentSmoothingMaxExtra: 5,
                     } as AutomatedPricingConfig,
                 },
             },
@@ -462,14 +462,11 @@ describe('automaticPricing — sell-side config overrides', () => {
         const offer = agent.assets[PLANET_ID].market?.sell[WATER];
         expect(offer).toBeDefined();
         expect(offer!.diagnostics).toBeDefined();
-        // effectiveQuantity should be > 10 (base) because freeSellQuantity adds more
-        // freeSellPerTick = 1000/5 = 200, base effective = 10 - 0 = 10
-        // but freeSellPerTick dominates -> effectiveQuantity = min(10 + 200, 10) = 10? No...
-        // Wait: baseEffectiveQuantity = max(0, 10 - 0) = 10, freeSellPerTick = 200, effectiveQuantity = min(10 + 200, 10) = 10
-        // Actually the code says: if freeSellPerTick > 0 && baseEffectiveQuantity < freeSellQty => use baseEffectiveQuantity + freeSellPerTick, capped at inventoryQty
-        // So effectiveQuantity = min(10 + 200, 10) = 10
-        // With freeSellQuantity but inventory is only 10, the effective quantity is capped at inventory
-        expect(offer!.diagnostics!.effectiveQuantity).toBeLessThanOrEqual(10);
+        // With freeRetainment=1000, the agent keeps 1000 units in storage.
+        // Inventory is only 10, so effectiveQuantity = max(0, 10 - max(0, freeRetainment=1000)) = 0
+        // All 10 units are retained, nothing offered for sale.
+        expect(offer!.diagnostics).toBeDefined();
+        expect(offer!.diagnostics!.effectiveQuantity).toBe(0);
     });
 
     it('custom costSpringStrength and automatedCostFloorBuffer affect cost-floor brake behavior', () => {

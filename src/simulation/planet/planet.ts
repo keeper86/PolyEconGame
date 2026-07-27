@@ -186,9 +186,9 @@ export interface AutomatedPricingConfig {
 
     // Free quantity (absolute order amount, smoothed over days)
     freeBuyQuantity?: number; // absolute total quantity to buy (spread over fill days)
-    freeSellQuantity?: number; // absolute total quantity to sell (spread over fill days)
+    freeRetainment?: number; // absolute quantity to always keep in storage (sell everything above this)
     freeBuyQuantitySmoothingMaxExtra?: number; // days the buy order takes to fill, default 2
-    freeSellQuantitySmoothingMaxExtra?: number; // days the sell order takes to fill, default 2
+    freeRetainmentSmoothingMaxExtra?: number; // days the retainment sell-off takes to fill, default 2
 
     // Sell-side
     outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)

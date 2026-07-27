@@ -57,8 +57,8 @@ export interface SellScenario {
     inventorySmoothingMaxExtra: number;
     outputBufferMaxTicks: number;
     automatedCostFloorBuffer: number;
-    freeSellQuantity: number;
-    freeSellQuantitySmoothingMaxExtra: number;
+    freeRetainment: number;
+    freeRetainmentSmoothingMaxExtra: number;
     bidOfferMaxCostMultiplier: number;
     demandModel: DemandModel;
 }
@@ -111,8 +111,8 @@ export const SELL_DEFAULTS: SellScenario = {
     inventorySmoothingMaxExtra: 2,
     outputBufferMaxTicks: 20,
     automatedCostFloorBuffer: 1.5,
-    freeSellQuantity: 0,
-    freeSellQuantitySmoothingMaxExtra: 2,
+    freeRetainment: 0,
+    freeRetainmentSmoothingMaxExtra: 2,
     bidOfferMaxCostMultiplier: 6,
     demandModel: { type: 'constant', soldPerTick: 45 },
 };
@@ -180,8 +180,8 @@ function computeSellPrice(
         inventorySmoothingMaxExtra: number;
         outputBufferMaxTicks: number;
         automatedCostFloorBuffer: number;
-        freeSellQuantity: number;
-        freeSellQuantitySmoothingMaxExtra: number;
+        freeRetainment: number;
+        freeRetainmentSmoothingMaxExtra: number;
     },
 ): { newPrice: number; effectiveQuantity: number; diagnostics: SellDiagnostics; newRetainment: number } {
     if (currentPrice === undefined || currentPrice <= 0) {
@@ -208,25 +208,28 @@ function computeSellPrice(
     }
 
     // Sell-side inventory smoothing
-    let retainment = 0;
+    const freeRetainment = cfg.freeRetainment;
+    let retainment = freeRetainment;
     let surplusRatio: number | undefined;
     const surplus = Math.max(0, inventoryQty - retainment);
-    if (surplus > 1e-4 && baseRate > 1e-4) {
-        const referenceQty = baseRate * cfg.outputBufferMaxTicks;
-        surplusRatio = Math.min(1, surplus / Math.max(1e-4, referenceQty));
-        const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
-        const effectiveRetainment = Math.max(retainment, inventoryQty - smoothedOffer);
-        retainment = Math.min(effectiveRetainment, inventoryQty);
+    if (surplus > 1e-4) {
+        if (baseRate > 1e-4) {
+            // Producer smoothing
+            const referenceQty = baseRate * cfg.outputBufferMaxTicks;
+            surplusRatio = Math.min(1, surplus / Math.max(1e-4, referenceQty));
+            const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
+            const effectiveRetainment = Math.max(retainment, inventoryQty - smoothedOffer);
+            retainment = Math.min(effectiveRetainment, inventoryQty);
+        } else {
+            // Non-producer smoothing
+            const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
+            const perTick = surplus / smoothingDays;
+            const effectiveRetainment = Math.max(retainment, inventoryQty - perTick);
+            retainment = Math.min(effectiveRetainment, inventoryQty);
+        }
     }
 
-    const baseEffective = Math.max(0, inventoryQty - retainment);
-
-    // Free sell quantity
-    const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
-    const freeSellPerTick =
-        cfg.freeSellQuantity > 0 && baseEffective < cfg.freeSellQuantity ? cfg.freeSellQuantity / freeSellFillDays : 0;
-    const effectiveQuantity =
-        freeSellPerTick > 0 ? Math.min(baseEffective + freeSellPerTick, inventoryQty) : baseEffective;
+    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
 
     const sellThrough = effectiveQuantity > 0 ? lastSold / effectiveQuantity : 1;
     const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
@@ -438,8 +441,8 @@ export function runSimulation(scenario: Scenario, numTicks: number): TickResult[
                     inventorySmoothingMaxExtra: s.inventorySmoothingMaxExtra,
                     outputBufferMaxTicks: s.outputBufferMaxTicks,
                     automatedCostFloorBuffer: s.automatedCostFloorBuffer,
-                    freeSellQuantity: s.freeSellQuantity,
-                    freeSellQuantitySmoothingMaxExtra: s.freeSellQuantitySmoothingMaxExtra,
+                    freeRetainment: s.freeRetainment,
+                    freeRetainmentSmoothingMaxExtra: s.freeRetainmentSmoothingMaxExtra,
                 },
             );
 
@@ -515,8 +518,8 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
-        freeSellQuantity: 0,
-        freeSellQuantitySmoothingMaxExtra: 2,
+        freeRetainment: 0,
+        freeRetainmentSmoothingMaxExtra: 2,
         bidOfferMaxCostMultiplier: 6,
         demandModel: { type: 'constant', soldPerTick: 45 },
     },
@@ -535,8 +538,8 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
-        freeSellQuantity: 0,
-        freeSellQuantitySmoothingMaxExtra: 2,
+        freeRetainment: 0,
+        freeRetainmentSmoothingMaxExtra: 2,
         bidOfferMaxCostMultiplier: 6,
         demandModel: { type: 'constant', soldPerTick: 15 },
     },
@@ -555,8 +558,8 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
-        freeSellQuantity: 0,
-        freeSellQuantitySmoothingMaxExtra: 2,
+        freeRetainment: 0,
+        freeRetainmentSmoothingMaxExtra: 2,
         bidOfferMaxCostMultiplier: 6,
         demandModel: { type: 'constant', soldPerTick: 45 },
     },
@@ -575,8 +578,8 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
-        freeSellQuantity: 0,
-        freeSellQuantitySmoothingMaxExtra: 2,
+        freeRetainment: 0,
+        freeRetainmentSmoothingMaxExtra: 2,
         bidOfferMaxCostMultiplier: 6,
         demandModel: { type: 'constant', soldPerTick: 50 },
     },
@@ -595,8 +598,8 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
-        freeSellQuantity: 0,
-        freeSellQuantitySmoothingMaxExtra: 2,
+        freeRetainment: 0,
+        freeRetainmentSmoothingMaxExtra: 2,
         bidOfferMaxCostMultiplier: 6,
         demandModel: { type: 'step', initial: 45, afterTick: 30, newValue: 10 },
     },

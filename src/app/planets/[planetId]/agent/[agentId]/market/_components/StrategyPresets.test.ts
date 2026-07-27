@@ -24,9 +24,9 @@ function emptyLocal(): AutoConfigLocalState {
         inputBufferTargetTicks: '',
         targetFillRate: '',
         freeBuyQuantity: '',
-        freeSellQuantity: '',
+        freeRetainment: '',
         freeBuyQuantitySmoothingMaxExtra: '',
-        freeSellQuantitySmoothingMaxExtra: '',
+        freeRetainmentSmoothingMaxExtra: '',
     };
 }
 
@@ -85,8 +85,8 @@ describe('detectVolumeSellPreset', () => {
         const local = localWith({
             inventorySmoothingMaxExtra: '2',
             outputBufferMaxTicks: '30',
-            freeSellQuantity: '0',
-            freeSellQuantitySmoothingMaxExtra: '2',
+            freeRetainment: '0',
+            freeRetainmentSmoothingMaxExtra: '2',
         });
         expect(detectVolumeSellPreset(local)).toBe('custom');
     });

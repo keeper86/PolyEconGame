@@ -109,7 +109,7 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-const flatTargetFactor = 4;
+const flatTargetFactor = 0.5;
 const TARGETS: Record<string, FacilityTarget> = {
     coalMine: { totalScale: 10_546, agentCount: flatTargetFactor * 2 },
     oilWell: { totalScale: 1_481_908, agentCount: flatTargetFactor * 16 },
