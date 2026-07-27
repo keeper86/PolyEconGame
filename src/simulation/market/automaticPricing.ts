@@ -158,8 +158,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            const baseRate = productionRate.get(resource.name) ?? 0;
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, baseRate);
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
         }
     }
 
@@ -184,7 +183,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
 
         offer.offerRetainment = 0;
-        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, 0);
+        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
@@ -394,7 +393,6 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
-    baseRate: number = 0,
 ): void {
     const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
 
@@ -413,13 +411,14 @@ export function adjustOfferPrice(
     const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && offer.resource.form !== 'services') {
-        if (baseRate <= EPSILON) {
-            // Non-producer smoothing: sell off surplus gradually over smoothing days
-            const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
-            const perTick = surplus / smoothingDays;
-            const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
-            offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
-        }
+        // Sell smoothing: offer surplus gradually over smoothing days,
+        // applies to both producers and non-producers.
+        // This prevents inventory dumps that cause totalSupply spikes
+        // which trick the PID into over-contracting.
+        const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
+        const perTick = surplus / smoothingDays;
+        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
+        offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
     }
 
     // freeRetainment is always a floor on the final retainment

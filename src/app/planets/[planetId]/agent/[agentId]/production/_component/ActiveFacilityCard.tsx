@@ -30,12 +30,14 @@ export function ActiveFacilityCard({
     agentId,
     planetId,
     constructionServicePrice,
+    otherConstructionCosts,
     onExpanded,
 }: {
     facility: ProductionFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
+    otherConstructionCosts?: number;
     onExpanded: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
@@ -384,6 +386,7 @@ export function ActiveFacilityCard({
                                 fromScale={facility.maxScale}
                                 constructionServicePrice={constructionServicePrice}
                                 planetId={planetId}
+                                otherConstructionCosts={otherConstructionCosts}
                                 label='Expand to scale'
                                 confirmLabel='Confirm Expand'
                                 pendingLabel={expandMutation.isPending ? 'Expanding…' : 'Awaiting next day…'}

@@ -81,7 +81,7 @@ describe('resolveOfferConfig — config resolution', () => {
         // reach into the module internals via adjustOfferPrice behaviour: undefined config gives defaults
         // We'll test by calling the function with no autoConfig on the offer
         const offer = { resource: goodsResource, offerPrice: 10, lastSold: 5 } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         // Diagnostics are set so we can inspect
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.9);
@@ -89,7 +89,7 @@ describe('resolveOfferConfig — config resolution', () => {
 
     it('returns service-specific targetSellThrough when config is undefined (services)', () => {
         const offer = { resource: serviceResource, offerPrice: 10, lastSold: 5 } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.95);
     });
@@ -101,7 +101,7 @@ describe('resolveOfferConfig — config resolution', () => {
             lastSold: 100, // full sell-through
             autoConfig: { priceAdjustMaxUp: 1.1 } as AutomatedPricingConfig,
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         // priceAdjustMaxUp = 1.10 is used => with full sell-through newPrice = 10 * 1.10 = 11
         expect(offer.offerPrice).toBeCloseTo(11, 5);
@@ -126,7 +126,7 @@ describe('resolveOfferConfig — config resolution', () => {
                 freeRetainmentSmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.8);
         // sellThrough = 100/100 = 1.0, target = 0.8 → above target → factor between 1 and 1.20
@@ -308,6 +308,9 @@ describe('automaticPricing — offer price tâtonnement', () => {
         const STOCK = 1000;
         const sold = STOCK * TARGET_SELL_THROUGH;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, sold, STOCK);
+        // Disable sell-smoothing for this test: set smoothing=1 so all surplus is offered
+        const offer = agent.assets[PLANET_ID].market!.sell[WATER]!;
+        offer.autoConfig = { ...offer.autoConfig, freeRetainmentSmoothingMaxExtra: 1 };
 
         automaticPricing(new Map([['co', agent]]), planet);
 

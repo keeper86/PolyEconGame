@@ -32,6 +32,7 @@ export function FacilityConstructionPanel({
     pendingLabel,
     isPending,
     financials,
+    otherConstructionCosts,
     onCancel,
     onConfirm,
     onScaleChange,
@@ -46,6 +47,7 @@ export function FacilityConstructionPanel({
     pendingLabel: string;
     isPending: boolean;
     financials?: { deposits: number; monthlyNetCashFlow: number };
+    otherConstructionCosts?: number;
     onCancel: () => void;
     onConfirm: (targetScale: number) => void;
     onScaleChange?: (targetScale: number) => void;
@@ -136,9 +138,17 @@ export function FacilityConstructionPanel({
     const wallTimeMs = time * tickIntervalMs;
     const completionDate = mapTickToDate(currentTick + Math.ceil(time), smallScreen);
 
+    const otherCosts = otherConstructionCosts ?? 0;
+
     return (
         <>
-            <p className='text-xs font-medium text-muted-foreground pt-2'>{label}</p>
+            {/* Completion date above the slider */}
+            <div className='flex flex-row w-full justify-between items-center text-xs text-muted-foreground pt-1'>
+                <p className='text-xs font-medium text-muted-foreground'>{label}</p>
+                <span className='flex items-center gap-1'>
+                    <Timer className='h-3 w-3' /> Duration {' ' + formatWallTime(wallTimeMs, smallScreen)}
+                </span>
+            </div>
             <LogSlider
                 values={scaleValues}
                 value={currentIndex}
@@ -153,28 +163,28 @@ export function FacilityConstructionPanel({
                         value={formatNumberWithUnit(estimatedCosts, 'currency', planetId)}
                         icon={<TrendingDown className='h-3 w-3' />}
                     />
-                    <Stat label='Completion' value={completionDate} icon={<Clock className='h-3 w-3' />} />
-                    <Stat
-                        label='Duration'
-                        value={formatWallTime(wallTimeMs, smallScreen)}
-                        icon={<Timer className='h-3 w-3' />}
-                    />
-                </div>
-                <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Deposits'
                         value={formatNumberWithUnit(deposits, 'currency', planetId)}
                         icon={<Wallet className='h-3 w-3' />}
                     />
                     <Stat
+                        label='Other constructions'
+                        value={formatNumberWithUnit(otherCosts, 'currency', planetId)}
+                        icon={<TrendingDown className='h-3 w-3' />}
+                    />
+                </div>
+                <div className='grid grid-cols-1 gap-y-1'>
+                    <Stat label='Completion' value={completionDate} icon={<Clock className='h-3 w-3' />} />
+                    <Stat
                         label='Monthly cash flow'
                         value={formatNumberWithUnit(monthlyNetCashFlow, 'currency', planetId)}
                         icon={<Percent className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Estimated deposits'
+                        label='Net after commitments'
                         value={formatNumberWithUnit(
-                            estimatedDepositsDuringBuildingTime - estimatedCosts,
+                            estimatedDepositsDuringBuildingTime - estimatedCosts - otherCosts,
                             'currency',
                             planetId,
                         )}

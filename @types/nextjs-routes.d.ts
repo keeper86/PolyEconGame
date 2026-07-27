@@ -13,7 +13,6 @@ declare module "nextjs-routes" {
   export type Route =
     | StaticRoute<"/">
     | StaticRoute<"/account">
-    | StaticRoute<"/admin/categorize-logos">
     | StaticRoute<"/api/admin/categorize-logos">
     | DynamicRoute<"/api/auth/[...nextauth]", { "nextauth": string[] }>
     | StaticRoute<"/api/ping">
@@ -36,7 +35,8 @@ declare module "nextjs-routes" {
     | DynamicRoute<"/planets/[planetId]/demographics", { "planetId": string }>
     | StaticRoute<"/pong">
     | StaticRoute<"/simulation">
-    | StaticRoute<"/supply-chain">;
+    | StaticRoute<"/supply-chain">
+    | StaticRoute<"/supply-chain/chain-sim">;
 
   interface StaticRoute<Pathname> {
     pathname: Pathname;

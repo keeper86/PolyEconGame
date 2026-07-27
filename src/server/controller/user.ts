@@ -673,7 +673,6 @@ const autoConfigSchema = z
         costSpringStrength: z.number().min(0).optional(),
         bidOfferMaxCostMultiplier: z.number().positive().optional(),
         inventorySmoothingMaxExtra: z.number().min(0).optional(),
-        outputBufferMaxTicks: z.number().positive().optional(),
         targetSellThrough: z.number().min(0).max(1).optional(),
         automatedCostFloorBuffer: z.number().min(-1).optional(),
         inputBufferTargetTicks: z.number().positive().optional(),

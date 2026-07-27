@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     INPUT_BUFFER_TARGET_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
-    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_CEIL,
     PRICE_FLOOR,
 } from '../constants';
@@ -333,33 +332,6 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidPrice).toBeLessThanOrEqual(2.0 + 1e-9);
     });
 
-    it('resumes input buying once output inventory drops below the output buffer ceiling', () => {
-        const buyer = makeSteelProducer();
-        const fullOutputBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
-        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullOutputBuffer - 1);
-
-        automaticPricing(agentMap(buyer), planet);
-
-        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBeGreaterThan(0);
-    });
-
-    it('suppresses input buying per facility independently when one facility output is full', () => {
-        const buyer = makeSteelProducer();
-        buyer.assets.p.productionFacilities.push({
-            ...buyer.assets.p.productionFacilities[0],
-            id: 'steel-fac-2',
-            needs: [{ resource: coalResourceType, quantity: 200 }],
-            produces: [{ resource: produceResourceType, quantity: 100 }],
-        });
-
-        const fullBuffer = 100 * 1 * OUTPUT_BUFFER_MAX_TICKS;
-        putIntoStorageFacility(buyer.assets.p.storageFacility, steelResourceType, fullBuffer);
-
-        automaticPricing(agentMap(buyer), planet);
-
-        const bid = buyer.assets.p.market!.buy[COAL]!;
-        expect(bid.bidStorageTarget).toBeGreaterThan(0);
-    });
     it('custom priceAdjustMaxUp raises bid faster when fill rate is low', () => {
         planet.marketPrices[COAL] = 1.0;
         planet.marketPrices[steelResourceType.name] = 8.0;

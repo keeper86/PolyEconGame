@@ -22,7 +22,7 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import type { BuySectionProps } from './marketTypes';
 import type { BuyDiagnostics } from '@/simulation/planet/planet';
@@ -32,10 +32,10 @@ import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
 import {
     detectPricingBuyPreset,
     detectVolumeBuyPreset,
-    PRICING_BUY_PRESETS,
+    getPricingBuyPreset,
+    getVolumeBuyPreset,
     PRICING_PRESET_LABELS,
     PRICING_PRESET_ORDER,
-    VOLUME_BUY_PRESETS,
     VOLUME_PRESET_LABELS,
     VOLUME_PRESET_ORDER,
     type PricingPresetType,
@@ -213,7 +213,9 @@ export default function BuySection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
+    const resource = getResourceByName(resourceName);
+    const isService = resource?.form === 'services';
+    const unit = resourceFormToUnit(resource?.form);
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -234,16 +236,11 @@ export default function BuySection({
     const committedConfig = bid?.autoConfig;
 
     const [activeVolumePreset, setActiveVolumePreset] = useState<VolumePresetType>(() =>
-        detectVolumeBuyPreset(local.buyAutoConfig),
+        detectVolumeBuyPreset(local.buyAutoConfig, isService),
     );
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(() =>
-        detectPricingBuyPreset(local.buyAutoConfig),
+        detectPricingBuyPreset(local.buyAutoConfig, isService),
     );
-
-    useEffect(() => {
-        setActiveVolumePreset(detectVolumeBuyPreset(local.buyAutoConfig));
-        setActivePricingPreset(detectPricingBuyPreset(local.buyAutoConfig));
-    }, [local.buyAutoConfig]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: VolumePresetType) => {
@@ -251,10 +248,10 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
-            const values = VOLUME_BUY_PRESETS[preset as Exclude<VolumePresetType, 'custom'>];
+            const values = getVolumeBuyPreset(preset as Exclude<VolumePresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
-        [handleBuyConfigChange],
+        [handleBuyConfigChange, isService],
     );
 
     const handlePricingPresetSelect = useCallback(
@@ -263,10 +260,10 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
-            const values = PRICING_BUY_PRESETS[preset as Exclude<PricingPresetType, 'custom'>];
+            const values = getPricingBuyPreset(preset as Exclude<PricingPresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
-        [handleBuyConfigChange],
+        [handleBuyConfigChange, isService],
     );
 
     const handleSliderChange = useCallback(
@@ -471,10 +468,10 @@ export default function BuySection({
                                         <div className={'space-y-2'}>
                                             <ConfigSlider
                                                 label='Input buffer (days)'
-                                                value={sliderVal('inputBufferTargetTicks', 30)}
+                                                value={sliderVal('inputBufferTargetTicks', isService ? 3 : 30)}
                                                 committed={committedVal(committedConfig, 'inputBufferTargetTicks')}
                                                 min={1}
-                                                max={120}
+                                                max={isService ? 10 : 120}
                                                 step={1}
                                                 onChange={(v) =>
                                                     handleSliderChange({ inputBufferTargetTicks: String(v) })
@@ -486,7 +483,7 @@ export default function BuySection({
                                                 value={sliderVal('inventorySmoothingMaxExtra', 2)}
                                                 committed={committedVal(committedConfig, 'inventorySmoothingMaxExtra')}
                                                 min={0}
-                                                max={20}
+                                                max={isService ? 5 : 20}
                                                 step={1}
                                                 displayTransform={(v) => v + 1}
                                                 onChange={(v) =>
@@ -522,7 +519,7 @@ export default function BuySection({
                                                 'freeBuyQuantitySmoothingMaxExtra',
                                             )}
                                             min={1}
-                                            max={20}
+                                            max={isService ? 5 : 20}
                                             step={1}
                                             onChange={(v) =>
                                                 handleSliderChange({ freeBuyQuantitySmoothingMaxExtra: String(v) })
@@ -623,7 +620,7 @@ export default function BuySection({
                                     />
                                     <ConfigSlider
                                         label='Target fill rate'
-                                        value={sliderVal('targetFillRate', 0.9)}
+                                        value={sliderVal('targetFillRate', isService ? 0.95 : 0.9)}
                                         committed={committedVal(committedConfig, 'targetFillRate')}
                                         min={0.1}
                                         max={1.0}

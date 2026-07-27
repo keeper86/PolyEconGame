@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { AlertCircle, ChevronDown, Package, RotateCcw, Tag } from 'lucide-react';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 import type { AutoConfigLocalState } from './marketTypes';
@@ -19,10 +19,10 @@ import { Label } from '@/components/ui/label';
 import {
     detectPricingSellPreset,
     detectVolumeSellPreset,
-    PRICING_SELL_PRESETS,
+    getPricingSellPreset,
+    getVolumeSellPreset,
     PRICING_PRESET_LABELS,
     PRICING_PRESET_ORDER,
-    VOLUME_SELL_PRESETS,
     VOLUME_PRESET_LABELS,
     VOLUME_PRESET_ORDER,
     type PricingPresetType,
@@ -173,7 +173,9 @@ export default function SellSection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
+    const resource = getResourceByName(resourceName);
+    const isService = resource?.form === 'services';
+    const unit = resourceFormToUnit(resource?.form);
 
     const productionBreakdown = useMemo(
         () =>
@@ -223,13 +225,8 @@ export default function SellSection({
         detectVolumeSellPreset(local.sellAutoConfig),
     );
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(() =>
-        detectPricingSellPreset(local.sellAutoConfig),
+        detectPricingSellPreset(local.sellAutoConfig, isService),
     );
-
-    useEffect(() => {
-        setActiveVolumePreset(detectVolumeSellPreset(local.sellAutoConfig));
-        setActivePricingPreset(detectPricingSellPreset(local.sellAutoConfig));
-    }, [local.sellAutoConfig]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: VolumePresetType) => {
@@ -237,7 +234,7 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
-            const values = VOLUME_SELL_PRESETS[preset as Exclude<VolumePresetType, 'custom'>];
+            const values = getVolumeSellPreset(preset as Exclude<VolumePresetType, 'custom'>);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
         [handleSellConfigChange],
@@ -249,10 +246,10 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
-            const values = PRICING_SELL_PRESETS[preset as Exclude<PricingPresetType, 'custom'>];
+            const values = getPricingSellPreset(preset as Exclude<PricingPresetType, 'custom'>, isService);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
-        [handleSellConfigChange],
+        [handleSellConfigChange, isService],
     );
 
     const handleSliderChange = useCallback(
@@ -434,7 +431,7 @@ export default function SellSection({
                                             value={sliderVal('freeRetainmentSmoothingMaxExtra', 2)}
                                             committed={committedVal(committedConfig, 'freeRetainmentSmoothingMaxExtra')}
                                             min={1}
-                                            max={20}
+                                            max={isService ? 5 : 20}
                                             step={1}
                                             onChange={(v) =>
                                                 handleSliderChange({ freeRetainmentSmoothingMaxExtra: String(v) })
@@ -536,7 +533,7 @@ export default function SellSection({
                                     />
                                     <ConfigSlider
                                         label='Target sell-through'
-                                        value={sliderVal('targetSellThrough', 0.9)}
+                                        value={sliderVal('targetSellThrough', isService ? 0.95 : 0.9)}
                                         committed={committedVal(committedConfig, 'targetSellThrough')}
                                         min={0.1}
                                         max={0.99}

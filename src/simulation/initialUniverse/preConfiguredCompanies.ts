@@ -1,4 +1,4 @@
-import { seedRng, nextRandom } from '../utils/stochasticRound';
+import { nextRandom } from '../utils/stochasticRound';
 
 const CORPORATE_FORMS = [
     'Co',
@@ -730,22 +730,12 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
     },
 };
 
-function hashString(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-    }
-    return hash;
-}
-
 function generateCompanyName(facilityType: string, index: number): string {
     const pool = WORD_POOLS[facilityType];
     if (!pool) {
         return `${facilityType}-${index}`;
     }
 
-    const baseSeed = hashString(facilityType) * 31 + index;
-    seedRng(baseSeed);
     const existingNames = [...(NAMES[facilityType] ?? [])];
 
     const stem = pool.stems[Math.floor(nextRandom() * pool.stems.length)];
