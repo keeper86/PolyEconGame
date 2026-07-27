@@ -55,25 +55,19 @@ export const VOLUME_BUY_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, Vol
 
 export type VolumeSellValues = Pick<
     AutoConfigLocalState,
-    'inventorySmoothingMaxExtra' | 'outputBufferMaxTicks' | 'freeRetainment' | 'freeRetainmentSmoothingMaxExtra'
+    'freeRetainment' | 'freeRetainmentSmoothingMaxExtra'
 >;
 
 export const VOLUME_SELL_PRESETS: Record<Exclude<VolumePresetType, 'custom'>, VolumeSellValues> = {
     'just-in-time': {
-        inventorySmoothingMaxExtra: '0',
-        outputBufferMaxTicks: '2',
         freeRetainment: '0',
         freeRetainmentSmoothingMaxExtra: '2',
     },
     'balanced': {
-        inventorySmoothingMaxExtra: '2',
-        outputBufferMaxTicks: '20',
         freeRetainment: '0',
         freeRetainmentSmoothingMaxExtra: '2',
     },
     'stockpile': {
-        inventorySmoothingMaxExtra: '5',
-        outputBufferMaxTicks: '60',
         freeRetainment: '0',
         freeRetainmentSmoothingMaxExtra: '2',
     },
@@ -145,8 +139,6 @@ const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = [
 ];
 
 const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = [
-    'inventorySmoothingMaxExtra',
-    'outputBufferMaxTicks',
     'freeRetainment',
     'freeRetainmentSmoothingMaxExtra',
 ];

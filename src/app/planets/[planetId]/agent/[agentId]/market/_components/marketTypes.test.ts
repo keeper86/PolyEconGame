@@ -17,7 +17,6 @@ describe('autoConfigToLocal', () => {
             costSpringStrength: 0.1,
             bidOfferMaxCostMultiplier: 6,
             inventorySmoothingMaxExtra: 2,
-            outputBufferMaxTicks: 20,
             targetSellThrough: 0.9,
             automatedCostFloorBuffer: 0.5,
             inputBufferTargetTicks: 30,
@@ -33,7 +32,6 @@ describe('autoConfigToLocal', () => {
         expect(local.costSpringStrength).toBe('0.1');
         expect(local.bidOfferMaxCostMultiplier).toBe('6');
         expect(local.inventorySmoothingMaxExtra).toBe('2');
-        expect(local.outputBufferMaxTicks).toBe('20');
         expect(local.targetSellThrough).toBe('0.9');
         expect(local.automatedCostFloorBuffer).toBe('0.5');
         expect(local.inputBufferTargetTicks).toBe('30');
@@ -61,7 +59,6 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
@@ -81,7 +78,6 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
@@ -105,7 +101,6 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',

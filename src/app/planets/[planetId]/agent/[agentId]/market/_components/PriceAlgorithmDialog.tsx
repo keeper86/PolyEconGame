@@ -359,12 +359,6 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
                                     <span>Raw Retainment:</span>
                                     <span className='text-slate-200'>{sellDiag?.rawRetainment.toFixed(0)} units</span>
                                 </div>
-                                {sellDiag?.surplusRatio !== undefined && (
-                                    <div className='flex justify-between text-purple-400 pt-1 border-t border-slate-700 mt-1'>
-                                        <span>Surplus Smoothing Active:</span>
-                                        <span>{(sellDiag.surplusRatio * 100).toFixed(1)}%</span>
-                                    </div>
-                                )}
                             </>
                         ) : (
                             <>

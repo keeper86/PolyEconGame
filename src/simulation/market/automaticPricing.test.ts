@@ -120,7 +120,6 @@ describe('resolveOfferConfig — config resolution', () => {
                 costSpringStrength: 0.5,
                 bidOfferMaxCostMultiplier: 10,
                 inventorySmoothingMaxExtra: 5,
-                outputBufferMaxTicks: 40,
                 targetSellThrough: 0.8,
                 automatedCostFloorBuffer: 1.5,
                 freeRetainment: 0,
@@ -383,51 +382,6 @@ describe('automaticPricing — sell-side config overrides', () => {
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
         // sellThrough = 800/1000 = 0.8, target = 0.7 → above target → price should go up
         expect(newPrice).toBeGreaterThan(10);
-    });
-
-    it('custom outputBufferMaxTicks affects retainment / surplus smoothing', () => {
-        const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
-        producer.needs = [];
-        producer.produces = [{ resource: produceResourceType, quantity: 1000 }];
-
-        const consumer = makeProductionFacility({ none: 1 }, { id: 'bev', scale: 10 });
-        consumer.needs = [{ resource: produceResourceType, quantity: 200 }];
-        consumer.produces = [{ resource: ironOreResourceType, quantity: 100 }];
-
-        const planet = makePlanetWithPrice({ [produceResourceType.name]: 5 });
-
-        const agent = makeAgent('co', PLANET_ID);
-        agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
-            [produceResourceType.name]: { resource: produceResourceType, quantity: 65_000 },
-        });
-
-        // Set very small output buffer → surplus ratio will be higher → more aggressive smoothing
-        agent.assets[PLANET_ID].market = {
-            sell: {
-                [produceResourceType.name]: {
-                    resource: produceResourceType,
-                    offerPrice: 5,
-                    autoConfig: { outputBufferMaxTicks: 2, inventorySmoothingMaxExtra: 5 },
-                    lastSold: 100,
-                },
-            },
-            buy: {},
-        };
-
-        automaticPricing(new Map([['co', agent]]), planet);
-
-        const offer = agent.assets[PLANET_ID].market?.sell[produceResourceType.name];
-        expect(offer).toBeDefined();
-        expect(offer!.diagnostics).toBeDefined();
-        // surplusRatio should be > 0 (inventory >> outputBufferMaxTicks * baseRate)
-        // With outputBufferMaxTicks=2, referenceQty = 1000 * 2 = 2000
-        // surplus = 65000 - retainment (200*10*30=60000) = 5000
-        // surplusRatio = min(1, 5000/2000) = 1
-        // smoothedOffer = 1000 * (1 + 5 * 1) = 6000
-        // retainment = max(60000, 65000 - 6000) = 60000
-        // So offerRetainment = 60000
-        expect(offer!.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
     });
 
     it('freeRetainment keeps minimum inventory in storage', () => {

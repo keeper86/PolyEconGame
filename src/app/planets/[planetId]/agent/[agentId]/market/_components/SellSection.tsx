@@ -116,7 +116,7 @@ function committedVal(
     return typeof raw === 'number' ? raw : undefined;
 }
 
-const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['outputBufferMaxTicks', 'inventorySmoothingMaxExtra', 'freeRetainment', 'freeRetainmentSmoothingMaxExtra']);
+const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['freeRetainment', 'freeRetainmentSmoothingMaxExtra']);
 
 export default function SellSection({
     resourceName,
@@ -275,8 +275,6 @@ export default function SellSection({
     );
 
     const ALL_AUTO_KEYS: (keyof AutoConfigLocalState)[] = [
-        'inventorySmoothingMaxExtra',
-        'outputBufferMaxTicks',
         'freeRetainment',
         'freeRetainmentSmoothingMaxExtra',
         'priceAdjustMaxUp',
@@ -416,50 +414,6 @@ export default function SellSection({
                                         }
                                     }}
                                 >
-                                    {/* Output buffer group */}
-                                    <div className='space-y-2'>
-                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                            Output buffer
-                                        </Label>
-                                        <div className={isFacilityOutput ? 'space-y-2' : 'space-y-2 opacity-50'}>
-                                            <ConfigSlider
-                                                label='Max sell rate (days)'
-                                                value={sliderVal('inventorySmoothingMaxExtra', 2)}
-                                                committed={committedVal(committedConfig, 'inventorySmoothingMaxExtra')}
-                                                min={0}
-                                                max={20}
-                                                step={1}
-                                                displayTransform={(v) => v + 1}
-                                                onChange={(v) =>
-                                                    handleSliderChange({ inventorySmoothingMaxExtra: String(v) })
-                                                }
-                                                disabled={
-                                                    sellAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityOutput
-                                                }
-                                            />
-                                            <ConfigSlider
-                                                label='Output buffer (days)'
-                                                value={sliderVal('outputBufferMaxTicks', 20)}
-                                                committed={committedVal(committedConfig, 'outputBufferMaxTicks')}
-                                                min={1}
-                                                max={120}
-                                                step={1}
-                                                onChange={(v) =>
-                                                    handleSliderChange({ outputBufferMaxTicks: String(v) })
-                                                }
-                                                disabled={
-                                                    sellAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityOutput
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Separator className='my-1' />
-
                                     {/* Retainment group */}
                                     <div className='space-y-2'>
                                         <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>

@@ -4,11 +4,9 @@ import {
     detectPricingBuyPreset,
     detectPricingSellPreset,
     detectVolumeBuyPreset,
-    detectVolumeSellPreset,
     PRICING_BUY_PRESETS,
     PRICING_SELL_PRESETS,
     VOLUME_BUY_PRESETS,
-    VOLUME_SELL_PRESETS,
 } from './StrategyPresets';
 
 function emptyLocal(): AutoConfigLocalState {
@@ -18,7 +16,6 @@ function emptyLocal(): AutoConfigLocalState {
         costSpringStrength: '',
         bidOfferMaxCostMultiplier: '',
         inventorySmoothingMaxExtra: '',
-        outputBufferMaxTicks: '',
         targetSellThrough: '',
         automatedCostFloorBuffer: '',
         inputBufferTargetTicks: '',
@@ -62,33 +59,6 @@ describe('detectVolumeBuyPreset', () => {
 
     it('returns custom for empty config', () => {
         expect(detectVolumeBuyPreset(emptyLocal())).toBe('custom');
-    });
-});
-
-describe('detectVolumeSellPreset', () => {
-    it('detects just-in-time preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS['just-in-time']);
-        expect(detectVolumeSellPreset(local)).toBe('just-in-time');
-    });
-
-    it('detects balanced preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS.balanced);
-        expect(detectVolumeSellPreset(local)).toBe('balanced');
-    });
-
-    it('detects stockpile preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS.stockpile);
-        expect(detectVolumeSellPreset(local)).toBe('stockpile');
-    });
-
-    it('returns custom when no preset matches', () => {
-        const local = localWith({
-            inventorySmoothingMaxExtra: '2',
-            outputBufferMaxTicks: '30',
-            freeRetainment: '0',
-            freeRetainmentSmoothingMaxExtra: '2',
-        });
-        expect(detectVolumeSellPreset(local)).toBe('custom');
     });
 });
 

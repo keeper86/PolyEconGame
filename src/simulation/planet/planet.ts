@@ -191,7 +191,6 @@ export interface AutomatedPricingConfig {
     freeRetainmentSmoothingMaxExtra?: number; // days the retainment sell-off takes to fill, default 2
 
     // Sell-side
-    outputBufferMaxTicks?: number; // default: OUTPUT_BUFFER_MAX_TICKS (20)
     targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)
     automatedCostFloorBuffer?: number; // default: 0.5
 
@@ -213,7 +212,6 @@ export type SellDiagnostics = {
     marketPrice: number;
     effectiveQuantity: number;
     rawRetainment: number;
-    surplusRatio?: number;
 };
 
 export type BuyDiagnostics = {

@@ -15,7 +15,6 @@ export type AutoConfigLocalState = {
     costSpringStrength: string;
     bidOfferMaxCostMultiplier: string;
     inventorySmoothingMaxExtra: string;
-    outputBufferMaxTicks: string;
     targetSellThrough: string;
     automatedCostFloorBuffer: string;
     inputBufferTargetTicks: string;
@@ -33,7 +32,6 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
         costSpringStrength: config?.costSpringStrength?.toString() ?? '',
         bidOfferMaxCostMultiplier: config?.bidOfferMaxCostMultiplier?.toString() ?? '',
         inventorySmoothingMaxExtra: config?.inventorySmoothingMaxExtra?.toString() ?? '',
-        outputBufferMaxTicks: config?.outputBufferMaxTicks?.toString() ?? '',
         targetSellThrough: config?.targetSellThrough?.toString() ?? '',
         automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
@@ -53,7 +51,6 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
         'costSpringStrength',
         'bidOfferMaxCostMultiplier',
         'inventorySmoothingMaxExtra',
-        'outputBufferMaxTicks',
         'targetSellThrough',
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
@@ -82,7 +79,6 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         'costSpringStrength',
         'bidOfferMaxCostMultiplier',
         'inventorySmoothingMaxExtra',
-        'outputBufferMaxTicks',
         'targetSellThrough',
         'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
