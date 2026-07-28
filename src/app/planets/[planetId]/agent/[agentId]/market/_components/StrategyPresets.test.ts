@@ -65,9 +65,9 @@ describe('detectVolumeBuyPreset', () => {
 });
 
 describe('detectVolumeSellPreset', () => {
-    it('detects just-in-time preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS['just-in-time']);
-        expect(detectVolumeSellPreset(local)).toBe('just-in-time');
+    it('detects dump preset', () => {
+        const local = localWith(VOLUME_SELL_PRESETS.dump);
+        expect(detectVolumeSellPreset(local)).toBe('dump');
     });
 
     it('detects balanced preset', () => {
@@ -75,9 +75,9 @@ describe('detectVolumeSellPreset', () => {
         expect(detectVolumeSellPreset(local)).toBe('balanced');
     });
 
-    it('detects stockpile preset', () => {
-        const local = localWith(VOLUME_SELL_PRESETS.stockpile);
-        expect(detectVolumeSellPreset(local)).toBe('stockpile');
+    it('detects reserve preset', () => {
+        const local = localWith(VOLUME_SELL_PRESETS.reserve);
+        expect(detectVolumeSellPreset(local)).toBe('reserve');
     });
 
     it('returns custom when no preset matches', () => {
@@ -94,9 +94,9 @@ describe('detectVolumeSellPreset', () => {
 });
 
 describe('detectPricingBuyPreset', () => {
-    it('detects liquidation preset', () => {
-        const local = localWith(PRICING_BUY_PRESETS.liquidation);
-        expect(detectPricingBuyPreset(local, false)).toBe('liquidation');
+    it('detects patient preset', () => {
+        const local = localWith(PRICING_BUY_PRESETS.patient);
+        expect(detectPricingBuyPreset(local, false)).toBe('patient');
     });
 
     it('detects market-rate preset', () => {
@@ -104,9 +104,9 @@ describe('detectPricingBuyPreset', () => {
         expect(detectPricingBuyPreset(local, false)).toBe('market-rate');
     });
 
-    it('detects premium preset', () => {
-        const local = localWith(PRICING_BUY_PRESETS.premium);
-        expect(detectPricingBuyPreset(local, false)).toBe('premium');
+    it('detects urgent preset', () => {
+        const local = localWith(PRICING_BUY_PRESETS.urgent);
+        expect(detectPricingBuyPreset(local, false)).toBe('urgent');
     });
 
     it('returns custom when no preset matches', () => {

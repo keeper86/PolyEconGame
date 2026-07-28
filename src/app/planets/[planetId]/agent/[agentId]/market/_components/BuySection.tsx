@@ -11,6 +11,17 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+    INPUT_BUFFER_TARGET_TICKS,
+    INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_UP,
+    TARGET_FILL_RATE,
+    TARGET_FILL_RATE_SERVICES,
+} from '@/simulation/constants';
+import {
     AlertCircle,
     Anchor,
     Building2,
@@ -34,12 +45,12 @@ import {
     detectVolumeBuyPreset,
     getPricingBuyPreset,
     getVolumeBuyPreset,
-    PRICING_PRESET_LABELS,
-    PRICING_PRESET_ORDER,
-    VOLUME_PRESET_LABELS,
-    VOLUME_PRESET_ORDER,
+    BUY_PRICING_PRESET_LABELS,
+    BUY_PRICING_PRESET_ORDER,
+    BUY_VOLUME_PRESET_LABELS,
+    BUY_VOLUME_PRESET_ORDER,
+    type BuyVolumePresetType,
     type PricingPresetType,
-    type VolumePresetType,
 } from './StrategyPresets';
 
 type BuyStatusKind =
@@ -235,7 +246,7 @@ export default function BuySection({
     // ── Auto-config state ────────────────────────────────────────────────────
     const committedConfig = bid?.autoConfig;
 
-    const [activeVolumePreset, setActiveVolumePreset] = useState<VolumePresetType>(() =>
+    const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(() =>
         detectVolumeBuyPreset(local.buyAutoConfig, isService),
     );
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(() =>
@@ -243,12 +254,12 @@ export default function BuySection({
     );
 
     const handleVolumePresetSelect = useCallback(
-        (preset: VolumePresetType) => {
+        (preset: BuyVolumePresetType) => {
             setActiveVolumePreset(preset);
             if (preset === 'custom') {
                 return;
             }
-            const values = getVolumeBuyPreset(preset as Exclude<VolumePresetType, 'custom'>, isService);
+            const values = getVolumeBuyPreset(preset as Exclude<BuyVolumePresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
         [handleBuyConfigChange, isService],
@@ -392,7 +403,7 @@ export default function BuySection({
                             <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
                                 <div className='space-y-1'>
                                     <div className='flex flex-wrap gap-1'>
-                                        {VOLUME_PRESET_ORDER.map((preset, index) => {
+                                        {BUY_VOLUME_PRESET_ORDER.map((preset, index) => {
                                             const isActive = preset === activeVolumePreset;
                                             const isCustom = preset === 'custom';
                                             return (
@@ -400,11 +411,11 @@ export default function BuySection({
                                                     key={preset}
                                                     variant={isActive ? 'default' : 'outline'}
                                                     size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === BUY_VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
                                                     disabled={buyAutoConfigSaving}
                                                     onClick={() => handleVolumePresetSelect(preset)}
                                                 >
-                                                    {VOLUME_PRESET_LABELS[preset] ?? preset}
+                                                    {BUY_VOLUME_PRESET_LABELS[preset] ?? preset}
                                                 </Button>
                                             );
                                         })}
@@ -468,7 +479,12 @@ export default function BuySection({
                                         <div className={'space-y-2'}>
                                             <ConfigSlider
                                                 label='Input buffer (days)'
-                                                value={sliderVal('inputBufferTargetTicks', isService ? 3 : 30)}
+                                                value={sliderVal(
+                                                    'inputBufferTargetTicks',
+                                                    isService
+                                                        ? INPUT_BUFFER_TARGET_TICKS_SERVICES
+                                                        : INPUT_BUFFER_TARGET_TICKS,
+                                                )}
                                                 committed={committedVal(committedConfig, 'inputBufferTargetTicks')}
                                                 min={1}
                                                 max={isService ? 10 : 120}
@@ -480,7 +496,10 @@ export default function BuySection({
                                             />
                                             <ConfigSlider
                                                 label='Max buy rate (days)'
-                                                value={sliderVal('inventorySmoothingMaxExtra', 2)}
+                                                value={sliderVal(
+                                                    'inventorySmoothingMaxExtra',
+                                                    INVENTORY_SMOOTHING_MAX_EXTRA,
+                                                )}
                                                 committed={committedVal(committedConfig, 'inventorySmoothingMaxExtra')}
                                                 min={0}
                                                 max={isService ? 5 : 20}
@@ -513,7 +532,10 @@ export default function BuySection({
                                         />
                                         <ConfigSlider
                                             label='Free buy fill days'
-                                            value={sliderVal('freeBuyQuantitySmoothingMaxExtra', 2)}
+                                            value={sliderVal(
+                                                'freeBuyQuantitySmoothingMaxExtra',
+                                                FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+                                            )}
                                             committed={committedVal(
                                                 committedConfig,
                                                 'freeBuyQuantitySmoothingMaxExtra',
@@ -563,7 +585,7 @@ export default function BuySection({
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='space-y-1'>
                                     <div className='flex flex-wrap gap-1'>
-                                        {PRICING_PRESET_ORDER.map((preset, index) => {
+                                        {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                             const isActive = preset === activePricingPreset;
                                             const isCustom = preset === 'custom';
                                             return (
@@ -571,11 +593,11 @@ export default function BuySection({
                                                     key={preset}
                                                     variant={isActive ? 'default' : 'outline'}
                                                     size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === BUY_PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
                                                     disabled={buyAutoConfigSaving}
                                                     onClick={() => handlePricingPresetSelect(preset)}
                                                 >
-                                                    {PRICING_PRESET_LABELS[preset] ?? preset}
+                                                    {BUY_PRICING_PRESET_LABELS[preset] ?? preset}
                                                 </Button>
                                             );
                                         })}
@@ -592,8 +614,8 @@ export default function BuySection({
                                 >
                                     <ConfigRangeSlider
                                         label='Adjustment speed'
-                                        valueLow={sliderVal('priceAdjustMaxDown', 0.95)}
-                                        valueHigh={sliderVal('priceAdjustMaxUp', 1.05)}
+                                        valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
+                                        valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
                                         committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
                                         committedHigh={committedVal(committedConfig, 'priceAdjustMaxUp')}
                                         min={0.8}
@@ -610,7 +632,7 @@ export default function BuySection({
                                     />
                                     <ConfigSlider
                                         label='Soft max bid (in est. cost)'
-                                        value={sliderVal('bidOfferMaxCostMultiplier', 6)}
+                                        value={sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER)}
                                         committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
                                         min={0}
                                         max={10}
@@ -620,7 +642,10 @@ export default function BuySection({
                                     />
                                     <ConfigSlider
                                         label='Target fill rate'
-                                        value={sliderVal('targetFillRate', isService ? 0.95 : 0.9)}
+                                        value={sliderVal(
+                                            'targetFillRate',
+                                            isService ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE,
+                                        )}
                                         committed={committedVal(committedConfig, 'targetFillRate')}
                                         min={0.1}
                                         max={1.0}

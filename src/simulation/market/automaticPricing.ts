@@ -1,5 +1,6 @@
 import assert from 'assert';
 import {
+    AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
@@ -11,6 +12,10 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    TARGET_FILL_RATE,
+    TARGET_FILL_RATE_SERVICES,
+    TARGET_SELL_THROUGH,
+    TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import { queryStorageFacility } from '../planet/facility';
@@ -38,8 +43,9 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
         bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
-        targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
-        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 1.5,
+        targetSellThrough:
+            c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
         freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -56,7 +62,8 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
         inputBufferTargetTicks:
             c.inputBufferTargetTicks ??
             (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
-        targetFillRate: c.targetFillRate ?? 0.9,
+        targetFillRate:
+            c.targetFillRate ?? (resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE),
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
         freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
