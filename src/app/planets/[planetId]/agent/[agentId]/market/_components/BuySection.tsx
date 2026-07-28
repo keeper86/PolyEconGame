@@ -33,7 +33,7 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import type { BuySectionProps } from './marketTypes';
 import type { BuyDiagnostics } from '@/simulation/planet/planet';
@@ -247,12 +247,38 @@ export default function BuySection({
     // ── Auto-config state ────────────────────────────────────────────────────
     const committedConfig = bid?.autoConfig;
 
-    const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(() =>
-        detectVolumeBuyPreset(local.buyAutoConfig, isService),
+    const detectedVolumePreset = useMemo<BuyVolumePresetType>(
+        () => detectVolumeBuyPreset(local.buyAutoConfig, isService),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            local.buyAutoConfig.inventorySmoothingMaxExtra,
+            local.buyAutoConfig.inputBufferTargetTicks,
+            local.buyAutoConfig.freeBuyQuantity,
+            local.buyAutoConfig.freeBuyQuantitySmoothingMaxExtra,
+            isService,
+        ],
     );
-    const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(() =>
-        detectPricingBuyPreset(local.buyAutoConfig, isService),
+    const detectedPricingPreset = useMemo<PricingPresetType>(
+        () => detectPricingBuyPreset(local.buyAutoConfig, isService),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            local.buyAutoConfig.priceAdjustMaxUp,
+            local.buyAutoConfig.priceAdjustMaxDown,
+            local.buyAutoConfig.targetFillRate,
+            local.buyAutoConfig.bidOfferMaxCostMultiplier,
+            isService,
+        ],
     );
+
+    const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
+    const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
+
+    useEffect(() => {
+        setActiveVolumePreset(detectedVolumePreset);
+    }, [detectedVolumePreset]);
+    useEffect(() => {
+        setActivePricingPreset(detectedPricingPreset);
+    }, [detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: BuyVolumePresetType) => {

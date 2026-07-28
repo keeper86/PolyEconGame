@@ -17,7 +17,7 @@ import {
     TARGET_SELL_THROUGH_SERVICES,
 } from '@/simulation/constants';
 import { AlertCircle, ChevronDown, Package, RotateCcw, Tag } from 'lucide-react';
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { getResourceByName, productionPerTick } from './marketHelpers';
 import type { SellSectionProps } from './marketTypes';
 import type { AutoConfigLocalState } from './marketTypes';
@@ -233,12 +233,32 @@ export default function SellSection({
     // ── Auto-config state ────────────────────────────────────────────────────
     const committedConfig = offer?.autoConfig;
 
-    const [activeVolumePreset, setActiveVolumePreset] = useState<SellVolumePresetType>(() =>
-        detectVolumeSellPreset(local.sellAutoConfig),
+    const detectedVolumePreset = useMemo<SellVolumePresetType>(
+        () => detectVolumeSellPreset(local.sellAutoConfig),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [local.sellAutoConfig.freeRetainment, local.sellAutoConfig.freeRetainmentSmoothingMaxExtra],
     );
-    const [activePricingPreset, setActivePricingPreset] = useState<SellPricingPresetType>(() =>
-        detectPricingSellPreset(local.sellAutoConfig, isService),
+    const detectedPricingPreset = useMemo<SellPricingPresetType>(
+        () => detectPricingSellPreset(local.sellAutoConfig, isService),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            local.sellAutoConfig.priceAdjustMaxUp,
+            local.sellAutoConfig.priceAdjustMaxDown,
+            local.sellAutoConfig.automatedCostFloorBuffer,
+            local.sellAutoConfig.targetSellThrough,
+            isService,
+        ],
     );
+
+    const [activeVolumePreset, setActiveVolumePreset] = useState<SellVolumePresetType>(detectedVolumePreset);
+    const [activePricingPreset, setActivePricingPreset] = useState<SellPricingPresetType>(detectedPricingPreset);
+
+    useEffect(() => {
+        setActiveVolumePreset(detectedVolumePreset);
+    }, [detectedVolumePreset]);
+    useEffect(() => {
+        setActivePricingPreset(detectedPricingPreset);
+    }, [detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: SellVolumePresetType) => {

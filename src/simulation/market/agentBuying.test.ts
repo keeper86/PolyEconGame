@@ -455,6 +455,121 @@ describe('automaticPricing — buy side', () => {
         expect(newPrice).toBeGreaterThan(PRICE_FLOOR);
     });
 
+    it('freeBuyQuantity smoothing is stable across multiple ticks when no production/consumption exists', () => {
+        const buyer = makeAgent('free-buyer');
+        buyer.assets.p.deposits = 1_000_000;
+        buyer.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-free',
+            capacity: { volume: 1e9, mass: 1e9 },
+        });
+
+        // No production facilities, no management, no ships — pure free buy
+        const FREE_TARGET = 1_000_000;
+        const SMOOTHING_DAYS = 20;
+        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS; // 50,000
+
+        planet.marketPrices[COAL] = 1.0;
+        buyer.assets.p.market = {
+            sell: {},
+            buy: {
+                [COAL]: {
+                    resource: coalResourceType,
+                    automated: true,
+                    bidPrice: 1.0,
+                    autoConfig: {
+                        freeBuyQuantity: FREE_TARGET,
+                        freeBuyQuantitySmoothingMaxExtra: SMOOTHING_DAYS,
+                    } as AutomatedPricingConfig,
+                },
+            },
+        };
+
+        // Simulate over several ticks — the per-tick quantity should stay at PER_TICK
+        // until inventory approaches the freeBuyQuantity target.
+        for (let tick = 0; tick < 15; tick++) {
+            automaticPricing(agentMap(buyer), planet);
+
+            const bid = buyer.assets.p.market!.buy[COAL]!;
+            const inventory = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+
+            // diagnostics.shortfall should be ≤ PER_TICK (the smoothed per-tick amount)
+            expect(bid.diagnostics).toBeDefined();
+            expect(bid.diagnostics!.shortfall).toBeGreaterThan(0);
+            const perTickFromShortfall = bid.diagnostics!.shortfall;
+
+            // The effective order quantity (bidStorageTarget - inventory) should match shortfall
+            const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventory);
+            expect(effectiveQty).toBeCloseTo(perTickFromShortfall, 0);
+
+            // The shortfall should not exceed PER_TICK by any meaningful margin
+            // (allow small rounding)
+            expect(perTickFromShortfall).toBeLessThanOrEqual(PER_TICK + 1);
+
+            // Simulate buying — add the shortfall to inventory for next tick
+            if (inventory + perTickFromShortfall <= FREE_TARGET) {
+                putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, perTickFromShortfall);
+            }
+
+            // Reset counters as the tick loop would
+            bid.lastBought = 0;
+            bid.lastSpent = 0;
+            bid.lastEffectiveQty = 0;
+        }
+
+        // After 15 ticks at ~50k/tick we should have ~750k inventory
+        const finalInventory = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        expect(finalInventory).toBeGreaterThan(700_000);
+        expect(finalInventory).toBeLessThan(800_000);
+    });
+
+    it('freeBuyQuantity smoothing — near the target the per-tick quantity decreases', () => {
+        const buyer = makeAgent('free-buyer-2');
+        buyer.assets.p.deposits = 1_000_000;
+        buyer.assets.p.storageFacility = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-free-2',
+            capacity: { volume: 1e9, mass: 1e9 },
+        });
+
+        const FREE_TARGET = 10_000;
+        const SMOOTHING_DAYS = 10;
+        const PER_TICK = FREE_TARGET / SMOOTHING_DAYS; // 1,000
+
+        planet.marketPrices[COAL] = 1.0;
+
+        // Start with inventory near the target
+        putIntoStorageFacility(buyer.assets.p.storageFacility, coalResourceType, 9_500);
+
+        buyer.assets.p.market = {
+            sell: {},
+            buy: {
+                [COAL]: {
+                    resource: coalResourceType,
+                    automated: true,
+                    bidPrice: 1.0,
+                    autoConfig: {
+                        freeBuyQuantity: FREE_TARGET,
+                        freeBuyQuantitySmoothingMaxExtra: SMOOTHING_DAYS,
+                    } as AutomatedPricingConfig,
+                },
+            },
+        };
+
+        // First tick: inventory=9500, freeRemaining=500, freeRemaining < freeFillRate (=1000)
+        // So shortfall should be 500 (not 1000)
+        automaticPricing(agentMap(buyer), planet);
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        const inventory = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventory);
+
+        // When close to target, should buy less than the full per-tick rate
+        expect(effectiveQty).toBeGreaterThan(0);
+        expect(effectiveQty).toBeLessThan(PER_TICK);
+        // freeRemaining = 10,000 - 9,500 = 500, should be exactly that
+        expect(effectiveQty).toBeCloseTo(500, 0);
+    });
+
     it('freeBuyQuantity with services skips smoothing', () => {
         // Use a service resource — smoothing is skipped for services
         const serviceResource = {
