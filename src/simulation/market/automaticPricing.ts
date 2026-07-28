@@ -423,7 +423,7 @@ export function adjustOfferPrice(
         // This prevents inventory dumps that cause totalSupply spikes
         // which trick the PID into over-contracting.
         const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
-        const perTick = surplus / smoothingDays;
+        const perTick = Math.min(surplus, Math.max(100, surplus / smoothingDays));
         const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
         offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
     }
