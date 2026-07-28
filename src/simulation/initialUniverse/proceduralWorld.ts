@@ -116,7 +116,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     loggingCamp: { totalScale: 150_917, agentCount: Math.ceil(flatTargetFactor * 4) },
     stoneQuarry: { totalScale: 80_000, agentCount: Math.ceil(flatTargetFactor * 4) },
     copperMine: { totalScale: 53_516, agentCount: Math.ceil(flatTargetFactor * 4) },
-    sandMine: { totalScale: 220_922, agentCount: Math.ceil(flatTargetFactor * 8) },
+    sandMine: { totalScale: 250_922, agentCount: Math.ceil(flatTargetFactor * 8) },
     limestoneQuarry: { totalScale: 130_818, agentCount: Math.ceil(flatTargetFactor * 6) },
     clayMine: { totalScale: 11_000, agentCount: Math.ceil(flatTargetFactor * 6) },
     cottonFarm: { totalScale: 153_157, agentCount: Math.ceil(flatTargetFactor * 8) },

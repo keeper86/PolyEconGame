@@ -1,18 +1,12 @@
 'use client';
 
 import { useAgentId } from '@/hooks/useAgentId';
-import {
-    usePendingActions,
-    useRemovePendingById,
-    useRemovePendingByKey,
-    resolvePendingActions,
-} from '@/hooks/useActionOverlay';
+import { usePendingActions, useRemovePendingById, useRemovePendingByKey } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentPlanetDetail } from '@/server/controller/simulation';
 import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import type { ProductionFacility } from '@/simulation/planet/facility';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useRef } from 'react';
 
@@ -58,45 +52,37 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         return baseAssets as AgentPlanetAssets;
     }, [baseAssets]);
 
-    // GC resolved pending actions whenever the facility list changes.
-    // This runs after every snapshot update that changes the facility set.
-    const prevAssetVersionRef = useRef<string | null>(null);
+    // Resolve pending actions by tick comparison: if the snapshot tick has
+    // advanced past the action's triggerTick, the action was processed.
+    const snapshotTick = data?.tick;
+    const prevTickRef = useRef<number | undefined>(undefined);
 
     useEffect(() => {
-        if (!baseAssets) {
+        if (!snapshotTick) {
             return;
         }
-        const realFacilities: ProductionFacility[] = baseAssets.productionFacilities;
-
-        // Compute a quick version hash to detect actual changes (skip if same)
-        const versionHash = realFacilities
-            .map((f) => {
-                const cs = f.construction;
-                return `${f.id}:${f.scale}:${f.maxScale}:${cs?.type ?? 'none'}:${cs?.constructionTargetMaxScale ?? 'none'}`;
-            })
-            .join('|');
-        if (prevAssetVersionRef.current === versionHash) {
+        // Only run on actual tick advance (not on first mount / initial data)
+        if (prevTickRef.current === undefined) {
+            prevTickRef.current = snapshotTick;
             return;
         }
-        prevAssetVersionRef.current = versionHash;
+        prevTickRef.current = snapshotTick;
 
-        // Resolve pending actions against the real snapshot facilities
-        const remaining = resolvePendingActions(pendingActions, realFacilities);
-        if (remaining.length === pendingActions.length) {
-            return; // nothing resolved
-        }
-
-        // Identify which actions were resolved and remove them
-        const resolved = pendingActions.filter((a) => !remaining.includes(a));
-        for (const action of resolved) {
-            if (action.type === 'build' && action.facilityKey) {
-                removeByKey(agentId, planetId, action.facilityKey);
-            } else if (action.facilityId) {
-                removeById(agentId, planetId, action.facilityId, action.type);
+        for (const action of pendingActions) {
+            // Prefer the worker's processedAtTick if available (set by updateProcessedAtTick
+            // in mutation onSuccess), otherwise fall back to the triggerTick (set at click time).
+            const effectiveTick = action.processedAtTick ?? action.triggerTick;
+            if (snapshotTick > effectiveTick) {
+                if (action.facilityKey) {
+                    removeByKey(agentId, planetId, action.facilityKey);
+                } else if (action.facilityId) {
+                    removeById(agentId, planetId, action.facilityId, action.type);
+                } else if (action.loanId) {
+                    removeByKey(agentId, planetId, action.loanId);
+                }
             }
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [baseAssets, agentId, planetId, removeById, removeByKey]);
+    }, [snapshotTick, pendingActions, removeById, removeByKey, agentId, planetId]);
 
     const ships = (detail?.ships ?? []) as ConsumptionShipInfo[];
 

@@ -1,7 +1,5 @@
 'use client';
 
-import type { ProductionFacility } from '@/simulation/planet/facility';
-import { facilityByName } from '@/simulation/planet/productionFacilities';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useSimulationTick } from './useSimulationQuery';
 
@@ -90,12 +88,32 @@ interface StoredEntry {
     t: number; // Date.now() at write time
 }
 
-function serialize(actions: PendingAction[]): string {
-    const entries: StoredEntry[] = actions.map((a) => ({ a, t: Date.now() }));
+/**
+ * Builds a deterministic key that uniquely identifies an action for
+ * timestamp-preservation purposes.
+ */
+function actionStorageKey(a: PendingAction): string {
+    const discriminator = a.facilityId ?? a.facilityKey ?? a.loanId ?? a.resourceName ?? '';
+    return `${a.agentId}|${a.planetId}|${a.type}|${discriminator}`;
+}
+
+function serialize(actions: PendingAction[], existingEntries: StoredEntry[]): string {
+    const existingMap = new Map<string, number>();
+    for (const e of existingEntries) {
+        existingMap.set(actionStorageKey(e.a), e.t);
+    }
+
+    const entries: StoredEntry[] = actions.map((a) => {
+        const key = actionStorageKey(a);
+        // Preserve the original timestamp if this action already existed,
+        // otherwise use the current time for new entries.
+        const t = existingMap.get(key) ?? Date.now();
+        return { a, t };
+    });
     return JSON.stringify(entries);
 }
 
-function deserialize(raw: string | null): PendingAction[] {
+function deserialize(raw: string | null): StoredEntry[] {
     if (!raw) {
         return [];
     }
@@ -105,13 +123,13 @@ function deserialize(raw: string | null): PendingAction[] {
             return [];
         }
         const now = Date.now();
-        return entries.filter((e) => e.a && e.t && now - e.t <= MAX_AGE_MS).map((e) => e.a);
+        return entries.filter((e) => e.a && e.t && now - e.t <= MAX_AGE_MS);
     } catch {
         return [];
     }
 }
 
-function readAll(): PendingAction[] {
+function readAllStored(): StoredEntry[] {
     if (typeof window === 'undefined') {
         return [];
     }
@@ -122,21 +140,19 @@ function readAll(): PendingAction[] {
     }
 }
 
-function writeAll(actions: PendingAction[]): void {
+function readAll(): PendingAction[] {
+    return readAllStored().map((e) => e.a);
+}
+
+function writeAll(actions: PendingAction[], existingEntries: StoredEntry[]): void {
     try {
-        localStorage.setItem(STORAGE_KEY, serialize(actions));
+        localStorage.setItem(STORAGE_KEY, serialize(actions, existingEntries));
     } catch {
         // Silently ignore storage errors (e.g. Safari private mode, quota exceeded)
     }
 }
 
-// ── Key helpers ──────────────────────────────────────────────────────────────
-
-function agentPlanetKey(a: PendingAction): string {
-    return `${a.agentId}|${a.planetId}`;
-}
-
-// ── Context ──────────────────────────────────────────────────────────────────
+// ── Action match type ────────────────────────────────────────────────────────
 
 export interface PendingActionMatch {
     type: PendingAction['type'];
@@ -149,6 +165,14 @@ export interface PendingActionMatch {
     /** For action types that have a loanId (loanRepay). */
     loanId?: string;
 }
+
+// ── Key helpers ──────────────────────────────────────────────────────────────
+
+function agentPlanetKey(a: PendingAction): string {
+    return `${a.agentId}|${a.planetId}`;
+}
+
+// ── Context ──────────────────────────────────────────────────────────────────
 
 interface PendingActionContextValue {
     addPending: (action: PendingAction) => void;
@@ -190,7 +214,7 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
     useEffect(() => {
         const onStorage = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY) {
-                setAllActions(deserialize(e.newValue));
+                setAllActions(readAll());
             }
         };
         window.addEventListener('storage', onStorage);
@@ -204,16 +228,20 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             return; // tick not yet loaded
         }
 
-        const all = readAll();
-        const fresh = all.filter((a) => currentTick - a.triggerTick < STALE_TICK_THRESHOLD);
-        if (fresh.length !== all.length) {
-            writeAll(fresh);
-            setAllActions(fresh);
+        const stored = readAllStored();
+        const fresh = stored.filter((e) => currentTick - e.a.triggerTick < STALE_TICK_THRESHOLD);
+        if (fresh.length !== stored.length) {
+            writeAll(
+                fresh.map((e) => e.a),
+                stored,
+            );
+            setAllActions(fresh.map((e) => e.a));
         }
     }, [currentTick]);
 
     const addPending = useCallback((action: PendingAction) => {
-        const current = readAll();
+        const stored = readAllStored();
+        const current = stored.map((e) => e.a);
         const actionKey = agentPlanetKey(action);
         let next: PendingAction[];
         if (action.type === 'scaleChange' && action.facilityId) {
@@ -259,7 +287,7 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             next = [...current];
         }
         next.push(action);
-        writeAll(next);
+        writeAll(next, stored);
         setAllActions(next);
     }, []);
 
@@ -274,7 +302,8 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
     const removePendingById = useCallback(
         (agentId: string, planetId: string, facilityId: string, actionType?: PendingAction['type']) => {
             const key = `${agentId}|${planetId}`;
-            const current = readAll();
+            const stored = readAllStored();
+            const current = stored.map((e) => e.a);
             const next = current.filter(
                 (a) =>
                     !(
@@ -286,7 +315,7 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             if (next.length === current.length) {
                 return;
             }
-            writeAll(next);
+            writeAll(next, stored);
             setAllActions(next);
         },
         [],
@@ -294,19 +323,21 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
 
     const removePendingByKey = useCallback((agentId: string, planetId: string, facilityKey: string) => {
         const key = `${agentId}|${planetId}`;
-        const current = readAll();
+        const stored = readAllStored();
+        const current = stored.map((e) => e.a);
         const next = current.filter((a) => !(agentPlanetKey(a) === key && a.facilityKey === facilityKey));
         if (next.length === current.length) {
             return;
         }
-        writeAll(next);
+        writeAll(next, stored);
         setAllActions(next);
     }, []);
 
     const removePendingByResource = useCallback(
         (agentId: string, planetId: string, resourceName: string, actionType?: PendingAction['type']) => {
             const key = `${agentId}|${planetId}`;
-            const current = readAll();
+            const stored = readAllStored();
+            const current = stored.map((e) => e.a);
             const next = current.filter(
                 (a) =>
                     !(
@@ -318,7 +349,7 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
             if (next.length === current.length) {
                 return;
             }
-            writeAll(next);
+            writeAll(next, stored);
             setAllActions(next);
         },
         [],
@@ -327,31 +358,34 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
     const updateProcessedAtTick = useCallback(
         (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => {
             const key = `${agentId}|${planetId}`;
-            const current = readAll();
-            const next = current.map((a) => {
-                if (agentPlanetKey(a) !== key) {
-                    return a;
+            const stored = readAllStored();
+            const next = stored.map((e) => {
+                if (agentPlanetKey(e.a) !== key) {
+                    return e;
                 }
-                if (a.type !== match.type) {
-                    return a;
+                if (e.a.type !== match.type) {
+                    return e;
                 }
                 // Match by the identifying field that uniquely pins this action
-                if (match.facilityKey && a.facilityKey !== match.facilityKey) {
-                    return a;
+                if (match.facilityKey && e.a.facilityKey !== match.facilityKey) {
+                    return e;
                 }
-                if (match.facilityId && a.facilityId !== match.facilityId) {
-                    return a;
+                if (match.facilityId && e.a.facilityId !== match.facilityId) {
+                    return e;
                 }
-                if (match.resourceName && a.resourceName !== match.resourceName) {
-                    return a;
+                if (match.resourceName && e.a.resourceName !== match.resourceName) {
+                    return e;
                 }
-                if (match.loanId && a.loanId !== match.loanId) {
-                    return a;
+                if (match.loanId && e.a.loanId !== match.loanId) {
+                    return e;
                 }
-                return { ...a, processedAtTick: tick };
+                return { a: { ...e.a, processedAtTick: tick }, t: e.t };
             });
-            writeAll(next);
-            setAllActions(next);
+            writeAll(
+                next.map((e) => e.a),
+                stored,
+            );
+            setAllActions(next.map((e) => e.a));
         },
         [],
     );
@@ -396,168 +430,4 @@ export function useRemovePendingByResource() {
 
 export function useUpdateProcessedAtTick() {
     return useContext(PendingActionContext).updateProcessedAtTick;
-}
-
-// ── Resolution ───────────────────────────────────────────────────────────────
-
-/**
- * Predicate-based resolver for facility-related actions.
- * Given a list of pending actions and the real snapshot facilities, returns
- * only the actions that have NOT yet been confirmed by the backend.
- *
- * Each action type has a simple boolean check against the real facility list.
- * No fake data construction, no tick arithmetic.
- */
-export function resolvePendingActions(actions: PendingAction[], facilities: ProductionFacility[]): PendingAction[] {
-    return actions.filter((a) => {
-        switch (a.type) {
-            case 'build': {
-                // Resolved: a facility with this catalog name exists in the snapshot
-                const entry = a.facilityKey ? facilityByName.get(a.facilityKey) : undefined;
-                if (!entry || !a.facilityKey) {
-                    return true;
-                }
-                const name = entry.factory('catalog', 'preview').name;
-                return !facilities.some((f) => f.name === name);
-            }
-            case 'expand': {
-                // Resolved: the facility has construction with the target max scale
-                // (or a higher one, meaning the expand was processed)
-                if (!a.facilityId) {
-                    return true;
-                }
-                if (a.targetScale == null) {
-                    return true; // cannot verify completion without a target
-                }
-                const f = facilities.find((f) => f.id === a.facilityId);
-                const targetScale = a.targetScale;
-                return !(
-                    f?.construction?.constructionTargetMaxScale != null &&
-                    f.construction.constructionTargetMaxScale >= targetScale
-                );
-            }
-            case 'contract': {
-                // Resolved: the facility's maxScale matches the target
-                if (!a.facilityId) {
-                    return true;
-                }
-                const f = facilities.find((f) => f.id === a.facilityId);
-                return !(f && a.targetScale != null && f.maxScale === a.targetScale);
-            }
-            case 'scaleChange': {
-                // Resolved: the facility's scale fraction matches the target
-                if (!a.facilityId) {
-                    return true;
-                }
-                if (a.targetScaleFraction == null) {
-                    return true; // cannot verify completion without a target
-                }
-                const f = facilities.find((f) => f.id === a.facilityId);
-                if (!f || f.maxScale === 0) {
-                    return true;
-                }
-                const fraction = a.targetScaleFraction;
-                return Math.abs(f.scale / f.maxScale - fraction) >= 0.01;
-            }
-            case 'cancel': {
-                // Resolved: the facility no longer exists (new-build cancel)
-                //           OR the facility has no construction (expansion cancel)
-                if (!a.facilityId) {
-                    return true;
-                }
-                const f = facilities.find((f) => f.id === a.facilityId);
-                return !(!f || f.construction === null);
-            }
-            default:
-                return true;
-        }
-    });
-}
-
-/**
- * Predicate-based resolver for market actions.
- * Given a list of pending actions and the current buyBids/sellOffers snapshots,
- * returns only the actions that have NOT yet been confirmed by the backend.
- */
-export function resolveMarketPendingActions(
-    actions: PendingAction[],
-    buyBids: Record<
-        string,
-        { bidPrice?: number; bidStorageTarget?: number; automated?: boolean; autoConfig?: unknown }
-    >,
-    sellOffers: Record<
-        string,
-        { offerPrice?: number; offerRetainment?: number; automated?: boolean; autoConfig?: unknown }
-    >,
-): PendingAction[] {
-    return actions.filter((a) => {
-        if (!a.resourceName) {
-            return true;
-        }
-
-        switch (a.type) {
-            case 'marketBuyPrice': {
-                const bid = buyBids[a.resourceName];
-                if (!bid) {
-                    return true; // keep pending if no bid data yet
-                }
-                // Resolved: submitted price/storage values match the snapshot
-                const priceMatch = a.submittedBidPrice == null || bid.bidPrice === a.submittedBidPrice;
-                const storageMatch =
-                    a.submittedBidStorageTarget == null || bid.bidStorageTarget === a.submittedBidStorageTarget;
-                return !(priceMatch && storageMatch);
-            }
-            case 'marketBuyAutomation': {
-                const bid = buyBids[a.resourceName];
-                if (!bid) {
-                    return true;
-                }
-                const autoMatch = a.submittedBidAutomated == null || bid.automated === a.submittedBidAutomated;
-                return !autoMatch;
-            }
-            case 'marketBuyAutoConfig': {
-                // Resolved immediately — auto-config is saved along with the bid;
-                // we keep the pending for one tick cycle. Since auto-config is
-                // nested data that's hard to compare deeply, we just wait for the
-                // next snapshot to arrive (the pending will be cleared after tick).
-                // For now, resolve based on any bid data existing.
-                const bid = buyBids[a.resourceName];
-                return !bid; // keep pending if bid hasn't appeared yet
-            }
-            case 'marketSellPrice': {
-                const offer = sellOffers[a.resourceName];
-                if (!offer) {
-                    return true;
-                }
-                const priceMatch = a.submittedOfferPrice == null || offer.offerPrice === a.submittedOfferPrice;
-                const retainmentMatch =
-                    a.submittedOfferRetainment == null || offer.offerRetainment === a.submittedOfferRetainment;
-                return !(priceMatch && retainmentMatch);
-            }
-            case 'marketSellAutomation': {
-                const offer = sellOffers[a.resourceName];
-                if (!offer) {
-                    return true;
-                }
-                const autoMatch = a.submittedOfferAutomated == null || offer.automated === a.submittedOfferAutomated;
-                return !autoMatch;
-            }
-            case 'marketSellAutoConfig': {
-                const offer = sellOffers[a.resourceName];
-                return !offer;
-            }
-            case 'marketCancelBuy': {
-                // Resolved: the bid no longer exists (bidPrice and bidStorageTarget are undefined)
-                const bid = buyBids[a.resourceName];
-                return !(!bid || (bid.bidPrice === undefined && bid.bidStorageTarget === undefined));
-            }
-            case 'marketCancelSell': {
-                // Resolved: the offer no longer exists (offerPrice and offerRetainment are undefined)
-                const offer = sellOffers[a.resourceName];
-                return !(!offer || (offer.offerPrice === undefined && offer.offerRetainment === undefined));
-            }
-            default:
-                return true; // non-market actions pass through
-        }
-    });
 }
