@@ -1,3 +1,4 @@
+import { pl } from 'zod/v4/locales';
 import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {
@@ -148,8 +149,8 @@ export const loggingCamp = (planetId: string, id: string): ProductionFacility =>
         secondary: 10,
         tertiary: 1,
     },
-    needs: [{ resource: forestResourceType, quantity: 50 }],
-    produces: [{ resource: logsResourceType, quantity: 50 }],
+    needs: [{ resource: forestResourceType, quantity: 100 }],
+    produces: [{ resource: logsResourceType, quantity: 100 }],
 });
 
 export const stoneQuarry = (planetId: string, id: string): ProductionFacility => ({
@@ -401,6 +402,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
         { resource: produceResourceType, quantity: 20 },
         { resource: chemicalResourceType, quantity: 100 },
         { resource: waterResourceType, quantity: 100 },
+        { resource: packagingResourceType, quantity: 8 },
     ],
     produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
 });
@@ -422,7 +424,7 @@ export const foodProcessingPlant = (planetId: string, id: string): ProductionFac
         { resource: produceResourceType, quantity: 60 },
         { resource: chemicalResourceType, quantity: 5 },
         { resource: waterResourceType, quantity: 100 },
-        { resource: packagingResourceType, quantity: 1 },
+        { resource: packagingResourceType, quantity: 4 },
     ],
     produces: [{ resource: processedFoodResourceType, quantity: 80 }],
 });
@@ -443,8 +445,7 @@ export const beveragePlant = (planetId: string, id: string): ProductionFacility 
         { resource: waterResourceType, quantity: 150 },
         { resource: produceResourceType, quantity: 20 },
         { resource: chemicalResourceType, quantity: 1 },
-        { resource: glassResourceType, quantity: 5 },
-        { resource: packagingResourceType, quantity: 1 },
+        { resource: packagingResourceType, quantity: 5 },
     ],
     produces: [{ resource: beverageResourceType, quantity: 100 }],
 });
@@ -769,7 +770,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     },
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 50.0 },
+        { resource: fuelResourceType, quantity: 80.0 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -853,7 +854,8 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
     },
     needs: [
         { resource: pharmaceuticalResourceType, quantity: 2 },
-        { resource: chemicalResourceType, quantity: 20 },
+        { resource: chemicalResourceType, quantity: 15 },
+        { resource: plasticResourceType, quantity: 30 },
         { resource: logisticsServiceResourceType, quantity: 10 },
         { resource: administrativeServiceResourceType, quantity: 3 },
     ],
@@ -901,9 +903,9 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         needs: [
             { resource: steelResourceType, quantity: 10 },
             { resource: electronicsResourceType, quantity: 5 },
-            { resource: plasticResourceType, quantity: 3 },
+            { resource: plasticResourceType, quantity: 10 },
             { resource: logisticsServiceResourceType, quantity: 5 },
-            { resource: administrativeServiceResourceType, quantity: 5 },
+            { resource: machineryResourceType, quantity: 5 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },

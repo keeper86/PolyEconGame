@@ -12,15 +12,15 @@ export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.01;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.1;
+export const PID_KP = 0.05;
 
-export const PID_KI = 0.001;
+export const PID_KI = 0.0005;
 
-export const PID_KD = 0.01;
-export const PID_IMAX = 0.025;
-export const PID_OUT_MAX_UP = 0.1;
-export const PID_OUT_MAX_DOWN = 0.01;
-export const PID_D_ALPHA = 0.3;
+export const PID_KD = 0.005;
+export const PID_IMAX = 0.01;
+export const PID_OUT_MAX_UP = 0.033;
+export const PID_OUT_MAX_DOWN = 0.0033;
+export const PID_D_ALPHA = 0.5;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 export const EXPANSION_INTEGRAL_MAX = 180;

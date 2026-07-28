@@ -111,13 +111,13 @@ interface FacilityTarget {
 
 const flatTargetFactor = 0.5;
 const TARGETS: Record<string, FacilityTarget> = {
-    coalMine: { totalScale: 5_546, agentCount: Math.ceil(flatTargetFactor * 2) },
+    coalMine: { totalScale: 8_546, agentCount: Math.ceil(flatTargetFactor * 2) },
     oilWell: { totalScale: 1_081_908, agentCount: Math.ceil(flatTargetFactor * 16) },
-    loggingCamp: { totalScale: 80_917, agentCount: Math.ceil(flatTargetFactor * 4) },
+    loggingCamp: { totalScale: 150_917, agentCount: Math.ceil(flatTargetFactor * 4) },
     stoneQuarry: { totalScale: 80_000, agentCount: Math.ceil(flatTargetFactor * 4) },
     copperMine: { totalScale: 53_516, agentCount: Math.ceil(flatTargetFactor * 4) },
-    sandMine: { totalScale: 150_922, agentCount: Math.ceil(flatTargetFactor * 8) },
-    limestoneQuarry: { totalScale: 70_818, agentCount: Math.ceil(flatTargetFactor * 6) },
+    sandMine: { totalScale: 220_922, agentCount: Math.ceil(flatTargetFactor * 8) },
+    limestoneQuarry: { totalScale: 130_818, agentCount: Math.ceil(flatTargetFactor * 6) },
     clayMine: { totalScale: 11_000, agentCount: Math.ceil(flatTargetFactor * 6) },
     cottonFarm: { totalScale: 153_157, agentCount: Math.ceil(flatTargetFactor * 8) },
     waterExtractionFacility: { totalScale: 480_115, agentCount: Math.ceil(flatTargetFactor * 16) },
@@ -133,7 +133,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     textileMill: { totalScale: 257_297, agentCount: Math.ceil(flatTargetFactor * 8) },
     concretePlant: { totalScale: 200_000, agentCount: Math.ceil(flatTargetFactor * 8) },
     foodProcessingPlant: { totalScale: 640_000, agentCount: Math.ceil(flatTargetFactor * 8) },
-    beveragePlant: { totalScale: 230_667, agentCount: Math.ceil(flatTargetFactor * 6) },
+    beveragePlant: { totalScale: 330_667, agentCount: Math.ceil(flatTargetFactor * 6) },
     pharmaceuticalPlant: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 6) },
     clothingFactory: { totalScale: 220_889, agentCount: Math.ceil(flatTargetFactor * 8) },
     furnitureFactory: { totalScale: 280_667, agentCount: Math.ceil(flatTargetFactor * 8) },
@@ -146,9 +146,9 @@ const TARGETS: Record<string, FacilityTarget> = {
     administrativeCenter: { totalScale: 120_889, agentCount: Math.ceil(flatTargetFactor * 8) },
     logisticsHub: { totalScale: 735_111, agentCount: Math.ceil(flatTargetFactor * 8) },
     constructionService: { totalScale: 133_333, agentCount: Math.ceil(flatTargetFactor * 8) },
-    groceryChain: { totalScale: 1_633_333, agentCount: Math.ceil(flatTargetFactor * 12) },
+    groceryChain: { totalScale: 1_333_333, agentCount: Math.ceil(flatTargetFactor * 12) },
     retailChain: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 8) },
-    hospital: { totalScale: 988_889, agentCount: Math.ceil(flatTargetFactor * 8) },
+    hospital: { totalScale: 1_188_889, agentCount: Math.ceil(flatTargetFactor * 8) },
     siliconWaferFactory: { totalScale: 242_982, agentCount: Math.ceil(flatTargetFactor * 8) },
 };
 
