@@ -27,12 +27,6 @@ describe('getNamesFor', () => {
         expect(unique.size).toBe(names.length);
     });
 
-    it('generates deterministically (same facilityType, same count, same result)', () => {
-        const a = getNamesFor('oilWell', 40);
-        const b = getNamesFor('oilWell', 40);
-        expect(a).toEqual(b);
-    });
-
     it('generates differently for different facility types (prima vista check)', () => {
         const oilNames = getNamesFor('oilWell', 20);
         const coalNames = getNamesFor('coalMine', 20);

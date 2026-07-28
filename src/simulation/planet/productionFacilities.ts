@@ -1,4 +1,3 @@
-import { pl } from 'zod/v4/locales';
 import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {
@@ -782,10 +781,10 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
     name: 'Construction Facility' as const,
     powerConsumptionPerTick: 0.3,
     workerRequirement: {
-        none: 10,
+        none: 50,
         primary: 40,
-        secondary: 40,
-        tertiary: 10,
+        secondary: 30,
+        tertiary: 20,
     },
     needs: [
         { resource: concreteResourceType, quantity: 60 },
@@ -794,7 +793,7 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
         { resource: administrativeServiceResourceType, quantity: 10 },
         { resource: lumberResourceType, quantity: 50 },
     ],
-    produces: [{ resource: constructionServiceResourceType, quantity: 50 }],
+    produces: [{ resource: constructionServiceResourceType, quantity: 100 }],
 });
 
 export const groceryChain = (planetId: string, id: string): ProductionFacility => ({

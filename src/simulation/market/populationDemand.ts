@@ -168,7 +168,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 const referencePrice = Math.min(
                     (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) *
                         BID_OFFER_MAX_COST_MULTIPLIER *
-                        0.5,
+                        0.33,
                     planet.marketPrices[service.resource.name] ?? 0,
                 );
 

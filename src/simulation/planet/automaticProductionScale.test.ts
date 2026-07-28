@@ -7,13 +7,7 @@ import {
     makePopulationByEducation,
     makeProductionFacility,
 } from '../utils/testHelper';
-import {
-    EXPANSION_INTEGRAL_THRESHOLD,
-    PID_KP,
-    PID_OUT_MAX_DOWN,
-    PID_OUT_MAX_UP,
-    updateAgentProductionScale,
-} from './automaticProductionScale';
+import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
