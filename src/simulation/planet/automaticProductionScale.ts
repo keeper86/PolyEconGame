@@ -18,7 +18,8 @@ export const PID_KI = 0.001;
 
 export const PID_KD = 0.01;
 export const PID_IMAX = 0.025;
-export const PID_OUT_MAX = 0.1;
+export const PID_OUT_MAX_UP = 0.1;
+export const PID_OUT_MAX_DOWN = 0.01;
 export const PID_D_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
@@ -138,14 +139,14 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     }
 
     const tentativeOutput = P + state.integral + D;
-    const outSat = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, tentativeOutput));
-    const saturated = Math.abs(outSat) >= PID_OUT_MAX;
-    const errorSameDirection = (signal > 0 && outSat > 0) || (signal < 0 && outSat < 0);
-    if (!saturated || !errorSameDirection) {
+    const outSat = Math.max(-PID_OUT_MAX_DOWN, Math.min(PID_OUT_MAX_UP, tentativeOutput));
+    const saturatedUp = signal > 0 && outSat >= PID_OUT_MAX_UP;
+    const saturatedDown = signal < 0 && outSat <= -PID_OUT_MAX_DOWN;
+    if (!saturatedUp && !saturatedDown) {
         state.integral = Math.max(-PID_IMAX, Math.min(PID_IMAX, state.integral + PID_KI * signal));
     }
 
-    const output = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, P + state.integral + D));
+    const output = Math.max(-PID_OUT_MAX_DOWN, Math.min(PID_OUT_MAX_UP, P + state.integral + D));
     return output * maxScale;
 }
 

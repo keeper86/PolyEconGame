@@ -109,22 +109,22 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-const flatTargetFactor = 0.1;
+const flatTargetFactor = 0.5;
 const TARGETS: Record<string, FacilityTarget> = {
-    coalMine: { totalScale: 10_546, agentCount: Math.ceil(flatTargetFactor * 2) },
-    oilWell: { totalScale: 1_481_908, agentCount: Math.ceil(flatTargetFactor * 16) },
+    coalMine: { totalScale: 5_546, agentCount: Math.ceil(flatTargetFactor * 2) },
+    oilWell: { totalScale: 1_081_908, agentCount: Math.ceil(flatTargetFactor * 16) },
     loggingCamp: { totalScale: 80_917, agentCount: Math.ceil(flatTargetFactor * 4) },
     stoneQuarry: { totalScale: 80_000, agentCount: Math.ceil(flatTargetFactor * 4) },
     copperMine: { totalScale: 53_516, agentCount: Math.ceil(flatTargetFactor * 4) },
-    sandMine: { totalScale: 330_922, agentCount: Math.ceil(flatTargetFactor * 8) },
-    limestoneQuarry: { totalScale: 145_818, agentCount: Math.ceil(flatTargetFactor * 6) },
-    clayMine: { totalScale: 24_000, agentCount: Math.ceil(flatTargetFactor * 6) },
-    cottonFarm: { totalScale: 308_157, agentCount: Math.ceil(flatTargetFactor * 8) },
-    waterExtractionFacility: { totalScale: 650_115, agentCount: Math.ceil(flatTargetFactor * 16) },
+    sandMine: { totalScale: 150_922, agentCount: Math.ceil(flatTargetFactor * 8) },
+    limestoneQuarry: { totalScale: 70_818, agentCount: Math.ceil(flatTargetFactor * 6) },
+    clayMine: { totalScale: 11_000, agentCount: Math.ceil(flatTargetFactor * 6) },
+    cottonFarm: { totalScale: 153_157, agentCount: Math.ceil(flatTargetFactor * 8) },
+    waterExtractionFacility: { totalScale: 480_115, agentCount: Math.ceil(flatTargetFactor * 16) },
     ironExtractionFacility: { totalScale: 31_191, agentCount: Math.ceil(flatTargetFactor * 8) },
     ironSmelter: { totalScale: 64_843, agentCount: Math.ceil(flatTargetFactor * 8) },
     copperSmelter: { totalScale: 145_386, agentCount: Math.ceil(flatTargetFactor * 6) },
-    oilRefinery: { totalScale: 1_672_862, agentCount: Math.ceil(flatTargetFactor * 20) },
+    oilRefinery: { totalScale: 1_072_862, agentCount: Math.ceil(flatTargetFactor * 20) },
     sawmill: { totalScale: 280_333, agentCount: Math.ceil(flatTargetFactor * 8) },
     cementPlant: { totalScale: 320_000, agentCount: Math.ceil(flatTargetFactor * 8) },
     glassFactory: { totalScale: 180_275, agentCount: Math.ceil(flatTargetFactor * 6) },
@@ -132,7 +132,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     paperMill: { totalScale: 18_411, agentCount: Math.ceil(flatTargetFactor * 6) },
     textileMill: { totalScale: 257_297, agentCount: Math.ceil(flatTargetFactor * 8) },
     concretePlant: { totalScale: 200_000, agentCount: Math.ceil(flatTargetFactor * 8) },
-    foodProcessingPlant: { totalScale: 840_000, agentCount: Math.ceil(flatTargetFactor * 8) },
+    foodProcessingPlant: { totalScale: 640_000, agentCount: Math.ceil(flatTargetFactor * 8) },
     beveragePlant: { totalScale: 230_667, agentCount: Math.ceil(flatTargetFactor * 6) },
     pharmaceuticalPlant: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 6) },
     clothingFactory: { totalScale: 220_889, agentCount: Math.ceil(flatTargetFactor * 8) },
@@ -146,9 +146,9 @@ const TARGETS: Record<string, FacilityTarget> = {
     administrativeCenter: { totalScale: 120_889, agentCount: Math.ceil(flatTargetFactor * 8) },
     logisticsHub: { totalScale: 735_111, agentCount: Math.ceil(flatTargetFactor * 8) },
     constructionService: { totalScale: 133_333, agentCount: Math.ceil(flatTargetFactor * 8) },
-    groceryChain: { totalScale: 2_533_333, agentCount: Math.ceil(flatTargetFactor * 12) },
+    groceryChain: { totalScale: 1_633_333, agentCount: Math.ceil(flatTargetFactor * 12) },
     retailChain: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 8) },
-    hospital: { totalScale: 788_889, agentCount: Math.ceil(flatTargetFactor * 8) },
+    hospital: { totalScale: 988_889, agentCount: Math.ceil(flatTargetFactor * 8) },
     siliconWaferFactory: { totalScale: 242_982, agentCount: Math.ceil(flatTargetFactor * 8) },
 };
 

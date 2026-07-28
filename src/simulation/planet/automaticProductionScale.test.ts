@@ -7,7 +7,13 @@ import {
     makePopulationByEducation,
     makeProductionFacility,
 } from '../utils/testHelper';
-import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
+import {
+    EXPANSION_INTEGRAL_THRESHOLD,
+    PID_KP,
+    PID_OUT_MAX_DOWN,
+    PID_OUT_MAX_UP,
+    updateAgentProductionScale,
+} from './automaticProductionScale';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
@@ -607,6 +613,47 @@ describe('updateAgentProductionScale', () => {
 
         expect(facility.construction).not.toBeNull();
         expect(facility.pidState!.expansionIntegral).toBe(0);
+    });
+
+    it('asymmetric PID: does not crash to floor under oscillating oversupply/undersupply', () => {
+        const planet = makePlanetWithAvg(makeMarketResult());
+        const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
+
+        const N = 30;
+        for (let i = 0; i < N; i++) {
+            if (i % 2 === 0) {
+                // Strong oversupply
+                Object.assign(planet.lastMarketResult[RESOURCE_NAME], {
+                    unsoldSupply: 90,
+                    totalSupply: 100,
+                    unfilledDemand: 0,
+                });
+                Object.assign(planet.avgMarketResult[RESOURCE_NAME], {
+                    unsoldSupply: 90,
+                    totalSupply: 100,
+                    unfilledDemand: 0,
+                });
+            } else {
+                // Strong undersupply
+                Object.assign(planet.lastMarketResult[RESOURCE_NAME], {
+                    unsoldSupply: 0,
+                    totalSupply: 100,
+                    unfilledDemand: 90,
+                    totalDemand: 100,
+                });
+                Object.assign(planet.avgMarketResult[RESOURCE_NAME], {
+                    unsoldSupply: 0,
+                    totalSupply: 100,
+                    unfilledDemand: 90,
+                    totalDemand: 100,
+                });
+            }
+            updateAgentProductionScale(makeGameState(agents), planet);
+        }
+
+        // Scale should not have crashed to 10% — the slow-down rate (PID_OUT_MAX_DOWN = 0.02) prevents
+        // the full 0.1 per-tick drop from oversupply ticks from overwhelming the 0.1 per-tick build-up
+        expect(facility.scale).toBeGreaterThan(0.3);
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
