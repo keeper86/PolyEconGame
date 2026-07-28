@@ -94,9 +94,15 @@ export function TourJoyride() {
             return;
         }
 
+        const prevTargetSelector = targetSelectorRef.current;
         targetSelectorRef.current = targetSelector;
 
         if (document.querySelector(targetSelector)) {
+            if (prevTargetSelector && targetSelector !== prevTargetSelector) {
+                setTargetsReady(false);
+                requestAnimationFrame(() => setTargetsReady(true));
+                return;
+            }
             setTargetsReady(true);
             return;
         }

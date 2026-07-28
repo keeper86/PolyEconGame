@@ -26,6 +26,7 @@ function BuildForm({
     agentId,
     planetId,
     constructionServicePrice,
+    otherConstructionCosts,
     onBuilt,
     onCancel,
     isPending,
@@ -34,6 +35,7 @@ function BuildForm({
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
+    otherConstructionCosts?: number;
     onBuilt: () => void;
     onCancel: () => void;
     /** True when there's a pending build action awaiting the next tick */
@@ -77,77 +79,76 @@ function BuildForm({
     const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
     const isOilWell = entry.name === oilWellName;
     return (
-        <span>
-            <FacilityCardShell
-                className='max-w-[600px]'
-                contentClassName={'flex flex-col flex-1 gap-2'}
-                icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
-                headerContent={
-                    <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                        <div className='flex items-center gap-1 flex-col mb-1'>
-                            <h3 className='font-semibold leading-tight '>{entry.name}</h3>
-                            <span className='flex flex-col items-center gap-1'>
-                                <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                    new
-                                </Badge>
-                            </span>
-                        </div>
-                        <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                            Worker Requirement
-                            <WorkerBars
-                                workerRequirement={entry.workerRequirement}
-                                scale={entry.scale}
-                                neutral={true}
-                                workerEfficiency={{}}
-                                globalMin={0}
-                                planetId={planetId}
-                                agentId={agentId}
-                            />
+        <FacilityCardShell
+            className='max-w-[600px]'
+            contentClassName={'flex flex-col flex-1 gap-2'}
+            icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
+            headerContent={
+                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                    <div className='flex items-center gap-1 flex-col mb-1'>
+                        <h3 className='font-semibold leading-tight '>{entry.name}</h3>
+                        <span className='flex flex-col items-center gap-1'>
+                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                                new
+                            </Badge>
                         </span>
+                    </div>
+                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
+                        Worker Requirement
+                        <WorkerBars
+                            workerRequirement={entry.workerRequirement}
+                            scale={entry.scale}
+                            neutral={true}
+                            workerEfficiency={{}}
+                            globalMin={0}
+                            planetId={planetId}
+                            agentId={agentId}
+                        />
                     </span>
-                }
-            >
-                <div className='flex-1 space-y-2 pb-3'>
-                    <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
-                </div>
-                <div className='relative mt-auto space-y-2' data-tour={isOilWell ? 'build-oil-well' : undefined}>
-                    <Separator />
-                    <FacilityConstructionPanel
-                        facilityType={facilityType}
-                        fromScale={0}
-                        constructionServicePrice={constructionServicePrice}
-                        planetId={planetId}
-                        label='Build at scale'
-                        confirmLabel='Build'
-                        pendingLabel='Sending build…'
-                        isPending={sending}
-                        financials={financials}
-                        onCancel={onCancel}
-                        onConfirm={(targetScale) => {
-                            addPending({
-                                type: 'build',
-                                agentId,
-                                planetId,
-                                facilityKey: entry.name,
-                                triggerTick: currentTick,
-                            });
-                            buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
-                        }}
-                        onScaleChange={setPreviewScale}
-                    />
+                </span>
+            }
+        >
+            <div className='flex-1 space-y-2 pb-3'>
+                <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
+            </div>
+            <div className='relative mt-auto space-y-2' data-tour={isOilWell ? 'build-oil-well' : undefined}>
+                <Separator />
+                <FacilityConstructionPanel
+                    facilityType={facilityType}
+                    fromScale={0}
+                    constructionServicePrice={constructionServicePrice}
+                    planetId={planetId}
+                    otherConstructionCosts={otherConstructionCosts}
+                    label='Build at scale'
+                    confirmLabel='Build'
+                    pendingLabel='Sending build…'
+                    isPending={sending}
+                    financials={financials}
+                    onCancel={onCancel}
+                    onConfirm={(targetScale) => {
+                        addPending({
+                            type: 'build',
+                            agentId,
+                            planetId,
+                            facilityKey: entry.name,
+                            triggerTick: currentTick,
+                        });
+                        buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
+                    }}
+                    onScaleChange={setPreviewScale}
+                />
 
-                    {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
-                    {overlayMessage && (
-                        <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                            <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                                <Spinner className='h-4 w-4' />
-                                {overlayMessage}
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </FacilityCardShell>
-        </span>
+                {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
+                {overlayMessage && (
+                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
+                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
+                            <Spinner className='h-4 w-4' />
+                            {overlayMessage}
+                        </span>
+                    </div>
+                )}
+            </div>
+        </FacilityCardShell>
     );
 }
 
@@ -252,6 +253,7 @@ export function BuildCard({
     agentId,
     planetId,
     constructionServicePrice,
+    otherConstructionCosts,
     onBuilt,
     onCancel,
     isPending,
@@ -263,6 +265,7 @@ export function BuildCard({
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
+    otherConstructionCosts?: number;
     onBuilt: () => void;
     onCancel: () => void;
     /** True when there's a pending build action awaiting the next tick (for BuildForm) */
@@ -275,6 +278,7 @@ export function BuildCard({
                 agentId={agentId}
                 planetId={planetId}
                 constructionServicePrice={constructionServicePrice}
+                otherConstructionCosts={otherConstructionCosts}
                 onBuilt={onBuilt}
                 onCancel={onCancel}
                 isPending={isPending ?? false}

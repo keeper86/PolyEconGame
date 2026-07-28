@@ -24,6 +24,7 @@ export function LevelBuildSection({
     agentId,
     planetId,
     constructionServicePrice,
+    otherConstructionCosts,
     onBuilt,
     mode,
     onModeChange,
@@ -32,6 +33,7 @@ export function LevelBuildSection({
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
+    otherConstructionCosts?: number;
     onBuilt: () => void;
     mode: Mode;
     onModeChange: (mode: Mode) => void;
@@ -78,6 +80,7 @@ export function LevelBuildSection({
                             agentId={agentId}
                             planetId={planetId}
                             constructionServicePrice={constructionServicePrice}
+                            otherConstructionCosts={otherConstructionCosts}
                             onBuilt={() => {}}
                             onCancel={() => {}}
                             isPending={true}
@@ -135,6 +138,7 @@ export function LevelBuildSection({
                         agentId={agentId}
                         planetId={planetId}
                         constructionServicePrice={constructionServicePrice}
+                        otherConstructionCosts={otherConstructionCosts}
                         onBuilt={() => {
                             onModeChange({ type: 'idle' });
                             onBuilt();

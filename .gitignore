@@ -14,6 +14,9 @@
 /coverage
 node-ramp-*.json
 
+# benchmarks
+/tools/benchmark/results/**/*
+
 # playwright
 /test-results/
 /playwright-report/
@@ -53,9 +56,3 @@ next-env.d.ts
 plantuml*.jar
 
 .vscode
-
-**/run*/*
-sim
-testprog
-
-/raw_assets

@@ -186,7 +186,7 @@ export default function AgentFinancialOverview({
                             />
                         }
                         icon={<Trash className='h-3 w-3' />}
-                        valueClassName={currentMonthlyDepreciation === 0 ? 'text-muted-foreground' : 'text-red-500'}
+                        valueClassName={mutedCashFlowColor(currentMonthlyDepreciation)}
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1' data-tour='financial-positions'>

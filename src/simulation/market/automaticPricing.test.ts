@@ -81,7 +81,7 @@ describe('resolveOfferConfig — config resolution', () => {
         // reach into the module internals via adjustOfferPrice behaviour: undefined config gives defaults
         // We'll test by calling the function with no autoConfig on the offer
         const offer = { resource: goodsResource, offerPrice: 10, lastSold: 5 } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         // Diagnostics are set so we can inspect
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.9);
@@ -89,7 +89,7 @@ describe('resolveOfferConfig — config resolution', () => {
 
     it('returns service-specific targetSellThrough when config is undefined (services)', () => {
         const offer = { resource: serviceResource, offerPrice: 10, lastSold: 5 } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.95);
     });
@@ -101,7 +101,7 @@ describe('resolveOfferConfig — config resolution', () => {
             lastSold: 100, // full sell-through
             autoConfig: { priceAdjustMaxUp: 1.1 } as AutomatedPricingConfig,
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         // priceAdjustMaxUp = 1.10 is used => with full sell-through newPrice = 10 * 1.10 = 11
         expect(offer.offerPrice).toBeCloseTo(11, 5);
@@ -120,14 +120,13 @@ describe('resolveOfferConfig — config resolution', () => {
                 costSpringStrength: 0.5,
                 bidOfferMaxCostMultiplier: 10,
                 inventorySmoothingMaxExtra: 5,
-                outputBufferMaxTicks: 40,
                 targetSellThrough: 0.8,
                 automatedCostFloorBuffer: 1.5,
-                freeSellQuantity: 0,
-                freeSellQuantitySmoothingMaxExtra: 2,
+                freeRetainment: 0,
+                freeRetainmentSmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 2, 10);
+        adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
         expect(offer.diagnostics!.targetSellThrough).toBe(0.8);
         // sellThrough = 100/100 = 1.0, target = 0.8 → above target → factor between 1 and 1.20
@@ -309,6 +308,9 @@ describe('automaticPricing — offer price tâtonnement', () => {
         const STOCK = 1000;
         const sold = STOCK * TARGET_SELL_THROUGH;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, sold, STOCK);
+        // Disable sell-smoothing for this test: set smoothing=1 so all surplus is offered
+        const offer = agent.assets[PLANET_ID].market!.sell[WATER]!;
+        offer.autoConfig = { ...offer.autoConfig, freeRetainmentSmoothingMaxExtra: 1 };
 
         automaticPricing(new Map([['co', agent]]), planet);
 
@@ -385,52 +387,7 @@ describe('automaticPricing — sell-side config overrides', () => {
         expect(newPrice).toBeGreaterThan(10);
     });
 
-    it('custom outputBufferMaxTicks affects retainment / surplus smoothing', () => {
-        const producer = makeProductionFacility({ none: 1 }, { id: 'proc', scale: 10 });
-        producer.needs = [];
-        producer.produces = [{ resource: produceResourceType, quantity: 1000 }];
-
-        const consumer = makeProductionFacility({ none: 1 }, { id: 'bev', scale: 10 });
-        consumer.needs = [{ resource: produceResourceType, quantity: 200 }];
-        consumer.produces = [{ resource: ironOreResourceType, quantity: 100 }];
-
-        const planet = makePlanetWithPrice({ [produceResourceType.name]: 5 });
-
-        const agent = makeAgent('co', PLANET_ID);
-        agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
-            [produceResourceType.name]: { resource: produceResourceType, quantity: 65_000 },
-        });
-
-        // Set very small output buffer → surplus ratio will be higher → more aggressive smoothing
-        agent.assets[PLANET_ID].market = {
-            sell: {
-                [produceResourceType.name]: {
-                    resource: produceResourceType,
-                    offerPrice: 5,
-                    autoConfig: { outputBufferMaxTicks: 2, inventorySmoothingMaxExtra: 5 },
-                    lastSold: 100,
-                },
-            },
-            buy: {},
-        };
-
-        automaticPricing(new Map([['co', agent]]), planet);
-
-        const offer = agent.assets[PLANET_ID].market?.sell[produceResourceType.name];
-        expect(offer).toBeDefined();
-        expect(offer!.diagnostics).toBeDefined();
-        // surplusRatio should be > 0 (inventory >> outputBufferMaxTicks * baseRate)
-        // With outputBufferMaxTicks=2, referenceQty = 1000 * 2 = 2000
-        // surplus = 65000 - retainment (200*10*30=60000) = 5000
-        // surplusRatio = min(1, 5000/2000) = 1
-        // smoothedOffer = 1000 * (1 + 5 * 1) = 6000
-        // retainment = max(60000, 65000 - 6000) = 60000
-        // So offerRetainment = 60000
-        expect(offer!.offerRetainment).toBe(200 * 10 * INPUT_BUFFER_TARGET_TICKS);
-    });
-
-    it('freeSellQuantity adds extra effective quantity when inventory is low', () => {
+    it('freeRetainment keeps minimum inventory in storage', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'well', scale: 1 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -449,8 +406,8 @@ describe('automaticPricing — sell-side config overrides', () => {
                     offerPrice: 10,
                     lastSold: 5,
                     autoConfig: {
-                        freeSellQuantity: 1000,
-                        freeSellQuantitySmoothingMaxExtra: 5,
+                        freeRetainment: 1000,
+                        freeRetainmentSmoothingMaxExtra: 5,
                     } as AutomatedPricingConfig,
                 },
             },
@@ -462,14 +419,11 @@ describe('automaticPricing — sell-side config overrides', () => {
         const offer = agent.assets[PLANET_ID].market?.sell[WATER];
         expect(offer).toBeDefined();
         expect(offer!.diagnostics).toBeDefined();
-        // effectiveQuantity should be > 10 (base) because freeSellQuantity adds more
-        // freeSellPerTick = 1000/5 = 200, base effective = 10 - 0 = 10
-        // but freeSellPerTick dominates -> effectiveQuantity = min(10 + 200, 10) = 10? No...
-        // Wait: baseEffectiveQuantity = max(0, 10 - 0) = 10, freeSellPerTick = 200, effectiveQuantity = min(10 + 200, 10) = 10
-        // Actually the code says: if freeSellPerTick > 0 && baseEffectiveQuantity < freeSellQty => use baseEffectiveQuantity + freeSellPerTick, capped at inventoryQty
-        // So effectiveQuantity = min(10 + 200, 10) = 10
-        // With freeSellQuantity but inventory is only 10, the effective quantity is capped at inventory
-        expect(offer!.diagnostics!.effectiveQuantity).toBeLessThanOrEqual(10);
+        // With freeRetainment=1000, the agent keeps 1000 units in storage.
+        // Inventory is only 10, so effectiveQuantity = max(0, 10 - max(0, freeRetainment=1000)) = 0
+        // All 10 units are retained, nothing offered for sale.
+        expect(offer!.diagnostics).toBeDefined();
+        expect(offer!.diagnostics!.effectiveQuantity).toBe(0);
     });
 
     it('custom costSpringStrength and automatedCostFloorBuffer affect cost-floor brake behavior', () => {

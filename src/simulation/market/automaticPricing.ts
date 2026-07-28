@@ -1,5 +1,6 @@
 import assert from 'assert';
 import {
+    AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
@@ -7,11 +8,14 @@ import {
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
-    OUTPUT_BUFFER_MAX_TICKS,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    TARGET_FILL_RATE,
+    TARGET_FILL_RATE_SERVICES,
+    TARGET_SELL_THROUGH,
+    TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import { queryStorageFacility } from '../planet/facility';
@@ -39,12 +43,11 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
         bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
-        inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
-        outputBufferMaxTicks: c.outputBufferMaxTicks ?? OUTPUT_BUFFER_MAX_TICKS,
-        targetSellThrough: c.targetSellThrough ?? (resource.form === 'services' ? 0.95 : 0.9),
-        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? 1.5,
-        freeSellQuantity: c.freeSellQuantity ?? 0,
-        freeSellQuantitySmoothingMaxExtra: c.freeSellQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+        targetSellThrough:
+            c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
+        freeRetainment: c.freeRetainment ?? 0,
+        freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
 }
 
@@ -59,7 +62,8 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
         inputBufferTargetTicks:
             c.inputBufferTargetTicks ??
             (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
-        targetFillRate: c.targetFillRate ?? 0.9,
+        targetFillRate:
+            c.targetFillRate ?? (resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE),
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
         freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -161,8 +165,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            const baseRate = productionRate.get(resource.name) ?? 0;
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, baseRate);
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
         }
     }
 
@@ -187,7 +190,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
 
         offer.offerRetainment = 0;
-        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, 0);
+        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
@@ -397,7 +400,6 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
-    baseRate: number = 0,
 ): void {
     const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
 
@@ -410,29 +412,25 @@ export function adjustOfferPrice(
         return;
     }
 
-    // Apply sell-side inventory smoothing
-    const rawRetainment = offer.offerRetainment ?? 0;
-    let surplusRatio: number | undefined;
+    // freeRetainment ensures the agent always keeps at least this many units in storage.
+    const freeRetainment = cfg.freeRetainment;
+    // Base retainment includes the input-reserve retainment already set upstream plus the floor.
+    const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
-    if (surplus > EPSILON && baseRate > EPSILON && offer.resource.form !== 'services') {
-        const referenceQty = baseRate * cfg.outputBufferMaxTicks;
-        surplusRatio = Math.min(1, surplus / Math.max(EPSILON, referenceQty));
-        const smoothedOffer = baseRate * (1 + cfg.inventorySmoothingMaxExtra * surplusRatio);
-        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - smoothedOffer);
-        const clampedRetainment = Math.min(effectiveRetainment, inventoryQty);
-        offer.offerRetainment = clampedRetainment;
+    if (surplus > EPSILON && offer.resource.form !== 'services') {
+        // Sell smoothing: offer surplus gradually over smoothing days,
+        // applies to both producers and non-producers.
+        // This prevents inventory dumps that cause totalSupply spikes
+        // which trick the PID into over-contracting.
+        const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
+        const perTick = Math.min(surplus, Math.max(100, surplus / smoothingDays));
+        const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
+        offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
     }
 
-    const retainment = offer.offerRetainment ?? 0;
-    const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
-
-    // Add free sell quantity to effective quantity (absolute quantity smoothed over days)
-    // Convert absolute order amount to per-tick rate by dividing by fill days.
-    const freeSellFillDays = Math.max(1, cfg.freeSellQuantitySmoothingMaxExtra);
-    const freeSellQty = cfg.freeSellQuantity;
-    const freeSellPerTick = freeSellQty > 0 && baseEffectiveQuantity < freeSellQty ? freeSellQty / freeSellFillDays : 0;
-    const effectiveQuantity =
-        freeSellPerTick > 0 ? Math.min(baseEffectiveQuantity + freeSellPerTick, inventoryQty) : baseEffectiveQuantity;
+    // freeRetainment is always a floor on the final retainment
+    const retainment = Math.max(offer.offerRetainment ?? 0, freeRetainment);
+    const effectiveQuantity = Math.max(0, inventoryQty - retainment);
     const oldPrice = price;
 
     if (effectiveQuantity === 0) {
@@ -490,7 +488,6 @@ export function adjustOfferPrice(
         marketPrice: initialPrice,
         effectiveQuantity,
         rawRetainment,
-        surplusRatio,
     };
 }
 

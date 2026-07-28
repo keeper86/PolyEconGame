@@ -39,6 +39,15 @@ export default function ProductionFacilitiesPanel({
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
 
+    const otherConstructionCosts = useMemo(() => {
+        return facilities
+            .filter((f) => f.construction !== null)
+            .reduce((sum, f) => {
+                const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
+                return sum + Math.max(0, remaining) * constructionServicePrice;
+            }, 0);
+    }, [facilities, constructionServicePrice]);
+
     const ownedByName = useMemo(() => {
         const m = new Map<string, ProductionFacility>();
         for (const f of facilities) {
@@ -145,6 +154,7 @@ export default function ProductionFacilitiesPanel({
                                                 agentId={agentId}
                                                 planetId={planetId}
                                                 constructionServicePrice={constructionServicePrice}
+                                                otherConstructionCosts={otherConstructionCosts}
                                                 onExpanded={() => {}}
                                             />
                                         );
@@ -157,6 +167,7 @@ export default function ProductionFacilitiesPanel({
                                         agentId={agentId}
                                         planetId={planetId}
                                         constructionServicePrice={constructionServicePrice}
+                                        otherConstructionCosts={otherConstructionCosts}
                                         // onBuilt is a no-op — the LevelBuildSection handles the overlay
                                         // internally via onSuccess. Query invalidation is done by the
                                         // tick poller when the snapshot arrives.

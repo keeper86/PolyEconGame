@@ -17,15 +17,14 @@ describe('autoConfigToLocal', () => {
             costSpringStrength: 0.1,
             bidOfferMaxCostMultiplier: 6,
             inventorySmoothingMaxExtra: 2,
-            outputBufferMaxTicks: 20,
             targetSellThrough: 0.9,
             automatedCostFloorBuffer: 0.5,
             inputBufferTargetTicks: 30,
             targetFillRate: 0.9,
             freeBuyQuantity: 1000,
-            freeSellQuantity: 2000,
+            freeRetainment: 2000,
             freeBuyQuantitySmoothingMaxExtra: 2,
-            freeSellQuantitySmoothingMaxExtra: 3,
+            freeRetainmentSmoothingMaxExtra: 3,
         };
         const local = autoConfigToLocal(config);
         expect(local.priceAdjustMaxUp).toBe('1.05');
@@ -33,15 +32,14 @@ describe('autoConfigToLocal', () => {
         expect(local.costSpringStrength).toBe('0.1');
         expect(local.bidOfferMaxCostMultiplier).toBe('6');
         expect(local.inventorySmoothingMaxExtra).toBe('2');
-        expect(local.outputBufferMaxTicks).toBe('20');
         expect(local.targetSellThrough).toBe('0.9');
         expect(local.automatedCostFloorBuffer).toBe('0.5');
         expect(local.inputBufferTargetTicks).toBe('30');
         expect(local.targetFillRate).toBe('0.9');
         expect(local.freeBuyQuantity).toBe('1000');
-        expect(local.freeSellQuantity).toBe('2000');
+        expect(local.freeRetainment).toBe('2000');
         expect(local.freeBuyQuantitySmoothingMaxExtra).toBe('2');
-        expect(local.freeSellQuantitySmoothingMaxExtra).toBe('3');
+        expect(local.freeRetainmentSmoothingMaxExtra).toBe('3');
     });
 
     it('handles partial config (missing fields are empty)', () => {
@@ -61,15 +59,14 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             freeBuyQuantity: '',
-            freeSellQuantity: '',
+            freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
-            freeSellQuantitySmoothingMaxExtra: '',
+            freeRetainmentSmoothingMaxExtra: '',
         };
         expect(localToAutoConfig(local)).toBeUndefined();
     });
@@ -81,15 +78,14 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             freeBuyQuantity: '',
-            freeSellQuantity: '',
+            freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
-            freeSellQuantitySmoothingMaxExtra: '',
+            freeRetainmentSmoothingMaxExtra: '',
         };
         const config = localToAutoConfig(local);
         expect(config).toBeDefined();
@@ -105,15 +101,14 @@ describe('localToAutoConfig', () => {
             costSpringStrength: '',
             bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
-            outputBufferMaxTicks: '',
             targetSellThrough: '',
             automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             freeBuyQuantity: '',
-            freeSellQuantity: '',
+            freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
-            freeSellQuantitySmoothingMaxExtra: '',
+            freeRetainmentSmoothingMaxExtra: '',
         };
         expect(localToAutoConfig(local)).toBeUndefined();
     });

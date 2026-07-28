@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { getRecyclerPaymentRatio, processFacilityContraction } from '../agents/recycler';
-import { EPSILON, MIN_EMPLOYABLE_AGE, OUTPUT_BUFFER_MAX_TICKS } from '../constants';
+import { EPSILON, MIN_EMPLOYABLE_AGE } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { PidState, ProductionFacility } from './facility';
@@ -9,27 +9,28 @@ import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
-export const MAX_SCALE_EXPAND_FRACTION = 0.01;
+export const MAX_SCALE_EXPAND_FRACTION = 0.1;
 export const EXPANSION_DEPOSIT_THRESHOLD = 2.0;
 
-export const PID_KP = 0.033;
+export const PID_KP = 0.05;
 
-export const PID_KI = 0.001;
+export const PID_KI = 0.0005;
 
-export const PID_KD = 0.01;
-export const PID_IMAX = 0.025;
-export const PID_OUT_MAX = 0.033;
-export const PID_D_ALPHA = 0.3;
+export const PID_KD = 0.005;
+export const PID_IMAX = 0.01;
+export const PID_OUT_MAX_UP = 0.033;
+export const PID_OUT_MAX_DOWN = 0.0033;
+export const PID_D_ALPHA = 0.5;
 
-export const EXPANSION_INTEGRAL_THRESHOLD = 30;
+export const EXPANSION_INTEGRAL_THRESHOLD = 45;
 export const EXPANSION_INTEGRAL_MAX = 180;
 export const EXPANSION_INTEGRAL_DECAY = 0.5;
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 // ── Contraction constants ──
-export const MAX_SCALE_CONTRACT_FRACTION = 0.1;
-export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
+export const MAX_SCALE_CONTRACT_FRACTION = 0.33;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 45;
 export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
@@ -38,7 +39,7 @@ function getDefaultPidState(): PidState {
     return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0, contractionIntegral: 0 };
 }
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
-    const { lastTickResults, produces, maxScale } = facility;
+    const { lastTickResults, produces } = facility;
 
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
@@ -73,28 +74,13 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
                 facility.name,
         );
 
-        const perTick = output.quantity * Math.max(maxScale, 1);
-        const buffer = perTick > 0 ? ownSupply / perTick : 0;
-
-        assert(isFinite(buffer) && buffer >= 0, 'Buffer should be non-negative and finite, but got' + buffer);
-
-        const overfilled =
-            buffer >= OUTPUT_BUFFER_MAX_TICKS ? (buffer / (buffer + OUTPUT_BUFFER_MAX_TICKS) - 0.5) * 2 : 0;
-        assert(
-            overfilled >= -1 && overfilled <= 1,
-            'Overfill signal should be between -1 and 1, but got' +
-                overfilled +
-                ' (buffer=' +
-                buffer +
-                ')' +
-                ', supply=' +
-                ownSupply +
-                ', perTick=' +
-                perTick,
-        );
-
         const unfilledFrac = totalDemand > 0 ? avg.unfilledDemand / totalDemand : 0;
-        const unsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
+        const rawUnsoldFrac = totalSupply > 0 ? avg.unsoldSupply / totalSupply : 0;
+        // Saturate unsoldFrac: once more than 50% of offered goods are unsold,
+        // additional oversupply has diminishing signal impact.
+        // This prevents a 100x inventory dump from creating an extreme signal spike
+        // that crashes the PID to the 10% minimum floor.
+        const unsoldFrac = rawUnsoldFrac / (rawUnsoldFrac + 0.5);
         const balance = (avg.unfilledDemand - avg.unsoldSupply) / Math.max(1, avg.unfilledDemand + avg.unsoldSupply);
 
         assert(
@@ -109,15 +95,10 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         const WEIGHT_UNFILLED = 1.0;
         const WEIGHT_UNSOLD = 0.5;
         const WEIGHT_BALANCE = 2.0;
-        const OVERFILL_PENALTY = 1.0;
 
         weightedOutputSignalSum +=
-            price *
-            (WEIGHT_UNFILLED * unfilledFrac -
-                WEIGHT_UNSOLD * unsoldFrac -
-                OVERFILL_PENALTY * overfilled +
-                WEIGHT_BALANCE * balance);
-        totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE + OVERFILL_PENALTY);
+            price * (WEIGHT_UNFILLED * unfilledFrac - WEIGHT_UNSOLD * unsoldFrac + WEIGHT_BALANCE * balance);
+        totalWeight += price * (WEIGHT_UNFILLED + WEIGHT_UNSOLD + WEIGHT_BALANCE);
     }
 
     if (totalWeight === 0) {
@@ -158,14 +139,14 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     }
 
     const tentativeOutput = P + state.integral + D;
-    const outSat = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, tentativeOutput));
-    const saturated = Math.abs(outSat) >= PID_OUT_MAX;
-    const errorSameDirection = (signal > 0 && outSat > 0) || (signal < 0 && outSat < 0);
-    if (!saturated || !errorSameDirection) {
+    const outSat = Math.max(-PID_OUT_MAX_DOWN, Math.min(PID_OUT_MAX_UP, tentativeOutput));
+    const saturatedUp = signal > 0 && outSat >= PID_OUT_MAX_UP;
+    const saturatedDown = signal < 0 && outSat <= -PID_OUT_MAX_DOWN;
+    if (!saturatedUp && !saturatedDown) {
         state.integral = Math.max(-PID_IMAX, Math.min(PID_IMAX, state.integral + PID_KI * signal));
     }
 
-    const output = Math.max(-PID_OUT_MAX, Math.min(PID_OUT_MAX, P + state.integral + D));
+    const output = Math.max(-PID_OUT_MAX_DOWN, Math.min(PID_OUT_MAX_UP, P + state.integral + D));
     return output * maxScale;
 }
 

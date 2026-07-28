@@ -11,6 +11,17 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+    INPUT_BUFFER_TARGET_TICKS,
+    INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    PRICE_ADJUST_MAX_DOWN,
+    PRICE_ADJUST_MAX_UP,
+    TARGET_FILL_RATE,
+    TARGET_FILL_RATE_SERVICES,
+} from '@/simulation/constants';
+import {
     AlertCircle,
     Anchor,
     Building2,
@@ -22,24 +33,25 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import type { BuySectionProps } from './marketTypes';
 import type { BuyDiagnostics } from '@/simulation/planet/planet';
 import type { AutoConfigLocalState } from './marketTypes';
 import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
+import { LogSlider } from '@/components/ui/log-slider';
 import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
 import {
     detectPricingBuyPreset,
     detectVolumeBuyPreset,
-    PRICING_BUY_PRESETS,
-    PRICING_PRESET_LABELS,
-    PRICING_PRESET_ORDER,
-    VOLUME_BUY_PRESETS,
-    VOLUME_PRESET_LABELS,
-    VOLUME_PRESET_ORDER,
+    getPricingBuyPreset,
+    getVolumeBuyPreset,
+    BUY_PRICING_PRESET_LABELS,
+    BUY_PRICING_PRESET_ORDER,
+    BUY_VOLUME_PRESET_LABELS,
+    BUY_VOLUME_PRESET_ORDER,
+    type BuyVolumePresetType,
     type PricingPresetType,
-    type VolumePresetType,
 } from './StrategyPresets';
 
 type BuyStatusKind =
@@ -213,7 +225,9 @@ export default function BuySection({
         return baseClass;
     };
 
-    const unit = resourceFormToUnit(getResourceByName(resourceName)?.form);
+    const resource = getResourceByName(resourceName);
+    const isService = resource?.form === 'services';
+    const unit = resourceFormToUnit(resource?.form);
 
     const overlay = (message: string | null | undefined) =>
         message ? (
@@ -233,28 +247,49 @@ export default function BuySection({
     // ── Auto-config state ────────────────────────────────────────────────────
     const committedConfig = bid?.autoConfig;
 
-    const [activeVolumePreset, setActiveVolumePreset] = useState<VolumePresetType>(() =>
-        detectVolumeBuyPreset(local.buyAutoConfig),
+    const detectedVolumePreset = useMemo<BuyVolumePresetType>(
+        () => detectVolumeBuyPreset(local.buyAutoConfig, isService),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            local.buyAutoConfig.inventorySmoothingMaxExtra,
+            local.buyAutoConfig.inputBufferTargetTicks,
+            local.buyAutoConfig.freeBuyQuantity,
+            local.buyAutoConfig.freeBuyQuantitySmoothingMaxExtra,
+            isService,
+        ],
     );
-    const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(() =>
-        detectPricingBuyPreset(local.buyAutoConfig),
+    const detectedPricingPreset = useMemo<PricingPresetType>(
+        () => detectPricingBuyPreset(local.buyAutoConfig, isService),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [
+            local.buyAutoConfig.priceAdjustMaxUp,
+            local.buyAutoConfig.priceAdjustMaxDown,
+            local.buyAutoConfig.targetFillRate,
+            local.buyAutoConfig.bidOfferMaxCostMultiplier,
+            isService,
+        ],
     );
+
+    const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
+    const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
 
     useEffect(() => {
-        setActiveVolumePreset(detectVolumeBuyPreset(local.buyAutoConfig));
-        setActivePricingPreset(detectPricingBuyPreset(local.buyAutoConfig));
-    }, [local.buyAutoConfig]);
+        setActiveVolumePreset(detectedVolumePreset);
+    }, [detectedVolumePreset]);
+    useEffect(() => {
+        setActivePricingPreset(detectedPricingPreset);
+    }, [detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
-        (preset: VolumePresetType) => {
+        (preset: BuyVolumePresetType) => {
             setActiveVolumePreset(preset);
             if (preset === 'custom') {
                 return;
             }
-            const values = VOLUME_BUY_PRESETS[preset as Exclude<VolumePresetType, 'custom'>];
+            const values = getVolumeBuyPreset(preset as Exclude<BuyVolumePresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
-        [handleBuyConfigChange],
+        [handleBuyConfigChange, isService],
     );
 
     const handlePricingPresetSelect = useCallback(
@@ -263,10 +298,10 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
-            const values = PRICING_BUY_PRESETS[preset as Exclude<PricingPresetType, 'custom'>];
+            const values = getPricingBuyPreset(preset as Exclude<PricingPresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
-        [handleBuyConfigChange],
+        [handleBuyConfigChange, isService],
     );
 
     const handleSliderChange = useCallback(
@@ -317,6 +352,17 @@ export default function BuySection({
         const committed = committedVal(committedConfig, key);
         return localNum ?? committed ?? defaultVal;
     };
+
+    // ── Log slider tiers for free buy quantity ──────────────────────────────
+    const FREE_BUY_QUANTITY_TIERS = [0, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000];
+
+    // ── Helper: snap a numeric value to the nearest LogSlider index ─────────
+    const freeBuyQtyIndex = (() => {
+        const val = sliderVal('freeBuyQuantity', 0);
+        // find first tier >= val, clamp to last index
+        const idx = FREE_BUY_QUANTITY_TIERS.findIndex((t) => t >= val);
+        return idx === -1 ? FREE_BUY_QUANTITY_TIERS.length - 1 : idx;
+    })();
 
     // ── Manual pricing slot ───────────────────────────────────────────────────
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
@@ -384,185 +430,6 @@ export default function BuySection({
                             />
                         </div>
 
-                        {/* ── Volume Strategy Collapsible ──────────────────────── */}
-                        <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
-                            <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
-                                <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                    Volume Strategy
-                                </span>
-                                <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
-                            </CollapsibleTrigger>
-                            <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
-                                <div className='space-y-1'>
-                                    <div className='flex flex-wrap gap-1'>
-                                        {VOLUME_PRESET_ORDER.map((preset, index) => {
-                                            const isActive = preset === activeVolumePreset;
-                                            const isCustom = preset === 'custom';
-                                            return (
-                                                <Button
-                                                    key={preset}
-                                                    variant={isActive ? 'default' : 'outline'}
-                                                    size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
-                                                    disabled={buyAutoConfigSaving}
-                                                    onClick={() => handleVolumePresetSelect(preset)}
-                                                >
-                                                    {VOLUME_PRESET_LABELS[preset] ?? preset}
-                                                </Button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-
-                                <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
-                                    <div className='space-y-0.5'>
-                                        {isFacilityInput ? (
-                                            <div className='space-y-0.5'>
-                                                <Stat
-                                                    label='Required'
-                                                    value={`${formatNumberWithUnit(consumedPerTick, unit)}/day`}
-                                                    bold
-                                                />
-                                                {consumptionInfo.breakdown.map((item, i) => {
-                                                    const Icon =
-                                                        item.sourceType === 'production'
-                                                            ? Package
-                                                            : item.sourceType === 'management'
-                                                              ? Building2
-                                                              : item.sourceType === 'ship_construction'
-                                                                ? Anchor
-                                                                : item.sourceType === 'construction_service'
-                                                                  ? HardHat
-                                                                  : item.sourceType === 'construction_ship'
-                                                                    ? HardHat
-                                                                    : item.sourceType === 'transport_ship'
-                                                                      ? Ship
-                                                                      : Wrench;
-                                                    return (
-                                                        <Stat
-                                                            key={i}
-                                                            icon={<Icon className='h-3 w-3' />}
-                                                            label={item.sourceName}
-                                                            value={`${formatNumberWithUnit(item.ratePerTick, unit)}/day`}
-                                                            indent
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
-                                        ) : (
-                                            <Stat label='Consumption' value='-' />
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div
-                                    className='space-y-3 pt-1'
-                                    onClick={() => {
-                                        if (activeVolumePreset !== 'custom') {
-                                            setActiveVolumePreset('custom');
-                                        }
-                                    }}
-                                >
-                                    {/* Combined Needs group */}
-                                    <div className='space-y-2'>
-                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                            Combined Needs
-                                        </Label>
-                                        <div className={isFacilityInput ? 'space-y-2' : 'space-y-2 opacity-50'}>
-                                            <ConfigSlider
-                                                label='Input buffer (days)'
-                                                value={sliderVal('inputBufferTargetTicks', 30)}
-                                                committed={committedVal(committedConfig, 'inputBufferTargetTicks')}
-                                                min={1}
-                                                max={120}
-                                                step={1}
-                                                onChange={(v) =>
-                                                    handleSliderChange({ inputBufferTargetTicks: String(v) })
-                                                }
-                                                disabled={
-                                                    buyAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityInput
-                                                }
-                                            />
-                                            <ConfigSlider
-                                                label='Max buy rate (days)'
-                                                value={sliderVal('inventorySmoothingMaxExtra', 2)}
-                                                committed={committedVal(committedConfig, 'inventorySmoothingMaxExtra')}
-                                                min={0}
-                                                max={20}
-                                                step={1}
-                                                displayTransform={(v) => v + 1}
-                                                onChange={(v) =>
-                                                    handleSliderChange({ inventorySmoothingMaxExtra: String(v) })
-                                                }
-                                                disabled={
-                                                    buyAutoConfigSaving ||
-                                                    activeVolumePreset !== 'custom' ||
-                                                    !isFacilityInput
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <Separator className='my-1' />
-
-                                    {/* Free quantity group */}
-                                    <div className='space-y-2'>
-                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                            Free quantity
-                                        </Label>
-                                        <ConfigSlider
-                                            label='Free buy quantity (total)'
-                                            value={sliderVal('freeBuyQuantity', 0)}
-                                            committed={committedVal(committedConfig, 'freeBuyQuantity')}
-                                            min={0}
-                                            max={10000}
-                                            step={1}
-                                            onChange={(v) => handleSliderChange({ freeBuyQuantity: String(v) })}
-                                            disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Free buy fill days'
-                                            value={sliderVal('freeBuyQuantitySmoothingMaxExtra', 2)}
-                                            committed={committedVal(
-                                                committedConfig,
-                                                'freeBuyQuantitySmoothingMaxExtra',
-                                            )}
-                                            min={1}
-                                            max={20}
-                                            step={1}
-                                            onChange={(v) =>
-                                                handleSliderChange({ freeBuyQuantitySmoothingMaxExtra: String(v) })
-                                            }
-                                            disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className='flex items-center justify-end gap-2 pt-1'>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        className={`h-7 text-[11px] px-2 ${hasAutoConfigDirty ? '' : 'invisible'}`}
-                                        onClick={onResetBuyAutoConfig}
-                                        disabled={buyAutoConfigSaving}
-                                    >
-                                        <RotateCcw className='h-3 w-3 mr-1' />
-                                        Reset
-                                    </Button>
-                                    <Button
-                                        size='sm'
-                                        className='h-7 text-[11px] px-3'
-                                        onClick={onSaveBuyAutoConfig}
-                                        disabled={!hasAutoConfigDirty || !hasAnyAutoValue || buyAutoConfigSaving}
-                                    >
-                                        {buyAutoConfigSaving ? 'Saving…' : 'Save Config'}
-                                    </Button>
-                                </div>
-                            </CollapsibleContent>
-                        </Collapsible>
-
                         {/* ── Pricing Strategy Collapsible ────────────────────── */}
                         <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
@@ -574,7 +441,7 @@ export default function BuySection({
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='space-y-1'>
                                     <div className='flex flex-wrap gap-1'>
-                                        {PRICING_PRESET_ORDER.map((preset, index) => {
+                                        {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                             const isActive = preset === activePricingPreset;
                                             const isCustom = preset === 'custom';
                                             return (
@@ -582,11 +449,11 @@ export default function BuySection({
                                                     key={preset}
                                                     variant={isActive ? 'default' : 'outline'}
                                                     size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === BUY_PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
                                                     disabled={buyAutoConfigSaving}
                                                     onClick={() => handlePricingPresetSelect(preset)}
                                                 >
-                                                    {PRICING_PRESET_LABELS[preset] ?? preset}
+                                                    {BUY_PRICING_PRESET_LABELS[preset] ?? preset}
                                                 </Button>
                                             );
                                         })}
@@ -603,13 +470,14 @@ export default function BuySection({
                                 >
                                     <ConfigRangeSlider
                                         label='Adjustment speed'
-                                        valueLow={sliderVal('priceAdjustMaxDown', 0.95)}
-                                        valueHigh={sliderVal('priceAdjustMaxUp', 1.05)}
+                                        valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
+                                        valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
                                         committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
                                         committedHigh={committedVal(committedConfig, 'priceAdjustMaxUp')}
                                         min={0.8}
                                         max={1.2}
                                         step={0.01}
+                                        pivot={1.0}
                                         onChange={(low, high) =>
                                             handleSliderChange({
                                                 priceAdjustMaxDown: String(low),
@@ -620,7 +488,7 @@ export default function BuySection({
                                     />
                                     <ConfigSlider
                                         label='Soft max bid (in est. cost)'
-                                        value={sliderVal('bidOfferMaxCostMultiplier', 6)}
+                                        value={sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER)}
                                         committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
                                         min={0}
                                         max={10}
@@ -630,7 +498,10 @@ export default function BuySection({
                                     />
                                     <ConfigSlider
                                         label='Target fill rate'
-                                        value={sliderVal('targetFillRate', 0.9)}
+                                        value={sliderVal(
+                                            'targetFillRate',
+                                            isService ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE,
+                                        )}
                                         committed={committedVal(committedConfig, 'targetFillRate')}
                                         min={0.1}
                                         max={1.0}
@@ -784,6 +655,209 @@ export default function BuySection({
                                             {buyPriceOverlay ?? '-'}
                                         </span>
                                     </div>
+                                </div>
+                            </CollapsibleContent>
+                        </Collapsible>
+
+                        {/* ── Volume Strategy Collapsible ──────────────────────── */}
+                        <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
+                            <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
+                                <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
+                                    Volume Strategy
+                                </span>
+                                <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
+                                <div className='space-y-1'>
+                                    <div className='flex flex-wrap gap-1'>
+                                        {BUY_VOLUME_PRESET_ORDER.map((preset, index) => {
+                                            const isActive = preset === activeVolumePreset;
+                                            const isCustom = preset === 'custom';
+                                            return (
+                                                <Button
+                                                    key={preset}
+                                                    variant={isActive ? 'default' : 'outline'}
+                                                    size='sm'
+                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === BUY_VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                    disabled={buyAutoConfigSaving}
+                                                    onClick={() => handleVolumePresetSelect(preset)}
+                                                >
+                                                    {BUY_VOLUME_PRESET_LABELS[preset] ?? preset}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
+                                    <div className='space-y-0.5'>
+                                        {isFacilityInput ? (
+                                            <div className='space-y-0.5'>
+                                                <Stat
+                                                    label='Required'
+                                                    value={`${formatNumberWithUnit(consumedPerTick, unit)}/day`}
+                                                    bold
+                                                />
+                                                {consumptionInfo.breakdown.map((item, i) => {
+                                                    const Icon =
+                                                        item.sourceType === 'production'
+                                                            ? Package
+                                                            : item.sourceType === 'management'
+                                                              ? Building2
+                                                              : item.sourceType === 'ship_construction'
+                                                                ? Anchor
+                                                                : item.sourceType === 'construction_service'
+                                                                  ? HardHat
+                                                                  : item.sourceType === 'construction_ship'
+                                                                    ? HardHat
+                                                                    : item.sourceType === 'transport_ship'
+                                                                      ? Ship
+                                                                      : Wrench;
+                                                    return (
+                                                        <Stat
+                                                            key={i}
+                                                            icon={<Icon className='h-3 w-3' />}
+                                                            label={item.sourceName}
+                                                            value={`${formatNumberWithUnit(item.ratePerTick, unit)}/day`}
+                                                            indent
+                                                        />
+                                                    );
+                                                })}
+                                            </div>
+                                        ) : (
+                                            <Stat label='Consumption' value='-' />
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div
+                                    className='space-y-3 pt-1'
+                                    onClick={() => {
+                                        if (activeVolumePreset !== 'custom') {
+                                            setActiveVolumePreset('custom');
+                                        }
+                                    }}
+                                >
+                                    {/* Combined Needs group */}
+                                    <div className='space-y-2'>
+                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
+                                            Combined Needs
+                                        </Label>
+                                        <div className={'space-y-2'}>
+                                            <ConfigSlider
+                                                label='Input buffer (days)'
+                                                value={sliderVal(
+                                                    'inputBufferTargetTicks',
+                                                    isService
+                                                        ? INPUT_BUFFER_TARGET_TICKS_SERVICES
+                                                        : INPUT_BUFFER_TARGET_TICKS,
+                                                )}
+                                                committed={committedVal(committedConfig, 'inputBufferTargetTicks')}
+                                                min={1}
+                                                max={isService ? 10 : 120}
+                                                step={1}
+                                                onChange={(v) =>
+                                                    handleSliderChange({ inputBufferTargetTicks: String(v) })
+                                                }
+                                                disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
+                                            />
+                                            <ConfigSlider
+                                                label='Max buy rate (days)'
+                                                value={sliderVal(
+                                                    'inventorySmoothingMaxExtra',
+                                                    INVENTORY_SMOOTHING_MAX_EXTRA,
+                                                )}
+                                                committed={committedVal(committedConfig, 'inventorySmoothingMaxExtra')}
+                                                min={0}
+                                                max={isService ? 5 : 20}
+                                                step={1}
+                                                displayTransform={(v) => v + 1}
+                                                onChange={(v) =>
+                                                    handleSliderChange({ inventorySmoothingMaxExtra: String(v) })
+                                                }
+                                                disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <Separator className='my-1' />
+
+                                    {/* Free quantity group */}
+                                    <div className='space-y-2'>
+                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
+                                            Free quantity
+                                        </Label>
+                                        <div className='space-y-1'>
+                                            <div className='flex items-center justify-between'>
+                                                <Label className='text-[11px] text-muted-foreground'>
+                                                    Free buy quantity (total)
+                                                </Label>
+                                                <span className='text-[11px] tabular-nums font-medium'>
+                                                    {formatNumberWithUnit(sliderVal('freeBuyQuantity', 0), 'none')}
+                                                    {(() => {
+                                                        const committed = committedVal(
+                                                            committedConfig,
+                                                            'freeBuyQuantity',
+                                                        );
+                                                        const current = sliderVal('freeBuyQuantity', 0);
+                                                        return committed !== undefined && committed !== current
+                                                            ? ` (now ${formatNumberWithUnit(committed, 'none')})`
+                                                            : '';
+                                                    })()}
+                                                </span>
+                                            </div>
+                                            <LogSlider
+                                                values={FREE_BUY_QUANTITY_TIERS}
+                                                value={freeBuyQtyIndex}
+                                                onValueChange={(index) => {
+                                                    handleSliderChange({
+                                                        freeBuyQuantity: String(FREE_BUY_QUANTITY_TIERS[index]!),
+                                                    });
+                                                }}
+                                                disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
+                                                formatLabel={(v) => formatNumberWithUnit(v, 'none')}
+                                            />
+                                        </div>
+                                        <ConfigSlider
+                                            label='Free buy fill days'
+                                            value={sliderVal(
+                                                'freeBuyQuantitySmoothingMaxExtra',
+                                                FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+                                            )}
+                                            committed={committedVal(
+                                                committedConfig,
+                                                'freeBuyQuantitySmoothingMaxExtra',
+                                            )}
+                                            min={1}
+                                            max={isService ? 5 : 20}
+                                            step={1}
+                                            onChange={(v) =>
+                                                handleSliderChange({ freeBuyQuantitySmoothingMaxExtra: String(v) })
+                                            }
+                                            disabled={buyAutoConfigSaving || activeVolumePreset !== 'custom'}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className='flex items-center justify-end gap-2 pt-1'>
+                                    <Button
+                                        variant='outline'
+                                        size='sm'
+                                        className={`h-7 text-[11px] px-2 ${hasAutoConfigDirty ? '' : 'invisible'}`}
+                                        onClick={onResetBuyAutoConfig}
+                                        disabled={buyAutoConfigSaving}
+                                    >
+                                        <RotateCcw className='h-3 w-3 mr-1' />
+                                        Reset
+                                    </Button>
+                                    <Button
+                                        size='sm'
+                                        className='h-7 text-[11px] px-3'
+                                        onClick={onSaveBuyAutoConfig}
+                                        disabled={!hasAutoConfigDirty || !hasAnyAutoValue || buyAutoConfigSaving}
+                                    >
+                                        {buyAutoConfigSaving ? 'Saving…' : 'Save Config'}
+                                    </Button>
                                 </div>
                             </CollapsibleContent>
                         </Collapsible>

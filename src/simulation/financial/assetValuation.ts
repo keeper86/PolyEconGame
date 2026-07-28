@@ -18,9 +18,21 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
     let total = 0;
     for (const facility of allFacilities) {
         const type = getFacilityType(facility);
-        const recoveredCS =
+
+        // Value completed portion at maxScale
+        const completedCS =
             calculateCostsForConstruction(type, 0, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
-        total += recoveredCS * csPrice;
+        total += completedCS * csPrice;
+
+        // Add prorated value of in-construction portion
+        if (facility.construction !== null) {
+            const { constructionTargetMaxScale, totalConstructionServiceRequired, progress } = facility.construction;
+            const incrCost = calculateCostsForConstruction(type, facility.maxScale, constructionTargetMaxScale).cost;
+            const progressFraction =
+                totalConstructionServiceRequired > 0 ? Math.min(progress / totalConstructionServiceRequired, 1) : 0;
+            const partialCS = incrCost * RECYCLER_BASE_RECOVERY_EFFICIENCY * progressFraction;
+            total += partialCS * csPrice;
+        }
     }
 
     return total;

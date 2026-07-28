@@ -67,11 +67,9 @@ export function workforceDemographicTick(
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
 
-            for (let li = 0; li < educationLevelKeys.length; li++) {
-                const l = educationLevelKeys[li];
+            for (const l of educationLevelKeys) {
                 const eduCohort = cohort[l];
-                for (let si = 0; si < SKILL.length; si++) {
-                    const s = SKILL[si];
+                for (const s of SKILL) {
                     const category = eduCohort[s];
 
                     // Inline totalOnboarding + totalDeparting — avoids .reduce() closure allocation
