@@ -1,4 +1,5 @@
 import type { LastTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
+import { administrativeServiceResourceType } from './services';
 
 const zeroLastTicksResults: LastTickResults = {
     overallEfficiency: 0,
@@ -53,7 +54,24 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
         secondary: 5,
         tertiary: 1,
     },
-    needs: [],
+    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
+    resourceName: 'HR Resource',
+});
+
+export const marketOperationsFacilityType = (planetId: string, id: string): ManagementFacility => ({
+    ...makeManagementFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Market Operations',
+    powerConsumptionPerTick: 0.5,
+    workerRequirement: {
+        none: 5,
+        primary: 10,
+        secondary: 5,
+        tertiary: 1,
+    },
+    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
+    resourceName: 'Market Capacity',
 });
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
