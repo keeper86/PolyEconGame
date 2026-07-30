@@ -1,7 +1,7 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import { StoragePanel } from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/StoragePanel';
+import { ResourceMicroCardGrid } from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/ResourceMicroCardGrid';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
 
@@ -16,6 +16,7 @@ export default function StoragePage() {
         isOwnAgentUnknown,
         isAuthenticatedWithoutAgentId,
         myAgentId,
+        tick,
     } = useAgentPlanetDetail();
 
     return (
@@ -31,9 +32,7 @@ export default function StoragePage() {
                 planetId={planetId}
             >
                 {assets?.storageFacility ? (
-                    <div data-tour='storage-overview'>
-                        <StoragePanel assets={assets} planetId={planetId} agentId={agentId} />
-                    </div>
+                    <ResourceMicroCardGrid assets={assets} planetId={planetId} agentId={agentId} tick={tick} />
                 ) : null}
             </AgentAccessGuard>
         </Page>
