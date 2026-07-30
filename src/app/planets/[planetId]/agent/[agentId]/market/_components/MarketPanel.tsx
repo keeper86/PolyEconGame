@@ -25,6 +25,7 @@ import {
 } from './marketHelpers';
 import type { LocalResourceState, Props } from './marketTypes';
 import { isAutoConfigDirty } from './marketTypes';
+import MultiProductPriceChart from './MultiProductPriceChart';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
 
@@ -452,6 +453,7 @@ export default function MarketPanel({
                     ))}
                 </CardContent>
             </Card>
+            <MultiProductPriceChart planetId={planetId} allResourceNames={resources.map((r) => r.name)} />
         </Tabs>
     );
 }

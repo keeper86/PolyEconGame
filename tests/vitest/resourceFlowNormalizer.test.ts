@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { computeFlowRates, computeResourceFlowData, elapsedTicksThisMonth } from '../../src/app/planets/[planetId]/agent/[agentId]/storage/_components/resourceFlowNormalizer';
+import {
+    computeFlowRates,
+    computeResourceFlowData,
+    elapsedTicksThisMonth,
+} from '../../src/app/planets/[planetId]/agent/[agentId]/storage/_components/resourceFlowNormalizer';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 describe('resourceFlowNormalizer', () => {

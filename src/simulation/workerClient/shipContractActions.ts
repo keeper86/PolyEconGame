@@ -368,7 +368,9 @@ export function handlePostConstructionContract(
         return;
     }
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName);
+    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find(
+        (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName,
+    );
     if (!facilityEntry) {
         safePostMessage({
             type: 'constructionContractPostFailed',

@@ -9,12 +9,7 @@ import { ResourceFlowTooltip } from './ResourceFlowTooltip';
 type StatusLevel = 'green' | 'yellow' | 'red';
 
 function statusDot(level: StatusLevel): React.ReactElement {
-    const cls =
-        level === 'red'
-            ? 'bg-red-500'
-            : level === 'yellow'
-              ? 'bg-yellow-500'
-              : 'bg-green-500';
+    const cls = level === 'red' ? 'bg-red-500' : level === 'yellow' ? 'bg-yellow-500' : 'bg-green-500';
     return <span className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${cls}`} />;
 }
 
@@ -26,18 +21,9 @@ function DivergenceMeter({ rates, color }: { rates: FlowRates; color: string }):
 
     return (
         <div className='flex h-1 w-full gap-[1px] rounded-sm overflow-hidden'>
-            <div
-                className={`${color} opacity-30 rounded-l-sm`}
-                style={{ width: `${p1}%` }}
-            />
-            <div
-                className={`${color} opacity-60`}
-                style={{ width: `${p2}%` }}
-            />
-            <div
-                className={`${color} rounded-r-sm`}
-                style={{ width: `${p3}%` }}
-            />
+            <div className={`${color} opacity-30 rounded-l-sm`} style={{ width: `${p1}%` }} />
+            <div className={`${color} opacity-60`} style={{ width: `${p2}%` }} />
+            <div className={`${color} rounded-r-sm`} style={{ width: `${p3}%` }} />
         </div>
     );
 }
@@ -110,24 +96,9 @@ export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.R
 
             {/* Flow rows */}
             <div className='flex flex-col gap-0.5'>
-                <FlowRow
-                    label='Inflow'
-                    icon='↓'
-                    rates={entry.flowData.inflow}
-                    color='bg-sky-500'
-                />
-                <FlowRow
-                    label='Outflow'
-                    icon='↑'
-                    rates={entry.flowData.outflow}
-                    color='bg-amber-500'
-                />
-                <FlowRow
-                    label='Depreciation'
-                    icon='✕'
-                    rates={entry.flowData.depreciation}
-                    color='bg-red-400'
-                />
+                <FlowRow label='Inflow' icon='↓' rates={entry.flowData.inflow} color='bg-sky-500' />
+                <FlowRow label='Outflow' icon='↑' rates={entry.flowData.outflow} color='bg-amber-500' />
+                <FlowRow label='Depreciation' icon='✕' rates={entry.flowData.depreciation} color='bg-red-400' />
             </div>
         </div>
     );

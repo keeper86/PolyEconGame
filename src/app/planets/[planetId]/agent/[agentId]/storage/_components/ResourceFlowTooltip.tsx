@@ -36,10 +36,7 @@ function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
                     className='absolute inset-y-0 left-0 bg-muted-foreground/20 rounded-sm'
                     style={{ width: `${prevPct}%` }}
                 />
-                <div
-                    className='absolute inset-y-0 left-0 bg-primary/30 rounded-sm'
-                    style={{ width: `${currPct}%` }}
-                />
+                <div className='absolute inset-y-0 left-0 bg-primary/30 rounded-sm' style={{ width: `${currPct}%` }} />
                 <div
                     className='absolute top-0 bottom-0 w-0.5 bg-foreground rounded-sm'
                     style={{ left: `${lastPct}%` }}
@@ -73,15 +70,21 @@ export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.Reac
             <div className='space-y-1 text-[11px]'>
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Previous Month</span>
-                    <span className='font-medium tabular-nums'>{formatNumberWithUnit(rates.prevMonthAvgRate, 'none')} u/t</span>
+                    <span className='font-medium tabular-nums'>
+                        {formatNumberWithUnit(rates.prevMonthAvgRate, 'none')} u/t
+                    </span>
                 </div>
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Current Month</span>
-                    <span className='font-medium tabular-nums'>{formatNumberWithUnit(rates.currentMonthAvgRate, 'none')} u/t</span>
+                    <span className='font-medium tabular-nums'>
+                        {formatNumberWithUnit(rates.currentMonthAvgRate, 'none')} u/t
+                    </span>
                 </div>
                 <div className='flex justify-between border-t border-border/20 pt-1'>
                     <span className='font-medium'>Last Tick</span>
-                    <span className='font-bold tabular-nums'>{formatNumberWithUnit(rates.lastTickRate, 'none')} u/t</span>
+                    <span className='font-bold tabular-nums'>
+                        {formatNumberWithUnit(rates.lastTickRate, 'none')} u/t
+                    </span>
                 </div>
             </div>
 
