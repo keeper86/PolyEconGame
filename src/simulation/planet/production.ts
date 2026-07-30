@@ -434,7 +434,7 @@ export function updateProductionCostFloors(planet: Planet): void {
     const costAccum = new Map<string, number>();
     const outputAccum = new Map<string, number>();
 
-    for (const { template } of ALL_FACILITY_ENTRIES) {
+    for (const { template } of Object.values(ALL_FACILITY_ENTRIES)) {
         if (template.produces.length > 0) {
             accumulateTheoreticalCostFloor(template, planet, costAccum, outputAccum);
         }

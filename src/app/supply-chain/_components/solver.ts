@@ -68,7 +68,7 @@ function buildLPModel(config: SolverConfig): Model {
 
     const populationDemand = computePopulationServiceDemand(population);
 
-    for (const entry of ALL_FACILITY_ENTRIES) {
+    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
 
         if (!allowedFacilities.has(f.name)) {
@@ -131,7 +131,7 @@ function buildLPModel(config: SolverConfig): Model {
 
     if (constraints[resourceConstraintKey(constructionServiceResourceType.name)]) {
         let constructionDemand = 0;
-        for (const entry of ALL_FACILITY_ENTRIES) {
+        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             if (!allowedFacilities.has(f.name)) {
                 continue;
@@ -184,7 +184,7 @@ function diagnoseInfeasibility(config: SolverConfig): SolverDiagnostic {
         const key = resourceConstraintKey(svc.resource.name);
         const constraintRegistered = key in fullModel.constraints;
 
-        const hasProducer = ALL_FACILITY_ENTRIES.some((entry) => {
+        const hasProducer = Object.values(ALL_FACILITY_ENTRIES).some((entry) => {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             return (
                 config.allowedFacilities.has(f.name) && f.produces.some((p) => p.resource.name === svc.resource.name)
@@ -240,7 +240,7 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
     }
 
     const scales: Record<string, number> = {};
-    for (const entry of ALL_FACILITY_ENTRIES) {
+    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const name = entry.factory(TOOL_PLANET, TOOL_ID).name;
         const val = raw[name];
         if (typeof val === 'number' && val > 0.0001) {
@@ -252,7 +252,7 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
     const serviceCoverage: Record<string, number> = {};
     for (const service of allServices) {
         let supplyPerTick = 0;
-        for (const entry of ALL_FACILITY_ENTRIES) {
+        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             const scale = scales[f.name] ?? 0;
             for (const prod of f.produces) {
@@ -266,7 +266,7 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
     }
 
     const rawWorkerTotals = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    for (const entry of ALL_FACILITY_ENTRIES) {
+    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         const scale = scales[f.name] ?? 0;
         if (scale <= 0) {

@@ -15,7 +15,7 @@ import {
     type Agent,
     type AgentPlanetAssets,
 } from '../planet/planet';
-import { agriculturalFacility, waterExtractionFacility } from '../planet/productionFacilities';
+import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -310,7 +310,7 @@ export function makeDefaultEnvironment(opts: {
 }
 
 export function makeWaterExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
-    const facility = waterExtractionFacility(planetId, `${agentId}-water-extraction`);
+    const facility = waterFacility(planetId, `${agentId}-water-extraction`);
     facility.scale = scale;
     facility.maxScale = scale;
     return facility;

@@ -385,7 +385,7 @@ export const pesticidePlant = (planetId: string, id: string): ProductionFacility
     produces: [{ resource: pesticideResourceType, quantity: 30 }],
 });
 
-export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFacility => ({
+export const pharmaPlant = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
@@ -405,7 +405,7 @@ export const pharmaceuticalPlant = (planetId: string, id: string): ProductionFac
     produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
 });
 
-export const foodProcessingPlant = (planetId: string, id: string): ProductionFacility => ({
+export const foodProcessor = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
@@ -668,7 +668,7 @@ export const agriculturalFacility = (planetId: string, id: string): ProductionFa
     produces: [{ resource: produceResourceType, quantity: 120 }],
 });
 
-export const waterExtractionFacility = (planetId: string, id: string): ProductionFacility => ({
+export const waterFacility = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
@@ -685,11 +685,11 @@ export const waterExtractionFacility = (planetId: string, id: string): Productio
     produces: [{ resource: waterResourceType, quantity: 800 }],
 });
 
-export const ironExtractionFacility = (planetId: string, id: string): ProductionFacility => ({
+export const ironMine = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Iron Extraction Facility',
+    name: 'Iron Mine',
     powerConsumptionPerTick: 0.8,
     workerRequirement: {
         none: 5,
@@ -932,49 +932,51 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     return { factory, template: instance, primaryOutputLevel };
 };
 
-export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
-    entry(coalMine),
-    entry(oilWell),
-    entry(loggingCamp),
-    entry(stoneQuarry),
-    entry(copperMine),
-    entry(sandMine),
-    entry(limestoneQuarry),
-    entry(clayMine),
-    entry(cottonFarm),
-    entry(waterExtractionFacility),
-    entry(ironExtractionFacility),
-    entry(ironSmelter),
-    entry(copperSmelter),
-    entry(oilRefinery),
-    entry(sawmill),
-    entry(cementPlant),
-    entry(glassFactory),
-    entry(pesticidePlant),
-    entry(paperMill),
-    entry(textileMill),
-    entry(concretePlant),
-    entry(foodProcessingPlant),
-    entry(beveragePlant),
-    entry(pharmaceuticalPlant),
-    entry(clothingFactory),
-    entry(furnitureFactory),
-    entry(electronicsFactory),
-    entry(itDevicesFactory),
-    entry(machineryFactory),
-    entry(vehicleFactory),
-    entry(agriculturalFacility),
-    entry(packagingPlant),
-    entry(administrativeCenter),
-    entry(logisticsHub),
-    entry(constructionFacility),
-    entry(groceryChain),
-    entry(retailChain),
-    entry(hospital),
-    entry(educationCenter),
-    entry(siliconWaferFactory),
-    entry(maintenanceFacility),
-];
+export const ALL_FACILITY_ENTRIES = {
+    coalMine: entry(coalMine),
+    oilWell: entry(oilWell),
+    loggingCamp: entry(loggingCamp),
+    stoneQuarry: entry(stoneQuarry),
+    copperMine: entry(copperMine),
+    sandMine: entry(sandMine),
+    limestoneQuarry: entry(limestoneQuarry),
+    clayMine: entry(clayMine),
+    cottonFarm: entry(cottonFarm),
+    waterFacility: entry(waterFacility),
+    ironMine: entry(ironMine),
+    ironSmelter: entry(ironSmelter),
+    copperSmelter: entry(copperSmelter),
+    oilRefinery: entry(oilRefinery),
+    sawmill: entry(sawmill),
+    cementPlant: entry(cementPlant),
+    glassFactory: entry(glassFactory),
+    pesticidePlant: entry(pesticidePlant),
+    paperMill: entry(paperMill),
+    textileMill: entry(textileMill),
+    concretePlant: entry(concretePlant),
+    foodProcessor: entry(foodProcessor),
+    beveragePlant: entry(beveragePlant),
+    pharmaPlant: entry(pharmaPlant),
+    clothingFactory: entry(clothingFactory),
+    furnitureFactory: entry(furnitureFactory),
+    electronicsFactory: entry(electronicsFactory),
+    itDevicesFactory: entry(itDevicesFactory),
+    machineryFactory: entry(machineryFactory),
+    vehicleFactory: entry(vehicleFactory),
+    agriculturalFacility: entry(agriculturalFacility),
+    packagingPlant: entry(packagingPlant),
+    administrativeCenter: entry(administrativeCenter),
+    logisticsHub: entry(logisticsHub),
+    constructionFacility: entry(constructionFacility),
+    groceryChain: entry(groceryChain),
+    retailChain: entry(retailChain),
+    hospital: entry(hospital),
+    educationCenter: entry(educationCenter),
+    siliconWaferFactory: entry(siliconWaferFactory),
+    maintenanceFacility: entry(maintenanceFacility),
+} as const;
+
+export type FacilityType = keyof typeof ALL_FACILITY_ENTRIES;
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
 export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
@@ -984,13 +986,15 @@ export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     services: 'Services',
 };
 
+const allFacilityEntries = Object.values(ALL_FACILITY_ENTRIES);
+
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
-    raw: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'raw'),
-    refined: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'refined'),
-    manufactured: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'manufactured'),
-    services: ALL_FACILITY_ENTRIES.filter((e) => e.primaryOutputLevel === 'services'),
+    raw: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
+    refined: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
+    manufactured: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
+    services: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(
-    ALL_FACILITY_ENTRIES.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
+    allFacilityEntries.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
 );

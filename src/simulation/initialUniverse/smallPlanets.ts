@@ -17,12 +17,12 @@ import {
     coalMine,
     copperMine,
     copperSmelter,
-    foodProcessingPlant,
+    foodProcessor,
     glassFactory,
     groceryChain,
     hospital,
     agriculturalFacility,
-    ironExtractionFacility,
+    ironMine,
     ironSmelter,
     loggingCamp,
     logisticsHub,
@@ -31,7 +31,7 @@ import {
     packagingPlant,
     retailChain,
     sawmill,
-    waterExtractionFacility,
+    waterFacility,
 } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
@@ -77,10 +77,10 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: impo
     const utilId = `${spec.id}-utilities`;
 
     for (const company of spec.agriCompanies) {
-        const waterFacility = waterExtractionFacility(spec.id, `${company.id}-water`);
+        const buildWaterFacility = waterFacility(spec.id, `${company.id}-water`);
         const scale = company.arableLand / 1000;
-        waterFacility.scale = scale;
-        waterFacility.maxScale = scale;
+        buildWaterFacility.scale = scale;
+        buildWaterFacility.maxScale = scale;
 
         const agriFacility = agriculturalFacility(spec.id, `${company.id}-agri`);
         agriFacility.scale = scale;
@@ -92,7 +92,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: impo
                 name: company.name,
                 associatedPlanetId: spec.id,
                 planetId: spec.id,
-                facilities: [waterFacility, agriFacility],
+                facilities: [buildWaterFacility, agriFacility],
                 storage: makeStorage({
                     planetId: spec.id,
                     id: `${company.id}-storage`,
@@ -104,7 +104,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: impo
 
     agents.push(...spec.industrialAgents);
 
-    const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
+    const utilWaterFacility = waterFacility(spec.id, `${spec.id}-util-water-fac`);
     utilWaterFacility.scale = spec.govAgriScale;
     utilWaterFacility.maxScale = spec.govAgriScale;
     const utilAgriFacility = agriculturalFacility(spec.id, `${spec.id}-util-agri-fac`);
@@ -206,7 +206,7 @@ function buildGuneIndustrialAgents(): import('../planet/planet').Agent[] {
         storage: makeStorage({ planetId: 'gune', id: 'gune-timber-storage', name: 'Gune Timber Storage' }),
     });
 
-    const fp1 = foodProcessingPlant('gune', 'gune-foods-plant');
+    const fp1 = foodProcessor('gune', 'gune-foods-plant');
     fp1.scale = 5;
     fp1.maxScale = 5;
     const foodAgent = makeAgent({
@@ -318,7 +318,7 @@ function buildIcedoniaIndustrialAgents(): import('../planet/planet').Agent[] {
         storage: makeStorage({ planetId: 'icedonia', id: 'icedonia-polar-storage', name: 'Polar Energy Storage' }),
     });
 
-    const fp1 = foodProcessingPlant('icedonia', 'icedonia-food-plant');
+    const fp1 = foodProcessor('icedonia', 'icedonia-food-plant');
     fp1.scale = 3;
     fp1.maxScale = 3;
     const bev1 = beveragePlant('icedonia', 'icedonia-beverage-plant');
@@ -416,7 +416,7 @@ function buildIcedoniaIndustrialAgents(): import('../planet/planet').Agent[] {
 }
 
 function buildPandaraIndustrialAgents(): import('../planet/planet').Agent[] {
-    const i1 = ironExtractionFacility('pandara', 'pandara-steel-iron');
+    const i1 = ironMine('pandara', 'pandara-steel-iron');
     i1.scale = 200;
     i1.maxScale = 200;
     const i2 = ironSmelter('pandara', 'pandara-steel-smelter');
@@ -431,7 +431,7 @@ function buildPandaraIndustrialAgents(): import('../planet/planet').Agent[] {
         storage: makeStorage({ planetId: 'pandara', id: 'pandara-steel-storage', name: 'Pandara Steel Storage' }),
     });
 
-    const fp1 = foodProcessingPlant('pandara', 'pandara-food-plant');
+    const fp1 = foodProcessor('pandara', 'pandara-food-plant');
     fp1.scale = 20;
     fp1.maxScale = 20;
     const bev1 = beveragePlant('pandara', 'pandara-bev-plant');
@@ -574,7 +574,7 @@ function buildParadiesIndustrialAgents(): import('../planet/planet').Agent[] {
         storage: makeStorage({ planetId: 'paradies', id: 'paradies-glass-storage', name: 'Paradies Glass Storage' }),
     });
 
-    const fp1 = foodProcessingPlant('paradies', 'paradies-food-plant');
+    const fp1 = foodProcessor('paradies', 'paradies-food-plant');
     fp1.scale = 8;
     fp1.maxScale = 8;
     const bev1 = beveragePlant('paradies', 'paradies-beverage-plant');
@@ -708,7 +708,7 @@ function buildSuerteIndustrialAgents(): import('../planet/planet').Agent[] {
         storage: makeStorage({ planetId: 'suerte', id: 'suerte-cement-storage', name: 'Suerte Cement Storage' }),
     });
 
-    const fp1 = foodProcessingPlant('suerte', 'suerte-food-plant');
+    const fp1 = foodProcessor('suerte', 'suerte-food-plant');
     fp1.scale = 15;
     fp1.maxScale = 15;
     const bev1 = beveragePlant('suerte', 'suerte-beverage-plant');

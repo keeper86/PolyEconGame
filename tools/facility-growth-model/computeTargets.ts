@@ -62,7 +62,7 @@ function buildModel(slack: SlackConfig): {
     const constraints: Record<string, { min: number }> = {};
     const variables: Record<string, Record<string, number>> = {};
 
-    for (const entry of ALL_FACILITY_ENTRIES) {
+    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         const varCoeffs: Record<string, number> = { obj: 1 };
         const name = f.name;
@@ -104,7 +104,7 @@ function buildModel(slack: SlackConfig): {
     // Add construction demand: every non-construction facility needs construction service for expansion
     const constructionDemandPerTick = 3_000_000;
     const constructKey = resourceConstraintKey(constructionServiceResourceType.name);
-    for (const entry of ALL_FACILITY_ENTRIES) {
+    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         if (f.name === 'Coal Power Plant') continue;
         if (f.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) continue;        
@@ -210,7 +210,7 @@ function main(): void {
                 workers: number;
                 type: string;
             }[] = [];
-            for (const entry of ALL_FACILITY_ENTRIES) {
+            for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
                 const f = entry.factory(TOOL_PLANET, TOOL_ID);
                 if (f.name === 'Coal Power Plant') continue;
                 const scale = (raw[f.name] as number | undefined) ?? 0;
@@ -265,7 +265,7 @@ function main(): void {
             console.log('\nResource balances at computed scales:');
             const balances: Record<string, { prod: number; cons: number }> = {};
             for (const r of results) {
-                const entry = ALL_FACILITY_ENTRIES.find(
+                const entry = Object.values(ALL_FACILITY_ENTRIES).find(
                     (e) => e.factory(TOOL_PLANET, TOOL_ID).name === r.name,
                 )!;
                 const f = entry.factory(TOOL_PLANET, TOOL_ID);
