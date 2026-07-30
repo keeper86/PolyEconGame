@@ -453,7 +453,16 @@ export default function MarketPanel({
                     ))}
                 </CardContent>
             </Card>
-            <MultiProductPriceChart planetId={planetId} allResourceNames={resources.map((r) => r.name)} />
+            {(() => {
+                const selectorNames = resourceGroups.find((g) => g.level === activeTab)?.resources.map((r) => r.name);
+                return (
+                    <MultiProductPriceChart
+                        planetId={planetId}
+                        allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
+                        selectorResourceNames={selectorNames}
+                    />
+                );
+            })()}
         </Tabs>
     );
 }

@@ -1,43 +1,133 @@
 'use client';
 
 import { GranularityButtonGroup, useGranularity, type Granularity } from '@/components/client/GranularityButtonGroup';
+import { ProductIcon } from '@/components/client/ProductIcon';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+    beverageResourceType,
+    cementResourceType,
+    chemicalResourceType,
+    clayResourceType,
+    clothingResourceType,
+    coalResourceType,
+    concreteResourceType,
+    consumerElectronicsResourceType,
+    copperOreResourceType,
+    copperResourceType,
+    cottonResourceType,
+    crudeOilResourceType,
+    electronicsResourceType,
+    fabricResourceType,
+    fuelResourceType,
+    furnitureResourceType,
+    glassResourceType,
+    ironOreResourceType,
+    limestoneResourceType,
+    logsResourceType,
+    lumberResourceType,
+    machineryResourceType,
+    packagingResourceType,
+    paperResourceType,
+    pesticideResourceType,
+    pharmaceuticalResourceType,
+    plasticResourceType,
+    processedFoodResourceType,
+    produceResourceType,
+    sandResourceType,
+    siliconWaferResourceType,
+    steelResourceType,
+    stoneResourceType,
+    vehicleResourceType,
+    waterResourceType,
+} from '@/simulation/planet/resources';
+import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
+    educationServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+    logisticsServiceResourceType,
+    maintenanceServiceResourceType,
+    retailServiceResourceType,
+} from '@/simulation/planet/services';
 
-const CHART_COLORS = [
-    '#e6194b',
-    '#3cb44b',
-    '#ffe119',
-    '#4363d8',
-    '#f58231',
-    '#911eb4',
-    '#42d4f4',
-    '#f032e6',
-    '#bfef45',
-    '#fabed4',
-    '#469990',
-    '#dcbeff',
-    '#9a6324',
-    '#fffac8',
-    '#800000',
-    '#aaffc3',
-    '#808000',
-    '#ffd8b1',
-    '#000075',
-    '#a9a9a9',
-    '#FF6B6B',
-    '#4ECDC4',
-    '#45B7D1',
-    '#96CEB4',
-    '#FFEAA7',
-];
+const RESOURCE_COLOR_MAP: Record<string, string> = {
+    // Iron / Steel / Metal — warm orange
+    [ironOreResourceType.name]: '#c97a5e',
+    [steelResourceType.name]: '#d48b5e',
+    [machineryResourceType.name]: '#dfa05e',
+    [vehicleResourceType.name]: '#e8b45e',
+
+    // Water — blue
+    [waterResourceType.name]: '#5e8fc9',
+
+    // Food & Drink — green
+    [produceResourceType.name]: '#5cb85c',
+    [processedFoodResourceType.name]: '#6fc96f',
+    [beverageResourceType.name]: '#82d882',
+
+    // Coal — brown
+    [coalResourceType.name]: '#8d6e40',
+
+    // Oil / Petrochemicals — yellow-brown to green-gold
+    [crudeOilResourceType.name]: '#a08040',
+    [fuelResourceType.name]: '#d4b040',
+    [plasticResourceType.name]: '#d4c040',
+    [chemicalResourceType.name]: '#b4c060',
+    [pesticideResourceType.name]: '#9ab860',
+    [pharmaceuticalResourceType.name]: '#80b060',
+
+    // Wood / Paper — forest green
+    [logsResourceType.name]: '#5a8040',
+    [lumberResourceType.name]: '#6a9050',
+    [paperResourceType.name]: '#7aa060',
+    [furnitureResourceType.name]: '#8ab070',
+
+    // Stone / Construction — warm gray to amber
+    [stoneResourceType.name]: '#a09880',
+    [sandResourceType.name]: '#b8b098',
+    [limestoneResourceType.name]: '#a8a898',
+    [clayResourceType.name]: '#c0a88a',
+    [cementResourceType.name]: '#b0a088',
+    [concreteResourceType.name]: '#a09878',
+    [glassResourceType.name]: '#88b0c0',
+
+    // Copper / Electronics — copper to teal
+    [copperOreResourceType.name]: '#c08050',
+    [copperResourceType.name]: '#d09060',
+    [siliconWaferResourceType.name]: '#80b0c0',
+    [electronicsResourceType.name]: '#70a0b8',
+    [consumerElectronicsResourceType.name]: '#6090a8',
+
+    // Cotton / Textiles — purple
+    [cottonResourceType.name]: '#b098d0',
+    [fabricResourceType.name]: '#c0a8e0',
+    [clothingResourceType.name]: '#d0b8f0',
+
+    // Packaging — pink
+    [packagingResourceType.name]: '#e0a8c0',
+
+    // Services — muted blues
+    [administrativeServiceResourceType.name]: '#7090a0',
+    [logisticsServiceResourceType.name]: '#80a0b0',
+    [constructionServiceResourceType.name]: '#90b0c0',
+    [groceryServiceResourceType.name]: '#a0c0c0',
+    [retailServiceResourceType.name]: '#b0d0d0',
+    [healthcareServiceResourceType.name]: '#b0d0c0',
+    [educationServiceResourceType.name]: '#c0e0d8',
+    [maintenanceServiceResourceType.name]: '#90a090',
+};
+
+function resourceColor(name: string): string {
+    return RESOURCE_COLOR_MAP[name] ?? '#a0a0a0';
+}
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -51,23 +141,68 @@ type MergedPoint = {
 type Props = {
     planetId: string;
     allResourceNames: string[];
+    selectorResourceNames?: string[];
 };
+
+function ProductToggleButton({
+    name,
+    isSelected,
+    onClick,
+}: {
+    name: string;
+    isSelected: boolean;
+    onClick: () => void;
+}) {
+    const color = resourceColor(name);
+    return (
+        <button
+            type='button'
+            aria-pressed={isSelected}
+            onClick={onClick}
+            className={`
+                relative flex flex-col items-center justify-center gap-1 w-[56px] h-[56px] rounded-md
+                transition-all duration-150 ease-in-out select-none
+                ${
+                    isSelected
+                        ? 'bg-gradient-to-b from-[#1a1a2e] to-[#141428] translate-y-[1px]'
+                        : 'bg-gradient-to-b from-[#2a2a3a] to-[#1a1a2e] hover:from-[#30304a] hover:to-[#22223a]'
+                }
+            `}
+            style={{
+                boxShadow: isSelected
+                    ? `inset 0 2px 4px rgba(0,0,0,0.6), 0 0 0 2px ${color}`
+                    : `2px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)`,
+            }}
+        >
+            <ProductIcon productName={name} size={36} />
+        </button>
+    );
+}
 
 function ProductSelector({
     allResourceNames,
+    selectorResourceNames,
     selected,
     onChange,
 }: {
     allResourceNames: string[];
+    selectorResourceNames?: string[];
     selected: string[];
     onChange: (names: string[]) => void;
 }) {
-    const [open, setOpen] = useState(false);
     const [search, setSearch] = useState('');
 
+    const displayNames = useMemo(
+        () =>
+            selectorResourceNames
+                ? allResourceNames.filter((n) => selectorResourceNames.includes(n))
+                : allResourceNames,
+        [allResourceNames, selectorResourceNames],
+    );
+
     const filtered = useMemo(
-        () => allResourceNames.filter((n) => n.toLowerCase().includes(search.toLowerCase())),
-        [allResourceNames, search],
+        () => displayNames.filter((n) => n.toLowerCase().includes(search.toLowerCase())),
+        [displayNames, search],
     );
 
     const toggle = (name: string) => {
@@ -79,65 +214,26 @@ function ProductSelector({
     };
 
     return (
-        <div className='relative'>
-            <div className='flex flex-wrap gap-1.5 items-center'>
-                {selected.map((name) => (
-                    <Badge
-                        key={name}
-                        variant='secondary'
-                        className='cursor-pointer text-[11px] px-2 py-0.5'
-                        onClick={() => toggle(name)}
-                    >
-                        {name} ✕
-                    </Badge>
-                ))}
-                <button
-                    onClick={() => setOpen(!open)}
-                    className='text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded border border-border/40 hover:border-border transition-colors'
-                >
-                    {selected.length === 0 ? '+ Select products' : '+ Add'}
-                </button>
-            </div>
-            {open && (
-                <>
-                    <div className='fixed inset-0 z-40' onClick={() => setOpen(false)} />
-                    <div className='absolute left-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg p-2 min-w-[220px] max-w-[280px] max-h-[300px] overflow-y-auto'>
-                        <Input
-                            placeholder='Search…'
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            className='h-7 text-xs mb-2'
-                            autoFocus
+        <div className='space-y-2'>
+            <Input
+                placeholder='Search products…'
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className='h-7 text-xs max-w-[280px]'
+            />
+            {filtered.length === 0 ? (
+                <p className='text-xs text-muted-foreground py-2'>No products found</p>
+            ) : (
+                <div className='flex flex-wrap gap-2'>
+                    {filtered.map((name) => (
+                        <ProductToggleButton
+                            key={name}
+                            name={name}
+                            isSelected={selected.includes(name)}
+                            onClick={() => toggle(name)}
                         />
-                        {filtered.length === 0 && (
-                            <p className='text-xs text-muted-foreground py-2 text-center'>No products found</p>
-                        )}
-                        {filtered.map((name) => {
-                            const idx = selected.indexOf(name);
-                            const color = idx >= 0 ? CHART_COLORS[idx % CHART_COLORS.length] : undefined;
-                            return (
-                                <label
-                                    key={name}
-                                    className='flex items-center gap-2 px-1 py-1 hover:bg-muted/60 rounded cursor-pointer text-xs'
-                                >
-                                    <input
-                                        type='checkbox'
-                                        checked={idx >= 0}
-                                        onChange={() => toggle(name)}
-                                        className='accent-primary'
-                                    />
-                                    {color && (
-                                        <span
-                                            className='w-2.5 h-2.5 rounded-sm shrink-0'
-                                            style={{ backgroundColor: color }}
-                                        />
-                                    )}
-                                    <span className='truncate'>{name}</span>
-                                </label>
-                            );
-                        })}
-                    </div>
-                </>
+                    ))}
+                </div>
             )}
         </div>
     );
@@ -280,12 +376,16 @@ function useQueryResults() {
     return { resultsRef, onResult, clear, version };
 }
 
-export default function MultiProductPriceChart({ planetId, allResourceNames }: Props): React.ReactElement {
+export default function MultiProductPriceChart({
+    planetId,
+    allResourceNames,
+    selectorResourceNames,
+}: Props): React.ReactElement {
     const { granularity, setGranularity, currentTick } = useGranularity();
 
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = useState<'absolute' | 'relative'>('absolute');
-    const { resultsRef, onResult, clear, version } = useQueryResults();
+    const { resultsRef, onResult, clear } = useQueryResults();
 
     // Clear results when granularity changes (different data shape)
     useEffect(() => {
@@ -301,7 +401,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
             }
         }
         return arr;
-    }, [selectedProducts, version]);
+    }, [selectedProducts, resultsRef]);
 
     const isLoading = results.length < selectedProducts.length || results.some((r) => r.isLoading);
 
@@ -432,152 +532,158 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                     </div>
                 </div>
 
-                <ProductSelector
-                    allResourceNames={allResourceNames}
-                    selected={selectedProducts}
-                    onChange={setSelectedProducts}
-                />
+                <div className='flex flex-row gap-2'>
+                    <span className='flex-2'>
+                        <ProductSelector
+                            allResourceNames={allResourceNames}
+                            selectorResourceNames={selectorResourceNames}
+                            selected={selectedProducts}
+                            onChange={setSelectedProducts}
+                        />
+                        {selectedProducts.map((name) => (
+                            <ProductQuerySlot
+                                key={name}
+                                planetId={planetId}
+                                productName={name}
+                                granularity={granularity}
+                                onResult={onResult}
+                            />
+                        ))}
+                    </span>
 
-                {selectedProducts.map((name) => (
-                    <ProductQuerySlot
-                        key={name}
-                        planetId={planetId}
-                        productName={name}
-                        granularity={granularity}
-                        onResult={onResult}
-                    />
-                ))}
-
-                {selectedProducts.length === 0 ? (
-                    <div className='h-[240px] flex items-center justify-center text-sm text-muted-foreground'>
-                        Select products above to compare price trends
-                    </div>
-                ) : (
-                    <div
-                        className={`h-[300px] ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
-                    >
-                        <ResponsiveContainer width='100%' height='100%'>
-                            <LineChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                                <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
-                                <XAxis
-                                    dataKey='bucket'
-                                    type='number'
-                                    domain={xDomain}
-                                    ticks={xTicks.length > 1 ? xTicks : undefined}
-                                    tickFormatter={xTickFormatter}
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                    axisLine={{ stroke: '#334155' }}
-                                    tickLine={false}
-                                    minTickGap={36}
-                                />
-                                <YAxis
-                                    type='number'
-                                    scale={scale}
-                                    domain={yDomain}
-                                    allowDataOverflow
-                                    ticks={yTicks}
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                    width={52}
-                                    tickFormatter={yTickFormatter}
-                                />
-                                <Tooltip
-                                    content={({ active, payload, label }) => {
-                                        if (!active || !payload || payload.length === 0) {
-                                            return null;
-                                        }
-                                        return (
-                                            <div
-                                                style={{
-                                                    background: '#1e293b',
-                                                    border: '1px solid #334155',
-                                                    borderRadius: '6px',
-                                                    fontSize: 12,
-                                                    padding: '6px 10px',
-                                                }}
-                                            >
-                                                <div style={{ color: '#94a3b8', marginBottom: 4 }}>
-                                                    {tooltipLabelFormatter(label as number)}
-                                                </div>
-                                                {payload.map((p) => (
-                                                    <div key={p.name} style={{ color: p.color ?? '#e2e8f0' }}>
-                                                        {p.name}:{' '}
-                                                        {rescaleMode === 'relative'
-                                                            ? `${(p.value as number).toFixed(2)}×`
-                                                            : formatNumberWithUnit(
-                                                                  p.value as number,
-                                                                  'currency',
-                                                                  planetId,
-                                                              )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                <Legend
-                                    verticalAlign='bottom'
-                                    content={({ payload }) => {
-                                        if (!payload || payload.length === 0) {
-                                            return null;
-                                        }
-                                        return (
-                                            <div
-                                                style={{
-                                                    display: 'flex',
-                                                    justifyContent: 'center',
-                                                    gap: 12,
-                                                    padding: 0,
-                                                    flexWrap: 'wrap',
-                                                }}
-                                            >
-                                                {payload.map((entry) => (
+                    <span className='flex-3'>
+                        {selectedProducts.length === 0 ? (
+                            <div className='h-[240px] flex items-center justify-center text-sm text-muted-foreground'>
+                                Select products to compare price trends
+                            </div>
+                        ) : (
+                            <div
+                                className={`h-[480px] ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
+                            >
+                                <ResponsiveContainer width='100%' height='100%'>
+                                    <LineChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                                        <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
+                                        <XAxis
+                                            dataKey='bucket'
+                                            type='number'
+                                            domain={xDomain}
+                                            ticks={xTicks.length > 1 ? xTicks : undefined}
+                                            tickFormatter={xTickFormatter}
+                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                            axisLine={{ stroke: '#334155' }}
+                                            tickLine={false}
+                                            minTickGap={36}
+                                        />
+                                        <YAxis
+                                            type='number'
+                                            scale={scale}
+                                            domain={yDomain}
+                                            allowDataOverflow
+                                            ticks={yTicks}
+                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                            axisLine={false}
+                                            tickLine={false}
+                                            width={52}
+                                            tickFormatter={yTickFormatter}
+                                        />
+                                        <Tooltip
+                                            content={({ active, payload, label }) => {
+                                                if (!active || !payload || payload.length === 0) {
+                                                    return null;
+                                                }
+                                                return (
                                                     <div
-                                                        key={entry.value}
                                                         style={{
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            gap: 4,
-                                                            fontSize: 11,
-                                                            color: '#94a3b8',
+                                                            background: '#1e293b',
+                                                            border: '1px solid #334155',
+                                                            borderRadius: '6px',
+                                                            fontSize: 12,
+                                                            padding: '6px 10px',
                                                         }}
                                                     >
-                                                        <svg width={16} height={10} viewBox='0 0 16 10'>
-                                                            <line
-                                                                x1={0}
-                                                                y1={5}
-                                                                x2={16}
-                                                                y2={5}
-                                                                stroke={entry.color}
-                                                                strokeWidth={2}
-                                                            />
-                                                        </svg>
-                                                        <span>{entry.value}</span>
+                                                        <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                                            {tooltipLabelFormatter(label as number)}
+                                                        </div>
+                                                        {payload.map((p) => (
+                                                            <div key={p.name} style={{ color: p.color ?? '#e2e8f0' }}>
+                                                                {p.name}:{' '}
+                                                                {rescaleMode === 'relative'
+                                                                    ? `${(p.value as number).toFixed(2)}×`
+                                                                    : formatNumberWithUnit(
+                                                                          p.value as number,
+                                                                          'currency',
+                                                                          planetId,
+                                                                      )}
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                {selectedProducts.map((name, idx) => (
-                                    <Line
-                                        key={name}
-                                        type='monotone'
-                                        dataKey={name}
-                                        stroke={CHART_COLORS[idx % CHART_COLORS.length]}
-                                        strokeWidth={2}
-                                        dot={{ r: 2.5, fill: CHART_COLORS[idx % CHART_COLORS.length] }}
-                                        activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
-                                        isAnimationActive={false}
-                                        connectNulls={false}
-                                        name={name}
-                                    />
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                )}
+                                                );
+                                            }}
+                                        />
+                                        <Legend
+                                            verticalAlign='bottom'
+                                            content={({ payload }) => {
+                                                if (!payload || payload.length === 0) {
+                                                    return null;
+                                                }
+                                                return (
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'center',
+                                                            gap: 12,
+                                                            padding: 0,
+                                                            flexWrap: 'wrap',
+                                                        }}
+                                                    >
+                                                        {payload.map((entry) => (
+                                                            <div
+                                                                key={entry.value}
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: 4,
+                                                                    fontSize: 11,
+                                                                    color: '#94a3b8',
+                                                                }}
+                                                            >
+                                                                <svg width={16} height={10} viewBox='0 0 16 10'>
+                                                                    <line
+                                                                        x1={0}
+                                                                        y1={5}
+                                                                        x2={16}
+                                                                        y2={5}
+                                                                        stroke={entry.color}
+                                                                        strokeWidth={2}
+                                                                    />
+                                                                </svg>
+                                                                <span>{entry.value}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            }}
+                                        />
+                                        {selectedProducts.map((name) => (
+                                            <Line
+                                                key={name}
+                                                type='monotone'
+                                                dataKey={name}
+                                                stroke={resourceColor(name)}
+                                                strokeWidth={2}
+                                                dot={{ r: 2.5, fill: resourceColor(name) }}
+                                                activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
+                                                isAnimationActive={false}
+                                                connectNulls={false}
+                                                name={name}
+                                            />
+                                        ))}
+                                    </LineChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </span>
+                </div>
             </div>
         </div>
     );
