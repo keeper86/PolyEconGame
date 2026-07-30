@@ -3,14 +3,16 @@
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { usePendingActions, useRemovePendingByResource } from '@/hooks/useActionOverlay';
+import { useNavigationGuard } from '@/hooks/useNavigationGuard';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
@@ -25,10 +27,8 @@ import {
 } from './marketHelpers';
 import type { LocalResourceState, Props } from './marketTypes';
 import { isAutoConfigDirty } from './marketTypes';
-import MultiProductPriceChart from './MultiProductPriceChart';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
-import { Separator } from '@/components/ui/separator';
 
 export type MarketPanelProps = Props & { dataTick: number };
 
@@ -67,10 +67,11 @@ export default function MarketPanel({
     planetId,
     assets,
     allPlanetDeposits,
-    showAll,
     ships,
     dataTick,
 }: MarketPanelProps): React.ReactElement {
+    const [showRelevant, setShowRelevant] = useState(true);
+    const showAll = !showRelevant;
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);
 
@@ -342,13 +343,20 @@ export default function MarketPanel({
     };
 
     return (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
-            <MultiProductPriceChart
-                planetId={planetId}
-                allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
-            />
-            <Separator />
-            
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3 pt-2'>
+            <div className='flex items-center justify-between'>
+                <h3 className='text-sm font-semibold'>Market</h3>
+                <div className='flex items-center gap-2'>
+                    <Label
+                        htmlFor='show-all-resources'
+                        className='text-xs text-muted-foreground cursor-pointer'
+                        data-tour='market-relevant-toggle'
+                    >
+                        Only relevant resources
+                    </Label>
+                    <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />
+                </div>
+            </div>
             <TabsList
                 className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'
                 data-tour='market-tabs'
