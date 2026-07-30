@@ -2,19 +2,16 @@
 
 import { GranularityButtonGroup, useGranularity, type Granularity } from '@/components/client/GranularityButtonGroup';
 import { ProductIcon } from '@/components/client/ProductIcon';
+import { Input } from '@/components/ui/input';
+import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Separator } from '@/components/ui/separator';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
-    clayResourceType,
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
@@ -57,74 +54,96 @@ import {
     maintenanceServiceResourceType,
     retailServiceResourceType,
 } from '@/simulation/planet/services';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-const RESOURCE_COLOR_MAP: Record<string, string> = {
-    // Iron / Steel / Metal — warm orange
-    [ironOreResourceType.name]: '#c97a5e',
-    [steelResourceType.name]: '#d48b5e',
-    [machineryResourceType.name]: '#dfa05e',
-    [vehicleResourceType.name]: '#e8b45e',
+export const RESOURCE_COLOR_MAP: Record<string, string> = {
+    // -------------------------------------------------------------
+    // Iron / Steel / Metal — ColorBrewer "Oranges" / "YlOrRd" ramp
+    // -------------------------------------------------------------
+    [ironOreResourceType.name]: '#b34728', // Raw rust / iron ore
+    [steelResourceType.name]: '#cc6633', // Refined steel orange
+    [machineryResourceType.name]: '#e68540', // Heavy industrial orange
+    [vehicleResourceType.name]: '#fa9d52', // Bright finished vehicle orange
 
-    // Water — blue
-    [waterResourceType.name]: '#5e8fc9',
+    // -------------------------------------------------------------
+    // Water — Nord / ColorBrewer "Blues"
+    // -------------------------------------------------------------
+    [waterResourceType.name]: '#3b82f6', // Vibrant liquid blue
 
-    // Food & Drink — green
-    [produceResourceType.name]: '#5cb85c',
-    [processedFoodResourceType.name]: '#6fc96f',
-    [beverageResourceType.name]: '#82d882',
+    // -------------------------------------------------------------
+    // Food & Drink — ColorBrewer "YlGn" (Fresh agricultural green)
+    // -------------------------------------------------------------
+    [produceResourceType.name]: '#409c48', // Fresh produce green
+    [processedFoodResourceType.name]: '#6abf59', // Processed goods lime-green
+    [beverageResourceType.name]: '#93db6e', // Light refreshing green
 
-    // Coal — brown
-    [coalResourceType.name]: '#8d6e40',
+    // -------------------------------------------------------------
+    // Coal — Earth / Dark Carbon tone
+    // -------------------------------------------------------------
+    [coalResourceType.name]: '#4a3b32', // Dark anthracite charcoal
 
-    // Oil / Petrochemicals — yellow-brown to green-gold
-    [crudeOilResourceType.name]: '#a08040',
-    [fuelResourceType.name]: '#d4b040',
-    [plasticResourceType.name]: '#d4c040',
-    [chemicalResourceType.name]: '#b4c060',
-    [pesticideResourceType.name]: '#9ab860',
-    [pharmaceuticalResourceType.name]: '#80b060',
+    // -------------------------------------------------------------
+    // Oil & Petrochemicals — Viridis / Goldenrod to Chemical Green
+    // -------------------------------------------------------------
+    [crudeOilResourceType.name]: '#6b5314', // Dark raw petroleum
+    [fuelResourceType.name]: '#a88118', // Refined fuel gold
+    [plasticResourceType.name]: '#d4a828', // Synthetic plastic yellow
+    [chemicalResourceType.name]: '#a3b828', // Industrial chemical olive-yellow
+    [pesticideResourceType.name]: '#7d9e2b', // Agrochemical green
+    [pharmaceuticalResourceType.name]: '#528a38', // Clinical green
 
-    // Wood / Paper — forest green
-    [logsResourceType.name]: '#5a8040',
-    [lumberResourceType.name]: '#6a9050',
-    [paperResourceType.name]: '#7aa060',
-    [furnitureResourceType.name]: '#8ab070',
+    // -------------------------------------------------------------
+    // Wood & Paper — ColorBrewer "Greens" (Forest to Pulp)
+    // -------------------------------------------------------------
+    [logsResourceType.name]: '#345229', // Deep forest timber
+    [lumberResourceType.name]: '#4d733e', // Milled lumber green
+    [paperResourceType.name]: '#6f965d', // Light craft paper sage
+    [furnitureResourceType.name]: '#94b882', // Finished wood light green
 
-    // Stone / Construction — warm gray to amber
-    [stoneResourceType.name]: '#a09880',
-    [sandResourceType.name]: '#b8b098',
-    [limestoneResourceType.name]: '#a8a898',
-    [clayResourceType.name]: '#c0a88a',
-    [cementResourceType.name]: '#b0a088',
-    [concreteResourceType.name]: '#a09878',
-    [glassResourceType.name]: '#88b0c0',
+    // -------------------------------------------------------------
+    // Stone & Construction — Natural Mineral & Glass palette
+    // -------------------------------------------------------------
+    [stoneResourceType.name]: '#706e6b', // Rough granite gray
+    [sandResourceType.name]: '#c2b280', // Warm desert sand
+    [limestoneResourceType.name]: '#9c988b', // Pale mineral gray
+    [cementResourceType.name]: '#7e8387', // Cool powdered cement
+    [concreteResourceType.name]: '#61676c', // Dark structural concrete
+    [glassResourceType.name]: '#78c6d6', // Translucent cyan glass
 
-    // Copper / Electronics — copper to teal
-    [copperOreResourceType.name]: '#c08050',
-    [copperResourceType.name]: '#d09060',
-    [siliconWaferResourceType.name]: '#80b0c0',
-    [electronicsResourceType.name]: '#70a0b8',
-    [consumerElectronicsResourceType.name]: '#6090a8',
+    // -------------------------------------------------------------
+    // Copper & Electronics — Metallic Copper to High-Tech Teal
+    // -------------------------------------------------------------
+    [copperOreResourceType.name]: '#a35029', // Raw copper rock
+    [copperResourceType.name]: '#c96f3c', // Refined metallic copper
+    [siliconWaferResourceType.name]: '#4b9bb0', // Clean tech silicon blue
+    [electronicsResourceType.name]: '#337f94', // Circuit board teal
+    [consumerElectronicsResourceType.name]: '#226073', // Finished tech dark teal
 
-    // Cotton / Textiles — purple
-    [cottonResourceType.name]: '#b098d0',
-    [fabricResourceType.name]: '#c0a8e0',
-    [clothingResourceType.name]: '#d0b8f0',
+    // -------------------------------------------------------------
+    // Cotton & Textiles — ColorBrewer "Purples" / "BuPu"
+    // -------------------------------------------------------------
+    [cottonResourceType.name]: '#c4b5fd', // Soft raw cotton lavender
+    [fabricResourceType.name]: '#a78bfa', // Woven fabric violet
+    [clothingResourceType.name]: '#8b5cf6', // Finished garment rich purple
 
-    // Packaging — pink
-    [packagingResourceType.name]: '#e0a8c0',
+    // -------------------------------------------------------------
+    // Packaging — ColorBrewer "RdPu" (Muted Berry Pink)
+    // -------------------------------------------------------------
+    [packagingResourceType.name]: '#db7093', // Distinct cardboard/wrap magenta-pink
 
-    // Services — muted blues
-    [administrativeServiceResourceType.name]: '#7090a0',
-    [logisticsServiceResourceType.name]: '#80a0b0',
-    [constructionServiceResourceType.name]: '#90b0c0',
-    [groceryServiceResourceType.name]: '#a0c0c0',
-    [retailServiceResourceType.name]: '#b0d0d0',
-    [healthcareServiceResourceType.name]: '#b0d0c0',
-    [educationServiceResourceType.name]: '#c0e0d8',
-    [maintenanceServiceResourceType.name]: '#90a090',
+    // -------------------------------------------------------------
+    // Services — Nord Slate / Teal Blue Sequential Palette
+    // -------------------------------------------------------------
+    [administrativeServiceResourceType.name]: '#475569', // Bureaucratic slate
+    [logisticsServiceResourceType.name]: '#3b82f6', // Freight blue
+    [constructionServiceResourceType.name]: '#60a5fa', // Builder light blue
+    [groceryServiceResourceType.name]: '#34d399', // Market mint green
+    [retailServiceResourceType.name]: '#38bdf8', // Commercial sky blue
+    [healthcareServiceResourceType.name]: '#2dd4bf', // Medical teal
+    [educationServiceResourceType.name]: '#818cf8', // Academic indigo
+    [maintenanceServiceResourceType.name]: '#64748b', // Utility steel gray
 };
-
 function resourceColor(name: string): string {
     return RESOURCE_COLOR_MAP[name] ?? '#a0a0a0';
 }
@@ -160,7 +179,7 @@ function ProductToggleButton({
             aria-pressed={isSelected}
             onClick={onClick}
             className={`
-                relative flex flex-col items-center justify-center gap-1 w-[56px] h-[56px] rounded-md
+                relative flex flex-col items-center justify-center gap-1 w-[48px] h-[48px] rounded-md
                 transition-all duration-150 ease-in-out select-none
                 ${
                     isSelected
@@ -174,7 +193,7 @@ function ProductToggleButton({
                     : `2px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)`,
             }}
         >
-            <ProductIcon productName={name} size={36} />
+            <ProductIcon productName={name} size={38} />
         </button>
     );
 }
@@ -351,29 +370,28 @@ function ProductQuerySlot({
 }
 
 function useQueryResults() {
-    const resultsRef = useRef<Map<string, QueryResult>>(new Map());
-    const [version, setVersion] = useState(0);
+    const [results, setResults] = useState<Record<string, QueryResult>>({});
 
     const onResult = useCallback((name: string, history: Row[], isLoading: boolean) => {
-        const prev = resultsRef.current.get(name);
-        if (
-            prev &&
-            prev.isLoading === isLoading &&
-            prev.history.length === history.length &&
-            prev.history.every((r, i) => r.bucket === history[i]?.bucket && r.avgPrice === history[i]?.avgPrice)
-        ) {
-            return;
-        }
-        resultsRef.current.set(name, { productName: name, history, isLoading });
-        setVersion((n) => n + 1);
+        setResults((prev) => {
+            const existing = prev[name];
+            if (
+                existing &&
+                existing.isLoading === isLoading &&
+                existing.history.length === history.length &&
+                existing.history.every((r, i) => r.bucket === history[i]?.bucket && r.avgPrice === history[i]?.avgPrice)
+            ) {
+                return prev;
+            }
+            return { ...prev, [name]: { productName: name, history, isLoading } };
+        });
     }, []);
 
     const clear = useCallback(() => {
-        resultsRef.current.clear();
-        setVersion((n) => n + 1);
+        setResults({});
     }, []);
 
-    return { resultsRef, onResult, clear, version };
+    return { results, onResult, clear };
 }
 
 export default function MultiProductPriceChart({
@@ -385,7 +403,7 @@ export default function MultiProductPriceChart({
 
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = useState<'absolute' | 'relative'>('absolute');
-    const { resultsRef, onResult, clear } = useQueryResults();
+    const { results: resultsMap, onResult, clear } = useQueryResults();
 
     // Clear results when granularity changes (different data shape)
     useEffect(() => {
@@ -395,13 +413,13 @@ export default function MultiProductPriceChart({
     const results: QueryResult[] = useMemo(() => {
         const arr: QueryResult[] = [];
         for (const name of selectedProducts) {
-            const r = resultsRef.current.get(name);
+            const r = resultsMap[name];
             if (r) {
                 arr.push(r);
             }
         }
         return arr;
-    }, [selectedProducts, resultsRef]);
+    }, [selectedProducts, resultsMap]);
 
     const isLoading = results.length < selectedProducts.length || results.some((r) => r.isLoading);
 
@@ -532,7 +550,7 @@ export default function MultiProductPriceChart({
                     </div>
                 </div>
 
-                <div className='flex flex-row gap-2'>
+                <div className='flex flex-row flex-wrap gap-2'>
                     <span className='flex-2'>
                         <ProductSelector
                             allResourceNames={allResourceNames}
@@ -551,135 +569,90 @@ export default function MultiProductPriceChart({
                         ))}
                     </span>
 
-                    <span className='flex-3'>
-                        {selectedProducts.length === 0 ? (
-                            <div className='h-[240px] flex items-center justify-center text-sm text-muted-foreground'>
-                                Select products to compare price trends
-                            </div>
-                        ) : (
-                            <div
-                                className={`h-[480px] ${isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : ''}`}
-                            >
-                                <ResponsiveContainer width='100%' height='100%'>
-                                    <LineChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                                        <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
-                                        <XAxis
-                                            dataKey='bucket'
-                                            type='number'
-                                            domain={xDomain}
-                                            ticks={xTicks.length > 1 ? xTicks : undefined}
-                                            tickFormatter={xTickFormatter}
-                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                            axisLine={{ stroke: '#334155' }}
-                                            tickLine={false}
-                                            minTickGap={36}
-                                        />
-                                        <YAxis
-                                            type='number'
-                                            scale={scale}
-                                            domain={yDomain}
-                                            allowDataOverflow
-                                            ticks={yTicks}
-                                            tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                            axisLine={false}
-                                            tickLine={false}
-                                            width={52}
-                                            tickFormatter={yTickFormatter}
-                                        />
-                                        <Tooltip
-                                            content={({ active, payload, label }) => {
-                                                if (!active || !payload || payload.length === 0) {
-                                                    return null;
-                                                }
-                                                return (
-                                                    <div
-                                                        style={{
-                                                            background: '#1e293b',
-                                                            border: '1px solid #334155',
-                                                            borderRadius: '6px',
-                                                            fontSize: 12,
-                                                            padding: '6px 10px',
-                                                        }}
-                                                    >
-                                                        <div style={{ color: '#94a3b8', marginBottom: 4 }}>
-                                                            {tooltipLabelFormatter(label as number)}
+                    <span className='flex-3 relative'>
+                        <div
+                            className={`h-[480px] ${isLoading ? 'opacity-60 animate-pulse pointer-events-none select-none' : ''}`}
+                        >
+                            <ResponsiveContainer width='100%' height='100%'>
+                                <LineChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
+                                    <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
+                                    <XAxis
+                                        dataKey='bucket'
+                                        type='number'
+                                        domain={xDomain}
+                                        ticks={xTicks.length > 1 ? xTicks : undefined}
+                                        tickFormatter={xTickFormatter}
+                                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                        axisLine={{ stroke: '#334155' }}
+                                        tickLine={false}
+                                        minTickGap={36}
+                                    />
+                                    <YAxis
+                                        type='number'
+                                        scale={scale}
+                                        domain={yDomain}
+                                        allowDataOverflow
+                                        ticks={yTicks}
+                                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                        axisLine={false}
+                                        tickLine={false}
+                                        width={52}
+                                        tickFormatter={yTickFormatter}
+                                    />
+                                    <Tooltip
+                                        content={({ active, payload, label }) => {
+                                            if (!active || !payload || payload.length === 0) {
+                                                return null;
+                                            }
+                                            return (
+                                                <div
+                                                    style={{
+                                                        background: '#1e293b',
+                                                        border: '1px solid #334155',
+                                                        borderRadius: '6px',
+                                                        fontSize: 12,
+                                                        padding: '6px 10px',
+                                                    }}
+                                                >
+                                                    <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                                        {tooltipLabelFormatter(label as number)}
+                                                    </div>
+                                                    {payload.map((p) => (
+                                                        <div key={p.name} style={{ color: p.color ?? '#e2e8f0' }}>
+                                                            {p.name}:{' '}
+                                                            {rescaleMode === 'relative'
+                                                                ? `${(p.value as number).toFixed(2)}×`
+                                                                : formatNumberWithUnit(
+                                                                      p.value as number,
+                                                                      'currency',
+                                                                      planetId,
+                                                                  )}
                                                         </div>
-                                                        {payload.map((p) => (
-                                                            <div key={p.name} style={{ color: p.color ?? '#e2e8f0' }}>
-                                                                {p.name}:{' '}
-                                                                {rescaleMode === 'relative'
-                                                                    ? `${(p.value as number).toFixed(2)}×`
-                                                                    : formatNumberWithUnit(
-                                                                          p.value as number,
-                                                                          'currency',
-                                                                          planetId,
-                                                                      )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                );
-                                            }}
+                                                    ))}
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                    {selectedProducts.map((name) => (
+                                        <Line
+                                            key={name}
+                                            type='monotone'
+                                            dataKey={name}
+                                            stroke={resourceColor(name)}
+                                            strokeWidth={2}
+                                            dot={{ r: 2.5, fill: resourceColor(name) }}
+                                            activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
+                                            isAnimationActive={false}
+                                            connectNulls={false}
+                                            name={name}
                                         />
-                                        <Legend
-                                            verticalAlign='bottom'
-                                            content={({ payload }) => {
-                                                if (!payload || payload.length === 0) {
-                                                    return null;
-                                                }
-                                                return (
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            justifyContent: 'center',
-                                                            gap: 12,
-                                                            padding: 0,
-                                                            flexWrap: 'wrap',
-                                                        }}
-                                                    >
-                                                        {payload.map((entry) => (
-                                                            <div
-                                                                key={entry.value}
-                                                                style={{
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    gap: 4,
-                                                                    fontSize: 11,
-                                                                    color: '#94a3b8',
-                                                                }}
-                                                            >
-                                                                <svg width={16} height={10} viewBox='0 0 16 10'>
-                                                                    <line
-                                                                        x1={0}
-                                                                        y1={5}
-                                                                        x2={16}
-                                                                        y2={5}
-                                                                        stroke={entry.color}
-                                                                        strokeWidth={2}
-                                                                    />
-                                                                </svg>
-                                                                <span>{entry.value}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                );
-                                            }}
-                                        />
-                                        {selectedProducts.map((name) => (
-                                            <Line
-                                                key={name}
-                                                type='monotone'
-                                                dataKey={name}
-                                                stroke={resourceColor(name)}
-                                                strokeWidth={2}
-                                                dot={{ r: 2.5, fill: resourceColor(name) }}
-                                                activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
-                                                isAnimationActive={false}
-                                                connectNulls={false}
-                                                name={name}
-                                            />
-                                        ))}
-                                    </LineChart>
-                                </ResponsiveContainer>
+                                    ))}
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                        {selectedProducts.length === 0 && (
+                            <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none'>
+                                Select products to compare price trends
                             </div>
                         )}
                     </span>

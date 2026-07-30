@@ -88,14 +88,6 @@ export const limestoneResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const clayResourceType: Resource = {
-    name: 'Clay',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.5,
-    massPerQuantity: 1,
-};
-
 export const steelResourceType: Resource = {
     name: 'Steel' as const,
     form: 'solid',

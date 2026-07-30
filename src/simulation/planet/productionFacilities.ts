@@ -2,7 +2,6 @@ import type { ResourceProcessLevel } from './claims';
 import type { ProductionFacility } from './facility';
 import {
     arableLandResourceType,
-    clayDepositResourceType,
     coalDepositResourceType,
     copperDepositResourceType,
     forestResourceType,
@@ -18,7 +17,6 @@ import {
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
-    clayResourceType,
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
@@ -216,22 +214,6 @@ export const limestoneQuarry = (planetId: string, id: string): ProductionFacilit
     produces: [{ resource: limestoneResourceType, quantity: 300 }],
 });
 
-export const clayMine = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Clay Mine',
-    powerConsumptionPerTick: 0.4,
-    workerRequirement: {
-        none: 10,
-        primary: 20,
-        secondary: 10,
-        tertiary: 0,
-    },
-    needs: [{ resource: clayDepositResourceType, quantity: 0.2 }],
-    produces: [{ resource: clayResourceType, quantity: 200 }],
-});
-
 export const ironSmelter = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
@@ -320,7 +302,6 @@ export const cementPlant = (planetId: string, id: string): ProductionFacility =>
     },
     needs: [
         { resource: limestoneResourceType, quantity: 60 },
-        { resource: clayResourceType, quantity: 15 },
         { resource: coalResourceType, quantity: 10 },
     ],
     produces: [{ resource: cementResourceType, quantity: 50 }],
@@ -940,7 +921,6 @@ export const ALL_FACILITY_ENTRIES = {
     copperMine: entry(copperMine),
     sandMine: entry(sandMine),
     limestoneQuarry: entry(limestoneQuarry),
-    clayMine: entry(clayMine),
     cottonFarm: entry(cottonFarm),
     waterFacility: entry(waterFacility),
     ironMine: entry(ironMine),

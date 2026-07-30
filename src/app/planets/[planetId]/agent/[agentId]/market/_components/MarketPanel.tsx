@@ -28,6 +28,7 @@ import { isAutoConfigDirty } from './marketTypes';
 import MultiProductPriceChart from './MultiProductPriceChart';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
+import { Separator } from '@/components/ui/separator';
 
 export type MarketPanelProps = Props & { dataTick: number };
 
@@ -358,6 +359,18 @@ export default function MarketPanel({
                     </TabsTrigger>
                 ))}
             </TabsList>
+
+            {(() => {
+                const selectorNames = resourceGroups.find((g) => g.level === activeTab)?.resources.map((r) => r.name);
+                return (
+                    <MultiProductPriceChart
+                        planetId={planetId}
+                        allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
+                        selectorResourceNames={selectorNames}
+                    />
+                );
+            })()}
+            <Separator />
             <Card ref={cardRef}>
                 <CardContent className='p-3'>
                     {resourceGroups.map(({ level, resources: levelResources }) => (
@@ -453,16 +466,6 @@ export default function MarketPanel({
                     ))}
                 </CardContent>
             </Card>
-            {(() => {
-                const selectorNames = resourceGroups.find((g) => g.level === activeTab)?.resources.map((r) => r.name);
-                return (
-                    <MultiProductPriceChart
-                        planetId={planetId}
-                        allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
-                        selectorResourceNames={selectorNames}
-                    />
-                );
-            })()}
         </Tabs>
     );
 }

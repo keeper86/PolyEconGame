@@ -3,7 +3,6 @@ import {
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
-    clayResourceType,
     clothingResourceType,
     coalResourceType,
     concreteResourceType,
@@ -57,7 +56,6 @@ export const initialMarketPrices: Record<string, number> = {
     [copperOreResourceType.name]: 1.5 * baselineFactor,
     [sandResourceType.name]: 0.5 * baselineFactor,
     [limestoneResourceType.name]: 0.5 * baselineFactor,
-    [clayResourceType.name]: 0.5 * baselineFactor,
     [waterResourceType.name]: 0.5 * baselineFactor,
     [cottonResourceType.name]: 1.5 * baselineFactor,
 
