@@ -2,7 +2,7 @@
 
 import { GranularityButtonGroup, useGranularity, type Granularity } from '@/components/client/GranularityButtonGroup';
 import { ProductIcon } from '@/components/client/ProductIcon';
-import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
@@ -160,7 +160,6 @@ type MergedPoint = {
 type Props = {
     planetId: string;
     allResourceNames: string[];
-    selectorResourceNames?: string[];
 };
 
 function ProductToggleButton({
@@ -183,11 +182,12 @@ function ProductToggleButton({
                 transition-all duration-150 ease-in-out select-none
                 ${
                     isSelected
-                        ? 'bg-gradient-to-b from-[#1a1a2e] to-[#141428] translate-y-[1px]'
+                        ? 'translate-y-[1px]'
                         : 'bg-gradient-to-b from-[#2a2a3a] to-[#1a1a2e] hover:from-[#30304a] hover:to-[#22223a]'
                 }
             `}
             style={{
+                backgroundColor: isSelected ? color : undefined,
                 boxShadow: isSelected
                     ? `inset 0 2px 4px rgba(0,0,0,0.6), 0 0 0 2px ${color}`
                     : `2px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)`,
@@ -200,30 +200,13 @@ function ProductToggleButton({
 
 function ProductSelector({
     allResourceNames,
-    selectorResourceNames,
     selected,
     onChange,
 }: {
     allResourceNames: string[];
-    selectorResourceNames?: string[];
     selected: string[];
     onChange: (names: string[]) => void;
 }) {
-    const [search, setSearch] = useState('');
-
-    const displayNames = useMemo(
-        () =>
-            selectorResourceNames
-                ? allResourceNames.filter((n) => selectorResourceNames.includes(n))
-                : allResourceNames,
-        [allResourceNames, selectorResourceNames],
-    );
-
-    const filtered = useMemo(
-        () => displayNames.filter((n) => n.toLowerCase().includes(search.toLowerCase())),
-        [displayNames, search],
-    );
-
     const toggle = (name: string) => {
         if (selected.includes(name)) {
             onChange(selected.filter((s) => s !== name));
@@ -234,26 +217,16 @@ function ProductSelector({
 
     return (
         <div className='space-y-2'>
-            <Input
-                placeholder='Search products…'
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className='h-7 text-xs max-w-[280px]'
-            />
-            {filtered.length === 0 ? (
-                <p className='text-xs text-muted-foreground py-2'>No products found</p>
-            ) : (
-                <div className='flex flex-wrap gap-2'>
-                    {filtered.map((name) => (
-                        <ProductToggleButton
-                            key={name}
-                            name={name}
-                            isSelected={selected.includes(name)}
-                            onClick={() => toggle(name)}
-                        />
-                    ))}
-                </div>
-            )}
+            <div className='flex flex-wrap gap-2'>
+                {allResourceNames.map((name) => (
+                    <ProductToggleButton
+                        key={name}
+                        name={name}
+                        isSelected={selected.includes(name)}
+                        onClick={() => toggle(name)}
+                    />
+                ))}
+            </div>
         </div>
     );
 }
@@ -394,11 +367,7 @@ function useQueryResults() {
     return { results, onResult, clear };
 }
 
-export default function MultiProductPriceChart({
-    planetId,
-    allResourceNames,
-    selectorResourceNames,
-}: Props): React.ReactElement {
+export default function MultiProductPriceChart({ planetId, allResourceNames }: Props): React.ReactElement {
     const { granularity, setGranularity, currentTick } = useGranularity();
 
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -524,7 +493,17 @@ export default function MultiProductPriceChart({
             <Separator className='my-4' />
             <div className='flex flex-col gap-3'>
                 <div className='text-sm font-semibold flex items-center justify-between flex-wrap gap-2'>
-                    <span>Price Comparison</span>
+                    <span className='flex items-center gap-2'>
+                        Price Comparison
+                        <Button
+                            type='button'
+                            disabled={selectedProducts.length === 0}
+                            onClick={() => setSelectedProducts([])}
+                            className='px-2 py-0.5 text-xs rounded h-7'
+                        >
+                            Clear
+                        </Button>
+                    </span>
                     <div className='flex items-center gap-2'>
                         <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}>
                             <TabsList className='h-6 p-0'>
@@ -554,7 +533,6 @@ export default function MultiProductPriceChart({
                     <span className='flex-2'>
                         <ProductSelector
                             allResourceNames={allResourceNames}
-                            selectorResourceNames={selectorResourceNames}
                             selected={selectedProducts}
                             onChange={setSelectedProducts}
                         />
@@ -651,7 +629,7 @@ export default function MultiProductPriceChart({
                             </ResponsiveContainer>
                         </div>
                         {selectedProducts.length === 0 && (
-                            <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none'>
+                            <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none text-outline-strong'>
                                 Select products to compare price trends
                             </div>
                         )}

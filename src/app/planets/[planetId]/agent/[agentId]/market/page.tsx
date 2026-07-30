@@ -27,7 +27,7 @@ export default function MarketPage() {
 
     return (
         <Page
-            title={`Market Overview`}
+            title={`Market`}
             headerComponent={
                 <div className='flex items-center justify-between gap-3'>
                     <div className='flex items-center gap-2'>

@@ -343,6 +343,12 @@ export default function MarketPanel({
 
     return (
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
+            <MultiProductPriceChart
+                planetId={planetId}
+                allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
+            />
+            <Separator />
+            
             <TabsList
                 className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'
                 data-tour='market-tabs'
@@ -359,18 +365,6 @@ export default function MarketPanel({
                     </TabsTrigger>
                 ))}
             </TabsList>
-
-            {(() => {
-                const selectorNames = resourceGroups.find((g) => g.level === activeTab)?.resources.map((r) => r.name);
-                return (
-                    <MultiProductPriceChart
-                        planetId={planetId}
-                        allResourceNames={resources.filter((r) => !r.name.startsWith('CUR')).map((r) => r.name)}
-                        selectorResourceNames={selectorNames}
-                    />
-                );
-            })()}
-            <Separator />
             <Card ref={cardRef}>
                 <CardContent className='p-3'>
                     {resourceGroups.map(({ level, resources: levelResources }) => (
