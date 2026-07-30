@@ -21,7 +21,7 @@ import {
     glassFactory,
     groceryChain,
     hospital,
-    intensiveFarmFacility,
+    agriculturalFacility,
     ironExtractionFacility,
     ironSmelter,
     loggingCamp,
@@ -82,7 +82,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: impo
         waterFacility.scale = scale;
         waterFacility.maxScale = scale;
 
-        const agriFacility = intensiveFarmFacility(spec.id, `${company.id}-agri`);
+        const agriFacility = agriculturalFacility(spec.id, `${company.id}-agri`);
         agriFacility.scale = scale;
         agriFacility.maxScale = scale;
 
@@ -107,7 +107,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: impo
     const utilWaterFacility = waterExtractionFacility(spec.id, `${spec.id}-util-water-fac`);
     utilWaterFacility.scale = spec.govAgriScale;
     utilWaterFacility.maxScale = spec.govAgriScale;
-    const utilAgriFacility = intensiveFarmFacility(spec.id, `${spec.id}-util-agri-fac`);
+    const utilAgriFacility = agriculturalFacility(spec.id, `${spec.id}-util-agri-fac`);
     utilAgriFacility.scale = spec.govAgriScale;
     utilAgriFacility.maxScale = spec.govAgriScale;
     const utilAgent = makeAgent({

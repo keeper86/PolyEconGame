@@ -61,6 +61,7 @@
         "@vitejs/plugin-react": "^4.4.1",
         "@xyflow/react": "^12.10.2",
         "autoprefixer": "^10.4.21",
+        "camelcase": "^9.0.0",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
         "daisyui": "^5.1.6",

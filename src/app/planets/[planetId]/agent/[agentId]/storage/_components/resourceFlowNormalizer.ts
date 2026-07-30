@@ -59,12 +59,7 @@ export function computeResourceFlowData(
             lastMonthAcc.consumed + lastMonthAcc.sold,
             elapsedTicks,
         ),
-        depreciation: computeFlowRates(
-            perTick.depr,
-            monthAcc.depreciated,
-            lastMonthAcc.depreciated,
-            elapsedTicks,
-        ),
+        depreciation: computeFlowRates(perTick.depr, monthAcc.depreciated, lastMonthAcc.depreciated, elapsedTicks),
     };
 }
 

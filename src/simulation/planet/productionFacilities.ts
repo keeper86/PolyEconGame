@@ -648,7 +648,7 @@ export const vehicleFactory = (planetId: string, id: string): ProductionFacility
     produces: [{ resource: vehicleResourceType, quantity: 10.5 }],
 });
 
-export const intensiveFarmFacility = (planetId: string, id: string): ProductionFacility => ({
+export const agriculturalFacility = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
@@ -963,7 +963,7 @@ export const ALL_FACILITY_ENTRIES: FacilityCatalogEntry[] = [
     entry(itDevicesFactory),
     entry(machineryFactory),
     entry(vehicleFactory),
-    entry(intensiveFarmFacility),
+    entry(agriculturalFacility),
     entry(packagingPlant),
     entry(administrativeCenter),
     entry(logisticsHub),

@@ -12,7 +12,7 @@ import {
     coalMine,
     foodProcessingPlant,
     groceryChain,
-    intensiveFarmFacility,
+    agriculturalFacility,
     ironExtractionFacility,
     ironSmelter,
     logisticsHub,
@@ -67,7 +67,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
     const utilWaterFacility = waterExtractionFacility(AC_ID, 'ac-utilities-water');
     utilWaterFacility.scale = 100;
     utilWaterFacility.maxScale = 100;
-    const utilAgriFacility = intensiveFarmFacility(AC_ID, 'ac-utilities-agri');
+    const utilAgriFacility = agriculturalFacility(AC_ID, 'ac-utilities-agri');
     utilAgriFacility.scale = 100;
     utilAgriFacility.maxScale = 100;
     agents.push(
@@ -89,7 +89,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         waterFacility.scale = waterScale;
         waterFacility.maxScale = waterScale;
 
-        const agriFacility = intensiveFarmFacility(AC_ID, `${spec.id}-agri`);
+        const agriFacility = agriculturalFacility(AC_ID, `${spec.id}-agri`);
         agriFacility.scale = agriScale;
         agriFacility.maxScale = agriScale;
 
