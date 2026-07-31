@@ -69,10 +69,7 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
         prevTickRef.current = snapshotTick;
 
         for (const action of pendingActions) {
-            // Prefer the worker's processedAtTick if available (set by updateProcessedAtTick
-            // in mutation onSuccess), otherwise fall back to the triggerTick (set at click time).
-            const effectiveTick = action.processedAtTick ?? action.triggerTick;
-            if (snapshotTick > effectiveTick) {
+            if (snapshotTick > action.triggerTick) {
                 if (action.facilityKey) {
                     removeByKey(agentId, planetId, action.facilityKey);
                 } else if (action.facilityId) {

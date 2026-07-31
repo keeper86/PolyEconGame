@@ -3,23 +3,10 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useSimulationTick } from './useSimulationQuery';
 
-// ── Pending action types ─────────────────────────────────────────────────────
-
-/**
- * A pending action represents a user-initiated mutation that has been sent to
- * the server but whose effect has not yet been reflected in the latest snapshot.
- *
- * Unlike the old ActionOverlay system, this does NOT create fake facility data.
- * Instead, UI components show a loading/spinner state based on whether a pending
- * action exists. The action is removed (resolved) once the snapshot data
- * confirms the mutation took effect.
- */
 export type PendingAction = {
     agentId: string;
     planetId: string;
     triggerTick: number;
-
-    processedAtTick?: number;
 
     type:
         | 'build'
@@ -38,19 +25,13 @@ export type PendingAction = {
         | 'loanRequest'
         | 'loanRepay';
 
-    // For new builds: the catalog key like "Wheat Farm" (no facilityId yet)
     facilityKey?: string;
-    // For existing facilities: the facility's ID
     facilityId?: string;
-
-    // For loan actions: the loan ID being repaid
     loanId?: string;
 
-    // Context-specific parameters used for predicate-based resolution
-    targetScale?: number; // expand / contract
-    targetScaleFraction?: number; // scaleChange
+    targetScale?: number;
+    targetScaleFraction?: number;
 
-    // Market action parameters
     resourceName?: string;
     submittedBidPrice?: number;
     submittedBidStorageTarget?: number;
@@ -64,34 +45,15 @@ export type PendingAction = {
 
 const STORAGE_KEY = 'polyecon:pending-actions:v2';
 
-/**
- * Maximum age of a stored pending action in milliseconds.
- * Older entries are discarded on restore to prevent stale loading states
- * when the user returns after a long absence.
- */
-const MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_AGE_MS = 5 * 60 * 1000;
 
-/**
- * Tick-based TTL threshold.
- * A pending action whose triggerTick is 3 or more ticks behind the current
- * simulation tick is considered stale and will be garbage collected.
- *
- * Rationale:
- *   User clicks at tick N → mutation sent to backend (may already be at N+1)
- *   Backend processes during tick N+1 → results visible in snapshot at N+2
- *   By tick N+3 any unreconciled action is guaranteed to be lost.
- */
 const STALE_TICK_THRESHOLD = 3;
 
 interface StoredEntry {
     a: PendingAction;
-    t: number; // Date.now() at write time
+    t: number;
 }
 
-/**
- * Builds a deterministic key that uniquely identifies an action for
- * timestamp-preservation purposes.
- */
 function actionStorageKey(a: PendingAction): string {
     const discriminator = a.facilityId ?? a.facilityKey ?? a.loanId ?? a.resourceName ?? '';
     return `${a.agentId}|${a.planetId}|${a.type}|${discriminator}`;
@@ -105,8 +67,6 @@ function serialize(actions: PendingAction[], existingEntries: StoredEntry[]): st
 
     const entries: StoredEntry[] = actions.map((a) => {
         const key = actionStorageKey(a);
-        // Preserve the original timestamp if this action already existed,
-        // otherwise use the current time for new entries.
         const t = existingMap.get(key) ?? Date.now();
         return { a, t };
     });
@@ -148,22 +108,8 @@ function writeAll(actions: PendingAction[], existingEntries: StoredEntry[]): voi
     try {
         localStorage.setItem(STORAGE_KEY, serialize(actions, existingEntries));
     } catch {
-        // Silently ignore storage errors (e.g. Safari private mode, quota exceeded)
+        // Silently ignore storage errors
     }
-}
-
-// ── Action match type ────────────────────────────────────────────────────────
-
-export interface PendingActionMatch {
-    type: PendingAction['type'];
-    /** For action types that have a facilityKey (build). */
-    facilityKey?: string;
-    /** For action types that have a facilityId (expand, contract, scaleChange, cancel). */
-    facilityId?: string;
-    /** For action types that have a resourceName (market buy/sell). */
-    resourceName?: string;
-    /** For action types that have a loanId (loanRepay). */
-    loanId?: string;
 }
 
 // ── Key helpers ──────────────────────────────────────────────────────────────
@@ -177,7 +123,6 @@ function agentPlanetKey(a: PendingAction): string {
 interface PendingActionContextValue {
     addPending: (action: PendingAction) => void;
     getPending: (agentId: string, planetId: string) => PendingAction[];
-    updateProcessedAtTick: (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => void;
     removePendingById: (
         agentId: string,
         planetId: string,
@@ -196,7 +141,6 @@ interface PendingActionContextValue {
 const PendingActionContext = createContext<PendingActionContextValue>({
     addPending: () => {},
     getPending: () => [],
-    updateProcessedAtTick: () => {},
     removePendingById: () => {},
     removePendingByKey: () => {},
     removePendingByResource: () => {},
@@ -207,10 +151,8 @@ const PendingActionContext = createContext<PendingActionContextValue>({
 export function PendingActionProvider({ children }: { children: React.ReactNode }) {
     const [allActions, setAllActions] = useState<PendingAction[]>(readAll);
 
-    // Current simulation tick for TTL-based garbage collection
     const currentTick = useSimulationTick();
 
-    // Sync from other tabs via the native `storage` event.
     useEffect(() => {
         const onStorage = (e: StorageEvent) => {
             if (e.key === STORAGE_KEY) {
@@ -221,11 +163,9 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         return () => window.removeEventListener('storage', onStorage);
     }, []);
 
-    // Tick-based garbage collection: discard actions that are too old
-    // to still be genuinely pending (3+ ticks overdue).
     useEffect(() => {
         if (currentTick <= 0) {
-            return; // tick not yet loaded
+            return;
         }
 
         const stored = readAllStored();
@@ -259,7 +199,6 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
                 action.type === 'marketBuyAutoConfig') &&
             action.resourceName
         ) {
-            // Replace any existing pending action of the same sub-type for this resource
             next = current.filter(
                 (a) =>
                     !(
@@ -274,7 +213,6 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
                 action.type === 'marketSellAutoConfig') &&
             action.resourceName
         ) {
-            // Replace any existing pending action of the same sub-type for this resource
             next = current.filter(
                 (a) =>
                     !(
@@ -355,47 +293,11 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         [],
     );
 
-    const updateProcessedAtTick = useCallback(
-        (agentId: string, planetId: string, match: PendingActionMatch, tick: number) => {
-            const key = `${agentId}|${planetId}`;
-            const stored = readAllStored();
-            const next = stored.map((e) => {
-                if (agentPlanetKey(e.a) !== key) {
-                    return e;
-                }
-                if (e.a.type !== match.type) {
-                    return e;
-                }
-                // Match by the identifying field that uniquely pins this action
-                if (match.facilityKey && e.a.facilityKey !== match.facilityKey) {
-                    return e;
-                }
-                if (match.facilityId && e.a.facilityId !== match.facilityId) {
-                    return e;
-                }
-                if (match.resourceName && e.a.resourceName !== match.resourceName) {
-                    return e;
-                }
-                if (match.loanId && e.a.loanId !== match.loanId) {
-                    return e;
-                }
-                return { a: { ...e.a, processedAtTick: tick }, t: e.t };
-            });
-            writeAll(
-                next.map((e) => e.a),
-                stored,
-            );
-            setAllActions(next.map((e) => e.a));
-        },
-        [],
-    );
-
     return (
         <PendingActionContext.Provider
             value={{
                 addPending,
                 getPending,
-                updateProcessedAtTick,
                 removePendingById,
                 removePendingByKey,
                 removePendingByResource,
@@ -426,8 +328,4 @@ export function useRemovePendingByKey() {
 
 export function useRemovePendingByResource() {
     return useContext(PendingActionContext).removePendingByResource;
-}
-
-export function useUpdateProcessedAtTick() {
-    return useContext(PendingActionContext).updateProcessedAtTick;
 }

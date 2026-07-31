@@ -175,8 +175,8 @@ export default function MarketPanel({
     const currentTick = useSimulationTick();
 
     // ── Market pending action resolution (tick-based) ──────────────────────
-    // Actions are resolved when the data tick has advanced past the worker's
-    // processedAtTick. No predicate-based comparison is needed.
+    // Actions are resolved when the data tick has advanced past the
+    // triggerTick (set from the worker's processedAtTick in onSuccess).
     const pendingActionsAll = usePendingActions(agentId, planetId);
     const removePendingByResource = useRemovePendingByResource();
     const prevDataTickRef = useRef<number>(0);
@@ -191,7 +191,7 @@ export default function MarketPanel({
             if (!action.resourceName) {
                 continue;
             }
-            if (action.processedAtTick != null && dataTick >= action.processedAtTick + 1) {
+            if (dataTick > action.triggerTick) {
                 removePendingByResource(agentId, planetId, action.resourceName, action.type);
             }
         }
