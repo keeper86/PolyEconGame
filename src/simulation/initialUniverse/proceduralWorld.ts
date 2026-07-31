@@ -2,7 +2,6 @@ import { createRecyclerAgent } from '../agents/recycler';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
-    clayDepositResourceType,
     coalDepositResourceType,
     copperDepositResourceType,
     forestResourceType,
@@ -32,9 +31,9 @@ const TOTAL_FOREST = 200_000_000_00;
 const TOTAL_COPPER = 1_000_500_00_000;
 const TOTAL_SAND = 2_000_000_000_00;
 const TOTAL_LIMESTONE = 3_000_000_00_000;
-const TOTAL_CLAY = 2_000_000_000_00;
 const TOTAL_STONE = 4_000_000_000_00;
 
+// TODO: USE stochastic rounds prng here
 function splitScale(total: number, count: number, seed: string): number[] {
     let s = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -250,14 +249,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 pool: makePool({
                     type: limestoneDepositResourceType,
                     quantity: TOTAL_LIMESTONE,
-                    renewable: false,
-                }),
-                claims: [],
-            },
-            [clayDepositResourceType.name]: {
-                pool: makePool({
-                    type: clayDepositResourceType,
-                    quantity: TOTAL_CLAY,
                     renewable: false,
                 }),
                 claims: [],

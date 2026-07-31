@@ -49,7 +49,7 @@ function FlowRow({ label, icon, rates, color }: FlowRowProps): React.ReactElemen
                     </span>
                 </div>
             </TooltipTrigger>
-            <TooltipContent side='right' sideOffset={8} className='z-60'>
+            <TooltipContent side='right' sideOffset={8} className='z-[60]'>
                 <div className='text-[11px] font-medium mb-1'>{label}</div>
                 <ResourceFlowTooltip rates={rates} />
             </TooltipContent>

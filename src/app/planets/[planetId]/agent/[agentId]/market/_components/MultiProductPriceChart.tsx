@@ -380,7 +380,12 @@ function useQueryResults() {
                 existing &&
                 existing.isLoading === isLoading &&
                 existing.history.length === history.length &&
-                existing.history.every((r, i) => r.bucket === history[i]?.bucket && r.avgPrice === history[i]?.avgPrice)
+                existing.history.every(
+                    (r, i) =>
+                        r.bucket === history[i]?.bucket &&
+                        r.avgPrice === history[i]?.avgPrice &&
+                        r.priceFloor === history[i]?.priceFloor,
+                )
             ) {
                 return prev;
             }
@@ -438,7 +443,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                     const tick = bucket;
                     if (granularity === 'monthly') {
                         const totalMonths = Math.floor(tick / 30);
-                        const year = Math.floor(totalMonths / 12);
+                        const year = START_YEAR + Math.floor(totalMonths / 12);
                         const monthIdx = totalMonths % 12;
                         bucketToYearLabel.set(bucket, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
                     } else if (granularity === 'yearly') {
@@ -446,7 +451,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                         bucketToYearLabel.set(bucket, `${START_YEAR + year}`);
                     } else {
                         const year = Math.floor(tick / 360);
-                        bucketToYearLabel.set(bucket, `START_YEAR + 5 +${year}`);
+                        bucketToYearLabel.set(bucket, `${START_YEAR + year}`);
                     }
                 }
             }
@@ -550,7 +555,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                     ))}
                 </span>
 
-                <span className='flex-3 relative pt-4'>
+                <span className='flex-1 relative pt-4'>
                     <div className='flex items-center justify-between gap-2 pb-2'>
                         <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}>
                             <TabsList className='h-6 p-0'>
