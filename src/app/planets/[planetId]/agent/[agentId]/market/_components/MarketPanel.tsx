@@ -344,7 +344,7 @@ export default function MarketPanel({
 
     return (
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3 pt-2'>
-            <div className='flex items-center justify-between'>
+            <div className='flex items-baseline justify-between py-2'>
                 <h3 className='text-sm font-semibold'>Order Books</h3>
                 <div className='flex items-center gap-2'>
                     <Label

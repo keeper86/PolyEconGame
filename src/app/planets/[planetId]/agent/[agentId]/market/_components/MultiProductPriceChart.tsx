@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import {
     beverageResourceType,
     cementResourceType,
@@ -403,6 +405,7 @@ function useQueryResults() {
 export default function MultiProductPriceChart({ planetId, allResourceNames }: Props): React.ReactElement {
     const { granularity, setGranularity, currentTick } = useGranularity();
 
+    const [isOpen, setIsOpen] = useState(false);
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = useState<'absolute' | 'relative'>('absolute');
     const { results: resultsMap, onResult, clear } = useQueryResults();
@@ -523,150 +526,189 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
 
     return (
         <div className='flex flex-col gap-3 text-outline-strong'>
-            <div className='text-sm font-semibold flex items-center justify-between flex-wrap gap-2'>
-                <span className='flex items-center gap-2'>
-                    Price Comparison
+            <div className='text-sm font-semibold flex items-center flex-wrap gap-2'>
+                <span>
                     <Button
                         type='button'
-                        disabled={selectedProducts.length === 0}
+                        variant='ghost'
+                        onClick={() => setIsOpen((prev) => !prev)}
+                        className='flex items-center gap-1 px-0 py-0 rounded h-7 hover:bg-transparent cursor-pointer'
+                        aria-expanded={isOpen}
+                    >
+                        {isOpen ? (
+                            <ChevronUp className='w-4 h-4 shrink-0' />
+                        ) : (
+                            <ChevronDown className='w-4 h-4 shrink-0' />
+                        )}
+                        Price Comparison
+                    </Button>
+                </span>
+                {isOpen && (
+                    <Button
+                        type='button'
+                        disabled={selectedProducts.length === 0 || !isOpen}
                         onClick={() => setSelectedProducts([])}
-                        className='px-2 py-0.5 text-xs rounded h-7'
+                        className={`px-2 py-0.5 text-xs rounded h-6 cursor-pointer`}
                     >
                         Clear
                     </Button>
-                </span>
+                )}
             </div>
 
-            <div className='flex flex-row flex-wrap gap-2'>
-                <span className='flex-shrink-0'>
-                    <ProductSelector
-                        allResourceNames={allResourceNames}
-                        selected={selectedProducts}
-                        onChange={setSelectedProducts}
-                    />
-                    {selectedProducts.map((name) => (
-                        <ProductQuerySlot
-                            key={name}
-                            planetId={planetId}
-                            productName={name}
-                            granularity={granularity}
-                            onResult={onResult}
-                        />
-                    ))}
-                </span>
-
-                <span className='flex-1 relative pt-4'>
-                    <div className='flex items-center justify-between gap-2 pb-2'>
-                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}>
-                            <TabsList className='h-6 p-0'>
-                                <TabsTrigger
-                                    value='absolute'
-                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                                >
-                                    Price
-                                </TabsTrigger>
-                                <TabsTrigger
-                                    value='relative'
-                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                                >
-                                    Price/Cost
-                                </TabsTrigger>
-                            </TabsList>
-                        </Tabs>
-                        <GranularityButtonGroup
-                            granularity={granularity}
-                            onChange={setGranularity}
-                            currentTick={currentTick}
-                        />
-                    </div>
-                    <div
-                        className={`h-[480px] ${isLoading ? 'opacity-60 animate-pulse pointer-events-none select-none' : ''}`}
+            <AnimatePresence initial={false}>
+                {isOpen && (
+                    <motion.div
+                        key='content'
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
+                        className='overflow-hidden'
                     >
-                        <ResponsiveContainer width='100%' height='100%'>
-                            <LineChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
-                                <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
-                                <XAxis
-                                    dataKey='bucket'
-                                    type='number'
-                                    domain={xDomain}
-                                    ticks={xTicks.length > 1 ? xTicks : undefined}
-                                    tickFormatter={xTickFormatter}
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                    axisLine={{ stroke: '#334155' }}
-                                    tickLine={false}
-                                    minTickGap={36}
-                                />
-                                <YAxis
-                                    type='number'
-                                    scale={scale}
-                                    domain={yDomain}
-                                    allowDataOverflow
-                                    ticks={yTicks}
-                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
-                                    axisLine={false}
-                                    tickLine={false}
-                                    width={52}
-                                    tickFormatter={yTickFormatter}
-                                />
-                                <Tooltip
-                                    content={({ active, payload, label }) => {
-                                        if (!active || !payload || payload.length === 0) {
-                                            return null;
-                                        }
-                                        return (
-                                            <div
-                                                style={{
-                                                    background: '#1e293b',
-                                                    border: '1px solid #334155',
-                                                    borderRadius: '6px',
-                                                    fontSize: 12,
-                                                    padding: '6px 10px',
-                                                }}
-                                            >
-                                                <div style={{ color: '#94a3b8', marginBottom: 4 }}>
-                                                    {tooltipLabelFormatter(label as number)}
-                                                </div>
-                                                {payload.map((p) => (
-                                                    <div key={p.name} style={{ color: p.color ?? '#e2e8f0' }}>
-                                                        {p.name}:{' '}
-                                                        {rescaleMode === 'relative'
-                                                            ? `${(p.value as number).toFixed(2)}×`
-                                                            : formatNumberWithUnit(
-                                                                  p.value as number,
-                                                                  'currency',
-                                                                  planetId,
-                                                              )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        );
-                                    }}
-                                />
-                                {selectedProducts.map((name) => (
-                                    <Line
-                                        key={name}
-                                        type='monotone'
-                                        dataKey={name}
-                                        stroke={resourceColor(name)}
-                                        strokeWidth={2}
-                                        dot={{ r: 2.5, fill: resourceColor(name) }}
-                                        activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
-                                        isAnimationActive={false}
-                                        connectNulls={false}
-                                        name={name}
+                        <div className='flex flex-col gap-3'>
+                            <div className='flex flex-row flex-wrap gap-2'>
+                                <span className='flex-shrink-0'>
+                                    <ProductSelector
+                                        allResourceNames={allResourceNames}
+                                        selected={selectedProducts}
+                                        onChange={setSelectedProducts}
                                     />
-                                ))}
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                    {selectedProducts.length === 0 && (
-                        <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none text-outline-strong'>
-                            Select products to compare price trends
+                                    {selectedProducts.map((name) => (
+                                        <ProductQuerySlot
+                                            key={name}
+                                            planetId={planetId}
+                                            productName={name}
+                                            granularity={granularity}
+                                            onResult={onResult}
+                                        />
+                                    ))}
+                                </span>
+
+                                <span className='flex-1 relative pt-4'>
+                                    <div className='flex items-center justify-between gap-2 pb-2'>
+                                        <Tabs
+                                            value={rescaleMode}
+                                            onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}
+                                        >
+                                            <TabsList className='h-6 p-0'>
+                                                <TabsTrigger
+                                                    value='absolute'
+                                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                                >
+                                                    Price
+                                                </TabsTrigger>
+                                                <TabsTrigger
+                                                    value='relative'
+                                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                                >
+                                                    Price/Cost
+                                                </TabsTrigger>
+                                            </TabsList>
+                                        </Tabs>
+                                        <GranularityButtonGroup
+                                            granularity={granularity}
+                                            onChange={setGranularity}
+                                            currentTick={currentTick}
+                                        />
+                                    </div>
+                                    <div
+                                        className={`h-[480px] ${isLoading ? 'opacity-60 animate-pulse pointer-events-none select-none' : ''}`}
+                                    >
+                                        <ResponsiveContainer width='100%' height='100%'>
+                                            <LineChart
+                                                data={mergedData}
+                                                margin={{ top: 0, right: 0, left: -10, bottom: 0 }}
+                                            >
+                                                <CartesianGrid stroke='#334155' strokeOpacity={0.5} />
+                                                <XAxis
+                                                    dataKey='bucket'
+                                                    type='number'
+                                                    domain={xDomain}
+                                                    ticks={xTicks.length > 1 ? xTicks : undefined}
+                                                    tickFormatter={xTickFormatter}
+                                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                                    axisLine={{ stroke: '#334155' }}
+                                                    tickLine={false}
+                                                    minTickGap={36}
+                                                />
+                                                <YAxis
+                                                    type='number'
+                                                    scale={scale}
+                                                    domain={yDomain}
+                                                    allowDataOverflow
+                                                    ticks={yTicks}
+                                                    tick={{ fontSize: 10, fill: '#94a3b8' }}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                    width={52}
+                                                    tickFormatter={yTickFormatter}
+                                                />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (!active || !payload || payload.length === 0) {
+                                                            return null;
+                                                        }
+                                                        return (
+                                                            <div
+                                                                style={{
+                                                                    background: '#1e293b',
+                                                                    border: '1px solid #334155',
+                                                                    borderRadius: '6px',
+                                                                    fontSize: 12,
+                                                                    padding: '6px 10px',
+                                                                }}
+                                                            >
+                                                                <div style={{ color: '#94a3b8', marginBottom: 4 }}>
+                                                                    {tooltipLabelFormatter(label as number)}
+                                                                </div>
+                                                                {payload.map((p) => (
+                                                                    <div
+                                                                        key={p.name}
+                                                                        style={{ color: p.color ?? '#e2e8f0' }}
+                                                                    >
+                                                                        {p.name}:{' '}
+                                                                        {rescaleMode === 'relative'
+                                                                            ? `${(p.value as number).toFixed(2)}×`
+                                                                            : formatNumberWithUnit(
+                                                                                  p.value as number,
+                                                                                  'currency',
+                                                                                  planetId,
+                                                                              )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        );
+                                                    }}
+                                                />
+                                                {selectedProducts.map((name) => (
+                                                    <Line
+                                                        key={name}
+                                                        type='monotone'
+                                                        dataKey={name}
+                                                        stroke={resourceColor(name)}
+                                                        strokeWidth={2}
+                                                        dot={{ r: 2.5, fill: resourceColor(name) }}
+                                                        activeDot={{ r: 3, stroke: '#1e293b', strokeWidth: 2 }}
+                                                        isAnimationActive={false}
+                                                        connectNulls={false}
+                                                        name={name}
+                                                    />
+                                                ))}
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                    {selectedProducts.length === 0 && (
+                                        <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none text-outline-strong'>
+                                            Select products to compare price trends
+                                        </div>
+                                    )}
+                                </span>
+                            </div>
+                            <Separator />
                         </div>
-                    )}
-                </span>
-            </div>
-            <Separator />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
