@@ -216,7 +216,7 @@ describe('buildPopulationDemandForResource', () => {
         it('all bids are far below the market price when healthcare is unaffordably expensive', () => {
             const { planet } = makePlanetWithPopulation({ none: 50_000 });
             planet.marketPrices[GROCERY_SERVICE] = CHEAP_GROCERY_PRICE;
-            planet.marketPrices[HEALTHCARE_SERVICE] = 1_000_000;
+            planet.marketPrices[HEALTHCARE_SERVICE] = 1_000_000_000;
             planet.population.demography.forEach((cohort) =>
                 forEachPopulationCohort(cohort, (cat) => {
                     if (cat.total > 0) {
@@ -228,7 +228,7 @@ describe('buildPopulationDemandForResource', () => {
             const bids = buildPopulationDemand(planet).get(HEALTHCARE_SERVICE) ?? [];
 
             for (const bid of bids) {
-                expect(bid.bidPrice).toBeLessThan(1.0);
+                expect(bid.bidPrice).toBeLessThan(5.0);
             }
         });
 

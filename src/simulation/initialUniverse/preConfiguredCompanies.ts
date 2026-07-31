@@ -135,18 +135,6 @@ const WORD_POOLS: Record<FacilityType, { stems: string[] }> = {
             'Marl Basin',
         ],
     },
-    clayMine: {
-        stems: [
-            'Delta Clay Mining',
-            'Plains Clay',
-            'Red Earth Clay',
-            'Pottery Clay',
-            'Terracotta Mines',
-            'Kaolin Corp',
-            'Earthen Materials',
-            'Clay Works',
-        ],
-    },
     cottonFarm: {
         stems: [
             'Cotton World',

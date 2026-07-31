@@ -58,6 +58,7 @@ import {
 } from '@/simulation/planet/services';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { START_YEAR } from '@/simulation/constants';
 
 export const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------
@@ -181,12 +182,8 @@ function ProductToggleButton({
             onClick={onClick}
             className={`
                 relative flex flex-col items-center justify-center gap-1 w-[46px] h-[46px] rounded-md
-                transition-all duration-150 ease-in-out select-none
-                ${
-                    isSelected
-                        ? 'translate-y-[1px]'
-                        : 'bg-gradient-to-b from-[#2a2a3a] to-[#1a1a2e] hover:from-[#30304a] hover:to-[#22223a]'
-                }
+                transition-all duration-150 ease-in-out select-none 
+                ${isSelected ? 'translate-y-[1px] ' : 'bg-card'}
             `}
             style={{
                 backgroundColor: isSelected ? color : undefined,
@@ -243,7 +240,7 @@ function ProductSelector({
         <div className='space-y-3'>
             {groups.map(({ level, names }) => (
                 <div key={level}>
-                    <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/30 mb-1 select-none'>
+                    <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1 select-none'>
                         {RESOURCE_LEVEL_LABELS[level]}
                     </div>
                     <div className='flex flex-wrap gap-2 w-[325px]'>
@@ -446,10 +443,10 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                         bucketToYearLabel.set(bucket, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
                     } else if (granularity === 'yearly') {
                         const year = Math.floor(tick / 360);
-                        bucketToYearLabel.set(bucket, `Y${year}`);
+                        bucketToYearLabel.set(bucket, `${START_YEAR + year}`);
                     } else {
                         const year = Math.floor(tick / 360);
-                        bucketToYearLabel.set(bucket, `Y${year}`);
+                        bucketToYearLabel.set(bucket, `START_YEAR + 5 +${year}`);
                     }
                 }
             }
@@ -497,7 +494,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
             const monthIdx = totalMonths % 12;
             return MONTH_NAMES[monthIdx] ?? '';
         }
-        return `Y${Math.floor(bucket / 360)}`;
+        return `${START_YEAR + Math.floor(bucket / 360)}`;
     };
 
     const tooltipLabelFormatter = (bucket: number) => {
@@ -520,7 +517,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
         rescaleMode === 'relative' ? `${v.toFixed(1)}×` : formatNumberWithUnit(v, 'currency', planetId);
 
     return (
-        <div className='flex flex-col gap-3'>
+        <div className='flex flex-col gap-3 text-outline-strong'>
             <div className='text-sm font-semibold flex items-center justify-between flex-wrap gap-2'>
                 <span className='flex items-center gap-2'>
                     Price Comparison
@@ -533,29 +530,6 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                         Clear
                     </Button>
                 </span>
-                <div className='flex items-center gap-2'>
-                    <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}>
-                        <TabsList className='h-6 p-0'>
-                            <TabsTrigger
-                                value='absolute'
-                                className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                            >
-                                Price
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value='relative'
-                                className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                            >
-                                Price/Cost
-                            </TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    <GranularityButtonGroup
-                        granularity={granularity}
-                        onChange={setGranularity}
-                        currentTick={currentTick}
-                    />
-                </div>
             </div>
 
             <div className='flex flex-row flex-wrap gap-2'>
@@ -576,7 +550,30 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                     ))}
                 </span>
 
-                <span className='flex-3 relative'>
+                <span className='flex-3 relative pt-4'>
+                    <div className='flex items-center justify-between gap-2 pb-2'>
+                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}>
+                            <TabsList className='h-6 p-0'>
+                                <TabsTrigger
+                                    value='absolute'
+                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price
+                                </TabsTrigger>
+                                <TabsTrigger
+                                    value='relative'
+                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                >
+                                    Price/Cost
+                                </TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        <GranularityButtonGroup
+                            granularity={granularity}
+                            onChange={setGranularity}
+                            currentTick={currentTick}
+                        />
+                    </div>
                     <div
                         className={`h-[480px] ${isLoading ? 'opacity-60 animate-pulse pointer-events-none select-none' : ''}`}
                     >

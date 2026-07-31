@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, PRICE_CEIL, PRICE_FLOOR } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
-import { intensiveFarmFacility, ironSmelter } from '../planet/productionFacilities';
+import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -75,7 +75,7 @@ describe('automaticPricing — buy side', () => {
             volumePerQuantity: 0,
             massPerQuantity: 0,
         };
-        agent.assets.p.productionFacilities = [intensiveFarmFacility(planet.id, 'farm-1')];
+        agent.assets.p.productionFacilities = [agriculturalFacility(planet.id, 'farm-1')];
 
         automaticPricing(agentMap(agent), planet);
 

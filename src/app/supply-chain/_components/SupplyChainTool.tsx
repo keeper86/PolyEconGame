@@ -270,7 +270,10 @@ function SolverTab({
     population: number;
     onApplyScales: (scales: Record<string, number>) => void;
 }) {
-    const allFacilityNames = useMemo(() => ALL_FACILITY_ENTRIES.map((e) => e.factory('tool', 'preview').name), []);
+    const allFacilityNames = useMemo(
+        () => Object.values(ALL_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
+        [],
+    );
     const [allowed, setAllowed] = useState<Set<string>>(() => new Set(allFacilityNames));
     const [objective, setObjective] = useState<SolverObjective>('scale');
     const [solving, setSolving] = useState(false);
@@ -278,7 +281,7 @@ function SolverTab({
 
     const facilitiesByLevel = useMemo(() => {
         const grouped: Record<string, string[]> = {};
-        for (const entry of ALL_FACILITY_ENTRIES) {
+        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
             const name = entry.factory('tool', 'preview').name;
             const level = entry.primaryOutputLevel;
             if (!grouped[level]) {
@@ -330,10 +333,12 @@ function SolverTab({
     }
 
     const resultFacilities = result
-        ? ALL_FACILITY_ENTRIES.map((e) => {
-              const f = e.factory('tool', 'preview');
-              return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
-          }).filter((x) => x.scale > 0)
+        ? Object.values(ALL_FACILITY_ENTRIES)
+              .map((e) => {
+                  const f = e.factory('tool', 'preview');
+                  return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
+              })
+              .filter((x) => x.scale > 0)
         : [];
 
     return (
