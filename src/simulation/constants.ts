@@ -46,7 +46,7 @@ export const TARGET_SELL_THROUGH = 0.9;
 export const TARGET_SELL_THROUGH_SERVICES = 0.95;
 export const AUTOMATED_COST_FLOOR_BUFFER = 1.5;
 
-export const STARTER_LOAN_AMOUNT = 1_000_000;
+export const STARTER_LOAN_AMOUNT = 5_000_000;
 
 export const MIN_WAGE = 1.0;
 export const MAX_WAGE = 1000.0;

@@ -46,6 +46,9 @@ const CONFIG: SlackConfig = {
     },
 };
 
+    // Add construction demand: every non-construction facility needs construction service for expansion
+    const constructionDemandPerTick = 12_000_000;
+
 const BALANCE_EPSILON = 0.001;
 
 function resourceConstraintKey(name: string): string {
@@ -101,8 +104,6 @@ function buildModel(slack: SlackConfig): {
         }
     }
 
-    // Add construction demand: every non-construction facility needs construction service for expansion
-    const constructionDemandPerTick = 7_000_000;
     const constructKey = resourceConstraintKey(constructionServiceResourceType.name);
     for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
