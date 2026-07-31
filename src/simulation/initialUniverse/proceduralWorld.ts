@@ -16,6 +16,11 @@ import type { Agent, Planet } from '../planet/planet';
 import { ALL_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
+import {
+    buildBuyAutoConfigForResource,
+    buildSellAutoConfigForResource,
+    generateAgentPersonality,
+} from './personalities';
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
 
@@ -131,16 +136,42 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             fac.maxScale = scale;
             facilities.push(fac);
 
-            agents.push(
-                makeAgent({
-                    id,
-                    name,
-                    associatedPlanetId: PROC_PLANET_ID,
-                    planetId: PROC_PLANET_ID,
-                    facilities,
-                    storage: makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` }),
-                }),
-            );
+            const agent = makeAgent({
+                id,
+                name,
+                associatedPlanetId: PROC_PLANET_ID,
+                planetId: PROC_PLANET_ID,
+                facilities,
+                storage: makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` }),
+            });
+
+            const personality = generateAgentPersonality();
+            const assets = agent.assets[PROC_PLANET_ID];
+
+            for (const { resource } of fac.produces) {
+                if (!assets.market.sell[resource.name]) {
+                    assets.market.sell[resource.name] = {
+                        resource,
+                        automated: true,
+                        autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                    };
+                }
+            }
+
+            for (const { resource } of fac.needs) {
+                if (resource.form === 'landBoundResource') {
+                    continue;
+                }
+                if (!assets.market.buy[resource.name]) {
+                    assets.market.buy[resource.name] = {
+                        resource,
+                        automated: true,
+                        autoConfig: buildBuyAutoConfigForResource(personality.buyAutoConfig, resource),
+                    };
+                }
+            }
+
+            agents.push(agent);
         }
     }
 
