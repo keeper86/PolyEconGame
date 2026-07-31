@@ -15,6 +15,7 @@ import {
     pruneGameSnapshots,
     refreshContinuousAggregates,
 } from './gameSnapshotRepository';
+import { computeNormalizedBuffer } from './market/serviceBufferNormalizer';
 import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
 
@@ -333,28 +334,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         });
     }
 
-    function computeAvgServiceBuffer(
-        planet: import('./planet/planet').Planet,
-        serviceName: import('./population/population').ServiceName,
-    ): number {
-        let sum = 0;
-        let totalPop = 0;
-        for (const cohort of planet.population.demography) {
-            for (const occ of ['education', 'employed', 'unoccupied', 'unableToWork'] as const) {
-                for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-                    for (const skill of ['novice', 'professional', 'expert'] as const) {
-                        const cat = cohort[occ][edu][skill];
-                        if (cat.total > 0) {
-                            sum += cat.services[serviceName].buffer * cat.total;
-                            totalPop += cat.total;
-                        }
-                    }
-                }
-            }
-        }
-        return totalPop > 0 ? sum / totalPop : 0;
-    }
-
     function flushPopulationHistory(gs: GameState, tick: number): Promise<void> {
         const db = snapshotDb;
         if (!db) {
@@ -364,11 +343,11 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             tick,
             planet_id: planet.id,
             population: computePopulationTotal(planet),
-            grocery_buffer: computeAvgServiceBuffer(planet, 'grocery'),
-            healthcare_buffer: computeAvgServiceBuffer(planet, 'healthcare'),
-            logistics_buffer: computeAvgServiceBuffer(planet, 'logistics'),
-            education_buffer: computeAvgServiceBuffer(planet, 'education'),
-            retail_buffer: computeAvgServiceBuffer(planet, 'retail'),
+            grocery_buffer: computeNormalizedBuffer(planet, 'grocery'),
+            healthcare_buffer: computeNormalizedBuffer(planet, 'healthcare'),
+            logistics_buffer: computeNormalizedBuffer(planet, 'logistics'),
+            education_buffer: computeNormalizedBuffer(planet, 'education'),
+            retail_buffer: computeNormalizedBuffer(planet, 'retail'),
         }));
         if (rows.length === 0) {
             return Promise.resolve();
