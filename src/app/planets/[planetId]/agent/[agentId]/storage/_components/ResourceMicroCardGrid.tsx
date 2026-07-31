@@ -198,12 +198,10 @@ function groupEntriesByLevel(entries: MicroCardEntry[]): Map<string, MicroCardEn
 
 type Props = {
     assets: AgentPlanetAssets;
-    planetId: string;
-    agentId: string;
     tick: number;
 };
 
-export function ResourceMicroCardGrid({ assets, planetId, agentId, tick }: Props): React.ReactElement {
+export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
     const storage = assets.storageFacility;
     const usedVol = storage.current.volume;
     const capVol = storage.capacity.volume * storage.scale;

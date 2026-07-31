@@ -31,9 +31,7 @@ export default function StoragePage() {
                 agentId={agentId}
                 planetId={planetId}
             >
-                {assets?.storageFacility ? (
-                    <ResourceMicroCardGrid assets={assets} planetId={planetId} agentId={agentId} tick={tick} />
-                ) : null}
+                {assets?.storageFacility ? <ResourceMicroCardGrid assets={assets} tick={tick} /> : null}
             </AgentAccessGuard>
         </Page>
     );
