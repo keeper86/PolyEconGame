@@ -29,6 +29,7 @@ import type { LocalResourceState, Props } from './marketTypes';
 import { isAutoConfigDirty } from './marketTypes';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
+import { Separator } from '@/components/ui/separator';
 
 export type MarketPanelProps = Props & { dataTick: number };
 
@@ -343,9 +344,10 @@ export default function MarketPanel({
     };
 
     return (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3 pt-2'>
-            <div className='flex items-baseline justify-between py-2'>
-                <h3 className='text-sm font-semibold'>Order Books</h3>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
+            <Separator />
+            <div className='flex items-baseline justify-between py-1'>
+                <h2 className='font-semibold'>Order Books</h2>
                 <div className='flex items-center gap-2'>
                     <Label
                         htmlFor='show-all-resources'

@@ -165,7 +165,30 @@ type MergedPoint = {
 type Props = {
     planetId: string;
     allResourceNames: string[];
+    isOpen?: boolean;
+    onOpenChange?: (open: boolean) => void;
 };
+
+export function MultiProductPriceChartTrigger({
+    isOpen,
+    onToggle,
+}: {
+    isOpen: boolean;
+    onToggle: () => void;
+}): React.ReactElement {
+    return (
+        <Button
+            type='button'
+            variant='ghost'
+            onClick={onToggle}
+            className='flex items-center gap-1 px-0 py-0 rounded h-7 hover:bg-transparent cursor-pointer text-sm font-semibold'
+            aria-expanded={isOpen}
+        >
+            {isOpen ? <ChevronUp className='w-4 h-4 shrink-0' /> : <ChevronDown className='w-4 h-4 shrink-0' />}
+            Price Comparison
+        </Button>
+    );
+}
 
 function ProductToggleButton({
     name,
@@ -402,10 +425,24 @@ function useQueryResults() {
     return { results, onResult, clear };
 }
 
-export default function MultiProductPriceChart({ planetId, allResourceNames }: Props): React.ReactElement {
+export default function MultiProductPriceChart({
+    planetId,
+    allResourceNames,
+    isOpen: controlledIsOpen,
+    onOpenChange,
+}: Props): React.ReactElement {
     const { granularity, setGranularity, currentTick } = useGranularity();
 
-    const [isOpen, setIsOpen] = useState(false);
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
+    const isControlled = controlledIsOpen !== undefined;
+    const isOpen = isControlled ? controlledIsOpen : internalIsOpen;
+    const setIsOpen = (open: boolean) => {
+        if (isControlled) {
+            onOpenChange?.(open);
+        } else {
+            setInternalIsOpen(open);
+        }
+    };
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = useState<'absolute' | 'relative'>('absolute');
     const { results: resultsMap, onResult, clear } = useQueryResults();
@@ -526,34 +563,11 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
 
     return (
         <div className='flex flex-col gap-3 text-outline-strong'>
-            <div className='text-sm font-semibold flex items-center flex-wrap gap-2'>
-                <span>
-                    <Button
-                        type='button'
-                        variant='ghost'
-                        onClick={() => setIsOpen((prev) => !prev)}
-                        className='flex items-center gap-1 px-0 py-0 rounded h-7 hover:bg-transparent cursor-pointer'
-                        aria-expanded={isOpen}
-                    >
-                        {isOpen ? (
-                            <ChevronUp className='w-4 h-4 shrink-0' />
-                        ) : (
-                            <ChevronDown className='w-4 h-4 shrink-0' />
-                        )}
-                        Price Comparison
-                    </Button>
-                </span>
-                {isOpen && (
-                    <Button
-                        type='button'
-                        disabled={selectedProducts.length === 0 || !isOpen}
-                        onClick={() => setSelectedProducts([])}
-                        className={`px-2 py-0.5 text-xs rounded h-6 cursor-pointer`}
-                    >
-                        Clear
-                    </Button>
-                )}
-            </div>
+            {!isControlled && (
+                <div className='text-sm font-semibold flex items-center flex-wrap gap-2'>
+                    <MultiProductPriceChartTrigger isOpen={isOpen} onToggle={() => setIsOpen(!isOpen)} />
+                </div>
+            )}
 
             <AnimatePresence initial={false}>
                 {isOpen && (
@@ -585,25 +599,35 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
 
                                 <span className='flex-1 relative pt-4'>
                                     <div className='flex items-center justify-between gap-2 pb-2'>
-                                        <Tabs
-                                            value={rescaleMode}
-                                            onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}
-                                        >
-                                            <TabsList className='h-6 p-0'>
-                                                <TabsTrigger
-                                                    value='absolute'
-                                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                                                >
-                                                    Price
-                                                </TabsTrigger>
-                                                <TabsTrigger
-                                                    value='relative'
-                                                    className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-                                                >
-                                                    Price/Cost
-                                                </TabsTrigger>
-                                            </TabsList>
-                                        </Tabs>
+                                        <div className='flex items-center gap-2'>
+                                            <Tabs
+                                                value={rescaleMode}
+                                                onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}
+                                            >
+                                                <TabsList className='h-6 p-0'>
+                                                    <TabsTrigger
+                                                        value='absolute'
+                                                        className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                                    >
+                                                        Price
+                                                    </TabsTrigger>
+                                                    <TabsTrigger
+                                                        value='relative'
+                                                        className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
+                                                    >
+                                                        Price/Cost
+                                                    </TabsTrigger>
+                                                </TabsList>
+                                            </Tabs>
+                                            <Button
+                                                type='button'
+                                                disabled={selectedProducts.length === 0}
+                                                onClick={() => setSelectedProducts([])}
+                                                className='px-2 py-0.5 text-xs rounded h-6 cursor-pointer'
+                                            >
+                                                Clear
+                                            </Button>
+                                        </div>
                                         <GranularityButtonGroup
                                             granularity={granularity}
                                             onChange={setGranularity}
@@ -703,7 +727,6 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                                     )}
                                 </span>
                             </div>
-                            <Separator />
                         </div>
                     </motion.div>
                 )}
