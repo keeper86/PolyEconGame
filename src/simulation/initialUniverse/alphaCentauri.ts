@@ -10,15 +10,15 @@ import {
     administrativeCenter,
     beveragePlant,
     coalMine,
-    foodProcessingPlant,
+    foodProcessor,
     groceryChain,
-    intensiveFarmFacility,
-    ironExtractionFacility,
+    agriculturalFacility,
+    ironMine,
     ironSmelter,
     logisticsHub,
     packagingPlant,
     pesticidePlant,
-    waterExtractionFacility,
+    waterFacility,
 } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
@@ -64,10 +64,10 @@ const industrialSpecs: IndustrialSpec[] = [
 export function buildAlphaCentauri(): { planet: Planet; agents: import('../planet/planet').Agent[] } {
     const agents: import('../planet/planet').Agent[] = [];
 
-    const utilWaterFacility = waterExtractionFacility(AC_ID, 'ac-utilities-water');
+    const utilWaterFacility = waterFacility(AC_ID, 'ac-utilities-water');
     utilWaterFacility.scale = 100;
     utilWaterFacility.maxScale = 100;
-    const utilAgriFacility = intensiveFarmFacility(AC_ID, 'ac-utilities-agri');
+    const utilAgriFacility = agriculturalFacility(AC_ID, 'ac-utilities-agri');
     utilAgriFacility.scale = 100;
     utilAgriFacility.maxScale = 100;
     agents.push(
@@ -85,11 +85,11 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         const agriScale = spec.arableLand / 1000;
         const waterScale = spec.waterSource / 1000;
 
-        const waterFacility = waterExtractionFacility(AC_ID, `${spec.id}-water`);
-        waterFacility.scale = waterScale;
-        waterFacility.maxScale = waterScale;
+        const buildWaterFacility = waterFacility(AC_ID, `${spec.id}-water`);
+        buildWaterFacility.scale = waterScale;
+        buildWaterFacility.maxScale = waterScale;
 
-        const agriFacility = intensiveFarmFacility(AC_ID, `${spec.id}-agri`);
+        const agriFacility = agriculturalFacility(AC_ID, `${spec.id}-agri`);
         agriFacility.scale = agriScale;
         agriFacility.maxScale = agriScale;
 
@@ -99,7 +99,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
                 name: spec.name,
                 associatedPlanetId: AC_ID,
                 planetId: AC_ID,
-                facilities: [waterFacility, agriFacility],
+                facilities: [buildWaterFacility, agriFacility],
                 storage: makeStorage({ planetId: AC_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
             }),
         );
@@ -107,7 +107,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
 
     const [colonyIron, energyCorp, foodProc] = industrialSpecs;
 
-    const ci1 = ironExtractionFacility(AC_ID, 'colony-iron-extraction');
+    const ci1 = ironMine(AC_ID, 'colony-iron-extraction');
     ci1.scale = 300;
     ci1.maxScale = 300;
     const ci2 = ironSmelter(AC_ID, 'colony-iron-smelter');
@@ -152,7 +152,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         }),
     );
 
-    const fp1 = foodProcessingPlant(AC_ID, 'ac-food-proc-plant');
+    const fp1 = foodProcessor(AC_ID, 'ac-food-proc-plant');
     fp1.scale = 30;
     fp1.maxScale = 30;
     agents.push(

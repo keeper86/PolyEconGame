@@ -368,7 +368,9 @@ export function handlePostConstructionContract(
         return;
     }
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName);
+    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find(
+        (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName,
+    );
     if (!facilityEntry) {
         safePostMessage({
             type: 'constructionContractPostFailed',
@@ -503,7 +505,7 @@ export function handleAcceptConstructionContract(
     }
 
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = ALL_FACILITY_ENTRIES.find(
+    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find(
         (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === contract.facilityName,
     );
     if (!facilityEntry) {
@@ -1432,7 +1434,7 @@ export function handleDispatchConstructionShip(
 
     const PLACEHOLDER = 'catalog';
     const facilityEntry = facilityName
-        ? ALL_FACILITY_ENTRIES.find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName)
+        ? Object.values(ALL_FACILITY_ENTRIES).find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName)
         : undefined;
     if (facilityName && !facilityEntry) {
         safePostMessage({

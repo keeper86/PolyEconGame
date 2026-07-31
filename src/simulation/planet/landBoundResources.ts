@@ -47,11 +47,6 @@ export const limestoneDepositResourceType: Resource = {
     name: 'Limestone Deposit',
 };
 
-export const clayDepositResourceType: Resource = {
-    ...landBoundResourceDefault,
-    name: 'Clay Deposit',
-};
-
 export const ironOreDepositResourceType: Resource = {
     ...landBoundResourceDefault,
     name: 'Iron Ore Deposit',
@@ -85,8 +80,6 @@ export const getLandboundRessourceByName = (name: string): Resource | undefined 
             return sandDepositResourceType;
         case 'Limestone Deposit':
             return limestoneDepositResourceType;
-        case 'Clay Deposit':
-            return clayDepositResourceType;
         case 'Iron Ore Deposit':
             return ironOreDepositResourceType;
         case 'Arable Land':

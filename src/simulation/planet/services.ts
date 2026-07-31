@@ -7,6 +7,11 @@ const serviceResourceDefault = {
     massPerQuantity: 0,
 };
 
+export const marketCapacityResourceType: Resource = {
+    ...serviceResourceDefault,
+    name: 'Market Capacity',
+};
+
 export const logisticsServiceResourceType: Resource = {
     ...serviceResourceDefault,
     name: 'Logistics',

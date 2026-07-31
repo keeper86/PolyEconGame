@@ -88,14 +88,6 @@ export const limestoneResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const clayResourceType: Resource = {
-    name: 'Clay',
-    form: 'solid',
-    level: 'raw',
-    volumePerQuantity: 0.5,
-    massPerQuantity: 1,
-};
-
 export const steelResourceType: Resource = {
     name: 'Steel' as const,
     form: 'solid',
@@ -251,7 +243,7 @@ export const siliconWaferResourceType: Resource = {
 export const electronicsResourceType: Resource = {
     name: 'Electronics',
     form: 'pieces',
-    level: 'refined',
+    level: 'manufactured',
     volumePerQuantity: 5.0,
     massPerQuantity: 1,
 };

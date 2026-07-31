@@ -76,8 +76,8 @@ const groceryDefinition: ServiceDefinition = {
 
 const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
-    bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * healthcareAgeMultiplier(age, occ),
+    bufferTargetTicks: 3 * TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH / 3) * healthcareAgeMultiplier(age, occ),
 } as const;
 
 const logisticsDefinition: ServiceDefinition = {
@@ -139,7 +139,7 @@ export const SERVICE_TIERS: ServiceTier[] = [
         name: 'comfort',
         services: ['logistics', 'education'],
         coverageFraction: 0.5,
-        mandatoryForOwnConsumption: true,
+        mandatoryForOwnConsumption: false,
     },
     {
         name: 'luxury',

@@ -1,12 +1,13 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import MarketPanel from './_components/MarketPanel';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
-import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { useMemo } from 'react';
+import MarketPanel from './_components/MarketPanel';
+import MultiProductPriceChart from './_components/MultiProductPriceChart';
 
 export default function MarketPage() {
     const {
@@ -23,26 +24,17 @@ export default function MarketPage() {
         isAuthenticatedWithoutAgentId,
         myAgentId,
     } = useAgentPlanetDetail();
-    const [showRelevant, setShowRelevant] = useState(true);
+
+    const allResourceNames = useMemo(
+        () =>
+            ALL_RESOURCES.filter(
+                (r) => r.form !== 'landBoundResource' && !r.name.startsWith(CURRENCY_RESOURCE_PREFIX),
+            ).map((r) => r.name),
+        [],
+    );
 
     return (
-        <Page
-            title={`Market Overview`}
-            headerComponent={
-                <div className='flex items-center justify-between gap-3'>
-                    <div className='flex items-center gap-2'>
-                        <Label
-                            htmlFor='show-all-resources'
-                            className='text-xs text-muted-foreground cursor-pointer'
-                            data-tour='market-relevant-toggle'
-                        >
-                            Only relevant resources
-                        </Label>
-                        <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />
-                    </div>
-                </div>
-            }
-        >
+        <Page title={`Market`}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
@@ -53,6 +45,7 @@ export default function MarketPage() {
                 agentId={agentId}
                 planetId={planetId}
             >
+                <MultiProductPriceChart planetId={planetId} allResourceNames={allResourceNames} />
                 {assets ? (
                     <div data-tour='market-overview'>
                         <MarketPanel
@@ -60,7 +53,6 @@ export default function MarketPage() {
                             planetId={planetId}
                             assets={assets}
                             allPlanetDeposits={detail?.allPlanetDeposits}
-                            showAll={!showRelevant}
                             ships={ships}
                             dataTick={tick}
                         />

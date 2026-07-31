@@ -2,7 +2,6 @@ import { createRecyclerAgent } from '../agents/recycler';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
-    clayDepositResourceType,
     coalDepositResourceType,
     copperDepositResourceType,
     forestResourceType,
@@ -14,48 +13,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
-import {
-    administrativeCenter,
-    beveragePlant,
-    cementPlant,
-    clayMine,
-    clothingFactory,
-    coalMine,
-    concretePlant,
-    constructionFacility,
-    copperMine,
-    copperSmelter,
-    cottonFarm,
-    educationCenter,
-    electronicsFactory,
-    foodProcessingPlant,
-    furnitureFactory,
-    glassFactory,
-    groceryChain,
-    hospital,
-    intensiveFarmFacility,
-    ironExtractionFacility,
-    ironSmelter,
-    itDevicesFactory,
-    limestoneQuarry,
-    loggingCamp,
-    logisticsHub,
-    machineryFactory,
-    oilRefinery,
-    oilWell,
-    packagingPlant,
-    paperMill,
-    pesticidePlant,
-    pharmaceuticalPlant,
-    retailChain,
-    sandMine,
-    sawmill,
-    siliconWaferFactory,
-    stoneQuarry,
-    textileMill,
-    vehicleFactory,
-    waterExtractionFacility,
-} from '../planet/productionFacilities';
+import { ALL_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { getNamesFor } from './preConfiguredCompanies';
@@ -64,18 +22,18 @@ import { makePool } from './resourceClaimFactory';
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
 
-const TOTAL_ARABLE = 3_500_000_000;
-const TOTAL_WATER = 4_000_000_000;
-const TOTAL_IRON_ORE = 5_000_000_000_000;
-const TOTAL_COAL = 4_000_000_000_000;
-const TOTAL_OIL = 3_000_000_000_000;
-const TOTAL_FOREST = 200_000_000_000;
-const TOTAL_COPPER = 1_000_500_000_000;
-const TOTAL_SAND = 2_000_000_000_000;
-const TOTAL_LIMESTONE = 3_000_000_000_000;
-const TOTAL_CLAY = 2_000_000_000_000;
-const TOTAL_STONE = 4_000_000_000_000;
+const TOTAL_ARABLE = 3_500_000_00;
+const TOTAL_WATER = 4_000_000_00;
+const TOTAL_IRON_ORE = 5_000_000_00_000;
+const TOTAL_COAL = 4_000_000_000_00;
+const TOTAL_OIL = 3_000_000_000_00;
+const TOTAL_FOREST = 200_000_000_00;
+const TOTAL_COPPER = 1_000_500_00_000;
+const TOTAL_SAND = 2_000_000_000_00;
+const TOTAL_LIMESTONE = 3_000_000_00_000;
+const TOTAL_STONE = 4_000_000_000_00;
 
+// TODO: USE stochastic rounds prng here
 function splitScale(total: number, count: number, seed: string): number[] {
     let s = 0;
     for (let i = 0; i < seed.length; i++) {
@@ -109,104 +67,54 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-const flatTargetFactor = 0.5;
+const flatTargetFactor = 1;
 const TARGETS: Record<string, FacilityTarget> = {
-    coalMine: { totalScale: 10_546, agentCount: Math.ceil(flatTargetFactor * 2) },
-    oilWell: { totalScale: 1_481_908, agentCount: Math.ceil(flatTargetFactor * 16) },
-    loggingCamp: { totalScale: 80_917, agentCount: Math.ceil(flatTargetFactor * 4) },
-    stoneQuarry: { totalScale: 80_000, agentCount: Math.ceil(flatTargetFactor * 4) },
-    copperMine: { totalScale: 53_516, agentCount: Math.ceil(flatTargetFactor * 4) },
-    sandMine: { totalScale: 330_922, agentCount: Math.ceil(flatTargetFactor * 8) },
-    limestoneQuarry: { totalScale: 145_818, agentCount: Math.ceil(flatTargetFactor * 6) },
-    clayMine: { totalScale: 24_000, agentCount: Math.ceil(flatTargetFactor * 6) },
-    cottonFarm: { totalScale: 308_157, agentCount: Math.ceil(flatTargetFactor * 8) },
-    waterExtractionFacility: { totalScale: 650_115, agentCount: Math.ceil(flatTargetFactor * 16) },
-    ironExtractionFacility: { totalScale: 31_191, agentCount: Math.ceil(flatTargetFactor * 8) },
-    ironSmelter: { totalScale: 64_843, agentCount: Math.ceil(flatTargetFactor * 8) },
-    copperSmelter: { totalScale: 145_386, agentCount: Math.ceil(flatTargetFactor * 6) },
-    oilRefinery: { totalScale: 1_672_862, agentCount: Math.ceil(flatTargetFactor * 20) },
-    sawmill: { totalScale: 280_333, agentCount: Math.ceil(flatTargetFactor * 8) },
-    cementPlant: { totalScale: 320_000, agentCount: Math.ceil(flatTargetFactor * 8) },
-    glassFactory: { totalScale: 180_275, agentCount: Math.ceil(flatTargetFactor * 6) },
-    pesticidePlant: { totalScale: 157_025, agentCount: Math.ceil(flatTargetFactor * 6) },
-    paperMill: { totalScale: 18_411, agentCount: Math.ceil(flatTargetFactor * 6) },
-    textileMill: { totalScale: 257_297, agentCount: Math.ceil(flatTargetFactor * 8) },
-    concretePlant: { totalScale: 200_000, agentCount: Math.ceil(flatTargetFactor * 8) },
-    foodProcessingPlant: { totalScale: 840_000, agentCount: Math.ceil(flatTargetFactor * 8) },
-    beveragePlant: { totalScale: 230_667, agentCount: Math.ceil(flatTargetFactor * 6) },
-    pharmaceuticalPlant: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 6) },
-    clothingFactory: { totalScale: 220_889, agentCount: Math.ceil(flatTargetFactor * 8) },
-    furnitureFactory: { totalScale: 280_667, agentCount: Math.ceil(flatTargetFactor * 8) },
-    electronicComponentFactory: { totalScale: 370_964, agentCount: Math.ceil(flatTargetFactor * 6) },
-    consumerElectronicsFactory: { totalScale: 450_889, agentCount: Math.ceil(flatTargetFactor * 8) },
-    machineryFactory: { totalScale: 3_745, agentCount: Math.ceil(flatTargetFactor * 4) },
-    vehicleFactory: { totalScale: 11_392, agentCount: Math.ceil(flatTargetFactor * 4) },
-    intensiveFarmFacility: { totalScale: 500_074, agentCount: Math.ceil(flatTargetFactor * 8) },
-    packagingPlant: { totalScale: 35_111, agentCount: Math.ceil(flatTargetFactor * 8) },
-    administrativeCenter: { totalScale: 120_889, agentCount: Math.ceil(flatTargetFactor * 8) },
-    logisticsHub: { totalScale: 735_111, agentCount: Math.ceil(flatTargetFactor * 8) },
-    constructionService: { totalScale: 133_333, agentCount: Math.ceil(flatTargetFactor * 8) },
-    groceryChain: { totalScale: 2_533_333, agentCount: Math.ceil(flatTargetFactor * 12) },
-    retailChain: { totalScale: 277_778, agentCount: Math.ceil(flatTargetFactor * 8) },
-    hospital: { totalScale: 788_889, agentCount: Math.ceil(flatTargetFactor * 8) },
-    siliconWaferFactory: { totalScale: 242_982, agentCount: Math.ceil(flatTargetFactor * 8) },
+    administrativeCenter: { totalScale: 66062, agentCount: Math.ceil(flatTargetFactor * 1) },
+    agriculturalFacility: { totalScale: 301666, agentCount: Math.ceil(flatTargetFactor * 3) },
+    beveragePlant: { totalScale: 249749, agentCount: Math.ceil(flatTargetFactor * 2) },
+    cementPlant: { totalScale: 26208, agentCount: Math.ceil(flatTargetFactor * 1) },
+    clothingFactory: { totalScale: 208124, agentCount: Math.ceil(flatTargetFactor * 2) },
+    coalMine: { totalScale: 9770, agentCount: Math.ceil(flatTargetFactor * 1) },
+    concretePlant: { totalScale: 32760, agentCount: Math.ceil(flatTargetFactor * 1) },
+    constructionFacility: { totalScale: 54600, agentCount: Math.ceil(flatTargetFactor * 1) },
+    copperMine: { totalScale: 74925, agentCount: Math.ceil(flatTargetFactor * 1) },
+    copperSmelter: { totalScale: 124874, agentCount: Math.ceil(flatTargetFactor * 1) },
+    cottonFarm: { totalScale: 230914, agentCount: Math.ceil(flatTargetFactor * 2) },
+    educationCenter: { totalScale: 37221, agentCount: Math.ceil(flatTargetFactor * 1) },
+    electronicsFactory: { totalScale: 312186, agentCount: Math.ceil(flatTargetFactor * 3) },
+    foodProcessor: { totalScale: 468279, agentCount: Math.ceil(flatTargetFactor * 4) },
+    furnitureFactory: { totalScale: 254792, agentCount: Math.ceil(flatTargetFactor * 2) },
+    glassFactory: { totalScale: 199979, agentCount: Math.ceil(flatTargetFactor * 2) },
+    groceryChain: { totalScale: 1248744, agentCount: Math.ceil(flatTargetFactor * 9) },
+    hospital: { totalScale: 777043, agentCount: Math.ceil(flatTargetFactor * 6) },
+    ironMine: { totalScale: 26565, agentCount: Math.ceil(flatTargetFactor * 1) },
+    ironSmelter: { totalScale: 70840, agentCount: Math.ceil(flatTargetFactor * 1) },
+    itDevicesFactory: { totalScale: 624372, agentCount: Math.ceil(flatTargetFactor * 5) },
+    limestoneQuarry: { totalScale: 31905, agentCount: Math.ceil(flatTargetFactor * 1) },
+    loggingCamp: { totalScale: 203292, agentCount: Math.ceil(flatTargetFactor * 2) },
+    logisticsHub: { totalScale: 944424, agentCount: Math.ceil(flatTargetFactor * 7) },
+    machineryFactory: { totalScale: 2891, agentCount: Math.ceil(flatTargetFactor * 1) },
+    maintenanceFacility: { totalScale: 1, agentCount: Math.ceil(flatTargetFactor * 1) },
+    oilRefinery: { totalScale: 549415, agentCount: Math.ceil(flatTargetFactor * 4) },
+    oilWell: { totalScale: 549415, agentCount: Math.ceil(flatTargetFactor * 4) },
+    packagingPlant: { totalScale: 17951, agentCount: Math.ceil(flatTargetFactor * 1) },
+    paperMill: { totalScale: 16264, agentCount: Math.ceil(flatTargetFactor * 1) },
+    pesticidePlant: { totalScale: 100555, agentCount: Math.ceil(flatTargetFactor * 1) },
+    pharmaPlant: { totalScale: 155409, agentCount: Math.ceil(flatTargetFactor * 2) },
+    retailChain: { totalScale: 1248744, agentCount: Math.ceil(flatTargetFactor * 9) },
+    sandMine: { totalScale: 260451, agentCount: Math.ceil(flatTargetFactor * 2) },
+    sawmill: { totalScale: 127396, agentCount: Math.ceil(flatTargetFactor * 1) },
+    siliconWaferFactory: { totalScale: 156093, agentCount: Math.ceil(flatTargetFactor * 2) },
+    stoneQuarry: { totalScale: 13104, agentCount: Math.ceil(flatTargetFactor * 1) },
+    textileMill: { totalScale: 192428, agentCount: Math.ceil(flatTargetFactor * 2) },
+    vehicleFactory: { totalScale: 8995, agentCount: Math.ceil(flatTargetFactor * 1) },
+    waterFacility: { totalScale: 217486, agentCount: Math.ceil(flatTargetFactor * 2) },
 };
-type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
-
-function getFacilityFactory(type: string): FacilityFactory {
-    const MAP: Record<string, FacilityFactory> = {
-        coalMine,
-        oilWell,
-        loggingCamp,
-        stoneQuarry,
-        copperMine,
-        sandMine,
-        limestoneQuarry,
-        clayMine,
-        cottonFarm,
-        waterExtractionFacility,
-        ironExtractionFacility,
-        ironSmelter,
-        copperSmelter,
-        oilRefinery,
-        sawmill,
-        cementPlant,
-        glassFactory,
-        pesticidePlant,
-        paperMill,
-        textileMill,
-        concretePlant,
-        foodProcessingPlant,
-        beveragePlant,
-        pharmaceuticalPlant,
-        clothingFactory,
-        furnitureFactory,
-        electronicComponentFactory: electronicsFactory,
-        consumerElectronicsFactory: itDevicesFactory,
-        machineryFactory,
-        vehicleFactory,
-        intensiveFarmFacility,
-        packagingPlant,
-        administrativeCenter,
-        logisticsHub,
-        constructionService: constructionFacility,
-        groceryChain,
-        retailChain,
-        hospital,
-        siliconWaferFactory,
-    };
-    const f = MAP[type];
-    if (!f) {
-        throw new Error(`Unknown facility type: ${type}`);
-    }
-    return f;
-}
-
 export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
     const agents: Agent[] = [];
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {
-        const names = getNamesFor(facilityType, target.agentCount);
+        const names = getNamesFor(facilityType as FacilityType, target.agentCount);
         const scales = splitScale(target.totalScale, names.length, facilityType);
 
         for (let i = 0; i < names.length; i++) {
@@ -216,21 +124,11 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             const facilities: ProductionFacility[] = [];
 
-            const factory = getFacilityFactory(facilityType);
-            const fac = factory(PROC_PLANET_ID, `${id}-${facilityType}`);
+            const entry = ALL_FACILITY_ENTRIES[facilityType as FacilityType];
+            const fac = entry.factory(PROC_PLANET_ID, `${id}-${facilityType}`);
             fac.scale = scale;
             fac.maxScale = scale;
             facilities.push(fac);
-
-            if (facilityType === 'cottonFarm' || facilityType === 'intensiveFarmFacility') {
-                const waterNeeded = facilityType === 'cottonFarm' ? 80 : 100;
-                const waterExtractPerUnit = 800;
-                const waterScale = Math.max(1, Math.ceil((scale * waterNeeded) / waterExtractPerUnit));
-                const wFac = waterExtractionFacility(PROC_PLANET_ID, `${id}-water`);
-                wFac.scale = waterScale;
-                wFac.maxScale = waterScale;
-                facilities.push(wFac);
-            }
 
             agents.push(
                 makeAgent({
@@ -244,261 +142,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             );
         }
     }
-
-    {
-        const pestScale = Math.round(TARGETS.pesticidePlant.totalScale * 0.1);
-        const f2 = pesticidePlant(PROC_PLANET_ID, 'agrochemplus-pest');
-        f2.scale = pestScale;
-        f2.maxScale = pestScale;
-        agents.push(
-            makeAgent({
-                id: 'agrochemplus-corp',
-                name: 'AgroChemPlus Corp',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'agrochemplus-storage',
-                    name: 'AgroChemPlus Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const paperScale = Math.round(TARGETS.paperMill.totalScale * 0.1);
-        const packScale = Math.round(TARGETS.packagingPlant.totalScale * 0.05);
-        const f1 = paperMill(PROC_PLANET_ID, 'paperpack-paper');
-        f1.scale = paperScale;
-        f1.maxScale = paperScale;
-        const f2 = packagingPlant(PROC_PLANET_ID, 'paperpack-pack');
-        f2.scale = packScale;
-        f2.maxScale = packScale;
-        agents.push(
-            makeAgent({
-                id: 'paperpack-industries',
-                name: 'PaperPack Industries',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'paperpack-storage', name: 'PaperPack Storage' }),
-            }),
-        );
-    }
-
-    {
-        const texScale = Math.round(TARGETS.textileMill.totalScale * 0.08);
-        const cloScale = Math.round(TARGETS.clothingFactory.totalScale * 0.08);
-        const f1 = textileMill(PROC_PLANET_ID, 'fashionchain-textile');
-        f1.scale = texScale;
-        f1.maxScale = texScale;
-        const f2 = clothingFactory(PROC_PLANET_ID, 'fashionchain-clothing');
-        f2.scale = cloScale;
-        f2.maxScale = cloScale;
-        agents.push(
-            makeAgent({
-                id: 'fashionchain-group',
-                name: 'FashionChain Group',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'fashionchain-storage',
-                    name: 'FashionChain Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const waferScale = Math.round(TARGETS.siliconWaferFactory.totalScale * 0.1);
-        const compScale = Math.round(TARGETS.electronicComponentFactory.totalScale * 0.08);
-        const f1 = siliconWaferFactory(PROC_PLANET_ID, 'chipmaker-wafer');
-        f1.scale = waferScale;
-        f1.maxScale = waferScale;
-        const f2 = electronicsFactory(PROC_PLANET_ID, 'chipmaker-comp');
-        f2.scale = compScale;
-        f2.maxScale = compScale;
-        agents.push(
-            makeAgent({
-                id: 'chipmaker-technologies',
-                name: 'ChipMaker Technologies',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'chipmaker-storage', name: 'ChipMaker Storage' }),
-            }),
-        );
-    }
-
-    {
-        const ceScale = Math.round(TARGETS.consumerElectronicsFactory.totalScale * 0.08);
-        const retScale = Math.round(TARGETS.retailChain.totalScale * 0.06);
-        const f1 = itDevicesFactory(PROC_PLANET_ID, 'techretail-ce');
-        f1.scale = ceScale;
-        f1.maxScale = ceScale;
-        const f2 = retailChain(PROC_PLANET_ID, 'techretail-retail');
-        f2.scale = retScale;
-        f2.maxScale = retScale;
-        agents.push(
-            makeAgent({
-                id: 'techretail-corp',
-                name: 'TechRetail Corp',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'techretail-storage',
-                    name: 'TechRetail Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const fpScale = Math.round(TARGETS.foodProcessingPlant.totalScale * 0.08);
-        const grScale = Math.round(TARGETS.groceryChain.totalScale * 0.06);
-        const f1 = foodProcessingPlant(PROC_PLANET_ID, 'freshgrocer-food');
-        f1.scale = fpScale;
-        f1.maxScale = fpScale;
-        const f2 = groceryChain(PROC_PLANET_ID, 'freshgrocer-grocery');
-        f2.scale = grScale;
-        f2.maxScale = grScale;
-        agents.push(
-            makeAgent({
-                id: 'freshgrocer-inc',
-                name: 'FreshGrocer Inc',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'freshgrocer-storage',
-                    name: 'FreshGrocer Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const machScale = Math.round(TARGETS.machineryFactory.totalScale * 0.15);
-        const vehScale = Math.round(TARGETS.vehicleFactory.totalScale * 0.15);
-        const f1 = machineryFactory(PROC_PLANET_ID, 'autoindustry-mach');
-        f1.scale = machScale;
-        f1.maxScale = machScale;
-        const f2 = vehicleFactory(PROC_PLANET_ID, 'autoindustry-veh');
-        f2.scale = vehScale;
-        f2.maxScale = vehScale;
-        agents.push(
-            makeAgent({
-                id: 'autoindustry-conglomerate',
-                name: 'AutoIndustry Conglomerate',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'autoindustry-storage',
-                    name: 'AutoIndustry Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const concScale = Math.round(TARGETS.concretePlant.totalScale * 0.08);
-        const cstScale = Math.round(TARGETS.constructionService.totalScale * 0.08);
-        const f1 = concretePlant(PROC_PLANET_ID, 'buildmaster-concrete');
-        f1.scale = concScale;
-        f1.maxScale = concScale;
-        const f2 = constructionFacility(PROC_PLANET_ID, 'buildmaster-construction');
-        f2.scale = cstScale;
-        f2.maxScale = cstScale;
-        agents.push(
-            makeAgent({
-                id: 'buildmaster-group',
-                name: 'BuildMaster Group',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'buildmaster-storage',
-                    name: 'BuildMaster Storage',
-                }),
-            }),
-        );
-    }
-
-    {
-        const admScale = Math.round(TARGETS.administrativeCenter.totalScale * 0.06);
-        const logScale = Math.round(TARGETS.logisticsHub.totalScale * 0.06);
-        const f1 = administrativeCenter(PROC_PLANET_ID, 'infragroup-admin');
-        f1.scale = admScale;
-        f1.maxScale = admScale;
-        const f2 = logisticsHub(PROC_PLANET_ID, 'infragroup-logistics');
-        f2.scale = logScale;
-        f2.maxScale = logScale;
-        agents.push(
-            makeAgent({
-                id: 'infragroup-global',
-                name: 'InfraGroup Global',
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [f1, f2],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: 'infragroup-storage',
-                    name: 'InfraGroup Storage',
-                }),
-            }),
-        );
-    }
-
-    const educationSpecs = [
-        { id: 'edu-network-corp', name: 'Edu Network Corp' },
-        { id: 'knowledge-global', name: 'Knowledge Global Ltd' },
-        { id: 'campus-systems-inc', name: 'Campus Systems Inc' },
-        { id: 'scholars-union', name: 'Scholars Union' },
-    ];
-    for (const spec of educationSpecs) {
-        const u = educationCenter(PROC_PLANET_ID, `${spec.id}-university`);
-        u.scale = 4000;
-        u.maxScale = 4000;
-        agents.push(
-            makeAgent({
-                id: spec.id,
-                name: spec.name,
-                associatedPlanetId: PROC_PLANET_ID,
-                planetId: PROC_PLANET_ID,
-                facilities: [u],
-                storage: makeStorage({
-                    planetId: PROC_PLANET_ID,
-                    id: `${spec.id}-storage`,
-                    name: `${spec.name} Storage`,
-                }),
-            }),
-        );
-    }
-
-    const utilWaterFac = waterExtractionFacility(PROC_PLANET_ID, 'proc-util-water');
-    utilWaterFac.scale = 200;
-    utilWaterFac.maxScale = 200;
-    const utilAgriFac = intensiveFarmFacility(PROC_PLANET_ID, 'proc-util-agri');
-    utilAgriFac.scale = 800;
-    utilAgriFac.maxScale = 800;
-    const utilAgent = makeAgent({
-        id: 'proc-utilities',
-        name: 'Public Utilities Corp',
-        associatedPlanetId: PROC_PLANET_ID,
-        planetId: PROC_PLANET_ID,
-        facilities: [utilWaterFac, utilAgriFac],
-        storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-util-storage', name: 'Public Utilities Storage' }),
-    });
-    agents.push(utilAgent);
 
     const govAgent = makeAgent({
         id: GOV,
@@ -606,14 +249,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 pool: makePool({
                     type: limestoneDepositResourceType,
                     quantity: TOTAL_LIMESTONE,
-                    renewable: false,
-                }),
-                claims: [],
-            },
-            [clayDepositResourceType.name]: {
-                pool: makePool({
-                    type: clayDepositResourceType,
-                    quantity: TOTAL_CLAY,
                     renewable: false,
                 }),
                 claims: [],

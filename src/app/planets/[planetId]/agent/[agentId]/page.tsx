@@ -95,9 +95,10 @@ export default function AgentPlanetOverviewPage() {
                     </p>
                 </div>
 
-                <FacilityBreakdown facilities={facilities} />
-
-                <ShipFleet ships={ships} planetId={planetId} />
+                <div className='grid sm:grid-cols-2 grid-cols-1 gap-3'>
+                    <FacilityBreakdown facilities={facilities} />
+                    <ShipFleet ships={ships} planetId={planetId} />
+                </div>
 
                 <div className='rounded-lg border p-3'>
                     <AgentFinancialCharts agentId={agentId} planetId={planetId} onlyBalances={true} />

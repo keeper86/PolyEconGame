@@ -1,4 +1,5 @@
 import { nextRandom } from '../utils/stochasticRound';
+import type { FacilityType } from '../planet/productionFacilities';
 
 const CORPORATE_FORMS = [
     'Co',
@@ -18,21 +19,7 @@ const CORPORATE_FORMS = [
     'Resources',
 ];
 
-const WORD_POOLS: Record<string, { stems: string[] }> = {
-    tankerTransport: {
-        stems: [
-            'Tanker Transport',
-            'Maritime Shipping',
-            'Ocean Freight',
-            'Sea Transport',
-            'Global Shipping',
-            'Pacific Carrier',
-            'Atlantic Transport',
-            'Bulk Carrier',
-            'Cargo Ship',
-            'Freight Transport',
-        ],
-    },
+const WORD_POOLS: Record<FacilityType, { stems: string[] }> = {
     coalMine: {
         stems: [
             'Blackrock Coal',
@@ -148,18 +135,6 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Marl Basin',
         ],
     },
-    clayMine: {
-        stems: [
-            'Delta Clay Mining',
-            'Plains Clay',
-            'Red Earth Clay',
-            'Pottery Clay',
-            'Terracotta Mines',
-            'Kaolin Corp',
-            'Earthen Materials',
-            'Clay Works',
-        ],
-    },
     cottonFarm: {
         stems: [
             'Cotton World',
@@ -179,7 +154,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Boll Weevil',
         ],
     },
-    waterExtractionFacility: {
+    waterFacility: {
         stems: [
             'AquaGlobal',
             'Pure Water',
@@ -198,7 +173,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Clear Springs',
         ],
     },
-    ironExtractionFacility: {
+    ironMine: {
         stems: [
             'Ironworks Global',
             'Deep Core Mining',
@@ -396,7 +371,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Quick Pour',
         ],
     },
-    foodProcessingPlant: {
+    foodProcessor: {
         stems: [
             'World Foods',
             'Continental Food',
@@ -434,7 +409,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Fizz Corp',
         ],
     },
-    pharmaceuticalPlant: {
+    pharmaPlant: {
         stems: [
             'PharmaGlobal',
             'MedLife',
@@ -491,7 +466,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Chair Masters',
         ],
     },
-    electronicComponentFactory: {
+    electronicsFactory: {
         stems: [
             'Silicon Dynamics',
             'Global Electronics',
@@ -510,7 +485,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Logic Parts',
         ],
     },
-    consumerElectronicsFactory: {
+    itDevicesFactory: {
         stems: [
             'TechVision',
             'Gadget World',
@@ -557,7 +532,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Turbine Motors',
         ],
     },
-    intensiveFarmFacility: {
+    agriculturalFacility: {
         stems: [
             'AgroTech Global',
             'Precision Farming',
@@ -633,7 +608,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'Move Corp',
         ],
     },
-    constructionService: {
+    constructionFacility: {
         stems: [
             'BuildRight Services',
             'Urban Construct',
@@ -709,6 +684,18 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
             'DocTor Group',
         ],
     },
+    educationCenter: {
+        stems: ['Education World', 'Education First', 'Education Network', 'Education Group', 'Education Global'],
+    },
+    maintenanceFacility: {
+        stems: [
+            'Maintenance World',
+            'Maintenance First',
+            'Maintenance Network',
+            'Maintenance Group',
+            'Maintenance Global',
+        ],
+    },
     siliconWaferFactory: {
         stems: [
             'WaferTech',
@@ -730,7 +717,7 @@ const WORD_POOLS: Record<string, { stems: string[] }> = {
     },
 };
 
-function generateCompanyName(facilityType: string, index: number): string {
+function generateCompanyName(facilityType: FacilityType, index: number): string {
     const pool = WORD_POOLS[facilityType];
     if (!pool) {
         return `${facilityType}-${index}`;
@@ -753,7 +740,7 @@ function generateCompanyName(facilityType: string, index: number): string {
     return `${stem} ${form} ${suffix}`;
 }
 
-export function getNamesFor(facilityType: string, count: number): string[] {
+export function getNamesFor(facilityType: FacilityType, count: number): string[] {
     const existing = NAMES[facilityType] ?? [];
 
     if (count <= existing.length) {

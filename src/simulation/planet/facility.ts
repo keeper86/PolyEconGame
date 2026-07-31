@@ -150,6 +150,7 @@ export type ManagementFacility = FacilityBase & {
     type: 'management';
     needs: ResourceQuantity[];
 
+    resourceName: string;
     bufferPerTickPerScale: number;
     maxBuffer: number;
     buffer: number;

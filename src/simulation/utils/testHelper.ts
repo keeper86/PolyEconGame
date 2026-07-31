@@ -243,6 +243,7 @@ export function makeManagementFacility(
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
         needs: [],
+        resourceName: 'test',
         buffer: 0,
         maxBuffer: 100,
         bufferPerTickPerScale: 10,

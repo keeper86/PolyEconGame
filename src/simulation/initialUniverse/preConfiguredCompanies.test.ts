@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getNamesFor, NAMES } from './preConfiguredCompanies';
+import type { FacilityType } from '../planet/productionFacilities';
 
 describe('getNamesFor', () => {
     it('returns existing names when count <= available', () => {
@@ -35,26 +36,20 @@ describe('getNamesFor', () => {
         expect(overlap.length).toBe(0);
     });
 
-    it('handles tankerTransport (empty existing names)', () => {
-        const names = getNamesFor('tankerTransport', 5);
-        expect(names.length).toBe(5);
-        const unique = new Set(names);
-        expect(unique.size).toBe(5);
-    });
-
     it('generates enough names for each facility type to meet TARGETS', () => {
-        const targets: Record<string, number> = {
+        const targets: Record<FacilityType, number> = {
             coalMine: 8,
             oilWell: 64,
             loggingCamp: 16,
+            educationCenter: 5,
+            maintenanceFacility: 1,
             stoneQuarry: 16,
             copperMine: 16,
             sandMine: 32,
             limestoneQuarry: 24,
-            clayMine: 24,
             cottonFarm: 32,
-            waterExtractionFacility: 64,
-            ironExtractionFacility: 32,
+            waterFacility: 64,
+            ironMine: 32,
             ironSmelter: 32,
             copperSmelter: 24,
             oilRefinery: 80,
@@ -65,20 +60,20 @@ describe('getNamesFor', () => {
             paperMill: 24,
             textileMill: 32,
             concretePlant: 32,
-            foodProcessingPlant: 32,
+            foodProcessor: 32,
             beveragePlant: 24,
-            pharmaceuticalPlant: 24,
+            pharmaPlant: 24,
             clothingFactory: 32,
             furnitureFactory: 32,
-            electronicComponentFactory: 24,
-            consumerElectronicsFactory: 32,
+            electronicsFactory: 24,
+            itDevicesFactory: 32,
             machineryFactory: 16,
             vehicleFactory: 16,
-            intensiveFarmFacility: 32,
+            agriculturalFacility: 32,
             packagingPlant: 32,
             administrativeCenter: 32,
             logisticsHub: 32,
-            constructionService: 32,
+            constructionFacility: 32,
             groceryChain: 48,
             retailChain: 32,
             hospital: 32,
@@ -86,7 +81,7 @@ describe('getNamesFor', () => {
         };
 
         for (const [facilityType, needed] of Object.entries(targets)) {
-            const names = getNamesFor(facilityType, needed);
+            const names = getNamesFor(facilityType as FacilityType, needed);
             expect(names.length).toBe(needed);
             const unique = new Set(names);
             expect(unique.size).toBe(names.length);
