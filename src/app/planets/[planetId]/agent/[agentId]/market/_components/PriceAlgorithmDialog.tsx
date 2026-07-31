@@ -189,7 +189,13 @@ export function PriceAlgorithmDialog({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <Button variant='outline' size='sm' className='h-7 text-[11px] px-2' onClick={() => setOpen(true)}>
+            <Button
+                variant='outline'
+                size='sm'
+                className='h-7 text-[11px] px-2'
+                onClick={() => setOpen(true)}
+                disabled={!diagnostics}
+            >
                 <Sigma className='h-3.5 w-3.5 mr-1' />
             </Button>
             <DialogContent className='max-w-md max-h-[80vh] overflow-y-auto'>

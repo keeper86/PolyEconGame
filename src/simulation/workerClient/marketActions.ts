@@ -1,8 +1,7 @@
-import type { GameState } from '../planet/planet';
-import type { OutboundMessage, PendingAction } from './messages';
 import { PRICE_FLOOR } from '../constants';
-import { ALL_RESOURCES } from '../planet/resourceCatalog';
-import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '../market/currencyResources';
+import type { GameState } from '../planet/planet';
+import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
+import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleSetSellOffers(
     state: GameState,
@@ -35,22 +34,9 @@ export function handleSetSellOffers(
     }
     for (const [resourceName, update] of Object.entries(offers)) {
         if (!assets.market.sell[resourceName]) {
-            let resource = null;
-            outerLoop: for (const facility of assets.productionFacilities) {
-                for (const p of facility.produces) {
-                    if (p.resource.name === resourceName) {
-                        resource = p.resource;
-                        break outerLoop;
-                    }
-                }
-            }
+            const resource = RESOURCES_BY_NAME.get(resourceName);
             if (!resource) {
-                resource = assets.storageFacility.currentInStorage[resourceName]?.resource ?? null;
-            }
-            if (!resource && resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
-                resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
-            }
-            if (!resource) {
+                console.warn(`Unknown resource: ${resourceName}`);
                 continue;
             }
             assets.market.sell[resourceName] = { resource };
@@ -71,7 +57,7 @@ export function handleSetSellOffers(
             offer.automated = update.automated;
         }
         if (update.autoConfig !== undefined) {
-            offer.autoConfig = update.autoConfig;
+            offer.autoConfig = { ...(offer.autoConfig ?? {}), ...update.autoConfig };
         }
     }
     console.log(`[worker] Sell offers updated for agent '${agentId}' on '${planetId}'`);
@@ -178,22 +164,9 @@ export function handleSetBuyBids(
     }
     for (const [resourceName, update] of Object.entries(bids)) {
         if (!assets.market.buy[resourceName]) {
-            let resource = null;
-            outerBidLoop: for (const facility of assets.productionFacilities) {
-                for (const n of facility.needs) {
-                    if (n.resource.name === resourceName) {
-                        resource = n.resource;
-                        break outerBidLoop;
-                    }
-                }
-            }
+            const resource = RESOURCES_BY_NAME.get(resourceName);
             if (!resource) {
-                resource = ALL_RESOURCES.find((r) => r.name === resourceName) ?? null;
-            }
-            if (!resource && resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
-                resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
-            }
-            if (!resource) {
+                console.warn(`Unknown resource: ${resourceName}`);
                 continue;
             }
             assets.market.buy[resourceName] = { resource };
@@ -214,7 +187,7 @@ export function handleSetBuyBids(
             bid.automated = update.automated;
         }
         if (update.autoConfig !== undefined) {
-            bid.autoConfig = update.autoConfig;
+            bid.autoConfig = { ...(bid.autoConfig ?? {}), ...update.autoConfig };
         }
     }
     console.log(`[worker] Buy bids updated for agent '${agentId}' on '${planetId}'`);

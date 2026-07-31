@@ -36,6 +36,7 @@ import {
     type SellPricingPresetType,
     type SellVolumePresetType,
 } from './StrategyPresets';
+import { useSellSectionMutations } from './useSellSectionMutations';
 
 type SellStatusKind =
     | 'offering'
@@ -128,28 +129,40 @@ const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['freeRetainment', 'free
 
 export default function SellSection({
     resourceName,
+    agentId,
     offer,
     local,
     assets,
     overviewRow,
     onLocalChange,
-    onSaveSell,
-    onResetSell,
-    onAutomationChange,
-    onSaveSellPricingConfig,
-    onResetSellPricingConfig,
-    onSaveSellVolumeConfig,
-    onResetSellVolumeConfig,
-    sellPriceSaving,
-    sellAutomationSaving,
-    sellPricingConfigSaving,
-    sellVolumeConfigSaving,
     planetId,
-    sellAutomationOverlay,
-    sellPricingConfigOverlay,
-    sellVolumeConfigOverlay,
-    sellPriceOverlay,
 }: SellSectionProps): React.ReactElement {
+    const {
+        saveSell: onSaveSell,
+        resetSell: onResetSell,
+        automationChange: onAutomationChange,
+        savePricingConfig: onSaveSellPricingConfig,
+        resetPricingConfig: onResetSellPricingConfig,
+        saveVolumeConfig: onSaveSellVolumeConfig,
+        resetVolumeConfig: onResetSellVolumeConfig,
+        sellPriceSaving,
+        sellAutomationSaving,
+        sellPricingConfigSaving,
+        sellVolumeConfigSaving,
+        sellPriceOverlay,
+        sellAutomationOverlay,
+        sellPricingConfigOverlay,
+        sellVolumeConfigOverlay,
+    } = useSellSectionMutations({
+        agentId,
+        planetId,
+        resourceName,
+        local,
+        onLocalChange,
+        assets,
+        offer,
+    });
+
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
@@ -500,9 +513,9 @@ export default function SellSection({
                                             <Button
                                                 variant='outline'
                                                 size='sm'
-                                                className={`h-7 text-[11px] px-2 ${hasPricingConfigDirty ? '' : 'invisible'}`}
+                                                className={`h-7 text-[11px] px-2`}
                                                 onClick={onResetSellPricingConfig}
-                                                disabled={sellPricingConfigSaving}
+                                                disabled={sellPricingConfigSaving || !hasPricingConfigDirty}
                                             >
                                                 <RotateCcw className='h-3 w-3 mr-1' />
                                                 Reset
@@ -704,13 +717,13 @@ export default function SellSection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-end gap-2 pt-1'>
+                                    <div className='flex items-center justify-between gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2 ${hasVolumeConfigDirty ? '' : 'invisible'}`}
+                                            className={`h-7 text-[11px] px-2`}
                                             onClick={onResetSellVolumeConfig}
-                                            disabled={sellVolumeConfigSaving}
+                                            disabled={sellVolumeConfigSaving || !hasVolumeConfigDirty}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset
