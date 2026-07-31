@@ -16,10 +16,12 @@ export type PendingAction = {
         | 'cancel'
         | 'marketBuyPrice'
         | 'marketBuyAutomation'
-        | 'marketBuyAutoConfig'
+        | 'marketBuyPricingConfig'
+        | 'marketBuyVolumeConfig'
         | 'marketSellPrice'
         | 'marketSellAutomation'
-        | 'marketSellAutoConfig'
+        | 'marketSellPricingConfig'
+        | 'marketSellVolumeConfig'
         | 'marketCancelBuy'
         | 'marketCancelSell'
         | 'loanRequest'
@@ -196,7 +198,8 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         } else if (
             (action.type === 'marketBuyPrice' ||
                 action.type === 'marketBuyAutomation' ||
-                action.type === 'marketBuyAutoConfig') &&
+                action.type === 'marketBuyPricingConfig' ||
+                action.type === 'marketBuyVolumeConfig') &&
             action.resourceName
         ) {
             next = current.filter(
@@ -210,7 +213,8 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         } else if (
             (action.type === 'marketSellPrice' ||
                 action.type === 'marketSellAutomation' ||
-                action.type === 'marketSellAutoConfig') &&
+                action.type === 'marketSellPricingConfig' ||
+                action.type === 'marketSellVolumeConfig') &&
             action.resourceName
         ) {
             next = current.filter(

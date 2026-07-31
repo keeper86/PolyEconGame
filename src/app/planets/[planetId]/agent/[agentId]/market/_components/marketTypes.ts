@@ -219,18 +219,19 @@ export type BuySectionProps = {
     onResetBuy: () => void;
     onCancelBid: () => void;
     onAutomationChange: (automated: boolean) => void;
-    onSaveBuyAutoConfig: () => void;
-    onResetBuyAutoConfig: () => void;
+    onSaveBuyPricingConfig: () => void;
+    onResetBuyPricingConfig: () => void;
+    onSaveBuyVolumeConfig: () => void;
+    onResetBuyVolumeConfig: () => void;
     buyPriceSaving: boolean;
     buyAutomationSaving: boolean;
-    buyAutoConfigSaving: boolean;
+    buyPricingConfigSaving: boolean;
+    buyVolumeConfigSaving: boolean;
     planetId: string;
     ships: ConsumptionShipInfo[];
-    /** Overlay message for the automation zone (Switch + header) */
     buyAutomationOverlay?: string | null;
-    /** Overlay message for the auto-config zone */
-    buyAutoConfigOverlay?: string | null;
-    /** Overlay message for the price/quantity inputs zone */
+    buyPricingConfigOverlay?: string | null;
+    buyVolumeConfigOverlay?: string | null;
     buyPriceOverlay?: string | null;
 };
 
@@ -245,16 +246,17 @@ export type SellSectionProps = {
     onResetSell: () => void;
     onCancelOffer: () => void;
     onAutomationChange: (automated: boolean) => void;
-    onSaveSellAutoConfig: () => void;
-    onResetSellAutoConfig: () => void;
+    onSaveSellPricingConfig: () => void;
+    onResetSellPricingConfig: () => void;
+    onSaveSellVolumeConfig: () => void;
+    onResetSellVolumeConfig: () => void;
     sellPriceSaving: boolean;
     sellAutomationSaving: boolean;
-    sellAutoConfigSaving: boolean;
+    sellPricingConfigSaving: boolean;
+    sellVolumeConfigSaving: boolean;
     planetId: string;
-    /** Overlay message for the automation zone (Switch + header) */
     sellAutomationOverlay?: string | null;
-    /** Overlay message for the auto-config zone */
-    sellAutoConfigOverlay?: string | null;
-    /** Overlay message for the price/quantity inputs zone */
+    sellPricingConfigOverlay?: string | null;
+    sellVolumeConfigOverlay?: string | null;
     sellPriceOverlay?: string | null;
 };

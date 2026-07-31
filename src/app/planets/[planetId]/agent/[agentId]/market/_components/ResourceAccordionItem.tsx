@@ -23,7 +23,7 @@ import ResourceTrigger from './ResourceTrigger';
 import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
-import { autoConfigToLocal, BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST, localToAutoConfig } from './marketTypes';
+import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST, localToAutoConfig } from './marketTypes';
 
 export default function ResourceAccordionItem({
     resourceName,
@@ -136,36 +136,6 @@ export default function ResourceAccordionItem({
 
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onSuccess: (data) => {
-                toast.success('Sell offers saved. Changes take effect on the next market tick.');
-                onLocalChange(resourceName, {
-                    savedOfferPrice: local.offerPrice,
-                    savedOfferAutomated: local.offerAutomated,
-                });
-                if (data) {
-                    addPending({
-                        type: 'marketSellPrice',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                    addPending({
-                        type: 'marketSellAutomation',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                    addPending({
-                        type: 'marketSellAutoConfig',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                }
-            },
             onError: (err) => {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to update sell offers';
                 if (errorMessage.includes('Insufficient deposits')) {
@@ -190,36 +160,6 @@ export default function ResourceAccordionItem({
 
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
-            onSuccess: (data) => {
-                toast.success('Buy bids saved. Changes take effect on the next market tick.');
-                onLocalChange(resourceName, {
-                    savedBidPrice: local.bidPrice,
-                    savedBidAutomated: local.bidAutomated,
-                });
-                if (data) {
-                    addPending({
-                        type: 'marketBuyPrice',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                    addPending({
-                        type: 'marketBuyAutomation',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                    addPending({
-                        type: 'marketBuyAutoConfig',
-                        agentId,
-                        planetId,
-                        resourceName,
-                        triggerTick: data.processedAtTick,
-                    });
-                }
-            },
             onError: (err) => {
                 const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
                 if (errorMessage.includes('Insufficient deposits')) {
@@ -296,10 +236,12 @@ export default function ResourceAccordionItem({
 
     const [buyPriceSaving, setBuyPriceSaving] = useState(false);
     const [buyAutomationSaving, setBuyAutomationSaving] = useState(false);
-    const [buyAutoConfigSaving, setBuyAutoConfigSaving] = useState(false);
+    const [buyPricingConfigSaving, setBuyPricingConfigSaving] = useState(false);
+    const [buyVolumeConfigSaving, setBuyVolumeConfigSaving] = useState(false);
     const [sellPriceSaving, setSellPriceSaving] = useState(false);
     const [sellAutomationSaving, setSellAutomationSaving] = useState(false);
-    const [sellAutoConfigSaving, setSellAutoConfigSaving] = useState(false);
+    const [sellPricingConfigSaving, setSellPricingConfigSaving] = useState(false);
+    const [sellVolumeConfigSaving, setSellVolumeConfigSaving] = useState(false);
 
     const handleSaveBuy = () => {
         if (!resource) {
@@ -355,7 +297,19 @@ export default function ResourceAccordionItem({
         buyMutation.mutate(
             { agentId, planetId, bids: buyPayload },
             {
-                onSuccess: () => setBuyPriceSaving(false),
+                onSuccess: (data) => {
+                    setBuyPriceSaving(false);
+                    onLocalChange(resourceName, { savedBidPrice: local.bidPrice });
+                    if (data) {
+                        addPending({
+                            type: 'marketBuyPrice',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                },
                 onError: () => setBuyPriceSaving(false),
             },
         );
@@ -392,7 +346,19 @@ export default function ResourceAccordionItem({
         sellMutation.mutate(
             { agentId, planetId, offers: sellPayload },
             {
-                onSuccess: () => setSellPriceSaving(false),
+                onSuccess: (data) => {
+                    setSellPriceSaving(false);
+                    onLocalChange(resourceName, { savedOfferPrice: local.offerPrice });
+                    if (data) {
+                        addPending({
+                            type: 'marketSellPrice',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                },
                 onError: () => setSellPriceSaving(false),
             },
         );
@@ -426,8 +392,18 @@ export default function ResourceAccordionItem({
         buyMutation.mutate(
             { agentId, planetId, bids: buyPayload },
             {
-                onSuccess: () => {
+                onSuccess: (data) => {
                     setBuyAutomationSaving(false);
+                    onLocalChange(resourceName, { savedBidAutomated: automated });
+                    if (data) {
+                        addPending({
+                            type: 'marketBuyAutomation',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
                     toast.success('Buy bids saved. Changes take effect on the next market tick.');
                 },
                 onError: (err) => {
@@ -464,8 +440,18 @@ export default function ResourceAccordionItem({
         sellMutation.mutate(
             { agentId, planetId, offers: sellPayload },
             {
-                onSuccess: () => {
+                onSuccess: (data) => {
                     setSellAutomationSaving(false);
+                    onLocalChange(resourceName, { savedOfferAutomated: automated });
+                    if (data) {
+                        addPending({
+                            type: 'marketSellAutomation',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
                     toast.success('Sell offers saved. Changes take effect on the next market tick.');
                 },
                 onError: (err) => {
@@ -500,60 +486,304 @@ export default function ResourceAccordionItem({
         cancelSellOfferMutation.mutate({ agentId, planetId, resourceName });
     };
 
-    const handleSaveBuyAutoConfig = () => {
-        const autoConfig = localToAutoConfig(local.buyAutoConfig);
-        const buyPayload: Record<string, { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }> =
-            {
-                [resourceName]: { autoConfig },
-            };
+    const BUY_PRICING_KEYS = [
+        'priceAdjustMaxUp',
+        'priceAdjustMaxDown',
+        'bidOfferMaxCostMultiplier',
+        'targetFillRate',
+    ] as const;
+    const BUY_VOLUME_KEYS = [
+        'inputBufferTargetTicks',
+        'inventorySmoothingMaxExtra',
+        'freeBuyQuantity',
+        'freeBuyQuantitySmoothingMaxExtra',
+    ] as const;
+    const SELL_PRICING_KEYS = [
+        'priceAdjustMaxUp',
+        'priceAdjustMaxDown',
+        'automatedCostFloorBuffer',
+        'targetSellThrough',
+    ] as const;
+    const SELL_VOLUME_KEYS = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'] as const;
 
-        setBuyAutoConfigSaving(true);
+    const pickAutoConfigKeys = (source: typeof local.buyAutoConfig, keys: readonly string[]) => {
+        const result: Record<string, string> = {};
+        for (const k of keys) {
+            result[k] = source[k as keyof typeof source];
+        }
+        return result;
+    };
+
+    const commitBuyPricingConfig = (
+        autoConfig: import('@/simulation/planet/planet').AutomatedPricingConfig | undefined,
+    ) => {
+        const keySet = new Set<string>(BUY_PRICING_KEYS as readonly string[]);
+        const filtered: Record<string, number> = {};
+        if (autoConfig) {
+            for (const [k, v] of Object.entries(autoConfig)) {
+                if (keySet.has(k)) {
+                    filtered[k] = v;
+                }
+            }
+        }
+        return Object.keys(filtered).length > 0
+            ? (filtered as import('@/simulation/planet/planet').AutomatedPricingConfig)
+            : undefined;
+    };
+
+    const commitBuyVolumeConfig = (
+        autoConfig: import('@/simulation/planet/planet').AutomatedPricingConfig | undefined,
+    ) => {
+        const keySet = new Set<string>(BUY_VOLUME_KEYS as readonly string[]);
+        const filtered: Record<string, number> = {};
+        if (autoConfig) {
+            for (const [k, v] of Object.entries(autoConfig)) {
+                if (keySet.has(k)) {
+                    filtered[k] = v;
+                }
+            }
+        }
+        return Object.keys(filtered).length > 0
+            ? (filtered as import('@/simulation/planet/planet').AutomatedPricingConfig)
+            : undefined;
+    };
+
+    const commitSellPricingConfig = (
+        autoConfig: import('@/simulation/planet/planet').AutomatedPricingConfig | undefined,
+    ) => {
+        const keySet = new Set<string>(SELL_PRICING_KEYS as readonly string[]);
+        const filtered: Record<string, number> = {};
+        if (autoConfig) {
+            for (const [k, v] of Object.entries(autoConfig)) {
+                if (keySet.has(k)) {
+                    filtered[k] = v;
+                }
+            }
+        }
+        return Object.keys(filtered).length > 0
+            ? (filtered as import('@/simulation/planet/planet').AutomatedPricingConfig)
+            : undefined;
+    };
+
+    const commitSellVolumeConfig = (
+        autoConfig: import('@/simulation/planet/planet').AutomatedPricingConfig | undefined,
+    ) => {
+        const keySet = new Set<string>(SELL_VOLUME_KEYS as readonly string[]);
+        const filtered: Record<string, number> = {};
+        if (autoConfig) {
+            for (const [k, v] of Object.entries(autoConfig)) {
+                if (keySet.has(k)) {
+                    filtered[k] = v;
+                }
+            }
+        }
+        return Object.keys(filtered).length > 0
+            ? (filtered as import('@/simulation/planet/planet').AutomatedPricingConfig)
+            : undefined;
+    };
+
+    const handleSaveBuyPricingConfig = () => {
+        const autoConfig = localToAutoConfig(
+            pickAutoConfigKeys(
+                local.buyAutoConfig,
+                BUY_PRICING_KEYS as unknown as string[],
+            ) as typeof local.buyAutoConfig,
+        );
+        const mergedWithCommitted = { ...(bid?.autoConfig ?? {}), ...(autoConfig ?? {}) };
+        const filtered = commitBuyPricingConfig(
+            mergedWithCommitted as import('@/simulation/planet/planet').AutomatedPricingConfig,
+        );
+        const buyPayload: Record<string, { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }> =
+            { [resourceName]: { autoConfig: filtered } };
+
+        setBuyPricingConfigSaving(true);
         buyMutation.mutate(
             { agentId, planetId, bids: buyPayload },
             {
-                onSuccess: () => {
-                    setBuyAutoConfigSaving(false);
-                    toast.success('Auto-config saved.');
+                onSuccess: (data) => {
+                    setBuyPricingConfigSaving(false);
+                    if (data) {
+                        addPending({
+                            type: 'marketBuyPricingConfig',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                    toast.success('Pricing config saved.');
                 },
                 onError: (err) => {
-                    setBuyAutoConfigSaving(false);
+                    setBuyPricingConfigSaving(false);
                     toast.error(err instanceof Error ? err.message : 'Failed to save');
                 },
             },
         );
     };
 
-    const handleResetBuyAutoConfig = () => {
-        onLocalChange(resourceName, { buyAutoConfig: autoConfigToLocal(bid?.autoConfig) });
+    const handleResetBuyPricingConfig = () => {
+        const committed = bid?.autoConfig ?? {};
+        const current = local.buyAutoConfig;
+        const resetFields: Record<string, string> = {};
+        for (const k of BUY_PRICING_KEYS) {
+            const committedVal = committed[k as keyof typeof committed];
+            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
+        }
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as typeof current });
     };
 
-    const handleSaveSellAutoConfig = () => {
-        const autoConfig = localToAutoConfig(local.sellAutoConfig);
+    const handleSaveBuyVolumeConfig = () => {
+        const autoConfig = localToAutoConfig(
+            pickAutoConfigKeys(
+                local.buyAutoConfig,
+                BUY_VOLUME_KEYS as unknown as string[],
+            ) as typeof local.buyAutoConfig,
+        );
+        const mergedWithCommitted = { ...(bid?.autoConfig ?? {}), ...(autoConfig ?? {}) };
+        const filtered = commitBuyVolumeConfig(
+            mergedWithCommitted as import('@/simulation/planet/planet').AutomatedPricingConfig,
+        );
+        const buyPayload: Record<string, { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }> =
+            { [resourceName]: { autoConfig: filtered } };
+
+        setBuyVolumeConfigSaving(true);
+        buyMutation.mutate(
+            { agentId, planetId, bids: buyPayload },
+            {
+                onSuccess: (data) => {
+                    setBuyVolumeConfigSaving(false);
+                    if (data) {
+                        addPending({
+                            type: 'marketBuyVolumeConfig',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                    toast.success('Volume config saved.');
+                },
+                onError: (err) => {
+                    setBuyVolumeConfigSaving(false);
+                    toast.error(err instanceof Error ? err.message : 'Failed to save');
+                },
+            },
+        );
+    };
+
+    const handleResetBuyVolumeConfig = () => {
+        const committed = bid?.autoConfig ?? {};
+        const current = local.buyAutoConfig;
+        const resetFields: Record<string, string> = {};
+        for (const k of BUY_VOLUME_KEYS) {
+            const committedVal = committed[k as keyof typeof committed];
+            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
+        }
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as typeof current });
+    };
+
+    const handleSaveSellPricingConfig = () => {
+        const autoConfig = localToAutoConfig(
+            pickAutoConfigKeys(
+                local.sellAutoConfig,
+                SELL_PRICING_KEYS as unknown as string[],
+            ) as typeof local.sellAutoConfig,
+        );
+        const mergedWithCommitted = { ...(offer?.autoConfig ?? {}), ...(autoConfig ?? {}) };
+        const filtered = commitSellPricingConfig(
+            mergedWithCommitted as import('@/simulation/planet/planet').AutomatedPricingConfig,
+        );
         const sellPayload: Record<
             string,
             { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }
-        > = {
-            [resourceName]: { autoConfig },
-        };
+        > = { [resourceName]: { autoConfig: filtered } };
 
-        setSellAutoConfigSaving(true);
+        setSellPricingConfigSaving(true);
         sellMutation.mutate(
             { agentId, planetId, offers: sellPayload },
             {
-                onSuccess: () => {
-                    setSellAutoConfigSaving(false);
-                    toast.success('Auto-config saved.');
+                onSuccess: (data) => {
+                    setSellPricingConfigSaving(false);
+                    if (data) {
+                        addPending({
+                            type: 'marketSellPricingConfig',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                    toast.success('Pricing config saved.');
                 },
                 onError: (err) => {
-                    setSellAutoConfigSaving(false);
+                    setSellPricingConfigSaving(false);
                     toast.error(err instanceof Error ? err.message : 'Failed to save');
                 },
             },
         );
     };
 
-    const handleResetSellAutoConfig = () => {
-        onLocalChange(resourceName, { sellAutoConfig: autoConfigToLocal(offer?.autoConfig) });
+    const handleResetSellPricingConfig = () => {
+        const committed = offer?.autoConfig ?? {};
+        const current = local.sellAutoConfig;
+        const resetFields: Record<string, string> = {};
+        for (const k of SELL_PRICING_KEYS) {
+            const committedVal = committed[k as keyof typeof committed];
+            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
+        }
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...resetFields } as typeof current });
+    };
+
+    const handleSaveSellVolumeConfig = () => {
+        const autoConfig = localToAutoConfig(
+            pickAutoConfigKeys(
+                local.sellAutoConfig,
+                SELL_VOLUME_KEYS as unknown as string[],
+            ) as typeof local.sellAutoConfig,
+        );
+        const mergedWithCommitted = { ...(offer?.autoConfig ?? {}), ...(autoConfig ?? {}) };
+        const filtered = commitSellVolumeConfig(
+            mergedWithCommitted as import('@/simulation/planet/planet').AutomatedPricingConfig,
+        );
+        const sellPayload: Record<
+            string,
+            { autoConfig?: import('@/simulation/planet/planet').AutomatedPricingConfig }
+        > = { [resourceName]: { autoConfig: filtered } };
+
+        setSellVolumeConfigSaving(true);
+        sellMutation.mutate(
+            { agentId, planetId, offers: sellPayload },
+            {
+                onSuccess: (data) => {
+                    setSellVolumeConfigSaving(false);
+                    if (data) {
+                        addPending({
+                            type: 'marketSellVolumeConfig',
+                            agentId,
+                            planetId,
+                            resourceName,
+                            triggerTick: data.processedAtTick,
+                        });
+                    }
+                    toast.success('Volume config saved.');
+                },
+                onError: (err) => {
+                    setSellVolumeConfigSaving(false);
+                    toast.error(err instanceof Error ? err.message : 'Failed to save');
+                },
+            },
+        );
+    };
+
+    const handleResetSellVolumeConfig = () => {
+        const committed = offer?.autoConfig ?? {};
+        const current = local.sellAutoConfig;
+        const resetFields: Record<string, string> = {};
+        for (const k of SELL_VOLUME_KEYS) {
+            const committedVal = committed[k as keyof typeof committed];
+            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
+        }
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...resetFields } as typeof current });
     };
 
     const pendingBuyPriceAction = pendingActions.find(
@@ -562,8 +792,11 @@ export default function ResourceAccordionItem({
     const pendingBuyAutomationAction = pendingActions.find(
         (a) => a.type === 'marketBuyAutomation' && a.resourceName === resourceName,
     );
-    const pendingBuyAutoConfigAction = pendingActions.find(
-        (a) => a.type === 'marketBuyAutoConfig' && a.resourceName === resourceName,
+    const pendingBuyPricingConfigAction = pendingActions.find(
+        (a) => a.type === 'marketBuyPricingConfig' && a.resourceName === resourceName,
+    );
+    const pendingBuyVolumeConfigAction = pendingActions.find(
+        (a) => a.type === 'marketBuyVolumeConfig' && a.resourceName === resourceName,
     );
     const pendingSellPriceAction = pendingActions.find(
         (a) => a.type === 'marketSellPrice' && a.resourceName === resourceName,
@@ -571,8 +804,11 @@ export default function ResourceAccordionItem({
     const pendingSellAutomationAction = pendingActions.find(
         (a) => a.type === 'marketSellAutomation' && a.resourceName === resourceName,
     );
-    const pendingSellAutoConfigAction = pendingActions.find(
-        (a) => a.type === 'marketSellAutoConfig' && a.resourceName === resourceName,
+    const pendingSellPricingConfigAction = pendingActions.find(
+        (a) => a.type === 'marketSellPricingConfig' && a.resourceName === resourceName,
+    );
+    const pendingSellVolumeConfigAction = pendingActions.find(
+        (a) => a.type === 'marketSellVolumeConfig' && a.resourceName === resourceName,
     );
 
     const buyAutomationOverlay = buyAutomationSaving
@@ -583,9 +819,15 @@ export default function ResourceAccordionItem({
 
     const buyPriceOverlay = buyPriceSaving ? 'Saving…' : pendingBuyPriceAction ? 'Awaiting next day…' : null;
 
-    const buyAutoConfigOverlay = buyAutoConfigSaving
+    const buyPricingConfigOverlay = buyPricingConfigSaving
         ? 'Saving…'
-        : pendingBuyAutoConfigAction
+        : pendingBuyPricingConfigAction
+          ? 'Awaiting next day…'
+          : null;
+
+    const buyVolumeConfigOverlay = buyVolumeConfigSaving
+        ? 'Saving…'
+        : pendingBuyVolumeConfigAction
           ? 'Awaiting next day…'
           : null;
 
@@ -597,9 +839,15 @@ export default function ResourceAccordionItem({
 
     const sellPriceOverlay = sellPriceSaving ? 'Saving…' : pendingSellPriceAction ? 'Awaiting next day…' : null;
 
-    const sellAutoConfigOverlay = sellAutoConfigSaving
+    const sellPricingConfigOverlay = sellPricingConfigSaving
         ? 'Saving…'
-        : pendingSellAutoConfigAction
+        : pendingSellPricingConfigAction
+          ? 'Awaiting next day…'
+          : null;
+
+    const sellVolumeConfigOverlay = sellVolumeConfigSaving
+        ? 'Saving…'
+        : pendingSellVolumeConfigAction
           ? 'Awaiting next day…'
           : null;
 
@@ -682,15 +930,19 @@ export default function ResourceAccordionItem({
                             onResetBuy={handleResetBuy}
                             onCancelBid={handleCancelBid}
                             onAutomationChange={handleBuyAutomationChange}
-                            onSaveBuyAutoConfig={handleSaveBuyAutoConfig}
-                            onResetBuyAutoConfig={handleResetBuyAutoConfig}
-                            buyAutomationSaving={buyAutomationSaving}
+                            onSaveBuyPricingConfig={handleSaveBuyPricingConfig}
+                            onResetBuyPricingConfig={handleResetBuyPricingConfig}
+                            onSaveBuyVolumeConfig={handleSaveBuyVolumeConfig}
+                            onResetBuyVolumeConfig={handleResetBuyVolumeConfig}
                             buyPriceSaving={buyPriceSaving}
-                            buyAutoConfigSaving={buyAutoConfigSaving}
+                            buyAutomationSaving={buyAutomationSaving}
+                            buyPricingConfigSaving={buyPricingConfigSaving}
+                            buyVolumeConfigSaving={buyVolumeConfigSaving}
                             planetId={planetId}
                             ships={ships}
                             buyAutomationOverlay={buyAutomationOverlay}
-                            buyAutoConfigOverlay={buyAutoConfigOverlay}
+                            buyPricingConfigOverlay={buyPricingConfigOverlay}
+                            buyVolumeConfigOverlay={buyVolumeConfigOverlay}
                             buyPriceOverlay={buyPriceOverlay}
                         />
 
@@ -705,14 +957,18 @@ export default function ResourceAccordionItem({
                             onResetSell={handleResetSell}
                             onCancelOffer={handleCancelOffer}
                             onAutomationChange={handleSellAutomationChange}
-                            onSaveSellAutoConfig={handleSaveSellAutoConfig}
-                            onResetSellAutoConfig={handleResetSellAutoConfig}
-                            sellAutomationSaving={sellAutomationSaving}
+                            onSaveSellPricingConfig={handleSaveSellPricingConfig}
+                            onResetSellPricingConfig={handleResetSellPricingConfig}
+                            onSaveSellVolumeConfig={handleSaveSellVolumeConfig}
+                            onResetSellVolumeConfig={handleResetSellVolumeConfig}
                             sellPriceSaving={sellPriceSaving}
-                            sellAutoConfigSaving={sellAutoConfigSaving}
+                            sellAutomationSaving={sellAutomationSaving}
+                            sellPricingConfigSaving={sellPricingConfigSaving}
+                            sellVolumeConfigSaving={sellVolumeConfigSaving}
                             planetId={planetId}
                             sellAutomationOverlay={sellAutomationOverlay}
-                            sellAutoConfigOverlay={sellAutoConfigOverlay}
+                            sellPricingConfigOverlay={sellPricingConfigOverlay}
+                            sellVolumeConfigOverlay={sellVolumeConfigOverlay}
                             sellPriceOverlay={sellPriceOverlay}
                         />
                     </div>

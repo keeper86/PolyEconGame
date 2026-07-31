@@ -5,6 +5,7 @@ import {
     generateAgentPersonality,
 } from './personalities';
 import { INPUT_BUFFER_TARGET_TICKS, TARGET_FILL_RATE, TARGET_SELL_THROUGH } from '../constants';
+import type { Resource } from '../planet/claims';
 
 describe('generateAgentPersonality', () => {
     it('returns configs with populated fields', () => {
@@ -28,26 +29,46 @@ describe('generateAgentPersonality', () => {
             const hasTargetFill = cfg.buyAutoConfig.targetFillRate;
             const hasTargetSellThrough = cfg.sellAutoConfig.targetSellThrough;
 
-            if (hasInputBuffer === undefined) seenBuyVolume.add('undefined');
-            else if (hasInputBuffer <= INPUT_BUFFER_TARGET_TICKS / 3) seenBuyVolume.add('just-in-time');
-            else if (hasInputBuffer >= INPUT_BUFFER_TARGET_TICKS * 1.8) seenBuyVolume.add('stockpile');
-            else seenBuyVolume.add('balanced');
+            if (hasInputBuffer === undefined) {
+                seenBuyVolume.add('undefined');
+            } else if (hasInputBuffer <= INPUT_BUFFER_TARGET_TICKS / 3) {
+                seenBuyVolume.add('just-in-time');
+            } else if (hasInputBuffer >= INPUT_BUFFER_TARGET_TICKS * 1.8) {
+                seenBuyVolume.add('stockpile');
+            } else {
+                seenBuyVolume.add('balanced');
+            }
 
-            if (hasTargetFill === undefined) seenBuyPricing.add('undefined');
-            else if (hasTargetFill <= TARGET_FILL_RATE * 0.85) seenBuyPricing.add('patient');
-            else if (hasTargetFill >= TARGET_FILL_RATE * 1.04) seenBuyPricing.add('urgent');
-            else seenBuyPricing.add('market-rate');
+            if (hasTargetFill === undefined) {
+                seenBuyPricing.add('undefined');
+            } else if (hasTargetFill <= TARGET_FILL_RATE * 0.85) {
+                seenBuyPricing.add('patient');
+            } else if (hasTargetFill >= TARGET_FILL_RATE * 1.04) {
+                seenBuyPricing.add('urgent');
+            } else {
+                seenBuyPricing.add('market-rate');
+            }
 
-            if (hasTargetSellThrough === undefined) seenSellPricing.add('undefined');
-            else if (hasTargetSellThrough <= TARGET_SELL_THROUGH * 0.7) seenSellPricing.add('premium');
-            else if (hasTargetSellThrough >= TARGET_SELL_THROUGH * 1.04) seenSellPricing.add('liquidation');
-            else seenSellPricing.add('market-rate');
+            if (hasTargetSellThrough === undefined) {
+                seenSellPricing.add('undefined');
+            } else if (hasTargetSellThrough <= TARGET_SELL_THROUGH * 0.7) {
+                seenSellPricing.add('premium');
+            } else if (hasTargetSellThrough >= TARGET_SELL_THROUGH * 1.04) {
+                seenSellPricing.add('liquidation');
+            } else {
+                seenSellPricing.add('market-rate');
+            }
 
             const freeRet = cfg.sellAutoConfig.freeRetainmentSmoothingMaxExtra;
-            if (freeRet === undefined) seenSellVolume.add('undefined');
-            else if (freeRet <= 3) seenSellVolume.add('dump');
-            else if (freeRet >= 12) seenSellVolume.add('reserve');
-            else seenSellVolume.add('balanced');
+            if (freeRet === undefined) {
+                seenSellVolume.add('undefined');
+            } else if (freeRet <= 3) {
+                seenSellVolume.add('dump');
+            } else if (freeRet >= 12) {
+                seenSellVolume.add('reserve');
+            } else {
+                seenSellVolume.add('balanced');
+            }
         }
 
         expect(seenBuyVolume.has('balanced')).toBe(true);
@@ -70,7 +91,13 @@ describe('generateAgentPersonality', () => {
 
 describe('buildBuyAutoConfigForResource', () => {
     it('strips inputBufferTargetTicks and targetFillRate for services', () => {
-        const service = { name: 'healthcare', form: 'services', mass: 0, volume: 0, formCategory: 'g' as const };
+        const service: Resource = {
+            name: 'healthcare',
+            form: 'services',
+            level: 'services',
+            massPerQuantity: 0,
+            volumePerQuantity: 0,
+        };
         const cfg = buildBuyAutoConfigForResource(
             { inputBufferTargetTicks: 30, targetFillRate: 0.9, priceAdjustMaxUp: 1.05 },
             service,
@@ -81,11 +108,14 @@ describe('buildBuyAutoConfigForResource', () => {
     });
 
     it('keeps all fields for goods', () => {
-        const goods = { name: 'ironOre', form: 'solid', mass: 1, volume: 1, formCategory: 's' as const };
-        const cfg = buildBuyAutoConfigForResource(
-            { inputBufferTargetTicks: 30, targetFillRate: 0.9 },
-            goods,
-        );
+        const goods: Resource = {
+            name: 'ironOre',
+            form: 'solid',
+            level: 'raw',
+            massPerQuantity: 1,
+            volumePerQuantity: 1,
+        };
+        const cfg = buildBuyAutoConfigForResource({ inputBufferTargetTicks: 30, targetFillRate: 0.9 }, goods);
         expect(cfg.inputBufferTargetTicks).toBe(30);
         expect(cfg.targetFillRate).toBe(0.9);
     });
@@ -93,21 +123,27 @@ describe('buildBuyAutoConfigForResource', () => {
 
 describe('buildSellAutoConfigForResource', () => {
     it('strips targetSellThrough for services', () => {
-        const service = { name: 'healthcare', form: 'services', mass: 0, volume: 0, formCategory: 'g' as const };
-        const cfg = buildSellAutoConfigForResource(
-            { targetSellThrough: 0.9, automatedCostFloorBuffer: 0.5 },
-            service,
-        );
+        const service: Resource = {
+            name: 'healthcare',
+            form: 'services',
+            level: 'services',
+            massPerQuantity: 0,
+            volumePerQuantity: 0,
+        };
+        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9, automatedCostFloorBuffer: 0.5 }, service);
         expect(cfg.targetSellThrough).toBeUndefined();
         expect(cfg.automatedCostFloorBuffer).toBe(0.5);
     });
 
     it('keeps all fields for goods', () => {
-        const goods = { name: 'ironOre', form: 'solid', mass: 1, volume: 1, formCategory: 's' as const };
-        const cfg = buildSellAutoConfigForResource(
-            { targetSellThrough: 0.9, automatedCostFloorBuffer: 0.5 },
-            goods,
-        );
+        const goods: Resource = {
+            name: 'ironOre',
+            form: 'solid',
+            level: 'raw',
+            massPerQuantity: 1,
+            volumePerQuantity: 1,
+        };
+        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9, automatedCostFloorBuffer: 0.5 }, goods);
         expect(cfg.targetSellThrough).toBe(0.9);
     });
 });

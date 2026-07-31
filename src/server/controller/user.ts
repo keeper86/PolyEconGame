@@ -869,7 +869,10 @@ export const expandFacility = () => {
                 targetScale: input.targetScale,
             });
 
-            logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${result.facilityId}`);
+            logger.info(
+                { component: 'expand-facility' },
+                `Agent ${input.agentId} expanding facility ${result.facilityId}`,
+            );
 
             return result;
         });
