@@ -2,6 +2,7 @@ import { computeSupplyChainBalance } from '@/app/supply-chain/_components/comput
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
 import { currencyMapping, DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
+import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { Agent, Planet } from '@/simulation/planet/planet';
@@ -93,10 +94,6 @@ function computeDemographicMetrics(planet: Planet): {
     let healthcareStarveSum = 0;
     let retailStarveSum = 0;
     let educationStarveSum = 0;
-    let groceryBufSum = 0;
-    let healthcareBufSum = 0;
-    let educationBufSum = 0;
-    let retailBufSum = 0;
 
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
@@ -118,10 +115,6 @@ function computeDemographicMetrics(planet: Planet): {
                     healthcareStarveSum += svc.healthcare.starvationLevel * cat.total;
                     retailStarveSum += svc.retail.starvationLevel * cat.total;
                     educationStarveSum += svc.education.starvationLevel * cat.total;
-                    groceryBufSum += svc.grocery.buffer * cat.total;
-                    healthcareBufSum += svc.healthcare.buffer * cat.total;
-                    educationBufSum += svc.education.buffer * cat.total;
-                    retailBufSum += svc.retail.buffer * cat.total;
                 }
             }
         }
@@ -136,10 +129,10 @@ function computeDemographicMetrics(planet: Planet): {
         avgHealthcareStarvation: safeDiv(healthcareStarveSum),
         avgRetailStarvation: safeDiv(retailStarveSum),
         avgEducationStarvation: safeDiv(educationStarveSum),
-        avgGroceryBuffer: safeDiv(groceryBufSum),
-        avgHealthcareBuffer: safeDiv(healthcareBufSum),
-        avgEducationBuffer: safeDiv(educationBufSum),
-        avgRetailBuffer: safeDiv(retailBufSum),
+        avgGroceryBuffer: computeNormalizedBuffer(planet, 'grocery'),
+        avgHealthcareBuffer: computeNormalizedBuffer(planet, 'healthcare'),
+        avgEducationBuffer: computeNormalizedBuffer(planet, 'education'),
+        avgRetailBuffer: computeNormalizedBuffer(planet, 'retail'),
     };
 }
 
