@@ -243,7 +243,7 @@ export const siliconWaferResourceType: Resource = {
 export const electronicsResourceType: Resource = {
     name: 'Electronics',
     form: 'pieces',
-    level: 'refined',
+    level: 'manufactured',
     volumePerQuantity: 5.0,
     massPerQuantity: 1,
 };

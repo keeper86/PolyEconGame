@@ -345,7 +345,7 @@ export default function MarketPanel({
     return (
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3 pt-2'>
             <div className='flex items-center justify-between'>
-                <h3 className='text-sm font-semibold'>Market</h3>
+                <h3 className='text-sm font-semibold'>Order Books</h3>
                 <div className='flex items-center gap-2'>
                     <Label
                         htmlFor='show-all-resources'
@@ -367,7 +367,7 @@ export default function MarketPanel({
                         value={level}
                         disabled={levelResources.length === 0}
                         {...(level === 'services' ? { 'data-tour': 'market-tab-services' } : {})}
-                        className='bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed'
+                        className='text-sm font-semibold bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed'
                     >
                         {label}
                     </TabsTrigger>

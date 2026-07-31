@@ -44,6 +44,8 @@ import {
     vehicleResourceType,
     waterResourceType,
 } from '@/simulation/planet/resources';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
+import { RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -178,7 +180,7 @@ function ProductToggleButton({
             aria-pressed={isSelected}
             onClick={onClick}
             className={`
-                relative flex flex-col items-center justify-center gap-1 w-[48px] h-[48px] rounded-md
+                relative flex flex-col items-center justify-center gap-1 w-[46px] h-[46px] rounded-md
                 transition-all duration-150 ease-in-out select-none
                 ${
                     isSelected
@@ -193,9 +195,18 @@ function ProductToggleButton({
                     : `2px 3px 6px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.08)`,
             }}
         >
-            <ProductIcon productName={name} size={38} />
+            <ProductIcon productName={name} size={36} />
         </button>
     );
+}
+
+function getLevelForResource(name: string): ResourceProcessLevel {
+    for (const level of ['raw', 'refined', 'manufactured', 'services'] as const) {
+        if (resourcesByLevel[level].some((r) => r.name === name)) {
+            return level;
+        }
+    }
+    return 'raw';
 }
 
 function ProductSelector({
@@ -215,18 +226,38 @@ function ProductSelector({
         }
     };
 
+    const groups = useMemo(() => {
+        const byLevel = new Map<ResourceProcessLevel, string[]>();
+        for (const name of allResourceNames) {
+            const level = getLevelForResource(name);
+            const group = byLevel.get(level) ?? [];
+            group.push(name);
+            byLevel.set(level, group);
+        }
+        return (['raw', 'refined', 'manufactured', 'services'] as const)
+            .filter((l) => (byLevel.get(l)?.length ?? 0) > 0)
+            .map((level) => ({ level, names: byLevel.get(level)! }));
+    }, [allResourceNames]);
+
     return (
-        <div className='space-y-2'>
-            <div className='flex flex-wrap gap-2'>
-                {allResourceNames.map((name) => (
-                    <ProductToggleButton
-                        key={name}
-                        name={name}
-                        isSelected={selected.includes(name)}
-                        onClick={() => toggle(name)}
-                    />
-                ))}
-            </div>
+        <div className='space-y-3'>
+            {groups.map(({ level, names }) => (
+                <div key={level}>
+                    <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/30 mb-1 select-none'>
+                        {RESOURCE_LEVEL_LABELS[level]}
+                    </div>
+                    <div className='flex flex-wrap gap-2 w-[325px]'>
+                        {names.map((name) => (
+                            <ProductToggleButton
+                                key={name}
+                                name={name}
+                                isSelected={selected.includes(name)}
+                                onClick={() => toggle(name)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            ))}
         </div>
     );
 }
@@ -528,7 +559,7 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
             </div>
 
             <div className='flex flex-row flex-wrap gap-2'>
-                <span className='flex-2'>
+                <span className='flex-shrink-0'>
                     <ProductSelector
                         allResourceNames={allResourceNames}
                         selected={selectedProducts}
