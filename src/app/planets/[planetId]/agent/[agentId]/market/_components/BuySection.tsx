@@ -53,6 +53,7 @@ import {
     type BuyVolumePresetType,
     type PricingPresetType,
 } from './StrategyPresets';
+import { useBuySectionMutations } from './useBuySectionMutations';
 
 type BuyStatusKind =
     | 'filled'
@@ -160,29 +161,41 @@ const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['inputBufferTargetTicks
 
 export default function BuySection({
     resourceName,
+    agentId,
     bid,
     local,
     assets,
     overviewRow,
     onLocalChange,
-    onSaveBuy,
-    onResetBuy,
-    onAutomationChange,
-    onSaveBuyPricingConfig,
-    onResetBuyPricingConfig,
-    onSaveBuyVolumeConfig,
-    onResetBuyVolumeConfig,
-    buyPriceSaving,
-    buyAutomationSaving,
-    buyPricingConfigSaving,
-    buyVolumeConfigSaving,
     planetId,
     ships,
-    buyAutomationOverlay,
-    buyPricingConfigOverlay,
-    buyVolumeConfigOverlay,
-    buyPriceOverlay,
 }: BuySectionProps): React.ReactElement {
+    const {
+        saveBuy: onSaveBuy,
+        resetBuy: onResetBuy,
+        automationChange: onAutomationChange,
+        savePricingConfig: onSaveBuyPricingConfig,
+        resetPricingConfig: onResetBuyPricingConfig,
+        saveVolumeConfig: onSaveBuyVolumeConfig,
+        resetVolumeConfig: onResetBuyVolumeConfig,
+        buyPriceSaving,
+        buyAutomationSaving,
+        buyPricingConfigSaving,
+        buyVolumeConfigSaving,
+        buyPriceOverlay,
+        buyAutomationOverlay,
+        buyPricingConfigOverlay,
+        buyVolumeConfigOverlay,
+    } = useBuySectionMutations({
+        agentId,
+        planetId,
+        resourceName,
+        local,
+        onLocalChange,
+        assets,
+        bid,
+    });
+
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const deposits = assets.deposits;
 
@@ -531,31 +544,29 @@ export default function BuySection({
                                     </div>
 
                                     <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                        <PriceAlgorithmDialog mode='buy' diagnostics={bid?.diagnostics} />
-                                        <div className='flex items-center gap-2'>
+                                        <div className='flex items-center justify-between gap-2'>
                                             <Button
                                                 variant='outline'
                                                 size='sm'
-                                                className={`h-7 text-[11px] px-2 ${hasPricingConfigDirty ? '' : 'invisible'}`}
+                                                className={`h-7 text-[11px] px-2 ${hasPricingConfigDirty ? '' : ''}`}
                                                 onClick={onResetBuyPricingConfig}
-                                                disabled={buyPricingConfigSaving}
+                                                disabled={buyPricingConfigSaving || !hasPricingConfigDirty}
                                             >
                                                 <RotateCcw className='h-3 w-3 mr-1' />
                                                 Reset
                                             </Button>
-                                            <Button
-                                                size='sm'
-                                                className='h-7 text-[11px] px-3'
-                                                onClick={onSaveBuyPricingConfig}
-                                                disabled={
-                                                    !hasPricingConfigDirty ||
-                                                    !hasAnyPricingValue ||
-                                                    buyPricingConfigSaving
-                                                }
-                                            >
-                                                {buyPricingConfigSaving ? 'Saving…' : 'Save Config'}
-                                            </Button>
+                                            <PriceAlgorithmDialog mode='buy' diagnostics={bid?.diagnostics} />
                                         </div>
+                                        <Button
+                                            size='sm'
+                                            className='h-7 text-[11px] px-3'
+                                            onClick={onSaveBuyPricingConfig}
+                                            disabled={
+                                                !hasPricingConfigDirty || !hasAnyPricingValue || buyPricingConfigSaving
+                                            }
+                                        >
+                                            {buyPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                        </Button>
                                     </div>
 
                                     {overlay(buyPricingConfigOverlay)}
@@ -868,13 +879,13 @@ export default function BuySection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-end gap-2 pt-1'>
+                                    <div className='flex items-center justify-between gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2 ${hasVolumeConfigDirty ? '' : 'invisible'}`}
+                                            className={`h-7 text-[11px] px-2`}
                                             onClick={onResetBuyVolumeConfig}
-                                            disabled={buyVolumeConfigSaving}
+                                            disabled={buyVolumeConfigSaving || !hasVolumeConfigDirty}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset

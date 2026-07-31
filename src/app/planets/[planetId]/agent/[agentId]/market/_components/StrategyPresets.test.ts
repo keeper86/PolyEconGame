@@ -93,10 +93,23 @@ describe('detectVolumeSellPreset', () => {
     });
 });
 
+function roundtripLocal(presetValues: Record<string, string>): AutoConfigLocalState {
+    const roundtripped: Record<string, string> = {};
+    for (const [key, value] of Object.entries(presetValues)) {
+        roundtripped[key] = value !== '' ? String(parseFloat(value)) : '';
+    }
+    return localWith(roundtripped);
+}
+
 describe('detectPricingBuyPreset', () => {
     it('detects patient preset', () => {
         const local = localWith(PRICING_BUY_PRESETS.patient);
         expect(detectPricingBuyPreset(local, false)).toBe('patient');
+    });
+
+    it('detects market-rate preset after parseFloat/toString roundtrip drops trailing zeros', () => {
+        const local = roundtripLocal(PRICING_BUY_PRESETS['market-rate']);
+        expect(detectPricingBuyPreset(local, false)).toBe('market-rate');
     });
 
     it('detects market-rate preset', () => {
@@ -128,6 +141,16 @@ describe('detectPricingSellPreset', () => {
     it('detects liquidation preset', () => {
         const local = localWith(PRICING_SELL_PRESETS.liquidation);
         expect(detectPricingSellPreset(local, false)).toBe('liquidation');
+    });
+
+    it('detects market-rate preset after parseFloat/toString roundtrip drops trailing zeros', () => {
+        const local = roundtripLocal(PRICING_SELL_PRESETS['market-rate']);
+        expect(detectPricingSellPreset(local, false)).toBe('market-rate');
+    });
+
+    it('detects premium preset after parseFloat/toString roundtrip drops trailing zeros', () => {
+        const local = roundtripLocal(PRICING_SELL_PRESETS.premium);
+        expect(detectPricingSellPreset(local, false)).toBe('premium');
     });
 
     it('detects market-rate preset', () => {

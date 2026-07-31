@@ -185,7 +185,7 @@ function ProductToggleButton({
             className={`
                 relative flex flex-col items-center justify-center gap-1 w-[46px] h-[46px] rounded-md
                 transition-all duration-150 ease-in-out select-none 
-                ${isSelected ? 'translate-y-[1px] ' : 'bg-card'}
+                ${isSelected ? 'translate-y-[0px] scale-105' : 'bg-card  opacity-80'}
             `}
             style={{
                 backgroundColor: isSelected ? color : undefined,
@@ -563,7 +563,6 @@ export default function MultiProductPriceChart({ planetId, allResourceNames }: P
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.25, ease: 'easeInOut' }}
-                        className='overflow-hidden'
                     >
                         <div className='flex flex-col gap-3'>
                             <div className='flex flex-row flex-wrap gap-2'>
