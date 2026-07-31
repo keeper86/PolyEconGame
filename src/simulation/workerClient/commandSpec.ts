@@ -134,11 +134,11 @@ export const buildFacilitySpec: CommandSpec<
     Extract<InboundMessage, { type: 'buildFacility' }>,
     BuildFacilitySuccess,
     BuildFacilityFailure,
-    string
+    { facilityId: string; processedAtTick: number }
 > = {
     successType: 'facilityBuilt',
     failureType: 'facilityBuildFailed',
-    extract: (msg) => msg.facilityId,
+    extract: (msg) => ({ facilityId: msg.facilityId, processedAtTick: msg.processedAtTick }),
 };
 
 type ExpandFacilitySuccess = Extract<OutboundMessage, { type: 'facilityExpanded' }>;
@@ -147,11 +147,11 @@ export const expandFacilitySpec: CommandSpec<
     Extract<InboundMessage, { type: 'expandFacility' }>,
     ExpandFacilitySuccess,
     ExpandFacilityFailure,
-    string
+    { facilityId: string; processedAtTick: number }
 > = {
     successType: 'facilityExpanded',
     failureType: 'facilityExpandFailed',
-    extract: (msg) => msg.facilityId,
+    extract: (msg) => ({ facilityId: msg.facilityId, processedAtTick: msg.processedAtTick }),
 };
 
 type SetFacilityScaleSuccess = Extract<OutboundMessage, { type: 'facilityScaleSet' }>;
@@ -160,11 +160,11 @@ export const setFacilityScaleSpec: CommandSpec<
     Extract<InboundMessage, { type: 'setFacilityScale' }>,
     SetFacilityScaleSuccess,
     SetFacilityScaleFailure,
-    string
+    { facilityId: string; processedAtTick: number }
 > = {
     successType: 'facilityScaleSet',
     failureType: 'facilityScaleSetFailed',
-    extract: (msg) => msg.facilityId,
+    extract: (msg) => ({ facilityId: msg.facilityId, processedAtTick: msg.processedAtTick }),
 };
 
 type LeaseClaimSuccess = Extract<OutboundMessage, { type: 'claimLeased' }>;
@@ -433,11 +433,11 @@ export const cancelConstructionSpec: CommandSpec<
     Extract<InboundMessage, { type: 'cancelConstruction' }>,
     CancelConstructionSuccess,
     CancelConstructionFailure,
-    void
+    { processedAtTick: number }
 > = {
     successType: 'constructionCancelled',
     failureType: 'constructionCancelFailed',
-    extract: () => undefined,
+    extract: (msg) => ({ processedAtTick: msg.processedAtTick }),
 };
 
 type ContractFacilitySuccess = Extract<OutboundMessage, { type: 'facilityContracted' }>;
@@ -446,9 +446,9 @@ export const contractFacilitySpec: CommandSpec<
     Extract<InboundMessage, { type: 'contractFacility' }>,
     ContractFacilitySuccess,
     ContractFacilityFailure,
-    string
+    { facilityId: string; processedAtTick: number }
 > = {
     successType: 'facilityContracted',
     failureType: 'facilityContractFailed',
-    extract: (msg) => msg.facilityId,
+    extract: (msg) => ({ facilityId: msg.facilityId, processedAtTick: msg.processedAtTick }),
 };

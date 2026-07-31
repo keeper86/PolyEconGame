@@ -183,7 +183,7 @@ export function workerBuildFacility(opts: {
     facilityKey: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<{ result: string; processedAtTick: number }> {
+}): Promise<{ result: { facilityId: string; processedAtTick: number }; processedAtTick: number }> {
     const { agentId, planetId, facilityKey, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'buildFacility', requestId: randomUUID(), agentId, planetId, facilityKey, targetScale },
@@ -198,7 +198,7 @@ export function workerExpandFacility(opts: {
     facilityId: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<{ result: string; processedAtTick: number }> {
+}): Promise<{ result: { facilityId: string; processedAtTick: number }; processedAtTick: number }> {
     const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'expandFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
@@ -213,7 +213,7 @@ export function workerSetFacilityScale(opts: {
     facilityId: string;
     scaleFraction: number;
     timeoutMs?: number;
-}): Promise<{ result: string; processedAtTick: number }> {
+}): Promise<{ result: { facilityId: string; processedAtTick: number }; processedAtTick: number }> {
     const { agentId, planetId, facilityId, scaleFraction, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'setFacilityScale', requestId: randomUUID(), agentId, planetId, facilityId, scaleFraction },
@@ -228,7 +228,7 @@ export function workerContractFacility(opts: {
     facilityId: string;
     targetScale: number;
     timeoutMs?: number;
-}): Promise<{ result: string; processedAtTick: number }> {
+}): Promise<{ result: { facilityId: string; processedAtTick: number }; processedAtTick: number }> {
     const { agentId, planetId, facilityId, targetScale, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'contractFacility', requestId: randomUUID(), agentId, planetId, facilityId, targetScale },
@@ -629,7 +629,7 @@ export function workerCancelConstruction(opts: {
     planetId: string;
     facilityId: string;
     timeoutMs?: number;
-}): Promise<{ result: void; processedAtTick: number }> {
+}): Promise<{ result: { processedAtTick: number }; processedAtTick: number }> {
     const { agentId, planetId, facilityId, timeoutMs } = opts;
     return sendCommandSpec(
         { type: 'cancelConstruction', requestId: randomUUID(), agentId, planetId, facilityId },

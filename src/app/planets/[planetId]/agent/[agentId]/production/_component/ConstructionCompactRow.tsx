@@ -46,13 +46,18 @@ export function ConstructionCompactRow({
     const addPending = useAddPendingAction();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'cancel',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Construction cancelled.');
-                // Pending action will be resolved by predicate check
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Cancel failed');
-                removePendingById(agentId, planetId, facility.id);
             },
         }),
     );
@@ -195,13 +200,6 @@ export function ConstructionCompactRow({
                                 variant='outline'
                                 className='flex-1 text-xs gap-1'
                                 onClick={() => {
-                                    addPending({
-                                        type: 'cancel',
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        triggerTick: currentTick,
-                                    });
                                     cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
                                     setShowCancelDialog(false);
                                 }}

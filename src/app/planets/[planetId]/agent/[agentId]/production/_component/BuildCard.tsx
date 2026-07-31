@@ -56,7 +56,14 @@ function BuildForm({
 
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'build',
+                    agentId,
+                    planetId,
+                    facilityKey: entry.name,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Construction ordered. Changes take effect on the next tick.');
                 if (isTourActive && isOilWell) {
                     markActionCompleted('build-oil-well');
@@ -65,8 +72,6 @@ function BuildForm({
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Build failed');
-                // Mutation failed — remove pending action so the UI shows no loading state
-                removePendingByKey(agentId, planetId, entry.name);
             },
         }),
     );
@@ -126,13 +131,6 @@ function BuildForm({
                     financials={financials}
                     onCancel={onCancel}
                     onConfirm={(targetScale) => {
-                        addPending({
-                            type: 'build',
-                            agentId,
-                            planetId,
-                            facilityKey: entry.name,
-                            triggerTick: currentTick,
-                        });
                         buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
                     }}
                     onScaleChange={setPreviewScale}

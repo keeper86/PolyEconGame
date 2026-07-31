@@ -47,7 +47,7 @@ const CONFIG: SlackConfig = {
 };
 
     // Add construction demand: every non-construction facility needs construction service for expansion
-    const constructionDemandPerTick = 12_000_000;
+    const constructionDemandPerTick = 16_000_000;
 
 const BALANCE_EPSILON = 0.001;
 
@@ -329,7 +329,7 @@ function main(): void {
             console.log('const TARGETS: Record<string, FacilityTarget> = {');
             for (const r of results) {
                 console.log(
-                    `    ${camelCase(r.name)}: { totalScale: ${r.scale}, agentCount: Math.ceil(flatTargetFactor*${Math.ceil(r.scale / 150000)}) },`,
+                    `    ${camelCase(r.name)}: { totalScale: ${r.scale}, agentCount: Math.ceil(flatTargetFactor*${1+Math.ceil(r.scale / 150000)}) },`,
                 );
             }
             console.log('};');
