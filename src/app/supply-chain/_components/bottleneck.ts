@@ -53,7 +53,8 @@ export function computeBottlenecks(
 
     for (const svc of DEMANDED_SERVICES) {
         const svcDef = getServiceDefinitionByResourceName(svc.name);
-        const demandPerTick = population * (svcDef?.consumptionRatePerPersonPerTick(30, 'employed') ?? 0);
+        const demandPerTick =
+            population * (svcDef?.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) ?? 0);
 
         type ServiceProducer = { facilityName: string; outputQuantity: number; scale: number };
         const producers: ServiceProducer[] = [];

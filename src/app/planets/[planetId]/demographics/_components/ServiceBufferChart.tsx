@@ -10,7 +10,7 @@ import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
-import { GV_FOOD, GV_POP } from './demographicsTypes';
+import { GV_FOOD, GV_POP, GV_WEALTH } from './demographicsTypes';
 
 type ChartRow = Record<string, number>;
 
@@ -135,18 +135,20 @@ function mergePairs(rows: ChartRow[], rowKeys: readonly string[], serviceKey: Se
 
 /** Compute the effective age multiplier for a given service, age, and group mode.
  *  For occupation mode, we use the occupation directly.
- *  For education mode, we weight by the actual occupation distribution at that age. */
+ *  For education mode, we weight by the actual occupation distribution at that age.
+ *  Wealth is the group's per-capita mean wealth derived from the aggregated row. */
 function computeEffectiveMultiplier(
     serviceKey: ServiceName,
     age: number,
     groupMode: GroupMode,
     groupIndex: number,
     occCounts: [number, number, number, number],
+    wealth: { mean: number; variance: number },
 ): number {
     const rateFn = SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
     if (groupMode === 'occupation') {
         const occ = OCCUPATIONS[groupIndex];
-        return rateFn(age, occ);
+        return rateFn(age, occ, wealth);
     } else {
         // education mode: weighted average over occupations
         let weightedRate = 0;
@@ -154,7 +156,7 @@ function computeEffectiveMultiplier(
         for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
             const occPop = occCounts[oi];
             if (occPop > 0) {
-                weightedRate += occPop * rateFn(age, OCCUPATIONS[oi]);
+                weightedRate += occPop * rateFn(age, OCCUPATIONS[oi], wealth);
                 totalOccPop += occPop;
             }
         }
@@ -203,8 +205,12 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
                     const avgStock = pop > 0 ? totalBuffer / pop : 0;
                     const ratio = targetPerPerson > 0 ? avgStock / targetPerPerson : 0;
 
-                    // Age-dependent effective population
-                    const multiplier = computeEffectiveMultiplier(serviceKey, r.age, groupMode, gi, r.occ);
+                    const groupWealth = r.groupValues[gi][GV_WEALTH];
+                    const wealthMean = pop > 0 ? groupWealth / pop : 0;
+                    const wealth: { mean: number; variance: number } = { mean: wealthMean, variance: 0 };
+
+                    // Age- and wealth-dependent effective population
+                    const multiplier = computeEffectiveMultiplier(serviceKey, r.age, groupMode, gi, r.occ, wealth);
                     const effectivePop = pop * multiplier;
 
                     row[`${key}_pop`] = pop;

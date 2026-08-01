@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
-import { toast } from 'sonner';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
@@ -17,13 +16,14 @@ import type { ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityIORow';
-import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { WorkerBars } from './WorkerBars';
-import Link from 'next/link';
 
 export function ActiveFacilityCard({
     facility,
@@ -57,8 +57,6 @@ export function ActiveFacilityCard({
     };
 
     const addPending = useAddPendingAction();
-    const removePendingById = useRemovePendingById();
-    const currentTick = useSimulationTick();
     const pendingActions = usePendingActions(agentId, planetId);
 
     // Check if there's a pending scale change for this facility
@@ -85,41 +83,61 @@ export function ActiveFacilityCard({
 
     const expandMutation = useMutation(
         trpc.expandFacility.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'expand',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    targetScale: previewScale,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Expansion ordered. Changes take effect on the next tick.');
                 setShowExpand(false);
                 onExpanded();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Expand failed');
-                removePendingById(agentId, planetId, facility.id, 'expand');
             },
         }),
     );
 
     const setScaleMutation = useMutation(
         trpc.setFacilityScale.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'scaleChange',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Operating scale updated. Changes take effect on the next tick.');
-                // pending action gets resolved by predicate check in useAgentPlanetDetail
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Scale change failed');
-                removePendingById(agentId, planetId, facility.id, 'scaleChange');
             },
         }),
     );
 
     const contractMutation = useMutation(
         trpc.contractFacility.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'contract',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    targetScale: reduceTarget,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
                 setShowReduce(false);
                 onExpanded();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Contract failed');
-                removePendingById(agentId, planetId, facility.id, 'contract');
             },
         }),
     );
@@ -239,14 +257,6 @@ export function ActiveFacilityCard({
                     className='shrink-0 text-xs h-7 w-16'
                     disabled={setScaleMutation.isPending || !scaleHasChanged}
                     onClick={() => {
-                        addPending({
-                            type: 'scaleChange',
-                            agentId,
-                            planetId,
-                            facilityId: facility.id,
-                            targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
-                            triggerTick: currentTick,
-                        });
                         setScaleMutation.mutate({
                             agentId,
                             planetId,
@@ -394,14 +404,6 @@ export function ActiveFacilityCard({
                                 financials={financials}
                                 onCancel={() => setShowExpand(false)}
                                 onConfirm={(targetScale) => {
-                                    addPending({
-                                        type: 'expand',
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        targetScale,
-                                        triggerTick: currentTick,
-                                    });
                                     expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale });
                                 }}
                                 onScaleChange={setPreviewScale}
@@ -501,14 +503,6 @@ export function ActiveFacilityCard({
                                         className='flex-1 text-xs'
                                         disabled={contractMutation.isPending}
                                         onClick={() => {
-                                            addPending({
-                                                type: 'contract',
-                                                agentId,
-                                                planetId,
-                                                facilityId: facility.id,
-                                                targetScale: reduceTarget,
-                                                triggerTick: currentTick,
-                                            });
                                             contractMutation.mutate({
                                                 agentId,
                                                 planetId,

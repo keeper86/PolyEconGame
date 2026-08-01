@@ -29,6 +29,7 @@ import type { LocalResourceState, Props } from './marketTypes';
 import { isAutoConfigDirty } from './marketTypes';
 import ResourceAccordionItem from './ResourceAccordionItem';
 import { useVisibleColumns } from './useVisibleColumns';
+import { Separator } from '@/components/ui/separator';
 
 export type MarketPanelProps = Props & { dataTick: number };
 
@@ -175,8 +176,8 @@ export default function MarketPanel({
     const currentTick = useSimulationTick();
 
     // ── Market pending action resolution (tick-based) ──────────────────────
-    // Actions are resolved when the data tick has advanced past the worker's
-    // processedAtTick. No predicate-based comparison is needed.
+    // Actions are resolved when the data tick has advanced past the
+    // triggerTick (set from the worker's processedAtTick in onSuccess).
     const pendingActionsAll = usePendingActions(agentId, planetId);
     const removePendingByResource = useRemovePendingByResource();
     const prevDataTickRef = useRef<number>(0);
@@ -191,7 +192,7 @@ export default function MarketPanel({
             if (!action.resourceName) {
                 continue;
             }
-            if (action.processedAtTick != null && dataTick >= action.processedAtTick + 1) {
+            if (dataTick > action.triggerTick) {
                 removePendingByResource(agentId, planetId, action.resourceName, action.type);
             }
         }
@@ -343,9 +344,10 @@ export default function MarketPanel({
     };
 
     return (
-        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3 pt-2'>
-            <div className='flex items-center justify-between'>
-                <h3 className='text-sm font-semibold'>Order Books</h3>
+        <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
+            <Separator />
+            <div className='flex items-baseline justify-between py-1'>
+                <h2 className='font-semibold'>Order Books</h2>
                 <div className='flex items-center gap-2'>
                     <Label
                         htmlFor='show-all-resources'

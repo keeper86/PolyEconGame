@@ -103,7 +103,7 @@ export function computePopulationServiceDemand(totalPopulation: number): Record<
         }
 
         for (const service of allServices) {
-            const rate = service.consumptionRatePerPersonPerTick(age, occ);
+            const rate = service.consumptionRatePerPersonPerTick(age, occ, { mean: 0, variance: 0 });
             if (rate <= 0) {
                 continue;
             }

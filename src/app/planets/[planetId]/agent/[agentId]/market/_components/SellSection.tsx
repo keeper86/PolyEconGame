@@ -36,6 +36,7 @@ import {
     type SellPricingPresetType,
     type SellVolumePresetType,
 } from './StrategyPresets';
+import { useSellSectionMutations } from './useSellSectionMutations';
 
 type SellStatusKind =
     | 'offering'
@@ -128,24 +129,40 @@ const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['freeRetainment', 'free
 
 export default function SellSection({
     resourceName,
+    agentId,
     offer,
     local,
     assets,
     overviewRow,
     onLocalChange,
-    onSaveSell,
-    onResetSell,
-    onAutomationChange,
-    onSaveSellAutoConfig,
-    onResetSellAutoConfig,
-    sellPriceSaving,
-    sellAutomationSaving,
-    sellAutoConfigSaving,
     planetId,
-    sellAutomationOverlay,
-    sellAutoConfigOverlay,
-    sellPriceOverlay,
 }: SellSectionProps): React.ReactElement {
+    const {
+        saveSell: onSaveSell,
+        resetSell: onResetSell,
+        automationChange: onAutomationChange,
+        savePricingConfig: onSaveSellPricingConfig,
+        resetPricingConfig: onResetSellPricingConfig,
+        saveVolumeConfig: onSaveSellVolumeConfig,
+        resetVolumeConfig: onResetSellVolumeConfig,
+        sellPriceSaving,
+        sellAutomationSaving,
+        sellPricingConfigSaving,
+        sellVolumeConfigSaving,
+        sellPriceOverlay,
+        sellAutomationOverlay,
+        sellPricingConfigOverlay,
+        sellVolumeConfigOverlay,
+    } = useSellSectionMutations({
+        agentId,
+        planetId,
+        resourceName,
+        local,
+        onLocalChange,
+        assets,
+        offer,
+    });
+
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
@@ -303,21 +320,26 @@ export default function SellSection({
         [handleSellConfigChange, activeVolumePreset, activePricingPreset],
     );
 
-    const ALL_AUTO_KEYS: (keyof AutoConfigLocalState)[] = [
-        'freeRetainment',
-        'freeRetainmentSmoothingMaxExtra',
+    const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
         'automatedCostFloorBuffer',
         'targetSellThrough',
     ];
+    const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
-    const hasAutoConfigDirty = ALL_AUTO_KEYS.some((key) => {
+    const hasPricingConfigDirty = SELL_PRICING_KEYS.some((key) => {
         const localVal = local.sellAutoConfig[key] !== '' ? parseFloat(local.sellAutoConfig[key]) : undefined;
         const committed = committedVal(committedConfig, key);
         return localVal !== undefined && localVal !== committed;
     });
-    const hasAnyAutoValue = ALL_AUTO_KEYS.some((key) => local.sellAutoConfig[key] !== '');
+    const hasVolumeConfigDirty = SELL_VOLUME_KEYS.some((key) => {
+        const localVal = local.sellAutoConfig[key] !== '' ? parseFloat(local.sellAutoConfig[key]) : undefined;
+        const committed = committedVal(committedConfig, key);
+        return localVal !== undefined && localVal !== committed;
+    });
+    const hasAnyPricingValue = SELL_PRICING_KEYS.some((key) => local.sellAutoConfig[key] !== '');
+    const hasAnyVolumeValue = SELL_VOLUME_KEYS.some((key) => local.sellAutoConfig[key] !== '');
 
     const sliderVal = (key: keyof AutoConfigLocalState, defaultVal: number): number => {
         const raw = local.sellAutoConfig[key];
@@ -408,107 +430,117 @@ export default function SellSection({
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
-                                <div className='space-y-1'>
-                                    <div className='flex flex-wrap gap-1'>
-                                        {SELL_PRICING_PRESET_ORDER.map((preset, index) => {
-                                            const isActive = preset === activePricingPreset;
-                                            const isCustom = preset === 'custom';
-                                            return (
-                                                <Button
-                                                    key={preset}
-                                                    variant={isActive ? 'default' : 'outline'}
-                                                    size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === SELL_PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
-                                                    disabled={sellAutoConfigSaving}
-                                                    onClick={() => handlePricingPresetSelect(preset)}
-                                                >
-                                                    {SELL_PRICING_PRESET_LABELS[preset] ?? preset}
-                                                </Button>
-                                            );
-                                        })}
+                                <div className='relative'>
+                                    <div className='space-y-1'>
+                                        <div className='flex flex-wrap gap-1'>
+                                            {SELL_PRICING_PRESET_ORDER.map((preset, index) => {
+                                                const isActive = preset === activePricingPreset;
+                                                const isCustom = preset === 'custom';
+                                                return (
+                                                    <Button
+                                                        key={preset}
+                                                        variant={isActive ? 'default' : 'outline'}
+                                                        size='sm'
+                                                        className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === SELL_PRICING_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                        disabled={sellPricingConfigSaving}
+                                                        onClick={() => handlePricingPresetSelect(preset)}
+                                                    >
+                                                        {SELL_PRICING_PRESET_LABELS[preset] ?? preset}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div
-                                    className={`space-y-2 pt-1${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
-                                    onClick={() => {
-                                        if (activePricingPreset !== 'custom') {
-                                            setActivePricingPreset('custom');
-                                        }
-                                    }}
-                                >
-                                    <ConfigRangeSlider
-                                        label='Adjustment speed'
-                                        valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
-                                        valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
-                                        committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
-                                        committedHigh={committedVal(committedConfig, 'priceAdjustMaxUp')}
-                                        min={0.8}
-                                        max={1.2}
-                                        step={0.01}
-                                        pivot={1.0}
-                                        onChange={(low, high) =>
-                                            handleSliderChange({
-                                                priceAdjustMaxDown: String(low),
-                                                priceAdjustMaxUp: String(high),
-                                            })
-                                        }
-                                        disabled={sellAutoConfigSaving || activePricingPreset !== 'custom'}
-                                    />
-                                    <ConfigSlider
-                                        label='Soft min ask (in est. cost)'
-                                        value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
-                                        committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
-                                        min={0}
-                                        max={10}
-                                        step={0.25}
-                                        inverted
-                                        onChange={(v) => handleSliderChange({ automatedCostFloorBuffer: String(v) })}
-                                        disabled={sellAutoConfigSaving || activePricingPreset !== 'custom'}
-                                    />
-                                    <ConfigSlider
-                                        label='Target sell-through'
-                                        value={sliderVal(
-                                            'targetSellThrough',
-                                            isService ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH,
-                                        )}
-                                        committed={committedVal(committedConfig, 'targetSellThrough')}
-                                        min={0.1}
-                                        max={0.99}
-                                        step={0.01}
-                                        isPercent
-                                        onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
-                                        disabled={sellAutoConfigSaving || activePricingPreset !== 'custom'}
-                                    />
-                                </div>
-
-                                <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                    <PriceAlgorithmDialog mode='sell' diagnostics={offer?.diagnostics} />
-                                    <div className='flex items-center gap-2'>
-                                        <Button
-                                            variant='outline'
-                                            size='sm'
-                                            className={`h-7 text-[11px] px-2 ${hasAutoConfigDirty ? '' : 'invisible'}`}
-                                            onClick={onResetSellAutoConfig}
-                                            disabled={sellAutoConfigSaving}
-                                        >
-                                            <RotateCcw className='h-3 w-3 mr-1' />
-                                            Reset
-                                        </Button>
-                                        <Button
-                                            size='sm'
-                                            className='h-7 text-[11px] px-3'
-                                            onClick={onSaveSellAutoConfig}
-                                            disabled={!hasAutoConfigDirty || !hasAnyAutoValue || sellAutoConfigSaving}
-                                        >
-                                            {sellAutoConfigSaving ? 'Saving…' : 'Save Config'}
-                                        </Button>
+                                    <div
+                                        className={`space-y-2 pt-1${activePricingPreset !== 'custom' ? ' opacity-50' : ''}`}
+                                        onClick={() => {
+                                            if (activePricingPreset !== 'custom') {
+                                                setActivePricingPreset('custom');
+                                            }
+                                        }}
+                                    >
+                                        <ConfigRangeSlider
+                                            label='Adjustment speed'
+                                            valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
+                                            valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
+                                            committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
+                                            committedHigh={committedVal(committedConfig, 'priceAdjustMaxUp')}
+                                            min={0.8}
+                                            max={1.2}
+                                            step={0.01}
+                                            pivot={1.0}
+                                            onChange={(low, high) =>
+                                                handleSliderChange({
+                                                    priceAdjustMaxDown: String(low),
+                                                    priceAdjustMaxUp: String(high),
+                                                })
+                                            }
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Soft min ask (in est. cost)'
+                                            value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
+                                            committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
+                                            min={0}
+                                            max={10}
+                                            step={0.25}
+                                            inverted
+                                            onChange={(v) =>
+                                                handleSliderChange({ automatedCostFloorBuffer: String(v) })
+                                            }
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Target sell-through'
+                                            value={sliderVal(
+                                                'targetSellThrough',
+                                                isService ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH,
+                                            )}
+                                            committed={committedVal(committedConfig, 'targetSellThrough')}
+                                            min={0.1}
+                                            max={0.99}
+                                            step={0.01}
+                                            isPercent
+                                            onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
                                     </div>
+
+                                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
+                                        <PriceAlgorithmDialog mode='sell' diagnostics={offer?.diagnostics} />
+                                        <div className='flex items-center gap-2'>
+                                            <Button
+                                                variant='outline'
+                                                size='sm'
+                                                className={`h-7 text-[11px] px-2`}
+                                                onClick={onResetSellPricingConfig}
+                                                disabled={sellPricingConfigSaving || !hasPricingConfigDirty}
+                                            >
+                                                <RotateCcw className='h-3 w-3 mr-1' />
+                                                Reset
+                                            </Button>
+                                            <Button
+                                                size='sm'
+                                                className='h-7 text-[11px] px-3'
+                                                onClick={onSaveSellPricingConfig}
+                                                disabled={
+                                                    !hasPricingConfigDirty ||
+                                                    !hasAnyPricingValue ||
+                                                    sellPricingConfigSaving
+                                                }
+                                            >
+                                                {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {overlay(sellPricingConfigOverlay)}
                                 </div>
 
                                 <Separator />
 
-                                <div className='pt-1'>
+                                <div className='pt-1 relative'>
                                     <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
                                         Set Price
                                     </Label>
@@ -613,99 +645,107 @@ export default function SellSection({
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
-                                <div className='space-y-1'>
-                                    <div className='flex flex-wrap gap-1'>
-                                        {SELL_VOLUME_PRESET_ORDER.map((preset, index) => {
-                                            const isActive = preset === activeVolumePreset;
-                                            const isCustom = preset === 'custom';
-                                            return (
-                                                <Button
-                                                    key={preset}
-                                                    variant={isActive ? 'default' : 'outline'}
-                                                    size='sm'
-                                                    className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === SELL_VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
-                                                    disabled={sellAutoConfigSaving}
-                                                    onClick={() => handleVolumePresetSelect(preset)}
-                                                >
-                                                    {SELL_VOLUME_PRESET_LABELS[preset] ?? preset}
-                                                </Button>
-                                            );
-                                        })}
+                                <div className='relative'>
+                                    <div className='space-y-1'>
+                                        <div className='flex flex-wrap gap-1'>
+                                            {SELL_VOLUME_PRESET_ORDER.map((preset, index) => {
+                                                const isActive = preset === activeVolumePreset;
+                                                const isCustom = preset === 'custom';
+                                                return (
+                                                    <Button
+                                                        key={preset}
+                                                        variant={isActive ? 'default' : 'outline'}
+                                                        size='sm'
+                                                        className={`h-7 text-[11px] px-2 ${isCustom ? 'font-medium' : ''} ${index === SELL_VOLUME_PRESET_ORDER.length - 1 ? 'ml-auto' : ''}`}
+                                                        disabled={sellVolumeConfigSaving}
+                                                        onClick={() => handleVolumePresetSelect(preset)}
+                                                    >
+                                                        {SELL_VOLUME_PRESET_LABELS[preset] ?? preset}
+                                                    </Button>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
-                                    <div className='space-y-0.5'>
-                                        {productionBreakdown ?? <Stat label='Production' value='-' />}
+                                    <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
+                                        <div className='space-y-0.5'>
+                                            {productionBreakdown ?? <Stat label='Production' value='-' />}
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div
-                                    className='space-y-3 pt-1'
-                                    onClick={() => {
-                                        if (activeVolumePreset !== 'custom') {
-                                            setActiveVolumePreset('custom');
-                                        }
-                                    }}
-                                >
-                                    {/* Retainment group */}
-                                    <div className='space-y-2'>
-                                        <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                            Retainment
-                                        </Label>
-                                        <ConfigSlider
-                                            label='Free retainment (total)'
-                                            value={sliderVal('freeRetainment', 0)}
-                                            committed={committedVal(committedConfig, 'freeRetainment')}
-                                            min={0}
-                                            max={10000}
-                                            step={1}
-                                            onChange={(v) => handleSliderChange({ freeRetainment: String(v) })}
-                                            disabled={sellAutoConfigSaving || activeVolumePreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Sell-off smoothing (days)'
-                                            value={sliderVal(
-                                                'freeRetainmentSmoothingMaxExtra',
-                                                FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
-                                            )}
-                                            committed={committedVal(committedConfig, 'freeRetainmentSmoothingMaxExtra')}
-                                            min={1}
-                                            max={isService ? 5 : 20}
-                                            step={1}
-                                            onChange={(v) =>
-                                                handleSliderChange({ freeRetainmentSmoothingMaxExtra: String(v) })
+                                    <div
+                                        className='space-y-3 pt-1'
+                                        onClick={() => {
+                                            if (activeVolumePreset !== 'custom') {
+                                                setActiveVolumePreset('custom');
                                             }
-                                            disabled={sellAutoConfigSaving || activeVolumePreset !== 'custom'}
-                                        />
+                                        }}
+                                    >
+                                        {/* Retainment group */}
+                                        <div className='space-y-2'>
+                                            <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
+                                                Retainment
+                                            </Label>
+                                            <ConfigSlider
+                                                label='Free retainment (total)'
+                                                value={sliderVal('freeRetainment', 0)}
+                                                committed={committedVal(committedConfig, 'freeRetainment')}
+                                                min={0}
+                                                max={10000}
+                                                step={1}
+                                                onChange={(v) => handleSliderChange({ freeRetainment: String(v) })}
+                                                disabled={sellVolumeConfigSaving || activeVolumePreset !== 'custom'}
+                                            />
+                                            <ConfigSlider
+                                                label='Sell-off smoothing (days)'
+                                                value={sliderVal(
+                                                    'freeRetainmentSmoothingMaxExtra',
+                                                    FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+                                                )}
+                                                committed={committedVal(
+                                                    committedConfig,
+                                                    'freeRetainmentSmoothingMaxExtra',
+                                                )}
+                                                min={1}
+                                                max={isService ? 5 : 20}
+                                                step={1}
+                                                onChange={(v) =>
+                                                    handleSliderChange({ freeRetainmentSmoothingMaxExtra: String(v) })
+                                                }
+                                                disabled={sellVolumeConfigSaving || activeVolumePreset !== 'custom'}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className='flex items-center justify-end gap-2 pt-1'>
-                                    <Button
-                                        variant='outline'
-                                        size='sm'
-                                        className={`h-7 text-[11px] px-2 ${hasAutoConfigDirty ? '' : 'invisible'}`}
-                                        onClick={onResetSellAutoConfig}
-                                        disabled={sellAutoConfigSaving}
-                                    >
-                                        <RotateCcw className='h-3 w-3 mr-1' />
-                                        Reset
-                                    </Button>
-                                    <Button
-                                        size='sm'
-                                        className='h-7 text-[11px] px-3'
-                                        onClick={onSaveSellAutoConfig}
-                                        disabled={!hasAutoConfigDirty || !hasAnyAutoValue || sellAutoConfigSaving}
-                                    >
-                                        {sellAutoConfigSaving ? 'Saving…' : 'Save Config'}
-                                    </Button>
+                                    <div className='flex items-center justify-between gap-2 pt-1'>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className={`h-7 text-[11px] px-2`}
+                                            onClick={onResetSellVolumeConfig}
+                                            disabled={sellVolumeConfigSaving || !hasVolumeConfigDirty}
+                                        >
+                                            <RotateCcw className='h-3 w-3 mr-1' />
+                                            Reset
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            className='h-7 text-[11px] px-3'
+                                            onClick={onSaveSellVolumeConfig}
+                                            disabled={
+                                                !hasVolumeConfigDirty || !hasAnyVolumeValue || sellVolumeConfigSaving
+                                            }
+                                        >
+                                            {sellVolumeConfigSaving ? 'Saving…' : 'Save Config'}
+                                        </Button>
+                                    </div>
+
+                                    {overlay(sellVolumeConfigOverlay)}
                                 </div>
                             </CollapsibleContent>
                         </Collapsible>
                     </div>
                 </div>
-                {overlay(sellAutoConfigOverlay)}
             </div>
         </div>
     );

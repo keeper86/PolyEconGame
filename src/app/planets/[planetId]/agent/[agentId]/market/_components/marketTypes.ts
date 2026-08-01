@@ -210,51 +210,23 @@ export type ResourceAccordionItemProps = {
 
 export type BuySectionProps = {
     resourceName: string;
+    agentId: string;
     bid?: MarketBidEntry;
     local: LocalResourceState;
     assets: AgentPlanetAssets;
     overviewRow?: MarketOverviewRow;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    onSaveBuy: () => void;
-    onResetBuy: () => void;
-    onCancelBid: () => void;
-    onAutomationChange: (automated: boolean) => void;
-    onSaveBuyAutoConfig: () => void;
-    onResetBuyAutoConfig: () => void;
-    buyPriceSaving: boolean;
-    buyAutomationSaving: boolean;
-    buyAutoConfigSaving: boolean;
     planetId: string;
     ships: ConsumptionShipInfo[];
-    /** Overlay message for the automation zone (Switch + header) */
-    buyAutomationOverlay?: string | null;
-    /** Overlay message for the auto-config zone */
-    buyAutoConfigOverlay?: string | null;
-    /** Overlay message for the price/quantity inputs zone */
-    buyPriceOverlay?: string | null;
 };
 
 export type SellSectionProps = {
     resourceName: string;
+    agentId: string;
     offer?: MarketOfferEntry;
     local: LocalResourceState;
     assets: AgentPlanetAssets;
     overviewRow?: MarketOverviewRow;
     onLocalChange: (name: string, patch: Partial<LocalResourceState>) => void;
-    onSaveSell: () => void;
-    onResetSell: () => void;
-    onCancelOffer: () => void;
-    onAutomationChange: (automated: boolean) => void;
-    onSaveSellAutoConfig: () => void;
-    onResetSellAutoConfig: () => void;
-    sellPriceSaving: boolean;
-    sellAutomationSaving: boolean;
-    sellAutoConfigSaving: boolean;
     planetId: string;
-    /** Overlay message for the automation zone (Switch + header) */
-    sellAutomationOverlay?: string | null;
-    /** Overlay message for the auto-config zone */
-    sellAutoConfigOverlay?: string | null;
-    /** Overlay message for the price/quantity inputs zone */
-    sellPriceOverlay?: string | null;
 };

@@ -1,25 +1,25 @@
 'use client';
 
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { useTour } from '@/components/tour/TourContext';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, usePendingActions, useRemovePendingByKey } from '@/hooks/useActionOverlay';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
-import { toast } from 'sonner';
-import { useTour } from '@/components/tour/TourContext';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
+import { oilWellName } from '@/simulation/planet/productionFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityIORow } from './FacilityIORow';
 import { WorkerBars } from './WorkerBars';
-import { ConstructionCompactRow } from './ConstructionCompactRow';
-import { oilWellName } from '@/simulation/planet/productionFacilities';
 
 function BuildForm({
     entry,
@@ -43,8 +43,6 @@ function BuildForm({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
-    const removePendingByKey = useRemovePendingByKey();
-    const currentTick = useSimulationTick();
     const { isTourActive, markActionCompleted } = useTour();
 
     const { data: financials } = useSimulationQuery(
@@ -56,7 +54,14 @@ function BuildForm({
 
     const buildMutation = useMutation(
         trpc.buildFacility.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'build',
+                    agentId,
+                    planetId,
+                    facilityKey: entry.name,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Construction ordered. Changes take effect on the next tick.');
                 if (isTourActive && isOilWell) {
                     markActionCompleted('build-oil-well');
@@ -65,8 +70,6 @@ function BuildForm({
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Build failed');
-                // Mutation failed — remove pending action so the UI shows no loading state
-                removePendingByKey(agentId, planetId, entry.name);
             },
         }),
     );
@@ -126,13 +129,6 @@ function BuildForm({
                     financials={financials}
                     onCancel={onCancel}
                     onConfirm={(targetScale) => {
-                        addPending({
-                            type: 'build',
-                            agentId,
-                            planetId,
-                            facilityKey: entry.name,
-                            triggerTick: currentTick,
-                        });
                         buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
                     }}
                     onScaleChange={setPreviewScale}

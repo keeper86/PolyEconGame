@@ -1,4 +1,5 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
+import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
 import { allServices, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType, groceryServiceResourceType } from '@/simulation/planet/services';
@@ -286,6 +287,14 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
     return rows;
 }
 
+const normalizedBuffersSchema = z.object({
+    groceryBuffer: z.number(),
+    healthcareBuffer: z.number(),
+    logisticsBuffer: z.number(),
+    educationBuffer: z.number(),
+    retailBuffer: z.number(),
+});
+
 const groupModeSchema = z.enum(['occupation', 'education']);
 const skillLevelSchema = z.enum(SKILL);
 const skillsSchema = z.array(skillLevelSchema).min(1);
@@ -337,6 +346,7 @@ export const getPlanetDemographicsFull = () =>
                         ),
                         priceLevel: z.number(),
                         lastTransferMatrix: z.array(z.any()),
+                        normalizedBuffers: normalizedBuffersSchema,
                     })
                     .nullable(),
             }),
@@ -355,6 +365,13 @@ export const getPlanetDemographicsFull = () =>
                     rows: buildAggRows(planet, input.groupMode, input.activeSkills),
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
                     lastTransferMatrix: planet.population.lastTransferMatrix,
+                    normalizedBuffers: {
+                        groceryBuffer: computeNormalizedBuffer(planet, 'grocery'),
+                        healthcareBuffer: computeNormalizedBuffer(planet, 'healthcare'),
+                        logisticsBuffer: computeNormalizedBuffer(planet, 'logistics'),
+                        educationBuffer: computeNormalizedBuffer(planet, 'education'),
+                        retailBuffer: computeNormalizedBuffer(planet, 'retail'),
+                    },
                 },
             };
         });

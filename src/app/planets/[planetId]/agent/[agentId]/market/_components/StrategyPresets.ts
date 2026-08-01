@@ -289,7 +289,17 @@ function matchesPreset(
     presetValues: Record<string, string>,
     keys: (keyof AutoConfigLocalState)[],
 ): boolean {
-    return keys.every((key) => localConfig[key] === (presetValues[key] ?? ''));
+    return keys.every((key) => {
+        const presetStr = presetValues[key] ?? '';
+        const localStr = localConfig[key];
+        if (presetStr === '' && localStr === '') {
+            return true;
+        }
+        if (presetStr === '' || localStr === '') {
+            return false;
+        }
+        return parseFloat(localStr) === parseFloat(presetStr);
+    });
 }
 
 export function detectVolumeBuyPreset(localConfig: AutoConfigLocalState, isService: boolean): BuyVolumePresetType {

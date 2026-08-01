@@ -5,9 +5,9 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Page } from '@/components/client/Page';
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import MarketPanel from './_components/MarketPanel';
-import MultiProductPriceChart from './_components/MultiProductPriceChart';
+import MultiProductPriceChart, { MultiProductPriceChartTrigger } from './_components/MultiProductPriceChart';
 
 export default function MarketPage() {
     const {
@@ -25,6 +25,8 @@ export default function MarketPage() {
         myAgentId,
     } = useAgentPlanetDetail();
 
+    const [isChartOpen, setIsChartOpen] = useState(false);
+
     const allResourceNames = useMemo(
         () =>
             ALL_RESOURCES.filter(
@@ -34,7 +36,18 @@ export default function MarketPage() {
     );
 
     return (
-        <Page title={`Market`}>
+        <Page
+            title={`Market`}
+            headerComponent={
+                <MultiProductPriceChartTrigger isOpen={isChartOpen} onToggle={() => setIsChartOpen((prev) => !prev)} />
+            }
+        >
+            <MultiProductPriceChart
+                planetId={planetId}
+                allResourceNames={allResourceNames}
+                isOpen={isChartOpen}
+                onOpenChange={setIsChartOpen}
+            />
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}
@@ -45,7 +58,6 @@ export default function MarketPage() {
                 agentId={agentId}
                 planetId={planetId}
             >
-                <MultiProductPriceChart planetId={planetId} allResourceNames={allResourceNames} />
                 {assets ? (
                     <div data-tour='market-overview'>
                         <MarketPanel

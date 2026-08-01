@@ -8,11 +8,12 @@ export function ProductIcon({
     productName,
     size = 42,
     label,
+    className,
 }: {
     productName: string;
     size?: number;
-
     label?: string;
+    className?: string;
 }) {
     const src = getAssetPath(productName);
     const form = getProductForm(productName);
@@ -36,7 +37,9 @@ export function ProductIcon({
         <Tooltip>
             <TooltipTrigger asChild>
                 <span
-                    className='rounded overflow-hidden shrink-0 inline-block relative'
+                    className={
+                        'rounded overflow-hidden shrink-0 inline-block relative' + (className ? ` ${className}` : '')
+                    }
                     style={{ width: size, height: size }}
                 >
                     <Image src={src} alt={label ?? productName} fill sizes={`${size}px`} className='object-contain' />

@@ -3,6 +3,8 @@
 import { useGameConfig } from '@/components/client/GameConfigContext';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { mapTickToDate } from '@/components/client/TickDisplay';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
@@ -11,15 +13,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, useRemovePendingById } from '@/hooks/useActionOverlay';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { toast } from 'sonner';
 import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
@@ -28,6 +27,7 @@ import { AlertTriangle, Clock, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
+import { toast } from 'sonner';
 
 export function ConstructionCompactRow({
     facility,
@@ -42,17 +42,21 @@ export function ConstructionCompactRow({
 
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
-    const removePendingById = useRemovePendingById();
     const addPending = useAddPendingAction();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'cancel',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    triggerTick: data.processedAtTick,
+                });
                 toast.success('Construction cancelled.');
-                // Pending action will be resolved by predicate check
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Cancel failed');
-                removePendingById(agentId, planetId, facility.id);
             },
         }),
     );
@@ -195,13 +199,6 @@ export function ConstructionCompactRow({
                                 variant='outline'
                                 className='flex-1 text-xs gap-1'
                                 onClick={() => {
-                                    addPending({
-                                        type: 'cancel',
-                                        agentId,
-                                        planetId,
-                                        facilityId: facility.id,
-                                        triggerTick: currentTick,
-                                    });
                                     cancelMutation.mutate({ agentId, planetId, facilityId: facility.id });
                                     setShowCancelDialog(false);
                                 }}

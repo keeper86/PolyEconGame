@@ -319,7 +319,7 @@ export const requestLoan = () => {
                 amount: z.number().int().positive(),
             }),
         )
-        .output(z.object({ grantedAmount: z.number() }))
+        .output(z.object({ grantedAmount: z.number(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -339,7 +339,7 @@ export const requestLoan = () => {
                 `User ${userId} requesting loan of ${input.amount} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: grantedAmount } = await workerRequestLoan({
+            const { result: grantedAmount, processedAtTick } = await workerRequestLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 amount: input.amount,
@@ -347,7 +347,7 @@ export const requestLoan = () => {
 
             logger.info({ component: 'request-loan' }, `Loan of ${grantedAmount} granted to agent ${input.agentId}`);
 
-            return { grantedAmount };
+            return { grantedAmount, processedAtTick };
         });
 };
 
@@ -361,7 +361,7 @@ export const repayLoan = () => {
                 fraction: z.union([z.literal(0.25), z.literal(0.5), z.literal(1)]),
             }),
         )
-        .output(z.object({ repaidAmount: z.number() }))
+        .output(z.object({ repaidAmount: z.number(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -378,14 +378,14 @@ export const repayLoan = () => {
                 `User ${userId} repaying loan '${input.loanId}' at fraction ${input.fraction} for agent ${input.agentId}`,
             );
 
-            const { result: repaidAmount } = await workerRepayLoan({
+            const { result: repaidAmount, processedAtTick } = await workerRepayLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 loanId: input.loanId,
                 fraction: input.fraction,
             });
 
-            return { repaidAmount };
+            return { repaidAmount, processedAtTick };
         });
 };
 
@@ -641,7 +641,7 @@ export const cancelConstruction = () => {
                 facilityId: z.string().min(1),
             }),
         )
-        .output(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -658,11 +658,13 @@ export const cancelConstruction = () => {
                 `User ${userId} cancelling construction for agent ${input.agentId} facility ${input.facilityId} on planet ${input.planetId}`,
             );
 
-            await workerCancelConstruction({
+            const { result } = await workerCancelConstruction({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
             });
+
+            return result;
         });
 };
 
@@ -785,7 +787,7 @@ export const buildFacility = () => {
                 targetScale: z.number().int().min(1).max(1_000_000_000_000_000).default(1),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -811,16 +813,16 @@ export const buildFacility = () => {
                 `User ${userId} building '${input.facilityKey}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: facilityId } = await workerBuildFacility({
+            const { result } = await workerBuildFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityKey: input.facilityKey,
                 targetScale: input.targetScale,
             });
 
-            logger.info({ component: 'build-facility' }, `Agent ${input.agentId} built facility ${facilityId}`);
+            logger.info({ component: 'build-facility' }, `Agent ${input.agentId} built facility ${result.facilityId}`);
 
-            return { facilityId };
+            return result;
         });
 };
 
@@ -834,7 +836,7 @@ export const expandFacility = () => {
                 targetScale: z.number().int().min(2).max(1_000_000_000_000_000),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -860,16 +862,19 @@ export const expandFacility = () => {
                 `User ${userId} expanding facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: facilityId } = await workerExpandFacility({
+            const { result } = await workerExpandFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
                 targetScale: input.targetScale,
             });
 
-            logger.info({ component: 'expand-facility' }, `Agent ${input.agentId} expanding facility ${facilityId}`);
+            logger.info(
+                { component: 'expand-facility' },
+                `Agent ${input.agentId} expanding facility ${result.facilityId}`,
+            );
 
-            return { facilityId };
+            return result;
         });
 };
 
@@ -883,7 +888,7 @@ export const contractFacility = () => {
                 targetScale: z.number().int().min(0).max(1_000_000_000_000_000),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -900,14 +905,14 @@ export const contractFacility = () => {
                 `User ${userId} contracting facility '${input.facilityId}' to scale ${input.targetScale} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: facilityId } = await workerContractFacility({
+            const { result } = await workerContractFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
                 targetScale: input.targetScale,
             });
 
-            return { facilityId };
+            return result;
         });
 };
 
@@ -921,7 +926,7 @@ export const setFacilityScale = () => {
                 scaleFraction: z.number().min(0).max(1),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -938,14 +943,14 @@ export const setFacilityScale = () => {
                 `User ${userId} setting facility '${input.facilityId}' scale to ${input.scaleFraction} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: facilityId } = await workerSetFacilityScale({
+            const { result } = await workerSetFacilityScale({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
                 scaleFraction: input.scaleFraction,
             });
 
-            return { facilityId };
+            return result;
         });
 };
 

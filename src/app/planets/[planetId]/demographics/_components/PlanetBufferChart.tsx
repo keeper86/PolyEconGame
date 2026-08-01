@@ -2,7 +2,6 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
-import { SERVICE_DEFINITIONS } from '@/simulation/market/serviceDefinitions';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
@@ -53,13 +52,8 @@ type ChartPoint = {
     monthIdx?: number;
 } & Record<string, number>;
 
-function bufferTargetTicks(serviceKey: string): number {
-    return SERVICE_DEFINITIONS[serviceKey as keyof typeof SERVICE_DEFINITIONS]?.bufferTargetTicks ?? TICKS_PER_MONTH;
-}
-
-function toPercent(bufferValue: number, serviceKey: string): number {
-    const target = bufferTargetTicks(serviceKey);
-    return Math.min(100, (bufferValue / target) * 100);
+function toPercent(bufferValue: number): number {
+    return Math.min(100, bufferValue * 100);
 }
 
 function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveBufferData): ChartPoint[] {
@@ -81,7 +75,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-                point[key] = toPercent(p[dbKey] as number, key);
+                point[key] = toPercent(p[dbKey] as number);
             }
             return point;
         });
@@ -94,7 +88,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         const prev: ChartPoint = { tick: prevDecPoint.bucket, year: latestYear - 1, monthIdx: 0 };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-            prev[key] = toPercent(prevDecPoint[dbKey] as number, key);
+            prev[key] = toPercent(prevDecPoint[dbKey] as number);
         }
         result.unshift(prev);
     } else {
@@ -107,7 +101,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-                prev[key] = toPercent(lastBefore[dbKey] as number, key);
+                prev[key] = toPercent(lastBefore[dbKey] as number);
             }
             result.unshift(prev);
         }
@@ -126,7 +120,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
                 monthIdx: fractionalMonthIdx,
             };
             for (const key of BUFFER_KEYS) {
-                let livePercent = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number, key);
+                let livePercent = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
 
                 // Early-month blending: during days 1-7 of a new month, blend toward previous month's historic value
                 if (liveDay <= 7) {
@@ -137,7 +131,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
                     });
                     if (prevMonthPoint) {
                         const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-                        const prevPercent = toPercent(prevMonthPoint[dbKey] as number, key);
+                        const prevPercent = toPercent(prevMonthPoint[dbKey] as number);
                         const blend = liveDay / 8;
                         livePercent = livePercent * blend + prevPercent * (1 - blend);
                     }
@@ -175,7 +169,7 @@ function computeBufferGhostData(allPts: RawPoint[], currentTick: number): ChartP
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-                point[key] = toPercent(p[dbKey] as number, key);
+                point[key] = toPercent(p[dbKey] as number);
             }
             return point;
         });
@@ -190,7 +184,7 @@ function computeYearlyData(allPts: RawPoint[]): ChartPoint[] {
         };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-            point[key] = toPercent(p[dbKey] as number, key);
+            point[key] = toPercent(p[dbKey] as number);
         }
         return point;
     });
@@ -205,7 +199,7 @@ function computeDecadeData(allPts: RawPoint[]): ChartPoint[] {
         };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-            point[key] = toPercent(p[dbKey] as number, key);
+            point[key] = toPercent(p[dbKey] as number);
         }
         return point;
     });
