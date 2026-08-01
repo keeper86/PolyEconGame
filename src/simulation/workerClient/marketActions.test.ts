@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { getCurrencyResourceName } from '../market/currencyResources';
 import type { GameState, AutomatedPricingConfig } from '../planet/planet';
 import { ALL_RESOURCES } from '../planet/resourceCatalog';
 import { makeAgent, makeGameState, makeStorageFacility } from '../utils/testHelper';
@@ -38,6 +39,28 @@ describe('marketActions autoConfig merge', () => {
     });
 
     describe('handleSetBuyBids', () => {
+        it('should accept currency resources not present in RESOURCES_BY_NAME', () => {
+            const currencyName = getCurrencyResourceName('p');
+
+            handleSetBuyBids(
+                state,
+                {
+                    type: 'setBuyBids',
+                    requestId: 'req-1',
+                    agentId: 'agent-1',
+                    planetId: 'p',
+                    bids: {
+                        [currencyName]: { bidPrice: 2 },
+                    },
+                },
+                noop,
+            );
+
+            const bid = state.agents.get('agent-1')!.assets.p.market!.buy[currencyName];
+            expect(bid?.resource.name).toBe(currencyName);
+            expect(bid?.bidPrice).toBe(2);
+        });
+
         it('should merge volume-only autoConfig payloads with existing pricing keys', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
@@ -140,6 +163,28 @@ describe('marketActions autoConfig merge', () => {
     });
 
     describe('handleSetSellOffers', () => {
+        it('should accept currency resources not present in RESOURCES_BY_NAME', () => {
+            const currencyName = getCurrencyResourceName('p');
+
+            handleSetSellOffers(
+                state,
+                {
+                    type: 'setSellOffers',
+                    requestId: 'req-1',
+                    agentId: 'agent-1',
+                    planetId: 'p',
+                    offers: {
+                        [currencyName]: { offerPrice: 3 },
+                    },
+                },
+                noop,
+            );
+
+            const offer = state.agents.get('agent-1')!.assets.p.market!.sell[currencyName];
+            expect(offer?.resource.name).toBe(currencyName);
+            expect(offer?.offerPrice).toBe(3);
+        });
+
         it('should merge volume-only autoConfig payloads with existing pricing keys', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,

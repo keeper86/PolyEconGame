@@ -3,10 +3,10 @@
 ## Expected Behavior
 
 - We do an explicit planning for each feature/refactor.
-- The plan has enough detail to be executed without much thinking
-- When th eplan exists:
+- The plan has enough detail to be executed without much thinking.
+- When the plan exists:
     - Use the plan, do not think it through a second time.
-    - Do not verify everything again
+    - Do not verify everything again.
 
 ## Rules:
 

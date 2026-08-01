@@ -548,7 +548,7 @@ export default function BuySection({
                                             <Button
                                                 variant='outline'
                                                 size='sm'
-                                                className={`h-7 text-[11px] px-2 ${hasPricingConfigDirty ? '' : ''}`}
+                                                className='h-7 text-[11px] px-2'
                                                 onClick={onResetBuyPricingConfig}
                                                 disabled={buyPricingConfigSaving || !hasPricingConfigDirty}
                                             >

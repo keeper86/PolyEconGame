@@ -1,4 +1,5 @@
 import { PRICE_FLOOR } from '../constants';
+import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '../market/currencyResources';
 import type { GameState } from '../planet/planet';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import type { OutboundMessage, PendingAction } from './messages';
@@ -34,7 +35,11 @@ export function handleSetSellOffers(
     }
     for (const [resourceName, update] of Object.entries(offers)) {
         if (!assets.market.sell[resourceName]) {
-            const resource = RESOURCES_BY_NAME.get(resourceName);
+            const resource =
+                RESOURCES_BY_NAME.get(resourceName) ??
+                (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
+                    ? getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length))
+                    : null);
             if (!resource) {
                 console.warn(`Unknown resource: ${resourceName}`);
                 continue;
@@ -164,7 +169,11 @@ export function handleSetBuyBids(
     }
     for (const [resourceName, update] of Object.entries(bids)) {
         if (!assets.market.buy[resourceName]) {
-            const resource = RESOURCES_BY_NAME.get(resourceName);
+            const resource =
+                RESOURCES_BY_NAME.get(resourceName) ??
+                (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
+                    ? getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length))
+                    : null);
             if (!resource) {
                 console.warn(`Unknown resource: ${resourceName}`);
                 continue;
