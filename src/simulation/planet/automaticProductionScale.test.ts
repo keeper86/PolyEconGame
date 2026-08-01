@@ -7,7 +7,12 @@ import {
     makePopulationByEducation,
     makeProductionFacility,
 } from '../utils/testHelper';
-import { EXPANSION_INTEGRAL_THRESHOLD, PID_KP, updateAgentProductionScale } from './automaticProductionScale';
+import {
+    EXPANSION_INTEGRAL_THRESHOLD,
+    PID_KP,
+    SIGNAL_EMA_ALPHA,
+    updateAgentProductionScale,
+} from './automaticProductionScale';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 
@@ -266,6 +271,7 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
             },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
@@ -306,6 +312,7 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -530,6 +537,7 @@ describe('updateAgentProductionScale', () => {
             prevError: 0,
             filteredError: 0,
             expansionIntegral: 0,
+            smoothedSignal: 0,
         };
 
         const N = 20;
@@ -541,33 +549,33 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(minExpected);
     });
 
-    it('derivative term produces braking when error signal suddenly drops', () => {
-        const planetDemand = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }),
-        );
-        const { agents, facility } = makeSetup(planetDemand, { scale: 0.0, maxScale: 100 });
-        facility.pidState = {
-            contractionIntegral: 0,
-            integral: 0,
-            prevError: 0,
-            filteredError: 0,
-            expansionIntegral: 0,
-        };
-
-        for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(makeGameState(agents), planetDemand);
-        }
-        const scaleAfterBuild = facility.scale;
-
+    it('derivative term produces braking when smoothed signal suddenly drops', () => {
         const planetBalanced = makePlanetWithAvg(makeMarketResult());
-        for (let i = 0; i < 5; i++) {
-            updateAgentProductionScale(makeGameState(agents), planetBalanced);
-        }
+        const { agents, facility } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });
+        facility.pidState = {
+            smoothedSignal: 0.8,
+            filteredError: 0.8,
+            prevError: 0.8,
+            integral: 0,
+            expansionIntegral: 0,
+            contractionIntegral: 0,
+        };
+        updateAgentProductionScale(makeGameState(agents), planetBalanced);
+        const scaleWithoutSuddenDrop = facility.scale;
 
-        const demandPhaseGrowth = scaleAfterBuild;
-        const balancedPhaseGrowth = facility.scale - scaleAfterBuild;
-        expect(balancedPhaseGrowth).toBeLessThan(demandPhaseGrowth * 0.1);
-        expect(facility.scale).toBeGreaterThan(facility.maxScale * 0.1);
+        const { agents: agentsB, facility: facilityB } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });
+        facilityB.pidState = {
+            smoothedSignal: 0.8,
+            filteredError: 0.8,
+            prevError: 1.0,
+            integral: 0,
+            expansionIntegral: 0,
+            contractionIntegral: 0,
+        };
+        updateAgentProductionScale(makeGameState(agentsB), planetBalanced);
+        const scaleAfterSuddenDrop = facilityB.scale;
+
+        expect(scaleAfterSuddenDrop).toBeLessThan(scaleWithoutSuddenDrop);
     });
 
     it('PID state is persisted on the facility object after update', () => {
@@ -597,6 +605,7 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -648,6 +657,27 @@ describe('updateAgentProductionScale', () => {
         // Scale should not have crashed to 10% — the slow-down rate (PID_OUT_MAX_DOWN = 0.02) prevents
         // the full 0.1 per-tick drop from oversupply ticks from overwhelming the 0.1 per-tick build-up
         expect(facility.scale).toBeGreaterThan(0.3);
+    });
+
+    it('smooths input signal with EMA and persists smoothedSignal across ticks', () => {
+        const planetSpike = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 90, totalDemand: 100, clearingPrice: 12 }),
+        );
+        const planetBalanced = makePlanetWithAvg(makeMarketResult());
+        const { agents, facility } = makeSetup(planetSpike, { scale: 0.5, maxScale: 1 });
+
+        updateAgentProductionScale(makeGameState(agents), planetSpike);
+        const firstSmoothed = facility.pidState!.smoothedSignal;
+        const scaleAfterSpike = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planetBalanced);
+        const secondSmoothed = facility.pidState!.smoothedSignal;
+
+        expect(firstSmoothed).toBeGreaterThan(0);
+        expect(firstSmoothed).toBeLessThan(0.3);
+        expect(secondSmoothed).toBeCloseTo((1 - SIGNAL_EMA_ALPHA) * firstSmoothed, 5);
+        expect(facility.scale - scaleAfterSpike).toBeLessThan(scaleAfterSpike - 0.5);
+        expect(facility.scale).toBeLessThan(scaleAfterSpike + PID_KP * firstSmoothed * facility.maxScale);
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {

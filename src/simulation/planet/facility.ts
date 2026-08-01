@@ -116,6 +116,7 @@ export type PidState = {
     filteredError: number;
     expansionIntegral: number;
     contractionIntegral: number;
+    smoothedSignal: number;
 };
 
 export type ProductionFacility = FacilityBase & {

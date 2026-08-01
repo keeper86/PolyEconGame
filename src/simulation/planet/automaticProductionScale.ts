@@ -21,6 +21,7 @@ export const PID_IMAX = 0.025;
 export const PID_OUT_MAX_UP = 0.1;
 export const PID_OUT_MAX_DOWN = 0.01;
 export const PID_D_ALPHA = 0.3;
+export const SIGNAL_EMA_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 export const EXPANSION_INTEGRAL_MAX = 180;
@@ -36,7 +37,14 @@ export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
 
 function getDefaultPidState(): PidState {
-    return { integral: 0, prevError: 0, filteredError: 0, expansionIntegral: 0, contractionIntegral: 0 };
+    return {
+        integral: 0,
+        prevError: 0,
+        filteredError: 0,
+        expansionIntegral: 0,
+        contractionIntegral: 0,
+        smoothedSignal: 0,
+    };
 }
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { lastTickResults, produces } = facility;
@@ -285,11 +293,14 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 continue;
             }
 
-            const signal = computeFacilitySignal(facility, assets, planet); // weighted market demand/supply signal
-            assert(signal >= -1, 'Signal should be >= -1, but got ' + signal);
-            assert(signal <= 1, 'Signal should be capped at 1, but got' + signal);
+            const rawSignal = computeFacilitySignal(facility, assets, planet); // weighted market demand/supply signal
+            assert(rawSignal >= -1, 'Signal should be >= -1, but got ' + rawSignal);
+            assert(rawSignal <= 1, 'Signal should be capped at 1, but got' + rawSignal);
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
+
+            const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
+            state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state, facility.maxScale);
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
