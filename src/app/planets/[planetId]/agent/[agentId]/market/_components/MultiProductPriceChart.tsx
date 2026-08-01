@@ -3,13 +3,13 @@
 import { GranularityButtonGroup, useGranularity, type Granularity } from '@/components/client/GranularityButtonGroup';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { ChevronDown, ChevronUp } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { START_YEAR } from '@/simulation/constants';
+import type { ResourceProcessLevel } from '@/simulation/planet/claims';
+import { RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
 import {
     beverageResourceType,
     cementResourceType,
@@ -46,8 +46,6 @@ import {
     vehicleResourceType,
     waterResourceType,
 } from '@/simulation/planet/resources';
-import type { ResourceProcessLevel } from '@/simulation/planet/claims';
-import { RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -58,9 +56,10 @@ import {
     maintenanceServiceResourceType,
     retailServiceResourceType,
 } from '@/simulation/planet/services';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { START_YEAR } from '@/simulation/constants';
 
 export const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------

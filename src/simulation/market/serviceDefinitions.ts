@@ -22,6 +22,10 @@ const groceryAgeMultiplier = (age: number, _occ: Occupation): number => {
     return 0.3 + 0.7 / (1 + Math.exp(-(age - 12) / 4));
 };
 
+const retailAgeMultiplier = (age: number, _occ: Occupation): number => {
+    return 0.3 + 0.7 / (1 + Math.exp(-(age - 12) / 4));
+};
+
 /** U-shaped: high for children (0-5) and elderly (65+), lower for working-age adults.
  *  Occupation adds flat bonuses: unableToWork +0.3, employed +0.1 */
 const healthcareAgeMultiplier = (age: number, occ: Occupation): number => {
@@ -88,14 +92,14 @@ const logisticsDefinition: ServiceDefinition = {
 
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
-    bufferTargetTicks: TICKS_PER_MONTH,
+    bufferTargetTicks: TICKS_PER_YEAR,
     consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_YEAR) * educationAgeMultiplier(age, occ),
 } as const;
 
 const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * groceryAgeMultiplier(age, occ),
+    consumptionRatePerPersonPerTick: (age, occ) => (1 / TICKS_PER_MONTH) * retailAgeMultiplier(age, occ),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {

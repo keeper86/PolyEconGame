@@ -72,7 +72,7 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-const flatTargetFactor = 1;
+const flatTargetFactor = 3;
 const TARGETS: Record<string, FacilityTarget> = {
     administrativeCenter: { totalScale: 66300, agentCount: Math.ceil(flatTargetFactor * 2) },
     agriculturalFacility: { totalScale: 301666, agentCount: Math.ceil(flatTargetFactor * 4) },
