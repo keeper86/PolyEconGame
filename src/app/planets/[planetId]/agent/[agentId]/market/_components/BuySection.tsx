@@ -450,6 +450,14 @@ export default function BuySection({
                             />
                             <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit, planetId)} />
                             <Stat
+                                label='Smoothed fill rate'
+                                value={
+                                    bid?.diagnostics?.smoothedFillRate !== undefined
+                                        ? `${(bid.diagnostics.smoothedFillRate * 100).toFixed(0)}%`
+                                        : '—'
+                                }
+                            />
+                            <Stat
                                 label='Last spent'
                                 value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId)}
                             />

@@ -254,6 +254,7 @@ describe('automaticPricing — buy side', () => {
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 0.9;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
 
@@ -355,13 +356,14 @@ describe('automaticPricing — buy side', () => {
         // Custom conservative priceAdjustMaxDown = 0.98
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxDown: 0.98 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 1.0;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
 
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // With fillRate=1.0 (≥ targetFillRate=0.9), baseFactor = priceAdjustMaxDown = 0.98
+        // With smoothedFillRate=1.0 (≥ targetFillRate=0.9), baseFactor = priceAdjustMaxDown = 0.98
         expect(newPrice).toBeCloseTo(firstBidPrice * 0.98, 5);
     });
 
@@ -370,16 +372,17 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Set fill rate to 0.8 with targetFillRate=0.5 → fillRate (0.8) >= target (0.5) → bid should go down
+        // Set fill rate to 0.8 with targetFillRate=0.5 → smoothedFillRate (0.8) >= target (0.5) → bid should go down
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { targetFillRate: 0.5 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 0.8;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget * 0.8;
 
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // fillRate=0.8 > target=0.5 → downward adjustment
+        // smoothedFillRate=0.8 >= target=0.5 → downward adjustment
         expect(newPrice).toBeLessThan(firstBidPrice);
     });
 

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -7,6 +8,7 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    SELL_THROUGH_EMA_ALPHA,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
@@ -350,6 +352,107 @@ describe('automaticPricing — offer price tâtonnement', () => {
 });
 
 // ── Sell-side config override tests ──────────────────────────────────────────
+
+describe('automaticPricing — EMA smoothing', () => {
+    const goodsResource: Resource = {
+        name: 'TestGoodsEMA',
+        form: 'solid',
+        level: 'refined',
+        volumePerQuantity: 1,
+        massPerQuantity: 1,
+    };
+
+    it('seeds smoothedSellThrough with the raw value on the first tick', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 50,
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 2);
+        expect(offer.smoothedSellThrough).toBeCloseTo(0.5, 10);
+        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(0.5, 10);
+        expect(offer.diagnostics!.smoothedSellThrough).toBeCloseTo(0.5, 10);
+    });
+
+    it('applies EMA across repeated ticks', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 90,
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 2);
+        expect(offer.smoothedSellThrough).toBeCloseTo(0.9, 10);
+
+        offer.lastSold = 10;
+        adjustOfferPrice(offer, 100, 10, 2);
+        const expected = SELL_THROUGH_EMA_ALPHA * 0.1 + (1 - SELL_THROUGH_EMA_ALPHA) * 0.9;
+        expect(offer.smoothedSellThrough).toBeCloseTo(expected, 10);
+
+        offer.lastSold = 90;
+        adjustOfferPrice(offer, 100, 10, 2);
+        const expected2 = SELL_THROUGH_EMA_ALPHA * 0.9 + (1 - SELL_THROUGH_EMA_ALPHA) * expected;
+        expect(offer.smoothedSellThrough).toBeCloseTo(expected2, 10);
+    });
+
+    it('damps oscillation between high and low sell-through', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 95,
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 2);
+
+        let previous = offer.smoothedSellThrough!;
+        let maxOscillation = 0;
+        for (let i = 0; i < 20; i++) {
+            offer.lastSold = i % 2 === 0 ? 85 : 95;
+            adjustOfferPrice(offer, 100, 10, 2);
+            const current = offer.smoothedSellThrough!;
+            maxOscillation = Math.max(maxOscillation, Math.abs(current - previous));
+            previous = current;
+        }
+        // The EMA should never oscillate as much as the raw signal (±0.1 → 0.2 swing)
+        expect(maxOscillation).toBeLessThan(0.1);
+    });
+
+    it('fill rate EMA seeds with raw value and smooths over ticks', () => {
+        const planet = makePlanetWithPrice({ [lumberResourceType.name]: 100 });
+        planet.lastProductionCostFloors[lumberResourceType.name] = 20;
+
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [consumer];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [lumberResourceType.name]: {
+                    resource: lumberResourceType,
+                    bidPrice: 50,
+                    lastBought: 5,
+                    lastEffectiveQty: 10,
+                    automated: true,
+                },
+            },
+        };
+
+        automaticPricing(new Map([['co', agent]]), planet);
+        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
+        expect(bid.smoothedFillRate).toBeCloseTo(0.5, 10);
+        expect(bid.diagnostics!.fillRate).toBeCloseTo(0.5, 10);
+        expect(bid.diagnostics!.smoothedFillRate).toBeCloseTo(0.5, 10);
+
+        bid.lastBought = 10;
+        bid.lastEffectiveQty = 10;
+        automaticPricing(new Map([['co', agent]]), planet);
+        const expected = FILL_RATE_EMA_ALPHA * 1.0 + (1 - FILL_RATE_EMA_ALPHA) * 0.5;
+        expect(bid.smoothedFillRate).toBeCloseTo(expected, 10);
+    });
+});
 
 describe('automaticPricing — sell-side config overrides', () => {
     beforeEach(() => seedRng(42));

@@ -29,13 +29,21 @@ function sellSteps(d: SellDiagnostics): Step[] {
             value: `${d.sellThroughRate.toFixed(4)} (= ${fmtPct(d.sellThroughRate)})`,
         },
         {
+            label: 'Smoothed sell-through (EMA)',
+            formula: 'α · raw + (1-α) · previous',
+            value: `${d.smoothedSellThrough.toFixed(4)} (= ${fmtPct(d.smoothedSellThrough)})`,
+        },
+        {
             label: 'Target sell-through (config)',
             formula: '(from setup)',
             value: fmtPct(d.targetSellThrough),
         },
         {
             label: 'Base factor',
-            formula: d.sellThroughRate >= d.targetSellThrough ? '1 + t × (maxUp - 1)' : 'maxDown + t × (1 - maxDown)',
+            formula:
+                d.smoothedSellThrough >= d.targetSellThrough
+                    ? '1 + t × (maxUp - 1)'
+                    : 'maxDown + t × (1 - maxDown)',
             value: fmt(d.baseFactor),
         },
         {
@@ -88,13 +96,21 @@ function buySteps(d: BuyDiagnostics): Step[] {
             value: `${d.fillRate.toFixed(4)} (= ${fmtPct(d.fillRate)})`,
         },
         {
+            label: 'Smoothed fill rate (EMA)',
+            formula: 'α · raw + (1-α) · previous',
+            value: `${d.smoothedFillRate.toFixed(4)} (= ${fmtPct(d.smoothedFillRate)})`,
+        },
+        {
             label: 'Target fill rate (config)',
             formula: '(from setup)',
             value: fmtPct(d.targetFillRate),
         },
         {
             label: 'Base factor',
-            formula: d.fillRate >= d.targetFillRate ? '1 + t × (maxDown - 1)' : 'maxUp + t × (1 - maxUp)',
+            formula:
+                d.smoothedFillRate >= d.targetFillRate
+                    ? '1 + t × (maxDown - 1)'
+                    : 'maxUp + t × (1 - maxUp)',
             value: fmt(d.baseFactor),
         },
         {
@@ -239,6 +255,7 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
     const oldPrice = isSell ? sellDiag!.oldPrice : buyDiag!.oldBidPrice;
     const newPrice = isSell ? sellDiag!.newPrice : buyDiag!.newBidPrice;
     const currentRate = isSell ? sellDiag!.sellThroughRate : buyDiag!.fillRate;
+    const smoothedRate = isSell ? sellDiag!.smoothedSellThrough : buyDiag!.smoothedFillRate;
     const targetRate = isSell ? sellDiag!.targetSellThrough : buyDiag!.targetFillRate;
     const netFactor = diagnostics.netFactor;
 
@@ -279,10 +296,10 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
                         <div className='flex items-center gap-2'>
                             <Activity size={16} className='text-blue-400' />
                             <span className='text-slate-300 font-medium'>
-                                {isSell ? 'Sell-Through Rate' : 'Fill Rate'}
+                                {isSell ? 'Smoothed Sell-Through Rate' : 'Smoothed Fill Rate'}
                             </span>
                         </div>
-                        <span className='font-mono'>{Math.round(currentRate * 100)}%</span>
+                        <span className='font-mono'>{Math.round(smoothedRate * 100)}%</span>
                     </div>
 
                     {/* Progress Bar Container */}
@@ -295,15 +312,17 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
                         {/* Current Fill */}
                         <div
                             className={`h-full transition-all duration-500 ${
-                                currentRate >= targetRate ? 'bg-emerald-500' : 'bg-rose-500'
+                                smoothedRate >= targetRate ? 'bg-emerald-500' : 'bg-rose-500'
                             }`}
-                            style={{ width: `${Math.min(currentRate * 100, 100)}%` }}
+                            style={{ width: `${Math.min(smoothedRate * 100, 100)}%` }}
                         />
                     </div>
 
                     <div className='flex justify-between text-xs text-slate-500 font-mono'>
                         <span>0%</span>
-                        <span>Target: {Math.round(targetRate * 100)}%</span>
+                        <span>
+                            Raw: {Math.round(currentRate * 100)}% · Target: {Math.round(targetRate * 100)}%
+                        </span>
                     </div>
                 </div>
 
@@ -409,6 +428,7 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
     const oldPrice = isSell ? sellDiag!.oldPrice : buyDiag!.oldBidPrice;
     const newPrice = isSell ? sellDiag!.newPrice : buyDiag!.newBidPrice;
     const currentRate = isSell ? sellDiag!.sellThroughRate : buyDiag!.fillRate;
+    const smoothedRate = isSell ? sellDiag!.smoothedSellThrough : buyDiag!.smoothedFillRate;
     const targetRate = isSell ? sellDiag!.targetSellThrough : buyDiag!.targetFillRate;
 
     const baseFactor = diagnostics.baseFactor;
@@ -453,7 +473,8 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
                         <div className='grid grid-cols-2 gap-2 text-xs bg-slate-900/50 p-3 rounded border border-slate-800/50'>
                             <div className='space-y-1'>
                                 <div className='text-slate-500'>Current {isSell ? 'Sell' : 'Fill'} Rate</div>
-                                <div className='text-lg text-slate-200'>{(currentRate * 100).toFixed(1)}%</div>
+                                <div className='text-lg text-slate-200'>{(smoothedRate * 100).toFixed(1)}%</div>
+                                <div className='text-[10px] text-slate-500'>raw: {(currentRate * 100).toFixed(1)}%</div>
                             </div>
                             <div className='space-y-1'>
                                 <div className='text-slate-500'>Target Rate</div>

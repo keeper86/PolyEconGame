@@ -416,6 +416,14 @@ export default function SellSection({
                             />
                             <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
                             <Stat
+                                label='Smoothed sell-through'
+                                value={
+                                    offer?.diagnostics?.smoothedSellThrough !== undefined
+                                        ? `${(offer.diagnostics.smoothedSellThrough * 100).toFixed(0)}%`
+                                        : '—'
+                                }
+                            />
+                            <Stat
                                 label='Last revenue'
                                 value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
                             />

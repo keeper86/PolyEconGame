@@ -4,6 +4,7 @@ import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
     EPSILON,
+    FILL_RATE_EMA_ALPHA,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -12,6 +13,7 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    SELL_THROUGH_EMA_ALPHA,
     TARGET_FILL_RATE,
     TARGET_FILL_RATE_SERVICES,
     TARGET_SELL_THROUGH,
@@ -435,12 +437,22 @@ export function adjustOfferPrice(
 
     if (effectiveQuantity === 0) {
         if (sold > 0 && price > 0) {
-            const factor = sellThroughFactor(1, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
+            // Stockout: everything that could be offered was sold. This is a discrete
+            // signal rather than a rate measurement, so do not smooth it.
+            const rawSellThrough = 1;
+            offer.smoothedSellThrough = rawSellThrough;
+            const factor = sellThroughFactor(
+                rawSellThrough,
+                cfg.targetSellThrough,
+                cfg.priceAdjustMaxUp,
+                cfg.priceAdjustMaxDown,
+            );
             const newPrice = price * factor;
             const clamped = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
             offer.offerPrice = clamped;
             offer.diagnostics = {
-                sellThroughRate: 1,
+                sellThroughRate: rawSellThrough,
+                smoothedSellThrough: rawSellThrough,
                 targetSellThrough: cfg.targetSellThrough ?? 0.9,
                 baseFactor: factor,
                 costSpringDeviation: 0,
@@ -459,8 +471,18 @@ export function adjustOfferPrice(
         return;
     }
 
-    const sellThrough = sold / effectiveQuantity;
-    const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
+    const rawSellThrough = Math.min(1, Math.max(0, sold / effectiveQuantity));
+    const smoothedSellThrough =
+        offer.smoothedSellThrough === undefined
+            ? rawSellThrough
+            : SELL_THROUGH_EMA_ALPHA * rawSellThrough + (1 - SELL_THROUGH_EMA_ALPHA) * offer.smoothedSellThrough;
+    offer.smoothedSellThrough = smoothedSellThrough;
+    const factor = sellThroughFactor(
+        smoothedSellThrough,
+        cfg.targetSellThrough,
+        cfg.priceAdjustMaxUp,
+        cfg.priceAdjustMaxDown,
+    );
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
 
@@ -476,7 +498,8 @@ export function adjustOfferPrice(
     }
 
     offer.diagnostics = {
-        sellThroughRate: sellThrough,
+        sellThroughRate: rawSellThrough,
+        smoothedSellThrough,
         targetSellThrough: cfg.targetSellThrough ?? 0.9,
         baseFactor: factor,
         costSpringDeviation: deviation,
@@ -547,9 +570,19 @@ function adjustBidPrice(
     const lastBought = bid.lastBought ?? 0;
 
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
-    const fillRate = lastDemanded > 0 ? lastBought / lastDemanded : 1;
+    const rawFillRate = lastDemanded > 0 ? Math.min(1, Math.max(0, lastBought / lastDemanded)) : 1;
+    const smoothedFillRate =
+        bid.smoothedFillRate === undefined
+            ? rawFillRate
+            : FILL_RATE_EMA_ALPHA * rawFillRate + (1 - FILL_RATE_EMA_ALPHA) * bid.smoothedFillRate;
+    bid.smoothedFillRate = smoothedFillRate;
 
-    const baseFactor = fillRateFactor(fillRate, cfg.targetFillRate, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
+    const baseFactor = fillRateFactor(
+        smoothedFillRate,
+        cfg.targetFillRate,
+        cfg.priceAdjustMaxUp,
+        cfg.priceAdjustMaxDown,
+    );
 
     const overDeviation = Math.sqrt(Math.max(0, bid.bidPrice / ceilingPrice - 1));
     const ceilingSpring = cfg.costSpringStrength * overDeviation;
@@ -564,7 +597,8 @@ function adjustBidPrice(
     }
 
     bid.diagnostics = {
-        fillRate,
+        fillRate: rawFillRate,
+        smoothedFillRate,
         targetFillRate: cfg.targetFillRate ?? 0.9,
         baseFactor,
         ceilingPrice,

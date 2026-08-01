@@ -201,6 +201,7 @@ export interface AutomatedPricingConfig {
 
 export type SellDiagnostics = {
     sellThroughRate: number;
+    smoothedSellThrough: number;
     targetSellThrough: number;
     baseFactor: number;
     costSpringDeviation: number;
@@ -216,6 +217,7 @@ export type SellDiagnostics = {
 
 export type BuyDiagnostics = {
     fillRate: number;
+    smoothedFillRate: number;
     targetFillRate: number;
     baseFactor: number;
     ceilingPrice: number;
@@ -238,6 +240,7 @@ export type AgentMarketOfferState = {
     lastPlacedQty?: number;
     lastOfferPrice?: number;
     priceDirection?: number;
+    smoothedSellThrough?: number;
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
     diagnostics?: SellDiagnostics;
@@ -251,6 +254,7 @@ export type AgentMarketBidState = {
     lastSpent?: number;
     lastEffectiveQty?: number;
     lastBidPrice?: number;
+    smoothedFillRate?: number;
 
     storageFullWarning?: boolean;
 
