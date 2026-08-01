@@ -21,7 +21,7 @@ export function consumeServices(planet: Planet) {
             const pop = category.total;
 
             for (const def of allServices) {
-                const rate = def.consumptionRatePerPersonPerTick(age, occ);
+                const rate = def.consumptionRatePerPersonPerTick(age, occ, category.wealth);
 
                 if (rate <= 0) {
                     continue;

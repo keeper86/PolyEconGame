@@ -18,7 +18,7 @@ export function computeNormalizedBuffer(planet: Planet, serviceName: ServiceName
                     if (cat.total <= 0) {
                         continue;
                     }
-                    const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(age, occ);
+                    const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(age, occ, cat.wealth);
                     if (rate > 0) {
                         bufferSum += cat.services[serviceName].buffer * cat.total;
                         consumerPop += cat.total;

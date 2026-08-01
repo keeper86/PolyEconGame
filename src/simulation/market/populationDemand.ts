@@ -177,7 +177,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 }
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
-                const rate = service.consumptionRatePerPersonPerTick(age, occ);
+                const rate = service.consumptionRatePerPersonPerTick(age, occ, wm);
 
                 if (rate <= 0) {
                     continue;

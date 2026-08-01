@@ -65,7 +65,7 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
                 const key = serviceKeyOf(svc);
                 cell.buffers[key] =
                     (cell.buffers[key] ?? 0) +
-                    cat.services[key].buffer * svc.consumptionRatePerPersonPerTick(age, occ) * n;
+                    cat.services[key].buffer * svc.consumptionRatePerPersonPerTick(age, occ, cell.wealth) * n;
             }
         });
 
@@ -161,7 +161,9 @@ function computeDependentNeedsForTier(
                 for (const { key, def, price } of serviceMeta) {
                     const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                     const targetPerPerson =
-                        def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ) * coverageFraction;
+                        def.bufferTargetTicks *
+                        def.consumptionRatePerPersonPerTick(age, occ, wealth) *
+                        coverageFraction;
                     const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
 
                     const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
@@ -470,7 +472,7 @@ function creditDependents(
             for (const { key, def, price } of serviceMeta) {
                 const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                 const targetPerPerson =
-                    def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ) * coverageFraction;
+                    def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ, wealth) * coverageFraction;
                 const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
                 const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
                 totalCostGap += gap * price * (1 - fillFraction);

@@ -32,7 +32,7 @@ export function settleHouseholds(
         assert(category.total > 0, `Invalid population category: ${category.total}`);
         const perPersonCost = bidCosts[i] / category.total;
 
-        const rate = def.consumptionRatePerPersonPerTick(record.age, record.occ);
+        const rate = def.consumptionRatePerPersonPerTick(record.age, record.occ, record.wealthMoments);
         assert(rate > 0, `Invalid consumption rate: ${rate}`);
 
         const bufferTicks = filled / (rate * category.total);
