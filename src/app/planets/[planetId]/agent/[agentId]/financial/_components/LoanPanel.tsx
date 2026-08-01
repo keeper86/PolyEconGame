@@ -78,8 +78,6 @@ function LoanRow({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
-    const removePendingByKey = useRemovePendingByKey();
-    const currentTick = useSimulationTick();
 
     const repayPendingKey = `__loan_repay__${loan.id}`;
 
@@ -92,13 +90,19 @@ function LoanRow({
         trpc.repayLoan.mutationOptions({
             onSuccess: (result) => {
                 onRepaid(result.repaidAmount);
-                removePendingByKey(agentId, planetId, repayPendingKey);
+                addPending({
+                    type: 'loanRepay',
+                    agentId,
+                    planetId,
+                    triggerTick: result.processedAtTick,
+                    facilityKey: repayPendingKey,
+                    loanId: loan.id,
+                });
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
             },
             onError: (err) => {
-                removePendingByKey(agentId, planetId, repayPendingKey);
                 onError(err instanceof Error ? err.message : 'Repayment failed');
             },
         }),
@@ -141,14 +145,6 @@ function LoanRow({
                                 }
                                 planetId={planetId}
                                 onClick={() => {
-                                    addPending({
-                                        type: 'loanRepay',
-                                        agentId,
-                                        planetId,
-                                        triggerTick: currentTick,
-                                        facilityKey: repayPendingKey,
-                                        loanId: loan.id,
-                                    });
                                     repayMutation.mutate({ agentId, planetId, loanId: loan.id, fraction });
                                 }}
                             />
@@ -189,12 +185,18 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                     `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} will be credited after this tick.`,
                 );
 
+                addPending({
+                    type: 'loanRequest',
+                    agentId,
+                    planetId,
+                    triggerTick: result.processedAtTick,
+                    facilityKey: LOAN_REQUEST_PENDING_KEY,
+                });
+
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getLoanConditions.queryKey({ agentId, planetId }),
                 });
 
-                // Mark the starter loan as completed so the blocking step is removed
-                // and the tour advances to the "Loan taken successfully!" step.
                 if (isTourActive && conditions?.isNewAgent) {
                     markActionCompleted('starter-loan');
                 }
@@ -238,13 +240,6 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
                                     onClick={() => {
-                                        addPending({
-                                            type: 'loanRequest',
-                                            agentId,
-                                            planetId,
-                                            triggerTick: currentTick,
-                                            facilityKey: LOAN_REQUEST_PENDING_KEY,
-                                        });
                                         requestLoanMutation.mutate({
                                             agentId,
                                             planetId,
@@ -282,13 +277,6 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                             disabled={conditions.maxLoanAmount === 0}
                                             planetId={planetId}
                                             onClick={() => {
-                                                addPending({
-                                                    type: 'loanRequest',
-                                                    agentId,
-                                                    planetId,
-                                                    triggerTick: currentTick,
-                                                    facilityKey: LOAN_REQUEST_PENDING_KEY,
-                                                });
                                                 requestLoanMutation.mutate({ agentId, planetId, amount });
                                             }}
                                         />

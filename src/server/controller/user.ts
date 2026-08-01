@@ -319,7 +319,7 @@ export const requestLoan = () => {
                 amount: z.number().int().positive(),
             }),
         )
-        .output(z.object({ grantedAmount: z.number() }))
+        .output(z.object({ grantedAmount: z.number(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -339,7 +339,7 @@ export const requestLoan = () => {
                 `User ${userId} requesting loan of ${input.amount} for agent ${input.agentId} on planet ${input.planetId}`,
             );
 
-            const { result: grantedAmount } = await workerRequestLoan({
+            const { result: grantedAmount, processedAtTick } = await workerRequestLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 amount: input.amount,
@@ -347,7 +347,7 @@ export const requestLoan = () => {
 
             logger.info({ component: 'request-loan' }, `Loan of ${grantedAmount} granted to agent ${input.agentId}`);
 
-            return { grantedAmount };
+            return { grantedAmount, processedAtTick };
         });
 };
 
@@ -361,7 +361,7 @@ export const repayLoan = () => {
                 fraction: z.union([z.literal(0.25), z.literal(0.5), z.literal(1)]),
             }),
         )
-        .output(z.object({ repaidAmount: z.number() }))
+        .output(z.object({ repaidAmount: z.number(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
 
@@ -378,14 +378,14 @@ export const repayLoan = () => {
                 `User ${userId} repaying loan '${input.loanId}' at fraction ${input.fraction} for agent ${input.agentId}`,
             );
 
-            const { result: repaidAmount } = await workerRepayLoan({
+            const { result: repaidAmount, processedAtTick } = await workerRepayLoan({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 loanId: input.loanId,
                 fraction: input.fraction,
             });
 
-            return { repaidAmount };
+            return { repaidAmount, processedAtTick };
         });
 };
 

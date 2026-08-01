@@ -7,9 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
-import { useAddPendingAction, usePendingActions, useRemovePendingById } from '@/hooks/useActionOverlay';
-import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
-import { toast } from 'sonner';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
@@ -17,13 +16,14 @@ import type { ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import Link from 'next/link';
 import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
+import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityIORow';
-import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { WorkerBars } from './WorkerBars';
-import Link from 'next/link';
 
 export function ActiveFacilityCard({
     facility,
@@ -57,8 +57,6 @@ export function ActiveFacilityCard({
     };
 
     const addPending = useAddPendingAction();
-    const removePendingById = useRemovePendingById();
-    const currentTick = useSimulationTick();
     const pendingActions = usePendingActions(agentId, planetId);
 
     // Check if there's a pending scale change for this facility
