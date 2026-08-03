@@ -1,13 +1,14 @@
-import type { LastTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
-import { administrativeServiceResourceType } from './services';
+import type { LastManagementTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
+import { administrativeServiceResourceType, humanResourcesServiceResourceType } from './services';
 
-const zeroLastTicksResults: LastTickResults = {
+const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},
     exactUsedByEdu: {},
     totalUsedByEdu: {},
+    lastProduced: {},
     lastConsumed: {},
     wageCosts: 0,
     inputCosts: 0,
@@ -29,17 +30,7 @@ const makeManagementFacilityDefaults = () => ({
     lastConstructionCompletedTick: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
-        workerEfficiency: {},
-        resourceEfficiency: {},
-        overqualifiedWorkers: {},
-        exactUsedByEdu: {},
-        totalUsedByEdu: {},
-        lastProduced: {},
-        lastConsumed: {},
     },
-    buffer: 0,
-    maxBuffer: 100,
-    bufferPerTickPerScale: 10,
 });
 
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
@@ -54,24 +45,8 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
         secondary: 5,
         tertiary: 1,
     },
-    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
-    resourceName: 'HR Resource',
-});
-
-export const marketOperationsFacilityType = (planetId: string, id: string): ManagementFacility => ({
-    ...makeManagementFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Market Operations',
-    powerConsumptionPerTick: 0.5,
-    workerRequirement: {
-        none: 5,
-        primary: 10,
-        secondary: 5,
-        tertiary: 1,
-    },
-    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
-    resourceName: 'Market Capacity',
+    needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],
+    produces: [{ resource: humanResourcesServiceResourceType, quantity: 1000 }],
 });
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {

@@ -105,8 +105,11 @@ export type LastTickResults = {
     lastConsumed: { [resourceName: string]: number };
 };
 
-export type LastProductionTickResults = LastTickResults & {
+export type LastManagementTickResults = LastTickResults & {
     lastProduced: { [resourceName: string]: number };
+};
+
+export type LastProductionTickResults = LastManagementTickResults & {
     revenue: number;
 };
 
@@ -150,14 +153,10 @@ export type StorageFacility = FacilityBase & {
 export type ManagementFacility = FacilityBase & {
     type: 'management';
     needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
 
-    resourceName: string;
-    bufferPerTickPerScale: number;
-    maxBuffer: number;
-    buffer: number;
-    lastTickResults: LastTickResults;
+    lastTickResults: LastManagementTickResults;
 };
-
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
     shipName: string;

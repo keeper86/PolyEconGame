@@ -10,9 +10,9 @@ import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
-export const MAX_SCALE_EXPAND_FRACTION = 0.1;
+export const MAX_SCALE_EXPAND_FRACTION = 0.025;
 export const EXPANSION_PAYMENT_FLOW_MARGIN = 2.0;
-export const EXPANSION_WORKING_CAPITAL_TICKS = 15;
+export const EXPANSION_WORKING_CAPITAL_TICKS = 20;
 
 export const PID_KP = 0.1;
 
@@ -234,9 +234,6 @@ function computeExpansionWorkforceStats(facility: ProductionFacility, planet: Pl
 
 type ExpansionFundsCheckResult = {
     hasSufficientFunds: boolean;
-    paymentPerTick: number;
-    facilityRevenuePerTick: number;
-    requiredWorkingCapital: number;
 };
 
 function checkExpansionFunds(
@@ -250,31 +247,20 @@ function checkExpansionFunds(
     if (constructionPrice <= 0 || time <= 0) {
         return {
             hasSufficientFunds: false,
-            paymentPerTick: 0,
-            facilityRevenuePerTick: 0,
-            requiredWorkingCapital: 0,
         };
     }
 
     const paymentPerTick = (totalConstructionServiceRequired / time) * constructionPrice;
     const requiredWorkingCapital = EXPANSION_WORKING_CAPITAL_TICKS * paymentPerTick;
+    const cashFlow =
+        assets.lastMonthAcc.revenue -
+        assets.lastMonthAcc.wages -
+        assets.lastMonthAcc.purchases -
+        assets.lastMonthAcc.claimPayments;
 
-    // Use potential revenue at 100% efficiency, not last actual revenue.
-    // When inputs are scarce, actual revenue is 0 but the facility would be
-    // profitable if upstream expanded — blocking expansion on realized revenue
-    // creates the very deadlock we are trying to break.
-    const facilityRevenuePerTick =
-        facility.scale *
-        facility.produces.reduce(
-            (sum, output) => sum + output.quantity * (planet.marketPrices[output.resource.name] ?? 0),
-            0,
-        );
+    const hasSufficientFunds = assets.deposits >= requiredWorkingCapital && cashFlow >= paymentPerTick;
 
-    const flowSatisfied = facilityRevenuePerTick >= EXPANSION_PAYMENT_FLOW_MARGIN * paymentPerTick;
-    const workingCapitalSatisfied = assets.deposits >= requiredWorkingCapital;
-    const hasSufficientFunds = flowSatisfied && workingCapitalSatisfied;
-
-    return { hasSufficientFunds, paymentPerTick, facilityRevenuePerTick, requiredWorkingCapital };
+    return { hasSufficientFunds };
 }
 
 function calculateExpansionParams(facility: ProductionFacility): { targetMax: number; cost: number; time: number } {
