@@ -258,8 +258,9 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBe(initial);
     });
 
-    it('initiates capacity expansion when scale == maxScale, integral >= threshold, and agent has sufficient deposits', () => {
+    it('initiates capacity expansion when scale == maxScale, integral >= threshold, and agent has sufficient funds', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1 };
 
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
@@ -275,6 +276,20 @@ describe('updateAgentProductionScale', () => {
             },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
         });
 
         const agent = agents.values().next().value as Agent;
@@ -596,6 +611,7 @@ describe('updateAgentProductionScale', () => {
 
     it('expansion integral resets to 0 after a successful expansion', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1 };
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,
@@ -608,6 +624,20 @@ describe('updateAgentProductionScale', () => {
                 smoothedSignal: 0,
             },
             workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
         });
         const agent = agents.values().next().value as Agent;
         agent.assets[planet.id].deposits = 1_000_000;
