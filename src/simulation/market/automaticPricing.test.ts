@@ -27,6 +27,7 @@ import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { adjustOfferPrice, automaticPricing } from './automaticPricing';
 import type { Resource } from '../planet/claims';
+import { constructionServiceResourceType } from '../planet/services';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -697,6 +698,54 @@ describe('automaticPricing — cost-floor brake zone', () => {
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[WATER]!.offerPrice!;
         expect(newPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
+    });
+});
+
+describe('automaticPricing — bid diagnostics for dropped demand', () => {
+    it('clears bid diagnostics when construction finishes and demand drops out', () => {
+        const constructionState = {
+            type: 'new' as const,
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0.5,
+            lastTickInvestedConstructionServices: 10,
+        };
+
+        const facility = makeProductionFacility({ none: 1 }, { id: 'under-construction', scale: 1 });
+        facility.construction = constructionState;
+
+        const planet = makePlanetWithPrice({ [constructionServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [constructionServiceResourceType.name]: {
+                    resource: constructionServiceResourceType,
+                    bidPrice: 4,
+                    automated: true,
+                },
+            },
+        };
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bidBefore = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bidBefore).toBeDefined();
+        expect(bidBefore.diagnostics).toBeDefined();
+
+        facility.construction = null;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bidAfter = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bidAfter.bidStorageTarget).toBe(0);
+        expect(bidAfter.diagnostics).toBeUndefined();
     });
 });
 

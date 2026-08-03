@@ -316,6 +316,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         } else if (!aggregatedBuyTargets.has(resourceName)) {
             bid.bidStorageTarget = 0;
+            bid.diagnostics = undefined;
         }
     }
 

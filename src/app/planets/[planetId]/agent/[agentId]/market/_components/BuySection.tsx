@@ -439,7 +439,7 @@ export default function BuySection({
                                 value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
                                 bold
                             />
-                            <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
+                            <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall ?? 0, unit)} />
                             <Stat
                                 label='Required'
                                 value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/day` : '—'}
