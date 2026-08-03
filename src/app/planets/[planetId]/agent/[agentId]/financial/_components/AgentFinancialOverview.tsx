@@ -97,9 +97,13 @@ export default function AgentFinancialOverview({
         <div className='space-y-3' data-tour='financial-overview'>
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1' data-tour='financial-cash-flow'>
-                    <span className=' text-xs font-semibold text-muted-foreground'>
-                        Monthly flow: <span className='text-foreground'>current </span> (last)
-                    </span>
+                    <div className={`flex justify-between gap-2`}>
+                        <span className=' text-xs font-semibold text-muted-foreground'>Monthly flow</span>
+                        <span className='inline-flex flex-row items-center flex-baseline gap-1 tabular-nums whitespace-nowrap text-xs'>
+                            <span className='text-foreground'>current</span>
+                            <span className={`text-[10px] w-[50px] text-right text-muted-foreground `}>(last)</span>
+                        </span>
+                    </div>
                     <Stat
                         label='Revenue'
                         value={
@@ -182,11 +186,11 @@ export default function AgentFinancialOverview({
                                 value={currentMonthlyDepreciation}
                                 subValue={lastMonthlyDepreciation}
                                 planetId={planetId}
-                                subValueClassName={mutedCashFlowColor(loanConditions.monthlyNetCashFlow)}
+                                subValueClassName={mutedCashFlowColor(-lastMonthlyDepreciation)}
                             />
                         }
                         icon={<Trash className='h-3 w-3' />}
-                        valueClassName={mutedCashFlowColor(currentMonthlyDepreciation)}
+                        valueClassName={mutedCashFlowColor(-currentMonthlyDepreciation)}
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1' data-tour='financial-positions'>

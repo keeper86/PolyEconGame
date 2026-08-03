@@ -1,13 +1,13 @@
 import assert from 'assert';
-import { getRecyclerPaymentRatio, processFacilityContraction } from '../agents/recycler';
+import { processFacilityContraction } from '../agents/recycler';
 import { EPSILON, MIN_EMPLOYABLE_AGE } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
+import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
-import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.1;
@@ -215,7 +215,12 @@ function computeExpansionWorkforceStats(facility: ProductionFacility, planet: Pl
     }
 
     if (totalRequiredNewWorkers <= 0) {
-        return { totalAvailableUnemployed, totalRequiredNewWorkers, requiredWithReserve: 0, hasSufficientWorkers: false };
+        return {
+            totalAvailableUnemployed,
+            totalRequiredNewWorkers,
+            requiredWithReserve: 0,
+            hasSufficientWorkers: false,
+        };
     }
 
     const requiredWithReserve = totalRequiredNewWorkers * (1 + EXPANSION_WORKER_RESERVE_MARGIN);
@@ -254,7 +259,16 @@ function checkExpansionFunds(
     const paymentPerTick = (totalConstructionServiceRequired / time) * constructionPrice;
     const requiredWorkingCapital = EXPANSION_WORKING_CAPITAL_TICKS * paymentPerTick;
 
-    const facilityRevenuePerTick = facility.lastTickResults?.revenue ?? 0;
+    // Use potential revenue at 100% efficiency, not last actual revenue.
+    // When inputs are scarce, actual revenue is 0 but the facility would be
+    // profitable if upstream expanded — blocking expansion on realized revenue
+    // creates the very deadlock we are trying to break.
+    const facilityRevenuePerTick =
+        facility.scale *
+        facility.produces.reduce(
+            (sum, output) => sum + output.quantity * (planet.marketPrices[output.resource.name] ?? 0),
+            0,
+        );
 
     const flowSatisfied = facilityRevenuePerTick >= EXPANSION_PAYMENT_FLOW_MARGIN * paymentPerTick;
     const workingCapitalSatisfied = assets.deposits >= requiredWorkingCapital;
@@ -296,13 +310,8 @@ function initiateCapacityContraction(
     agent: Agent,
     gameState: GameState,
 ): boolean {
-    const ratio = getRecyclerPaymentRatio(planet);
-    if (ratio < 0.5) {
-        return false;
-    }
-
     const currentMax = facility.maxScale;
-    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION * (2 * ratio - 1))));
+    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION)));
     if (targetMax >= currentMax) {
         return false; // Cannot contract any further
     }
@@ -455,7 +464,12 @@ function collectExpansionDebugContext(
             deposits: assets.deposits,
             requiredWorkingCapital: EXPANSION_WORKING_CAPITAL_TICKS * (cost / time) * constructionPrice,
             paymentPerTick: (cost / time) * constructionPrice,
-            facilityRevenuePerTick: facility.lastTickResults?.revenue ?? 0,
+            facilityRevenuePerTick:
+                facility.scale *
+                facility.produces.reduce(
+                    (sum, output) => sum + output.quantity * (planet.marketPrices[output.resource.name] ?? 0),
+                    0,
+                ),
         },
         pid: {
             expansionIntegral: state.expansionIntegral,
@@ -547,7 +561,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const positiveSignal = signal > 0;
             const integralAboveThreshold = state.expansionIntegral >= dynamicThreshold;
             const efficiencyAbove95 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.95;
-            const expansionConditionsMet = atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove95;
+            const expansionConditionsMet = atMaxScale && hasNoActiveConstruction && integralAboveThreshold;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;
@@ -562,7 +576,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            const needWorkerFundsCheck = expansionConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
+            const needWorkerFundsCheck =
+                expansionConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
             let workforceStats: ExpansionWorkforceStats | null = null;
             if (needWorkerFundsCheck) {
                 workforceStats = computeExpansionWorkforceStats(facility, planet);

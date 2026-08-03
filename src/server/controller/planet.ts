@@ -628,7 +628,7 @@ export const getPlanetMarket = () =>
 
 export const getPlanetScrapRecoveryRate = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(z.object({ planetId: z.string(), amount: z.number() }))
         .output(
             z.object({
                 tick: z.number(),
@@ -644,7 +644,7 @@ export const getPlanetScrapRecoveryRate = () =>
                 return { tick, csPrice: 0, recoveryRatePerCS: 0, recyclerRatio: 0 };
             }
             const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
-            const ratio = getRecyclerPaymentRatio(planet);
+            const ratio = getRecyclerPaymentRatio(planet, input.amount);
             const recoveryRatePerCS = csPrice * RECYCLER_BASE_RECOVERY_EFFICIENCY * RECYCLER_PAYMENT_RATIO * ratio;
             return { tick, csPrice, recoveryRatePerCS, recyclerRatio: ratio };
         });

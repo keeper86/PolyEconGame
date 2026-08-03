@@ -191,20 +191,23 @@ export function ActiveFacilityCard({
     const reduceIndex = reduceOptions.indexOf(reduceTarget);
     const currentReduceIndex = reduceIndex !== -1 ? reduceIndex : reduceOptions.length - 1;
 
-    // ── Recycler scrap recovery rate ──
+    const amount = useMemo(() => {
+        const { cost: amount } = calculateCostsForConstruction(facilityType, reduceTarget, facility.maxScale);
+        return amount;
+    }, [facilityType, reduceTarget, facility.maxScale]);
+
     const { data: scrapRecoveryData } = useSimulationQuery(
-        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId }),
+        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId, amount }),
     );
     const recyclerRatio = scrapRecoveryData?.recyclerRatio ?? 1;
     const csPrice = scrapRecoveryData?.csPrice ?? constructionServicePrice;
 
     // ── Estimated scrap payout ──
-    const estimatedPayout = useMemo(() => {
-        const { cost: recoveredCost } = calculateCostsForConstruction(facilityType, reduceTarget, facility.maxScale);
-        const recoveredCS = recoveredCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+    const { estimatedPayout } = useMemo(() => {
+        const recoveredCS = amount * RECYCLER_BASE_RECOVERY_EFFICIENCY;
         const marketValue = recoveredCS * csPrice;
-        return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
-    }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
+        return { estimatedPayout: marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio, amount };
+    }, [csPrice, recyclerRatio, amount]);
 
     // Compute the pending scale fraction from the pending action (if any)
     const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;

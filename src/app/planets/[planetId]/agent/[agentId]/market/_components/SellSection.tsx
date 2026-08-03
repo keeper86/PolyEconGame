@@ -394,25 +394,22 @@ export default function SellSection({
                     <div className='space-y-3 pt-3'>
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
-                                label='Production'
-                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/day` : '—'}
-                                bold
-                            />
-                            <Stat
                                 label='Stock'
                                 value={
                                     isFacilityOutput && producedPerTick > 0
                                         ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
                                         : '—'
                                 }
+                                bold
                             />
+
                             <Stat
                                 label='Last offered'
                                 value={formatNumberWithUnit(offer?.diagnostics?.effectiveQuantity, unit)}
                             />
                             <Stat
-                                label='Last price'
-                                value={formatNumberWithUnit(offer?.diagnostics?.newPrice, 'currency', planetId)}
+                                label='Production'
+                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/day` : '—'}
                             />
                             <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
                             <Stat

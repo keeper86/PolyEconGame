@@ -260,7 +260,7 @@ describe('updateAgentProductionScale', () => {
 
     it('initiates capacity expansion when scale == maxScale, integral >= threshold, and agent has sufficient funds', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
-        planet.marketPrices = { Construction: 1 };
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
 
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
@@ -611,7 +611,7 @@ describe('updateAgentProductionScale', () => {
 
     it('expansion integral resets to 0 after a successful expansion', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
-        planet.marketPrices = { Construction: 1 };
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
         const { agents, facility } = makeSetup(planet, {
             scale: 10,
             maxScale: 10,

@@ -53,7 +53,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
     return recycler;
 }
 
-export function getRecyclerPaymentRatio(planet: Planet): number {
+export function getRecyclerPaymentRatio(planet: Planet, amount: number): number {
     const recycler = planet.recycler;
     if (!recycler) {
         return 0;
@@ -77,7 +77,11 @@ export function getRecyclerPaymentRatio(planet: Planet): number {
     const stockRatio = recyclerCSStock / unsoldSupply;
     const recycleRatio = Math.min(1, 1 / (1 + stockRatio + demandRatio / 10));
 
-    return recycleRatio;
+    const recyclerCSStockAfterBuying = recyclerCSStock + amount;
+    const stockRatioAfterBuying = recyclerCSStockAfterBuying / unsoldSupply;
+    const recycleRatioAfterBuying = Math.min(1, 1 / (1 + stockRatioAfterBuying + demandRatio / 10));
+
+    return 0.5 * (recycleRatio + recycleRatioAfterBuying);
 }
 
 export function processFacilityContraction(
@@ -98,7 +102,10 @@ export function processFacilityContraction(
     const recoveredCS =
         calculateCostsForConstruction(type, targetMax, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
-    assert(recoveredCS > 0 && isFinite(recoveredCS), 'Recovered CS should be positive and finite');
+    assert(
+        recoveredCS > 0 && isFinite(recoveredCS),
+        'Recovered CS should be positive and finite' + recoveredCS + ' ' + type + ' ' + targetMax,
+    );
     const marketValue = recoveredCS * csPrice;
 
     const recycler = planet.recycler;
@@ -110,8 +117,11 @@ export function processFacilityContraction(
         return false;
     }
 
-    const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet);
-    const payment = marketValue * dynamicRatio;
+    const ratio = getRecyclerPaymentRatio(planet, recoveredCS);
+    if (ratio < 0.5) {
+        return false;
+    }
+    const payment = marketValue * ratio * RECYCLER_PAYMENT_RATIO;
 
     // If recycler has insufficient deposits, grant an immediate loan to cover the gap
     if (recyclerAssets.deposits < payment) {

@@ -45,10 +45,8 @@ const CONFIG: SlackConfig = {
         maintenance: 1.3,
     },
 };
-
-    // Add construction demand: every non-construction facility needs construction service for expansion
-    const constructionDemandPerTick = 64_000_000;
-
+   
+const constructionDemandPerTick = 256_000_000;
 const BALANCE_EPSILON = 0.001;
 
 function resourceConstraintKey(name: string): string {
