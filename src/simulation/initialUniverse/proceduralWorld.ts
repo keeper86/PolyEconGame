@@ -13,7 +13,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
-import { ALL_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
@@ -130,7 +130,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             const facilities: ProductionFacility[] = [];
 
-            const entry = ALL_FACILITY_ENTRIES[facilityType as FacilityType];
+            const entry = ALL_PRODUCTION_FACILITY_ENTRIES[facilityType as FacilityType];
             const fac = entry.factory(PROC_PLANET_ID, `${id}-${facilityType}`);
             fac.scale = scale;
             fac.maxScale = scale;

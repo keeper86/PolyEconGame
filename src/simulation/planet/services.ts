@@ -8,7 +8,10 @@ const serviceResourceDefault = {
 };
 
 export const humanResourcesServiceResourceType: Resource = {
-    ...serviceResourceDefault,
+    form: 'internal',
+    level: 'internal',
+    volumePerQuantity: 0,
+    massPerQuantity: 0,
     name: 'Human Resources',
 };
 

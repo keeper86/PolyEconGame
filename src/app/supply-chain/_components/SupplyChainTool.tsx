@@ -13,7 +13,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Checkbox } from '@/components/ui/checkbox';
 import { computeSupplyChainBalance, type FacilityInfo, type ResourceBalance } from './computeBalance';
 import DependencyGraph from './DependencyGraph';
-import { ALL_FACILITY_ENTRIES, FACILITY_LEVEL_LABELS, FACILITY_LEVELS } from '@/simulation/planet/productionFacilities';
+import {
+    ALL_PRODUCTION_FACILITY_ENTRIES,
+    FACILITY_LEVEL_LABELS,
+    FACILITY_LEVELS,
+} from '@/simulation/planet/productionFacilities';
 import { solveSupplyChain, type SolverResult, type SolverObjective } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
@@ -271,7 +275,7 @@ function SolverTab({
     onApplyScales: (scales: Record<string, number>) => void;
 }) {
     const allFacilityNames = useMemo(
-        () => Object.values(ALL_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
+        () => Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
         [],
     );
     const [allowed, setAllowed] = useState<Set<string>>(() => new Set(allFacilityNames));
@@ -281,7 +285,7 @@ function SolverTab({
 
     const facilitiesByLevel = useMemo(() => {
         const grouped: Record<string, string[]> = {};
-        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+        for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
             const name = entry.factory('tool', 'preview').name;
             const level = entry.primaryOutputLevel;
             if (!grouped[level]) {
@@ -333,7 +337,7 @@ function SolverTab({
     }
 
     const resultFacilities = result
-        ? Object.values(ALL_FACILITY_ENTRIES)
+        ? Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)
               .map((e) => {
                   const f = e.factory('tool', 'preview');
                   return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };

@@ -913,7 +913,7 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     return { factory, template: instance, primaryOutputLevel };
 };
 
-export const ALL_FACILITY_ENTRIES = {
+export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     coalMine: entry(coalMine),
     oilWell: entry(oilWell),
     loggingCamp: entry(loggingCamp),
@@ -956,23 +956,26 @@ export const ALL_FACILITY_ENTRIES = {
     maintenanceFacility: entry(maintenanceFacility),
 } as const;
 
-export type FacilityType = keyof typeof ALL_FACILITY_ENTRIES;
+export type FacilityType = keyof typeof ALL_PRODUCTION_FACILITY_ENTRIES;
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
+export const INTERNAL_FACILITY_LEVELS: ResourceProcessLevel[] = ['internal'] as const;
 export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     raw: 'Raw Extraction',
     refined: 'Refinement',
     manufactured: 'Manufacturing',
     services: 'Services',
+    internal: 'Internal',
 };
 
-const allFacilityEntries = Object.values(ALL_FACILITY_ENTRIES);
+const allFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
 
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
     raw: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
     refined: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
     manufactured: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
     services: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
+    internal: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(

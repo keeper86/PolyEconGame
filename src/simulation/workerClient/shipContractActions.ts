@@ -2,7 +2,7 @@ import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import type { Facility } from '../planet/facility';
 import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
-import { ALL_FACILITY_ENTRIES } from '../planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { appendTradeRecord, createShipListing, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
 import type { ConstructionContract, ShipBuyingOffer, ShipListing, TransportContract } from '../ships/ships';
 import { shiptypes } from '../ships/ships';
@@ -368,7 +368,7 @@ export function handlePostConstructionContract(
         return;
     }
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find(
+    const facilityEntry = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
         (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName,
     );
     if (!facilityEntry) {
@@ -505,7 +505,7 @@ export function handleAcceptConstructionContract(
     }
 
     const PLACEHOLDER = 'catalog';
-    const facilityEntry = Object.values(ALL_FACILITY_ENTRIES).find(
+    const facilityEntry = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
         (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === contract.facilityName,
     );
     if (!facilityEntry) {
@@ -1434,7 +1434,9 @@ export function handleDispatchConstructionShip(
 
     const PLACEHOLDER = 'catalog';
     const facilityEntry = facilityName
-        ? Object.values(ALL_FACILITY_ENTRIES).find((e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName)
+        ? Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
+              (e) => e.factory(PLACEHOLDER, PLACEHOLDER).name === facilityName,
+          )
         : undefined;
     if (facilityName && !facilityEntry) {
         safePostMessage({

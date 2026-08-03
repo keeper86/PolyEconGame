@@ -1,6 +1,6 @@
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
-import type { Resource, ResourceProcessLevel, ResourceQuantity } from './claims';
+import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
 import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
@@ -27,7 +27,7 @@ export const getFacilityType = (facility: Facility): FacilityType => {
                 return 'refined';
             }
             return 'raw';
-        }, 'raw' as ResourceProcessLevel);
+        }, 'raw' as TradableResourceProcessLevel);
     }
     return facility.type;
 };

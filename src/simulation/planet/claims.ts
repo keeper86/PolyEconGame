@@ -1,7 +1,8 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { Agent, GameState, Planet } from './planet';
 
-export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+export type TradableResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+export type ResourceProcessLevel = TradableResourceProcessLevel | 'internal';
 
 export type Resource = {
     name: string;

@@ -1,6 +1,5 @@
-import type { Resource, ResourceProcessLevel } from './claims';
+import type { Resource, TradableResourceProcessLevel } from './claims';
 import {
-    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -28,6 +27,7 @@ import {
     pharmaceuticalResourceType,
     plasticResourceType,
     processedFoodResourceType,
+    produceResourceType,
     sandResourceType,
     siliconWaferResourceType,
     steelResourceType,
@@ -99,16 +99,16 @@ export const getProductForm = (resourceName: string): Resource['form'] | undefin
     return RESOURCES_BY_NAME.get(resourceName)?.form;
 };
 
-export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
+export const RESOURCE_LEVELS: TradableResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
-export const RESOURCE_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
+export const RESOURCE_LEVEL_LABELS: Record<TradableResourceProcessLevel, string> = {
     raw: 'Raw',
     refined: 'Refined',
     manufactured: 'Manufactured',
     services: 'Services',
 };
 
-export const resourcesByLevel: Record<ResourceProcessLevel, Resource[]> = {
+export const resourcesByLevel: Record<TradableResourceProcessLevel, Resource[]> = {
     raw: ALL_RESOURCES.filter((r) => r.level === 'raw'),
     refined: ALL_RESOURCES.filter((r) => r.level === 'refined'),
     manufactured: ALL_RESOURCES.filter((r) => r.level === 'manufactured'),

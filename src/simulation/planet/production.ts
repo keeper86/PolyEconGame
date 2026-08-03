@@ -42,7 +42,7 @@ import { hasActiveLicense, pushTickerEvent } from './planet';
 import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
-import { ALL_FACILITY_ENTRIES } from './productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -180,7 +180,6 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
                 facility.lastTickResults = {
                     ...createLastTickResults(),
                     lastProduced: {},
-                    revenue: 0,
                 };
             }
 
@@ -255,7 +254,9 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
     return actualConsumed;
 }
 
-function produceOutputs(params: ProductionParameters): Record<string, number> {
+function produceOutputs(
+    params: IntermediateResults & { facility: ProductionFacility | ManagementFacility },
+): Record<string, number> {
     const { facility, storage, overallEfficiency } = params;
 
     const actualProduced: Record<string, number> = {};
@@ -381,7 +382,7 @@ type StorageParameters = IntermediateResults & {
 };
 
 function accumulateTheoreticalCostFloor(
-    facility: ProductionFacility,
+    facility: ProductionFacility | ManagementFacility,
     planet: Planet,
     costAccum: Map<string, number>,
     outputAccum: Map<string, number>,
@@ -434,7 +435,7 @@ export function updateProductionCostFloors(planet: Planet): void {
     const costAccum = new Map<string, number>();
     const outputAccum = new Map<string, number>();
 
-    for (const { template } of Object.values(ALL_FACILITY_ENTRIES)) {
+    for (const { template } of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         if (template.produces.length > 0) {
             accumulateTheoreticalCostFloor(template, planet, costAccum, outputAccum);
         }
@@ -513,15 +514,10 @@ function processProductionFacility(params: ProductionParameters): void {
 
 function processManagementFacility(params: ManagementParameters): void {
     const actualConsumed = consumeNeeds(params);
+    const actualProduced = produceOutputs(params);
     const { overallEfficiency, workerResults, resourceEfficiencyMap, monthAcc, planet, facility, agent } = params;
 
     let costBalance = 0;
-    if (overallEfficiency > 0) {
-        facility.buffer = Math.min(
-            facility.maxBuffer,
-            facility.buffer + facility.bufferPerTickPerScale * facility.scale * overallEfficiency,
-        );
-    }
     const needCostByName = new Map<string, number>();
     for (const need of facility.needs) {
         needCostByName.set(
@@ -548,6 +544,7 @@ function processManagementFacility(params: ManagementParameters): void {
         overqualifiedWorkers: workerResults.overqualifiedWorkers,
         totalUsedByEdu: workerResults.totalUsedByEdu,
         exactUsedByEdu: workerResults.exactUsedByEdu,
+        lastProduced: actualProduced,
         lastConsumed: actualConsumed,
         wageCosts,
         inputCosts,

@@ -42,7 +42,11 @@ export function handleBuildFacility(
         });
         return;
     }
-    const alreadyExists = assets.productionFacilities.some((f) => f.name === facilityKey);
+    const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const newFacility = catalogEntry.factory(planetId, facilityId);
+    const targetArray =
+        newFacility.type === 'management' ? assets.managementFacilities : assets.productionFacilities;
+    const alreadyExists = targetArray.some((f) => f.name === facilityKey);
     if (alreadyExists) {
         safePostMessage({
             type: 'facilityBuildFailed',
@@ -52,8 +56,6 @@ export function handleBuildFacility(
         });
         return;
     }
-    const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = catalogEntry.factory(planetId, facilityId);
     const facilityType = getFacilityType(newFacility);
     const { cost, time } = calculateCostsForConstruction(facilityType, 0, targetScale);
     newFacility.construction = {
@@ -66,7 +68,7 @@ export function handleBuildFacility(
     };
     newFacility.scale = 0;
     newFacility.maxScale = 0;
-    assets.productionFacilities.push(newFacility);
+    targetArray.push(newFacility);
     console.log(`[worker] Agent '${agentId}' built '${facilityKey}' (scale ${targetScale}) on planet '${planetId}'`);
     safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId, processedAtTick: state.tick });
 }
@@ -560,10 +562,14 @@ export function handleCancelConstruction(
     }
 
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
+    const managementIndex =
+        facilityIndex === -1 ? assets.managementFacilities.findIndex((f) => f.id === facilityId) : -1;
     const shipyardIndex =
-        facilityIndex === -1 ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId) : -1;
+        facilityIndex === -1 && managementIndex === -1
+            ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId)
+            : -1;
 
-    if (facilityIndex === -1 && shipyardIndex === -1) {
+    if (facilityIndex === -1 && managementIndex === -1 && shipyardIndex === -1) {
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
@@ -599,7 +605,10 @@ export function handleCancelConstruction(
         return;
     }
 
-    const facility = assets.productionFacilities[facilityIndex];
+    const facility =
+        managementIndex !== -1
+            ? assets.managementFacilities[managementIndex]
+            : assets.productionFacilities[facilityIndex];
     if (!facility.construction) {
         safePostMessage({
             type: 'constructionCancelFailed',
@@ -610,7 +619,11 @@ export function handleCancelConstruction(
         return;
     }
     if (facility.construction.type === 'new') {
-        assets.productionFacilities.splice(facilityIndex, 1);
+        if (managementIndex !== -1) {
+            assets.managementFacilities.splice(managementIndex, 1);
+        } else {
+            assets.productionFacilities.splice(facilityIndex, 1);
+        }
         console.log(
             `[worker] Agent '${agentId}' cancelled new construction of '${facilityId}' on planet '${planetId}' — facility removed`,
         );

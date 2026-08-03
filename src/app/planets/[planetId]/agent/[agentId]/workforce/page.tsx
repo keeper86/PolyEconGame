@@ -1,6 +1,7 @@
 'use client';
 
 import AutomationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/AutomationPanel';
+import InternalFacilitiesPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/InternalFacilitiesPanel';
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkforceDemographyPanel';
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
@@ -105,6 +106,11 @@ export default function WorkforcePage() {
                             planetId={planetId}
                             allocatedWorkers={assets.allocatedWorkers ?? {}}
                             automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                        />
+                        <InternalFacilitiesPanel
+                            managementFacilities={assets.managementFacilities ?? []}
+                            agentId={agentId}
+                            planetId={planetId}
                         />
                         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4' data-tour='workforce-charts'>
                             <AgentMetricChart
