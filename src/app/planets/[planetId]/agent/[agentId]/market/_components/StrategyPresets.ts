@@ -226,7 +226,7 @@ export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
-        targetSellThrough: f2(TARGET_SELL_THROUGH * 0.56),
+        targetSellThrough: f2(TARGET_SELL_THROUGH * 0.7),
     },
 };
 
@@ -248,7 +248,7 @@ export const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
-        targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES * 0.84),
+        targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES * 0.75),
     },
 };
 

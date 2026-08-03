@@ -39,7 +39,7 @@ export const PRICING_DEFAULTS: PricingParams = {
     priceAdjustMaxUp: 1.05,
     priceAdjustMaxDown: 0.95,
     costSpringStrength: 0.1,
-    targetSellThrough: 0.9,
+    targetSellThrough: 0.6,
     automatedCostFloorBuffer: 1.5,
     bidOfferMaxCostMultiplier: 6,
     outputBufferTicks: 0,

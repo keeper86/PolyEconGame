@@ -191,12 +191,12 @@ export interface AutomatedPricingConfig {
     freeRetainmentSmoothingMaxExtra?: number; // days the retainment sell-off takes to fill, default 2
 
     // Sell-side
-    targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)
+    targetSellThrough?: number; // default: 0.6 (goods), 0.7 (services — resolver picks by resource.form)
     automatedCostFloorBuffer?: number; // default: 0.5
 
     // Buy-side
     inputBufferTargetTicks?: number; // default: 30 (goods), 3 (services — resolver picks by resource.form)
-    targetFillRate?: number; // default: 0.9
+    targetFillRate?: number; // default: 0.6 (goods), 0.7 (services - resolver picks by resource.form)
 }
 
 export type SellDiagnostics = {

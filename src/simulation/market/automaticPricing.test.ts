@@ -9,6 +9,8 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SELL_THROUGH_EMA_ALPHA,
+    TARGET_SELL_THROUGH,
+    TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
@@ -86,14 +88,14 @@ describe('resolveOfferConfig — config resolution', () => {
         adjustOfferPrice(offer, 100, 10, 2);
         // Diagnostics are set so we can inspect
         expect(offer.diagnostics).toBeDefined();
-        expect(offer.diagnostics!.targetSellThrough).toBe(0.9);
+        expect(offer.diagnostics!.targetSellThrough).toBe(TARGET_SELL_THROUGH);
     });
 
     it('returns service-specific targetSellThrough when config is undefined (services)', () => {
         const offer = { resource: serviceResource, offerPrice: 10, lastSold: 5 } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.diagnostics).toBeDefined();
-        expect(offer.diagnostics!.targetSellThrough).toBe(0.95);
+        expect(offer.diagnostics!.targetSellThrough).toBe(TARGET_SELL_THROUGH_SERVICES);
     });
 
     it('partial config overrides only specified fields, others fall back to defaults', () => {
@@ -107,8 +109,7 @@ describe('resolveOfferConfig — config resolution', () => {
         expect(offer.diagnostics).toBeDefined();
         // priceAdjustMaxUp = 1.10 is used => with full sell-through newPrice = 10 * 1.10 = 11
         expect(offer.offerPrice).toBeCloseTo(11, 5);
-        // targetSellThrough should still be default 0.9
-        expect(offer.diagnostics!.targetSellThrough).toBe(0.9);
+        expect(offer.diagnostics!.targetSellThrough).toBe(TARGET_SELL_THROUGH);
     });
 
     it('full config overrides all fields', () => {
@@ -305,7 +306,6 @@ describe('automaticPricing — offer price tâtonnement', () => {
     });
 
     it('has no price drift when sell-through exactly equals the target', () => {
-        const TARGET_SELL_THROUGH = 0.9;
         const PRICE = 10;
         const STOCK = 1000;
         const sold = STOCK * TARGET_SELL_THROUGH;

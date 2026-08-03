@@ -453,7 +453,7 @@ export function adjustOfferPrice(
             offer.diagnostics = {
                 sellThroughRate: rawSellThrough,
                 smoothedSellThrough: rawSellThrough,
-                targetSellThrough: cfg.targetSellThrough ?? 0.9,
+                targetSellThrough: cfg.targetSellThrough ?? TARGET_SELL_THROUGH,
                 baseFactor: factor,
                 costSpringDeviation: 0,
                 overDeviation: 0,
@@ -500,7 +500,7 @@ export function adjustOfferPrice(
     offer.diagnostics = {
         sellThroughRate: rawSellThrough,
         smoothedSellThrough,
-        targetSellThrough: cfg.targetSellThrough ?? 0.9,
+        targetSellThrough: cfg.targetSellThrough ?? TARGET_SELL_THROUGH,
         baseFactor: factor,
         costSpringDeviation: deviation,
         overDeviation: 0,
@@ -599,7 +599,7 @@ function adjustBidPrice(
     bid.diagnostics = {
         fillRate: rawFillRate,
         smoothedFillRate,
-        targetFillRate: cfg.targetFillRate ?? 0.9,
+        targetFillRate: cfg.targetFillRate ?? TARGET_FILL_RATE,
         baseFactor,
         ceilingPrice,
         ceilingSpring,

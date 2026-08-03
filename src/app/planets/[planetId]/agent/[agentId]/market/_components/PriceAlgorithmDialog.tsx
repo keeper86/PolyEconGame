@@ -41,9 +41,7 @@ function sellSteps(d: SellDiagnostics): Step[] {
         {
             label: 'Base factor',
             formula:
-                d.smoothedSellThrough >= d.targetSellThrough
-                    ? '1 + t × (maxUp - 1)'
-                    : 'maxDown + t × (1 - maxDown)',
+                d.smoothedSellThrough >= d.targetSellThrough ? '1 + t × (maxUp - 1)' : 'maxDown + t × (1 - maxDown)',
             value: fmt(d.baseFactor),
         },
         {
@@ -107,10 +105,7 @@ function buySteps(d: BuyDiagnostics): Step[] {
         },
         {
             label: 'Base factor',
-            formula:
-                d.smoothedFillRate >= d.targetFillRate
-                    ? '1 + t × (maxDown - 1)'
-                    : 'maxUp + t × (1 - maxUp)',
+            formula: d.smoothedFillRate >= d.targetFillRate ? '1 + t × (maxDown - 1)' : 'maxUp + t × (1 - maxUp)',
             value: fmt(d.baseFactor),
         },
         {
