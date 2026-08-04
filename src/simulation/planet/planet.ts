@@ -324,10 +324,10 @@ export type MonthAccumulator = {
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
-    managementFacilities: ManagementFacility[];
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
+    humanResourcesDepartment: ManagementFacility | null;
 
     transportContracts: TransportContract[];
     constructionContracts: ConstructionContract[];

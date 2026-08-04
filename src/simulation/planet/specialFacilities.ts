@@ -33,11 +33,12 @@ const makeManagementFacilityDefaults = () => ({
     },
 });
 
+export const HR_DEPARTMENT_NAME = 'Human Resources Office';
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
-    name: 'Human Resources Office',
+    name: HR_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
@@ -48,9 +49,6 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: 1000 }],
 });
-
-export const managementFacilityByName: ReadonlyMap<string, (planetId: string, id: string) => ManagementFacility> =
-    new Map([['Human Resources Office', humanResourcesOfficeFacilityType]]);
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {

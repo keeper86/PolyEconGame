@@ -323,8 +323,8 @@ export function makeAllocatedWorkers(
 export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
     return {
         productionFacilities: [],
-        managementFacilities: [],
         shipConstructionFacilities: [],
+        humanResourcesDepartment: null,
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],

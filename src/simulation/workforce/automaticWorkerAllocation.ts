@@ -1,5 +1,6 @@
 import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
+import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
@@ -8,12 +9,14 @@ import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
 import { totalActiveForEduSkill } from './workforceAggregates';
 
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
-    const allFacilities = [
+    const allFacilities: Array<Facility> = [
         ...assets.productionFacilities,
-        ...assets.managementFacilities,
         assets.storageFacility,
         ...assets.shipConstructionFacilities,
     ];
+    if (assets.humanResourcesDepartment) {
+        allFacilities.push(assets.humanResourcesDepartment);
+    }
     const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     for (const facility of allFacilities) {
         const tick = facility.lastTickResults;
@@ -39,7 +42,7 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
 
         const allFacilities = [
             ...assets.productionFacilities,
-            ...assets.managementFacilities,
+            ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
             assets.storageFacility,
             ...assets.shipConstructionFacilities,
         ];

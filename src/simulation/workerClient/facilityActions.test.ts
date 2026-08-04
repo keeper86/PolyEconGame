@@ -63,8 +63,8 @@ function makeManagementFacility(planetId: string, id = 'mgmt-1'): ManagementFaci
     };
 }
 
-describe('handleBuildFacility — management facility', () => {
-    it('builds a Human Resources Office into managementFacilities', () => {
+describe('handleBuildFacility — Human Resources Office', () => {
+    it('builds a Human Resources Office into humanResourcesDepartment', () => {
         const { gameState, planet, company } = setupWorld();
         const { messages, post } = makeMessages();
 
@@ -85,17 +85,17 @@ describe('handleBuildFacility — management facility', () => {
             type: 'facilityBuilt',
             agentId: company.id,
         });
-        expect(company.assets[planet.id].managementFacilities).toHaveLength(1);
-        const f = company.assets[planet.id].managementFacilities[0];
+        expect(company.assets[planet.id].humanResourcesDepartment).not.toBeNull();
+        const f = company.assets[planet.id].humanResourcesDepartment!;
         expect(f.name).toBe('Human Resources Office');
         expect(f.construction).not.toBeNull();
         expect(f.construction!.type).toBe('new');
     });
 
-    it('fails when management facility already exists', () => {
+    it('fails when humanResourcesDepartment already exists', () => {
         const { gameState, planet, company } = setupWorld();
         const facility = makeManagementFacility(planet.id, 'mgmt-existing');
-        company.assets[planet.id].managementFacilities.push(facility);
+        company.assets[planet.id].humanResourcesDepartment = facility;
         const { messages, post } = makeMessages();
 
         handleBuildFacility(
@@ -118,15 +118,15 @@ describe('handleBuildFacility — management facility', () => {
     });
 });
 
-describe('handleExpandFacility — management facility', () => {
-    it('expands a management facility', () => {
+describe('handleExpandFacility — humanResourcesDepartment', () => {
+    it('expands the human resources department', () => {
         const { gameState, planet, company } = setupWorld();
         const facility: ManagementFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-expand'),
             scale: 1,
             maxScale: 1,
         };
-        company.assets[planet.id].managementFacilities.push(facility);
+        company.assets[planet.id].humanResourcesDepartment = facility;
         const { messages, post } = makeMessages();
 
         handleExpandFacility(
@@ -151,15 +151,15 @@ describe('handleExpandFacility — management facility', () => {
     });
 });
 
-describe('handleSetFacilityScale — management facility', () => {
-    it('sets operating scale on a management facility', () => {
+describe('handleSetFacilityScale — humanResourcesDepartment', () => {
+    it('sets operating scale on the human resources department', () => {
         const { gameState, planet, company } = setupWorld();
         const facility: ManagementFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-scale'),
             scale: 0.5,
             maxScale: 1,
         };
-        company.assets[planet.id].managementFacilities.push(facility);
+        company.assets[planet.id].humanResourcesDepartment = facility;
         const { messages, post } = makeMessages();
 
         handleSetFacilityScale(
@@ -183,15 +183,15 @@ describe('handleSetFacilityScale — management facility', () => {
     });
 });
 
-describe('handleContractFacility — management facility', () => {
-    it('contracts a management facility to a lower scale', () => {
+describe('handleContractFacility — humanResourcesDepartment', () => {
+    it('contracts the human resources department to a lower scale', () => {
         const { gameState, planet, company } = setupWorld();
         const facility: ManagementFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-contract'),
             scale: 0.5,
             maxScale: 1,
         };
-        company.assets[planet.id].managementFacilities.push(facility);
+        company.assets[planet.id].humanResourcesDepartment = facility;
         const { messages, post } = makeMessages();
 
         handleContractFacility(
@@ -211,7 +211,7 @@ describe('handleContractFacility — management facility', () => {
             type: 'facilityContracted',
             facilityId: 'mgmt-contract',
         });
-        expect(company.assets[planet.id].managementFacilities).toHaveLength(0);
+        expect(company.assets[planet.id].humanResourcesDepartment).toBeNull();
     });
 });
 

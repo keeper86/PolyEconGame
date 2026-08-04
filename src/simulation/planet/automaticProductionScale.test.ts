@@ -293,7 +293,9 @@ describe('updateAgentProductionScale', () => {
         });
 
         const agent = agents.values().next().value as Agent;
-        agent.assets[planet.id].deposits = 1_000_000;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 1_000_000;
+        assets.lastMonthAcc.revenue = 1_000_000;
         expect(facility.construction).toBeNull();
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -337,6 +339,171 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).toBeNull();
+    });
+
+    it('does NOT initiate capacity expansion when cashflow is insufficient even with sufficient deposits', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+            },
+            workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
+        });
+
+        const agent = agents.values().next().value as Agent;
+        const assets = agent.assets[planet.id];
+        // Plenty of deposits, but cashflow is negative (high expenses, no revenue)
+        assets.deposits = 1_000_000_000;
+        assets.lastMonthAcc.revenue = 0;
+        assets.lastMonthAcc.wages = 1_000_000;
+        assets.lastMonthAcc.purchases = 1_000_000;
+        assets.lastMonthAcc.claimPayments = 1_000_000;
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).toBeNull();
+    });
+
+    it('continues PID scale adjustment during active expansion construction', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 0.5,
+            maxScale: 1,
+            construction: {
+                type: 'expansion',
+                constructionTargetMaxScale: 2,
+                totalConstructionServiceRequired: 1000,
+                maximumConstructionServiceConsumption: 100,
+                progress: 100,
+                lastTickInvestedConstructionServices: 0,
+            },
+        });
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeLessThan(initial);
+        // Construction is unchanged
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.type).toBe('expansion');
+    });
+
+    it('does NOT start a second expansion while an expansion is already active', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const existingConstruction = {
+            type: 'expansion' as const,
+            constructionTargetMaxScale: 11,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 100,
+            progress: 100,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            construction: existingConstruction,
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+            },
+            workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
+        });
+
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).toEqual(existingConstruction);
+    });
+
+    it('accumulates contraction integral only at lower bound with negative signal', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 0.1,
+            maxScale: 100,
+            pidState: {
+                contractionIntegral: 10,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+        const before = facility.pidState!.contractionIntegral;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        // At lower bound with negative signal, the integral accumulates
+        expect(facility.pidState!.contractionIntegral).toBeGreaterThan(before);
+    });
+
+    it('decays contraction integral when not at lower bound', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 50,
+            maxScale: 100,
+            pidState: {
+                contractionIntegral: 30,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        // Not at lower bound, so the integral should decay
+        expect(facility.pidState!.contractionIntegral).toBeLessThan(30);
     });
 
     it('scales up when profitable (revenue exceeds costs) and demand exceeds threshold', () => {
@@ -640,7 +807,9 @@ describe('updateAgentProductionScale', () => {
             },
         });
         const agent = agents.values().next().value as Agent;
-        agent.assets[planet.id].deposits = 1_000_000;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 1_000_000;
+        assets.lastMonthAcc.revenue = 1_000_000;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 

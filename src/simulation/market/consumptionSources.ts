@@ -23,7 +23,7 @@ export type ConsumptionInfo = {
 
 export function computeConsumptionBreakdown(
     productionFacilities: ProductionFacility[],
-    managementFacilities: ManagementFacility[],
+    humanResourcesDepartment: ManagementFacility | null,
     shipConstructionFacilities: ShipConstructionFacility[],
     ships: ConsumptionShipInfo[],
     planetId: string,
@@ -43,14 +43,11 @@ export function computeConsumptionBreakdown(
         }
     }
 
-    // ── Management facilities ──────────────────────────────────────────────
-    for (const f of managementFacilities) {
-        const need = f.needs.find((n) => n.resource.name === resourceName);
-        if (need) {
-            const rate = need.quantity * f.scale;
-            if (rate > 0) {
-                breakdown.push({ sourceType: 'management', sourceName: f.name, ratePerTick: rate });
-            }
+    const need = humanResourcesDepartment?.needs.find((n) => n.resource.name === resourceName);
+    if (need && humanResourcesDepartment) {
+        const rate = need.quantity * humanResourcesDepartment.scale;
+        if (rate > 0) {
+            breakdown.push({ sourceType: 'management', sourceName: humanResourcesDepartment.name, ratePerTick: rate });
         }
     }
 
@@ -78,7 +75,7 @@ export function computeConsumptionBreakdown(
     if (isConstructionService) {
         const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
             ...productionFacilities,
-            ...managementFacilities,
+            ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
             ...shipConstructionFacilities,
         ];
         for (const f of allFacilities) {
@@ -163,7 +160,7 @@ export function computeConsumptionBreakdown(
  */
 export function computeAllConsumptionRates(
     productionFacilities: ProductionFacility[],
-    managementFacilities: ManagementFacility[],
+    humanResourcesDepartment: ManagementFacility | null,
     shipConstructionFacilities: ShipConstructionFacility[],
     ships: ConsumptionShipInfo[],
     planetId: string,
@@ -185,7 +182,7 @@ export function computeAllConsumptionRates(
     }
 
     // ── Management facilities ──────────────────────────────────────────────
-    for (const f of managementFacilities) {
+    for (const f of humanResourcesDepartment ? [humanResourcesDepartment] : []) {
         for (const need of f.needs) {
             if (need.resource.form === 'landBoundResource') {
                 continue;
@@ -211,7 +208,7 @@ export function computeAllConsumptionRates(
     // ── Construction services (any facility with active construction) ──────
     const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
         ...productionFacilities,
-        ...managementFacilities,
+        ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
         ...shipConstructionFacilities,
     ];
     for (const f of allFacilities) {

@@ -74,7 +74,7 @@ export function totalConsumptionPerTick(
 ): ConsumptionInfo {
     return computeConsumptionBreakdown(
         assets.productionFacilities,
-        assets.managementFacilities,
+        assets.humanResourcesDepartment,
         assets.shipConstructionFacilities,
         ships,
         planetId,
@@ -158,13 +158,7 @@ export function buildResourceList(
     forceInclude: string[] = [],
     availableCurrencies: { name: string }[] = [],
 ): { name: string }[] {
-    const {
-        productionFacilities: facilities,
-        managementFacilities,
-        shipConstructionFacilities,
-        storageFacility,
-        market,
-    } = assets;
+    const { productionFacilities: facilities, shipConstructionFacilities, storageFacility, market } = assets;
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
 
@@ -193,13 +187,6 @@ export function buildResourceList(
             add(resource.name);
         }
         for (const { resource } of f.produces) {
-            assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
-            add(resource.name);
-        }
-    }
-
-    for (const f of managementFacilities) {
-        for (const { resource } of f.needs) {
             assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
             add(resource.name);
         }

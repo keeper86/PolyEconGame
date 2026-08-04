@@ -387,6 +387,15 @@ function collectExpansionDebugContext(
     }, null);
 
     const blockReason: string[] = [];
+    if (!atMaxScale) {
+        blockReason.push('notAtMaxScale');
+    }
+    if (!hasNoActiveConstruction) {
+        blockReason.push('activeConstruction');
+    }
+    if (signal <= 0) {
+        blockReason.push('nonPositiveSignal');
+    }
     if (!integralAboveThreshold) {
         blockReason.push('expansionIntegralBelowThreshold');
     }
@@ -613,7 +622,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            if (expansionConditionsMet && workersAvailable) {
+            if (expansionConditionsMet && workersAvailable && fundsAvailable) {
                 const expanded = initiateCapacityExpansion(facility, assets, planet);
                 if (expanded) {
                     state.expansionIntegral = 0;

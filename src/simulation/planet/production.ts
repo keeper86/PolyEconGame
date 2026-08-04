@@ -145,7 +145,7 @@ export function consumeConstructionForFacility(
     if (cs.progress >= cs.totalConstructionServiceRequired) {
         const scaleFraction = facility.maxScale > 0 ? Math.round((facility.scale / facility.maxScale) * 4) / 4 : 1;
         facility.maxScale = cs.constructionTargetMaxScale;
-        facility.scale = facility.maxScale * scaleFraction;
+        facility.scale = facility.maxScale * Math.max(0.1, scaleFraction);
         facility.construction = null;
         facility.lastConstructionCompletedTick = tracking.gameStateTick;
     }
@@ -163,9 +163,12 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
         const allFacilities: Array<Facility> = [
             ...assets.productionFacilities,
             assets.storageFacility,
-            ...assets.managementFacilities,
             ...assets.shipConstructionFacilities,
         ];
+
+        if (assets.humanResourcesDepartment) {
+            allFacilities.push(assets.humanResourcesDepartment);
+        }
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
@@ -699,7 +702,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             ...(assets.storageFacility.construction === null || assets.storageFacility.construction.type === 'expansion'
                 ? [assets.storageFacility]
                 : []),
-            ...assets.managementFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
+            ...(assets.humanResourcesDepartment &&
+            (!assets.humanResourcesDepartment.construction ||
+                assets.humanResourcesDepartment.construction.type === 'expansion')
+                ? [assets.humanResourcesDepartment]
+                : []),
             ...assets.shipConstructionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
         ];
 

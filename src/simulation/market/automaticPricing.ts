@@ -114,7 +114,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const consumptionRates = computeAllConsumptionRates(
         assets.productionFacilities,
-        assets.managementFacilities,
+        assets.humanResourcesDepartment,
         assets.shipConstructionFacilities,
         shipsForConsumption,
         planet.id,
@@ -200,7 +200,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     for (const facility of [
         ...assets.productionFacilities,
-        ...assets.managementFacilities,
+        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null || facility.construction.type === 'expansion') {

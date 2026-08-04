@@ -24,6 +24,7 @@ import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -203,13 +204,13 @@ function InternalConstructionCard({
 }
 
 export default function InternalFacilitiesPanel({
-    managementFacilities,
     agentId,
     planetId,
+    assets,
 }: {
-    managementFacilities: ManagementFacility[];
     agentId: string;
     planetId: string;
+    assets: AgentPlanetAssets;
 }): React.ReactElement {
     const trpc = useTRPC();
     const { data: constructionMarket } = useSimulationQuery(
@@ -221,13 +222,13 @@ export default function InternalFacilitiesPanel({
         PRICE_FLOOR;
 
     const otherConstructionCosts = useMemo(() => {
-        return managementFacilities
+        return assets.productionFacilities
             .filter((f) => f.construction !== null)
             .reduce((sum, f) => {
                 const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
                 return sum + Math.max(0, remaining) * constructionServicePrice;
             }, 0);
-    }, [managementFacilities, constructionServicePrice]);
+    }, [assets, constructionServicePrice]);
 
     const pendingActions = usePendingActions(agentId, planetId);
     const pendingBuildKeys = useMemo(() => {
@@ -241,38 +242,45 @@ export default function InternalFacilitiesPanel({
     }, [pendingActions]);
 
     const template = useMemo(() => humanResourcesOfficeFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
+    const hrDepartment = assets.humanResourcesDepartment;
 
     return (
         <Card>
             <CardContent className='space-y-2'>
                 <h2 className='text-sm font-semibold'>Internal Facilities</h2>
                 <div className='flex flex-row gap-3 flex-wrap'>
-                    {managementFacilities.map((f) =>
-                        f.construction !== null && f.construction.type === 'new' ? (
-                            <InternalConstructionCard key={f.id} facility={f} agentId={agentId} planetId={planetId} />
+                    {hrDepartment !== null &&
+                        (hrDepartment.construction !== null && hrDepartment.construction.type === 'new' ? (
+                            <InternalConstructionCard
+                                key={hrDepartment.id}
+                                facility={hrDepartment}
+                                agentId={agentId}
+                                planetId={planetId}
+                            />
                         ) : (
                             <ActiveFacilityCard
-                                key={f.id}
-                                facility={f}
+                                key={hrDepartment.id}
+                                facility={hrDepartment}
                                 agentId={agentId}
                                 planetId={planetId}
                                 constructionServicePrice={constructionServicePrice}
                                 otherConstructionCosts={otherConstructionCosts}
                                 onExpanded={() => {}}
                             />
-                        ),
-                    )}
+                        ))}
 
-                    <InternalBuildCard
-                        key={template.name}
-                        entry={template}
-                        agentId={agentId}
-                        planetId={planetId}
-                        constructionServicePrice={constructionServicePrice}
-                        otherConstructionCosts={otherConstructionCosts}
-                        onBuilt={() => {}}
-                        isPending={pendingBuildKeys.has(template.name)}
-                    />
+                    {hrDepartment === null && (
+                        <InternalBuildCard
+                            key={template.name}
+                            entry={template}
+                            agentId={agentId}
+                            planetId={planetId}
+                            constructionServicePrice={constructionServicePrice}
+                            otherConstructionCosts={otherConstructionCosts}
+                            onBuilt={() => {}}
+                            isPending={pendingBuildKeys.has(template.name)}
+                        />
+                    )}
                 </div>
             </CardContent>
         </Card>
