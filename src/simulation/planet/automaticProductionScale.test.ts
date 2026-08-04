@@ -15,6 +15,7 @@ import {
 } from './automaticProductionScale';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
+import { constructionServiceResourceType } from './services';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -339,6 +340,63 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.construction).toBeNull();
+    });
+
+    it('initiates capacity expansion for agents with own construction facility even without sufficient funds', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+            },
+            workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
+        });
+
+        const agent = agents.values().next().value as Agent;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 0;
+        assets.lastMonthAcc.revenue = 0;
+        assets.lastMonthAcc.wages = 0;
+        assets.lastMonthAcc.purchases = 0;
+        assets.lastMonthAcc.claimPayments = 0;
+
+        const constructionFacility = makeProductionFacility(
+            {},
+            {
+                id: 'construction-1',
+                name: 'Construction Facility',
+                produces: [{ resource: constructionServiceResourceType, quantity: 50 }],
+            },
+        );
+        assets.productionFacilities.push(constructionFacility);
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(10);
     });
 
     it('does NOT initiate capacity expansion when cashflow is insufficient even with sufficient deposits', () => {

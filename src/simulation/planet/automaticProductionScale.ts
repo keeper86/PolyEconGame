@@ -262,12 +262,25 @@ function calculateExpansionParams(facility: ProductionFacility): { targetMax: nu
     return { targetMax, cost, time };
 }
 
-function initiateCapacityExpansion(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): boolean {
+function agentHasOwnConstructionFacility(facilities: ProductionFacility[]): boolean {
+    return facilities.some((facility) =>
+        facility.produces.some((output) => output.resource.name === constructionServiceResourceType.name),
+    );
+}
+
+function initiateCapacityExpansion(
+    facility: ProductionFacility,
+    assets: AgentPlanetAssets,
+    planet: Planet,
+    hasOwnConstruction: boolean,
+): boolean {
     const { targetMax, cost, time } = calculateExpansionParams(facility);
 
-    const fundsCheck = checkExpansionFunds(facility, assets, planet, cost, time);
-    if (!fundsCheck.hasSufficientFunds) {
-        return false;
+    if (!hasOwnConstruction) {
+        const fundsCheck = checkExpansionFunds(facility, assets, planet, cost, time);
+        if (!fundsCheck.hasSufficientFunds) {
+            return false;
+        }
     }
 
     facility.construction = {
@@ -322,6 +335,7 @@ type AutoscaleDebugEntry = {
         efficiencyAbove95: boolean;
         workersAvailable: boolean;
         fundsAvailable: boolean;
+        hasOwnConstruction: boolean;
     };
     workforce: {
         availableUnemployed: number;
@@ -369,6 +383,7 @@ function collectExpansionDebugContext(
     workforceStats: ExpansionWorkforceStats,
     workersAvailable: boolean,
     fundsAvailable: boolean,
+    hasOwnConstruction: boolean,
 ): AutoscaleDebugEntry {
     const { targetMax, cost, time } = calculateExpansionParams(facility);
     const constructionPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
@@ -434,6 +449,7 @@ function collectExpansionDebugContext(
             efficiencyAbove95,
             workersAvailable,
             fundsAvailable,
+            hasOwnConstruction,
         },
         workforce: {
             availableUnemployed: workforceStats.totalAvailableUnemployed,
@@ -490,6 +506,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         if (!assets) {
             return;
         }
+        const hasOwnConstruction = agentHasOwnConstructionFacility(assets.productionFacilities);
 
         for (const facility of assets.productionFacilities) {
             if (facility.construction !== null && facility.construction.type === 'new') {
@@ -568,14 +585,18 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             if (needWorkerFundsCheck) {
                 workforceStats = computeExpansionWorkforceStats(facility, planet);
                 workersAvailable = workforceStats.hasSufficientWorkers;
-                const expansionParams = calculateExpansionParams(facility);
-                fundsAvailable = checkExpansionFunds(
-                    facility,
-                    assets,
-                    planet,
-                    expansionParams.cost,
-                    expansionParams.time,
-                ).hasSufficientFunds;
+                if (hasOwnConstruction) {
+                    fundsAvailable = true;
+                } else {
+                    const expansionParams = calculateExpansionParams(facility);
+                    fundsAvailable = checkExpansionFunds(
+                        facility,
+                        assets,
+                        planet,
+                        expansionParams.cost,
+                        expansionParams.time,
+                    ).hasSufficientFunds;
+                }
             }
 
             if (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal && agent.id === 'civic-solutions-corp') {
@@ -606,6 +627,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     workforceStats!,
                     workersAvailable,
                     fundsAvailable,
+                    hasOwnConstruction,
                 );
                 debugAggregates.expansionCandidates++;
                 if (!integralAboveThreshold) {
@@ -623,7 +645,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             if (expansionConditionsMet && workersAvailable && fundsAvailable) {
-                const expanded = initiateCapacityExpansion(facility, assets, planet);
+                const expanded = initiateCapacityExpansion(facility, assets, planet, hasOwnConstruction);
                 if (expanded) {
                     state.expansionIntegral = 0;
                     if (debugEntry) {
