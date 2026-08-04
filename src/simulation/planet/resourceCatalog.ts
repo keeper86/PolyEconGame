@@ -46,7 +46,7 @@ import {
     retailServiceResourceType,
 } from './services';
 
-export const ALL_RESOURCES: Resource[] = [
+export const TRADABLE_RESOURCES: Resource[] = [
     ironOreResourceType,
     waterResourceType,
     produceResourceType,
@@ -92,7 +92,7 @@ export const ALL_RESOURCES: Resource[] = [
 ] as const;
 
 export const RESOURCES_BY_NAME: ReadonlyMap<string, Resource> = new Map(
-    ALL_RESOURCES.map((resource) => [resource.name, resource] as const),
+    TRADABLE_RESOURCES.map((resource) => [resource.name, resource] as const),
 );
 
 export const getProductForm = (resourceName: string): Resource['form'] | undefined => {
@@ -106,11 +106,4 @@ export const RESOURCE_LEVEL_LABELS: Record<TradableResourceProcessLevel, string>
     refined: 'Refined',
     manufactured: 'Manufactured',
     services: 'Services',
-};
-
-export const resourcesByLevel: Record<TradableResourceProcessLevel, Resource[]> = {
-    raw: ALL_RESOURCES.filter((r) => r.level === 'raw'),
-    refined: ALL_RESOURCES.filter((r) => r.level === 'refined'),
-    manufactured: ALL_RESOURCES.filter((r) => r.level === 'manufactured'),
-    services: ALL_RESOURCES.filter((r) => r.level === 'services'),
 };

@@ -3,7 +3,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { ProductIcon } from './ProductIcon';
 
@@ -35,7 +35,7 @@ export function StorageResourceSelect({
             if (qty <= 0) {
                 return false;
             }
-            const resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+            const resource = RESOURCES_BY_NAME.get(resourceName);
             if (!resource) {
                 return false;
             }

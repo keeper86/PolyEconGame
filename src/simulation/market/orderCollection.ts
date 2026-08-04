@@ -20,7 +20,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
         }
 
         for (const [resourceName, offer] of Object.entries(assets.market.sell)) {
-            if (isCurrencyResource(offer.resource)) {
+            if (isCurrencyResource(offer.resource) || offer.resource.form === 'internal') {
                 continue;
             }
 
@@ -88,7 +88,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         let totalRequiredMass = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
-            if (isCurrencyResource(bid.resource)) {
+            if (isCurrencyResource(bid.resource) || bid.resource.form === 'internal') {
                 continue;
             }
             const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);

@@ -8,7 +8,7 @@ import {
 import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
 import { z } from 'zod';
@@ -905,7 +905,7 @@ function computeArbitrageRoutesForShip(
     const routes: ArbitrageRouteRow[] = [];
     const { cargoSpecification } = shipType;
 
-    for (const resource of ALL_RESOURCES) {
+    for (const resource of TRADABLE_RESOURCES) {
         const form = resource.form;
         if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
             continue;

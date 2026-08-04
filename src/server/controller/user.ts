@@ -5,7 +5,7 @@ import {
 } from '@/simulation/market/currencyResources';
 import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import { assetManifest } from '@/lib/assetManifest';
 import {
     workerAcquireLicense,
@@ -519,7 +519,7 @@ export const setSellOffers = () => {
             }
 
             for (const [resourceName, offer] of Object.entries(input.offers)) {
-                let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                let resource = RESOURCES_BY_NAME.get(resourceName);
                 if (!resource) {
                     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                         resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
@@ -732,7 +732,7 @@ export const setBuyBids = () => {
             }
 
             for (const [resourceName, bid] of Object.entries(input.bids)) {
-                let resource = ALL_RESOURCES.find((r) => r.name === resourceName);
+                let resource = RESOURCES_BY_NAME.get(resourceName);
                 if (!resource) {
                     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                         const issuingPlanetId = resourceName.slice(CURRENCY_RESOURCE_PREFIX.length);

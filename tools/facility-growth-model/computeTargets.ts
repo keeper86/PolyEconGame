@@ -29,20 +29,20 @@ interface SlackConfig {
 
 const CONFIG: SlackConfig = {
     population: 8_000_000_000,
-    defaultSlack: 1.05, // 0% surplus on everything (1.5 = 50% surplus)
+    defaultSlack: 1.1, // 0% surplus on everything (1.5 = 50% surplus)
     floorScale: 1,
     services: {
-        grocery: 1.3,
-        healthcare: 1.3,
-        logistics: 1.3,
-        retail: 1.3,
-        education: 1.3,
+        grocery: 1.4,
+        healthcare: 1.4,
+        logistics: 1.4,
+        retail: 1.4,
+        education: 1.4,
     },
     goods: {
-        administration: 1.3,
-        logistics: 1.3,
-        construction: 1.3,
-        maintenance: 1.3,
+        administration: 1.5,
+        logistics: 1.5,
+        construction: 1.4,
+        maintenance: 1.4,
     },
 };
    

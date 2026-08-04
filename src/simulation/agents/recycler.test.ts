@@ -67,23 +67,23 @@ describe('getRecyclerPaymentRatio', () => {
         const planet = makePlanet();
         // @ts-expect-error intentionally corrupt type
         planet.recycler = undefined;
-        expect(getRecyclerPaymentRatio(planet)).toBe(0);
+        expect(getRecyclerPaymentRatio(planet, 10)).toBe(0);
     });
 
     it('returns 0 when no market data (avgMarketResult is empty)', () => {
         const planet = makePlanet();
         planet.avgMarketResult = {};
-        expect(getRecyclerPaymentRatio(planet)).toBe(0);
+        expect(getRecyclerPaymentRatio(planet, 10)).toBe(0);
     });
 
     it('returns 0 when market has zero totalDemand', () => {
         const planet = makePlanet();
         // @ts-expect-error intentionally simple type
         planet.avgMarketResult.Construction = { unsoldSupply: 100, unfilledDemand: 50, totalDemand: 0 };
-        expect(getRecyclerPaymentRatio(planet)).toBe(0);
+        expect(getRecyclerPaymentRatio(planet, 10)).toBe(0);
     });
 
-    it('returns 1 when unsoldSupply and unfilledDemand are both zero (both guarded to 1)', () => {
+    it('returns 0.5*(before+after) when unsoldSupply and unfilledDemand are both zero (both guarded to 1)', () => {
         const planet = makePlanet();
         // @ts-expect-error intentionally simple type
         planet.avgMarketResult.Construction = { unsoldSupply: 0, unfilledDemand: 0, totalDemand: 100 };
@@ -92,8 +92,10 @@ describe('getRecyclerPaymentRatio', () => {
         // unfilledDemand -> Math.max(1, 0) = 1
         // demandRatio = 1/1 - 1 = 0
         // stockRatio = 0/1 = 0
-        // ratio = min(1, 1/(1 + 0 + 0)) = 1
-        expect(getRecyclerPaymentRatio(planet)).toBeCloseTo(1);
+        // before = min(1, 1/(1 + 0 + 0)) = 1
+        // after = min(1, 1/(1 + 10 + 0)) = 1/11
+        // result = 0.5 * (1 + 1/11) = 6/11 ≈ 0.545
+        expect(getRecyclerPaymentRatio(planet, 10)).toBeCloseTo(6 / 11);
     });
 
     it('reduces ratio when recycler holds a significant share of unsold supply', () => {
@@ -104,7 +106,7 @@ describe('getRecyclerPaymentRatio', () => {
         // @ts-expect-error intentionally simple type
         planet.avgMarketResult.Construction = { unsoldSupply: 200, unfilledDemand: 0, totalDemand: 100 };
 
-        const ratio = getRecyclerPaymentRatio(planet);
+        const ratio = getRecyclerPaymentRatio(planet, 10);
         // unsoldSupply = max(1, 200) = 200, unfilledDemand = max(1, 0) = 1
         // demandRatio = 200/1 - 1 = 199
         // stockRatio = 100/200 = 0.5
@@ -148,7 +150,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         //   stockRatio = 0/1 = 0
         //   ratio = min(1, 1/(1+0-0.097)) = min(1, 1/0.903) = min(1, 1.107) = 1.0
         // dynamicRatio = 0.75 * 1.0 = 0.75
-        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet);
+        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet, recoveredCS);
         const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatioResult;
         const expectedPayment = recoveredCS * spotPrice * dynamicRatio;
 
@@ -184,7 +186,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         const spotPrice = planet.marketPrices.Construction;
         // getRecyclerPaymentRatio: no market data → totalDemand=undefined → returns 0
         // dynamicRatio = 0.75 * 0 = 0 → no payment
-        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet);
+        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet, recoveredCS);
         const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatioResult;
         const expectedPayment = recoveredCS * spotPrice * dynamicRatio;
 
@@ -225,7 +227,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         //   stockRatio = 0/1 = 0
         //   ratio = min(1, 1/(1+0-0.08)) = min(1, 1/0.92) ≈ 1.0
         // dynamicRatio = 0.75 * 1.0 = 0.75
-        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet);
+        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet, recoveredCS);
         const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatioResult;
         const expectedPayment = recoveredCS * spotPrice * dynamicRatio;
 
@@ -266,7 +268,7 @@ describe('dynamic payment (processFacilityContraction)', () => {
         //   stockRatio = 0/1 = 0
         //   ratio = min(1, 1/(1+0-0.098)) ≈ min(1, 1/0.902) ≈ 1.0
         // dynamicRatio = 0.75 * 1.0 = 0.75
-        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet);
+        const getRecyclerPaymentRatioResult = getRecyclerPaymentRatio(planet, recoveredCS);
         const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatioResult;
         const expectedPayment = recoveredCS * spotPrice * dynamicRatio;
 
@@ -310,7 +312,7 @@ describe('processFacilityContraction', () => {
         const recyclerAssets = planet.recycler!.assets[planet.id]!;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
         // Price = 10 (from avgMarketResult), getRecyclerPaymentRatio returns ~1.0 with 35% unfilled
-        const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet);
+        const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet, recoveredCS);
         const expectedPayment = recoveredCS * 10 * dynamicRatio;
         recyclerAssets.deposits = expectedPayment;
 
@@ -334,7 +336,7 @@ describe('processFacilityContraction', () => {
     it('adds recovered CS to recycler storage', () => {
         const recyclerAssets = planet.recycler!.assets[planet.id]!;
         const recoveredCS = contractCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
-        const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet);
+        const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet, recoveredCS);
         recyclerAssets.deposits = recoveredCS * 10 * dynamicRatio;
 
         const csBefore = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
@@ -529,7 +531,8 @@ describe('recycler profitability over multiple contraction cycles', () => {
         const recyclerAssets = recycler.assets[planet.id]!;
         recyclerAssets.deposits = 1_000_000;
 
-        const gameState = makeGameState([planet], [agent, recycler]);
+        const gov = makeAgent('gov-1', planet.id);
+        const gameState = makeGameState([planet], [agent, recycler, gov]);
 
         const cycles = 5;
         for (let i = 0; i < cycles; i++) {

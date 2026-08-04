@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { getCurrencyResourceName } from '../market/currencyResources';
 import type { GameState, AutomatedPricingConfig } from '../planet/planet';
-import { ALL_RESOURCES } from '../planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { makeAgent, makeGameState, makeStorageFacility } from '../utils/testHelper';
 import { handleSetBuyBids, handleSetSellOffers } from './marketActions';
 import type { OutboundMessage } from './messages';
@@ -9,7 +9,7 @@ import type { OutboundMessage } from './messages';
 const RESOURCE = 'Iron Ore';
 
 function makeState(): GameState {
-    const resource = ALL_RESOURCES.find((r) => r.name === RESOURCE)!;
+    const resource = RESOURCES_BY_NAME.get(RESOURCE)!;
     const storageFacility = makeStorageFacility({
         currentInStorage: {
             [RESOURCE]: { resource, quantity: 100 },

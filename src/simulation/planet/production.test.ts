@@ -639,7 +639,7 @@ describe('productionTick — management facility', () => {
         seedRng(12345);
     });
 
-    it('management facility consumes stored input and advances buffer', () => {
+    it('management facility consumes stored input and produces output', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -648,10 +648,8 @@ describe('productionTick — management facility', () => {
             {
                 id: 'mgmt-1',
                 scale: 1,
-                bufferPerTickPerScale: 10,
-                maxBuffer: 100,
-                buffer: 0,
                 needs: [{ resource: waterResourceType, quantity: 5 }],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
             },
         );
 
@@ -670,14 +668,14 @@ describe('productionTick — management facility', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
-        expect(mgmtFacility.buffer).toBeGreaterThan(0);
         expect(mgmtFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeGreaterThan(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeGreaterThan(0);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThan(50);
     });
 
-    it('management facility does not advance buffer at zero efficiency', () => {
+    it('management facility does not produce at zero efficiency', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -686,10 +684,8 @@ describe('productionTick — management facility', () => {
             {
                 id: 'mgmt-noworker',
                 scale: 1,
-                bufferPerTickPerScale: 10,
-                maxBuffer: 100,
-                buffer: 0,
                 needs: [],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
             },
         );
 
@@ -699,7 +695,7 @@ describe('productionTick — management facility', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
-        expect(mgmtFacility.buffer).toBe(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name] ?? 0).toBe(0);
     });
 
     it('management facility under construction is excluded from productionTick', () => {
@@ -712,7 +708,6 @@ describe('productionTick — management facility', () => {
                 id: 'mgmt-under-construction',
                 scale: 0,
                 maxScale: 0,
-                buffer: 0,
                 construction: {
                     type: 'new',
                     constructionTargetMaxScale: 1,
@@ -734,7 +729,7 @@ describe('productionTick — management facility', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
-        expect(mgmtFacility.buffer).toBe(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name] ?? 0).toBe(0);
     });
 });
 

@@ -49,6 +49,9 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     produces: [{ resource: humanResourcesServiceResourceType, quantity: 1000 }],
 });
 
+export const managementFacilityByName: ReadonlyMap<string, (planetId: string, id: string) => ManagementFacility> =
+    new Map([['Human Resources Office', humanResourcesOfficeFacilityType]]);
+
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {
         planetId,

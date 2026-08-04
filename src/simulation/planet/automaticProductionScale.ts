@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { processFacilityContraction } from '../agents/recycler';
-import { EPSILON, MIN_EMPLOYABLE_AGE } from '../constants';
+import { MIN_EMPLOYABLE_AGE } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
@@ -27,7 +27,7 @@ export const SIGNAL_EMA_ALPHA = 0.3;
 
 export const EXPANSION_INTEGRAL_THRESHOLD = 30;
 export const EXPANSION_INTEGRAL_MAX = 180;
-export const EXPANSION_INTEGRAL_DECAY = 0.5;
+export const EXPANSION_INTEGRAL_DECAY = 0.05;
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
@@ -49,7 +49,7 @@ function getDefaultPidState(): PidState {
     };
 }
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
-    const { lastTickResults, produces } = facility;
+    const { produces } = facility;
 
     let weightedOutputSignalSum = 0;
     let totalWeight = 0;
@@ -125,12 +125,7 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
         'Max output signal should be between -1 and 1, but got' + maxOutputSignal,
     );
 
-    let signal = maxOutputSignal;
-    if (signal > 0) {
-        const eff = Math.max(0.1, lastTickResults.overallEfficiency);
-        signal = eff * signal;
-    }
-    return signal;
+    return maxOutputSignal;
 }
 
 function computePidDelta(signal: number, state: PidState, maxScale: number): number {
@@ -142,10 +137,6 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
 
     if (signal > 0 && state.integral < 0) {
         state.integral = 0;
-    }
-
-    if (Math.abs(signal) < EPSILON) {
-        state.integral *= 0.5;
     }
 
     const tentativeOutput = P + state.integral + D;
@@ -578,7 +569,16 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 ).hasSufficientFunds;
             }
 
-            if (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal) {
+            if (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal && agent.id === 'civic-solutions-corp') {
+                console.log(
+                    'DEBUG',
+                    facility.name,
+                    facility.scale,
+                    facility.maxScale,
+                    delta,
+                    JSON.stringify(facility.construction, null, 2),
+                );
+
                 debugEntry = collectExpansionDebugContext(
                     gameState,
                     planet,

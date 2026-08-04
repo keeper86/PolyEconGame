@@ -1,7 +1,8 @@
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
+import type { ManagementFacility, ProductionFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
-import { shipConstructionFacilityType } from '../planet/specialFacilities';
+import { managementFacilityByName, shipConstructionFacilityType } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import { processFacilityContraction } from '../agents/recycler';
 import type { OutboundMessage, PendingAction } from './messages';
@@ -32,8 +33,9 @@ export function handleBuildFacility(
         });
         return;
     }
+    const managementFactory = managementFacilityByName.get(facilityKey);
     const catalogEntry = facilityByName.get(facilityKey);
-    if (!catalogEntry) {
+    if (!managementFactory && !catalogEntry) {
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
@@ -43,9 +45,11 @@ export function handleBuildFacility(
         return;
     }
     const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = catalogEntry.factory(planetId, facilityId);
-    const targetArray =
-        newFacility.type === 'management' ? assets.managementFacilities : assets.productionFacilities;
+    const isManagement = managementFactory !== undefined;
+    const newFacility = managementFactory
+        ? managementFactory(planetId, facilityId)
+        : catalogEntry!.factory(planetId, facilityId);
+    const targetArray = isManagement ? assets.managementFacilities : assets.productionFacilities;
     const alreadyExists = targetArray.some((f) => f.name === facilityKey);
     if (alreadyExists) {
         safePostMessage({
@@ -68,7 +72,11 @@ export function handleBuildFacility(
     };
     newFacility.scale = 0;
     newFacility.maxScale = 0;
-    targetArray.push(newFacility);
+    if (isManagement) {
+        assets.managementFacilities.push(newFacility as ManagementFacility);
+    } else {
+        assets.productionFacilities.push(newFacility as ProductionFacility);
+    }
     console.log(`[worker] Agent '${agentId}' built '${facilityKey}' (scale ${targetScale}) on planet '${planetId}'`);
     safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId, processedAtTick: state.tick });
 }
@@ -99,7 +107,9 @@ export function handleExpandFacility(
         });
         return;
     }
-    const facility = assets.productionFacilities.find((f) => f.id === facilityId);
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.managementFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityExpandFailed',
@@ -180,6 +190,7 @@ export function handleSetFacilityScale(
     }
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.managementFacilities.find((f) => f.id === facilityId) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -225,6 +236,7 @@ export function handleContractFacility(
     }
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
+        assets.managementFacilities.find((f) => f.id === facilityId) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -266,15 +278,19 @@ export function handleContractFacility(
 
     processFacilityContraction(planet, facility, agent, targetScale, state);
 
-    // TODO: we need to consider all facilities; Let's introduce a function that returns _all_ facilities
     if (targetScale === 0) {
         const prodIdx = assets.productionFacilities.findIndex((f) => f.id === facilityId);
         if (prodIdx !== -1) {
             assets.productionFacilities.splice(prodIdx, 1);
         } else {
-            const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
-            if (shipIdx !== -1) {
-                assets.shipConstructionFacilities.splice(shipIdx, 1);
+            const mgmtIdx = assets.managementFacilities.findIndex((f) => f.id === facilityId);
+            if (mgmtIdx !== -1) {
+                assets.managementFacilities.splice(mgmtIdx, 1);
+            } else {
+                const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
+                if (shipIdx !== -1) {
+                    assets.shipConstructionFacilities.splice(shipIdx, 1);
+                }
             }
         }
     }

@@ -548,7 +548,7 @@ export function canCarryResource(ship: Ship, resource: Resource): boolean {
         return false;
     }
     const form = resource.form;
-    if (form === 'services' || form === 'landBoundResource' || form === 'currency') {
+    if (form === 'services' || form === 'landBoundResource' || form === 'currency' || form === 'internal') {
         return false;
     }
     return ship.type.cargoSpecification.type === (form as TransportableResourceType);

@@ -1,13 +1,11 @@
 'use client';
 
-import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
-import {
-    FacilityIORow,
-    FacilityProductionIORow,
-} from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
-import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
+import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
+import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
+import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
+import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,13 +14,12 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import { formatNumberWithUnit } from '@/lib/utils';
 import { PRICE_FLOOR } from '@/simulation/constants';
+import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
-import { facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
+import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -38,7 +35,6 @@ function InternalBuildCard({
     constructionServicePrice,
     otherConstructionCosts,
     onBuilt,
-    onCancel,
     isPending,
 }: {
     entry: ManagementFacility;
@@ -47,7 +43,6 @@ function InternalBuildCard({
     constructionServicePrice: number;
     otherConstructionCosts?: number;
     onBuilt: () => void;
-    onCancel: () => void;
     isPending: boolean;
 }): React.ReactElement {
     const trpc = useTRPC();
@@ -125,7 +120,7 @@ function InternalBuildCard({
                     pendingLabel='Sending build…'
                     isPending={sending}
                     financials={financials}
-                    onCancel={onCancel}
+                    onCancel={undefined}
                     onConfirm={(targetScale) => {
                         buildMutation.mutate({ agentId, planetId, facilityKey: entry.name, targetScale });
                     }}
@@ -144,7 +139,15 @@ function InternalBuildCard({
     );
 }
 
-function InternalConstructionCard({ facility }: { facility: ManagementFacility }): React.ReactElement {
+function InternalConstructionCard({
+    facility,
+    agentId,
+    planetId,
+}: {
+    facility: ManagementFacility;
+    agentId: string;
+    planetId: string;
+}): React.ReactElement {
     const cs = facility.construction!;
     const targetScale = cs.constructionTargetMaxScale;
     const pct =
@@ -181,6 +184,8 @@ function InternalConstructionCard({ facility }: { facility: ManagementFacility }
                             neutral={true}
                             workerEfficiency={{}}
                             globalMin={0}
+                            planetId={planetId}
+                            agentId={agentId}
                         />
                     </span>
                 </span>
@@ -192,88 +197,6 @@ function InternalConstructionCard({ facility }: { facility: ManagementFacility }
             <div className='relative mt-auto space-y-2'>
                 <Separator />
                 <ConstructionCompactRow facility={facility} hideCancel />
-            </div>
-        </FacilityCardShell>
-    );
-}
-
-function InternalActiveCard({ facility }: { facility: ManagementFacility }): React.ReactElement {
-    const results = facility.lastTickResults;
-    const eff = results?.overallEfficiency ?? 0;
-    const globalMin = results
-        ? Math.min(
-              ...Object.values(results.resourceEfficiency),
-              ...Object.values(results.workerEfficiency).filter((v): v is number => v !== undefined),
-          )
-        : 0;
-
-    return (
-        <FacilityCardShell
-            contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
-            headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{facility.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                                Scale {facility.scale}
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker efficiency
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={facility.scale}
-                            workerEfficiency={results?.workerEfficiency ?? {}}
-                            globalMin={globalMin}
-                        />
-                    </span>
-                </span>
-            }
-        >
-            <div className='flex-1 space-y-2 pb-3'>
-                <FacilityProductionIORow
-                    needs={facility.needs}
-                    produces={facility.produces}
-                    scale={facility.scale}
-                    resourceEfficiency={results?.resourceEfficiency ?? {}}
-                    overallEfficiency={eff}
-                    limitingEfficiency={globalMin}
-                />
-            </div>
-            <div className='mt-auto space-y-2'>
-                <Separator />
-                <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full'>
-                    <div className='flex flex-col items-center'>
-                        inputs{' '}
-                        <span className='tabular-nums text-red-600 dark:text-red-400'>
-                            {formatNumberWithUnit(results?.inputCosts ?? 0, 'currency')}
-                        </span>
-                    </div>
-                    <span className='shrink-0'>−</span>
-                    <div className='flex flex-col items-center'>
-                        wages{' '}
-                        <span className='tabular-nums text-red-600 dark:text-red-400'>
-                            {formatNumberWithUnit(results?.wageCosts ?? 0, 'currency')}
-                        </span>
-                    </div>
-                    <span className='shrink-0'>=</span>
-                    <div className='flex flex-col items-center text-foreground'>
-                        net/day{' '}
-                        <span
-                            className={`tabular-nums text-md ${
-                                (results?.costBalance ?? 0) >= 0
-                                    ? 'text-green-600 dark:text-green-400'
-                                    : 'text-red-600 dark:text-red-400'
-                            }`}
-                        >
-                            {formatNumberWithUnit(results?.costBalance ?? 0, 'currency')}
-                        </span>
-                    </div>
-                </div>
-                <Separator />
             </div>
         </FacilityCardShell>
     );
@@ -317,18 +240,7 @@ export default function InternalFacilitiesPanel({
         return keys;
     }, [pendingActions]);
 
-    const ownedByName = useMemo(() => {
-        const m = new Map<string, ManagementFacility>();
-        for (const f of managementFacilities) {
-            m.set(f.name, f);
-        }
-        return m;
-    }, [managementFacilities]);
-
-    const internalEntries = facilitiesByLevel.internal;
-    const unbuiltEntries = internalEntries.filter(
-        (e) => !ownedByName.has(e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name),
-    );
+    const template = useMemo(() => humanResourcesOfficeFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
 
     return (
         <Card>
@@ -337,27 +249,30 @@ export default function InternalFacilitiesPanel({
                 <div className='flex flex-row gap-3 flex-wrap'>
                     {managementFacilities.map((f) =>
                         f.construction !== null && f.construction.type === 'new' ? (
-                            <InternalConstructionCard key={f.id} facility={f} />
+                            <InternalConstructionCard key={f.id} facility={f} agentId={agentId} planetId={planetId} />
                         ) : (
-                            <InternalActiveCard key={f.id} facility={f} />
-                        ),
-                    )}
-                    {unbuiltEntries.map((entry) => {
-                        const template = entry.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID) as ManagementFacility;
-                        return (
-                            <InternalBuildCard
-                                key={template.name}
-                                entry={template}
+                            <ActiveFacilityCard
+                                key={f.id}
+                                facility={f}
                                 agentId={agentId}
                                 planetId={planetId}
                                 constructionServicePrice={constructionServicePrice}
                                 otherConstructionCosts={otherConstructionCosts}
-                                onBuilt={() => {}}
-                                onCancel={() => {}}
-                                isPending={pendingBuildKeys.has(template.name)}
+                                onExpanded={() => {}}
                             />
-                        );
-                    })}
+                        ),
+                    )}
+
+                    <InternalBuildCard
+                        key={template.name}
+                        entry={template}
+                        agentId={agentId}
+                        planetId={planetId}
+                        constructionServicePrice={constructionServicePrice}
+                        otherConstructionCosts={otherConstructionCosts}
+                        onBuilt={() => {}}
+                        isPending={pendingBuildKeys.has(template.name)}
+                    />
                 </div>
             </CardContent>
         </Card>

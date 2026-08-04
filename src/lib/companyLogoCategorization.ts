@@ -13,6 +13,7 @@ const LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     refined: CATEGORY_REFINEMENT,
     manufactured: CATEGORY_MANUFACTURING,
     services: CATEGORY_SERVICES,
+    internal: CATEGORY_SERVICES, // not needed but easier to handle
 };
 
 const ICON_KEY_OVERRIDES: Record<string, ResourceProcessLevel> = {

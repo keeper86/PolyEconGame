@@ -9,7 +9,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR } from '@/simulation/constants';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
-import { RESOURCE_LEVEL_LABELS, resourcesByLevel } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import {
     beverageResourceType,
     cementResourceType,
@@ -222,10 +222,15 @@ function ProductToggleButton({
 }
 
 function getLevelForResource(name: string): ResourceProcessLevel {
-    for (const level of ['raw', 'refined', 'manufactured', 'services'] as const) {
-        if (resourcesByLevel[level].some((r) => r.name === name)) {
-            return level;
-        }
+    const level = RESOURCES_BY_NAME.get(name)?.level;
+    if (
+        level === 'raw' ||
+        level === 'refined' ||
+        level === 'manufactured' ||
+        level === 'services' ||
+        level === 'internal'
+    ) {
+        return level;
     }
     return 'raw';
 }
