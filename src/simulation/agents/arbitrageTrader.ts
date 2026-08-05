@@ -38,7 +38,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                     volumeCapacity: 5e14,
                     massCapacity: 5e15,
                 });
-                const assets = makeAgentPlanetAssets(planet.id, [], storage);
+                const assets = makeAgentPlanetAssets(planet.id, [], storage, null);
                 assets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
                 assets.market = { sell: {}, buy: {} };
 

@@ -14,6 +14,7 @@ import {
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
 import { ALL_PRODUCTION_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
+import { humanResourcesOfficeFacilityType, humanResourcesScaleForWorkers } from '../planet/specialFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
@@ -134,6 +135,17 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             const fac = entry.factory(PROC_PLANET_ID, `${id}-${facilityType}`);
             fac.scale = scale;
             fac.maxScale = scale;
+
+            const neededWorkers =
+                (fac.workerRequirement.none ?? 0) +
+                (fac.workerRequirement.primary ?? 0) +
+                (fac.workerRequirement.secondary ?? 0) +
+                (fac.workerRequirement.tertiary ?? 0);
+
+            const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
+
+            hrDepartment.scale = humanResourcesScaleForWorkers(neededWorkers * scale);
+            hrDepartment.maxScale = humanResourcesScaleForWorkers(neededWorkers * scale);
             facilities.push(fac);
 
             const agent = makeAgent({
@@ -143,6 +155,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 planetId: PROC_PLANET_ID,
                 facilities,
                 storage: makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` }),
+                hrDepartment,
             });
 
             const personality = generateAgentPersonality();
@@ -182,6 +195,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         planetId: PROC_PLANET_ID,
         facilities: [],
         storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-gov-storage', name: 'Gov. Central Storage' }),
+        hrDepartment: null,
     });
     agents.unshift(govAgent);
 

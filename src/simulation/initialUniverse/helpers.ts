@@ -3,6 +3,7 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import type { Resource } from '../planet/claims';
+import type { ManagementFacility } from '../planet/facility';
 import {
     createLastTickResults,
     putIntoStorageFacility,
@@ -98,12 +99,13 @@ export function makeAgentPlanetAssets(
     planetId: string,
     facilities: ProductionFacility[],
     storage: StorageFacility,
+    hrDepartment: ManagementFacility | null,
 ): AgentPlanetAssets {
     return {
         productionFacilities: facilities,
         shipConstructionFacilities: [],
         storageFacility: storage,
-        humanResourcesDepartment: null,
+        humanResourcesDepartment: hrDepartment,
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],
@@ -146,9 +148,10 @@ export function makeAgent(opts: {
     planetId: string;
     facilities: ProductionFacility[];
     storage: StorageFacility;
+    hrDepartment: ManagementFacility | null;
     logo?: string;
 }): Agent {
-    const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage);
+    const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage, opts.hrDepartment);
 
     assets.licenses = {
         commercial: { acquiredTick: 0, frozen: false },

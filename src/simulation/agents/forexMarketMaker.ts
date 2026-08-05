@@ -28,7 +28,7 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 id: `${mmId}_store_${homePlanet.id}`,
                 name: 'MM Storage',
             });
-            const homeAssets = makeAgentPlanetAssets(homePlanet.id, [], homeStorage);
+            const homeAssets = makeAgentPlanetAssets(homePlanet.id, [], homeStorage, null);
             homeAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
             homeAssets.market = { sell: {}, buy: {} };
             grantLoan(homeAssets, homePlanet.bank, FOREX_MM_WORKING_CAPITAL, 'forexWorkingCapital', 0);
@@ -43,7 +43,7 @@ export function seedForexMarketMakers(gameState: GameState): void {
                     id: `${mmId}_store_${foreignPlanet.id}`,
                     name: 'MM Storage',
                 });
-                const foreignAssets = makeAgentPlanetAssets(foreignPlanet.id, [], foreignStorage);
+                const foreignAssets = makeAgentPlanetAssets(foreignPlanet.id, [], foreignStorage, null);
                 foreignAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
                 foreignAssets.market = { sell: {}, buy: {} };
                 grantLoan(foreignAssets, foreignPlanet.bank, FOREX_MM_SEED_LOAN, 'forexWorkingCapital', 0);

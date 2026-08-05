@@ -34,6 +34,7 @@ const makeManagementFacilityDefaults = () => ({
 });
 
 export const HR_DEPARTMENT_NAME = 'HR Department';
+export const PRODUCED_QUANTITY = 1000;
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
@@ -47,8 +48,9 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
         tertiary: 1,
     },
     needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],
-    produces: [{ resource: humanResourcesServiceResourceType, quantity: 1000 }],
+    produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
 });
+export const humanResourcesScaleForWorkers = (neededWorkers: number): number => neededWorkers / PRODUCED_QUANTITY;
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {
