@@ -1,6 +1,7 @@
 'use client';
 
 import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
@@ -8,6 +9,7 @@ import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/producti
 import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
@@ -18,7 +20,7 @@ import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketP
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { constructionServiceResourceType, humanResourcesServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
@@ -254,16 +256,36 @@ export default function HRDepartment({
                 />
             );
         } else {
+            const hrServicesStock =
+                assets.storageFacility.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0;
+            console.log(hrServicesStock);
             return (
-                <ActiveFacilityCard
-                    key={hrDepartment.id}
-                    facility={hrDepartment}
-                    agentId={agentId}
-                    planetId={planetId}
-                    constructionServicePrice={constructionServicePrice}
-                    otherConstructionCosts={otherConstructionCosts}
-                    onExpanded={() => {}}
-                />
+                <span className='flex flex-col gap-2'>
+                    <ActiveFacilityCard
+                        key={hrDepartment.id}
+                        facility={hrDepartment}
+                        agentId={agentId}
+                        planetId={planetId}
+                        constructionServicePrice={constructionServicePrice}
+                        otherConstructionCosts={otherConstructionCosts}
+                        onExpanded={() => {}}
+                    />
+                    <Card className='overflow-hidden flex flex-col min-w-[300px] sm:min-w-[350px] max-w-[485px]'>
+                        <CardContent className='px-3 py-3 flex flex-row flex-1 gap-2'>
+                            <h3 className='font-semibold leading-tight text-sm'>HR Services Stock</h3>
+
+                            <ProductQuantity
+                                resource={humanResourcesServiceResourceType}
+                                quantity={hrServicesStock}
+                                efficiency={1}
+                                isLimiting={false}
+                                planetId={planetId}
+                                agentId={agentId}
+                                neutral={true}
+                            />
+                        </CardContent>
+                    </Card>
+                </span>
             );
         }
     } else {

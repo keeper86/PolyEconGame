@@ -60,6 +60,9 @@ export function ProductQuantity({
             if (resource.form === 'landBoundResource') {
                 return `/planets/${planetId}/claims#${resourceNameToSlug(resource.name)}`;
             }
+            if (resource.form === 'internal') {
+                return null;
+            }
             if (agentId) {
                 return `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resource.name)}`;
             }

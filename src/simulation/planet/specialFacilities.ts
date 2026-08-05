@@ -35,6 +35,7 @@ const makeManagementFacilityDefaults = () => ({
 
 export const HR_DEPARTMENT_NAME = 'HR Department';
 export const PRODUCED_QUANTITY = 1000;
+export const ESTIMATED_HR_OVERHEAD = 1.025;
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
@@ -42,10 +43,10 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     name: HR_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 5,
-        primary: 10,
-        secondary: 5,
-        tertiary: 1,
+        none: 0,
+        primary: 5,
+        secondary: 10,
+        tertiary: 5,
     },
     needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],

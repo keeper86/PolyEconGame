@@ -39,7 +39,11 @@ import {
 } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
-import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
+import {
+    ALL_SERVICE_RESOURCE_TYPE_NAMES,
+    constructionServiceResourceType,
+    humanResourcesServiceResourceType,
+} from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
@@ -767,7 +771,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         assets.totalSlotCapacity = totalSlotCapacity;
 
-        const { remaining, byFacility } = waterFill(
+        const { remaining, byFacility, used } = waterFill(
             allSlots,
             workerPool,
             ageProd,
@@ -775,6 +779,18 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             xpProdByEduSkill,
             effectiveDemandBySlot,
         );
+
+        // consume
+        const consumed = removeFromStorageFacility(
+            assets.storageFacility,
+            humanResourcesServiceResourceType.name,
+            used,
+        );
+        if (consumed < used) {
+            console.error(
+                `[productionTick] human resources service consumption error: consumed=${consumed} used=${used} from ${agent.id}`,
+            );
+        }
 
         if (workforce) {
             for (let age = 0; age < workforce.length; age++) {

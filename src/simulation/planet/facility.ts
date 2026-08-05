@@ -40,7 +40,7 @@ const facilityConstructionMultiplier: Record<FacilityType, number> = {
     manufactured: 3,
     services: 4,
     storage: 1,
-    management: 2.5,
+    management: 0.5,
     ship_construction: 5,
 };
 
@@ -57,9 +57,10 @@ export const calculateCostsForConstruction = (
     const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
     const linearTerm = targetScale - currentScale;
 
+    const minimumTime = MINIMUM_CONSTRUCTION_TIME_IN_TICKS * (facilityType === 'management' ? 0.5 : 1);
     return {
         cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
-        time: MINIMUM_CONSTRUCTION_TIME_IN_TICKS + 30 * m * Math.log(targetScale - currentScale),
+        time: minimumTime + 30 * m * Math.log(targetScale - currentScale),
     };
 };
 

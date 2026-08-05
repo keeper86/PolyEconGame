@@ -6,20 +6,6 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Planet } from '../planet/planet';
-import {
-    administrativeCenter,
-    beveragePlant,
-    coalMine,
-    foodProcessor,
-    groceryChain,
-    agriculturalFacility,
-    ironMine,
-    ironSmelter,
-    logisticsHub,
-    packagingPlant,
-    pesticidePlant,
-    waterFacility,
-} from '../planet/productionFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { makePool } from './resourceClaimFactory';
@@ -32,209 +18,8 @@ const TOTAL_WATER = 800_000;
 const TOTAL_IRON = 500_000;
 const TOTAL_COAL = 400_000;
 
-interface AgriSpec {
-    id: string;
-    name: string;
-    arableLand: number;
-    waterSource: number;
-}
-
-interface IndustrialSpec {
-    id: string;
-    name: string;
-}
-
-const agriSpecs: AgriSpec[] = [
-    { id: 'ac-frontier-farms', name: 'Frontier Farms AC', arableLand: 15000, waterSource: 15000 },
-    { id: 'ac-nova-ag', name: 'Nova Agriculture', arableLand: 10000, waterSource: 10000 },
-    { id: 'ac-colony-co', name: 'Colony Co-op', arableLand: 5000, waterSource: 5000 },
-    { id: 'ac-hydro-farms', name: 'AC Hydro Farms', arableLand: 8000, waterSource: 8000 },
-    { id: 'ac-pioneer-ag', name: 'Pioneer Agriculture', arableLand: 6000, waterSource: 6000 },
-    { id: 'ac-stardust-crops', name: 'Stardust Crops Ltd', arableLand: 4000, waterSource: 4000 },
-];
-
-const industrialSpecs: IndustrialSpec[] = [
-    { id: 'ac-colony-iron', name: 'Colony Iron Works' },
-    { id: 'ac-energy-corp', name: 'AC Energy Corp' },
-    { id: 'ac-food-proc', name: 'AC Food Processing' },
-    { id: 'ac-pharma-colony', name: 'Colony Pharma' },
-    { id: 'ac-pesticides-inc', name: 'Pesticides Inc' },
-];
-
 export function buildAlphaCentauri(): { planet: Planet; agents: import('../planet/planet').Agent[] } {
     const agents: import('../planet/planet').Agent[] = [];
-
-    const utilWaterFacility = waterFacility(AC_ID, 'ac-utilities-water');
-    utilWaterFacility.scale = 100;
-    utilWaterFacility.maxScale = 100;
-    const utilAgriFacility = agriculturalFacility(AC_ID, 'ac-utilities-agri');
-    utilAgriFacility.scale = 100;
-    utilAgriFacility.maxScale = 100;
-    agents.push(
-        makeAgent({
-            id: 'ac-utilities',
-            name: 'AC Public Utilities',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [utilWaterFacility, utilAgriFacility],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-utilities-storage', name: 'AC Public Utilities Storage' }),
-        }),
-    );
-
-    for (const spec of agriSpecs) {
-        const agriScale = spec.arableLand / 1000;
-        const waterScale = spec.waterSource / 1000;
-
-        const buildWaterFacility = waterFacility(AC_ID, `${spec.id}-water`);
-        buildWaterFacility.scale = waterScale;
-        buildWaterFacility.maxScale = waterScale;
-
-        const agriFacility = agriculturalFacility(AC_ID, `${spec.id}-agri`);
-        agriFacility.scale = agriScale;
-        agriFacility.maxScale = agriScale;
-
-        agents.push(
-            makeAgent({
-                id: spec.id,
-                name: spec.name,
-                associatedPlanetId: AC_ID,
-                planetId: AC_ID,
-                facilities: [buildWaterFacility, agriFacility],
-                storage: makeStorage({ planetId: AC_ID, id: `${spec.id}-storage`, name: `${spec.name} Storage` }),
-            }),
-        );
-    }
-
-    const [colonyIron, energyCorp, foodProc] = industrialSpecs;
-
-    const ci1 = ironMine(AC_ID, 'colony-iron-extraction');
-    ci1.scale = 300;
-    ci1.maxScale = 300;
-    const ci2 = ironSmelter(AC_ID, 'colony-iron-smelter');
-    ci2.scale = 100;
-    ci2.maxScale = 100;
-    agents.push(
-        makeAgent({
-            id: colonyIron.id,
-            name: colonyIron.name,
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [ci1, ci2],
-            storage: makeStorage({ planetId: AC_ID, id: 'colony-iron-storage', name: 'Colony Iron Storage' }),
-        }),
-    );
-
-    const ec1 = coalMine(AC_ID, 'energy-corp-coal-mine');
-    ec1.scale = 200;
-    ec1.maxScale = 200;
-    agents.push(
-        makeAgent({
-            id: energyCorp.id,
-            name: energyCorp.name,
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [ec1],
-            storage: makeStorage({ planetId: AC_ID, id: 'energy-corp-storage', name: 'AC Energy Storage' }),
-        }),
-    );
-
-    const pest1 = pesticidePlant(AC_ID, 'ac-pesticides');
-    pest1.scale = 20;
-    pest1.maxScale = 20;
-    agents.push(
-        makeAgent({
-            id: 'ac-pesticides-inc',
-            name: 'Pesticides Inc',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [pest1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-pesticides-storage', name: 'AC Pesticides Storage' }),
-        }),
-    );
-
-    const fp1 = foodProcessor(AC_ID, 'ac-food-proc-plant');
-    fp1.scale = 30;
-    fp1.maxScale = 30;
-    agents.push(
-        makeAgent({
-            id: foodProc.id,
-            name: foodProc.name,
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [fp1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-food-proc-storage', name: 'AC Food Processing Storage' }),
-        }),
-    );
-
-    const bev1 = beveragePlant(AC_ID, 'ac-beverage-plant');
-    bev1.scale = 20;
-    bev1.maxScale = 20;
-    agents.push(
-        makeAgent({
-            id: 'ac-beverage-corp',
-            name: 'AC Beverage Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [bev1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-beverage-storage', name: 'AC Beverage Storage' }),
-        }),
-    );
-
-    const pkg1 = packagingPlant(AC_ID, 'ac-packaging-plant');
-    pkg1.scale = 10;
-    pkg1.maxScale = 10;
-    agents.push(
-        makeAgent({
-            id: 'ac-packaging-corp',
-            name: 'AC Packaging Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [pkg1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-packaging-storage', name: 'AC Packaging Storage' }),
-        }),
-    );
-
-    const adm1 = administrativeCenter(AC_ID, 'ac-admin-center');
-    adm1.scale = 100;
-    adm1.maxScale = 100;
-    agents.push(
-        makeAgent({
-            id: 'ac-admin-services',
-            name: 'AC Administrative Services',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [adm1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-admin-storage', name: 'AC Admin Storage' }),
-        }),
-    );
-
-    const log1 = logisticsHub(AC_ID, 'ac-logistics-hub');
-    log1.scale = 50;
-    log1.maxScale = 50;
-    agents.push(
-        makeAgent({
-            id: 'ac-logistics-corp',
-            name: 'AC Logistics Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [log1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-logistics-storage', name: 'AC Logistics Storage' }),
-        }),
-    );
-
-    const groc1 = groceryChain(AC_ID, 'ac-grocery-chain');
-    groc1.scale = 1000;
-    groc1.maxScale = 1000;
-    agents.push(
-        makeAgent({
-            id: 'ac-grocery-corp',
-            name: 'AC Grocery Corp',
-            associatedPlanetId: AC_ID,
-            planetId: AC_ID,
-            facilities: [groc1],
-            storage: makeStorage({ planetId: AC_ID, id: 'ac-grocery-storage', name: 'AC Grocery Storage' }),
-        }),
-    );
 
     const govAgent = makeAgent({
         id: GOV,
@@ -243,6 +28,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         planetId: AC_ID,
         facilities: [],
         storage: makeStorage({ planetId: AC_ID, id: 'ac-gov-storage', name: 'AC Gov. Storage' }),
+        hrDepartment: null,
     });
     agents.unshift(govAgent);
 
@@ -250,7 +36,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         id: AC_ID,
         name: 'Alpha Centauri',
         position: { x: 4.37, y: 0, z: 0 },
-        population: createPopulation(1_000_000, 18),
+        population: createPopulation(0, 0),
         governmentId: GOV,
         bank: {
             loans: 0,

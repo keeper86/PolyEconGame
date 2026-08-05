@@ -13,8 +13,16 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
-import { ALL_PRODUCTION_FACILITY_ENTRIES, type FacilityType } from '../planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, humanResourcesScaleForWorkers } from '../planet/specialFacilities';
+import {
+    ALL_PRODUCTION_FACILITY_ENTRIES,
+    neededWorkersByFacility,
+    type FacilityType,
+} from '../planet/productionFacilities';
+import {
+    ESTIMATED_HR_OVERHEAD,
+    humanResourcesOfficeFacilityType,
+    humanResourcesScaleForWorkers,
+} from '../planet/specialFacilities';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
@@ -136,16 +144,13 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             fac.scale = scale;
             fac.maxScale = scale;
 
-            const neededWorkers =
-                (fac.workerRequirement.none ?? 0) +
-                (fac.workerRequirement.primary ?? 0) +
-                (fac.workerRequirement.secondary ?? 0) +
-                (fac.workerRequirement.tertiary ?? 0);
-
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
+            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` });
+            const neededWorkers =
+                ESTIMATED_HR_OVERHEAD * (neededWorkersByFacility(fac) + neededWorkersByFacility(storage));
 
-            hrDepartment.scale = humanResourcesScaleForWorkers(neededWorkers * scale);
-            hrDepartment.maxScale = humanResourcesScaleForWorkers(neededWorkers * scale);
+            hrDepartment.scale = humanResourcesScaleForWorkers(neededWorkers);
+            hrDepartment.maxScale = hrDepartment.scale;
             facilities.push(fac);
 
             const agent = makeAgent({
@@ -154,7 +159,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 associatedPlanetId: PROC_PLANET_ID,
                 planetId: PROC_PLANET_ID,
                 facilities,
-                storage: makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` }),
+                storage,
                 hrDepartment,
             });
 

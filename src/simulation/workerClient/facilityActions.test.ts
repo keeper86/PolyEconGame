@@ -10,7 +10,7 @@ import {
 } from './facilityActions';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
-import { humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
+import { HR_DEPARTMENT_NAME, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
 
 function makeMessages() {
     const messages: OutboundMessage[] = [];
@@ -75,7 +75,7 @@ describe('handleBuildFacility — HR Department', () => {
                 requestId: 'r20',
                 agentId: company.id,
                 planetId: planet.id,
-                facilityKey: 'Human Resources Office',
+                facilityKey: HR_DEPARTMENT_NAME,
                 targetScale: 1,
             },
             post,
@@ -87,7 +87,7 @@ describe('handleBuildFacility — HR Department', () => {
         });
         expect(company.assets[planet.id].humanResourcesDepartment).not.toBeNull();
         const f = company.assets[planet.id].humanResourcesDepartment!;
-        expect(f.name).toBe('Human Resources Office');
+        expect(f.name).toBe(HR_DEPARTMENT_NAME);
         expect(f.construction).not.toBeNull();
         expect(f.construction!.type).toBe('new');
     });
@@ -105,7 +105,7 @@ describe('handleBuildFacility — HR Department', () => {
                 requestId: 'r21',
                 agentId: company.id,
                 planetId: planet.id,
-                facilityKey: 'Human Resources Office',
+                facilityKey: HR_DEPARTMENT_NAME,
                 targetScale: 1,
             },
             post,
