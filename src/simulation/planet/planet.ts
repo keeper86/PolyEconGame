@@ -329,6 +329,12 @@ export type AgentPlanetAssets = {
     storageFacility: StorageFacility;
     humanResourcesDepartment: ManagementFacility | null;
 
+    hrBuffer: number;
+
+    hrProductivityMultiplier: number;
+
+    hrDemand: number;
+
     transportContracts: TransportContract[];
     constructionContracts: ConstructionContract[];
     shipBuyingOffers: ShipBuyingOffer[];

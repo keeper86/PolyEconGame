@@ -39,11 +39,7 @@ import {
 } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
-import {
-    ALL_SERVICE_RESOURCE_TYPE_NAMES,
-    constructionServiceResourceType,
-    humanResourcesServiceResourceType,
-} from './services';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
@@ -771,7 +767,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         assets.totalSlotCapacity = totalSlotCapacity;
 
-        const { remaining, byFacility, used } = waterFill(
+        const { remaining, byFacility } = waterFill(
             allSlots,
             workerPool,
             ageProd,
@@ -779,18 +775,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             xpProdByEduSkill,
             effectiveDemandBySlot,
         );
-
-        // consume
-        const consumed = removeFromStorageFacility(
-            assets.storageFacility,
-            humanResourcesServiceResourceType.name,
-            used,
-        );
-        if (consumed < used) {
-            console.error(
-                `[productionTick] human resources service consumption error: consumed=${consumed} used=${used} from ${agent.id}`,
-            );
-        }
 
         if (workforce) {
             for (let age = 0; age < workforce.length; age++) {
@@ -858,10 +842,15 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             };
 
             const resourceEfficiencies = Object.values(resourceEfficiencyMap);
-            const overallEfficiency = Math.min(
+            const rawEfficiency = Math.min(
                 workerResults.workerEfficiencyOverall,
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
+            const isHrDepartment =
+                assets.humanResourcesDepartment !== null && facility.id === assets.humanResourcesDepartment.id;
+            const overallEfficiency = isHrDepartment
+                ? rawEfficiency
+                : rawEfficiency * (assets.hrProductivityMultiplier ?? 1);
 
             if (overallEfficiency > 0) {
                 planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;

@@ -1,7 +1,6 @@
 'use client';
 
 import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
-import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
@@ -12,20 +11,48 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
+import { computeHrDemand, hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import { constructionServiceResourceType, humanResourcesServiceResourceType } from '@/simulation/planet/services';
+import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+
+const HR_STATUS_CONFIG: Record<
+    HrBufferStatus,
+    { label: string; badgeClassName: string; tooltip: (pct: number) => string }
+> = {
+    optimal: {
+        label: 'Optimal',
+        badgeClassName: 'border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
+        tooltip: () => 'HR services running smoothly (100% Efficiency)',
+    },
+    stable: {
+        label: 'Stable',
+        badgeClassName: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
+        tooltip: () => 'HR services fully covered (100% Efficiency)',
+    },
+    strained: {
+        label: 'Strained',
+        badgeClassName: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
+        tooltip: (pct) => `HR deficit! Worker productivity reduced to ${pct}%`,
+    },
+    critical: {
+        label: 'Critical',
+        badgeClassName: 'border-red-300 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
+        tooltip: (pct) => `Severe HR failure! Worker productivity dropped to ${pct}%`,
+    },
+};
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -245,6 +272,11 @@ export default function HRDepartment({
     const template = useMemo(() => humanResourcesOfficeFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
     const hrDepartment = assets.humanResourcesDepartment;
 
+    const hrDemand = useMemo(() => computeHrDemand(assets.workforceDemography), [assets.workforceDemography]);
+    const status = useMemo(() => hrBufferStatus(assets.hrBuffer ?? 0, hrDemand), [assets.hrBuffer, hrDemand]);
+    const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
+    const statusConfig = HR_STATUS_CONFIG[status];
+
     if (hrDepartment !== null) {
         if (hrDepartment.construction !== null && hrDepartment.construction.type === 'new') {
             return (
@@ -256,9 +288,6 @@ export default function HRDepartment({
                 />
             );
         } else {
-            const hrServicesStock =
-                assets.storageFacility.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0;
-            console.log(hrServicesStock);
             return (
                 <span className='flex flex-col gap-2'>
                     <ActiveFacilityCard
@@ -271,18 +300,19 @@ export default function HRDepartment({
                         onExpanded={() => {}}
                     />
                     <Card className='overflow-hidden flex flex-col min-w-[300px] sm:min-w-[350px] max-w-[485px]'>
-                        <CardContent className='px-3 py-3 flex flex-row flex-1 gap-2'>
-                            <h3 className='font-semibold leading-tight text-sm'>HR Services Stock</h3>
-
-                            <ProductQuantity
-                                resource={humanResourcesServiceResourceType}
-                                quantity={hrServicesStock}
-                                efficiency={1}
-                                isLimiting={false}
-                                planetId={planetId}
-                                agentId={agentId}
-                                neutral={true}
-                            />
+                        <CardContent className='px-3 py-3 flex flex-row flex-1 justify-between items-center gap-2'>
+                            <h3 className='font-semibold leading-tight text-sm'>HR Services</h3>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge
+                                        variant='outline'
+                                        className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}
+                                    >
+                                        {statusConfig.label} {hrDemand} : {assets.hrBuffer}
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
+                            </Tooltip>
                         </CardContent>
                     </Card>
                 </span>
