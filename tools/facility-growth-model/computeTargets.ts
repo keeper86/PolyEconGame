@@ -9,12 +9,19 @@
 
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
 import { allServices } from '../../src/simulation/market/serviceDefinitions';
-import  camelCase from 'camelcase'
+import camelCase from 'camelcase';
 import {
+    administrativeServiceResourceType,
     constructionServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import { computePopulationServiceDemand } from '../../src/app/supply-chain/_components/populationDemandHelper';
+import {
+    ESTIMATED_HR_OVERHEAD,
+    HR_WORLD_BUFFER,
+    PRODUCED_QUANTITY,
+    USED_QUANTITY,
+} from '../../src/simulation/planet/specialFacilities';
 
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
@@ -53,6 +60,8 @@ function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / PRODUCED_QUANTITY;
+
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;
     variables: Record<string, Record<string, number>>;
@@ -62,6 +71,9 @@ function buildModel(slack: SlackConfig): {
 
     const constraints: Record<string, { min: number }> = {};
     const variables: Record<string, Record<string, number>> = {};
+
+    const adminKey = resourceConstraintKey(administrativeServiceResourceType.name);
+    const adminSlack = slack.goods[administrativeServiceResourceType.name.toLowerCase()] ?? slack.defaultSlack;
 
     for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
@@ -80,6 +92,19 @@ function buildModel(slack: SlackConfig): {
             const key = resourceConstraintKey(need.resource.name);
             varCoeffs[key] = (varCoeffs[key] ?? 0) - need.quantity;
             if (!constraints[key]) constraints[key] = { min: 0 };
+        }
+
+        const workersPerScale =
+            (f.workerRequirement.none ?? 0) +
+            (f.workerRequirement.primary ?? 0) +
+            (f.workerRequirement.secondary ?? 0) +
+            (f.workerRequirement.tertiary ?? 0);
+        const storageWorkersPerScale = 25 / 150_000;
+        const hrAdminDemandPerScale =
+            (workersPerScale + storageWorkersPerScale) * HR_ADMIN_PER_WORKER * adminSlack;
+        if (hrAdminDemandPerScale > 0) {
+            varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - hrAdminDemandPerScale;
+            if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
         }
 
         variables[name] = varCoeffs;
@@ -296,6 +321,14 @@ function main(): void {
                     balances[service.resource.name].cons += demand;
                 }
             }
+
+            // Add HR department administration consumption to balance display
+            balances[administrativeServiceResourceType.name] = balances[administrativeServiceResourceType.name] ?? {
+                prod: 0,
+                cons: 0,
+            };
+            const hrAdminConsumption = totalWorkers * HR_ADMIN_PER_WORKER;
+            balances[administrativeServiceResourceType.name].cons += hrAdminConsumption;
 
             // Add ad-hoc construction consumption to balance display
             if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {
