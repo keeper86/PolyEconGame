@@ -63,7 +63,7 @@ function makeManagementFacility(planetId: string, id = 'mgmt-1'): ManagementFaci
     };
 }
 
-describe('handleBuildFacility — Human Resources Office', () => {
+describe('handleBuildFacility — HR Department', () => {
     it('builds a Human Resources Office into humanResourcesDepartment', () => {
         const { gameState, planet, company } = setupWorld();
         const { messages, post } = makeMessages();

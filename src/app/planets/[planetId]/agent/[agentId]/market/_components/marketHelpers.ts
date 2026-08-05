@@ -158,7 +158,13 @@ export function buildResourceList(
     forceInclude: string[] = [],
     availableCurrencies: { name: string }[] = [],
 ): { name: string }[] {
-    const { productionFacilities: facilities, shipConstructionFacilities, storageFacility, market } = assets;
+    const {
+        productionFacilities: facilities,
+        humanResourcesDepartment,
+        shipConstructionFacilities,
+        storageFacility,
+        market,
+    } = assets;
     const buyBids = market?.buy ?? {};
     const sellOffers = market?.sell ?? {};
 
@@ -187,6 +193,13 @@ export function buildResourceList(
             add(resource.name);
         }
         for (const { resource } of f.produces) {
+            assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
+            add(resource.name);
+        }
+    }
+
+    if (humanResourcesDepartment) {
+        for (const { resource } of humanResourcesDepartment.needs) {
             assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
             add(resource.name);
         }

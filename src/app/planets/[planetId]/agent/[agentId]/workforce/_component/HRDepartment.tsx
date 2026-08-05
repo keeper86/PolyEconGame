@@ -1,14 +1,13 @@
 'use client';
 
-import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
+import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
 import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
 import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
 import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
@@ -18,13 +17,13 @@ import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -203,7 +202,7 @@ function InternalConstructionCard({
     );
 }
 
-export default function InternalFacilitiesPanel({
+export default function HRDepartment({
     agentId,
     planetId,
     assets,
@@ -244,45 +243,41 @@ export default function InternalFacilitiesPanel({
     const template = useMemo(() => humanResourcesOfficeFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
     const hrDepartment = assets.humanResourcesDepartment;
 
-    return (
-        <Card>
-            <CardContent className='space-y-2'>
-                <h2 className='text-sm font-semibold'>Internal Facilities</h2>
-                <div className='flex flex-row gap-3 flex-wrap'>
-                    {hrDepartment !== null &&
-                        (hrDepartment.construction !== null && hrDepartment.construction.type === 'new' ? (
-                            <InternalConstructionCard
-                                key={hrDepartment.id}
-                                facility={hrDepartment}
-                                agentId={agentId}
-                                planetId={planetId}
-                            />
-                        ) : (
-                            <ActiveFacilityCard
-                                key={hrDepartment.id}
-                                facility={hrDepartment}
-                                agentId={agentId}
-                                planetId={planetId}
-                                constructionServicePrice={constructionServicePrice}
-                                otherConstructionCosts={otherConstructionCosts}
-                                onExpanded={() => {}}
-                            />
-                        ))}
-
-                    {hrDepartment === null && (
-                        <InternalBuildCard
-                            key={template.name}
-                            entry={template}
-                            agentId={agentId}
-                            planetId={planetId}
-                            constructionServicePrice={constructionServicePrice}
-                            otherConstructionCosts={otherConstructionCosts}
-                            onBuilt={() => {}}
-                            isPending={pendingBuildKeys.has(template.name)}
-                        />
-                    )}
-                </div>
-            </CardContent>
-        </Card>
-    );
+    if (hrDepartment !== null) {
+        if (hrDepartment.construction !== null && hrDepartment.construction.type === 'new') {
+            return (
+                <InternalConstructionCard
+                    key={hrDepartment.id}
+                    facility={hrDepartment}
+                    agentId={agentId}
+                    planetId={planetId}
+                />
+            );
+        } else {
+            return (
+                <ActiveFacilityCard
+                    key={hrDepartment.id}
+                    facility={hrDepartment}
+                    agentId={agentId}
+                    planetId={planetId}
+                    constructionServicePrice={constructionServicePrice}
+                    otherConstructionCosts={otherConstructionCosts}
+                    onExpanded={() => {}}
+                />
+            );
+        }
+    } else {
+        return (
+            <InternalBuildCard
+                key={template.name}
+                entry={template}
+                agentId={agentId}
+                planetId={planetId}
+                constructionServicePrice={constructionServicePrice}
+                otherConstructionCosts={otherConstructionCosts}
+                onBuilt={() => {}}
+                isPending={pendingBuildKeys.has(template.name)}
+            />
+        );
+    }
 }

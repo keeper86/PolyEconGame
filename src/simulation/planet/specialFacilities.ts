@@ -33,7 +33,7 @@ const makeManagementFacilityDefaults = () => ({
     },
 });
 
-export const HR_DEPARTMENT_NAME = 'Human Resources Office';
+export const HR_DEPARTMENT_NAME = 'HR Department';
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,

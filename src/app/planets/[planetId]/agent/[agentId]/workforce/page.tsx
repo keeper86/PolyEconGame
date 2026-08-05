@@ -1,7 +1,7 @@
 'use client';
 
 import AutomationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/AutomationPanel';
-import InternalFacilitiesPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/InternalFacilitiesPanel';
+import HRDepartment from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/HRDepartment';
 import WorkerAllocationPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkerAllocationPanel';
 import WorkforceDemographyPanel from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/WorkforceDemographyPanel';
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
@@ -49,65 +49,70 @@ export default function WorkforcePage() {
             >
                 {assets ? (
                     <div className='space-y-6'>
-                        <Card>
-                            <CardContent className='px-3 pb-3 space-y-3'>
-                                <div className='grid grid-cols-1 gap-x-4 gap-y-0.5' data-tour='workforce-wages'>
-                                    <div className='flex items-baseline justify-between text-xs gap-2'>
-                                        <span className='text-muted-foreground capitalize'>Education</span>
-                                        <span className='tabular-nums'>
-                                            <span className='inline-block min-w-[7ch] text-right font-medium'>
-                                                Wage
-                                            </span>
-
-                                            <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
-                                                global avg.
-                                            </span>
-                                        </span>
-                                    </div>
-
-                                    <Separator className='my-1' />
-                                    {educationLevelKeys.map((edu) => {
-                                        const wage =
-                                            (assets.wagePerEdu as Record<EducationLevelType, number>)[edu] ??
-                                            DEFAULT_WAGE_PER_EDU;
-                                        return (
-                                            <div
-                                                key={edu}
-                                                className='flex items-baseline justify-between text-xs gap-2'
-                                            >
-                                                <span className='text-muted-foreground capitalize'>{edu}</span>
+                        <span className='flex flex-row flex-wrap gap-2'>
+                            <HRDepartment agentId={agentId} planetId={planetId} assets={assets} />
+                            <span className='flex flex-col gap-2 flex-grow'>
+                                <AutomationPanel
+                                    agentId={agentId}
+                                    automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                                />
+                                <WorkerAllocationPanel
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                    allocatedWorkers={assets.allocatedWorkers ?? {}}
+                                    automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
+                                />
+                                <Card>
+                                    <CardContent className='px-3 py-3 space-y-3'>
+                                        <div className='grid grid-cols-1 gap-x-4 gap-y-0.5' data-tour='workforce-wages'>
+                                            <div className='flex items-baseline justify-between text-xs gap-2'>
+                                                <span className='text-muted-foreground capitalize'>Education</span>
                                                 <span className='tabular-nums'>
                                                     <span className='inline-block min-w-[7ch] text-right font-medium'>
-                                                        {formatNumberWithUnit(wage, 'currency', planetId)}
+                                                        Wage
                                                     </span>
 
                                                     <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
-                                                        (
-                                                        {formatNumberWithUnit(
-                                                            planetWagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU,
-                                                            'currency',
-                                                            planetId,
-                                                        )}
-                                                        )
+                                                        global avg.
                                                     </span>
                                                 </span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <AutomationPanel
-                            agentId={agentId}
-                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        />
-                        <WorkerAllocationPanel
-                            agentId={agentId}
-                            planetId={planetId}
-                            allocatedWorkers={assets.allocatedWorkers ?? {}}
-                            automateWorkerAllocation={detail?.automateWorkerAllocation ?? false}
-                        />
-                        <InternalFacilitiesPanel agentId={agentId} planetId={planetId} assets={assets} />
+
+                                            <Separator className='my-1' />
+                                            {educationLevelKeys.map((edu) => {
+                                                const wage =
+                                                    (assets.wagePerEdu as Record<EducationLevelType, number>)[edu] ??
+                                                    DEFAULT_WAGE_PER_EDU;
+                                                return (
+                                                    <div
+                                                        key={edu}
+                                                        className='flex items-baseline justify-between text-xs gap-2'
+                                                    >
+                                                        <span className='text-muted-foreground capitalize'>{edu}</span>
+                                                        <span className='tabular-nums'>
+                                                            <span className='inline-block min-w-[7ch] text-right font-medium'>
+                                                                {formatNumberWithUnit(wage, 'currency', planetId)}
+                                                            </span>
+
+                                                            <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
+                                                                (
+                                                                {formatNumberWithUnit(
+                                                                    planetWagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU,
+                                                                    'currency',
+                                                                    planetId,
+                                                                )}
+                                                                )
+                                                            </span>
+                                                        </span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </span>
+                        </span>
+
                         <div className='grid grid-cols-1 gap-4 md:grid-cols-2 mt-4' data-tour='workforce-charts'>
                             <AgentMetricChart
                                 agentId={agentId}

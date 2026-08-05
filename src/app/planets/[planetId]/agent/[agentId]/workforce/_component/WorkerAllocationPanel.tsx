@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Users } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { EducationLevelType } from '@/simulation/population/education';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, CheckCircle2, Users } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 type AllocationTargets = Record<EducationLevelType, number>;
 
@@ -38,7 +39,6 @@ export default function WorkerAllocationPanel({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
-    const [expanded, setExpanded] = useState(false);
     const [targets, setTargets] = useState<AllocationTargets>({
         none: allocatedWorkers.none ?? 0,
         primary: allocatedWorkers.primary ?? 0,
@@ -87,12 +87,8 @@ export default function WorkerAllocationPanel({
     const totalTarget = Object.values(targets).reduce((s, v) => s + v, 0);
 
     return (
-        <div className='border rounded-md p-3 space-y-3' data-tour='workforce-allocation'>
-            <button
-                type='button'
-                className='w-full flex items-center justify-between gap-2 cursor-pointer'
-                onClick={() => setExpanded((v) => !v)}
-            >
+        <Card className='p-3 space-y-3' data-tour='workforce-allocation'>
+            <span className='flex items-center justify-between gap-2 cursor-pointer'>
                 <div className='flex items-center gap-2'>
                     <Users className='h-4 w-4 text-muted-foreground' />
                     <span className='text-sm font-semibold'>Workforce Allocation Targets</span>
@@ -102,81 +98,63 @@ export default function WorkerAllocationPanel({
                         </span>
                     )}
                 </div>
-                {expanded ? (
-                    <ChevronUp className='h-4 w-4 text-muted-foreground' />
+            </span>
+
+            <div className='space-y-4'>
+                {automateWorkerAllocation ? (
+                    <p className='text-xs text-muted-foreground'>Automatic worker allocation is enabled.</p>
                 ) : (
-                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
+                    <p className='text-xs text-muted-foreground'>Set the desired headcount per education level.</p>
                 )}
-            </button>
 
-            {expanded && (
-                <div className='space-y-4'>
-                    {automateWorkerAllocation ? (
-                        <p className='text-xs text-muted-foreground'>
-                            Automatic worker allocation is enabled. The AI sets these targets each tick. Disable
-                            automation in the Automation Controls panel above to take manual control.
-                        </p>
-                    ) : (
-                        <p className='text-xs text-muted-foreground'>
-                            Set the desired headcount per education level. The simulation will hire or fire workers each
-                            month to reach these targets. Enable automation in the Automation Controls panel above to
-                            let the AI manage this.
-                        </p>
-                    )}
-
-                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
-                        {EDU_LEVELS.map(({ key, label, description }) => (
-                            <div key={key} className='space-y-1'>
-                                <Label htmlFor={`worker-target-${key}`} className='text-xs font-medium'>
-                                    {label}
-                                </Label>
-                                <p className='text-[11px] text-muted-foreground'>{description}</p>
-                                <Input
-                                    id={`worker-target-${key}`}
-                                    type='number'
-                                    min={0}
-                                    step={1}
-                                    value={targets[key]}
-                                    disabled={automateWorkerAllocation || mutation.isPending}
-                                    onChange={(e) => handleChange(key, e.target.value)}
-                                    className='h-8 text-sm tabular-nums'
-                                />
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className='flex items-center justify-between gap-2'>
-                        <span className='text-xs text-muted-foreground tabular-nums'>
-                            Total target:{' '}
-                            <span className='font-medium text-foreground'>
-                                {formatNumberWithUnit(totalTarget, 'persons')}
-                            </span>
-                        </span>
-                        <Button
-                            size='sm'
-                            onClick={handleSave}
-                            disabled={automateWorkerAllocation || mutation.isPending}
-                        >
-                            {mutation.isPending ? 'Saving…' : 'Apply targets'}
-                        </Button>
-                    </div>
-
-                    {successMsg && (
-                        <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
-                            <CheckCircle2 className='h-4 w-4 text-green-600' />
-                            <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
-                                {successMsg}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    {errorMsg && (
-                        <Alert variant='destructive'>
-                            <AlertCircle className='h-4 w-4' />
-                            <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
-                        </Alert>
-                    )}
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                    {EDU_LEVELS.map(({ key, label, description }) => (
+                        <div key={key} className='space-y-1'>
+                            <Label htmlFor={`worker-target-${key}`} className='text-xs font-medium'>
+                                {label}
+                            </Label>
+                            <p className='text-[11px] text-muted-foreground'>{description}</p>
+                            <Input
+                                id={`worker-target-${key}`}
+                                type='number'
+                                min={0}
+                                step={1}
+                                value={targets[key]}
+                                disabled={automateWorkerAllocation || mutation.isPending}
+                                onChange={(e) => handleChange(key, e.target.value)}
+                                className='h-8 text-sm tabular-nums'
+                            />
+                        </div>
+                    ))}
                 </div>
-            )}
-        </div>
+
+                <div className='flex items-center justify-between gap-2'>
+                    <span className='text-xs text-muted-foreground tabular-nums'>
+                        Total target:{' '}
+                        <span className='font-medium text-foreground'>
+                            {formatNumberWithUnit(totalTarget, 'persons')}
+                        </span>
+                    </span>
+                    <Button size='sm' onClick={handleSave} disabled={automateWorkerAllocation || mutation.isPending}>
+                        {mutation.isPending ? 'Saving…' : 'Apply targets'}
+                    </Button>
+                </div>
+
+                {successMsg && (
+                    <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
+                        <CheckCircle2 className='h-4 w-4 text-green-600' />
+                        <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
+                            {successMsg}
+                        </AlertDescription>
+                    </Alert>
+                )}
+                {errorMsg && (
+                    <Alert variant='destructive'>
+                        <AlertCircle className='h-4 w-4' />
+                        <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                    </Alert>
+                )}
+            </div>
+        </Card>
     );
 }

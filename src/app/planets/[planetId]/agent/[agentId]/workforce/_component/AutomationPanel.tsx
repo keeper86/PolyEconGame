@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AlertCircle, Bot, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { useTRPC } from '@/lib/trpc';
 import { useTour } from '@/components/tour/TourContext';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { useTRPC } from '@/lib/trpc';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AlertCircle, Bot, CheckCircle2 } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 type Props = {
     agentId: string;
@@ -23,7 +24,6 @@ export default function AutomationPanel({
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
 
-    const [expanded, setExpanded] = useState(false);
     const [workerAuto, setWorkerAuto] = useState(initialWorker);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -66,65 +66,45 @@ export default function AutomationPanel({
     };
 
     return (
-        <div className='border rounded-md p-3 space-y-3' data-tour='workforce-automation'>
-            <button
-                type='button'
-                className='w-full flex items-center justify-between gap-2 cursor-pointer'
-                onClick={() => setExpanded((v) => !v)}
-            >
-                <div className='flex items-center gap-2'>
-                    <Bot className='h-4 w-4 text-muted-foreground' />
-                    <span className='text-sm font-semibold'>Automation Controls</span>
+        <Card data-tour='workforce-automation'>
+            <CardHeader className='p-3 pb-2'>
+                <div className='flex justify-between items-center gap-3'>
+                    <span className='flex items-center gap-2'>
+                        <Bot className='h-4 w-4 text-muted-foreground' />
+                        <Label htmlFor='worker-auto-toggle' className='text-xs font-medium cursor-pointer'>
+                            Automatic worker allocation
+                        </Label>
+                    </span>
+                    <Switch
+                        id='worker-auto-toggle'
+                        checked={workerAuto}
+                        disabled={setAutomationMutation.isPending}
+                        onCheckedChange={(v) => handleToggle(v)}
+                    />
                 </div>
-                {expanded ? (
-                    <ChevronUp className='h-4 w-4 text-muted-foreground' />
-                ) : (
-                    <ChevronDown className='h-4 w-4 text-muted-foreground' />
+            </CardHeader>
+            <CardContent className='p-3'>
+                <p className='text-[11px] text-muted-foreground'>
+                    {workerAuto
+                        ? 'The AI computes optimal headcount targets each tick based on facility requirements.'
+                        : 'You control worker allocation targets. The AI will not touch them.'}
+                </p>
+
+                {successMsg && (
+                    <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
+                        <CheckCircle2 className='h-4 w-4 text-green-600' />
+                        <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
+                            {successMsg}
+                        </AlertDescription>
+                    </Alert>
                 )}
-            </button>
-
-            {expanded && (
-                <div className='space-y-3'>
-                    <p className='text-xs text-muted-foreground'>
-                        Enable AI assistance for specific management tasks. Disabled tasks must be handled manually each
-                        tick.
-                    </p>
-
-                    <div className='flex items-center justify-between gap-3'>
-                        <div className='space-y-0.5'>
-                            <Label htmlFor='worker-auto-toggle' className='text-xs font-medium cursor-pointer'>
-                                Automatic worker allocation
-                            </Label>
-                            <p className='text-[11px] text-muted-foreground'>
-                                {workerAuto
-                                    ? 'The AI computes optimal headcount targets each tick based on facility requirements.'
-                                    : 'You control worker allocation targets. The AI will not touch them.'}
-                            </p>
-                        </div>
-                        <Switch
-                            id='worker-auto-toggle'
-                            checked={workerAuto}
-                            disabled={setAutomationMutation.isPending}
-                            onCheckedChange={(v) => handleToggle(v)}
-                        />
-                    </div>
-
-                    {successMsg && (
-                        <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>
-                            <CheckCircle2 className='h-4 w-4 text-green-600' />
-                            <AlertDescription className='text-green-700 dark:text-green-300 text-xs'>
-                                {successMsg}
-                            </AlertDescription>
-                        </Alert>
-                    )}
-                    {errorMsg && (
-                        <Alert variant='destructive'>
-                            <AlertCircle className='h-4 w-4' />
-                            <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
-                        </Alert>
-                    )}
-                </div>
-            )}
-        </div>
+                {errorMsg && (
+                    <Alert variant='destructive'>
+                        <AlertCircle className='h-4 w-4' />
+                        <AlertDescription className='text-xs'>{errorMsg}</AlertDescription>
+                    </Alert>
+                )}
+            </CardContent>
+        </Card>
     );
 }
