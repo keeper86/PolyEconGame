@@ -220,6 +220,74 @@ describe('productionTick (basic)', () => {
         expect(stored).toBeLessThan(1000);
     });
 
+    it('wage costs use actual assigned workers and are not scaled by input efficiency', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        agent.assets.p.wagePerEdu.secondary = 50;
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
+        facility.id = 'wage-fac';
+
+        const resA = ironOreDepositResourceType;
+        const resB = { ...ironOreDepositResourceType, name: 'Other Deposit' };
+        facility.needs = [
+            { resource: resA, quantity: 1000 },
+            { resource: resB, quantity: 1000 },
+        ];
+        facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+
+        planet.resources[resA.name] = {
+            pool: makePool({ type: resA, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'a1',
+                    resource: resA,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
+        planet.resources[resB.name] = {
+            pool: makePool({ type: resB, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'b1',
+                    resource: resB,
+                    quantity: 100,
+                    regenerationRate: 0,
+                    maximumCapacity: 100,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(facility.lastTickResults.overallEfficiency).toBeLessThan(1);
+
+        const used = facility.lastTickResults.totalUsedByEdu.secondary ?? 0;
+        expect(used).toBe(1);
+        expect(facility.lastTickResults.wageCosts).toBe(50 * used);
+    });
+
     it('records unused workers via lastTickResults.totalUsedByEdu', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');

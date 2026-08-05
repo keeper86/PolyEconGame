@@ -479,7 +479,7 @@ function processProductionFacility(params: ProductionParameters): void {
 
     const agentAssets = agent.assets[planet.id];
     assert(agentAssets, 'Agent assets should be defined at this point');
-    const actualWageCost = computeWageCostPerTick(facility, agentAssets.wagePerEdu);
+    const actualWageCost = computeWageCostPerTick(agentAssets.wagePerEdu, workerResults.totalUsedByEdu);
     costBalance -= actualWageCost;
 
     let outputRevenue = 0;
@@ -538,7 +538,7 @@ function processManagementFacility(params: ManagementParameters): void {
         monthAcc.consumptionValue += value;
     }
 
-    const wageCosts = computeWageCostPerTick(facility, params.agent.assets[planet.id].wagePerEdu);
+    const wageCosts = computeWageCostPerTick(params.agent.assets[planet.id].wagePerEdu, workerResults.totalUsedByEdu);
     costBalance -= wageCosts;
     facility.lastTickResults = {
         overallEfficiency,
@@ -606,7 +606,7 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
 
     const agentAssets = agent.assets[planet.id];
     assert(agentAssets, 'Agent assets should be defined at this point');
-    const actualWageCost = computeWageCostPerTick(facility, agentAssets.wagePerEdu);
+    const actualWageCost = computeWageCostPerTick(agentAssets.wagePerEdu, workerResults.totalUsedByEdu);
     costBalance -= actualWageCost;
 
     facility.lastTickResults = {
@@ -900,13 +900,15 @@ export const ageProductivityMultiplier = (age: number): number => {
     return Math.max(0.7, 0.85 - ((age - 65) * 0.15) / 15);
 };
 
-function computeWageCostPerTick(facility: Facility, agentWages: AgentPlanetAssets['wagePerEdu']): number {
+function computeWageCostPerTick(
+    agentWages: AgentPlanetAssets['wagePerEdu'],
+    totalUsedByEdu: Record<EducationLevelType, number>,
+): number {
     let wageCost = 0;
     for (const edu of educationLevelKeys) {
-        const req = facility.workerRequirement[edu] ?? 0;
-        const limitingEfficiency = facility.lastTickResults?.overallEfficiency ?? 1;
-        if (req > 0) {
-            wageCost += agentWages[edu] * req * facility.scale * limitingEfficiency;
+        const workers = totalUsedByEdu[edu] ?? 0;
+        if (workers > 0) {
+            wageCost += agentWages[edu] * workers;
         }
     }
     return wageCost;
