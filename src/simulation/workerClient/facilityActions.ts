@@ -280,7 +280,7 @@ export function handleContractFacility(
         return;
     }
 
-    const contracted = processFacilityContraction(planet, facility, agent, targetScale, state, 0);
+    const contracted = processFacilityContraction(planet, facility, agent, targetScale, state);
     if (!contracted) {
         safePostMessage({
             type: 'facilityContractFailed',

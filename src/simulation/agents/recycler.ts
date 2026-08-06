@@ -90,7 +90,7 @@ export function processFacilityContraction(
     agent: Agent,
     targetMax: number,
     gameState: GameState,
-    ratioLimit: number,
+    ratioLimit: number = 0,
 ): boolean {
     const agentAssets = agent.assets[planet.id];
     if (!agentAssets) {

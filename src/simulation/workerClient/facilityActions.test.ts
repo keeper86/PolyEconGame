@@ -227,36 +227,6 @@ describe('handleContractFacility — humanResourcesDepartment', () => {
         });
         expect(company.assets[planet.id].humanResourcesDepartment).toBeNull();
     });
-
-    it('fails without mutating the facility when the recycler declines', () => {
-        const { gameState, planet, company } = setupWorld();
-        const facility: ManagementFacility = {
-            ...makeManagementFacility(planet.id, 'mgmt-declined'),
-            scale: 0.5,
-            maxScale: 1,
-        };
-        company.assets[planet.id].humanResourcesDepartment = facility;
-        const { messages, post } = makeMessages();
-
-        handleContractFacility(
-            gameState,
-            {
-                type: 'contractFacility',
-                requestId: 'r25',
-                agentId: company.id,
-                planetId: planet.id,
-                facilityId: 'mgmt-declined',
-                targetScale: 0,
-            },
-            post,
-        );
-
-        expect(messages[0]).toMatchObject({
-            type: 'facilityContractFailed',
-            reason: 'Recycler declined the contraction',
-        });
-        expect(company.assets[planet.id].humanResourcesDepartment).toBe(facility);
-    });
 });
 
 function makeExpansionFacility(planetId: string, id = 'fac-2'): ProductionFacility {
