@@ -732,6 +732,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     needs: [
         { resource: paperResourceType, quantity: 5 },
         { resource: furnitureResourceType, quantity: 1 },
+        { resource: itDevicesResourceType, quantity: 0.1 },
     ],
     produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
 });
@@ -750,7 +751,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     },
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 20.0 },
+        { resource: fuelResourceType, quantity: 30.0 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -762,17 +763,17 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
     name: 'Construction Facility' as const,
     powerConsumptionPerTick: 0.3,
     workerRequirement: {
-        none: 10,
-        primary: 40,
+        none: 30,
+        primary: 50,
         secondary: 40,
         tertiary: 10,
     },
     needs: [
-        { resource: concreteResourceType, quantity: 60 },
-        { resource: steelResourceType, quantity: 30 },
-        { resource: machineryResourceType, quantity: 1 },
+        { resource: concreteResourceType, quantity: 100 },
+        { resource: steelResourceType, quantity: 60 },
+        { resource: machineryResourceType, quantity: 3 },
     ],
-    produces: [{ resource: constructionServiceResourceType, quantity: 50 }],
+    produces: [{ resource: constructionServiceResourceType, quantity: 100 }],
 });
 
 export const groceryChain = (planetId: string, id: string): ProductionFacility => ({
@@ -829,8 +830,8 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 90,
     },
     needs: [
-        { resource: pharmaceuticalResourceType, quantity: 2 },
-        { resource: chemicalResourceType, quantity: 20 },
+        { resource: pharmaceuticalResourceType, quantity: 5 },
+        { resource: chemicalResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 10 },
     ],

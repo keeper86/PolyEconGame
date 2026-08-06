@@ -1,10 +1,10 @@
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import type { StorageFacility } from '../planet/facility';
 import { queryStorageFacility, removeFromStorageFacility } from '../planet/facility';
-import type { AgentPlanetAssets, Planet } from '../planet/planet';
+import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { humanResourcesServiceResourceType } from '../planet/services';
-import { ESTIMATED_HR_OVERHEAD, PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import type { WorkforceCohort, WorkforceCategory } from './workforce';
@@ -67,7 +67,7 @@ export const hrBufferStatus = (buffer: number, demand: number): HrBufferStatus =
     return 'critical';
 };
 
-export function hrBufferTick(agents: Map<string, import('../planet/planet').Agent>, planet: Planet): void {
+export function hrBufferTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
         if (!assets || !hasActiveLicense(assets, 'workforce')) {

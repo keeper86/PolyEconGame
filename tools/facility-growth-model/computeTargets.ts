@@ -36,14 +36,14 @@ interface SlackConfig {
 
 const CONFIG: SlackConfig = {
     population: 8_000_000_000,
-    defaultSlack: 1.1, // 0% surplus on everything (1.5 = 50% surplus)
+    defaultSlack: 1.15, // 0% surplus on everything (1.5 = 50% surplus)
     floorScale: 1,
     services: {
-        grocery: 1.4,
-        healthcare: 1.4,
-        logistics: 1.4,
-        retail: 1.4,
-        education: 1.4,
+        grocery: 1.5,
+        healthcare: 1.5,
+        logistics: 1.5,
+        retail: 1.5,
+        education: 1.5,
     },
     goods: {
         administration: 1.5,
@@ -53,14 +53,14 @@ const CONFIG: SlackConfig = {
     },
 };
    
-const constructionDemandPerTick = 256_000_000;
+const constructionDemandPerTick = 512_000_000;
 const BALANCE_EPSILON = 0.001;
 
 function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
-const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / PRODUCED_QUANTITY;
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY*2/3);
 
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;

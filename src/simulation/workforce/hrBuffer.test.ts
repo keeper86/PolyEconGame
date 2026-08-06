@@ -24,11 +24,10 @@ describe('computeMaxDailyHROutput', () => {
 });
 
 describe('computeBufferCapacity', () => {
-    it('returns 3x max daily output', () => {
-        expect(computeBufferCapacity(1000)).toBe(3000);
-        expect(computeBufferCapacity(500)).toBe(1500);
-        expect(computeBufferCapacity(2000)).toBe(6000);
+    it('returns HR_BUFFER_CAPACITY_MULTIPLIER x max daily output', () => {
         expect(computeBufferCapacity(1000)).toBe(1000 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(computeBufferCapacity(500)).toBe(500 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(computeBufferCapacity(2000)).toBe(2000 * HR_BUFFER_CAPACITY_MULTIPLIER);
     });
 });
 
@@ -148,24 +147,26 @@ describe('processHrBufferForAssets', () => {
         processHrBufferForAssets(assets);
 
         expect(assets.storageFacility.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0).toBe(0);
-        expect(assets.hrBuffer).toBe(1500 - 100 * 1.025);
+        expect(assets.hrBuffer).toBe(1500 - 100);
     });
 
     it('clamps buffer at pmax', () => {
+        const pMax = PRODUCED_QUANTITY * 5 * HR_BUFFER_CAPACITY_MULTIPLIER;
         const assets = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: makeManagementFacility(undefined, {
                 produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
                 maxScale: 5,
             }),
-            hrBuffer: 2900,
+            hrBuffer: pMax - 500,
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets);
-        expect(assets.hrBuffer).toBe(3000);
+        expect(assets.hrBuffer).toBe(pMax);
     });
 
     it('uses maxScale for buffer capacity, not current scale', () => {
+        const pMax = PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER;
         const assets = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: makeManagementFacility(undefined, {
                 produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
@@ -178,7 +179,7 @@ describe('processHrBufferForAssets', () => {
 
         processHrBufferForAssets(assets);
         expect(assets.hrBuffer).toBe(1000);
-        expect(assets.hrBuffer).toBeLessThanOrEqual(PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(assets.hrBuffer).toBeLessThanOrEqual(pMax);
 
         const assets2 = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: makeManagementFacility(undefined, {
@@ -186,12 +187,12 @@ describe('processHrBufferForAssets', () => {
                 scale: 0.5,
                 maxScale: 2,
             }),
-            hrBuffer: 1100,
+            hrBuffer: pMax - 500,
         });
         putIntoStorageFacility(assets2.storageFacility, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets2);
-        expect(assets2.hrBuffer).toBe(PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(assets2.hrBuffer).toBe(pMax);
     });
 
     it('resets buffer when no HR department is present', () => {

@@ -894,6 +894,98 @@ describe('productionTick — humanResourcesDepartment', () => {
     });
 });
 
+describe('productionTick — HR scarcity scales down non-HR facility inputs', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('reduces consumed inputs of a production facility when hrProductivityMultiplier < 1', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({}, { id: 'hr-scarce-prod', scale: 2 });
+        facility.needs = [{ resource: waterResourceType, quantity: 100 }];
+        facility.produces = [{ resource: steelResourceType, quantity: 100 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 1000,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
+        expect(facility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(60);
+        expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(60);
+
+        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeCloseTo(940);
+    });
+
+    it('reduces consumed building materials of a shipyard when hrProductivityMultiplier < 1', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('builder');
+        const shipType: TransportShipType = {
+            type: 'transport',
+            name: 'HR Scarce Freighter',
+            scale: 'small',
+            speed: 1,
+            cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
+            requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+            buildingCost: [{ resource: steelResourceType, quantity: 900 }],
+            buildingTime: 90,
+        };
+
+        const shipyard = makeShipConstructionFacility({}, { id: 'hr-scarce-sy', scale: 9, shipType });
+        agent.assets.p.shipConstructionFacilities = [shipyard];
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 1000,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        const part = Math.min(1, Math.sqrt(9) / 90);
+        const requiredPerTick = 900 * part;
+        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
+        expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBeCloseTo(requiredPerTick * 0.3);
+    });
+
+    it('does not apply hrProductivityMultiplier to the HR department itself', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const hrFacility = makeManagementFacility(
+            {},
+            {
+                id: 'hr-own',
+                scale: 1,
+                needs: [{ resource: waterResourceType, quantity: 5 }],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
+            },
+        );
+
+        agent.assets.p.humanResourcesDepartment = hrFacility;
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 50,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(hrFacility.lastTickResults.overallEfficiency).toBeCloseTo(1);
+        expect(hrFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(5);
+        expect(hrFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(10);
+    });
+});
+
 function makeTestShipType(): TransportShipType {
     return {
         name: 'Freighter',

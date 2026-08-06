@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     makeAgent,
     makeAgentPlanetAssets,
+    makeManagementFacility,
     makePlanet,
     makePopulationByEducation,
     makeProductionFacility,
@@ -968,5 +969,102 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(0);
+    });
+
+    it('initiates HR department expansion when workforce demand exceeds HR scale', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.workforceDemography[30].primary.novice.active = 1000;
+        assets.lastMonthAcc.revenue = 1_000_000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBeGreaterThan(hrDepartment.maxScale);
+        expect(hrDepartment.construction!.type).toBe('expansion');
+    });
+
+    it('does NOT initiate HR department expansion when demand is within HR scale', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 10,
+            construction: null,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.workforceDemography[30].primary.novice.active = 1000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toBeNull();
+    });
+
+    it('does NOT initiate HR expansion when HR department is already under construction', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const existingConstruction = {
+            type: 'expansion' as const,
+            constructionTargetMaxScale: 5,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 100,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: existingConstruction,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.workforceDemography[30].primary.novice.active = 1000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toEqual(existingConstruction);
     });
 });

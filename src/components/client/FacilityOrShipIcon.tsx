@@ -39,9 +39,9 @@ export function FacilityOrShipIcon({
     const badgeOverlay =
         badge !== undefined ? (
             <div
-                className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/20 text-outline-strong'
+                className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/10 text-outline-strong'
                 style={{
-                    width: '37%',
+                    width: '27%',
                     height: '25%',
                     fontSize,
                     lineHeight: 1,

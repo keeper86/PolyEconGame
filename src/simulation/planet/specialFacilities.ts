@@ -43,7 +43,7 @@ export const HR_DEPARTMENT_NAME = 'HR Department';
 export const PRODUCED_QUANTITY = 200;
 export const USED_QUANTITY = 3;
 export const ESTIMATED_HR_OVERHEAD = 1.025;
-export const HR_WORLD_BUFFER = 1.1;
+export const HR_WORLD_BUFFER = 1.4;
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
@@ -59,7 +59,8 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
 });
-export const humanResourcesScaleForWorkers = (neededWorkers: number): number => neededWorkers / PRODUCED_QUANTITY;
+export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
+    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
 
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
 export const storageDepartmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
