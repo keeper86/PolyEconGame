@@ -90,6 +90,7 @@ export function processFacilityContraction(
     agent: Agent,
     targetMax: number,
     gameState: GameState,
+    ratioLimit: number,
 ): boolean {
     const agentAssets = agent.assets[planet.id];
     if (!agentAssets) {
@@ -118,7 +119,7 @@ export function processFacilityContraction(
     }
 
     const ratio = getRecyclerPaymentRatio(planet, recoveredCS);
-    if (ratio < 0.5) {
+    if (ratio < ratioLimit) {
         return false;
     }
     const payment = marketValue * ratio * RECYCLER_PAYMENT_RATIO;

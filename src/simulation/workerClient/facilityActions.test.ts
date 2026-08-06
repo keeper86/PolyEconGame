@@ -184,6 +184,19 @@ describe('handleSetFacilityScale — humanResourcesDepartment', () => {
 });
 
 describe('handleContractFacility — humanResourcesDepartment', () => {
+    function setCSMarketResult(gameState: import('../planet/planet').GameState): void {
+        const planet = gameState.planets.values().next().value!;
+        planet.avgMarketResult.Construction = {
+            resourceName: 'Construction',
+            clearingPrice: 10,
+            totalVolume: 100,
+            totalSupply: 100,
+            totalDemand: 100,
+            unsoldSupply: 0,
+            unfilledDemand: 35,
+        };
+    }
+
     it('contracts the human resources department to a lower scale', () => {
         const { gameState, planet, company } = setupWorld();
         const facility: ManagementFacility = {
@@ -192,6 +205,7 @@ describe('handleContractFacility — humanResourcesDepartment', () => {
             maxScale: 1,
         };
         company.assets[planet.id].humanResourcesDepartment = facility;
+        setCSMarketResult(gameState);
         const { messages, post } = makeMessages();
 
         handleContractFacility(
@@ -212,6 +226,36 @@ describe('handleContractFacility — humanResourcesDepartment', () => {
             facilityId: 'mgmt-contract',
         });
         expect(company.assets[planet.id].humanResourcesDepartment).toBeNull();
+    });
+
+    it('fails without mutating the facility when the recycler declines', () => {
+        const { gameState, planet, company } = setupWorld();
+        const facility: ManagementFacility = {
+            ...makeManagementFacility(planet.id, 'mgmt-declined'),
+            scale: 0.5,
+            maxScale: 1,
+        };
+        company.assets[planet.id].humanResourcesDepartment = facility;
+        const { messages, post } = makeMessages();
+
+        handleContractFacility(
+            gameState,
+            {
+                type: 'contractFacility',
+                requestId: 'r25',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: 'mgmt-declined',
+                targetScale: 0,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityContractFailed',
+            reason: 'Recycler declined the contraction',
+        });
+        expect(company.assets[planet.id].humanResourcesDepartment).toBe(facility);
     });
 });
 

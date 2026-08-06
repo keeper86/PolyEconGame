@@ -72,7 +72,7 @@ export function seedShipbuilderAgents(gameState: GameState): void {
             workforce: { acquiredTick: 0, frozen: false },
         };
         assets.market = { sell: {}, buy: {} };
-        assets.shipConstructionFacilities.push();
+        assets.shipConstructionFacilities.push(shipyard);
 
         grantLoan(assets, planet.bank, SHIPBUILDER_WORKING_CAPITAL, 'shipbuilderBootstrap', 0);
 

@@ -280,7 +280,16 @@ export function handleContractFacility(
         return;
     }
 
-    processFacilityContraction(planet, facility, agent, targetScale, state);
+    const contracted = processFacilityContraction(planet, facility, agent, targetScale, state, 0);
+    if (!contracted) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Recycler declined the contraction',
+            processedAtTick: state.tick,
+        });
+        return;
+    }
 
     if (targetScale === 0) {
         const prodIdx = assets.productionFacilities.findIndex((f) => f.id === facilityId);

@@ -195,14 +195,29 @@ describe('processHrBufferForAssets', () => {
         expect(assets2.hrBuffer).toBe(pMax);
     });
 
-    it('resets buffer when no HR department is present', () => {
+    it('keeps full productivity when there are no workers and no HR department', () => {
         const assets = makeAgentPlanetAssets('p', {
             hrBuffer: 1000,
             hrProductivityMultiplier: 0.5,
         });
         processHrBufferForAssets(assets);
         expect(assets.hrBuffer).toBe(0);
+        expect(assets.hrDemand).toBe(0);
         expect(assets.hrProductivityMultiplier).toBe(1);
+    });
+
+    it('penalizes productivity when workers exist but no HR department', () => {
+        const assets = makeAgentPlanetAssets('p', {
+            hrBuffer: 1000,
+            hrProductivityMultiplier: 1,
+        });
+        assets.workforceDemography[30].none.novice.active = 1000;
+
+        processHrBufferForAssets(assets);
+        expect(assets.hrBuffer).toBe(0);
+        expect(assets.hrDemand).toBe(1000);
+        expect(assets.hrProductivityMultiplier).toBeLessThan(1);
+        expect(assets.hrProductivityMultiplier).toBe(0.5);
     });
 
     it('sets productivity multiplier based on coverage', () => {

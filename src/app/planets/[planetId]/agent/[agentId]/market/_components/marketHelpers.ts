@@ -9,7 +9,6 @@ import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 import { autoConfigToLocal } from './marketTypes';
 import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
-import assert from 'node:assert';
 
 export function priceArrow(dir?: number): { label: string; className: string } {
     if (dir === undefined) {
@@ -189,18 +188,24 @@ export function buildResourceList(
 
     for (const f of facilities) {
         for (const { resource } of f.needs) {
-            assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
+            }
             add(resource.name);
         }
         for (const { resource } of f.produces) {
-            assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
+            }
             add(resource.name);
         }
     }
 
     if (humanResourcesDepartment) {
         for (const { resource } of humanResourcesDepartment.needs) {
-            assert(resource.form !== 'landBoundResource' && resource.form !== 'internal', 'Invalid resource form');
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
+            }
             add(resource.name);
         }
     }

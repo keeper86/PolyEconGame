@@ -80,9 +80,10 @@ export function hrBufferTick(agents: Map<string, Agent>, planet: Planet): void {
 export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const hrDepartment = assets.humanResourcesDepartment;
     if (!hrDepartment) {
+        const demand = computeHrDemand(assets.workforceDemography);
         assets.hrBuffer = 0;
-        assets.hrProductivityMultiplier = 1;
-        assets.hrDemand = 0;
+        assets.hrDemand = demand;
+        assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(0, demand));
         return;
     }
 
