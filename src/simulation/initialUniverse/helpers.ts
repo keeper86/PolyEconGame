@@ -1,4 +1,4 @@
-import { INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import { HR_BUFFER_CAPACITY_MULTIPLIER, INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
@@ -10,6 +10,7 @@ import {
     type ProductionFacility,
     type StorageFacility,
 } from '../planet/facility';
+import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -101,12 +102,14 @@ export function makeAgentPlanetAssets(
     storage: StorageFacility,
     hrDepartment: ManagementFacility | null,
 ): AgentPlanetAssets {
+    const maxHROutput =
+        hrDepartment && hrDepartment.construction === null ? PRODUCED_QUANTITY * hrDepartment.maxScale : 0;
     return {
         productionFacilities: facilities,
         shipConstructionFacilities: [],
         storageFacility: storage,
         humanResourcesDepartment: hrDepartment,
-        hrBuffer: 0,
+        hrBuffer: maxHROutput * HR_BUFFER_CAPACITY_MULTIPLIER,
         hrProductivityMultiplier: 1,
         hrDemand: 0,
         transportContracts: [],

@@ -15,6 +15,14 @@ export const humanResourcesServiceResourceType: Resource = {
     name: 'Human Resources',
 };
 
+export const storageServiceResourceType: Resource = {
+    form: 'internal',
+    level: 'internal',
+    volumePerQuantity: 0,
+    massPerQuantity: 0,
+    name: 'Storage',
+};
+
 export const logisticsServiceResourceType: Resource = {
     ...serviceResourceDefault,
     name: 'Logistics',

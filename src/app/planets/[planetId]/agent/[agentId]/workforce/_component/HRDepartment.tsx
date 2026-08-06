@@ -298,6 +298,7 @@ export default function HRDepartment({
                         constructionServicePrice={constructionServicePrice}
                         otherConstructionCosts={otherConstructionCosts}
                         onExpanded={() => {}}
+                        hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     />
                     <Card className='overflow-hidden flex flex-col min-w-[300px] sm:min-w-[350px] max-w-[485px]'>
                         <CardContent className='px-3 py-3 flex flex-row flex-1 justify-between items-center gap-2'>

@@ -454,6 +454,10 @@ export const assetManifest = {
     form_solid: '/images/products/solid.webp',
     form_pieces: '/images/products/pieces.webp',
     demography_overview: '/images/misc/demography_overview.webp',
+    training_center: '/images/facilities/training_center.webp',
+    research_and_development: '/images/facilities/research_and_development.webp',
+    storage: '/images/facilities/storage.webp',
+    hr_department: '/images/facilities/human_resources_department.webp',
 } as const;
 
 export type AssetKey = keyof typeof assetManifest;

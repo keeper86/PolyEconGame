@@ -1,6 +1,7 @@
-import Image from 'next/image';
 import { getAssetPath } from '@/lib/assetManifest';
 import { formatNumberWithUnit } from '@/lib/utils';
+import Image from 'next/image';
+import type { JSX } from 'react';
 
 export function FacilityOrShipIcon({
     facilityOrShipName,
@@ -13,7 +14,7 @@ export function FacilityOrShipIcon({
     size?: number;
     suffix?: string;
     buildProgress?: number;
-    badge?: number;
+    badge?: number | string | JSX.Element;
 }) {
     let src: string;
     if (suffix && suffix !== '') {
@@ -24,20 +25,31 @@ export function FacilityOrShipIcon({
 
     const width = size;
     const height = (size * 2) / 3;
+    const fontSize = `${size * 0.095}px`;
 
-    const badgeOverlay = badge ? (
-        <div
-            className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/20 text-outline-strong'
-            style={{
-                width: '27%',
-                height: '25%',
-                fontSize: `${size * 0.095}px`,
-                lineHeight: 1,
-            }}
-        >
-            {formatNumberWithUnit(badge, 'none')}
-        </div>
-    ) : null;
+    let badgeContent;
+    if (typeof badge === 'number') {
+        badgeContent = formatNumberWithUnit(badge, 'none');
+    } else if (typeof badge === 'string') {
+        badgeContent = badge;
+    } else if (badge) {
+        badgeContent = badge;
+    }
+
+    const badgeOverlay =
+        badge !== undefined ? (
+            <div
+                className='absolute top-0 right-0 pr-0.5 z-10 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/20 text-outline-strong'
+                style={{
+                    width: '37%',
+                    height: '25%',
+                    fontSize,
+                    lineHeight: 1,
+                }}
+            >
+                {badgeContent}
+            </div>
+        ) : null;
 
     if (buildProgress !== undefined) {
         const fillPct = Math.min(1, Math.max(0, buildProgress)) * 100;

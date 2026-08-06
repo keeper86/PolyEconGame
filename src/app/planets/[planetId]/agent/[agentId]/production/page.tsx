@@ -36,6 +36,7 @@ export default function ProductionPage() {
                             facilities={assets.productionFacilities}
                             agentId={agentId}
                             planetId={planetId}
+                            hrProductivityMultiplier={assets.hrProductivityMultiplier}
                         />
                     </div>
                 ) : null}

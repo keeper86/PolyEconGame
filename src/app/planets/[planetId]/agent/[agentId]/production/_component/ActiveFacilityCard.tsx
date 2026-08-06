@@ -15,8 +15,9 @@ import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/sim
 import type { ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
-import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Clock, Percent, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
@@ -24,6 +25,8 @@ import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityIORow';
 import { WorkerBars } from './WorkerBars';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HR_DEPARTMENT_NAME } from '@/simulation/planet/specialFacilities';
 
 export function ActiveFacilityCard({
     facility,
@@ -32,6 +35,7 @@ export function ActiveFacilityCard({
     constructionServicePrice,
     otherConstructionCosts,
     onExpanded,
+    hrProductivityMultiplier,
 }: {
     facility: ProductionFacility | ManagementFacility;
     agentId: string;
@@ -39,6 +43,7 @@ export function ActiveFacilityCard({
     constructionServicePrice: number;
     otherConstructionCosts?: number;
     onExpanded: () => void;
+    hrProductivityMultiplier: number;
 }): React.ReactElement {
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
@@ -290,11 +295,42 @@ export function ActiveFacilityCard({
                 ? 'Cancellation pending…'
                 : null;
 
+    function hrProductivityColor(value: number): string {
+        if (facility.name === HR_DEPARTMENT_NAME) {
+            return 'text-muted-foreground';
+        }
+        if (value < 0.8) {
+            return 'text-red-600';
+        }
+        if (value < 0.95) {
+            return 'text-amber-600';
+        }
+
+        return 'text-green-600';
+    }
+
+    const badge: JSX.Element = (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Link
+                    href={`/planets/${planetId}/agent/${agentId}/workforce` as never}
+                    className='flex items-center gap-1'
+                >
+                    <span className={hrProductivityColor(hrProductivityMultiplier)}>
+                        <Users />
+                    </span>
+                </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+                <span className={hrProductivityColor(hrProductivityMultiplier)}>HR resource status</span>
+            </TooltipContent>
+        </Tooltip>
+    );
     return (
         <FacilityCardShell
             data-tour='production-active'
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} badge={badge} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex items-center gap-1 flex-col mb-1'>
