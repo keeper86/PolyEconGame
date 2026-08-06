@@ -145,6 +145,7 @@ function createPool(): { pool: Piscina; port: MessagePort } {
     const { port1, port2 } = new MessageChannel();
 
     const tickIntervalMs = process.env.TICK_INTERVAL_MS ? parseInt(process.env.TICK_INTERVAL_MS, 10) : 0;
+    console.log(`[workerManager] Starting simulation worker with tick interval ${tickIntervalMs}ms`);
 
     const p = new Piscina({
         filename: workerPath,

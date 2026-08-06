@@ -1,6 +1,5 @@
-import type { Resource, ResourceProcessLevel } from './claims';
+import type { Resource, TradableResourceProcessLevel } from './claims';
 import {
-    produceResourceType,
     beverageResourceType,
     cementResourceType,
     chemicalResourceType,
@@ -28,6 +27,7 @@ import {
     pharmaceuticalResourceType,
     plasticResourceType,
     processedFoodResourceType,
+    produceResourceType,
     sandResourceType,
     siliconWaferResourceType,
     steelResourceType,
@@ -46,7 +46,7 @@ import {
     retailServiceResourceType,
 } from './services';
 
-export const ALL_RESOURCES: Resource[] = [
+export const TRADABLE_RESOURCES: Resource[] = [
     ironOreResourceType,
     waterResourceType,
     produceResourceType,
@@ -92,25 +92,18 @@ export const ALL_RESOURCES: Resource[] = [
 ] as const;
 
 export const RESOURCES_BY_NAME: ReadonlyMap<string, Resource> = new Map(
-    ALL_RESOURCES.map((resource) => [resource.name, resource] as const),
+    TRADABLE_RESOURCES.map((resource) => [resource.name, resource] as const),
 );
 
 export const getProductForm = (resourceName: string): Resource['form'] | undefined => {
     return RESOURCES_BY_NAME.get(resourceName)?.form;
 };
 
-export const RESOURCE_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
+export const RESOURCE_LEVELS: TradableResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
 
-export const RESOURCE_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
+export const RESOURCE_LEVEL_LABELS: Record<TradableResourceProcessLevel, string> = {
     raw: 'Raw',
     refined: 'Refined',
     manufactured: 'Manufactured',
     services: 'Services',
-};
-
-export const resourcesByLevel: Record<ResourceProcessLevel, Resource[]> = {
-    raw: ALL_RESOURCES.filter((r) => r.level === 'raw'),
-    refined: ALL_RESOURCES.filter((r) => r.level === 'refined'),
-    manufactured: ALL_RESOURCES.filter((r) => r.level === 'manufactured'),
-    services: ALL_RESOURCES.filter((r) => r.level === 'services'),
 };

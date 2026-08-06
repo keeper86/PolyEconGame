@@ -1,17 +1,21 @@
 import { TICKS_PER_MONTH } from '../constants';
 import type { Agent, GameState, Planet } from './planet';
 
-export type ResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+export type TradableResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
+export type ResourceProcessLevel = TradableResourceProcessLevel | 'internal';
 
 export type Resource = {
     name: string;
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'landBoundResource' | 'services' | 'currency';
+    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'landBoundResource' | 'services' | 'currency' | 'internal';
     level: ResourceProcessLevel | 'source' | 'currency';
     volumePerQuantity: number;
     massPerQuantity: number;
 };
 export type ResourceType = Resource['form'];
-export type TransportableResourceType = Exclude<ResourceType, 'services' | 'landBoundResource' | 'currency'>;
+export type TransportableResourceType = Exclude<
+    ResourceType,
+    'services' | 'landBoundResource' | 'currency' | 'internal'
+>;
 export type ResourceQuantity = {
     resource: Resource;
     quantity: number;

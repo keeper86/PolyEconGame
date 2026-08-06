@@ -3,7 +3,7 @@ import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ConsumptionInfo } from '@/simulation/market/consumptionSources';
 import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME, TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
@@ -73,7 +73,7 @@ export function totalConsumptionPerTick(
 ): ConsumptionInfo {
     return computeConsumptionBreakdown(
         assets.productionFacilities,
-        assets.managementFacilities,
+        assets.humanResourcesDepartment,
         assets.shipConstructionFacilities,
         ships,
         planetId,
@@ -137,7 +137,7 @@ export function getResourceByName(resourceName: string) {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
         return getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
     }
-    return ALL_RESOURCES.find((r) => r.name === resourceName);
+    return RESOURCES_BY_NAME.get(resourceName);
 }
 
 export function resourceNameToSlug(resourceName: string): string {
@@ -148,7 +148,7 @@ export function slugToResourceName(slug: string): string | undefined {
     if (slug.startsWith(CURRENCY_RESOURCE_PREFIX.toLowerCase())) {
         return CURRENCY_RESOURCE_PREFIX + slug.slice(CURRENCY_RESOURCE_PREFIX.length);
     }
-    return ALL_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
+    return TRADABLE_RESOURCES.find((r) => resourceNameToSlug(r.name) === slug)?.name;
 }
 
 export function buildResourceList(
@@ -159,7 +159,7 @@ export function buildResourceList(
 ): { name: string }[] {
     const {
         productionFacilities: facilities,
-        managementFacilities,
+        humanResourcesDepartment,
         shipConstructionFacilities,
         storageFacility,
         market,
@@ -168,7 +168,9 @@ export function buildResourceList(
     const sellOffers = market?.sell ?? {};
 
     if (showAll) {
-        const base = ALL_RESOURCES.filter((r) => r.form !== 'landBoundResource').map((r) => ({ name: r.name }));
+        const base = TRADABLE_RESOURCES.map((r) => ({
+            name: r.name,
+        }));
         return [...base, ...availableCurrencies];
     }
 
@@ -186,22 +188,25 @@ export function buildResourceList(
 
     for (const f of facilities) {
         for (const { resource } of f.needs) {
-            if (resource.form !== 'landBoundResource') {
-                add(resource.name);
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
             }
+            add(resource.name);
         }
         for (const { resource } of f.produces) {
-            if (resource.form !== 'landBoundResource') {
-                add(resource.name);
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
             }
+            add(resource.name);
         }
     }
 
-    for (const f of managementFacilities) {
-        for (const { resource } of f.needs) {
-            if (resource.form !== 'landBoundResource') {
-                add(resource.name);
+    if (humanResourcesDepartment) {
+        for (const { resource } of humanResourcesDepartment.needs) {
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
             }
+            add(resource.name);
         }
     }
 
@@ -222,7 +227,7 @@ export function buildResourceList(
     }
 
     for (const [name, entry] of Object.entries(storageFacility.currentInStorage)) {
-        if ((entry?.quantity ?? 0) > 0) {
+        if ((entry?.quantity ?? 0) > 0 && entry.resource.form !== 'internal') {
             add(name);
         }
     }

@@ -1,7 +1,7 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
 import { allServices, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType, groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
 import type { Agent, Planet } from '../../simulation/planet/planet';
@@ -628,7 +628,7 @@ export const getPlanetMarket = () =>
 
 export const getPlanetScrapRecoveryRate = () =>
     protectedProcedure
-        .input(z.object({ planetId: z.string() }))
+        .input(z.object({ planetId: z.string(), amount: z.number() }))
         .output(
             z.object({
                 tick: z.number(),
@@ -644,7 +644,7 @@ export const getPlanetScrapRecoveryRate = () =>
                 return { tick, csPrice: 0, recoveryRatePerCS: 0, recyclerRatio: 0 };
             }
             const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
-            const ratio = getRecyclerPaymentRatio(planet);
+            const ratio = getRecyclerPaymentRatio(planet, input.amount);
             const recoveryRatePerCS = csPrice * RECYCLER_BASE_RECOVERY_EFFICIENCY * RECYCLER_PAYMENT_RATIO * ratio;
             return { tick, csPrice, recoveryRatePerCS, recyclerRatio: ratio };
         });
@@ -831,7 +831,7 @@ export const getPlanetMarketOverview = () =>
 
             const marketResults = input.average ? planet.avgMarketResult : planet.lastMarketResult;
 
-            const rows: MarketOverviewRow[] = ALL_RESOURCES.map((resource) => {
+            const rows: MarketOverviewRow[] = TRADABLE_RESOURCES.map((resource) => {
                 const result = marketResults[resource.name];
                 const clearingPrice = result?.clearingPrice ?? planet.marketPrices[resource.name] ?? 0;
                 const totalSupply = result?.totalSupply ?? 0;

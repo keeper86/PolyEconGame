@@ -42,7 +42,7 @@ export function WorkerBars({
             <Tooltip key={edu}>
                 <TooltipTrigger asChild>
                     <div
-                        className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} ${hasLink ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : 'cursor-default'} ${borderColor(eff, isLimiting, neutral)} ${hasRequirement ? '' : 'invisible'}`}
+                        className={`relative flex items-center rounded bg-muted overflow-hidden border-l-2 ${EDU_COLORS[edu].text} ${hasLink && hasRequirement ? 'cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all' : 'cursor-default'} ${borderColor(eff, isLimiting, hasRequirement ? neutral : true)} ${hasRequirement ? '' : 'opacity-40'}`}
                     >
                         <span
                             className={`absolute inset-y-0 left-0 ${fillColor(eff, isLimiting, neutral)} transition-all`}
@@ -56,7 +56,7 @@ export function WorkerBars({
                         </span>
                     </div>
                 </TooltipTrigger>
-                <TooltipContent side='top'>
+                <TooltipContent side='top' hidden={!hasRequirement}>
                     {educationLevels[edu].name} workers: {pctStr(eff)} efficiency
                 </TooltipContent>
             </Tooltip>

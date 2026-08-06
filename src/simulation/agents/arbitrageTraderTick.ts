@@ -8,7 +8,7 @@ import {
 } from '../constants';
 import { getCurrencyResourceName } from '../market/currencyResources';
 import type { Agent, GameState } from '../planet/planet';
-import { ALL_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
+import { TRADABLE_RESOURCES, RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { travelTime } from '../ships/shipHandlers';
 import { effectiveShipValue } from '../ships/shipMarket';
 import type { TransportShip } from '../ships/ships';
@@ -56,7 +56,7 @@ function scanBestRoute(
     const shipValue = effectiveShipValue(ship, gameState);
     const depreciationRatePerTick = shipValue / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS;
 
-    for (const resource of ALL_RESOURCES) {
+    for (const resource of TRADABLE_RESOURCES) {
         if (!canCarryResource(ship, resource)) {
             continue;
         }

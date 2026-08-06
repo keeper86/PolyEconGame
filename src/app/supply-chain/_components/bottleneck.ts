@@ -1,5 +1,5 @@
 import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
-import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -59,7 +59,7 @@ export function computeBottlenecks(
         type ServiceProducer = { facilityName: string; outputQuantity: number; scale: number };
         const producers: ServiceProducer[] = [];
 
-        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+        for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             const scale = scales[f.name] ?? 0;
             for (const prod of f.produces) {
@@ -75,7 +75,7 @@ export function computeBottlenecks(
         const inputRequired = new Map<string, number>();
         const inputIsExternal = new Set<string>();
 
-        for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+        for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
             const f = entry.factory(TOOL_PLANET, TOOL_ID);
             const scale = scales[f.name] ?? 0;
             if (scale <= 0) {

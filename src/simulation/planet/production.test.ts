@@ -220,6 +220,74 @@ describe('productionTick (basic)', () => {
         expect(stored).toBeLessThan(1000);
     });
 
+    it('wage costs use actual assigned workers and are not scaled by input efficiency', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        agent.assets.p.wagePerEdu.secondary = 50;
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
+        facility.id = 'wage-fac';
+
+        const resA = ironOreDepositResourceType;
+        const resB = { ...ironOreDepositResourceType, name: 'Other Deposit' };
+        facility.needs = [
+            { resource: resA, quantity: 1000 },
+            { resource: resB, quantity: 1000 },
+        ];
+        facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.novice.active = 1;
+
+        planet.resources[resA.name] = {
+            pool: makePool({ type: resA, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'a1',
+                    resource: resA,
+                    quantity: 10000,
+                    regenerationRate: 0,
+                    maximumCapacity: 10000,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
+        planet.resources[resB.name] = {
+            pool: makePool({ type: resB, quantity: 0, renewable: false }),
+            claims: [
+                {
+                    id: 'b1',
+                    resource: resB,
+                    quantity: 100,
+                    regenerationRate: 0,
+                    maximumCapacity: 100,
+                    tenantAgentId: agent.id,
+                    tenantCostInCoins: 0,
+                    costPerTick: 0,
+                    claimStatus: 'active' as const,
+                    noticePeriodEndsAtTick: null,
+                    pausedTicksThisYear: 0,
+                },
+            ],
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(facility.lastTickResults.overallEfficiency).toBeLessThan(1);
+
+        const used = facility.lastTickResults.totalUsedByEdu.secondary ?? 0;
+        expect(used).toBe(1);
+        expect(facility.lastTickResults.wageCosts).toBe(50 * used);
+    });
+
     it('records unused workers via lastTickResults.totalUsedByEdu', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
@@ -430,7 +498,7 @@ describe('constructionTick', () => {
         expect(facility.construction!.progress).toBe(10);
     });
 
-    it('applies constructionTick to storageFacility and managementFacilities as well', () => {
+    it('applies constructionTick to storageFacility and humanResourcesDepartment as well', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -447,7 +515,7 @@ describe('constructionTick', () => {
             lastTickInvestedConstructionServices: 0,
         };
 
-        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.humanResourcesDepartment = mgmtFacility;
         agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 30,
@@ -457,6 +525,99 @@ describe('constructionTick', () => {
         constructionTick(gs, planet);
 
         expect(mgmtFacility.construction!.progress).toBe(30);
+    });
+
+    it('preserves non-zero scale when expansion completes while facility is at the PID minimum (10%)', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const maxScale = 100;
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: maxScale * 0.1, maxScale });
+        facility.id = 'low-scale-expansion';
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 200,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 90,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 20,
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        constructionTick(gs, planet);
+
+        expect(facility.construction).toBeNull();
+        expect(facility.maxScale).toBe(200);
+        // scaleFraction was 0.1 (10%) which previously rounded to 0.0 -> new scale would be 0.
+        // After fix the scale is at least 10% of the new maxScale.
+        expect(facility.scale).toBeGreaterThan(0);
+        expect(facility.scale).toBeCloseTo(20, 5);
+    });
+
+    it('preserves scale proportion when expansion completes at 50% of old maxScale', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const maxScale = 100;
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: maxScale * 0.5, maxScale });
+        facility.id = 'half-scale-expansion';
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 200,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 90,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 20,
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        constructionTick(gs, planet);
+
+        expect(facility.construction).toBeNull();
+        expect(facility.maxScale).toBe(200);
+        // 50% of old maxScale = 50 -> 50% fraction of new maxScale = 100
+        expect(facility.scale).toBeCloseTo(100, 5);
+    });
+
+    it('records lastTickInvestedConstructionServices after partial consumption', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
+        facility.id = 'partial-cs';
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 30,
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        constructionTick(gs, planet);
+
+        expect(facility.construction!.lastTickInvestedConstructionServices).toBe(30);
+        expect(facility.construction!.progress).toBe(30);
+        expect(facility.construction).not.toBeNull();
     });
 });
 
@@ -634,12 +795,12 @@ describe('productionTick — storage facility', () => {
     });
 });
 
-describe('productionTick — management facility', () => {
+describe('productionTick — humanResourcesDepartment', () => {
     beforeEach(() => {
         seedRng(12345);
     });
 
-    it('management facility consumes stored input and advances buffer', () => {
+    it('human resources department consumes stored input and produces output', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -648,14 +809,12 @@ describe('productionTick — management facility', () => {
             {
                 id: 'mgmt-1',
                 scale: 1,
-                bufferPerTickPerScale: 10,
-                maxBuffer: 100,
-                buffer: 0,
                 needs: [{ resource: waterResourceType, quantity: 5 }],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
             },
         );
 
-        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.humanResourcesDepartment = mgmtFacility;
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 50,
@@ -670,14 +829,14 @@ describe('productionTick — management facility', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
-        expect(mgmtFacility.buffer).toBeGreaterThan(0);
         expect(mgmtFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeGreaterThan(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeGreaterThan(0);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThan(50);
     });
 
-    it('management facility does not advance buffer at zero efficiency', () => {
+    it('human resources department does not produce at zero efficiency', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -686,23 +845,21 @@ describe('productionTick — management facility', () => {
             {
                 id: 'mgmt-noworker',
                 scale: 1,
-                bufferPerTickPerScale: 10,
-                maxBuffer: 100,
-                buffer: 0,
                 needs: [],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
             },
         );
 
-        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.humanResourcesDepartment = mgmtFacility;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(0);
-        expect(mgmtFacility.buffer).toBe(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name] ?? 0).toBe(0);
     });
 
-    it('management facility under construction is excluded from productionTick', () => {
+    it('human resources department under construction is excluded from productionTick', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -712,7 +869,6 @@ describe('productionTick — management facility', () => {
                 id: 'mgmt-under-construction',
                 scale: 0,
                 maxScale: 0,
-                buffer: 0,
                 construction: {
                     type: 'new',
                     constructionTargetMaxScale: 1,
@@ -724,7 +880,7 @@ describe('productionTick — management facility', () => {
             },
         );
 
-        agent.assets.p.managementFacilities = [mgmtFacility];
+        agent.assets.p.humanResourcesDepartment = mgmtFacility;
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 1;
 
@@ -734,7 +890,99 @@ describe('productionTick — management facility', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
-        expect(mgmtFacility.buffer).toBe(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name] ?? 0).toBe(0);
+    });
+});
+
+describe('productionTick — HR scarcity scales down non-HR facility inputs', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    it('reduces consumed inputs of a production facility when hrProductivityMultiplier < 1', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({}, { id: 'hr-scarce-prod', scale: 2 });
+        facility.needs = [{ resource: waterResourceType, quantity: 100 }];
+        facility.produces = [{ resource: steelResourceType, quantity: 100 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 1000,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
+        expect(facility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(60);
+        expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(60);
+
+        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(remaining).toBeCloseTo(940);
+    });
+
+    it('reduces consumed building materials of a shipyard when hrProductivityMultiplier < 1', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('builder');
+        const shipType: TransportShipType = {
+            type: 'transport',
+            name: 'HR Scarce Freighter',
+            scale: 'small',
+            speed: 1,
+            cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
+            requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+            buildingCost: [{ resource: steelResourceType, quantity: 900 }],
+            buildingTime: 90,
+        };
+
+        const shipyard = makeShipConstructionFacility({}, { id: 'hr-scarce-sy', scale: 9, shipType });
+        agent.assets.p.shipConstructionFacilities = [shipyard];
+        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+            resource: steelResourceType,
+            quantity: 1000,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        const part = Math.min(1, Math.sqrt(9) / 90);
+        const requiredPerTick = 900 * part;
+        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
+        expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBeCloseTo(requiredPerTick * 0.3);
+    });
+
+    it('does not apply hrProductivityMultiplier to the HR department itself', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const hrFacility = makeManagementFacility(
+            {},
+            {
+                id: 'hr-own',
+                scale: 1,
+                needs: [{ resource: waterResourceType, quantity: 5 }],
+                produces: [{ resource: steelResourceType, quantity: 10 }],
+            },
+        );
+
+        agent.assets.p.humanResourcesDepartment = hrFacility;
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 50,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.3;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(hrFacility.lastTickResults.overallEfficiency).toBeCloseTo(1);
+        expect(hrFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(5);
+        expect(hrFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(10);
     });
 });
 

@@ -6,7 +6,7 @@ import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormal
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import type { ProductionFacility } from '@/simulation/planet/facility';
 import type { Agent, Planet } from '@/simulation/planet/planet';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
@@ -647,7 +647,7 @@ export function computeCondensedReport(current: MonthlyReport, previous: Monthly
                 continue;
             }
 
-            for (const resource of ALL_RESOURCES) {
+            for (const resource of TRADABLE_RESOURCES) {
                 if (resource.form === 'services' || resource.form === 'currency') {
                     continue;
                 }

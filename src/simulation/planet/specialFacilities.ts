@@ -1,13 +1,20 @@
-import type { LastTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
-import { administrativeServiceResourceType } from './services';
+import type { LastManagementTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
+import {
+    administrativeServiceResourceType,
+    educationServiceResourceType,
+    humanResourcesServiceResourceType,
+    logisticsServiceResourceType,
+    storageServiceResourceType,
+} from './services';
 
-const zeroLastTicksResults: LastTickResults = {
+const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},
     exactUsedByEdu: {},
     totalUsedByEdu: {},
+    lastProduced: {},
     lastConsumed: {},
     wageCosts: 0,
     inputCosts: 0,
@@ -29,49 +36,90 @@ const makeManagementFacilityDefaults = () => ({
     lastConstructionCompletedTick: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
-        workerEfficiency: {},
-        resourceEfficiency: {},
-        overqualifiedWorkers: {},
-        exactUsedByEdu: {},
-        totalUsedByEdu: {},
-        lastProduced: {},
-        lastConsumed: {},
     },
-    buffer: 0,
-    maxBuffer: 100,
-    bufferPerTickPerScale: 10,
 });
 
+export const HR_DEPARTMENT_NAME = 'HR Department';
+export const PRODUCED_QUANTITY = 200;
+export const USED_QUANTITY = 3;
+export const ESTIMATED_HR_OVERHEAD = 1.025;
+export const HR_WORLD_BUFFER = 1.4;
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
-    name: 'Human Resources Office',
+    name: HR_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 5,
-        primary: 10,
-        secondary: 5,
+        none: 0,
+        primary: 1,
+        secondary: 2,
         tertiary: 1,
     },
-    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
-    resourceName: 'HR Resource',
+    needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
+    produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
 });
+export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
+    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
 
-export const marketOperationsFacilityType = (planetId: string, id: string): ManagementFacility => ({
+export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
+export const storageDepartmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
-    name: 'Market Operations',
+    name: STORAGE_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 5,
-        primary: 10,
-        secondary: 5,
+        none: 0,
+        primary: 1,
+        secondary: 2,
         tertiary: 1,
     },
-    needs: [{ resource: administrativeServiceResourceType, quantity: 100 }],
-    resourceName: 'Market Capacity',
+    needs: [
+        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: logisticsServiceResourceType, quantity: 10 },
+    ],
+    produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_QUANTITY }],
+});
+
+export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';
+export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
+    ...makeManagementFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Research & Development',
+    powerConsumptionPerTick: 0.5,
+    workerRequirement: {
+        none: 0,
+        primary: 1,
+        secondary: 2,
+        tertiary: 5,
+    },
+    needs: [
+        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: educationServiceResourceType, quantity: 10 },
+    ],
+    produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_QUANTITY }],
+});
+
+export const TRAINING_CENTER_NAME = 'Training Center';
+export const trainingCenterFacilityType = (planetId: string, id: string): ManagementFacility => ({
+    ...makeManagementFacilityDefaults(),
+    planetId,
+    id,
+    name: TRAINING_CENTER_NAME,
+    powerConsumptionPerTick: 0.5,
+    workerRequirement: {
+        none: 0,
+        primary: 1,
+        secondary: 2,
+        tertiary: 5,
+    },
+    needs: [
+        { resource: administrativeServiceResourceType, quantity: 1 },
+        { resource: educationServiceResourceType, quantity: 10 },
+    ],
+    produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_QUANTITY }],
 });
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {

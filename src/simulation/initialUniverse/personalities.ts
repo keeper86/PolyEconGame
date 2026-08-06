@@ -118,7 +118,7 @@ const PRICING_SELL_CONFIGS: Record<SellPricingPreset, Partial<AutomatedPricingCo
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         automatedCostFloorBuffer: parseFloat((AUTOMATED_COST_FLOOR_BUFFER * 1.67).toFixed(2)),
-        targetSellThrough: parseFloat((TARGET_SELL_THROUGH * 0.56).toFixed(2)),
+        targetSellThrough: parseFloat((TARGET_SELL_THROUGH * 0.7).toFixed(2)),
     },
 };
 

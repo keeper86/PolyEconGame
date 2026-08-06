@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, PRICE_CEIL, PRICE_FLOOR } from '../constants';
+import {
+    INPUT_BUFFER_TARGET_TICKS,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    TARGET_FILL_RATE,
+} from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
@@ -254,6 +260,7 @@ describe('automaticPricing — buy side', () => {
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 0.9;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
 
@@ -355,13 +362,14 @@ describe('automaticPricing — buy side', () => {
         // Custom conservative priceAdjustMaxDown = 0.98
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { priceAdjustMaxDown: 0.98 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 1.0;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget;
 
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // With fillRate=1.0 (≥ targetFillRate=0.9), baseFactor = priceAdjustMaxDown = 0.98
+        // With smoothedFillRate=1.0 (≥ targetFillRate), baseFactor = priceAdjustMaxDown = 0.98
         expect(newPrice).toBeCloseTo(firstBidPrice * 0.98, 5);
     });
 
@@ -370,16 +378,17 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const firstBidPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
 
-        // Set fill rate to 0.8 with targetFillRate=0.5 → fillRate (0.8) >= target (0.5) → bid should go down
+        // Set fill rate to 0.8 with targetFillRate=0.5 → smoothedFillRate (0.8) >= target (0.5) → bid should go down
         buyer.assets.p.market!.buy[COAL]!.autoConfig = { targetFillRate: 0.5 } as AutomatedPricingConfig;
         const firstBidTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget!;
+        buyer.assets.p.market!.buy[COAL]!.smoothedFillRate = 0.8;
         buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = firstBidTarget;
         buyer.assets.p.market!.buy[COAL]!.lastBought = firstBidTarget * 0.8;
 
         automaticPricing(agentMap(buyer), planet);
 
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // fillRate=0.8 > target=0.5 → downward adjustment
+        // smoothedFillRate=0.8 >= target=0.5 → downward adjustment
         expect(newPrice).toBeLessThan(firstBidPrice);
     });
 
@@ -448,7 +457,7 @@ describe('automaticPricing — buy side', () => {
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
         // With ceilingPrice=3.0 and bidPrice=10: overDeviation = sqrt(10/3 - 1) = sqrt(2.33) ≈ 1.527
         // ceilingSpring = COST_SPRING_STRENGTH * 1.527 ≈ 0.153
-        // fillRate=1.0 ≥ targetFillRate=0.9 → baseFactor = PRICE_ADJUST_MAX_DOWN = 0.95
+        // fillRate=1.0 ≥ targetFillRate → baseFactor = PRICE_ADJUST_MAX_DOWN = 0.95
         // netFactor = 0.95 - 0.153 = 0.797
         // newPrice ≈ 10 * 0.797 = 7.97, which is > PRICE_FLOOR
         expect(newPrice).toBeLessThan(10);
@@ -622,8 +631,7 @@ describe('automaticPricing — buy side', () => {
 
         const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
         expect(diagnostics).toBeDefined();
-        // targetFillRate should be default 0.9
-        expect(diagnostics!.targetFillRate).toBe(0.9);
+        expect(diagnostics!.targetFillRate).toBe(TARGET_FILL_RATE);
         // priceAdjustMaxUp=1.15 applied → factor should reflect that
         const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
         expect(newPrice).toBeCloseTo(firstBidPrice * 1.15, 5);

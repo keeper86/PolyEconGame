@@ -7,14 +7,21 @@
  * Run: npx tsx tools/facility-growth-model/computeTargets.ts
  */
 
-import { ALL_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
 import { allServices } from '../../src/simulation/market/serviceDefinitions';
-import  camelCase from 'camelcase'
+import camelCase from 'camelcase';
 import {
+    administrativeServiceResourceType,
     constructionServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import { computePopulationServiceDemand } from '../../src/app/supply-chain/_components/populationDemandHelper';
+import {
+    ESTIMATED_HR_OVERHEAD,
+    HR_WORLD_BUFFER,
+    PRODUCED_QUANTITY,
+    USED_QUANTITY,
+} from '../../src/simulation/planet/specialFacilities';
 
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
@@ -29,31 +36,31 @@ interface SlackConfig {
 
 const CONFIG: SlackConfig = {
     population: 8_000_000_000,
-    defaultSlack: 1.05, // 0% surplus on everything (1.5 = 50% surplus)
+    defaultSlack: 1.15, // 0% surplus on everything (1.5 = 50% surplus)
     floorScale: 1,
     services: {
-        grocery: 1.3,
-        healthcare: 1.3,
-        logistics: 1.3,
-        retail: 1.3,
-        education: 1.3,
+        grocery: 1.5,
+        healthcare: 1.5,
+        logistics: 1.5,
+        retail: 1.5,
+        education: 1.5,
     },
     goods: {
-        administration: 1.3,
-        logistics: 1.3,
-        construction: 1.3,
-        maintenance: 1.3,
+        administration: 1.5,
+        logistics: 1.5,
+        construction: 1.4,
+        maintenance: 1.4,
     },
 };
-
-    // Add construction demand: every non-construction facility needs construction service for expansion
-    const constructionDemandPerTick = 32_000_000;
-
+   
+const constructionDemandPerTick = 612_000_000;
 const BALANCE_EPSILON = 0.001;
 
 function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
+
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY/2);
 
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;
@@ -65,7 +72,10 @@ function buildModel(slack: SlackConfig): {
     const constraints: Record<string, { min: number }> = {};
     const variables: Record<string, Record<string, number>> = {};
 
-    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+    const adminKey = resourceConstraintKey(administrativeServiceResourceType.name);
+    const adminSlack = slack.goods[administrativeServiceResourceType.name.toLowerCase()] ?? slack.defaultSlack;
+
+    for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         const varCoeffs: Record<string, number> = { obj: 1 };
         const name = f.name;
@@ -82,6 +92,19 @@ function buildModel(slack: SlackConfig): {
             const key = resourceConstraintKey(need.resource.name);
             varCoeffs[key] = (varCoeffs[key] ?? 0) - need.quantity;
             if (!constraints[key]) constraints[key] = { min: 0 };
+        }
+
+        const workersPerScale =
+            (f.workerRequirement.none ?? 0) +
+            (f.workerRequirement.primary ?? 0) +
+            (f.workerRequirement.secondary ?? 0) +
+            (f.workerRequirement.tertiary ?? 0);
+        const storageWorkersPerScale = 25 / 150_000;
+        const hrAdminDemandPerScale =
+            (workersPerScale + storageWorkersPerScale) * HR_ADMIN_PER_WORKER * adminSlack;
+        if (hrAdminDemandPerScale > 0) {
+            varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - hrAdminDemandPerScale;
+            if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
         }
 
         variables[name] = varCoeffs;
@@ -105,7 +128,7 @@ function buildModel(slack: SlackConfig): {
     }
 
     const constructKey = resourceConstraintKey(constructionServiceResourceType.name);
-    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+    for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         if (f.name === 'Coal Power Plant') continue;
         if (f.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) continue;        
@@ -211,7 +234,7 @@ function main(): void {
                 workers: number;
                 type: string;
             }[] = [];
-            for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+            for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
                 const f = entry.factory(TOOL_PLANET, TOOL_ID);
                 if (f.name === 'Coal Power Plant') continue;
                 const scale = (raw[f.name] as number | undefined) ?? 0;
@@ -266,7 +289,7 @@ function main(): void {
             console.log('\nResource balances at computed scales:');
             const balances: Record<string, { prod: number; cons: number }> = {};
             for (const r of results) {
-                const entry = Object.values(ALL_FACILITY_ENTRIES).find(
+                const entry = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
                     (e) => e.factory(TOOL_PLANET, TOOL_ID).name === r.name,
                 )!;
                 const f = entry.factory(TOOL_PLANET, TOOL_ID);
@@ -298,6 +321,14 @@ function main(): void {
                     balances[service.resource.name].cons += demand;
                 }
             }
+
+            // Add HR department administration consumption to balance display
+            balances[administrativeServiceResourceType.name] = balances[administrativeServiceResourceType.name] ?? {
+                prod: 0,
+                cons: 0,
+            };
+            const hrAdminConsumption = totalWorkers * HR_ADMIN_PER_WORKER;
+            balances[administrativeServiceResourceType.name].cons += hrAdminConsumption;
 
             // Add ad-hoc construction consumption to balance display
             if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {

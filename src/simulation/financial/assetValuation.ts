@@ -9,11 +9,10 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
         return 0;
     }
 
-    const allFacilities: Facility[] = [
-        ...assets.productionFacilities,
-        ...assets.managementFacilities,
-        ...assets.shipConstructionFacilities,
-    ];
+    const allFacilities: Facility[] = [...assets.productionFacilities, ...assets.shipConstructionFacilities];
+    if (assets.humanResourcesDepartment) {
+        allFacilities.push(assets.humanResourcesDepartment);
+    }
 
     let total = 0;
     for (const facility of allFacilities) {

@@ -435,20 +435,25 @@ export default function BuySection({
                     <div className='space-y-3 pt-3'>
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
-                                label='Required'
-                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/day` : '—'}
-                                bold
-                            />
-                            <Stat
                                 label='Stock'
                                 value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
+                                bold
                             />
                             <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
                             <Stat
-                                label='Last price'
-                                value={formatNumberWithUnit(bid?.diagnostics?.newBidPrice, 'currency', planetId)}
+                                label='Required'
+                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/day` : '—'}
                             />
+
                             <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit, planetId)} />
+                            <Stat
+                                label='Smoothed fill rate'
+                                value={
+                                    bid?.diagnostics?.smoothedFillRate !== undefined
+                                        ? `${(bid.diagnostics.smoothedFillRate * 100).toFixed(0)}%`
+                                        : '—'
+                                }
+                            />
                             <Stat
                                 label='Last spent'
                                 value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId)}

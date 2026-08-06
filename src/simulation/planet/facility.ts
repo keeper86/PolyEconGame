@@ -1,6 +1,6 @@
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
-import type { Resource, ResourceProcessLevel, ResourceQuantity } from './claims';
+import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
 import type { PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
@@ -27,7 +27,7 @@ export const getFacilityType = (facility: Facility): FacilityType => {
                 return 'refined';
             }
             return 'raw';
-        }, 'raw' as ResourceProcessLevel);
+        }, 'raw' as TradableResourceProcessLevel);
     }
     return facility.type;
 };
@@ -40,7 +40,7 @@ const facilityConstructionMultiplier: Record<FacilityType, number> = {
     manufactured: 3,
     services: 4,
     storage: 1,
-    management: 2.5,
+    management: 0.1,
     ship_construction: 5,
 };
 
@@ -57,9 +57,10 @@ export const calculateCostsForConstruction = (
     const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
     const linearTerm = targetScale - currentScale;
 
+    const minimumTime = MINIMUM_CONSTRUCTION_TIME_IN_TICKS * (facilityType === 'management' ? 0.5 : 1);
     return {
         cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
-        time: MINIMUM_CONSTRUCTION_TIME_IN_TICKS + 30 * m * Math.log(targetScale - currentScale),
+        time: minimumTime + 30 * m * Math.log(targetScale - currentScale),
     };
 };
 
@@ -105,8 +106,11 @@ export type LastTickResults = {
     lastConsumed: { [resourceName: string]: number };
 };
 
-export type LastProductionTickResults = LastTickResults & {
+export type LastManagementTickResults = LastTickResults & {
     lastProduced: { [resourceName: string]: number };
+};
+
+export type LastProductionTickResults = LastManagementTickResults & {
     revenue: number;
 };
 
@@ -116,6 +120,7 @@ export type PidState = {
     filteredError: number;
     expansionIntegral: number;
     contractionIntegral: number;
+    smoothedSignal: number;
 };
 
 export type ProductionFacility = FacilityBase & {
@@ -149,14 +154,10 @@ export type StorageFacility = FacilityBase & {
 export type ManagementFacility = FacilityBase & {
     type: 'management';
     needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
 
-    resourceName: string;
-    bufferPerTickPerScale: number;
-    maxBuffer: number;
-    buffer: number;
-    lastTickResults: LastTickResults;
+    lastTickResults: LastManagementTickResults;
 };
-
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
     shipName: string;

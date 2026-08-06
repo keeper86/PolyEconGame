@@ -243,11 +243,11 @@ export function makeManagementFacility(
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
         needs: [],
-        resourceName: 'test',
-        buffer: 0,
-        maxBuffer: 100,
-        bufferPerTickPerScale: 10,
-        lastTickResults: createLastTickResults(),
+        produces: [],
+        lastTickResults: {
+            ...createLastTickResults(),
+            lastProduced: {},
+        },
         ...overrides,
     };
 }
@@ -323,8 +323,11 @@ export function makeAllocatedWorkers(
 export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentPlanetAssets>): AgentPlanetAssets {
     return {
         productionFacilities: [],
-        managementFacilities: [],
         shipConstructionFacilities: [],
+        humanResourcesDepartment: null,
+        hrBuffer: 0,
+        hrProductivityMultiplier: 1,
+        hrDemand: 0,
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],

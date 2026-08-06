@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { clampArea } from './marketHelpers';
+import { administrativeServiceResourceType } from '@/simulation/planet/services';
+import { makeAgentPlanetAssets, makeManagementFacility } from '@/simulation/utils/testHelper';
+import { buildResourceList, clampArea } from './marketHelpers';
 
 describe('clampArea', () => {
     const domain: [number, number] = [100, 500];
@@ -64,5 +66,32 @@ describe('clampArea', () => {
         const result = clampArea(area, domain, 2, 4);
         // Fully outside left, indicator at [100, 104]
         expect(result).toEqual({ x1: 100, x2: 104, y: 1.0, clipped: true });
+    });
+});
+
+describe('buildResourceList', () => {
+    it('includes humanResourcesDepartment needs when showing relevant resources', () => {
+        const hrDepartment = makeManagementFacility(
+            {},
+            {
+                needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],
+                produces: [],
+            },
+        );
+        const assets = makeAgentPlanetAssets('p', { humanResourcesDepartment: hrDepartment });
+
+        const resources = buildResourceList(assets, false);
+        const names = resources.map((r) => r.name);
+
+        expect(names).toContain(administrativeServiceResourceType.name);
+    });
+
+    it('does not include humanResourcesDepartment needs when there is no HR department', () => {
+        const assets = makeAgentPlanetAssets('p');
+
+        const resources = buildResourceList(assets, false);
+        const names = resources.map((r) => r.name);
+
+        expect(names).not.toContain(administrativeServiceResourceType.name);
     });
 });

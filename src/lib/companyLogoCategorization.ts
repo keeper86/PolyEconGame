@@ -1,4 +1,4 @@
-import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import { assetManifest } from '@/lib/assetManifest';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 
@@ -13,6 +13,7 @@ const LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     refined: CATEGORY_REFINEMENT,
     manufactured: CATEGORY_MANUFACTURING,
     services: CATEGORY_SERVICES,
+    internal: CATEGORY_SERVICES, // not needed but easier to handle
 };
 
 const ICON_KEY_OVERRIDES: Record<string, ResourceProcessLevel> = {
@@ -22,7 +23,7 @@ const ICON_KEY_OVERRIDES: Record<string, ResourceProcessLevel> = {
 };
 
 const FACILITY_ICON_MAP: Record<string, ResourceProcessLevel> = {};
-for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
     const normalized = entry.template.name.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
     FACILITY_ICON_MAP[normalized] = entry.primaryOutputLevel;
 }

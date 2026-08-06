@@ -33,6 +33,7 @@ export type WaterFillFacilityResult = {
 
 export type WaterFillResult = {
     remaining: Record<EducationLevelType, Record<Skill, number>>;
+    used: number;
     byFacility: Map<string, WaterFillFacilityResult>;
 };
 
@@ -46,6 +47,7 @@ export function waterFill(
     effectiveDemandBySlot: Map<WorkerSlot, number>,
 ): WaterFillResult {
     const remaining = {} as Record<EducationLevelType, Record<Skill, number>>;
+    let used = 0;
     for (const edu of educationLevelKeys) {
         remaining[edu] = { ...supplyByEduSkill[edu] };
     }
@@ -92,6 +94,7 @@ export function waterFill(
                     slot.overqualifiedCount += take;
                 }
                 remainingSupply -= take;
+                used += take;
             }
 
             remaining[workerEdu][workerSkill] = remainingSupply;
@@ -173,7 +176,7 @@ export function waterFill(
         });
     }
 
-    return { remaining, byFacility };
+    return { remaining, used, byFacility };
 }
 
 function findEquilibrium(sortedSlots: WorkerSlot[], supply: number): number {

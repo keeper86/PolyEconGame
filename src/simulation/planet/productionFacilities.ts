@@ -1,5 +1,5 @@
 import type { ResourceProcessLevel } from './claims';
-import type { ProductionFacility } from './facility';
+import type { Facility, ProductionFacility } from './facility';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -732,6 +732,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     needs: [
         { resource: paperResourceType, quantity: 5 },
         { resource: furnitureResourceType, quantity: 1 },
+        { resource: itDevicesResourceType, quantity: 0.1 },
     ],
     produces: [{ resource: administrativeServiceResourceType, quantity: 300 }],
 });
@@ -750,8 +751,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     },
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 10.0 },
-        { resource: administrativeServiceResourceType, quantity: 5 },
+        { resource: fuelResourceType, quantity: 30.0 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -763,19 +763,17 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
     name: 'Construction Facility' as const,
     powerConsumptionPerTick: 0.3,
     workerRequirement: {
-        none: 10,
-        primary: 40,
+        none: 30,
+        primary: 50,
         secondary: 40,
         tertiary: 10,
     },
     needs: [
-        { resource: concreteResourceType, quantity: 60 },
-        { resource: steelResourceType, quantity: 30 },
-        { resource: machineryResourceType, quantity: 1 },
-        { resource: administrativeServiceResourceType, quantity: 1 },
-        { resource: logisticsServiceResourceType, quantity: 1 },
+        { resource: concreteResourceType, quantity: 100 },
+        { resource: steelResourceType, quantity: 60 },
+        { resource: machineryResourceType, quantity: 3 },
     ],
-    produces: [{ resource: constructionServiceResourceType, quantity: 50 }],
+    produces: [{ resource: constructionServiceResourceType, quantity: 100 }],
 });
 
 export const groceryChain = (planetId: string, id: string): ProductionFacility => ({
@@ -794,7 +792,6 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
         { resource: processedFoodResourceType, quantity: 30 },
         { resource: beverageResourceType, quantity: 20 },
         { resource: logisticsServiceResourceType, quantity: 5 },
-        { resource: administrativeServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: groceryServiceResourceType, quantity: 300 }],
 });
@@ -816,7 +813,6 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: clothingResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 10 },
         { resource: logisticsServiceResourceType, quantity: 20 },
-        { resource: administrativeServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: retailServiceResourceType, quantity: 300 }],
 });
@@ -834,10 +830,10 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
         tertiary: 90,
     },
     needs: [
-        { resource: pharmaceuticalResourceType, quantity: 2 },
-        { resource: chemicalResourceType, quantity: 20 },
+        { resource: pharmaceuticalResourceType, quantity: 5 },
+        { resource: chemicalResourceType, quantity: 10 },
+        { resource: furnitureResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 10 },
-        { resource: administrativeServiceResourceType, quantity: 3 },
     ],
     produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
 });
@@ -857,7 +853,6 @@ export const educationCenter = (planetId: string, id: string): ProductionFacilit
     needs: [
         { resource: paperResourceType, quantity: 30 },
         { resource: furnitureResourceType, quantity: 5 },
-        { resource: administrativeServiceResourceType, quantity: 6 },
     ],
     produces: [{ resource: educationServiceResourceType, quantity: 300 }],
 });
@@ -885,7 +880,6 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
             { resource: electronicsResourceType, quantity: 5 },
             { resource: plasticResourceType, quantity: 3 },
             { resource: logisticsServiceResourceType, quantity: 5 },
-            { resource: administrativeServiceResourceType, quantity: 5 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },
@@ -913,7 +907,7 @@ const entry = (factory: FacilityFactory): FacilityCatalogEntry => {
     return { factory, template: instance, primaryOutputLevel };
 };
 
-export const ALL_FACILITY_ENTRIES = {
+export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     coalMine: entry(coalMine),
     oilWell: entry(oilWell),
     loggingCamp: entry(loggingCamp),
@@ -956,23 +950,34 @@ export const ALL_FACILITY_ENTRIES = {
     maintenanceFacility: entry(maintenanceFacility),
 } as const;
 
-export type FacilityType = keyof typeof ALL_FACILITY_ENTRIES;
+export type FacilityType = keyof typeof ALL_PRODUCTION_FACILITY_ENTRIES;
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
+export const INTERNAL_FACILITY_LEVELS: ResourceProcessLevel[] = ['internal'] as const;
 export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     raw: 'Raw Extraction',
     refined: 'Refinement',
     manufactured: 'Manufacturing',
     services: 'Services',
+    internal: 'Internal',
+};
+export const neededWorkersByFacility: (facility: Facility) => number = (facility) => {
+    return (
+        facility.scale *
+        ((facility.workerRequirement.none ?? 0) +
+            (facility.workerRequirement.primary ?? 0) +
+            (facility.workerRequirement.secondary ?? 0) +
+            (facility.workerRequirement.tertiary ?? 0))
+    );
 };
 
-const allFacilityEntries = Object.values(ALL_FACILITY_ENTRIES);
-
+const allFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
     raw: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
     refined: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
     manufactured: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
     services: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
+    internal: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(

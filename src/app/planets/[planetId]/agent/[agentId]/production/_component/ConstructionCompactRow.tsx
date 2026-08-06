@@ -32,9 +32,11 @@ import { toast } from 'sonner';
 export function ConstructionCompactRow({
     facility,
     isPendingCancel,
+    hideCancel,
 }: {
     facility: Facility;
     isPendingCancel?: boolean;
+    hideCancel?: boolean;
 }): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
@@ -160,17 +162,19 @@ export function ConstructionCompactRow({
                 </div>
             </div>
 
-            <div className='mt-auto space-y-2'>
-                <Button
-                    size='sm'
-                    variant='destructive'
-                    className='w-full text-xs gap-1'
-                    disabled={cancelMutation.isPending || isPendingCancel}
-                    onClick={() => setShowCancelDialog(true)}
-                >
-                    {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
-                </Button>
-            </div>
+            {!hideCancel && (
+                <div className='mt-auto space-y-2'>
+                    <Button
+                        size='sm'
+                        variant='destructive'
+                        className='w-full text-xs gap-1'
+                        disabled={cancelMutation.isPending || isPendingCancel}
+                        onClick={() => setShowCancelDialog(true)}
+                    >
+                        {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
+                    </Button>
+                </div>
+            )}
 
             <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
                 <DialogContent>

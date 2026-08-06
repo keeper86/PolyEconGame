@@ -3,8 +3,7 @@
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
-import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
-import { ALL_RESOURCES } from '@/simulation/planet/resourceCatalog';
+import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
 import MarketPanel from './_components/MarketPanel';
 import MultiProductPriceChart, { MultiProductPriceChartTrigger } from './_components/MultiProductPriceChart';
@@ -27,13 +26,7 @@ export default function MarketPage() {
 
     const [isChartOpen, setIsChartOpen] = useState(false);
 
-    const allResourceNames = useMemo(
-        () =>
-            ALL_RESOURCES.filter(
-                (r) => r.form !== 'landBoundResource' && !r.name.startsWith(CURRENCY_RESOURCE_PREFIX),
-            ).map((r) => r.name),
-        [],
-    );
+    const allResourceNames = useMemo(() => TRADABLE_RESOURCES.map((r) => r.name), []);
 
     return (
         <Page

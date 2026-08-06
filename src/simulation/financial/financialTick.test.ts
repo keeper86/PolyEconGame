@@ -133,7 +133,7 @@ describe('preProductionFinancialTick', () => {
         facility.scale = 2;
         assets.productionFacilities = [facility];
 
-        planet.marketPrices.iron_ore = 10;
+        planet.marketPrices[ironOreResourceType.name] = 10;
 
         preProductionFinancialTick(agentMap(agent), planet);
 

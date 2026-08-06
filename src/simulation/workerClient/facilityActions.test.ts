@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { makeWorld } from '../utils/testHelper';
 import type { OutboundMessage } from './messages';
-import { handleCancelConstruction } from './facilityActions';
-import type { ProductionFacility, ShipConstructionFacility } from '../planet/facility';
+import {
+    handleBuildFacility,
+    handleCancelConstruction,
+    handleContractFacility,
+    handleExpandFacility,
+    handleSetFacilityScale,
+} from './facilityActions';
+import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
+import { HR_DEPARTMENT_NAME, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
 
 function makeMessages() {
     const messages: OutboundMessage[] = [];
@@ -45,6 +52,182 @@ function makeNewFacility(planetId: string, id = 'fac-1'): ProductionFacility {
         },
     } as unknown as ProductionFacility;
 }
+
+function makeManagementFacility(planetId: string, id = 'mgmt-1'): ManagementFacility {
+    return {
+        ...humanResourcesOfficeFacilityType(planetId, id),
+        id,
+        scale: 0,
+        maxScale: 0,
+        construction: null,
+    };
+}
+
+describe('handleBuildFacility — HR Department', () => {
+    it('builds a Human Resources Office into humanResourcesDepartment', () => {
+        const { gameState, planet, company } = setupWorld();
+        const { messages, post } = makeMessages();
+
+        handleBuildFacility(
+            gameState,
+            {
+                type: 'buildFacility',
+                requestId: 'r20',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityKey: HR_DEPARTMENT_NAME,
+                targetScale: 1,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityBuilt',
+            agentId: company.id,
+        });
+        expect(company.assets[planet.id].humanResourcesDepartment).not.toBeNull();
+        const f = company.assets[planet.id].humanResourcesDepartment!;
+        expect(f.name).toBe(HR_DEPARTMENT_NAME);
+        expect(f.construction).not.toBeNull();
+        expect(f.construction!.type).toBe('new');
+    });
+
+    it('fails when humanResourcesDepartment already exists', () => {
+        const { gameState, planet, company } = setupWorld();
+        const facility = makeManagementFacility(planet.id, 'mgmt-existing');
+        company.assets[planet.id].humanResourcesDepartment = facility;
+        const { messages, post } = makeMessages();
+
+        handleBuildFacility(
+            gameState,
+            {
+                type: 'buildFacility',
+                requestId: 'r21',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityKey: HR_DEPARTMENT_NAME,
+                targetScale: 1,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityBuildFailed',
+            reason: expect.stringContaining('already exists'),
+        });
+    });
+});
+
+describe('handleExpandFacility — humanResourcesDepartment', () => {
+    it('expands the human resources department', () => {
+        const { gameState, planet, company } = setupWorld();
+        const facility: ManagementFacility = {
+            ...makeManagementFacility(planet.id, 'mgmt-expand'),
+            scale: 1,
+            maxScale: 1,
+        };
+        company.assets[planet.id].humanResourcesDepartment = facility;
+        const { messages, post } = makeMessages();
+
+        handleExpandFacility(
+            gameState,
+            {
+                type: 'expandFacility',
+                requestId: 'r22',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: 'mgmt-expand',
+                targetScale: 2,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityExpanded',
+            facilityId: 'mgmt-expand',
+        });
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.type).toBe('expansion');
+    });
+});
+
+describe('handleSetFacilityScale — humanResourcesDepartment', () => {
+    it('sets operating scale on the human resources department', () => {
+        const { gameState, planet, company } = setupWorld();
+        const facility: ManagementFacility = {
+            ...makeManagementFacility(planet.id, 'mgmt-scale'),
+            scale: 0.5,
+            maxScale: 1,
+        };
+        company.assets[planet.id].humanResourcesDepartment = facility;
+        const { messages, post } = makeMessages();
+
+        handleSetFacilityScale(
+            gameState,
+            {
+                type: 'setFacilityScale',
+                requestId: 'r23',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: 'mgmt-scale',
+                scaleFraction: 0.75,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityScaleSet',
+            facilityId: 'mgmt-scale',
+        });
+        expect(facility.scale).toBeCloseTo(0.75);
+    });
+});
+
+describe('handleContractFacility — humanResourcesDepartment', () => {
+    function setCSMarketResult(gameState: import('../planet/planet').GameState): void {
+        const planet = gameState.planets.values().next().value!;
+        planet.avgMarketResult.Construction = {
+            resourceName: 'Construction',
+            clearingPrice: 10,
+            totalVolume: 100,
+            totalSupply: 100,
+            totalDemand: 100,
+            unsoldSupply: 0,
+            unfilledDemand: 35,
+        };
+    }
+
+    it('contracts the human resources department to a lower scale', () => {
+        const { gameState, planet, company } = setupWorld();
+        const facility: ManagementFacility = {
+            ...makeManagementFacility(planet.id, 'mgmt-contract'),
+            scale: 0.5,
+            maxScale: 1,
+        };
+        company.assets[planet.id].humanResourcesDepartment = facility;
+        setCSMarketResult(gameState);
+        const { messages, post } = makeMessages();
+
+        handleContractFacility(
+            gameState,
+            {
+                type: 'contractFacility',
+                requestId: 'r24',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: 'mgmt-contract',
+                targetScale: 0,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityContracted',
+            facilityId: 'mgmt-contract',
+        });
+        expect(company.assets[planet.id].humanResourcesDepartment).toBeNull();
+    });
+});
 
 function makeExpansionFacility(planetId: string, id = 'fac-2'): ProductionFacility {
     return {

@@ -1,4 +1,4 @@
-import { ALL_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import { computePopulationServiceDemand } from './populationDemandHelper';
 
 const TOOL_PLANET = 'tool';
@@ -64,7 +64,7 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
     const totalWorkers = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const facilities: FacilityInfo[] = [];
 
-    for (const entry of Object.values(ALL_FACILITY_ENTRIES)) {
+    for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
         const scale = scales[f.name] ?? 0;
 

@@ -27,8 +27,8 @@ function aggregateConsumption(assets: AgentPlanetAssets): Record<string, number>
             result[name] = (result[name] ?? 0) + qty;
         }
     }
-    for (const fac of assets.managementFacilities) {
-        for (const [name, qty] of Object.entries(fac.lastTickResults.lastConsumed)) {
+    if (assets.humanResourcesDepartment) {
+        for (const [name, qty] of Object.entries(assets.humanResourcesDepartment.lastTickResults.lastConsumed)) {
             result[name] = (result[name] ?? 0) + qty;
         }
     }

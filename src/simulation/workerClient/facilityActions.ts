@@ -1,7 +1,12 @@
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
+import type { ManagementFacility, ProductionFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
-import { shipConstructionFacilityType } from '../planet/specialFacilities';
+import {
+    HR_DEPARTMENT_NAME,
+    humanResourcesOfficeFacilityType,
+    shipConstructionFacilityType,
+} from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import { processFacilityContraction } from '../agents/recycler';
 import type { OutboundMessage, PendingAction } from './messages';
@@ -33,7 +38,8 @@ export function handleBuildFacility(
         return;
     }
     const catalogEntry = facilityByName.get(facilityKey);
-    if (!catalogEntry) {
+    const isHrDepartment = facilityKey === HR_DEPARTMENT_NAME;
+    if (!isHrDepartment && !catalogEntry) {
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
@@ -42,7 +48,13 @@ export function handleBuildFacility(
         });
         return;
     }
-    const alreadyExists = assets.productionFacilities.some((f) => f.name === facilityKey);
+    const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const newFacility = isHrDepartment
+        ? humanResourcesOfficeFacilityType(planetId, facilityId)
+        : catalogEntry!.factory(planetId, facilityId);
+    const alreadyExists = isHrDepartment
+        ? assets.humanResourcesDepartment !== null
+        : assets.productionFacilities.some((f) => f.name === facilityKey);
     if (alreadyExists) {
         safePostMessage({
             type: 'facilityBuildFailed',
@@ -52,8 +64,6 @@ export function handleBuildFacility(
         });
         return;
     }
-    const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-    const newFacility = catalogEntry.factory(planetId, facilityId);
     const facilityType = getFacilityType(newFacility);
     const { cost, time } = calculateCostsForConstruction(facilityType, 0, targetScale);
     newFacility.construction = {
@@ -66,7 +76,11 @@ export function handleBuildFacility(
     };
     newFacility.scale = 0;
     newFacility.maxScale = 0;
-    assets.productionFacilities.push(newFacility);
+    if (isHrDepartment) {
+        assets.humanResourcesDepartment = newFacility as ManagementFacility;
+    } else {
+        assets.productionFacilities.push(newFacility as ProductionFacility);
+    }
     console.log(`[worker] Agent '${agentId}' built '${facilityKey}' (scale ${targetScale}) on planet '${planetId}'`);
     safePostMessage({ type: 'facilityBuilt', requestId, agentId, facilityId, processedAtTick: state.tick });
 }
@@ -97,7 +111,9 @@ export function handleExpandFacility(
         });
         return;
     }
-    const facility = assets.productionFacilities.find((f) => f.id === facilityId);
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined);
     if (!facility) {
         safePostMessage({
             type: 'facilityExpandFailed',
@@ -178,6 +194,7 @@ export function handleSetFacilityScale(
     }
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
+        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -223,6 +240,7 @@ export function handleContractFacility(
     }
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
+        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -262,13 +280,23 @@ export function handleContractFacility(
         return;
     }
 
-    processFacilityContraction(planet, facility, agent, targetScale, state);
+    const contracted = processFacilityContraction(planet, facility, agent, targetScale, state);
+    if (!contracted) {
+        safePostMessage({
+            type: 'facilityContractFailed',
+            requestId,
+            reason: 'Recycler declined the contraction',
+            processedAtTick: state.tick,
+        });
+        return;
+    }
 
-    // TODO: we need to consider all facilities; Let's introduce a function that returns _all_ facilities
     if (targetScale === 0) {
         const prodIdx = assets.productionFacilities.findIndex((f) => f.id === facilityId);
         if (prodIdx !== -1) {
             assets.productionFacilities.splice(prodIdx, 1);
+        } else if (assets.humanResourcesDepartment?.id === facilityId) {
+            assets.humanResourcesDepartment = null;
         } else {
             const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
             if (shipIdx !== -1) {
@@ -560,10 +588,13 @@ export function handleCancelConstruction(
     }
 
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
+    const isHumanResources = facilityIndex === -1 && assets.humanResourcesDepartment?.id === facilityId;
     const shipyardIndex =
-        facilityIndex === -1 ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId) : -1;
+        facilityIndex === -1 && !isHumanResources
+            ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId)
+            : -1;
 
-    if (facilityIndex === -1 && shipyardIndex === -1) {
+    if (facilityIndex === -1 && !isHumanResources && shipyardIndex === -1) {
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
@@ -599,7 +630,7 @@ export function handleCancelConstruction(
         return;
     }
 
-    const facility = assets.productionFacilities[facilityIndex];
+    const facility = isHumanResources ? assets.humanResourcesDepartment! : assets.productionFacilities[facilityIndex];
     if (!facility.construction) {
         safePostMessage({
             type: 'constructionCancelFailed',
@@ -610,7 +641,11 @@ export function handleCancelConstruction(
         return;
     }
     if (facility.construction.type === 'new') {
-        assets.productionFacilities.splice(facilityIndex, 1);
+        if (isHumanResources) {
+            assets.humanResourcesDepartment = null;
+        } else {
+            assets.productionFacilities.splice(facilityIndex, 1);
+        }
         console.log(
             `[worker] Agent '${agentId}' cancelled new construction of '${facilityId}' on planet '${planetId}' — facility removed`,
         );

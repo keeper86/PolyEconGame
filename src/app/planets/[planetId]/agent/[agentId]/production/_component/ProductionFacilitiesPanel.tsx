@@ -23,10 +23,12 @@ export default function ProductionFacilitiesPanel({
     facilities,
     agentId,
     planetId,
+    hrProductivityMultiplier,
 }: {
     facilities: ProductionFacility[];
     agentId: string;
     planetId: string;
+    hrProductivityMultiplier: number;
 }): React.ReactElement {
     const trpc = useTRPC();
 
@@ -156,6 +158,7 @@ export default function ProductionFacilitiesPanel({
                                                 constructionServicePrice={constructionServicePrice}
                                                 otherConstructionCosts={otherConstructionCosts}
                                                 onExpanded={() => {}}
+                                                hrProductivityMultiplier={hrProductivityMultiplier}
                                             />
                                         );
                                     }

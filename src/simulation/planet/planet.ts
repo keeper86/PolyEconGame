@@ -191,16 +191,17 @@ export interface AutomatedPricingConfig {
     freeRetainmentSmoothingMaxExtra?: number; // days the retainment sell-off takes to fill, default 2
 
     // Sell-side
-    targetSellThrough?: number; // default: 0.9 (goods), 0.95 (services — resolver picks by resource.form)
+    targetSellThrough?: number; // default: 0.6 (goods), 0.7 (services — resolver picks by resource.form)
     automatedCostFloorBuffer?: number; // default: 0.5
 
     // Buy-side
     inputBufferTargetTicks?: number; // default: 30 (goods), 3 (services — resolver picks by resource.form)
-    targetFillRate?: number; // default: 0.9
+    targetFillRate?: number; // default: 0.6 (goods), 0.7 (services - resolver picks by resource.form)
 }
 
 export type SellDiagnostics = {
     sellThroughRate: number;
+    smoothedSellThrough: number;
     targetSellThrough: number;
     baseFactor: number;
     costSpringDeviation: number;
@@ -216,6 +217,7 @@ export type SellDiagnostics = {
 
 export type BuyDiagnostics = {
     fillRate: number;
+    smoothedFillRate: number;
     targetFillRate: number;
     baseFactor: number;
     ceilingPrice: number;
@@ -238,6 +240,7 @@ export type AgentMarketOfferState = {
     lastPlacedQty?: number;
     lastOfferPrice?: number;
     priceDirection?: number;
+    smoothedSellThrough?: number;
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
     diagnostics?: SellDiagnostics;
@@ -251,6 +254,7 @@ export type AgentMarketBidState = {
     lastSpent?: number;
     lastEffectiveQty?: number;
     lastBidPrice?: number;
+    smoothedFillRate?: number;
 
     storageFullWarning?: boolean;
 
@@ -320,10 +324,16 @@ export type MonthAccumulator = {
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
-    managementFacilities: ManagementFacility[];
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
+    humanResourcesDepartment: ManagementFacility | null;
+
+    hrBuffer: number;
+
+    hrProductivityMultiplier: number;
+
+    hrDemand: number;
 
     transportContracts: TransportContract[];
     constructionContracts: ConstructionContract[];

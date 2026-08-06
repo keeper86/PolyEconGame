@@ -48,7 +48,7 @@ export function FacilityConstructionPanel({
     isPending: boolean;
     financials?: { deposits: number; monthlyNetCashFlow: number };
     otherConstructionCosts?: number;
-    onCancel: () => void;
+    onCancel?: () => void;
     onConfirm: (targetScale: number) => void;
     onScaleChange?: (targetScale: number) => void;
 }): React.ReactElement {
@@ -195,7 +195,13 @@ export function FacilityConstructionPanel({
             </div>
 
             <div className='flex gap-2'>
-                <Button size='sm' variant='destructive' className='flex-1 text-xs' onClick={onCancel}>
+                <Button
+                    size='sm'
+                    variant='destructive'
+                    className='flex-1 text-xs'
+                    disabled={!onCancel}
+                    onClick={onCancel}
+                >
                     Cancel
                 </Button>
                 <Button size='sm' className={`flex-1`} disabled={isPending} onClick={handleConfirmClick}>

@@ -12,11 +12,12 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
-import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { Clock, Percent, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
+import type { JSX } from 'react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
@@ -24,6 +25,8 @@ import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityProductionIORow } from './FacilityIORow';
 import { WorkerBars } from './WorkerBars';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { HR_DEPARTMENT_NAME } from '@/simulation/planet/specialFacilities';
 
 export function ActiveFacilityCard({
     facility,
@@ -32,13 +35,15 @@ export function ActiveFacilityCard({
     constructionServicePrice,
     otherConstructionCosts,
     onExpanded,
+    hrProductivityMultiplier,
 }: {
-    facility: ProductionFacility;
+    facility: ProductionFacility | ManagementFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
     otherConstructionCosts?: number;
     onExpanded: () => void;
+    hrProductivityMultiplier: number;
 }): React.ReactElement {
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
@@ -191,20 +196,23 @@ export function ActiveFacilityCard({
     const reduceIndex = reduceOptions.indexOf(reduceTarget);
     const currentReduceIndex = reduceIndex !== -1 ? reduceIndex : reduceOptions.length - 1;
 
-    // ── Recycler scrap recovery rate ──
+    const amount = useMemo(() => {
+        const { cost: amount } = calculateCostsForConstruction(facilityType, reduceTarget, facility.maxScale);
+        return amount;
+    }, [facilityType, reduceTarget, facility.maxScale]);
+
     const { data: scrapRecoveryData } = useSimulationQuery(
-        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId }),
+        trpc.simulation.getPlanetScrapRecoveryRate.queryOptions({ planetId, amount }),
     );
     const recyclerRatio = scrapRecoveryData?.recyclerRatio ?? 1;
     const csPrice = scrapRecoveryData?.csPrice ?? constructionServicePrice;
 
     // ── Estimated scrap payout ──
-    const estimatedPayout = useMemo(() => {
-        const { cost: recoveredCost } = calculateCostsForConstruction(facilityType, reduceTarget, facility.maxScale);
-        const recoveredCS = recoveredCost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+    const { estimatedPayout } = useMemo(() => {
+        const recoveredCS = amount * RECYCLER_BASE_RECOVERY_EFFICIENCY;
         const marketValue = recoveredCS * csPrice;
-        return marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio;
-    }, [facilityType, reduceTarget, facility.maxScale, csPrice, recyclerRatio]);
+        return { estimatedPayout: marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio, amount };
+    }, [csPrice, recyclerRatio, amount]);
 
     // Compute the pending scale fraction from the pending action (if any)
     const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
@@ -287,11 +295,42 @@ export function ActiveFacilityCard({
                 ? 'Cancellation pending…'
                 : null;
 
+    function hrProductivityColor(value: number): string {
+        if (facility.name === HR_DEPARTMENT_NAME) {
+            return 'text-muted-foreground';
+        }
+        if (value < 0.8) {
+            return 'text-red-600';
+        }
+        if (value < 0.95) {
+            return 'text-amber-600';
+        }
+
+        return 'text-green-600';
+    }
+
+    const badge: JSX.Element = (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Link
+                    href={`/planets/${planetId}/agent/${agentId}/workforce` as never}
+                    className='flex items-center gap-1'
+                >
+                    <span className={hrProductivityColor(hrProductivityMultiplier)}>
+                        <Users />
+                    </span>
+                </Link>
+            </TooltipTrigger>
+            <TooltipContent>
+                <span className={hrProductivityColor(hrProductivityMultiplier)}>HR resource status</span>
+            </TooltipContent>
+        </Tooltip>
+    );
     return (
         <FacilityCardShell
             data-tour='production-active'
             contentClassName='flex flex-col flex-1 gap-2'
-            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} />}
+            icon={<FacilityOrShipIcon facilityOrShipName={facility.name} badge={badge} />}
             headerContent={
                 <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex items-center gap-1 flex-col mb-1'>
