@@ -40,7 +40,7 @@ const facilityConstructionMultiplier: Record<FacilityType, number> = {
     manufactured: 3,
     services: 4,
     storage: 1,
-    management: 0.5,
+    management: 0.1,
     ship_construction: 5,
 };
 

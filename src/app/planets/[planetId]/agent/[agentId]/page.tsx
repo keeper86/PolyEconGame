@@ -11,7 +11,6 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { FacilityOrShipListCard } from './_component/FacilityListCard';
 import AgentFinancialCharts from './financial/_components/AgentFinancialCharts';
-import { computeHrDemand, computeMaxDailyHROutput } from '@/simulation/workforce/hrBuffer';
 
 function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
     const groups = useMemo(() => {
@@ -103,13 +102,6 @@ export default function AgentPlanetOverviewPage() {
 
                 <div className='rounded-lg border p-3'>
                     <AgentFinancialCharts agentId={agentId} planetId={planetId} onlyBalances={true} />
-                </div>
-
-                {/* ── HR Buffer ── */}
-                <div className='rounded-lg border p-3'>
-                    {assets?.hrDemand} - {assets?.hrBuffer} - {assets?.hrProductivityMultiplier} -{' '}
-                    {assets && computeHrDemand(assets?.workforceDemography)} - {' '}
-                    {computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1)}
                 </div>
             </div>
 
