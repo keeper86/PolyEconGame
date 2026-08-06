@@ -147,6 +147,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
             const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` });
             const neededWorkers =
+                1.1 *
                 HR_WORLD_BUFFER *
                 ESTIMATED_HR_OVERHEAD *
                 (neededWorkersByFacility(fac) + neededWorkersByFacility(storage));

@@ -60,7 +60,7 @@ function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
-const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY*2/3);
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY/2);
 
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;
