@@ -26,7 +26,6 @@ export function seedForexMarketMakers(gameState: GameState): void {
             const homeStorage = makeStorage({
                 planetId: homePlanet.id,
                 id: `${mmId}_store_${homePlanet.id}`,
-                name: 'MM Storage',
             });
             const homeAssets = makeAgentPlanetAssets(homePlanet.id, [], homeStorage, null);
             homeAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };
@@ -41,7 +40,6 @@ export function seedForexMarketMakers(gameState: GameState): void {
                 const foreignStorage = makeStorage({
                     planetId: foreignPlanet.id,
                     id: `${mmId}_store_${foreignPlanet.id}`,
-                    name: 'MM Storage',
                 });
                 const foreignAssets = makeAgentPlanetAssets(foreignPlanet.id, [], foreignStorage, null);
                 foreignAssets.licenses = { commercial: { acquiredTick: 0, frozen: false } };

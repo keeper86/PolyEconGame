@@ -145,12 +145,12 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             fac.maxScale = scale;
 
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
-            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, name: `${name} Storage` });
+            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage` });
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *
                 ESTIMATED_HR_OVERHEAD *
-                (neededWorkersByFacility(fac) + neededWorkersByFacility(storage));
+                (neededWorkersByFacility(fac) + neededWorkersByFacility(storage.department!));
 
             hrDepartment.scale = humanResourcesScaleForWorkers(neededWorkers);
             hrDepartment.maxScale = hrDepartment.scale;
@@ -202,7 +202,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         associatedPlanetId: PROC_PLANET_ID,
         planetId: PROC_PLANET_ID,
         facilities: [],
-        storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-gov-storage', name: 'Gov. Central Storage' }),
+        storage: makeStorage({ planetId: PROC_PLANET_ID, id: 'proc-gov-storage' }),
         hrDepartment: null,
     });
     agents.unshift(govAgent);

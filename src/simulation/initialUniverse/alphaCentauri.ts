@@ -27,7 +27,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         associatedPlanetId: AC_ID,
         planetId: AC_ID,
         facilities: [],
-        storage: makeStorage({ planetId: AC_ID, id: 'ac-gov-storage', name: 'AC Gov. Storage' }),
+        storage: makeStorage({ planetId: AC_ID, id: 'ac-gov-storage' }),
         hrDepartment: null,
     });
     agents.unshift(govAgent);

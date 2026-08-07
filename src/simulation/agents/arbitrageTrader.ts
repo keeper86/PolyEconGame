@@ -34,7 +34,6 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 const storage = makeStorage({
                     planetId: planet.id,
                     id: `${agentId}_store_${planet.id}`,
-                    name: 'Trader Storage',
                     volumeCapacity: 5e14,
                     massCapacity: 5e15,
                 });

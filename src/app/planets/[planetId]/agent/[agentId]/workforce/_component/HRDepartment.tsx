@@ -17,7 +17,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
-import { computeHrDemand, hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
+import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
@@ -272,7 +272,7 @@ export default function HRDepartment({
     const template = useMemo(() => humanResourcesOfficeFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
     const hrDepartment = assets.humanResourcesDepartment;
 
-    const hrDemand = useMemo(() => computeHrDemand(assets.workforceDemography), [assets.workforceDemography]);
+    const hrDemand = useMemo(() => assets.usedWorkers, [assets.usedWorkers]);
     const status = useMemo(() => hrBufferStatus(assets.hrBuffer ?? 0, hrDemand), [assets.hrBuffer, hrDemand]);
     const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
     const statusConfig = HR_STATUS_CONFIG[status];

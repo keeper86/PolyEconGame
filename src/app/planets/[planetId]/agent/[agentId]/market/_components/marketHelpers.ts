@@ -74,6 +74,7 @@ export function totalConsumptionPerTick(
     return computeConsumptionBreakdown(
         assets.productionFacilities,
         assets.humanResourcesDepartment,
+        assets.storageFacility.department,
         assets.shipConstructionFacilities,
         ships,
         planetId,
@@ -203,6 +204,15 @@ export function buildResourceList(
 
     if (humanResourcesDepartment) {
         for (const { resource } of humanResourcesDepartment.needs) {
+            if (resource.form === 'landBoundResource' || resource.form === 'internal') {
+                continue;
+            }
+            add(resource.name);
+        }
+    }
+
+    if (storageFacility.department) {
+        for (const { resource } of storageFacility.department.needs) {
             if (resource.form === 'landBoundResource' || resource.form === 'internal') {
                 continue;
             }

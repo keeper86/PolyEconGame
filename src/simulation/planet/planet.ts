@@ -330,9 +330,7 @@ export type AgentPlanetAssets = {
     humanResourcesDepartment: ManagementFacility | null;
 
     hrBuffer: number;
-
     hrProductivityMultiplier: number;
-
     hrDemand: number;
 
     transportContracts: TransportContract[];
@@ -355,6 +353,8 @@ export type AgentPlanetAssets = {
     totalSlotCapacity: Record<EducationLevelType, number>;
 
     unusedWorkers: Record<EducationLevelType, number>;
+
+    usedWorkers: number;
 
     overqualifiedWorkers: {
         [jobEdu in EducationLevelType]?: {

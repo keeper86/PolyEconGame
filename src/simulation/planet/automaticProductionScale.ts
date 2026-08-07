@@ -3,7 +3,7 @@ import { processFacilityContraction } from '../agents/recycler';
 import { MIN_EMPLOYABLE_AGE } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { computeHrDemand, computeMaxDailyHROutput } from '../workforce/hrBuffer';
+import { computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { ManagementFacility, PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
@@ -323,7 +323,7 @@ function maybeExpandHumanResourcesDepartment(
         return;
     }
 
-    const demand = computeHrDemand(assets.workforceDemography);
+    const demand = assets.usedWorkers;
     if (demand <= 0) {
         return;
     }
@@ -358,11 +358,9 @@ function maybeExpandHumanResourcesDepartment(
         assets?.hrProductivityMultiplier,
         assets?.humanResourcesDepartment?.maxScale,
         targetMax,
-        computeHrDemand(assets?.workforceDemography),
+        assets?.usedWorkers,
         computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1),
-        '\n' +
-            (computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1) -
-                computeHrDemand(assets?.workforceDemography)),
+        '\n' + (computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1) - assets?.usedWorkers),
     );
 
     hrDepartment.construction = {

@@ -81,7 +81,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
                 storage: makeStorage({
                     planetId: spec.id,
                     id: `${company.id}-storage`,
-                    name: `${company.name} Storage`,
                 }),
                 hrDepartment: null,
             }),
@@ -105,7 +104,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         storage: makeStorage({
             planetId: spec.id,
             id: `${spec.id}-util-storage`,
-            name: `${spec.name} Utilities Storage`,
         }),
         hrDepartment: null,
     });
@@ -117,7 +115,7 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         associatedPlanetId: spec.id,
         planetId: spec.id,
         facilities: [],
-        storage: makeStorage({ planetId: spec.id, id: `${spec.id}-gov-storage`, name: `${spec.name} Gov. Storage` }),
+        storage: makeStorage({ planetId: spec.id, id: `${spec.id}-gov-storage` }),
         hrDepartment: null,
     });
     agents.unshift(govAgent);

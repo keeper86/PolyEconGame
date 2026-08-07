@@ -1,7 +1,7 @@
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import type { Resource } from '../planet/claims';
-import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
+import { getStorageDepartmentScale, lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
 import { EPSILON } from '../constants';
@@ -112,8 +112,9 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         }
 
         const storage = assets.storageFacility;
-        const freeVolume = storage.capacity.volume * storage.scale - storage.current.volume;
-        const freeMass = storage.capacity.mass * storage.scale - storage.current.mass;
+        const scale = getStorageDepartmentScale(storage);
+        const freeVolume = storage.capacity.volume * scale - storage.current.volume;
+        const freeMass = storage.capacity.mass * scale - storage.current.mass;
 
         const isVolumeLimited = totalRequiredVolume > freeVolume;
         const isMassLimited = totalRequiredMass > freeMass;

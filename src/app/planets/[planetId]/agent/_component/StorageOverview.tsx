@@ -10,9 +10,10 @@ export function StorageOverview({ storage }: { storage: StorageFacility }): Reac
         .sort(([, a], [, b]) => (b?.quantity ?? 0) - (a?.quantity ?? 0));
 
     const usedVol = storage.current.volume;
-    const capVol = storage.capacity.volume * storage.scale;
+    const scale = storage.department?.scale ?? 0;
+    const capVol = storage.capacity.volume * scale;
     const usedMass = storage.current.mass;
-    const capMass = storage.capacity.mass * storage.scale;
+    const capMass = storage.capacity.mass * scale;
 
     return (
         <div className='mt-2'>

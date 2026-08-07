@@ -39,7 +39,10 @@ export function computeLoanConditions(
         }
     }
 
-    const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    const csPrice = Math.min(
+        planet.marketPrices[constructionServiceResourceType.name] ?? 0,
+        planet.productionCosts[constructionServiceResourceType.name] ?? 0,
+    );
     const facilitiesCollateral = assets ? computeFacilitiesValue(assets, csPrice) * LOAN_COLLATERAL_FACTOR : 0;
     const shipsCollateral = shipCapitalMarket
         ? computeShipsValue(agent, shipCapitalMarket, planet.marketPrices) * LOAN_COLLATERAL_FACTOR

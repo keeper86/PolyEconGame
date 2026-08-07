@@ -11,7 +11,7 @@ import { totalActiveForEduSkill } from './workforceAggregates';
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
     const allFacilities: Array<Facility> = [
         ...assets.productionFacilities,
-        assets.storageFacility,
+        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
         ...assets.shipConstructionFacilities,
     ];
     if (assets.humanResourcesDepartment) {
@@ -43,7 +43,7 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const allFacilities = [
             ...assets.productionFacilities,
             ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-            assets.storageFacility,
+            ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
             ...assets.shipConstructionFacilities,
         ];
 
