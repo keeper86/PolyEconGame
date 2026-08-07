@@ -63,8 +63,6 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const hrDepartment = assets.humanResourcesDepartment;
     if (!hrDepartment) {
         const demand = assets.usedWorkers;
-        assets.hrBuffer = 0;
-        assets.hrDemand = demand;
         assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(0, demand));
         return;
     }
@@ -78,11 +76,12 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
-    assets.hrBuffer = updateHrBuffer(assets.hrBuffer, producedHr, 0, pMax);
-    assets.hrDemand = demand;
+    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, producedHr, 0, pMax);
 
-    assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(assets.hrBuffer, demand));
-    assets.hrBuffer = updateHrBuffer(assets.hrBuffer, 0, demand, pMax);
+    assets.hrProductivityMultiplier = computeProductivityMultiplier(
+        computeCoverageRatio(hrDepartment.hrBuffer, demand),
+    );
+    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, 0, demand, pMax);
 }
 
 function pullAllHrFromStorage(storage: StorageFacility): number {

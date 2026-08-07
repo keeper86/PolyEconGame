@@ -5,7 +5,7 @@ import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { ManagementFacility, PidState, ProductionFacility } from './facility';
+import type { HRFacility, ManagementFacility, PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
@@ -132,9 +132,9 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
 const HR_TARGET_FILL_RATE = 0.85;
 
-function computeHrSignal(assets: AgentPlanetAssets, hrDepartment: ManagementFacility): number {
+function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
-    const fillRate = pMax > 0 ? assets.hrBuffer / pMax : 0;
+    const fillRate = pMax > 0 ? hrDepartment.hrBuffer / pMax : 0;
     return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
 }
 
@@ -677,7 +677,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
         const hrDepartment = assets.humanResourcesDepartment;
         if (hrDepartment && hrDepartment.construction?.type !== 'new') {
-            const hrRawSignal = computeHrSignal(assets, hrDepartment);
+            const hrRawSignal = computeHrSignal(hrDepartment);
             const hrState: PidState = { ...getDefaultPidState(), ...hrDepartment.pidState };
 
             const hrSignal = SIGNAL_EMA_ALPHA * hrRawSignal + (1 - SIGNAL_EMA_ALPHA) * hrState.smoothedSignal;

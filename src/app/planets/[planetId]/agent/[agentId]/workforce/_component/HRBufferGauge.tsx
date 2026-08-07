@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '@/simulation/constants';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
@@ -37,7 +38,7 @@ export function HRBufferGauge({
         <div className='flex flex-col items-center gap-1 py-2'>
             <div className='h-[110px] w-[180px]'>
                 <GaugeComponent
-                    type='grafana'
+                    type='radial'
                     value={Math.max(0, buffer)}
                     minValue={0}
                     maxValue={maxValue}
@@ -66,7 +67,7 @@ export function HRBufferGauge({
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block h-2 w-2 rounded-full bg-foreground' />
-                    Buffer {formatNumbers(buffer)}
+                    Buffer {formatNumberWithUnit(buffer / demand, 'days')}
                 </span>
             </div>
         </div>

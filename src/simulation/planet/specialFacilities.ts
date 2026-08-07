@@ -1,4 +1,4 @@
-import type { LastManagementTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
+import type { HRFacility, LastManagementTickResults, ManagementFacility, ShipConstructionFacility } from './facility';
 import {
     administrativeServiceResourceType,
     educationServiceResourceType,
@@ -44,7 +44,7 @@ export const PRODUCED_QUANTITY = 1000;
 export const USED_QUANTITY = 15;
 export const ESTIMATED_HR_OVERHEAD = 1.025;
 export const HR_WORLD_BUFFER = 1.4;
-export const humanResourcesOfficeFacilityType = (planetId: string, id: string): ManagementFacility => ({
+export const humanResourcesOfficeFacilityType = (planetId: string, id: string): HRFacility => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
@@ -58,6 +58,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     },
     needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+    hrBuffer: 0,
 });
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
 export const storageDepartmentFacilityType = (planetId: string, id: string): ManagementFacility => ({

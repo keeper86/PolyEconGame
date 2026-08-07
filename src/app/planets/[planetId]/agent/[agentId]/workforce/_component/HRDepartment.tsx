@@ -253,7 +253,10 @@ export default function HRDepartment({
     const hrDepartment = assets.humanResourcesDepartment;
 
     const hrDemand = useMemo(() => assets.usedWorkers, [assets.usedWorkers]);
-    const status = useMemo(() => hrBufferStatus(assets.hrBuffer ?? 0, hrDemand), [assets.hrBuffer, hrDemand]);
+    const status = useMemo(
+        () => hrBufferStatus(hrDepartment?.hrBuffer ?? 0, hrDemand),
+        [hrDepartment?.hrBuffer, hrDemand],
+    );
     const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
     const statusConfig = HR_STATUS_CONFIG[status];
 
@@ -320,7 +323,7 @@ export default function HRDepartment({
                                 />
                                 <div className='flex justify-center'>
                                     <HRBufferGauge
-                                        buffer={assets.hrBuffer ?? 0}
+                                        buffer={hrDepartment.hrBuffer}
                                         demand={hrDemand}
                                         hrDepartment={hrDepartment}
                                     />

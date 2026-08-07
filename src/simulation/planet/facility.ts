@@ -159,6 +159,11 @@ export type ManagementFacility = FacilityBase & {
     lastTickResults: LastManagementTickResults;
     pidState?: PidState | null;
 };
+
+export type HRFacility = ManagementFacility & {
+    hrBuffer: number;
+};
+
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
     shipName: string;

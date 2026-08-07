@@ -24,7 +24,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
         massCapacity: 1e6,
     });
 
-    const assets = makeAgentPlanetAssets(planetId, [], storage, null);
+    const assets = makeAgentPlanetAssets([], storage, null);
     assets.licenses = {
         commercial: { acquiredTick: 0, frozen: false },
     };

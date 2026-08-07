@@ -6,6 +6,7 @@ import type { TransportShipType } from '../ships/ships';
 import {
     makeAgent,
     makeGameState,
+    makeHRFacility,
     makeManagementFacility,
     makePlanetWithPopulation,
     makeProductionFacility,
@@ -502,10 +503,7 @@ describe('constructionTick', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const mgmtFacility = makeManagementFacility(
-            { none: 1 },
-            { id: 'mgmt-under-construction', scale: 0, maxScale: 0 },
-        );
+        const mgmtFacility = makeHRFacility({ none: 1 }, { id: 'mgmt-under-construction', scale: 0, maxScale: 0 });
         mgmtFacility.construction = {
             type: 'new',
             constructionTargetMaxScale: 2,
@@ -808,7 +806,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const mgmtFacility = makeManagementFacility(
+        const mgmtFacility = makeHRFacility(
             { none: 1 },
             {
                 id: 'mgmt-1',
@@ -844,7 +842,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const mgmtFacility = makeManagementFacility(
+        const mgmtFacility = makeHRFacility(
             { none: 1 },
             {
                 id: 'mgmt-noworker',
@@ -867,7 +865,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const mgmtFacility = makeManagementFacility(
+        const mgmtFacility = makeHRFacility(
             { none: 1 },
             {
                 id: 'mgmt-under-construction',
@@ -964,7 +962,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const hrFacility = makeManagementFacility(
+        const hrFacility = makeHRFacility(
             {},
             {
                 id: 'hr-own',

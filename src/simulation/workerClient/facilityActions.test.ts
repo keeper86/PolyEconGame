@@ -8,7 +8,7 @@ import {
     handleExpandFacility,
     handleSetFacilityScale,
 } from './facilityActions';
-import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
+import type { HRFacility, ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
 import { HR_DEPARTMENT_NAME, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
 
@@ -53,7 +53,7 @@ function makeNewFacility(planetId: string, id = 'fac-1'): ProductionFacility {
     } as unknown as ProductionFacility;
 }
 
-function makeManagementFacility(planetId: string, id = 'mgmt-1'): ManagementFacility {
+function makeManagementFacility(planetId: string, id = 'mgmt-1'): HRFacility {
     return {
         ...humanResourcesOfficeFacilityType(planetId, id),
         id,
@@ -121,7 +121,7 @@ describe('handleBuildFacility — HR Department', () => {
 describe('handleExpandFacility — humanResourcesDepartment', () => {
     it('expands the human resources department', () => {
         const { gameState, planet, company } = setupWorld();
-        const facility: ManagementFacility = {
+        const facility: HRFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-expand'),
             scale: 1,
             maxScale: 1,
@@ -154,7 +154,7 @@ describe('handleExpandFacility — humanResourcesDepartment', () => {
 describe('handleSetFacilityScale — humanResourcesDepartment', () => {
     it('sets operating scale on the human resources department', () => {
         const { gameState, planet, company } = setupWorld();
-        const facility: ManagementFacility = {
+        const facility: HRFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-scale'),
             scale: 0.5,
             maxScale: 1,
@@ -199,7 +199,7 @@ describe('handleContractFacility — humanResourcesDepartment', () => {
 
     it('contracts the human resources department to a lower scale', () => {
         const { gameState, planet, company } = setupWorld();
-        const facility: ManagementFacility = {
+        const facility: HRFacility = {
             ...makeManagementFacility(planet.id, 'mgmt-contract'),
             scale: 0.5,
             maxScale: 1,

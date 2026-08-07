@@ -8,17 +8,17 @@ describe('makeAgentPlanetAssets hrBuffer initialization', () => {
         const hrDepartment = humanResourcesOfficeFacilityType('p', 'hr');
         hrDepartment.maxScale = 2;
         const storage = makeStorage({ planetId: 'p', id: 's' });
-        const assets = makeAgentPlanetAssets('p', [], storage, hrDepartment);
+        const assets = makeAgentPlanetAssets([], storage, hrDepartment);
 
-        expect(assets.hrBuffer).toBe(PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(hrDepartment.hrBuffer).toBe(PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
         expect(assets.hrProductivityMultiplier).toBe(1);
     });
 
     it('keeps hrBuffer at 0 when no HR department is present', () => {
         const storage = makeStorage({ planetId: 'p', id: 's' });
-        const assets = makeAgentPlanetAssets('p', [], storage, null);
+        const assets = makeAgentPlanetAssets([], storage, null);
 
-        expect(assets.hrBuffer).toBe(0);
+        expect(assets.humanResourcesDepartment).toBeNull();
         expect(assets.hrProductivityMultiplier).toBe(1);
     });
 });
