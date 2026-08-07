@@ -1,5 +1,6 @@
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
 
 export function HRBalanceRow({
@@ -51,6 +52,25 @@ export function HRBalanceRow({
                     >
                         {formatNumberWithUnit(scaledBuffer, 'days')}
                     </span>
+                </div>
+            </div>
+            <Separator />
+        </Link>
+    );
+}
+
+export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
+    return (
+        <Link href={'' as never}>
+            <Separator />
+            <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full h-12'>
+                <div className='flex flex-row items-center gap-1'>
+                    {' '}
+                    Can manage up to{' '}
+                    <span className='tabular-nums text-green-600 dark:text-green-400'>
+                        {formatNumberWithUnit(scale * PRODUCED_QUANTITY, 'persons')}
+                    </span>{' '}
+                    workers.
                 </div>
             </div>
             <Separator />

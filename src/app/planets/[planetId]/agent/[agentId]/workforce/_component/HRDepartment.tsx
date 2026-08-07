@@ -8,7 +8,6 @@ import {
     FacilityHeader,
     limitingEfficiency,
 } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
-import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
@@ -20,19 +19,19 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
-import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType, PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
+import { HRBalanceRow, HRBuildRow } from './HRBalanceRow';
 import { HRBufferGauge } from './HRBufferGauge';
-import { HRBalanceRow } from './HRBalanceRow';
 
 const HR_STATUS_CONFIG: Record<
     HrBufferStatus,
@@ -71,6 +70,7 @@ function HRBuildCard({
     otherConstructionCosts,
     onBuilt,
     isPending,
+    hrDemand,
 }: {
     entry: ManagementFacility;
     agentId: string;
@@ -79,6 +79,7 @@ function HRBuildCard({
     otherConstructionCosts?: number;
     onBuilt: () => void;
     isPending: boolean;
+    hrDemand: number;
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
@@ -128,10 +129,39 @@ function HRBuildCard({
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
+                <div
+                    className='grid w-full items-center gap-x-2 py-2'
+                    style={{ gridTemplateColumns: `${entry.needs.length || 1}fr 2rem 2fr` }}
+                >
+                    <div className='flex flex-wrap gap-1.5 justify-center'>
+                        {entry.needs.map(({ resource, quantity }) => (
+                            <ProductQuantity
+                                key={resource.name}
+                                resource={resource}
+                                quantity={quantity * previewScale}
+                                efficiency={1}
+                                isLimiting={false}
+                                planetId={planetId}
+                                agentId={agentId}
+                                neutral={true}
+                            />
+                        ))}
+                    </div>
+                    <RiArrowRightBoxFill
+                        className={`shrink-0 h-8 w-8 ${entry.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                    />
+                    <div className='flex justify-center'>
+                        <HRBufferGauge
+                            buffer={0}
+                            demand={hrDemand}
+                            hrDepartment={entry}
+                            maxScaleOverride={previewScale}
+                        />
+                    </div>
+                </div>
             </div>
+            <HRBuildRow scale={previewScale} />
             <div className='relative mt-auto space-y-2'>
-                <Separator />
                 <FacilityConstructionPanel
                     facilityType={facilityType}
                     fromScale={0}
@@ -166,10 +196,12 @@ function HRConstructionCard({
     facility,
     agentId,
     planetId,
+    hrDemand,
 }: {
     facility: ManagementFacility;
     agentId: string;
     planetId: string;
+    hrDemand: number;
 }): React.ReactElement {
     const cs = facility.construction!;
     const targetScale = cs.constructionTargetMaxScale;
@@ -202,11 +234,40 @@ function HRConstructionCard({
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={targetScale} />
+                <div
+                    className='grid w-full items-center gap-x-2 py-2'
+                    style={{ gridTemplateColumns: `${facility.needs.length || 1}fr 2rem 2fr` }}
+                >
+                    <div className='flex flex-wrap gap-1.5 justify-center'>
+                        {facility.needs.map(({ resource, quantity }) => (
+                            <ProductQuantity
+                                key={resource.name}
+                                resource={resource}
+                                quantity={quantity * targetScale}
+                                efficiency={1}
+                                isLimiting={false}
+                                planetId={planetId}
+                                agentId={agentId}
+                                neutral={true}
+                            />
+                        ))}
+                    </div>
+                    <RiArrowRightBoxFill
+                        className={`shrink-0 h-8 w-8 ${facility.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                    />
+                    <div className='flex justify-center'>
+                        <HRBufferGauge
+                            buffer={0}
+                            demand={hrDemand}
+                            hrDepartment={facility}
+                            maxScaleOverride={targetScale}
+                        />
+                    </div>
+                </div>
             </div>
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ConstructionCompactRow facility={facility} hideCancel />
+                <ConstructionCompactRow facility={facility} />
             </div>
         </FacilityCardShell>
     );
@@ -280,6 +341,7 @@ export default function HRDepartment({
                     facility={hrDepartment}
                     agentId={agentId}
                     planetId={planetId}
+                    hrDemand={hrDemand}
                 />
             );
         } else {
@@ -351,6 +413,7 @@ export default function HRDepartment({
                 otherConstructionCosts={otherConstructionCosts}
                 onBuilt={() => {}}
                 isPending={pendingBuildKeys.has(template.name)}
+                hrDemand={hrDemand}
             />
         );
     }

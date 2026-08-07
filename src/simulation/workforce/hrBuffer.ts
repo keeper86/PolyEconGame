@@ -76,11 +76,10 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
-    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, producedHr, 0, pMax);
+    const consumed = Math.min(hrDepartment.hrBuffer + producedHr, demand);
+    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, producedHr, demand, pMax);
 
-    assets.hrProductivityMultiplier = computeProductivityMultiplier(
-        computeCoverageRatio(hrDepartment.hrBuffer, demand),
-    );
+    assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(consumed, demand));
     hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, 0, demand, pMax);
 }
 

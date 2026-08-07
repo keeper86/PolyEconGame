@@ -11,17 +11,21 @@ const ZONE_AMBER = '#f59e0b';
 const ZONE_GREEN = '#22c55e';
 const ZONE_BLUE = '#3b82f6';
 
+// TODO: Remove hrDepartment, we only need scale.
 export function HRBufferGauge({
     buffer,
     demand,
     hrDepartment,
+    maxScaleOverride,
 }: {
     buffer: number;
     demand: number;
     hrDepartment: ManagementFacility;
+    maxScaleOverride?: number;
 }): React.ReactElement {
     const { maxValue, subArcs } = useMemo(() => {
-        const maxValue = hrDepartment.maxScale * PRODUCED_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
+        const scale = maxScaleOverride ?? hrDepartment.maxScale;
+        const maxValue = scale * PRODUCED_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
         const zones: { limit?: number; color: string }[] = [];
         if (demand > 0) {
             zones.push({ limit: demand, color: ZONE_RED });
@@ -30,10 +34,10 @@ export function HRBufferGauge({
         }
         zones.push({ color: ZONE_BLUE });
         return { maxValue, subArcs: zones };
-    }, [demand, hrDepartment.maxScale]);
+    }, [demand, hrDepartment.maxScale, maxScaleOverride]);
 
     return (
-        <div className='flex flex-col items-center gap-1 py-2'>
+        <div className='flex flex-col items-center gap-1 py-2 translate-y-[-10px]'>
             <div className='h-[110px] w-[180px]'>
                 <GaugeComponent
                     type='radial'
