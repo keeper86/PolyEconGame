@@ -751,7 +751,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     },
     needs: [
         { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 30.0 },
+        { resource: fuelResourceType, quantity: 40.0 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -791,7 +791,6 @@ export const groceryChain = (planetId: string, id: string): ProductionFacility =
     needs: [
         { resource: processedFoodResourceType, quantity: 30 },
         { resource: beverageResourceType, quantity: 20 },
-        { resource: logisticsServiceResourceType, quantity: 5 },
     ],
     produces: [{ resource: groceryServiceResourceType, quantity: 300 }],
 });
@@ -833,7 +832,7 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
         { resource: pharmaceuticalResourceType, quantity: 5 },
         { resource: chemicalResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 10 },
+        { resource: logisticsServiceResourceType, quantity: 20 },
     ],
     produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
 });

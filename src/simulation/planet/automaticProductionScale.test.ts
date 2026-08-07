@@ -17,6 +17,7 @@ import {
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
+import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -979,6 +980,14 @@ describe('updateAgentProductionScale', () => {
             maxScale: 1,
             scale: 1,
             construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+            },
         });
 
         const agent = makeAgent('a1', planet.id, 'Agent 1', {
@@ -993,7 +1002,8 @@ describe('updateAgentProductionScale', () => {
         });
 
         const assets = agent.assets[planet.id];
-        assets.workforceDemography[30].primary.novice.active = 1000;
+        assets.usedWorkers = 1000;
+        assets.hrBuffer = 0;
         assets.lastMonthAcc.revenue = 1_000_000;
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
@@ -1024,7 +1034,8 @@ describe('updateAgentProductionScale', () => {
         });
 
         const assets = agent.assets[planet.id];
-        assets.workforceDemography[30].primary.novice.active = 1000;
+        assets.usedWorkers = 1000;
+        assets.hrBuffer = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
@@ -1061,10 +1072,262 @@ describe('updateAgentProductionScale', () => {
         });
 
         const assets = agent.assets[planet.id];
-        assets.workforceDemography[30].primary.novice.active = 1000;
+        assets.usedWorkers = 1000;
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
         expect(hrDepartment.construction).toEqual(existingConstruction);
+    });
+    it('increases HR department scale when buffer is below target fill rate', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 5,
+            construction: null,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = 0;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.scale).toBeGreaterThan(5);
+    });
+
+    it('decreases HR department scale when buffer is above target fill rate', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 5,
+            construction: null,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.scale).toBeLessThan(5);
+    });
+
+    it('accumulates HR expansion integral at 80% utilization with positive signal', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 8,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = 0;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.pidState!.expansionIntegral).toBeGreaterThan(0);
+    });
+
+    it('decays HR expansion integral below 80% utilization despite positive signal', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 10,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = 0;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.pidState!.expansionIntegral).toBeLessThan(10);
+    });
+
+    it('does NOT initiate HR expansion when expansion integral is below threshold', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 10,
+            construction: null,
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 1_000_000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toBeNull();
+    });
+
+    it('does NOT initiate HR expansion when agent lacks sufficient funds', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = 0;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toBeNull();
+    });
+
+    it('accumulates HR contraction integral at lower bound with negative signal', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 1,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.pidState!.contractionIntegral).toBeGreaterThan(0);
+    });
+
+    it('decays HR contraction integral when not at lower bound', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+
+        const hrDepartment = makeManagementFacility(undefined, {
+            maxScale: 10,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 30,
+                smoothedSignal: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                }),
+            },
+        });
+
+        agent.assets[planet.id].hrBuffer = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.pidState!.contractionIntegral).toBeLessThan(30);
     });
 });

@@ -204,9 +204,10 @@ type Props = {
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
     const storage = assets.storageFacility;
     const usedVol = storage.current.volume;
-    const capVol = storage.capacity.volume * storage.scale;
+    const scale = storage.department?.scale ?? 0;
+    const capVol = storage.capacity.volume * scale;
     const usedMass = storage.current.mass;
-    const capMass = storage.capacity.mass * storage.scale;
+    const capMass = storage.capacity.mass * scale;
     const volPercent = capVol > 0 ? (usedVol / capVol) * 100 : 0;
     const massPercent = capMass > 0 ? (usedMass / capMass) * 100 : 0;
 

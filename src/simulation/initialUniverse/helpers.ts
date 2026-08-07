@@ -10,7 +10,7 @@ import {
     type ProductionFacility,
     type StorageFacility,
 } from '../planet/facility';
-import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { PRODUCED_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -68,31 +68,25 @@ export function makeProductionFacility(opts: {
 export function makeStorage(opts: {
     planetId: string;
     id: string;
-    name: string;
     scale?: number;
     volumeCapacity?: number;
     massCapacity?: number;
 }): StorageFacility {
+    const scale = opts.scale ?? 1;
+    const department = storageDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
+    department.scale = scale;
+    department.maxScale = scale;
     return {
-        type: 'storage',
         planetId: opts.planetId,
         id: opts.id,
-        name: opts.name,
-        maxScale: opts.scale ?? 1,
-        scale: opts.scale ?? 1,
-        construction: null,
-        lastConstructionCompletedTick: 0,
-        powerConsumptionPerTick: 0.1,
-        workerRequirement: { none: 10, primary: 10, secondary: 5, tertiary: 0 },
-        pollutionPerTick: { air: 0, water: 0, soil: 0 },
         capacity: {
             volume: opts.volumeCapacity ?? 1e13,
             mass: opts.massCapacity ?? 1e15,
         },
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
-        lastTickResults: createLastTickResults(),
         escrow: {},
+        department,
     };
 }
 
@@ -122,6 +116,7 @@ export function makeAgentPlanetAssets(
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         totalSlotCapacity: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+        usedWorkers: 0,
         overqualifiedWorkers: {},
         market: {
             sell: {},

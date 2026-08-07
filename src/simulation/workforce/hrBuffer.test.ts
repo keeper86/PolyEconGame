@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import { makeManagementFacility, makeWorkforceCohort } from '../utils/testHelper';
-import { makeAgentPlanetAssets } from '../utils/testHelper';
-import { humanResourcesServiceResourceType } from '../planet/services';
 import { putIntoStorageFacility } from '../planet/facility';
+import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { makeAgentPlanetAssets, makeManagementFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
     computeCoverageRatio,
-    computeHrDemand,
     computeMaxDailyHROutput,
     computeProductivityMultiplier,
     hrBufferStatus,
@@ -28,30 +26,6 @@ describe('computeBufferCapacity', () => {
         expect(computeBufferCapacity(1000)).toBe(1000 * HR_BUFFER_CAPACITY_MULTIPLIER);
         expect(computeBufferCapacity(500)).toBe(500 * HR_BUFFER_CAPACITY_MULTIPLIER);
         expect(computeBufferCapacity(2000)).toBe(2000 * HR_BUFFER_CAPACITY_MULTIPLIER);
-    });
-});
-
-describe('computeHrDemand', () => {
-    it('returns 0 for empty workforce', () => {
-        const workforce = makeWorkforceCohort();
-        expect(computeHrDemand([workforce])).toBe(0);
-    });
-
-    it('counts active workers', () => {
-        const workforce = makeWorkforceCohort();
-        workforce.none.novice.active = 50;
-        workforce.primary.professional.active = 25;
-        expect(computeHrDemand([workforce])).toBe(75);
-    });
-
-    it('counts onboarding and departing workers', () => {
-        const workforce = makeWorkforceCohort();
-        workforce.none.novice.active = 10;
-        workforce.none.novice.onboarding[0] = 5;
-        workforce.none.novice.voluntaryDeparting[1] = 3;
-        workforce.none.novice.departingFired[2] = 2;
-        workforce.none.novice.departingRetired[0] = 4;
-        expect(computeHrDemand([workforce])).toBe(24);
     });
 });
 
@@ -141,8 +115,7 @@ describe('processHrBufferForAssets', () => {
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
-        const workforce = assets.workforceDemography;
-        workforce[30].none.novice.active = 100;
+        assets.usedWorkers = 100;
 
         processHrBufferForAssets(assets);
 
@@ -211,7 +184,7 @@ describe('processHrBufferForAssets', () => {
             hrBuffer: 1000,
             hrProductivityMultiplier: 1,
         });
-        assets.workforceDemography[30].none.novice.active = 1000;
+        assets.usedWorkers = 1000;
 
         processHrBufferForAssets(assets);
         expect(assets.hrBuffer).toBe(0);
@@ -227,8 +200,7 @@ describe('processHrBufferForAssets', () => {
             }),
             hrBuffer: 0,
         });
-        const workforce = assets.workforceDemography;
-        workforce[30].none.novice.active = 1000;
+        assets.usedWorkers = 1000;
 
         processHrBufferForAssets(assets);
         expect(assets.hrProductivityMultiplier).toBeLessThan(1);
@@ -238,8 +210,6 @@ describe('processHrBufferForAssets', () => {
 
 describe('hrBuffer integration', () => {
     it('returns optimal when demand is zero and buffer is full', () => {
-        const workforce = makeWorkforceCohort();
-        expect(computeHrDemand([workforce])).toBe(0);
         expect(hrBufferStatus(3000, 0)).toBe('optimal');
         expect(computeProductivityMultiplier(computeCoverageRatio(3000, 0))).toBe(1);
     });

@@ -5,26 +5,8 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
-import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
-import type { WorkforceCohort, WorkforceCategory } from './workforce';
-import { totalOnboarding, totalDeparting } from './workforce';
 
 export const computeMaxDailyHROutput = (hrFacilityScale: number): number => PRODUCED_QUANTITY * hrFacilityScale;
-
-// TODO: this should be somewhere already, dont re-caclulate
-export const computeHrDemand = (workforce: WorkforceCohort<WorkforceCategory>[]): number => {
-    let demand = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const category = workforce[age][edu][skill];
-                demand += category.active + totalOnboarding(category) + totalDeparting(category);
-            }
-        }
-    }
-    return demand;
-};
 
 export const computeBufferCapacity = (maxDailyHROutput: number): number =>
     maxDailyHROutput * HR_BUFFER_CAPACITY_MULTIPLIER;
@@ -80,7 +62,7 @@ export function hrBufferTick(agents: Map<string, Agent>, planet: Planet): void {
 export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const hrDepartment = assets.humanResourcesDepartment;
     if (!hrDepartment) {
-        const demand = computeHrDemand(assets.workforceDemography);
+        const demand = assets.usedWorkers;
         assets.hrBuffer = 0;
         assets.hrDemand = demand;
         assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(0, demand));
@@ -88,7 +70,7 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     }
 
     const producedHr = pullAllHrFromStorage(assets.storageFacility);
-    const demand = computeHrDemand(assets.workforceDemography);
+    const demand = assets.usedWorkers;
     const maxDailyHROutput = computeMaxDailyHROutput(hrDepartment.maxScale);
     if (demand > maxDailyHROutput) {
         console.warn(
@@ -96,11 +78,11 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
-    const newBuffer = updateHrBuffer(assets.hrBuffer, producedHr, demand, pMax);
+    assets.hrBuffer = updateHrBuffer(assets.hrBuffer, producedHr, 0, pMax);
     assets.hrDemand = demand;
 
     assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(assets.hrBuffer, demand));
-    assets.hrBuffer = newBuffer;
+    assets.hrBuffer = updateHrBuffer(assets.hrBuffer, 0, demand, pMax);
 }
 
 function pullAllHrFromStorage(storage: StorageFacility): number {

@@ -115,6 +115,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     const consumptionRates = computeAllConsumptionRates(
         assets.productionFacilities,
         assets.humanResourcesDepartment,
+        assets.storageFacility.department,
         assets.shipConstructionFacilities,
         shipsForConsumption,
         planet.id,

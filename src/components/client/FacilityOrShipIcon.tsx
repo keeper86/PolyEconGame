@@ -41,7 +41,7 @@ export function FacilityOrShipIcon({
             <div
                 className='absolute top-0 right-0 pr-0.5 flex items-center justify-end text-xs text-foreground text-right rounded bg-foreground/10 text-outline-strong'
                 style={{
-                    width: '57%',
+                    width: '50%',
                     height: '25%',
                     fontSize,
                     lineHeight: 1,

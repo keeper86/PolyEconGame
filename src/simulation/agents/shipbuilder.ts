@@ -56,7 +56,6 @@ export function seedShipbuilderAgents(gameState: GameState): void {
         const storage = makeStorage({
             planetId: planet.id,
             id: `${agentId}_store_${planet.id}`,
-            name: 'Shipyard Storage',
             volumeCapacity: 5e14,
             massCapacity: 5e15,
         });

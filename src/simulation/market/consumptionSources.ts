@@ -24,6 +24,7 @@ export type ConsumptionInfo = {
 export function computeConsumptionBreakdown(
     productionFacilities: ProductionFacility[],
     humanResourcesDepartment: ManagementFacility | null,
+    storageDepartment: ManagementFacility | null,
     shipConstructionFacilities: ShipConstructionFacility[],
     ships: ConsumptionShipInfo[],
     planetId: string,
@@ -48,6 +49,14 @@ export function computeConsumptionBreakdown(
         const rate = need.quantity * humanResourcesDepartment.scale;
         if (rate > 0) {
             breakdown.push({ sourceType: 'management', sourceName: humanResourcesDepartment.name, ratePerTick: rate });
+        }
+    }
+
+    const storageNeed = storageDepartment?.needs.find((n) => n.resource.name === resourceName);
+    if (storageNeed && storageDepartment) {
+        const rate = storageNeed.quantity * storageDepartment.scale;
+        if (rate > 0) {
+            breakdown.push({ sourceType: 'management', sourceName: storageDepartment.name, ratePerTick: rate });
         }
     }
 
@@ -76,6 +85,7 @@ export function computeConsumptionBreakdown(
         const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
             ...productionFacilities,
             ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
+            ...(storageDepartment ? [storageDepartment] : []),
             ...shipConstructionFacilities,
         ];
         for (const f of allFacilities) {
@@ -161,6 +171,7 @@ export function computeConsumptionBreakdown(
 export function computeAllConsumptionRates(
     productionFacilities: ProductionFacility[],
     humanResourcesDepartment: ManagementFacility | null,
+    storageDepartment: ManagementFacility | null,
     shipConstructionFacilities: ShipConstructionFacility[],
     ships: ConsumptionShipInfo[],
     planetId: string,
@@ -182,7 +193,11 @@ export function computeAllConsumptionRates(
     }
 
     // ── Management facilities ──────────────────────────────────────────────
-    for (const f of humanResourcesDepartment ? [humanResourcesDepartment] : []) {
+    const allManagementDepartments: ManagementFacility[] = [
+        ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
+        ...(storageDepartment ? [storageDepartment] : []),
+    ];
+    for (const f of allManagementDepartments) {
         for (const need of f.needs) {
             if (need.resource.form === 'landBoundResource') {
                 continue;
@@ -209,6 +224,7 @@ export function computeAllConsumptionRates(
     const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
         ...productionFacilities,
         ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
+        ...(storageDepartment ? [storageDepartment] : []),
         ...shipConstructionFacilities,
     ];
     for (const f of allFacilities) {

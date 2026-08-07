@@ -53,7 +53,7 @@ const CONFIG: SlackConfig = {
     },
 };
    
-const constructionDemandPerTick = 612_000_000;
+const constructionDemandPerTick = 256_000_000;
 const BALANCE_EPSILON = 0.001;
 
 function resourceConstraintKey(name: string): string {

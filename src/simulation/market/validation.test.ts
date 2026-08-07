@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { clothingResourceType, coalResourceType } from '../planet/resources';
-import type { StorageFacility } from '../planet/facility';
+import { makeManagementFacility, makeStorageFacility } from '../utils/testHelper';
 import { validateBuyBid, validateSellOffer } from './validation';
 
 function makeAssets(deposits: number, volumeCapacity = 1e9, massCapacity = 1e9) {
     return {
         deposits,
-        storageFacility: {
-            scale: 1,
+        storageFacility: makeStorageFacility({
             capacity: { volume: volumeCapacity, mass: massCapacity },
-            current: { volume: 0, mass: 0 },
-            currentInStorage: {},
-            escrow: {},
-        } as unknown as StorageFacility,
+            department: makeManagementFacility(),
+        }),
     };
 }
 

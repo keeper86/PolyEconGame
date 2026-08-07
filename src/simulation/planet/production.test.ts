@@ -736,20 +736,19 @@ describe('constructionTick — facilityCompleted ticker events', () => {
     });
 });
 
-describe('productionTick — storage facility', () => {
+describe('productionTick — storage department', () => {
     beforeEach(() => {
         seedRng(12345);
     });
 
-    it('includes storage facility in worker allocation and populates lastTickResults', () => {
+    it('includes storage department in worker allocation and populates lastTickResults', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
-            workerRequirement: { none: 1 },
-            scale: 1,
+            department: makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
         });
 
         const wf = agent.assets.p.workforceDemography;
@@ -758,40 +757,45 @@ describe('productionTick — storage facility', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        const results = agent.assets.p.storageFacility.lastTickResults;
+        const results = agent.assets.p.storageFacility.department!.lastTickResults;
         expect(results).toBeDefined();
         expect(results.overallEfficiency).toBeGreaterThan(0);
     });
 
-    it('excludes storage facility under construction from productionTick', () => {
+    it('excludes storage department under construction from productionTick', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
-            workerRequirement: { none: 1 },
-            scale: 0,
-            maxScale: 0,
-            construction: {
-                type: 'new',
-                constructionTargetMaxScale: 1,
-                totalConstructionServiceRequired: 100,
-                maximumConstructionServiceConsumption: 50,
-                progress: 0,
-                lastTickInvestedConstructionServices: 0,
-            },
+            department: makeManagementFacility(
+                { none: 1 },
+                {
+                    id: 'storage-dept',
+                    scale: 0,
+                    maxScale: 0,
+                    construction: {
+                        type: 'new',
+                        constructionTargetMaxScale: 1,
+                        totalConstructionServiceRequired: 100,
+                        maximumConstructionServiceConsumption: 50,
+                        progress: 0,
+                        lastTickInvestedConstructionServices: 0,
+                    },
+                },
+            ),
         });
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.novice.active = 1;
 
-        const initialEfficiency = agent.assets.p.storageFacility.lastTickResults.overallEfficiency;
+        const initialEfficiency = agent.assets.p.storageFacility.department!.lastTickResults.overallEfficiency;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        expect(agent.assets.p.storageFacility.lastTickResults.overallEfficiency).toBe(initialEfficiency);
+        expect(agent.assets.p.storageFacility.department!.lastTickResults.overallEfficiency).toBe(initialEfficiency);
     });
 });
 

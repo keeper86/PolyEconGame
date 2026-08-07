@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } from '../constants';
+import { LOAN_COLLATERAL_FACTOR, RECYCLER_BASE_RECOVERY_EFFICIENCY, STARTER_LOAN_AMOUNT } from '../constants';
+import { calculateCostsForConstruction } from '../planet/facility';
 import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
-import { makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
+import { constructionServiceResourceType } from '../planet/services';
+import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { computeLoanConditions } from './loanConditions';
 import { makeLoan } from './loanTypes';
 
@@ -161,5 +163,37 @@ describe('computeLoanConditions', () => {
         const agent = makeEstablishedAgent(planet, { existingLoans: 12345, lastMonthRevenue: 1 });
         const result = computeLoanConditions(agent, planet);
         expect(result.existingLoans).toBe(12345);
+    });
+
+    it('uses market price for construction services when productionCosts is not yet populated', () => {
+        const planet = makePlanet();
+        planet.productionCosts = {};
+        planet.marketPrices[constructionServiceResourceType.name] = 100;
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
+        agent.assets[planet.id]!.productionFacilities = [
+            makeProductionFacility(undefined, { maxScale: 1, scale: 1, construction: null }),
+        ];
+
+        const result = computeLoanConditions(agent, planet);
+
+        const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+        const completedCS = calculateCostsForConstruction('raw', 0, 1).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+        expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
+    });
+
+    it('caps construction service price at 2× production cost once productionCosts is populated', () => {
+        const planet = makePlanet();
+        planet.marketPrices[constructionServiceResourceType.name] = 1000;
+        planet.productionCosts[constructionServiceResourceType.name] = 1;
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
+        agent.assets[planet.id]!.productionFacilities = [
+            makeProductionFacility(undefined, { maxScale: 1, scale: 1, construction: null }),
+        ];
+
+        const result = computeLoanConditions(agent, planet);
+
+        const csPrice = 2 * planet.productionCosts[constructionServiceResourceType.name];
+        const completedCS = calculateCostsForConstruction('raw', 0, 1).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
+        expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
     });
 });

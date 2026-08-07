@@ -3,13 +3,12 @@ import { processFacilityContraction } from '../agents/recycler';
 import { MIN_EMPLOYABLE_AGE } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
-import { computeHrDemand, computeMaxDailyHROutput } from '../workforce/hrBuffer';
+import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { ManagementFacility, PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
-import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesScaleForWorkers } from './specialFacilities';
 
 export const INPUT_EFFICIENCY_MIN = 0.5;
 export const MAX_SCALE_EXPAND_FRACTION = 0.025;
@@ -128,6 +127,14 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
     );
 
     return maxOutputSignal;
+}
+
+const HR_TARGET_FILL_RATE = 0.85;
+
+function computeHrSignal(assets: AgentPlanetAssets, hrDepartment: ManagementFacility): number {
+    const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
+    const fillRate = pMax > 0 ? assets.hrBuffer / pMax : 0;
+    return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
 }
 
 function computePidDelta(signal: number, state: PidState, maxScale: number): number {
@@ -310,69 +317,6 @@ function initiateCapacityContraction(
 
     // Delegate full contraction (payment, CS recovery, scale reduction, ticker event) to the recycler agent
     return processFacilityContraction(planet, facility, agent, targetMax, gameState);
-}
-
-function maybeExpandHumanResourcesDepartment(
-    assets: AgentPlanetAssets,
-    planet: Planet,
-    hasOwnConstruction: boolean,
-    agent: Agent,
-): void {
-    const hrDepartment = assets.humanResourcesDepartment;
-    if (!hrDepartment || hrDepartment.construction !== null) {
-        return;
-    }
-
-    const demand = computeHrDemand(assets.workforceDemography);
-    if (demand <= 0) {
-        return;
-    }
-
-    const requiredScale = humanResourcesScaleForWorkers(demand * ESTIMATED_HR_OVERHEAD);
-
-    const lowerLimitToExpand = requiredScale * ((HR_WORLD_BUFFER - 1) * 0.33 + 1);
-
-    if (lowerLimitToExpand <= hrDepartment.maxScale) {
-        return;
-    }
-
-    const targetMax = Math.ceil(HR_WORLD_BUFFER * requiredScale);
-
-    const { cost, time } = calculateCostsForConstruction('management', hrDepartment.maxScale, targetMax);
-    if (cost <= 0 || time <= 0) {
-        return;
-    }
-
-    if (!hasOwnConstruction) {
-        const fundsCheck = checkExpansionFunds(hrDepartment, assets, planet, cost, time);
-        if (!fundsCheck.hasSufficientFunds) {
-            return;
-        }
-    }
-
-    console.log(
-        'HR Demand for',
-        agent.id,
-        assets?.hrDemand,
-        assets?.hrBuffer,
-        assets?.hrProductivityMultiplier,
-        assets?.humanResourcesDepartment?.maxScale,
-        targetMax,
-        computeHrDemand(assets?.workforceDemography),
-        computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1),
-        '\n' +
-            (computeMaxDailyHROutput(assets?.humanResourcesDepartment?.maxScale ?? 1) -
-                computeHrDemand(assets?.workforceDemography)),
-    );
-
-    hrDepartment.construction = {
-        type: 'expansion',
-        constructionTargetMaxScale: targetMax,
-        totalConstructionServiceRequired: cost,
-        maximumConstructionServiceConsumption: cost / time,
-        progress: 0,
-        lastTickInvestedConstructionServices: 0,
-    };
 }
 
 type AutoscaleDebugEntry = {
@@ -742,7 +686,78 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             facility.pidState = state;
         }
 
-        maybeExpandHumanResourcesDepartment(assets, planet, hasOwnConstruction, agent);
+        const hrDepartment = assets.humanResourcesDepartment;
+        if (hrDepartment && hrDepartment.construction?.type !== 'new') {
+            const hrRawSignal = computeHrSignal(assets, hrDepartment);
+            const hrState: PidState = { ...getDefaultPidState(), ...hrDepartment.pidState };
+
+            const hrSignal = SIGNAL_EMA_ALPHA * hrRawSignal + (1 - SIGNAL_EMA_ALPHA) * hrState.smoothedSignal;
+            hrState.smoothedSignal = hrSignal;
+
+            const hrDelta = computePidDelta(hrSignal, hrState, hrDepartment.maxScale);
+            hrDepartment.scale = Math.max(
+                hrDepartment.maxScale * 0.1,
+                Math.min(hrDepartment.maxScale, hrDepartment.scale + hrDelta),
+            );
+
+            const hrUtilization = hrDepartment.scale / hrDepartment.maxScale;
+            if (hrUtilization >= 0.8 && hrSignal > 0) {
+                hrState.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, hrState.expansionIntegral + hrSignal);
+            } else {
+                hrState.expansionIntegral = Math.max(0, hrState.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
+            }
+
+            const hrAtLowerBound = hrDepartment.scale <= hrDepartment.maxScale * 0.1;
+            if (hrAtLowerBound && hrSignal < 0) {
+                hrState.contractionIntegral = Math.min(
+                    CONTRACTION_INTEGRAL_MAX,
+                    hrState.contractionIntegral + Math.abs(hrSignal),
+                );
+            } else {
+                hrState.contractionIntegral = Math.max(0, hrState.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
+            }
+
+            if (
+                hrUtilization >= 0.8 &&
+                hrDepartment.construction === null &&
+                hrState.expansionIntegral >= EXPANSION_INTEGRAL_THRESHOLD
+            ) {
+                const hrTargetMax = Math.max(
+                    Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
+                    hrDepartment.maxScale + 1,
+                );
+                const { cost, time } = calculateCostsForConstruction('management', hrDepartment.maxScale, hrTargetMax);
+
+                let hrFundsOk = true;
+                if (!hasOwnConstruction) {
+                    hrFundsOk = checkExpansionFunds(hrDepartment, assets, planet, cost, time).hasSufficientFunds;
+                }
+
+                if (hrFundsOk) {
+                    hrDepartment.construction = {
+                        type: 'expansion',
+                        constructionTargetMaxScale: hrTargetMax,
+                        totalConstructionServiceRequired: cost,
+                        maximumConstructionServiceConsumption: cost / time,
+                        progress: 0,
+                        lastTickInvestedConstructionServices: 0,
+                    };
+                    hrState.expansionIntegral = 0;
+                }
+            }
+
+            if (
+                hrAtLowerBound &&
+                hrDepartment.construction === null &&
+                hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
+            ) {
+                const hrTargetMin = Math.max(1, Math.floor(hrDepartment.maxScale * (1 - MAX_SCALE_CONTRACT_FRACTION)));
+                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState);
+                hrState.contractionIntegral = 0;
+            }
+
+            hrDepartment.pidState = hrState;
+        }
     });
 
     if (isAutoscaleDebugEnabled()) {

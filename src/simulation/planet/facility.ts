@@ -13,7 +13,7 @@ export type ConstructionState = {
     lastTickInvestedConstructionServices: number;
 } | null;
 
-export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'storage' | 'management' | 'ship_construction';
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'management' | 'ship_construction';
 export const getFacilityType = (facility: Facility): FacilityType => {
     if (facility.type === 'production') {
         return facility.produces.reduce((prev, curr) => {
@@ -39,7 +39,6 @@ const facilityConstructionMultiplier: Record<FacilityType, number> = {
     refined: 2,
     manufactured: 3,
     services: 4,
-    storage: 1,
     management: 0.1,
     ship_construction: 5,
 };
@@ -65,7 +64,7 @@ export const calculateCostsForConstruction = (
 };
 
 export type FacilityBase = PlanetaryId & {
-    type: 'production' | 'storage' | 'management' | 'ship_construction';
+    type: 'production' | 'management' | 'ship_construction';
     name: string;
     maxScale: number;
     scale: number;
@@ -132,8 +131,7 @@ export type ProductionFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
-export type StorageFacility = FacilityBase & {
-    type: 'storage';
+export type StorageFacility = PlanetaryId & {
     capacity: {
         volume: number;
         mass: number;
@@ -146,10 +144,12 @@ export type StorageFacility = FacilityBase & {
         [resourceName in string]: ResourceQuantity;
     };
 
-    lastTickResults: LastTickResults;
-
     escrow: { [resourceName in string]: number };
+
+    department: ManagementFacility | null;
 };
+
+export const getStorageDepartmentScale = (storage: StorageFacility): number => storage.department?.scale ?? 0;
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
@@ -157,6 +157,7 @@ export type ManagementFacility = FacilityBase & {
     produces: ResourceQuantity[];
 
     lastTickResults: LastManagementTickResults;
+    pidState?: PidState | null;
 };
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
@@ -166,7 +167,7 @@ export type ShipConstructionFacility = FacilityBase & {
     lastTickResults: LastTickResults;
 };
 
-export type Facility = ProductionFacility | StorageFacility | ManagementFacility | ShipConstructionFacility;
+export type Facility = ProductionFacility | ManagementFacility | ShipConstructionFacility;
 
 export const createLastTickResults = (): LastTickResults => ({
     overallEfficiency: 0,
@@ -188,21 +189,29 @@ export const putIntoStorageFacility = (
 ): number => {
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
+    const scale = getStorageDepartmentScale(storage);
+
     const volumeRestriction =
         resource.volumePerQuantity > 0
-            ? Math.min(
-                  1,
-                  (storage.capacity.volume * storage.scale - storage.current.volume) /
-                      (additionalQuantity * resource.volumePerQuantity),
+            ? Math.max(
+                  0,
+                  Math.min(
+                      1,
+                      (storage.capacity.volume * scale - storage.current.volume) /
+                          (additionalQuantity * resource.volumePerQuantity),
+                  ),
               )
             : 1;
 
     const massRestriction =
         resource.massPerQuantity > 0
-            ? Math.min(
-                  1,
-                  (storage.capacity.mass * storage.scale - storage.current.mass) /
-                      (additionalQuantity * resource.massPerQuantity),
+            ? Math.max(
+                  0,
+                  Math.min(
+                      1,
+                      (storage.capacity.mass * scale - storage.current.mass) /
+                          (additionalQuantity * resource.massPerQuantity),
+                  ),
               )
             : 1;
 
@@ -229,8 +238,9 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
 };
 
 export const getAvailableStorageCapacity = (storage: StorageFacility, resource: Resource): number => {
-    const freeVolume = storage.capacity.volume * storage.scale - storage.current.volume;
-    const freeMass = storage.capacity.mass * storage.scale - storage.current.mass;
+    const scale = getStorageDepartmentScale(storage);
+    const freeVolume = storage.capacity.volume * scale - storage.current.volume;
+    const freeMass = storage.capacity.mass * scale - storage.current.mass;
     const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
     const byMass = resource.massPerQuantity > 0 ? freeMass / resource.massPerQuantity : Infinity;
     return Math.max(0, Math.min(byVolume, byMass));

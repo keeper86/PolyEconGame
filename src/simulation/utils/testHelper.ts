@@ -206,22 +206,13 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
 
 export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
     return {
-        type: 'storage',
         planetId: 'p',
         id: 'storage-p',
-        name: 'test-storage',
-        maxScale: 1,
-        scale: 1,
-        construction: null,
-        lastConstructionCompletedTick: 0,
-        powerConsumptionPerTick: 0,
-        workerRequirement: {},
-        pollutionPerTick: { air: 0, water: 0, soil: 0 },
         capacity: { volume: 1e13, mass: 1e13 },
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
-        lastTickResults: createLastTickResults(),
+        department: makeManagementFacility(),
         ...overrides,
     } as StorageFacility;
 }
@@ -248,6 +239,7 @@ export function makeManagementFacility(
             ...createLastTickResults(),
             lastProduced: {},
         },
+        pidState: null,
         ...overrides,
     };
 }
@@ -345,6 +337,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         allocatedWorkers: makeAllocatedWorkers(),
         totalSlotCapacity: makeAllocatedWorkers(),
         unusedWorkers: makeAllocatedWorkers(),
+        usedWorkers: 0,
         overqualifiedWorkers: {},
         workforceDemography: makeWorkforceDemography(),
         deaths: createEmptyDemographicEventCounters(),

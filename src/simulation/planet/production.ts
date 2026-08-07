@@ -162,7 +162,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 
         const allFacilities: Array<Facility> = [
             ...assets.productionFacilities,
-            assets.storageFacility,
+            ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
             ...assets.shipConstructionFacilities,
         ];
 
@@ -288,9 +288,6 @@ function produceOutputs(
 function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<string, number> {
     const totalStorageDemand = new Map<string, number>();
     for (const { facility } of enrichedFacilities) {
-        if (facility.type === 'storage') {
-            continue;
-        }
         if (facility.type === 'ship_construction') {
             if (!facility.produces) {
                 continue;
@@ -326,9 +323,6 @@ function computeResourceEfficiencyMap(
 ): Record<string, number> {
     const { facility } = ef;
     const resourceEfficiencyMap: Record<string, number> = {};
-    if (facility.type === 'storage') {
-        return resourceEfficiencyMap;
-    }
     if (facility.type === 'ship_construction') {
         if (!facility.produces) {
             return resourceEfficiencyMap;
@@ -378,10 +372,6 @@ type ManagementParameters = IntermediateResults & {
 
 type ShipConstructionParameters = IntermediateResults & {
     facility: ShipConstructionFacility;
-};
-
-type StorageParameters = IntermediateResults & {
-    facility: StorageFacility;
 };
 
 function accumulateTheoreticalCostFloor(
@@ -623,22 +613,6 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
     };
 }
 
-function processStorageFacility(params: StorageParameters): void {
-    const { facility, overallEfficiency, workerResults } = params;
-    facility.lastTickResults = {
-        overallEfficiency,
-        workerEfficiency: workerResults.workerEfficiency,
-        overqualifiedWorkers: workerResults.overqualifiedWorkers,
-        totalUsedByEdu: workerResults.totalUsedByEdu,
-        exactUsedByEdu: workerResults.exactUsedByEdu,
-        wageCosts: 0,
-        inputCosts: 0,
-        costBalance: 0,
-        lastConsumed: {},
-        resourceEfficiency: {},
-    };
-}
-
 export function productionTick(gameState: GameState, planet: Planet): void {
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -699,8 +673,10 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         const activeFacilities: Array<Facility> = [
             ...assets.productionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
-            ...(assets.storageFacility.construction === null || assets.storageFacility.construction.type === 'expansion'
-                ? [assets.storageFacility]
+            ...(assets.storageFacility.department &&
+            (!assets.storageFacility.department.construction ||
+                assets.storageFacility.department.construction.type === 'expansion')
+                ? [assets.storageFacility.department]
                 : []),
             ...(assets.humanResourcesDepartment &&
             (!assets.humanResourcesDepartment.construction ||
@@ -767,7 +743,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         assets.totalSlotCapacity = totalSlotCapacity;
 
-        const { remaining, byFacility } = waterFill(
+        const { remaining, byFacility, used } = waterFill(
             allSlots,
             workerPool,
             ageProd,
@@ -775,6 +751,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             xpProdByEduSkill,
             effectiveDemandBySlot,
         );
+
+        assets.usedWorkers = used;
 
         if (workforce) {
             for (let age = 0; age < workforce.length; age++) {
@@ -874,10 +852,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 processProductionFacility({ ...productionParameterBase, facility });
             } else if (facility.type === 'management') {
                 processManagementFacility({ ...productionParameterBase, facility });
-            } else if (facility.type === 'ship_construction') {
-                processShipConstructionFacility({ ...productionParameterBase, facility }, gameState);
             } else {
-                processStorageFacility({ ...productionParameterBase, facility });
+                processShipConstructionFacility({ ...productionParameterBase, facility }, gameState);
             }
         }
     });

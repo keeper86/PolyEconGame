@@ -6,6 +6,8 @@ import {
     HR_DEPARTMENT_NAME,
     humanResourcesOfficeFacilityType,
     shipConstructionFacilityType,
+    STORAGE_DEPARTMENT_NAME,
+    storageDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import { processFacilityContraction } from '../agents/recycler';
@@ -39,7 +41,8 @@ export function handleBuildFacility(
     }
     const catalogEntry = facilityByName.get(facilityKey);
     const isHrDepartment = facilityKey === HR_DEPARTMENT_NAME;
-    if (!isHrDepartment && !catalogEntry) {
+    const isStorageDepartment = facilityKey === STORAGE_DEPARTMENT_NAME;
+    if (!isHrDepartment && !isStorageDepartment && !catalogEntry) {
         safePostMessage({
             type: 'facilityBuildFailed',
             requestId,
@@ -51,10 +54,14 @@ export function handleBuildFacility(
     const facilityId = `${agentId}-${facilityKey.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     const newFacility = isHrDepartment
         ? humanResourcesOfficeFacilityType(planetId, facilityId)
-        : catalogEntry!.factory(planetId, facilityId);
+        : isStorageDepartment
+          ? storageDepartmentFacilityType(planetId, facilityId)
+          : catalogEntry!.factory(planetId, facilityId);
     const alreadyExists = isHrDepartment
         ? assets.humanResourcesDepartment !== null
-        : assets.productionFacilities.some((f) => f.name === facilityKey);
+        : isStorageDepartment
+          ? assets.storageFacility.department !== null
+          : assets.productionFacilities.some((f) => f.name === facilityKey);
     if (alreadyExists) {
         safePostMessage({
             type: 'facilityBuildFailed',
@@ -78,6 +85,8 @@ export function handleBuildFacility(
     newFacility.maxScale = 0;
     if (isHrDepartment) {
         assets.humanResourcesDepartment = newFacility as ManagementFacility;
+    } else if (isStorageDepartment) {
+        assets.storageFacility.department = newFacility as ManagementFacility;
     } else {
         assets.productionFacilities.push(newFacility as ProductionFacility);
     }
@@ -113,7 +122,8 @@ export function handleExpandFacility(
     }
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
-        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined);
+        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
+        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined);
     if (!facility) {
         safePostMessage({
             type: 'facilityExpandFailed',
@@ -195,6 +205,7 @@ export function handleSetFacilityScale(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
+        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -241,6 +252,7 @@ export function handleContractFacility(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
+        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined) ??
         assets.shipConstructionFacilities.find((f) => f.id === facilityId);
     if (!facility) {
         safePostMessage({
@@ -297,6 +309,8 @@ export function handleContractFacility(
             assets.productionFacilities.splice(prodIdx, 1);
         } else if (assets.humanResourcesDepartment?.id === facilityId) {
             assets.humanResourcesDepartment = null;
+        } else if (assets.storageFacility.department?.id === facilityId) {
+            assets.storageFacility.department = null;
         } else {
             const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
             if (shipIdx !== -1) {
@@ -589,12 +603,14 @@ export function handleCancelConstruction(
 
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
     const isHumanResources = facilityIndex === -1 && assets.humanResourcesDepartment?.id === facilityId;
+    const isStorageDepartment =
+        facilityIndex === -1 && !isHumanResources && assets.storageFacility.department?.id === facilityId;
     const shipyardIndex =
-        facilityIndex === -1 && !isHumanResources
+        facilityIndex === -1 && !isHumanResources && !isStorageDepartment
             ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId)
             : -1;
 
-    if (facilityIndex === -1 && !isHumanResources && shipyardIndex === -1) {
+    if (facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1) {
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
@@ -630,7 +646,11 @@ export function handleCancelConstruction(
         return;
     }
 
-    const facility = isHumanResources ? assets.humanResourcesDepartment! : assets.productionFacilities[facilityIndex];
+    const facility = isHumanResources
+        ? assets.humanResourcesDepartment!
+        : isStorageDepartment
+          ? assets.storageFacility.department!
+          : assets.productionFacilities[facilityIndex];
     if (!facility.construction) {
         safePostMessage({
             type: 'constructionCancelFailed',
@@ -643,6 +663,8 @@ export function handleCancelConstruction(
     if (facility.construction.type === 'new') {
         if (isHumanResources) {
             assets.humanResourcesDepartment = null;
+        } else if (isStorageDepartment) {
+            assets.storageFacility.department = null;
         } else {
             assets.productionFacilities.splice(facilityIndex, 1);
         }
