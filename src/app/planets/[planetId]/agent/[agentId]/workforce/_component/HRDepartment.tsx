@@ -4,11 +4,14 @@ import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/pro
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
-import { FacilityHeader } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
+import {
+    FacilityHeader,
+    limitingEfficiency,
+} from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
 import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -26,7 +29,9 @@ import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFac
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
+import { HRBufferGauge } from './HRBufferGauge';
 
 const HR_STATUS_CONFIG: Record<
     HrBufferStatus,
@@ -252,6 +257,17 @@ export default function HRDepartment({
     const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
     const statusConfig = HR_STATUS_CONFIG[status];
 
+    const statusBadge = (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}>
+                    {statusConfig.label}
+                </Badge>
+            </TooltipTrigger>
+            <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
+        </Tooltip>
+    );
+
     if (hrDepartment !== null) {
         if (hrDepartment.construction !== null && hrDepartment.construction.type === 'new') {
             return (
@@ -264,34 +280,55 @@ export default function HRDepartment({
             );
         } else {
             return (
-                <span className='flex flex-col gap-2'>
-                    <ActiveFacilityCard
-                        key={hrDepartment.id}
-                        facility={hrDepartment}
-                        agentId={agentId}
-                        planetId={planetId}
-                        constructionServicePrice={constructionServicePrice}
-                        otherConstructionCosts={otherConstructionCosts}
-                        onExpanded={() => {}}
-                        hrProductivityMultiplier={assets.hrProductivityMultiplier}
-                    />
-                    <Card className='overflow-hidden flex flex-col min-w-[300px] sm:min-w-[350px] max-w-[485px]'>
-                        <CardContent className='px-3 py-3 flex flex-row flex-1 justify-between items-center gap-2'>
-                            <h3 className='font-semibold leading-tight text-sm'>HR Services</h3>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge
-                                        variant='outline'
-                                        className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}
-                                    >
-                                        {statusConfig.label} {hrDemand} : {assets.hrBuffer}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
-                            </Tooltip>
-                        </CardContent>
-                    </Card>
-                </span>
+                <ActiveFacilityCard
+                    key={hrDepartment.id}
+                    facility={hrDepartment}
+                    agentId={agentId}
+                    planetId={planetId}
+                    constructionServicePrice={constructionServicePrice}
+                    otherConstructionCosts={otherConstructionCosts}
+                    hrProductivityMultiplier={assets.hrProductivityMultiplier}
+                    headerBadge={statusBadge}
+                >
+                    {(() => {
+                        const results = hrDepartment.lastTickResults;
+                        const needsCount = hrDepartment.needs.length || 1;
+                        const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
+                        const globalMin = limitingEfficiency(results);
+                        const eff = results.overallEfficiency;
+
+                        return (
+                            <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>
+                                <div className='flex flex-wrap gap-1.5 justify-center'>
+                                    {hrDepartment.needs.map(({ resource, quantity }) => {
+                                        const resEff = results.resourceEfficiency[resource.name] ?? 0;
+                                        return (
+                                            <ProductQuantity
+                                                key={resource.name}
+                                                resource={resource}
+                                                quantity={quantity * hrDepartment.scale * eff}
+                                                efficiency={resEff}
+                                                isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                                planetId={planetId}
+                                                agentId={agentId}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                <RiArrowRightBoxFill
+                                    className={`shrink-0 h-8 w-8 ${hrDepartment.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                                />
+                                <div className='flex justify-center'>
+                                    <HRBufferGauge
+                                        buffer={assets.hrBuffer ?? 0}
+                                        demand={hrDemand}
+                                        hrDepartment={hrDepartment}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })()}
+                </ActiveFacilityCard>
             );
         }
     } else {

@@ -36,14 +36,18 @@ export function ActiveFacilityCard({
     otherConstructionCosts,
     onExpanded,
     hrProductivityMultiplier,
+    children,
+    headerBadge,
 }: {
     facility: ProductionFacility | ManagementFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
     otherConstructionCosts?: number;
-    onExpanded: () => void;
+    onExpanded?: () => void;
     hrProductivityMultiplier: number;
+    children?: React.ReactNode;
+    headerBadge?: React.ReactElement;
 }): React.ReactElement {
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
@@ -99,7 +103,7 @@ export function ActiveFacilityCard({
                 });
                 toast.success('Expansion ordered. Changes take effect on the next tick.');
                 setShowExpand(false);
-                onExpanded();
+                onExpanded?.();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Expand failed');
@@ -139,7 +143,7 @@ export function ActiveFacilityCard({
                 });
                 toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
                 setShowReduce(false);
-                onExpanded();
+                onExpanded?.();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Contract failed');
@@ -331,34 +335,44 @@ export function ActiveFacilityCard({
                     facility={facility}
                     results={results}
                     badge={
-                        <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                            Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
-                        </Badge>
+                        headerBadge ?? (
+                            <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
+                                Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
+                            </Badge>
+                        )
                     }
                     planetId={planetId}
                     agentId={agentId}
                 />
             }
         >
-            {facility.type === 'production' && (
-                <div className='flex-1 space-y-2 pb-3'>
-                    <FacilityProductionIORow
-                        needs={facility.needs}
-                        produces={facility.produces}
-                        scale={!showExpand ? facility.scale : previewScale}
-                        resourceEfficiency={results?.resourceEfficiency ?? {}}
-                        overallEfficiency={eff}
-                        limitingEfficiency={globalMin}
-                    />
-                </div>
+            {children ? (
+                children
+            ) : (
+                <>
+                    {facility.type === 'production' && (
+                        <div className='flex-1 space-y-2 pb-3'>
+                            <FacilityProductionIORow
+                                needs={facility.needs}
+                                produces={facility.produces}
+                                scale={!showExpand ? facility.scale : previewScale}
+                                resourceEfficiency={results?.resourceEfficiency ?? {}}
+                                overallEfficiency={eff}
+                                limitingEfficiency={globalMin}
+                            />
+                        </div>
+                    )}
+                </>
             )}
 
             <div className='mt-auto space-y-2'>
-                <FacilityFinancialRow
-                    lastTickResults={facility.lastTickResults}
-                    planetId={planetId}
-                    agentId={agentId}
-                />
+                {!children && (
+                    <FacilityFinancialRow
+                        lastTickResults={facility.lastTickResults}
+                        planetId={planetId}
+                        agentId={agentId}
+                    />
+                )}
 
                 <div className='relative pt-2'>
                     <div className='space-y-2'>
