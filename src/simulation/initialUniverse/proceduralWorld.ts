@@ -49,7 +49,7 @@ const TOTAL_LIMESTONE = 3_000_000_00_000;
 const TOTAL_STONE = 4_000_000_000_00;
 
 // TODO: USE stochastic rounds prng here
-function splitScale(total: number, count: number, seed: string): number[] {
+export function splitScale(total: number, count: number, seed: string): number[] {
     let s = 0;
     for (let i = 0; i < seed.length; i++) {
         s = (s * 31 + seed.charCodeAt(i)) >>> 0;
@@ -59,20 +59,32 @@ function splitScale(total: number, count: number, seed: string): number[] {
         return s / 0x1_0000_0000;
     };
 
+    if (count <= 0) {
+        return [];
+    }
+    if (total >= count) {
+        return Array.from({ length: count }, () => 1);
+    }
+    const intTotal = Math.round(total);
+    if (intTotal <= 0) {
+        return Array.from({ length: count }, () => 0);
+    }
+
     const weights = Array.from({ length: count }, () => 0.5 + rand());
     const wSum = weights.reduce((a, b) => a + b, 0);
 
-    const intTotal = Math.round(total);
     let remaining = intTotal;
     const shares: number[] = [];
     for (let i = 0; i < count; i++) {
         if (i === count - 1) {
             shares.push(remaining);
-        } else {
-            const share = Math.max(1, Math.round((weights[i] / wSum) * intTotal));
-            shares.push(share);
-            remaining -= share;
+            continue;
         }
+        const agentsAfter = count - i - 1;
+        const maxAffordable = Math.max(0, remaining - agentsAfter);
+        const share = Math.min(maxAffordable, Math.max(1, Math.round((weights[i] / wSum) * intTotal)));
+        shares.push(share);
+        remaining -= share;
     }
     return shares;
 }
@@ -109,7 +121,7 @@ const TARGETS: Record<string, FacilityTarget> = {
     loggingCamp: { totalScale: 364205, agentCount: Math.ceil(flatTargetFactor * 4) },
     logisticsHub: { totalScale: 1263903, agentCount: Math.ceil(flatTargetFactor * 10) },
     machineryFactory: { totalScale: 66919, agentCount: Math.ceil(flatTargetFactor * 2) },
-    maintenanceFacility: { totalScale: 1, agentCount: Math.ceil(flatTargetFactor * 2) },
+    maintenanceFacility: { totalScale: 2, agentCount: Math.ceil(flatTargetFactor * 2) },
     oilRefinery: { totalScale: 1002909, agentCount: Math.ceil(flatTargetFactor * 8) },
     oilWell: { totalScale: 1002909, agentCount: Math.ceil(flatTargetFactor * 8) },
     packagingPlant: { totalScale: 23899, agentCount: Math.ceil(flatTargetFactor * 2) },

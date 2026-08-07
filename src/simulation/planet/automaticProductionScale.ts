@@ -38,6 +38,7 @@ export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
 export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
+export const MINIMUM_CONTRACTION_EFFICIENCY = 0.5;
 
 function getDefaultPidState(): PidState {
     return {
@@ -551,7 +552,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const dynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
+                EXPANSION_INTEGRAL_THRESHOLD *
+                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
             // ── Expansion decision ──
@@ -745,7 +747,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
                 const hrTargetMin = Math.max(1, Math.floor(hrDepartment.maxScale * (1 - MAX_SCALE_CONTRACT_FRACTION)));
-                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState);
+                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState, 0.5);
                 hrState.contractionIntegral = 0;
             }
 
