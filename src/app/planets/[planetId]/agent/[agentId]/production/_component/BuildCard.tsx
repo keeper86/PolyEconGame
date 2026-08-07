@@ -1,6 +1,6 @@
 'use client';
 
-import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { useTour } from '@/components/tour/TourContext';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -8,7 +8,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { Facility, ProductionFacility } from '@/simulation/planet/facility';
+import type { Facility, ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import { oilWellName } from '@/simulation/planet/productionFacilities';
 import { useMutation } from '@tanstack/react-query';
@@ -18,8 +18,8 @@ import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
+import { FacilityHeader } from './FacilityHeader';
 import { FacilityIORow } from './FacilityIORow';
-import { WorkerBars } from './WorkerBars';
 
 function BuildForm({
     entry,
@@ -31,7 +31,7 @@ function BuildForm({
     onCancel,
     isPending,
 }: {
-    entry: ProductionFacility;
+    entry: ProductionFacility | ManagementFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
@@ -87,28 +87,16 @@ function BuildForm({
             contentClassName={'flex flex-col flex-1 gap-2'}
             icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{entry.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                new
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={entry.workerRequirement}
-                            scale={entry.scale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={entry}
+                    badge={
+                        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                            new
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
@@ -152,10 +140,12 @@ function ConstructionDisplay({
     facility,
     agentId,
     planetId,
+    hideCancel,
 }: {
     facility: Facility;
     agentId: string;
     planetId: string;
+    hideCancel?: boolean;
 }): React.ReactElement {
     const cs = facility.construction!;
     const targetScale = cs.constructionTargetMaxScale;
@@ -186,34 +176,21 @@ function ConstructionDisplay({
                 )
             }
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight text-amber-600 dark:text-amber-400'>
-                            {facility.name}
-                        </h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge
-                                variant='secondary'
-                                className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
-                            >
-                                <HardHat className='h-3.5 w-3.5' />
-                                Under Construction
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={targetScale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={facility}
+                    titleClassName='text-amber-600 dark:text-amber-400'
+                    badge={
+                        <Badge
+                            variant='secondary'
+                            className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
+                        >
+                            <HardHat className='h-3.5 w-3.5' />
+                            Under Construction
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
@@ -227,7 +204,7 @@ function ConstructionDisplay({
             </div>
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ConstructionCompactRow facility={facility} />
+                <ConstructionCompactRow facility={facility} hideCancel={hideCancel} />
 
                 {/* Blocking overlay only over the action controls */}
                 {pendingCancelAction && (
@@ -253,9 +230,10 @@ export function BuildCard({
     onBuilt,
     onCancel,
     isPending,
+    hideCancel,
 }: {
     /** Catalog entry for the build form (unowned facility being built). */
-    entry?: ProductionFacility;
+    entry?: ProductionFacility | ManagementFacility;
     /** Facility object for construction mode (owned facility being constructed). */
     facility?: Facility;
     agentId: string;
@@ -266,6 +244,8 @@ export function BuildCard({
     onCancel: () => void;
     /** True when there's a pending build action awaiting the next tick (for BuildForm) */
     isPending?: boolean;
+    /** Hides the cancel button in construction mode. */
+    hideCancel?: boolean;
 }): React.ReactElement | null {
     if (entry && !facility) {
         return (
@@ -283,7 +263,9 @@ export function BuildCard({
     }
 
     if (facility) {
-        return <ConstructionDisplay facility={facility} agentId={agentId} planetId={planetId} />;
+        return (
+            <ConstructionDisplay facility={facility} agentId={agentId} planetId={planetId} hideCancel={hideCancel} />
+        );
     }
 
     return null;

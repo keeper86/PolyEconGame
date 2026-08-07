@@ -59,9 +59,6 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
 });
-export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
-    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
-
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
 export const storageDepartmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),

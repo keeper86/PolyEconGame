@@ -18,12 +18,8 @@ import {
     neededWorkersByFacility,
     type FacilityType,
 } from '../planet/productionFacilities';
-import {
-    ESTIMATED_HR_OVERHEAD,
-    HR_WORLD_BUFFER,
-    humanResourcesOfficeFacilityType,
-    humanResourcesScaleForWorkers,
-} from '../planet/specialFacilities';
+import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
+import { humanResourcesScaleForWorkers } from './helpers';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {

@@ -326,3 +326,5 @@ export function makeAgriculturalProduction(planetId: string, agentId: string, sc
     facility.maxScale = scale;
     return facility;
 }
+export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
+    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);

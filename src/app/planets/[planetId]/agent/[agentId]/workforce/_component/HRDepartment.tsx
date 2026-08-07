@@ -4,9 +4,9 @@ import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/pro
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
+import { FacilityHeader } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
 import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
-import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
-import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -57,7 +57,7 @@ const HR_STATUS_CONFIG: Record<
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
-function InternalBuildCard({
+function HRBuildCard({
     entry,
     agentId,
     planetId,
@@ -109,28 +109,16 @@ function InternalBuildCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{entry.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                new
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={entry.workerRequirement}
-                            scale={entry.scale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={entry}
+                    badge={
+                        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                            new
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
@@ -168,7 +156,7 @@ function InternalBuildCard({
     );
 }
 
-function InternalConstructionCard({
+function HRConstructionCard({
     facility,
     agentId,
     planetId,
@@ -190,34 +178,21 @@ function InternalConstructionCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight text-amber-600 dark:text-amber-400'>
-                            {facility.name}
-                        </h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge
-                                variant='secondary'
-                                className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
-                            >
-                                <HardHat className='h-3.5 w-3.5' />
-                                Under Construction
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={targetScale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={facility}
+                    titleClassName='text-amber-600 dark:text-amber-400'
+                    badge={
+                        <Badge
+                            variant='secondary'
+                            className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
+                        >
+                            <HardHat className='h-3.5 w-3.5' />
+                            Under Construction
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
@@ -280,7 +255,7 @@ export default function HRDepartment({
     if (hrDepartment !== null) {
         if (hrDepartment.construction !== null && hrDepartment.construction.type === 'new') {
             return (
-                <InternalConstructionCard
+                <HRConstructionCard
                     key={hrDepartment.id}
                     facility={hrDepartment}
                     agentId={agentId}
@@ -321,7 +296,7 @@ export default function HRDepartment({
         }
     } else {
         return (
-            <InternalBuildCard
+            <HRBuildCard
                 key={template.name}
                 entry={template}
                 agentId={agentId}
