@@ -28,9 +28,9 @@ export const computeProductivityMultiplier = (coverage: number): number => {
         return 1.0;
     }
     if (coverage >= 0.3) {
-        return 0.8 + 0.2 * coverage;
+        return 0.8 + 0.2 * (coverage - 0.3);
     }
-    return 0.5 + 1.0 * coverage * coverage;
+    return 0.5 + 0.3 * (coverage / 0.3);
 };
 
 export type HrBufferStatus = 'optimal' | 'stable' | 'strained' | 'critical';
@@ -62,8 +62,7 @@ export function hrBufferTick(agents: Map<string, Agent>, planet: Planet): void {
 export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const hrDepartment = assets.humanResourcesDepartment;
     if (!hrDepartment) {
-        const demand = assets.usedWorkers;
-        assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(0, demand));
+        assets.hrProductivityMultiplier = computeProductivityMultiplier(0);
         return;
     }
 
@@ -76,11 +75,10 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
-    const consumed = Math.min(hrDepartment.hrBuffer + producedHr, demand);
+    const consumed = Math.min(hrDepartment.hrBuffer + producedHr, demand, pMax);
     hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, producedHr, demand, pMax);
 
     assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(consumed, demand));
-    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, 0, demand, pMax);
 }
 
 function pullAllHrFromStorage(storage: StorageFacility): number {
