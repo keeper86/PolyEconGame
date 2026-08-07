@@ -115,8 +115,7 @@ describe('processHrBufferForAssets', () => {
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
-        const workforce = assets.workforceDemography;
-        workforce[30].none.novice.active = 100;
+        assets.usedWorkers = 100;
 
         processHrBufferForAssets(assets);
 
@@ -185,7 +184,7 @@ describe('processHrBufferForAssets', () => {
             hrBuffer: 1000,
             hrProductivityMultiplier: 1,
         });
-        assets.workforceDemography[30].none.novice.active = 1000;
+        assets.usedWorkers = 1000;
 
         processHrBufferForAssets(assets);
         expect(assets.hrBuffer).toBe(0);
@@ -201,8 +200,7 @@ describe('processHrBufferForAssets', () => {
             }),
             hrBuffer: 0,
         });
-        const workforce = assets.workforceDemography;
-        workforce[30].none.novice.active = 1000;
+        assets.usedWorkers = 1000;
 
         processHrBufferForAssets(assets);
         expect(assets.hrProductivityMultiplier).toBeLessThan(1);

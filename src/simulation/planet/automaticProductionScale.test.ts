@@ -993,7 +993,7 @@ describe('updateAgentProductionScale', () => {
         });
 
         const assets = agent.assets[planet.id];
-        assets.workforceDemography[30].primary.novice.active = 1000;
+        assets.usedWorkers = 1000;
         assets.lastMonthAcc.revenue = 1_000_000;
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
