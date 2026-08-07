@@ -193,19 +193,25 @@ export const putIntoStorageFacility = (
 
     const volumeRestriction =
         resource.volumePerQuantity > 0
-            ? Math.min(
-                  1,
-                  (storage.capacity.volume * scale - storage.current.volume) /
-                      (additionalQuantity * resource.volumePerQuantity),
+            ? Math.max(
+                  0,
+                  Math.min(
+                      1,
+                      (storage.capacity.volume * scale - storage.current.volume) /
+                          (additionalQuantity * resource.volumePerQuantity),
+                  ),
               )
             : 1;
 
     const massRestriction =
         resource.massPerQuantity > 0
-            ? Math.min(
-                  1,
-                  (storage.capacity.mass * scale - storage.current.mass) /
-                      (additionalQuantity * resource.massPerQuantity),
+            ? Math.max(
+                  0,
+                  Math.min(
+                      1,
+                      (storage.capacity.mass * scale - storage.current.mass) /
+                          (additionalQuantity * resource.massPerQuantity),
+                  ),
               )
             : 1;
 
