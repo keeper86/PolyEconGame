@@ -986,6 +986,40 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         expect(hrFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(5);
         expect(hrFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(10);
     });
+
+    it('prioritizes HR department allocation over production facilities when workers are scarce', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const hrFacility = makeHRFacility(
+            { none: 5 },
+            {
+                id: 'hr-dept',
+                scale: 1,
+                needs: [{ resource: waterResourceType, quantity: 1 }],
+                produces: [{ resource: steelResourceType, quantity: 1 }],
+            },
+        );
+
+        const prodFacility = makeProductionFacility({ none: 10 }, { id: 'prod-1', scale: 1 });
+        prodFacility.needs = [{ resource: waterResourceType, quantity: 5 }];
+        prodFacility.produces = [{ resource: ironOreResourceType, quantity: 5 }];
+
+        agent.assets.p.humanResourcesDepartment = hrFacility;
+        agent.assets.p.productionFacilities = [prodFacility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 100,
+        };
+
+        agent.assets.p.workforceDemography[30].none.novice.active = 5;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(hrFacility.lastTickResults.overallEfficiency).toBeCloseTo(1);
+        expect(prodFacility.lastTickResults.overallEfficiency).toBeCloseTo(0);
+    });
 });
 
 function makeTestShipType(): TransportShipType {

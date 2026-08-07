@@ -96,15 +96,15 @@ export function HRBufferGauge({
                         cornerRadius: 1,
                         padding: 0,
                         subArcs,
-                        subArcsStrokeWidth: 2,
-                        subArcsStrokeColor: '#000000',
+                        subArcsStrokeWidth: 1,
+                        subArcsStrokeColor: '#1f1f23',
                     }}
                     pointer={{
                         type: 'needle',
                         width: 14,
                         length: 0.66,
                         strokeWidth: 1,
-                        strokeColor: '#000000',
+                        strokeColor: '#1f1f23',
                     }}
                     labels={{
                         valueLabel: { hide: true },
