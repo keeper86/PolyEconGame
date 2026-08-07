@@ -58,7 +58,7 @@ export function splitScale(total: number, count: number, seed: string): number[]
     if (count <= 0) {
         return [];
     }
-    if (total >= count) {
+    if (count >= total) {
         return Array.from({ length: count }, () => 1);
     }
     const intTotal = Math.round(total);

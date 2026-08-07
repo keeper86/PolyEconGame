@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { HRFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
+import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
+import { HR_DEPARTMENT_NAME, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
 import { makeWorld } from '../utils/testHelper';
-import type { OutboundMessage } from './messages';
 import {
     handleBuildFacility,
     handleCancelConstruction,
@@ -8,9 +10,7 @@ import {
     handleExpandFacility,
     handleSetFacilityScale,
 } from './facilityActions';
-import type { HRFacility, ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
-import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS } from '../planet/facility';
-import { HR_DEPARTMENT_NAME, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
+import type { OutboundMessage } from './messages';
 
 function makeMessages() {
     const messages: OutboundMessage[] = [];

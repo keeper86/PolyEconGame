@@ -54,6 +54,9 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
         return `${formattedNumber}%`;
     }
     if (unit === 'days') {
+        if (formattedNumber === '1') {
+            return '1 day';
+        }
         return `${formattedNumber} days`;
     }
 

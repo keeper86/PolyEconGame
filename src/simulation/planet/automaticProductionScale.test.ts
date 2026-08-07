@@ -4,11 +4,11 @@ import {
     makeAgent,
     makeAgentPlanetAssets,
     makeHRFacility,
-    makeManagementFacility,
     makePlanet,
     makePopulationByEducation,
     makeProductionFacility,
 } from '../utils/testHelper';
+import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
@@ -18,7 +18,6 @@ import {
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
-import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;

@@ -1,10 +1,8 @@
 'use client';
 
-import { formatNumberWithUnit } from '@/lib/utils';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '@/simulation/constants';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
-import { formatNumbers } from '@/simulation/utils/numberFormat';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 
@@ -59,16 +57,6 @@ export function HRBufferGauge({
                         },
                     }}
                 />
-            </div>
-            <div className='flex items-center gap-3 text-xs text-muted-foreground tabular-nums'>
-                <span className='flex items-center gap-1'>
-                    <span className='inline-block h-2 w-2 rounded-full' style={{ backgroundColor: ZONE_RED }} />
-                    Demand {formatNumbers(demand)}
-                </span>
-                <span className='flex items-center gap-1'>
-                    <span className='inline-block h-2 w-2 rounded-full bg-foreground' />
-                    Buffer {formatNumberWithUnit(buffer / demand, 'days')}
-                </span>
             </div>
         </div>
     );

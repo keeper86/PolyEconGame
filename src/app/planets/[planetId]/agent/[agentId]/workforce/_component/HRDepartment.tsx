@@ -25,13 +25,14 @@ import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
+import { humanResourcesOfficeFacilityType, PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
 import { HRBufferGauge } from './HRBufferGauge';
+import { HRBalanceRow } from './HRBalanceRow';
 
 const HR_STATUS_CONFIG: Record<
     HrBufferStatus,
@@ -282,6 +283,11 @@ export default function HRDepartment({
                 />
             );
         } else {
+            const results = hrDepartment.lastTickResults;
+            const needsCount = hrDepartment.needs.length || 1;
+            const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
+            const globalMin = limitingEfficiency(results);
+            const eff = results.overallEfficiency;
             return (
                 <ActiveFacilityCard
                     key={hrDepartment.id}
@@ -293,44 +299,44 @@ export default function HRDepartment({
                     hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     headerBadge={statusBadge}
                 >
-                    {(() => {
-                        const results = hrDepartment.lastTickResults;
-                        const needsCount = hrDepartment.needs.length || 1;
-                        const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
-                        const globalMin = limitingEfficiency(results);
-                        const eff = results.overallEfficiency;
-
-                        return (
-                            <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>
-                                <div className='flex flex-wrap gap-1.5 justify-center'>
-                                    {hrDepartment.needs.map(({ resource, quantity }) => {
-                                        const resEff = results.resourceEfficiency[resource.name] ?? 0;
-                                        return (
-                                            <ProductQuantity
-                                                key={resource.name}
-                                                resource={resource}
-                                                quantity={quantity * hrDepartment.scale * eff}
-                                                efficiency={resEff}
-                                                isLimiting={resEff <= globalMin && globalMin < 0.99}
-                                                planetId={planetId}
-                                                agentId={agentId}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                                <RiArrowRightBoxFill
-                                    className={`shrink-0 h-8 w-8 ${hrDepartment.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
-                                />
-                                <div className='flex justify-center'>
-                                    <HRBufferGauge
-                                        buffer={hrDepartment.hrBuffer}
-                                        demand={hrDemand}
-                                        hrDepartment={hrDepartment}
+                    <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>
+                        <div className='flex flex-wrap gap-1.5 justify-center'>
+                            {hrDepartment.needs.map(({ resource, quantity }) => {
+                                const resEff = results.resourceEfficiency[resource.name] ?? 0;
+                                return (
+                                    <ProductQuantity
+                                        key={resource.name}
+                                        resource={resource}
+                                        quantity={quantity * hrDepartment.scale * eff}
+                                        efficiency={resEff}
+                                        isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                        planetId={planetId}
+                                        agentId={agentId}
                                     />
-                                </div>
-                            </div>
-                        );
-                    })()}
+                                );
+                            })}
+                        </div>
+                        <RiArrowRightBoxFill
+                            className={`shrink-0 h-8 w-8 ${hrDepartment.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                        />
+                        <div className='flex justify-center'>
+                            <HRBufferGauge
+                                buffer={hrDepartment.hrBuffer}
+                                demand={hrDemand}
+                                hrDepartment={hrDepartment}
+                            />
+                        </div>
+                    </div>
+
+                    <HRBalanceRow
+                        demand={hrDemand}
+                        buffer={hrDepartment.hrBuffer}
+                        production={
+                            (hrDepartment.lastTickResults?.overallEfficiency ?? 0) *
+                            PRODUCED_QUANTITY *
+                            hrDepartment.scale
+                        }
+                    />
                 </ActiveFacilityCard>
             );
         }

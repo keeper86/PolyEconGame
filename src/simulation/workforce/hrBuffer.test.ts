@@ -3,7 +3,7 @@ import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
-import { makeAgentPlanetAssets, makeHRFacility, makeManagementFacility } from '../utils/testHelper';
+import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
     computeCoverageRatio,
