@@ -157,6 +157,7 @@ export type ManagementFacility = FacilityBase & {
     produces: ResourceQuantity[];
 
     lastTickResults: LastManagementTickResults;
+    pidState?: PidState | null;
 };
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';

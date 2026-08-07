@@ -239,6 +239,7 @@ export function makeManagementFacility(
             ...createLastTickResults(),
             lastProduced: {},
         },
+        pidState: null,
         ...overrides,
     };
 }
