@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import { makeManagementFacility, makeWorkforceCohort } from '../utils/testHelper';
-import { makeAgentPlanetAssets } from '../utils/testHelper';
-import { humanResourcesServiceResourceType } from '../planet/services';
 import { putIntoStorageFacility } from '../planet/facility';
+import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { makeAgentPlanetAssets, makeManagementFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
     computeCoverageRatio,
