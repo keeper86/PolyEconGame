@@ -160,28 +160,17 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     return output * maxScale;
 }
 
-function computePriceInflationFactor(facility: ProductionFacility, planet: Planet): number {
-    let maxFactor = 1;
-    for (const output of facility.produces) {
-        const costFloor = planet.lastProductionCostFloors[output.resource.name];
-        if (costFloor === undefined || costFloor <= 0) {
-            continue;
-        }
-
-        const lastResult = planet.lastMarketResult[output.resource.name];
-        const price =
-            lastResult && lastResult.totalSupply > 0
-                ? lastResult.clearingPrice
-                : (planet.marketPrices[output.resource.name] ?? 0);
-
-        if (price > 0 && isFinite(price)) {
-            const factor = price / costFloor;
-            if (factor > maxFactor) {
-                maxFactor = factor;
-            }
-        }
+function computeConstructionInflationFactor(planet: Planet): number {
+    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name];
+    if (costFloor === undefined || costFloor <= 0) {
+        return 1;
     }
-    return maxFactor;
+
+    const price = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    if (price > 0 && isFinite(price)) {
+        return price / costFloor;
+    }
+    return 1;
 }
 
 type ExpansionWorkforceStats = {
@@ -560,11 +549,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
-            // Compute inflation-aware dynamic expansion threshold
-            const priceInflationFactor = computePriceInflationFactor(facility, planet);
             const dynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, priceInflationFactor / EXPANSION_PRICE_INFLATION_THRESHOLD),
+                EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
             // ── Expansion decision ──
@@ -717,10 +704,16 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.contractionIntegral = Math.max(0, hrState.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
+            const hrDynamicThreshold = Math.min(
+                EXPANSION_INTEGRAL_MAX,
+                EXPANSION_INTEGRAL_THRESHOLD *
+                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
+            );
+
             if (
                 hrUtilization >= 0.8 &&
                 hrDepartment.construction === null &&
-                hrState.expansionIntegral >= EXPANSION_INTEGRAL_THRESHOLD
+                hrState.expansionIntegral >= hrDynamicThreshold
             ) {
                 const hrTargetMax = Math.max(
                     Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
