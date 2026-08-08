@@ -5,6 +5,7 @@ import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createLastTickResults,
+    type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
     type ShipConstructionFacility,
@@ -244,6 +245,17 @@ export function makeManagementFacility(
     };
 }
 
+export function makeHRFacility(
+    workerReq?: Partial<Record<EducationLevelType, number>>,
+    overrides?: Partial<HRFacility>,
+): HRFacility {
+    return {
+        ...makeManagementFacility(workerReq, overrides as Partial<ManagementFacility>),
+        hrBuffer: 0,
+        ...overrides,
+    };
+}
+
 export function makeProductionFacility(
     workerReq?: Partial<Record<EducationLevelType, number>>,
     overrides?: Partial<ProductionFacility>,
@@ -317,9 +329,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         productionFacilities: [],
         shipConstructionFacilities: [],
         humanResourcesDepartment: null,
-        hrBuffer: 0,
         hrProductivityMultiplier: 1,
-        hrDemand: 0,
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],

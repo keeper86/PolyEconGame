@@ -702,6 +702,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         }
 
         const allSlots: WorkerSlot[] = [];
+        const hrSlots: WorkerSlot[] = [];
         const effectiveDemandBySlot = new Map<WorkerSlot, number>();
         const totalSlotCapacity: Record<EducationLevelType, number> = {
             none: 0,
@@ -735,7 +736,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     assignedBySkill: {},
                     overqualifiedCount: 0,
                 };
-                allSlots.push(slot);
+                if (facility.id === assets.humanResourcesDepartment?.id) {
+                    hrSlots.push(slot);
+                } else {
+                    allSlots.push(slot);
+                }
                 totalSlotCapacity[jobEdu] = (totalSlotCapacity[jobEdu] ?? 0) + slot.capacity;
                 effectiveDemandBySlot.set(slot, req * facility.scale);
             }
@@ -743,14 +748,36 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         assets.totalSlotCapacity = totalSlotCapacity;
 
-        const { remaining, byFacility, used } = waterFill(
-            allSlots,
-            workerPool,
-            ageProd,
-            skillProd,
-            xpProdByEduSkill,
-            effectiveDemandBySlot,
-        );
+        let remaining: Record<EducationLevelType, Record<Skill, number>>;
+        let byFacility: Map<string, WaterFillFacilityResult>;
+        let used: number;
+
+        if (hrSlots.length > 0) {
+            const hrResult = waterFill(
+                hrSlots,
+                workerPool,
+                ageProd,
+                skillProd,
+                xpProdByEduSkill,
+                effectiveDemandBySlot,
+            );
+            const otherResult = waterFill(
+                allSlots,
+                hrResult.remaining,
+                ageProd,
+                skillProd,
+                xpProdByEduSkill,
+                effectiveDemandBySlot,
+            );
+            byFacility = new Map([...hrResult.byFacility, ...otherResult.byFacility]);
+            remaining = otherResult.remaining;
+            used = hrResult.used + otherResult.used;
+        } else {
+            const result = waterFill(allSlots, workerPool, ageProd, skillProd, xpProdByEduSkill, effectiveDemandBySlot);
+            remaining = result.remaining;
+            byFacility = result.byFacility;
+            used = result.used;
+        }
 
         assets.usedWorkers = used;
 

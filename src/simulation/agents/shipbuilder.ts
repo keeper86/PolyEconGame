@@ -65,7 +65,7 @@ export function seedShipbuilderAgents(gameState: GameState): void {
         const hrDepartment = humanResourcesOfficeFacilityType(planet.id, agentId);
         hrDepartment.scale = 1;
         hrDepartment.maxScale = 1;
-        const assets = makeAgentPlanetAssets(planet.id, [], storage, hrDepartment);
+        const assets = makeAgentPlanetAssets([], storage, hrDepartment);
         assets.licenses = {
             commercial: { acquiredTick: 0, frozen: false },
             workforce: { acquiredTick: 0, frozen: false },

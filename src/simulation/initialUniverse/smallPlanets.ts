@@ -11,7 +11,8 @@ import {
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
 import { agriculturalFacility, neededWorkersByFacility, waterFacility } from '../planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, humanResourcesScaleForWorkers } from '../planet/specialFacilities';
+import { humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
+import { humanResourcesScaleForWorkers } from './helpers';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { makePool } from './resourceClaimFactory';

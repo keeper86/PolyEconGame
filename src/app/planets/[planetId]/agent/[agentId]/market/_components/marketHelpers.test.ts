@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { administrativeServiceResourceType } from '@/simulation/planet/services';
-import { makeAgentPlanetAssets, makeManagementFacility } from '@/simulation/utils/testHelper';
+import { makeAgentPlanetAssets, makeHRFacility } from '@/simulation/utils/testHelper';
+import { describe, expect, it } from 'vitest';
 import { buildResourceList, clampArea } from './marketHelpers';
 
 describe('clampArea', () => {
@@ -71,7 +71,7 @@ describe('clampArea', () => {
 
 describe('buildResourceList', () => {
     it('includes humanResourcesDepartment needs when showing relevant resources', () => {
-        const hrDepartment = makeManagementFacility(
+        const hrDepartment = makeHRFacility(
             {},
             {
                 needs: [{ resource: administrativeServiceResourceType, quantity: 10 }],

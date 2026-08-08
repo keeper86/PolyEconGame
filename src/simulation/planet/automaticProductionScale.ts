@@ -5,7 +5,7 @@ import { educationLevelKeys } from '../population/education';
 import { SKILL } from '../population/population';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { ManagementFacility, PidState, ProductionFacility } from './facility';
+import type { HRFacility, ManagementFacility, PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
@@ -38,6 +38,7 @@ export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
 export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.5;
 export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
+export const MINIMUM_CONTRACTION_EFFICIENCY = 0.5;
 
 function getDefaultPidState(): PidState {
     return {
@@ -131,9 +132,9 @@ function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanet
 
 const HR_TARGET_FILL_RATE = 0.85;
 
-function computeHrSignal(assets: AgentPlanetAssets, hrDepartment: ManagementFacility): number {
+function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
-    const fillRate = pMax > 0 ? assets.hrBuffer / pMax : 0;
+    const fillRate = pMax > 0 ? hrDepartment.hrBuffer / pMax : 0;
     return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
 }
 
@@ -160,28 +161,17 @@ function computePidDelta(signal: number, state: PidState, maxScale: number): num
     return output * maxScale;
 }
 
-function computePriceInflationFactor(facility: ProductionFacility, planet: Planet): number {
-    let maxFactor = 1;
-    for (const output of facility.produces) {
-        const costFloor = planet.lastProductionCostFloors[output.resource.name];
-        if (costFloor === undefined || costFloor <= 0) {
-            continue;
-        }
-
-        const lastResult = planet.lastMarketResult[output.resource.name];
-        const price =
-            lastResult && lastResult.totalSupply > 0
-                ? lastResult.clearingPrice
-                : (planet.marketPrices[output.resource.name] ?? 0);
-
-        if (price > 0 && isFinite(price)) {
-            const factor = price / costFloor;
-            if (factor > maxFactor) {
-                maxFactor = factor;
-            }
-        }
+function computeConstructionInflationFactor(planet: Planet): number {
+    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name];
+    if (costFloor === undefined || costFloor <= 0) {
+        return 1;
     }
-    return maxFactor;
+
+    const price = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    if (price > 0 && isFinite(price)) {
+        return price / costFloor;
+    }
+    return 1;
 }
 
 type ExpansionWorkforceStats = {
@@ -560,11 +550,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
-            // Compute inflation-aware dynamic expansion threshold
-            const priceInflationFactor = computePriceInflationFactor(facility, planet);
             const dynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD * Math.max(1, priceInflationFactor / EXPANSION_PRICE_INFLATION_THRESHOLD),
+                EXPANSION_INTEGRAL_THRESHOLD *
+                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
             // ── Expansion decision ──
@@ -688,7 +677,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
         const hrDepartment = assets.humanResourcesDepartment;
         if (hrDepartment && hrDepartment.construction?.type !== 'new') {
-            const hrRawSignal = computeHrSignal(assets, hrDepartment);
+            const hrRawSignal = computeHrSignal(hrDepartment);
             const hrState: PidState = { ...getDefaultPidState(), ...hrDepartment.pidState };
 
             const hrSignal = SIGNAL_EMA_ALPHA * hrRawSignal + (1 - SIGNAL_EMA_ALPHA) * hrState.smoothedSignal;
@@ -717,10 +706,16 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.contractionIntegral = Math.max(0, hrState.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
+            const hrDynamicThreshold = Math.min(
+                EXPANSION_INTEGRAL_MAX,
+                EXPANSION_INTEGRAL_THRESHOLD *
+                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
+            );
+
             if (
                 hrUtilization >= 0.8 &&
                 hrDepartment.construction === null &&
-                hrState.expansionIntegral >= EXPANSION_INTEGRAL_THRESHOLD
+                hrState.expansionIntegral >= hrDynamicThreshold
             ) {
                 const hrTargetMax = Math.max(
                     Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
@@ -752,7 +747,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
                 const hrTargetMin = Math.max(1, Math.floor(hrDepartment.maxScale * (1 - MAX_SCALE_CONTRACT_FRACTION)));
-                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState);
+                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState, 0.5);
                 hrState.contractionIntegral = 0;
             }
 

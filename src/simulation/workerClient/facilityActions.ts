@@ -1,5 +1,5 @@
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
-import type { ManagementFacility, ProductionFacility } from '../planet/facility';
+import type { HRFacility, ManagementFacility, ProductionFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
 import {
@@ -84,7 +84,7 @@ export function handleBuildFacility(
     newFacility.scale = 0;
     newFacility.maxScale = 0;
     if (isHrDepartment) {
-        assets.humanResourcesDepartment = newFacility as ManagementFacility;
+        assets.humanResourcesDepartment = newFacility as HRFacility;
     } else if (isStorageDepartment) {
         assets.storageFacility.department = newFacility as ManagementFacility;
     } else {

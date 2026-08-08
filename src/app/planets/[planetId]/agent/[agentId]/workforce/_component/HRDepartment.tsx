@@ -4,11 +4,13 @@ import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/pro
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
-import { FacilityIORow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityIORow';
-import { WorkerBars } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/WorkerBars';
-import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import {
+    FacilityHeader,
+    limitingEfficiency,
+} from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,16 +19,19 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
-import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { humanResourcesOfficeFacilityType } from '@/simulation/planet/specialFacilities';
+import { humanResourcesOfficeFacilityType, PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
+import { HRBalanceRow, HRBuildRow } from './HRBalanceRow';
+import { HRBufferGauge } from './HRBufferGauge';
 
 const HR_STATUS_CONFIG: Record<
     HrBufferStatus,
@@ -57,7 +62,7 @@ const HR_STATUS_CONFIG: Record<
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
-function InternalBuildCard({
+function HRBuildCard({
     entry,
     agentId,
     planetId,
@@ -65,6 +70,7 @@ function InternalBuildCard({
     otherConstructionCosts,
     onBuilt,
     isPending,
+    hrDemand,
 }: {
     entry: ManagementFacility;
     agentId: string;
@@ -73,6 +79,7 @@ function InternalBuildCard({
     otherConstructionCosts?: number;
     onBuilt: () => void;
     isPending: boolean;
+    hrDemand: number;
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
@@ -109,35 +116,52 @@ function InternalBuildCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{entry.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                                new
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={entry.workerRequirement}
-                            scale={entry.scale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={entry}
+                    badge={
+                        <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
+                            new
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <FacilityIORow needs={entry.needs} produces={entry.produces} scale={previewScale} />
+                <div
+                    className='grid w-full items-center gap-x-2 py-2'
+                    style={{ gridTemplateColumns: `${entry.needs.length || 1}fr 2rem 2fr` }}
+                >
+                    <div className='flex flex-wrap gap-1.5 justify-center'>
+                        {entry.needs.map(({ resource, quantity }) => (
+                            <ProductQuantity
+                                key={resource.name}
+                                resource={resource}
+                                quantity={quantity * previewScale}
+                                efficiency={1}
+                                isLimiting={false}
+                                planetId={planetId}
+                                agentId={agentId}
+                                neutral={true}
+                            />
+                        ))}
+                    </div>
+                    <RiArrowRightBoxFill
+                        className={`shrink-0 h-8 w-8 ${entry.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                    />
+                    <div className='flex justify-center'>
+                        <HRBufferGauge
+                            buffer={0}
+                            demand={hrDemand}
+                            hrDepartment={entry}
+                            maxScaleOverride={previewScale}
+                        />
+                    </div>
+                </div>
             </div>
+            <HRBuildRow scale={previewScale} />
             <div className='relative mt-auto space-y-2'>
-                <Separator />
                 <FacilityConstructionPanel
                     facilityType={facilityType}
                     fromScale={0}
@@ -168,14 +192,16 @@ function InternalBuildCard({
     );
 }
 
-function InternalConstructionCard({
+function HRConstructionCard({
     facility,
     agentId,
     planetId,
+    hrDemand,
 }: {
     facility: ManagementFacility;
     agentId: string;
     planetId: string;
+    hrDemand: number;
 }): React.ReactElement {
     const cs = facility.construction!;
     const targetScale = cs.constructionTargetMaxScale;
@@ -190,42 +216,58 @@ function InternalConstructionCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight text-amber-600 dark:text-amber-400'>
-                            {facility.name}
-                        </h3>
-                        <span className='flex flex-col items-center gap-1'>
-                            <Badge
-                                variant='secondary'
-                                className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
-                            >
-                                <HardHat className='h-3.5 w-3.5' />
-                                Under Construction
-                            </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker Requirement
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={targetScale}
-                            neutral={true}
-                            workerEfficiency={{}}
-                            globalMin={0}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                <FacilityHeader
+                    facility={facility}
+                    titleClassName='text-amber-600 dark:text-amber-400'
+                    badge={
+                        <Badge
+                            variant='secondary'
+                            className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
+                        >
+                            <HardHat className='h-3.5 w-3.5' />
+                            Under Construction
+                        </Badge>
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <FacilityIORow needs={facility.needs} produces={facility.produces} scale={targetScale} />
+                <div
+                    className='grid w-full items-center gap-x-2 py-2'
+                    style={{ gridTemplateColumns: `${facility.needs.length || 1}fr 2rem 2fr` }}
+                >
+                    <div className='flex flex-wrap gap-1.5 justify-center'>
+                        {facility.needs.map(({ resource, quantity }) => (
+                            <ProductQuantity
+                                key={resource.name}
+                                resource={resource}
+                                quantity={quantity * targetScale}
+                                efficiency={1}
+                                isLimiting={false}
+                                planetId={planetId}
+                                agentId={agentId}
+                                neutral={true}
+                            />
+                        ))}
+                    </div>
+                    <RiArrowRightBoxFill
+                        className={`shrink-0 h-8 w-8 ${facility.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                    />
+                    <div className='flex justify-center'>
+                        <HRBufferGauge
+                            buffer={0}
+                            demand={hrDemand}
+                            hrDepartment={facility}
+                            maxScaleOverride={targetScale}
+                        />
+                    </div>
+                </div>
             </div>
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ConstructionCompactRow facility={facility} hideCancel />
+                <ConstructionCompactRow facility={facility} />
             </div>
         </FacilityCardShell>
     );
@@ -273,55 +315,96 @@ export default function HRDepartment({
     const hrDepartment = assets.humanResourcesDepartment;
 
     const hrDemand = useMemo(() => assets.usedWorkers, [assets.usedWorkers]);
-    const status = useMemo(() => hrBufferStatus(assets.hrBuffer ?? 0, hrDemand), [assets.hrBuffer, hrDemand]);
+    const status = useMemo(
+        () => hrBufferStatus(hrDepartment?.hrBuffer ?? 0, hrDemand),
+        [hrDepartment?.hrBuffer, hrDemand],
+    );
     const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
     const statusConfig = HR_STATUS_CONFIG[status];
+
+    const statusBadge = (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}>
+                    {statusConfig.label}
+                </Badge>
+            </TooltipTrigger>
+            <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
+        </Tooltip>
+    );
 
     if (hrDepartment !== null) {
         if (hrDepartment.construction !== null && hrDepartment.construction.type === 'new') {
             return (
-                <InternalConstructionCard
+                <HRConstructionCard
                     key={hrDepartment.id}
                     facility={hrDepartment}
                     agentId={agentId}
                     planetId={planetId}
+                    hrDemand={hrDemand}
                 />
             );
         } else {
+            const results = hrDepartment.lastTickResults;
+            const needsCount = hrDepartment.needs.length || 1;
+            const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
+            const globalMin = limitingEfficiency(results);
+            const eff = results.overallEfficiency;
             return (
-                <span className='flex flex-col gap-2'>
-                    <ActiveFacilityCard
-                        key={hrDepartment.id}
-                        facility={hrDepartment}
-                        agentId={agentId}
-                        planetId={planetId}
-                        constructionServicePrice={constructionServicePrice}
-                        otherConstructionCosts={otherConstructionCosts}
-                        onExpanded={() => {}}
-                        hrProductivityMultiplier={assets.hrProductivityMultiplier}
+                <ActiveFacilityCard
+                    key={hrDepartment.id}
+                    facility={hrDepartment}
+                    agentId={agentId}
+                    planetId={planetId}
+                    constructionServicePrice={constructionServicePrice}
+                    otherConstructionCosts={otherConstructionCosts}
+                    hrProductivityMultiplier={assets.hrProductivityMultiplier}
+                    headerBadge={statusBadge}
+                >
+                    <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>
+                        <div className='flex flex-wrap gap-1.5 justify-center'>
+                            {hrDepartment.needs.map(({ resource, quantity }) => {
+                                const resEff = results.resourceEfficiency[resource.name] ?? 0;
+                                return (
+                                    <ProductQuantity
+                                        key={resource.name}
+                                        resource={resource}
+                                        quantity={quantity * hrDepartment.scale * eff}
+                                        efficiency={resEff}
+                                        isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                        planetId={planetId}
+                                        agentId={agentId}
+                                    />
+                                );
+                            })}
+                        </div>
+                        <RiArrowRightBoxFill
+                            className={`shrink-0 h-8 w-8 ${hrDepartment.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                        />
+                        <div className='flex justify-center'>
+                            <HRBufferGauge
+                                buffer={hrDepartment.hrBuffer}
+                                demand={hrDemand}
+                                hrDepartment={hrDepartment}
+                            />
+                        </div>
+                    </div>
+
+                    <HRBalanceRow
+                        demand={hrDemand}
+                        buffer={hrDepartment.hrBuffer}
+                        production={
+                            (hrDepartment.lastTickResults?.overallEfficiency ?? 0) *
+                            PRODUCED_QUANTITY *
+                            hrDepartment.scale
+                        }
                     />
-                    <Card className='overflow-hidden flex flex-col min-w-[300px] sm:min-w-[350px] max-w-[485px]'>
-                        <CardContent className='px-3 py-3 flex flex-row flex-1 justify-between items-center gap-2'>
-                            <h3 className='font-semibold leading-tight text-sm'>HR Services</h3>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge
-                                        variant='outline'
-                                        className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}
-                                    >
-                                        {statusConfig.label} {hrDemand} : {assets.hrBuffer}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
-                            </Tooltip>
-                        </CardContent>
-                    </Card>
-                </span>
+                </ActiveFacilityCard>
             );
         }
     } else {
         return (
-            <InternalBuildCard
+            <HRBuildCard
                 key={template.name}
                 entry={template}
                 agentId={agentId}
@@ -330,6 +413,7 @@ export default function HRDepartment({
                 otherConstructionCosts={otherConstructionCosts}
                 onBuilt={() => {}}
                 isPending={pendingBuildKeys.has(template.name)}
+                hrDemand={hrDemand}
             />
         );
     }

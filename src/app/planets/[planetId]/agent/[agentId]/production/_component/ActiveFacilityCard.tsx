@@ -1,10 +1,9 @@
 'use client';
 
-import { defaultHeight, FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Stat } from '@/components/client/Stat';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
@@ -23,8 +22,9 @@ import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
+import { FacilityFinancialRow } from './FacilityFinancialRow';
+import { FacilityHeader, limitingEfficiency } from './FacilityHeader';
 import { FacilityProductionIORow } from './FacilityIORow';
-import { WorkerBars } from './WorkerBars';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { HR_DEPARTMENT_NAME } from '@/simulation/planet/specialFacilities';
 
@@ -36,14 +36,18 @@ export function ActiveFacilityCard({
     otherConstructionCosts,
     onExpanded,
     hrProductivityMultiplier,
+    children,
+    headerBadge,
 }: {
     facility: ProductionFacility | ManagementFacility;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
     otherConstructionCosts?: number;
-    onExpanded: () => void;
+    onExpanded?: () => void;
     hrProductivityMultiplier: number;
+    children?: React.ReactNode;
+    headerBadge?: React.ReactElement;
 }): React.ReactElement {
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
@@ -99,7 +103,7 @@ export function ActiveFacilityCard({
                 });
                 toast.success('Expansion ordered. Changes take effect on the next tick.');
                 setShowExpand(false);
-                onExpanded();
+                onExpanded?.();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Expand failed');
@@ -139,7 +143,7 @@ export function ActiveFacilityCard({
                 });
                 toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
                 setShowReduce(false);
-                onExpanded();
+                onExpanded?.();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Contract failed');
@@ -163,12 +167,7 @@ export function ActiveFacilityCard({
     const results = facility.lastTickResults;
     const eff = results?.overallEfficiency ?? 0;
 
-    const globalMin = results
-        ? Math.min(
-              ...Object.values(results.resourceEfficiency),
-              ...Object.values(results.workerEfficiency).filter((v): v is number => v !== undefined),
-          )
-        : 0;
+    const globalMin = limitingEfficiency(results);
 
     const committedFractionIndex = computeScaleFractionIndex(facility.scale, facility.maxScale);
     const scaleHasChanged = scaleFractionIndex !== committedFractionIndex;
@@ -332,95 +331,48 @@ export function ActiveFacilityCard({
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} badge={badge} />}
             headerContent={
-                <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-1'>
-                        <h3 className='font-semibold leading-tight '>{facility.name}</h3>
-                        <span className='flex flex-col items-center gap-1'>
+                <FacilityHeader
+                    facility={facility}
+                    results={results}
+                    badge={
+                        headerBadge ?? (
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                 Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                             </Badge>
-                        </span>
-                    </div>
-                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                        Worker efficiency
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={facility.scale}
-                            workerEfficiency={results?.workerEfficiency ?? {}}
-                            globalMin={globalMin}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
-                </span>
+                        )
+                    }
+                    planetId={planetId}
+                    agentId={agentId}
+                />
             }
         >
-            <div className='flex-1 space-y-2 pb-3'>
-                <FacilityProductionIORow
-                    needs={facility.needs}
-                    produces={facility.produces}
-                    scale={!showExpand ? facility.scale : previewScale}
-                    resourceEfficiency={results?.resourceEfficiency ?? {}}
-                    overallEfficiency={eff}
-                    limitingEfficiency={globalMin}
-                />
-            </div>
+            {children ? (
+                children
+            ) : (
+                <>
+                    {facility.type === 'production' && (
+                        <div className='flex-1 space-y-2 pb-3'>
+                            <FacilityProductionIORow
+                                needs={facility.needs}
+                                produces={facility.produces}
+                                scale={!showExpand ? facility.scale : previewScale}
+                                resourceEfficiency={results?.resourceEfficiency ?? {}}
+                                overallEfficiency={eff}
+                                limitingEfficiency={globalMin}
+                            />
+                        </div>
+                    )}
+                </>
+            )}
 
             <div className='mt-auto space-y-2'>
-                <Link href={`/planets/${planetId}/agent/${agentId}/financial` as never}>
-                    <Separator />
-
-                    <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full hover:ring-2 hover:ring-primary/50'>
-                        {'revenue' in facility.lastTickResults && (
-                            <>
-                                <div className='flex flex-col items-center'>
-                                    {' '}
-                                    revenue{' '}
-                                    <span className='tabular-nums text-green-600 dark:text-green-400'>
-                                        {formatNumberWithUnit(facility.lastTickResults.revenue, 'currency', planetId)}
-                                    </span>
-                                </div>
-                                <span className='shrink-0'>−</span>
-                            </>
-                        )}
-
-                        <div className='flex flex-col items-center'>
-                            {' '}
-                            inputs{' '}
-                            <span className='tabular-nums text-red-600 dark:text-red-400'>
-                                {formatNumberWithUnit(facility.lastTickResults.inputCosts, 'currency', planetId)}
-                            </span>
-                        </div>
-
-                        <span className='shrink-0'>−</span>
-
-                        <div className='flex flex-col items-center'>
-                            {' '}
-                            wages{' '}
-                            <span className='tabular-nums text-red-600 dark:text-red-400'>
-                                {formatNumberWithUnit(facility.lastTickResults.wageCosts, 'currency', planetId)}
-                            </span>
-                        </div>
-
-                        <span className='shrink-0'>=</span>
-
-                        <div className='flex flex-col items-center text-foreground'>
-                            {' '}
-                            net/day{' '}
-                            <span
-                                className={`tabular-nums text-md ${
-                                    results.costBalance >= 0
-                                        ? 'text-green-600 dark:text-green-400'
-                                        : 'text-red-600 dark:text-red-400'
-                                }`}
-                            >
-                                {formatNumberWithUnit(facility.lastTickResults.costBalance, 'currency', planetId)}
-                            </span>
-                        </div>
-                    </div>
-
-                    <Separator />
-                </Link>
+                {!children && (
+                    <FacilityFinancialRow
+                        lastTickResults={facility.lastTickResults}
+                        planetId={planetId}
+                        agentId={agentId}
+                    />
+                )}
 
                 <div className='relative pt-2'>
                     <div className='space-y-2'>

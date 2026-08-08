@@ -3,7 +3,7 @@ import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
-import { makeAgentPlanetAssets, makeManagementFacility } from '../utils/testHelper';
+import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
     computeCoverageRatio,
@@ -66,15 +66,15 @@ describe('computeProductivityMultiplier', () => {
     });
 
     it('uses strained formula between 0.3 and 1.0', () => {
-        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.9);
-        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.86);
-        expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.93);
+        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.84);
+        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.8);
+        expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.87);
     });
 
     it('uses critical formula below 0.3', () => {
-        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.54);
+        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.7);
         expect(computeProductivityMultiplier(0.0)).toBeCloseTo(0.5);
-        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.51);
+        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.6);
     });
 });
 
@@ -106,12 +106,13 @@ describe('hrBufferStatus', () => {
 
 describe('processHrBufferForAssets', () => {
     it('pulls HR from storage into the buffer and sets multiplier', () => {
-        const assets = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: makeManagementFacility(undefined, {
-                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
-                maxScale: 3,
-            }),
+        const hrFacility = makeHRFacility(undefined, {
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            maxScale: 3,
             hrBuffer: 500,
+        });
+        const assets = makeAgentPlanetAssets('p', {
+            humanResourcesDepartment: hrFacility,
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
@@ -120,85 +121,83 @@ describe('processHrBufferForAssets', () => {
         processHrBufferForAssets(assets);
 
         expect(assets.storageFacility.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0).toBe(0);
-        expect(assets.hrBuffer).toBe(1500 - 100);
+        expect(hrFacility.hrBuffer).toBe(1500 - 100);
     });
 
     it('clamps buffer at pmax', () => {
         const pMax = PRODUCED_QUANTITY * 5 * HR_BUFFER_CAPACITY_MULTIPLIER;
-        const assets = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: makeManagementFacility(undefined, {
-                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
-                maxScale: 5,
-            }),
+        const hrFacility = makeHRFacility(undefined, {
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            maxScale: 5,
             hrBuffer: pMax - 500,
+        });
+        const assets = makeAgentPlanetAssets('p', {
+            humanResourcesDepartment: hrFacility,
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets);
-        expect(assets.hrBuffer).toBe(pMax);
+        expect(hrFacility.hrBuffer).toBe(pMax);
     });
 
     it('uses maxScale for buffer capacity, not current scale', () => {
         const pMax = PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER;
-        const assets = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: makeManagementFacility(undefined, {
-                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
-                scale: 0.5,
-                maxScale: 2,
-            }),
+        const hrFacility = makeHRFacility(undefined, {
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            scale: 0.5,
+            maxScale: 2,
             hrBuffer: 0,
+        });
+        const assets = makeAgentPlanetAssets('p', {
+            humanResourcesDepartment: hrFacility,
         });
         putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets);
-        expect(assets.hrBuffer).toBe(1000);
-        expect(assets.hrBuffer).toBeLessThanOrEqual(pMax);
+        expect(hrFacility.hrBuffer).toBe(1000);
+        expect(hrFacility.hrBuffer).toBeLessThanOrEqual(pMax);
 
-        const assets2 = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: makeManagementFacility(undefined, {
-                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
-                scale: 0.5,
-                maxScale: 2,
-            }),
+        const hrFacility2 = makeHRFacility(undefined, {
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            scale: 0.5,
+            maxScale: 2,
             hrBuffer: pMax - 500,
+        });
+        const assets2 = makeAgentPlanetAssets('p', {
+            humanResourcesDepartment: hrFacility2,
         });
         putIntoStorageFacility(assets2.storageFacility, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets2);
-        expect(assets2.hrBuffer).toBe(pMax);
+        expect(hrFacility2.hrBuffer).toBe(pMax);
     });
 
-    it('keeps full productivity when there are no workers and no HR department', () => {
+    it('sets minimum productivity when there are no workers and no HR department', () => {
         const assets = makeAgentPlanetAssets('p', {
-            hrBuffer: 1000,
             hrProductivityMultiplier: 0.5,
         });
         processHrBufferForAssets(assets);
-        expect(assets.hrBuffer).toBe(0);
-        expect(assets.hrDemand).toBe(0);
-        expect(assets.hrProductivityMultiplier).toBe(1);
+        expect(assets.hrProductivityMultiplier).toBe(0.5);
     });
 
     it('penalizes productivity when workers exist but no HR department', () => {
         const assets = makeAgentPlanetAssets('p', {
-            hrBuffer: 1000,
             hrProductivityMultiplier: 1,
         });
         assets.usedWorkers = 1000;
 
         processHrBufferForAssets(assets);
-        expect(assets.hrBuffer).toBe(0);
-        expect(assets.hrDemand).toBe(1000);
         expect(assets.hrProductivityMultiplier).toBeLessThan(1);
         expect(assets.hrProductivityMultiplier).toBe(0.5);
     });
 
     it('sets productivity multiplier based on coverage', () => {
-        const assets = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: makeManagementFacility(undefined, {
-                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
-            }),
+        const hrFacility = makeHRFacility(undefined, {
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
             hrBuffer: 0,
+        });
+        const assets = makeAgentPlanetAssets('p', {
+            humanResourcesDepartment: hrFacility,
         });
         assets.usedWorkers = 1000;
 

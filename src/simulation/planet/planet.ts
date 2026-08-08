@@ -11,7 +11,7 @@ import type {
 } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceEntry, ResourceQuantity } from './claims';
-import type { ManagementFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
+import type { HRFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
 
 export interface Bank {
     loans: number;
@@ -327,11 +327,9 @@ export type AgentPlanetAssets = {
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
     storageFacility: StorageFacility;
-    humanResourcesDepartment: ManagementFacility | null;
+    humanResourcesDepartment: HRFacility | null;
 
-    hrBuffer: number;
     hrProductivityMultiplier: number;
-    hrDemand: number;
 
     transportContracts: TransportContract[];
     constructionContracts: ConstructionContract[];

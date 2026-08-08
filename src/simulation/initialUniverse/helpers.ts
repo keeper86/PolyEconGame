@@ -3,14 +3,13 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import type { Resource } from '../planet/claims';
-import type { ManagementFacility } from '../planet/facility';
+import type { HRFacility } from '../planet/facility';
 import {
     createLastTickResults,
     putIntoStorageFacility,
     type ProductionFacility,
     type StorageFacility,
 } from '../planet/facility';
-import { PRODUCED_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -18,6 +17,7 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
+import { PRODUCED_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -91,21 +91,19 @@ export function makeStorage(opts: {
 }
 
 export function makeAgentPlanetAssets(
-    planetId: string,
     facilities: ProductionFacility[],
     storage: StorageFacility,
-    hrDepartment: ManagementFacility | null,
+    hrDepartment: HRFacility | null,
 ): AgentPlanetAssets {
-    const maxHROutput =
-        hrDepartment && hrDepartment.construction === null ? PRODUCED_QUANTITY * hrDepartment.maxScale : 0;
+    if (hrDepartment && hrDepartment.construction === null) {
+        hrDepartment.hrBuffer = PRODUCED_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
+    }
     return {
         productionFacilities: facilities,
         shipConstructionFacilities: [],
         storageFacility: storage,
         humanResourcesDepartment: hrDepartment,
-        hrBuffer: maxHROutput * HR_BUFFER_CAPACITY_MULTIPLIER,
         hrProductivityMultiplier: 1,
-        hrDemand: 0,
         transportContracts: [],
         constructionContracts: [],
         shipBuyingOffers: [],
@@ -149,10 +147,10 @@ export function makeAgent(opts: {
     planetId: string;
     facilities: ProductionFacility[];
     storage: StorageFacility;
-    hrDepartment: ManagementFacility | null;
+    hrDepartment: HRFacility | null;
     logo?: string;
 }): Agent {
-    const assets = makeAgentPlanetAssets(opts.planetId, opts.facilities, opts.storage, opts.hrDepartment);
+    const assets = makeAgentPlanetAssets(opts.facilities, opts.storage, opts.hrDepartment);
 
     assets.licenses = {
         commercial: { acquiredTick: 0, frozen: false },
@@ -326,3 +324,5 @@ export function makeAgriculturalProduction(planetId: string, agentId: string, sc
     facility.maxScale = scale;
     return facility;
 }
+export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
+    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
