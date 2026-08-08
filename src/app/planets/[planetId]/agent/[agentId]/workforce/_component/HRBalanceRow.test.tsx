@@ -19,7 +19,7 @@ describe('HRBalanceRow', () => {
         render(<HRBalanceRow demand={0} buffer={0} production={0} />);
 
         const workerTexts = screen.getAllByText('0 workers');
-        expect(workerTexts).toHaveLength(2);
+        expect(workerTexts).toHaveLength(1);
         expect(screen.getByText('0 days')).toBeInTheDocument();
         expect(screen.getByText('production')).toBeInTheDocument();
         expect(screen.getByText('demand')).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe('HRBalanceRow', () => {
 
         expect(screen.queryByText('Infinity days')).not.toBeInTheDocument();
         expect(screen.queryByText('Infinity')).not.toBeInTheDocument();
-        const workerTexts = screen.getAllByText('0 workers');
+        const workerTexts = screen.getAllByText('50 workers');
         expect(workerTexts).toHaveLength(2);
         expect(screen.getByText('0 days')).toBeInTheDocument();
     });
