@@ -382,6 +382,22 @@ describe('processFacilityContraction', () => {
         // Payment should still be transferred
         expect(agent.assets[planet.id]!.deposits).toBeGreaterThan(0);
     });
+    it('returns false when targetMax >= facility.maxScale (reverse contraction)', () => {
+        const recyclerAssets = planet.recycler!.assets[planet.id]!;
+        recyclerAssets.deposits = 1_000_000;
+        const result = processFacilityContraction(planet, facility, agent, 100, gameState);
+        expect(result).toBe(false);
+        expect(facility.maxScale).toBe(100); // unchanged
+    });
+
+    it('returns false when targetMax > facility.maxScale (would expand, not contract)', () => {
+        const recyclerAssets = planet.recycler!.assets[planet.id]!;
+        recyclerAssets.deposits = 1_000_000;
+        const result = processFacilityContraction(planet, facility, agent, 120, gameState);
+        expect(result).toBe(false);
+        expect(facility.maxScale).toBe(100); // unchanged
+    });
+
 });
 
 describe('recycler end-to-end: contraction → storage → market sale', () => {

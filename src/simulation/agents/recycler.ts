@@ -91,6 +91,10 @@ export function processFacilityContraction(
     gameState: GameState,
     ratioLimit: number = 0,
 ): boolean {
+    if (targetMax >= facility.maxScale) {
+        return false;
+    }
+
     const agentAssets = agent.assets[planet.id];
     if (!agentAssets) {
         return false;
@@ -104,7 +108,14 @@ export function processFacilityContraction(
 
     assert(
         recoveredCS > 0 && isFinite(recoveredCS),
-        'Recovered CS should be positive and finite' + recoveredCS + ' ' + type + ' ' + targetMax,
+        'Recovered CS should be positive and finite' +
+            recoveredCS +
+            ' ' +
+            type +
+            ' ' +
+            targetMax +
+            ' from ' +
+            facility.maxScale,
     );
     const marketValue = recoveredCS * csPrice;
 

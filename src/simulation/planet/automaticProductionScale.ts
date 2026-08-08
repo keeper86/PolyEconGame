@@ -747,7 +747,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
                 const hrTargetMin = Math.max(1, Math.floor(hrDepartment.maxScale * (1 - MAX_SCALE_CONTRACT_FRACTION)));
-                processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState, 0.5);
+                if (hrTargetMin < hrDepartment.maxScale) {
+                    processFacilityContraction(planet, hrDepartment, agent, hrTargetMin, gameState, 0.5);
+                }
                 hrState.contractionIntegral = 0;
             }
 
