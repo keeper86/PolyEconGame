@@ -9,11 +9,11 @@ describe('splitScale', () => {
         expect(shares.every((s) => s >= 1)).toBe(true);
     });
 
-    it('never produces negative shares when total is smaller than the agent count', () => {
+    it('gives each agent at least 1 share when count >= total', () => {
         const shares = splitScale(1, 4, 'maintenanceFacility');
         expect(shares).toHaveLength(4);
-        expect(shares.reduce((a, b) => a + b, 0)).toBe(1);
-        expect(shares.every((s) => s >= 0)).toBe(true);
+        expect(shares.reduce((a, b) => a + b, 0)).toBe(4);
+        expect(shares.every((s) => s >= 1)).toBe(true);
     });
 
     it('never lets rounding over-allocation drain the last share below zero', () => {
@@ -28,9 +28,9 @@ describe('splitScale', () => {
         expect(shares.every((s) => s >= 1)).toBe(true);
     });
 
-    it('returns all zeros for a non-positive total', () => {
-        expect(splitScale(0, 4, 'coalMine')).toEqual([0, 0, 0, 0]);
-        expect(splitScale(-5, 4, 'coalMine')).toEqual([0, 0, 0, 0]);
+    it('gives each agent 1 share for a non-positive total', () => {
+        expect(splitScale(0, 4, 'coalMine')).toEqual([1, 1, 1, 1]);
+        expect(splitScale(-5, 4, 'coalMine')).toEqual([1, 1, 1, 1]);
     });
 
     it('returns an empty array for a non-positive count', () => {

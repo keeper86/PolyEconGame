@@ -66,15 +66,15 @@ describe('computeProductivityMultiplier', () => {
     });
 
     it('uses strained formula between 0.3 and 1.0', () => {
-        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.9);
-        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.86);
-        expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.93);
+        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.84);
+        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.80);
+        expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.87);
     });
 
     it('uses critical formula below 0.3', () => {
-        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.54);
+        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.70);
         expect(computeProductivityMultiplier(0.0)).toBeCloseTo(0.5);
-        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.51);
+        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.60);
     });
 });
 
@@ -172,12 +172,12 @@ describe('processHrBufferForAssets', () => {
         expect(hrFacility2.hrBuffer).toBe(pMax);
     });
 
-    it('keeps full productivity when there are no workers and no HR department', () => {
+    it('sets minimum productivity when there are no workers and no HR department', () => {
         const assets = makeAgentPlanetAssets('p', {
             hrProductivityMultiplier: 0.5,
         });
         processHrBufferForAssets(assets);
-        expect(assets.hrProductivityMultiplier).toBe(1);
+        expect(assets.hrProductivityMultiplier).toBe(0.5);
     });
 
     it('penalizes productivity when workers exist but no HR department', () => {

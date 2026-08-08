@@ -74,8 +74,8 @@ export function HRBufferGauge({
             value: maxValue,
             valueConfig: {
                 renderContent: () => (
-                    <span className={tickStyle + ' translate-x-[16px]'}>
-                        {formatNumberWithUnit(maxValue / demand, 'days')}
+                    <span className={tickStyle + ' translate-x-[14px]'}>
+                        {maxValue > 0 && demand > 0 ? formatNumberWithUnit(maxValue / demand, 'days') : 'max'}
                     </span>
                 ),
             },
