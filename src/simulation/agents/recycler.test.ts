@@ -397,7 +397,6 @@ describe('processFacilityContraction', () => {
         expect(result).toBe(false);
         expect(facility.maxScale).toBe(100); // unchanged
     });
-
 });
 
 describe('recycler end-to-end: contraction → storage → market sale', () => {

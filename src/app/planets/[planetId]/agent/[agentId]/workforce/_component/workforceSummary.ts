@@ -114,8 +114,10 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     }
 
     const xpSumByEdu = {} as Record<EducationLevelType, number>;
+    const totalWorkersByEdu = {} as Record<EducationLevelType, number>;
     for (const edu of educationLevelKeys) {
         xpSumByEdu[edu] = 0;
+        totalWorkersByEdu[edu] = 0;
     }
 
     const ageChartByStatus: WorkforceSummary['ageChartByStatus'] = [];
@@ -220,6 +222,7 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                         ageXPRetired += xpRetired;
                         ageXPByEdu[edu] += xp;
                         xpSumByEdu[edu] += xp;
+                        totalWorkersByEdu[edu] += totalWorkers;
                     }
                 }
             }
@@ -300,21 +303,23 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
     const meanTenureByEdu = {} as Record<EducationLevelType, number>;
     const tenureProductivityByEdu = {} as Record<EducationLevelType, number>;
     let overallWeightedTenure = 0;
+    let overallTotalWorkers = 0;
 
     for (const edu of educationLevelKeys) {
-        const cnt = ageSumByEdu[edu].count;
-        if (cnt > 0) {
-            meanTenureByEdu[edu] = xpSumByEdu[edu] / cnt;
+        const totalWrk = totalWorkersByEdu[edu];
+        if (totalWrk > 0) {
+            meanTenureByEdu[edu] = xpSumByEdu[edu] / totalWrk;
             tenureProductivityByEdu[edu] = productivityFromXP(meanTenureByEdu[edu]);
             overallWeightedTenure += xpSumByEdu[edu];
+            overallTotalWorkers += totalWrk;
         } else {
             meanTenureByEdu[edu] = 0;
             tenureProductivityByEdu[edu] = 1.0;
         }
     }
 
-    const overallMeanTenure = overallCount > 0 ? overallWeightedTenure / overallCount : 0;
-    const overallTenureProductivity = overallCount > 0 ? productivityFromXP(overallMeanTenure) : 1.0;
+    const overallMeanTenure = overallTotalWorkers > 0 ? overallWeightedTenure / overallTotalWorkers : 0;
+    const overallTenureProductivity = overallTotalWorkers > 0 ? productivityFromXP(overallMeanTenure) : 1.0;
 
     return {
         activeByEdu,
