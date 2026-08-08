@@ -106,7 +106,6 @@ export default function StorageDepartment({
                     constructionServicePrice={constructionServicePrice}
                     onBuilt={() => {}}
                     onCancel={() => {}}
-                    hideCancel
                 />
             );
         }

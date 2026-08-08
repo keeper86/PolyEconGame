@@ -29,7 +29,7 @@ export function FacilityHeader({
     titleClassName?: string;
 }): React.ReactElement {
     const active = results !== undefined;
-    const workerScale = facility.construction ? facility.construction.constructionTargetMaxScale : facility.scale;
+    const workerScale = active ? facility.scale : (facility.construction?.constructionTargetMaxScale ?? facility.scale);
 
     return (
         <span className='flex flex-col space-between gap-2' style={{ minHeight: `${defaultHeight}px` }}>

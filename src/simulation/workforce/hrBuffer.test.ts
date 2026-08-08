@@ -67,14 +67,14 @@ describe('computeProductivityMultiplier', () => {
 
     it('uses strained formula between 0.3 and 1.0', () => {
         expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.84);
-        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.80);
+        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.8);
         expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.87);
     });
 
     it('uses critical formula below 0.3', () => {
-        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.70);
+        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.7);
         expect(computeProductivityMultiplier(0.0)).toBeCloseTo(0.5);
-        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.60);
+        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.6);
     });
 });
 

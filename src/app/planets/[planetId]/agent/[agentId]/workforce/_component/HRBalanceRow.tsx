@@ -12,6 +12,34 @@ export function HRBalanceRow({
     buffer: number;
     production: number;
 }): React.ReactElement {
+    if (demand === 0) {
+        return (
+            <Link href={'' as never}>
+                <Separator />
+                <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full hover:ring-2 hover:ring-primary/50'>
+                    <div className='flex flex-col items-center'>
+                        {' '}
+                        production <span className='tabular-nums text-muted-foreground'>{production} workers</span>
+                    </div>
+
+                    <span className='shrink-0'>−</span>
+                    <div className='flex flex-col items-center'>
+                        {' '}
+                        demand <span className='tabular-nums text-muted-foreground'>-</span>
+                    </div>
+
+                    <span className='shrink-0'>{' → '}</span>
+
+                    <div className='flex flex-col items-center text-foreground'>
+                        {' '}
+                        buffer <span className='tabular-nums text-md text-muted-foreground'>{buffer} worker-days</span>
+                    </div>
+                </div>
+                <Separator />
+            </Link>
+        );
+    }
+
     const scaledBuffer = buffer / demand;
     return (
         <Link href={'' as never}>
