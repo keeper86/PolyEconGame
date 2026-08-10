@@ -727,7 +727,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     name: 'Administrative Center' as const,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 5,
+        none: 10,
         primary: 40,
         secondary: 50,
         tertiary: 30,
@@ -747,7 +747,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     name: 'Logistics Hub' as const,
     powerConsumptionPerTick: 0.2,
     workerRequirement: {
-        none: 5,
+        none: 100,
         primary: 60,
         secondary: 30,
         tertiary: 10,

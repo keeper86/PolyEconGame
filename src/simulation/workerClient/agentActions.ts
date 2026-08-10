@@ -1,6 +1,6 @@
+import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import type { Agent, GameState } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
-import { makeAgent } from '../utils/testHelper';
 import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleCreateAgent(
@@ -10,21 +10,29 @@ export function handleCreateAgent(
 ): void {
     const { requestId, agentId, agentName, planetId, logo } = action;
 
-    const newAgent: Agent = makeAgent(agentId, planetId, agentName, { logo });
-    newAgent.automated = false;
-    newAgent.automateWorkerAllocation = false;
-    newAgent.foundedTick = state.tick;
+    const storage = makeStorage({ planetId, id: `${agentId}-storage` });
+    const assets = makeAgentPlanetAssets([], storage, null);
 
-    const homeAssets = newAgent.assets[planetId];
-    if (homeAssets) {
-        homeAssets.licenses = {
-            commercial: { acquiredTick: state.tick, frozen: false },
-            workforce: { acquiredTick: state.tick, frozen: false },
-        };
-        const homePlanet = state.planets.get(planetId);
-        if (homePlanet) {
-            homeAssets.wagePerEdu = { ...homePlanet.wagePerEdu };
-        }
+    const newAgent: Agent = {
+        id: agentId,
+        name: agentName,
+        logo: logo ?? 'ai_company',
+        foundedTick: state.tick,
+        starterLoanTaken: false,
+        associatedPlanetId: planetId,
+        ships: [],
+        automated: false,
+        automateWorkerAllocation: false,
+        assets: { [planetId]: assets },
+    };
+
+    assets.licenses = {
+        commercial: { acquiredTick: state.tick, frozen: false },
+        workforce: { acquiredTick: state.tick, frozen: false },
+    };
+    const homePlanet = state.planets.get(planetId);
+    if (homePlanet) {
+        assets.wagePerEdu = { ...homePlanet.wagePerEdu };
     }
 
     state.agents.set(agentId, newAgent);

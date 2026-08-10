@@ -19,7 +19,7 @@ import { computePopulationServiceDemand } from '../../src/app/supply-chain/_comp
 import {
     ESTIMATED_HR_OVERHEAD,
     HR_WORLD_BUFFER,
-    PRODUCED_QUANTITY,
+    PRODUCED_HR_QUANTITY,
     USED_QUANTITY,
 } from '../../src/simulation/planet/specialFacilities';
 
@@ -60,7 +60,7 @@ function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
-const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY/2);
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_HR_QUANTITY/2);
 
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;

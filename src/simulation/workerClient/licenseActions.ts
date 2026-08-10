@@ -1,5 +1,5 @@
 import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
-import { makeAgentPlanetAssets } from '../utils/testHelper';
+import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
 import { grantLoan } from '../financial/loanTypes';
 import type { GameState } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
@@ -38,7 +38,9 @@ export function handleAcquireLicense(
     const isNewPlanet = !assets;
 
     if (!assets) {
-        assets = makeAgentPlanetAssets(planetId, { licenses: {} });
+        const storage = makeStorage({ planetId, id: `${agentId}-license-storage` });
+        assets = makeAgentPlanetAssets([], storage, null);
+        assets.licenses = {};
         agent.assets[planetId] = assets;
     }
 

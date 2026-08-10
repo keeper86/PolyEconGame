@@ -76,16 +76,16 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
     name: STORAGE_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 50,
-        primary: 30,
-        secondary: 20,
-        tertiary: 10,
+        none: 40,
+        primary: 10,
+        secondary: 10,
+        tertiary: 5,
     },
     needs: [
         { resource: administrativeServiceResourceType, quantity: USED_QUANTITY },
         { resource: logisticsServiceResourceType, quantity: 100 },
     ],
-    produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
     storageBuffer: 0,
 });
