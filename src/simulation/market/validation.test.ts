@@ -8,7 +8,7 @@ function makeAssets(deposits: number, volumeCapacity = 1e9, massCapacity = 1e9) 
         deposits,
         storageFacility: makeStorageFacility({
             capacity: { volume: volumeCapacity, mass: massCapacity },
-            department: makeManagementFacility(),
+            department: { ...makeManagementFacility(), storageBuffer: 0 },
         }),
     };
 }

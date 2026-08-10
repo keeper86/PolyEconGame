@@ -19,7 +19,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
-import type { ManagementFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, StorageDepartment } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
@@ -346,8 +346,8 @@ export default function StorageDepartment({
 
     const storageDemand = useMemo(() => computeStorageDemand(assets), [assets]);
     const status = useMemo(
-        () => storageBufferStatus((department as { storageBuffer?: number })?.storageBuffer ?? 0, storageDemand),
-        [(department as { storageBuffer?: number })?.storageBuffer, storageDemand],
+        () => storageBufferStatus(department?.storageBuffer ?? 0, storageDemand),
+        [department?.storageBuffer, storageDemand],
     );
     const statusConfig = STORAGE_STATUS_CONFIG[status];
 
@@ -379,8 +379,7 @@ export default function StorageDepartment({
             const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
             const globalMin = limitingEfficiency(results);
             const eff = results.overallEfficiency;
-            const storageDeptData = department as ManagementFacility & { storageBuffer?: number };
-            const buffer = storageDeptData.storageBuffer ?? 0;
+            const buffer = department.storageBuffer ?? 0;
             return (
                 <ActiveFacilityCard
                     key={department.id}

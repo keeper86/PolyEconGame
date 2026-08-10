@@ -147,7 +147,7 @@ export type StorageFacility = PlanetaryId & {
 
     escrow: { [resourceName in string]: number };
 
-    department: ManagementFacility | null;
+    department: StorageDepartment | null;
 };
 
 export const getStorageDepartmentScale = (storage: StorageFacility): number => storage.department?.scale ?? 0;
