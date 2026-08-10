@@ -27,7 +27,8 @@ import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { adjustOfferPrice, automaticPricing } from './automaticPricing';
 import type { Resource } from '../planet/claims';
-import { constructionServiceResourceType } from '../planet/services';
+import { administrativeServiceResourceType, constructionServiceResourceType, logisticsServiceResourceType } from '../planet/services';
+import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -865,5 +866,34 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
 
         expect(bid.bidPrice).toBeCloseTo(50 * PRICE_ADJUST_MAX_DOWN, 5);
+    });
+});
+
+describe('automaticPricing — storage department generates buy bids', () => {
+    it('generates buy bids for logistics and administration when storage department exists', () => {
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = storageDepartmentFacilityType(PLANET_ID, 'storage-dept');
+        agent.assets[PLANET_ID].storageFacility.department.scale = 1;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        agent.automated = true;
+
+        const planet = makePlanet({
+            marketPrices: {
+                [logisticsServiceResourceType.name]: 100,
+                [administrativeServiceResourceType.name]: 50,
+            },
+        });
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const logisticsBid = agent.assets[PLANET_ID].market?.buy[logisticsServiceResourceType.name];
+        const adminBid = agent.assets[PLANET_ID].market?.buy[administrativeServiceResourceType.name];
+
+        expect(logisticsBid).toBeDefined();
+        expect(adminBid).toBeDefined();
+
+        expect(logisticsBid!.bidStorageTarget).toBeGreaterThan(0);
+        expect(adminBid!.bidStorageTarget).toBeGreaterThan(0);
     });
 });
