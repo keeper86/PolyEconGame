@@ -306,26 +306,31 @@ function findMaxAffordableScale(
     return best;
 }
 
+export const OVER_SHARE_FACTOR = 1.2;
 function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
     planet: Planet,
     resourceTotalMaxCapacity: Map<string, number>,
+    resourceTotalMaxNeeded: Map<string, number>,
     hasOwnConstruction: boolean,
 ): number {
     let maxDemandScale = facility.maxScale;
 
     for (const output of facility.produces) {
-        const lastResult = planet.lastMarketResult[output.resource.name];
+        const lastResult = planet.avgMarketResult[output.resource.name];
         if (!lastResult || lastResult.unfilledDemand <= 0) {
             continue;
         }
 
         const totalCapacity = resourceTotalMaxCapacity.get(output.resource.name) ?? 0;
+        const totalNeeded = resourceTotalMaxNeeded.get(output.resource.name) ?? 0;
+        const estimateOfDemand = 0.5 * (Math.max(0, totalNeeded - totalCapacity) + lastResult.unfilledDemand);
         const ownCapacity = output.quantity * facility.maxScale;
         const capacityShare = totalCapacity > 0 ? ownCapacity / totalCapacity : 1;
-        const targetNewProduction = lastResult.unfilledDemand * capacityShare;
-        const scaleForDemand = Math.ceil(targetNewProduction / output.quantity);
+        const targetNewProductionDueUnfilledDemand = estimateOfDemand * capacityShare * OVER_SHARE_FACTOR;
+
+        const scaleForDemand = Math.ceil(targetNewProductionDueUnfilledDemand / output.quantity);
 
         maxDemandScale = Math.max(maxDemandScale, facility.maxScale + scaleForDemand);
     }
@@ -591,6 +596,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
     };
 
     const resourceTotalMaxCapacity = new Map<string, number>();
+    const resourceTotalMaxNeeded = new Map<string, number>();
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (assets) {
@@ -600,6 +606,15 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     resourceTotalMaxCapacity.set(
                         out.resource.name,
                         (resourceTotalMaxCapacity.get(out.resource.name) ?? 0) + cap,
+                    );
+                }
+            }
+            for (const facility of assets.productionFacilities) {
+                for (const out of facility.needs) {
+                    const needed = out.quantity * facility.maxScale;
+                    resourceTotalMaxNeeded.set(
+                        out.resource.name,
+                        (resourceTotalMaxNeeded.get(out.resource.name) ?? 0) + needed,
                     );
                 }
             }
@@ -761,6 +776,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     assets,
                     planet,
                     resourceTotalMaxCapacity,
+                    resourceTotalMaxNeeded,
                     hasOwnConstruction,
                 );
                 if (dynamicTarget > facility.maxScale) {
