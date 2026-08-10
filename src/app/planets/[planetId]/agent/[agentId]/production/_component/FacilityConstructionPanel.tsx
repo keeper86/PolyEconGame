@@ -107,10 +107,11 @@ export function FacilityConstructionPanel({
 
     const deposits = financials?.deposits ?? 0;
     const monthlyNetCashFlow = financials?.monthlyNetCashFlow ?? 0;
+    const otherCosts = otherConstructionCosts ?? 0;
 
     const estimatedDepositsDuringBuildingTime = (monthlyNetCashFlow / TICKS_PER_MONTH) * time + deposits;
 
-    const cannotAfford = estimatedCosts > estimatedDepositsDuringBuildingTime;
+    const cannotAfford = estimatedCosts + otherCosts > estimatedDepositsDuringBuildingTime;
 
     const handleConfirmClick = () => {
         if (cannotAfford) {
@@ -137,8 +138,6 @@ export function FacilityConstructionPanel({
 
     const wallTimeMs = time * tickIntervalMs;
     const completionDate = mapTickToDate(currentTick + Math.ceil(time), smallScreen);
-
-    const otherCosts = otherConstructionCosts ?? 0;
 
     return (
         <>

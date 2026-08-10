@@ -49,182 +49,191 @@ export function advanceTick(gameState: GameState) {
     const profile = new TickProfiler(process.env.SIM_DEBUG === '1');
 
     gameState.planets.forEach((planet) => {
-        const planetMap = new Map([[planet.id, planet]]);
-        planet.producedResources = {};
-        planet.consumedResources = {};
-        planet.productionCosts = {};
+        const planetName = planet.name;
+        try {
+            const planetMap = new Map([[planet.id, planet]]);
+            planet.producedResources = {};
+            planet.consumedResources = {};
+            planet.productionCosts = {};
 
-        let t: number = 0;
+            let t: number = 0;
 
-        if (isFirstTickInMonth(gameState.tick)) {
-            resetAgentMetrics(gameState.agents, planet);
-            resetAgentMetrics(gameState.forexMarketMakers, planet);
-            resetPopulationMonthCounters(planet);
-            planet.monthPriceAcc = {};
-            planet.monthTransferVolume = 0;
+            if (isFirstTickInMonth(gameState.tick)) {
+                resetAgentMetrics(gameState.agents, planet);
+                resetAgentMetrics(gameState.forexMarketMakers, planet);
+                resetPopulationMonthCounters(planet);
+                planet.monthPriceAcc = {};
+                planet.monthTransferVolume = 0;
 
-            const govAgent = gameState.agents.get(planet.governmentId);
-            assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
-            governmentTick(planet, govAgent);
+                const govAgent = gameState.agents.get(planet.governmentId);
+                assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
+                governmentTick(planet, govAgent);
 
-            updateAgentClaims(gameState, planet);
-            if (profile.isEnabled) {
-                t = profile.markAndAccum('claimAdjust', '  updateAgentClaims', t);
-            }
-        }
-
-        // ── Environment + Government ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        environmentTick(planet);
-
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('envGov', 'environmentTick + governmentTick', t);
-        }
-
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(
-                gameState.agents,
-                planet,
-                `${planet.name} before workforce tick`,
-            );
-        }
-
-        const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
-        }
-
-        populationTick(planet, workforceEvents, profile);
-
-        if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
-        }
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('pop', 'populationTick', t);
-        }
-
-        automaticWorkerAllocation(gameState.agents, planet);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('workforce', 'workforce', t);
-        }
-        hireWorkforce(gameState.agents, planet, profile);
-        if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
-        }
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('hire', ' hire', t);
-        }
-
-        // ── Claims + Financial ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        maturesLoans(gameState.agents, planet, gameState.tick);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
-        }
-        preProductionFinancialTick(gameState.agents, planet, gameState.tick);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
-        }
-        intergenerationalTransfersForPlanet(planet, profile);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
-        }
-
-        // ── Market (pricing + clearing) ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        updateProductionCostFloors(planet);
-        automaticPricing(gameState.agents, planet);
-        marketTick(gameState.agents, planet);
-        accumulatePlanetPrices(planet);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
-        }
-
-        // ── Production + Construction ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        constructionTick(gameState, planet);
-        productionTick(gameState, planet);
-        hrBufferTick(gameState.agents, planet);
-        automaticWageAdjustment(gameState.agents, planet);
-        updateAgentProductionScale(gameState, planet);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
-        }
-
-        // Must be after productionTick, to infer claim usage
-        claimBillingTick(gameState.agents, planet, gameState.tick);
-        if (profile.isEnabled) {
-            t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
-        }
-
-        // ── Month boundary ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        if (isMonthBoundary(gameState.tick)) {
-            postProductionLaborMarketTick(gameState.agents, planet);
-        }
-        if (profile.isEnabled) {
-            profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);
-        }
-
-        // ── Year boundary ──
-        if (profile.isEnabled) {
-            t = profile.mark();
-        }
-        if (isYearBoundary(gameState.tick)) {
-            if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
-            }
-            for (const entry of Object.values(planet.resources)) {
-                for (const claim of entry.claims) {
-                    claim.pausedTicksThisYear = 0;
+                updateAgentClaims(gameState, planet);
+                if (profile.isEnabled) {
+                    t = profile.markAndAccum('claimAdjust', '  updateAgentClaims', t);
                 }
             }
-            populationAdvanceYearTick(planet);
-            workforceAdvanceYearTick(gameState.agents, planet);
-            if (process.env.SIM_DEBUG) {
-                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'afterYear');
-            }
-        }
-        if (profile.isEnabled) {
-            profile.markAndAccum('yearBoundary', 'yearBoundary (advanceYearTick)', t);
-        }
 
-        if (process.env.SIM_DEBUG) {
-            assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, `${planet.name} end of tick`);
-            const wealthBankIssues = checkWealthBankConsistency(planetMap, 'end of tick');
-            if (wealthBankIssues.length > 0) {
-                console.error(
-                    `Wealth-bank inconsistency detected on planet ${planet.name} at end of tick ${gameState.tick}:`,
-                    wealthBankIssues,
+            // ── Environment + Government ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            environmentTick(planet);
+
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('envGov', 'environmentTick + governmentTick', t);
+            }
+
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(
+                    gameState.agents,
+                    planet,
+                    `${planet.name} before workforce tick`,
                 );
             }
-            const monetaryIssues = checkMonetaryConservation(
-                gameState.agents,
-                planetMap,
-                0.01,
-                gameState.forexMarketMakers,
-                gameState.shipbuilderAgents,
-                gameState.arbitrageTraders,
+
+            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
+            }
+
+            populationTick(planet, workforceEvents, profile);
+
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'after');
+            }
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('pop', 'populationTick', t);
+            }
+
+            automaticWorkerAllocation(gameState.agents, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('workforce', 'workforce', t);
+            }
+            hireWorkforce(gameState.agents, planet, profile);
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
+            }
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('hire', ' hire', t);
+            }
+
+            // ── Claims + Financial ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            maturesLoans(gameState.agents, planet, gameState.tick);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
+            }
+            preProductionFinancialTick(gameState.agents, planet, gameState.tick);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
+            }
+            intergenerationalTransfersForPlanet(planet, profile);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('intergenTransfers', '  intergenerationalTransfers', t);
+            }
+
+            // ── Market (pricing + clearing) ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            updateProductionCostFloors(planet);
+            automaticPricing(gameState.agents, planet);
+            marketTick(gameState.agents, planet);
+            accumulatePlanetPrices(planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
+            }
+
+            // ── Production + Construction ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            constructionTick(gameState, planet);
+            productionTick(gameState, planet);
+            hrBufferTick(gameState.agents, planet);
+            automaticWageAdjustment(gameState.agents, planet);
+            updateAgentProductionScale(gameState, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
+            }
+
+            // Must be after productionTick, to infer claim usage
+            claimBillingTick(gameState.agents, planet, gameState.tick);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
+            }
+
+            // ── Month boundary ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            if (isMonthBoundary(gameState.tick)) {
+                postProductionLaborMarketTick(gameState.agents, planet);
+            }
+            if (profile.isEnabled) {
+                profile.markAndAccum('monthBoundary', 'monthBoundary (postProductionLaborMarketTick)', t);
+            }
+
+            // ── Year boundary ──
+            if (profile.isEnabled) {
+                t = profile.mark();
+            }
+            if (isYearBoundary(gameState.tick)) {
+                if (process.env.SIM_DEBUG) {
+                    assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'beforeYear');
+                }
+                for (const entry of Object.values(planet.resources)) {
+                    for (const claim of entry.claims) {
+                        claim.pausedTicksThisYear = 0;
+                    }
+                }
+                populationAdvanceYearTick(planet);
+                workforceAdvanceYearTick(gameState.agents, planet);
+                if (process.env.SIM_DEBUG) {
+                    assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'afterYear');
+                }
+            }
+            if (profile.isEnabled) {
+                profile.markAndAccum('yearBoundary', 'yearBoundary (advanceYearTick)', t);
+            }
+
+            if (process.env.SIM_DEBUG) {
+                assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, `${planet.name} end of tick`);
+                const wealthBankIssues = checkWealthBankConsistency(planetMap, 'end of tick');
+                if (wealthBankIssues.length > 0) {
+                    console.error(
+                        `Wealth-bank inconsistency detected on planet ${planet.name} at end of tick ${gameState.tick}:`,
+                        wealthBankIssues,
+                    );
+                }
+                const monetaryIssues = checkMonetaryConservation(
+                    gameState.agents,
+                    planetMap,
+                    0.01,
+                    gameState.forexMarketMakers,
+                    gameState.shipbuilderAgents,
+                    gameState.arbitrageTraders,
+                );
+                if (monetaryIssues.length > 0) {
+                    console.error(
+                        `Monetary conservation violated on planet ${planet.name} at end of tick ${gameState.tick}:`,
+                        monetaryIssues,
+                    );
+                }
+            }
+        } catch (err) {
+            console.error(
+                `[advanceTick] Error processing planet ${planetName} at tick ${gameState.tick}:`,
+                err instanceof Error ? err.message : err,
             );
-            if (monetaryIssues.length > 0) {
-                console.error(
-                    `Monetary conservation violated on planet ${planet.name} at end of tick ${gameState.tick}:`,
-                    monetaryIssues,
-                );
-            }
+            throw err;
         }
     });
 

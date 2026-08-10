@@ -43,6 +43,8 @@ export function applyBirths(population: Population, birthsThisTick: number): voi
         cat.wealth.variance = prevTotal > 0 ? (prevTotal * cat.wealth.variance) / newTotal : 0;
         cat.total = newTotal;
 
+        population.summedPopulation.education.none.novice.total += birthsThisTick;
+
         const prevBuffer = cat.services.grocery.buffer;
         const giftedTicksTotal = birthsThisTick * 30;
         cat.services.grocery.buffer = prevTotal > 0 ? (prevTotal * prevBuffer + giftedTicksTotal) / newTotal : 10;

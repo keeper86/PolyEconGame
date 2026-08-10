@@ -106,17 +106,14 @@ export function processFacilityContraction(
     const recoveredCS =
         calculateCostsForConstruction(type, targetMax, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
-    assert(
-        recoveredCS > 0 && isFinite(recoveredCS),
-        'Recovered CS should be positive and finite' +
-            recoveredCS +
-            ' ' +
-            type +
-            ' ' +
-            targetMax +
-            ' from ' +
-            facility.maxScale,
-    );
+    if (recoveredCS <= 0 || !isFinite(recoveredCS)) {
+        if (recoveredCS !== 0) {
+            console.warn(
+                `Recovered CS ${recoveredCS} is not a number: Planet ${planet.id} Agent ${agent.id} Facility ${facility.id}`,
+            );
+        }
+        return false;
+    }
     const marketValue = recoveredCS * csPrice;
 
     const recycler = planet.recycler;
