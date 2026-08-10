@@ -483,6 +483,7 @@ export const textileMill = (planetId: string, id: string): ProductionFacility =>
     needs: [
         { resource: cottonResourceType, quantity: 120 },
         { resource: waterResourceType, quantity: 30 },
+        { resource: plasticResourceType, quantity: 80 },
     ],
     produces: [{ resource: fabricResourceType, quantity: 100 }],
 });
@@ -502,7 +503,7 @@ export const clothingFactory = (planetId: string, id: string): ProductionFacilit
     needs: [
         { resource: waterResourceType, quantity: 50 },
         { resource: fabricResourceType, quantity: 80 },
-        { resource: plasticResourceType, quantity: 10 },
+        { resource: chemicalResourceType, quantity: 2 },
     ],
     produces: [{ resource: clothingResourceType, quantity: 60 }],
 });
@@ -523,6 +524,7 @@ export const furnitureFactory = (planetId: string, id: string): ProductionFacili
         { resource: lumberResourceType, quantity: 100 },
         { resource: steelResourceType, quantity: 20 },
         { resource: fabricResourceType, quantity: 10 },
+        { resource: plasticResourceType, quantity: 20 },
     ],
     produces: [{ resource: furnitureResourceType, quantity: 50 }],
 });
@@ -562,7 +564,7 @@ export const electronicsFactory = (planetId: string, id: string): ProductionFaci
     needs: [
         { resource: siliconWaferResourceType, quantity: 40 },
         { resource: copperResourceType, quantity: 40 },
-        { resource: plasticResourceType, quantity: 20 },
+        { resource: plasticResourceType, quantity: 30 },
     ],
     produces: [{ resource: electronicsResourceType, quantity: 40 }],
 });
@@ -750,8 +752,8 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
         tertiary: 10,
     },
     needs: [
-        { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 40.0 },
+        { resource: vehicleResourceType, quantity: 1 },
+        { resource: fuelResourceType, quantity: 60 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });

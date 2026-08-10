@@ -33,7 +33,6 @@ export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.3;
-export const MARKET_CAPTURE_BASE_FRACTION = 1.0;
 
 // ── Contraction constants ──
 export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
@@ -278,30 +277,6 @@ function agentHasOwnConstructionFacility(facilities: ProductionFacility[]): bool
     );
 }
 
-function getCompetitorCount(
-    gameState: GameState,
-    planet: Planet,
-    resourceName: string,
-    excludeFacilityId: string,
-): number {
-    let count = 0;
-    gameState.agents.forEach((agent) => {
-        const assets = agent.assets[planet.id];
-        if (!assets) {
-            return;
-        }
-        for (const facility of assets.productionFacilities) {
-            if (facility.id === excludeFacilityId) {
-                continue;
-            }
-            if (facility.produces.some((output) => output.resource.name === resourceName)) {
-                count++;
-            }
-        }
-    });
-    return count;
-}
-
 function findMaxAffordableScale(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
@@ -335,7 +310,7 @@ function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
     planet: Planet,
-    gameState: GameState,
+    resourceTotalMaxCapacity: Map<string, number>,
     hasOwnConstruction: boolean,
 ): number {
     let maxDemandScale = facility.maxScale;
@@ -346,11 +321,11 @@ function computeDynamicExpansionTarget(
             continue;
         }
 
-        const competitors = getCompetitorCount(gameState, planet, output.resource.name, facility.id);
-        const captureFraction = MARKET_CAPTURE_BASE_FRACTION / (competitors + 1);
-        const outputPerScale = output.quantity;
-        const targetNewProduction = lastResult.unfilledDemand * captureFraction;
-        const scaleForDemand = Math.ceil(targetNewProduction / outputPerScale);
+        const totalCapacity = resourceTotalMaxCapacity.get(output.resource.name) ?? 0;
+        const ownCapacity = output.quantity * facility.maxScale;
+        const capacityShare = totalCapacity > 0 ? ownCapacity / totalCapacity : 1;
+        const targetNewProduction = lastResult.unfilledDemand * capacityShare;
+        const scaleForDemand = Math.ceil(targetNewProduction / output.quantity);
 
         maxDemandScale = Math.max(maxDemandScale, facility.maxScale + scaleForDemand);
     }
@@ -361,7 +336,9 @@ function computeDynamicExpansionTarget(
     const demography = planet.population.demography;
     for (const edu of educationLevelKeys) {
         const reqPerScale = facility.workerRequirement[edu] ?? 0;
-        if (reqPerScale <= 0) {continue;}
+        if (reqPerScale <= 0) {
+            continue;
+        }
 
         let eduAvailableUnemployed = 0;
         for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
@@ -613,6 +590,22 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         blockedByFunds: 0,
     };
 
+    const resourceTotalMaxCapacity = new Map<string, number>();
+    gameState.agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (assets) {
+            for (const facility of assets.productionFacilities) {
+                for (const out of facility.produces) {
+                    const cap = out.quantity * facility.maxScale;
+                    resourceTotalMaxCapacity.set(
+                        out.resource.name,
+                        (resourceTotalMaxCapacity.get(out.resource.name) ?? 0) + cap,
+                    );
+                }
+            }
+        }
+    });
+
     gameState.agents.forEach((agent) => {
         if (!agent.automated) {
             return;
@@ -767,7 +760,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     facility,
                     assets,
                     planet,
-                    gameState,
+                    resourceTotalMaxCapacity,
                     hasOwnConstruction,
                 );
                 if (dynamicTarget > facility.maxScale) {
