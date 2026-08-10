@@ -206,7 +206,6 @@ export function createPopulation(total: number, buffer: number = 6): Population 
     const perAge = Math.floor(total / (MAX_AGE + 1));
     const pop: Population = {
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
-        summedPopulation: createEmptyPopulationCohort(),
         lastTransferMatrix: [],
     };
 

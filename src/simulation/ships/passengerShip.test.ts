@@ -67,7 +67,6 @@ function seedWorkforce(
         healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
     };
-    planet.population.summedPopulation.employed.none.novice.total += count;
 }
 
 function putProvisions(agent: Agent, planetId: string, grocery: number, healthcare: number): void {
@@ -324,7 +323,7 @@ describe('shipTick passenger boarding', () => {
         }
     });
 
-    it('removes boarded workers from planet summedPopulation', () => {
+    it('removes boarded workers from planet population', () => {
         const agent = makeAgent('a1', 'p1');
         const planet = makePlanet({ id: 'p1' });
         const planet2 = makePlanet({ id: 'p2' });
@@ -353,7 +352,7 @@ describe('shipTick passenger boarding', () => {
 
         shipTick(state);
 
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
+        expect(planet.population.demography[30].employed.none.novice.total).toBe(0);
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(0);
     });
 
@@ -381,7 +380,7 @@ describe('shipTick passenger boarding', () => {
 
         expect(ship.state.type).toBe('passenger_provisioning');
 
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(0);
+        expect(planet.population.demography[30].employed.none.novice.total).toBe(0);
     });
 
     it('zero-passenger dispatch progresses without storage', () => {
@@ -449,7 +448,6 @@ describe('shipTick passenger boarding', () => {
         expect(ship.state.type).toBe('idle');
 
         expect(planet.population.demography[30].employed.none.novice.total).toBe(500);
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(500);
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(500);
     });
 
@@ -605,7 +603,7 @@ describe('shipTick passenger transporting / arrival', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('passenger_transporting');
-        expect(planet2.population.summedPopulation.employed.none.novice.total).toBe(0);
+        expect(planet2.population.demography[30].employed.none.novice.total).toBe(0);
     });
 
     it('unloads passengers into destination planet on arrival', () => {
@@ -638,7 +636,6 @@ describe('shipTick passenger transporting / arrival', () => {
             expect(shipState.planetId).toBe('p2');
         }
         expect(planet2.population.demography[30].employed.none.novice.total).toBe(50);
-        expect(planet2.population.summedPopulation.employed.none.novice.total).toBe(50);
     });
 
     it('sets service buffers to max values on arrival', () => {
@@ -712,7 +709,6 @@ describe('boardPassengersFromWorkforce', () => {
         expect(agent.assets.p1!.workforceDemography[35].none.novice.active).toBe(100);
 
         expect(planet.population.demography[35].employed.none.novice.total).toBe(100);
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(100);
 
         const keys = Object.keys(manifest);
         expect(keys.length).toBeGreaterThan(0);
@@ -744,7 +740,6 @@ describe('refundBoardedPassengers', () => {
 
         expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(300);
         expect(planet.population.demography[40].employed.none.novice.total).toBe(300);
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(300);
 
         expect(Object.keys(manifest)).toHaveLength(0);
     });
@@ -832,7 +827,6 @@ describe('unloadPassengersToWorkforce', () => {
         unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
 
         expect(planet.population.demography[30].employed.none.novice.total).toBe(75);
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(75);
         expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(75);
     });
 
@@ -1005,7 +999,6 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
         expect(ship.state.type).toBe('idle');
 
         expect(planet.population.demography[30].employed.none.novice.total).toBe(200);
-        expect(planet.population.summedPopulation.employed.none.novice.total).toBe(200);
 
         expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(200);
     });

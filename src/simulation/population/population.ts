@@ -112,7 +112,6 @@ export type Cohort<T> = { [O in Occupation]: WorkforceCohort<T> };
 
 export type Population = {
     demography: Cohort<PopulationCategory>[];
-    summedPopulation: Cohort<PopulationCategory>;
     lastTransferMatrix: PopulationTransferMatrix;
 };
 
@@ -144,20 +143,6 @@ export const createEmptyPopulationCohort = (overrides?: Partial<PopulationCatego
         }
     }
     return cohort;
-};
-
-export const sumPopulationCohort = (cohorts: Cohort<PopulationCategory>[]): Cohort<PopulationCategory> => {
-    const total = createEmptyPopulationCohort();
-    for (const cohort of cohorts) {
-        for (const o of OCCUPATIONS) {
-            for (const l of educationLevelKeys) {
-                for (const s of SKILL) {
-                    total[o][l][s] = populationSumFunction(total[o][l][s], cohort[o][l][s]);
-                }
-            }
-        }
-    }
-    return total;
 };
 
 export function forEachServiceState(
@@ -231,12 +216,9 @@ export const transferPopulation = (
             }
             fromCategory.wealth = { mean: 0, variance: 0 };
         }
-        population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
-        population.summedPopulation[to.occ][to.edu][to.skill].total += transferMaximum;
     } else {
         inheritedWealth = destroyWealthOnDeath(fromCategory, transferMaximum);
         fromCategory.total -= transferMaximum;
-        population.summedPopulation[from.occ][from.edu][from.skill].total -= transferMaximum;
     }
 
     return { count: transferMaximum, inheritedWealth };

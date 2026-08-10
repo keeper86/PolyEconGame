@@ -110,7 +110,6 @@ export function makeWorkforceDemography(): WorkforceCohort<WorkforceCategory>[] 
 export function makePopulation(): Population {
     return {
         demography: makePopulationDemography(),
-        summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
     };
 }
