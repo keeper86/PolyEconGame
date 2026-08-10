@@ -13,6 +13,7 @@ import camelCase from 'camelcase';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    logisticsServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import { computePopulationServiceDemand } from '../../src/app/supply-chain/_components/populationDemandHelper';
@@ -74,6 +75,7 @@ function buildModel(slack: SlackConfig): {
 
     const adminKey = resourceConstraintKey(administrativeServiceResourceType.name);
     const adminSlack = slack.goods[administrativeServiceResourceType.name.toLowerCase()] ?? slack.defaultSlack;
+    const logisticsKey = resourceConstraintKey(logisticsServiceResourceType.name);
 
     for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
@@ -106,6 +108,15 @@ function buildModel(slack: SlackConfig): {
             varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - hrAdminDemandPerScale;
             if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
         }
+
+        // Storage department direct consumption (per agent at scale 1, scaled per scale unit)
+        // Storage department consumes 100 Logistics and 20 Administration per tick at scale 1
+        const storageDeptLogisticsPerScale = 100 / 150_000;
+        const storageDeptAdminPerScale = 20 / 150_000;
+        varCoeffs[logisticsKey] = (varCoeffs[logisticsKey] ?? 0) - storageDeptLogisticsPerScale;
+        if (!constraints[logisticsKey]) constraints[logisticsKey] = { min: 0 };
+        varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - storageDeptAdminPerScale;
+        if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
 
         variables[name] = varCoeffs;
     }
@@ -329,6 +340,15 @@ function main(): void {
             };
             const hrAdminConsumption = totalWorkers * HR_ADMIN_PER_WORKER;
             balances[administrativeServiceResourceType.name].cons += hrAdminConsumption;
+
+            // Add storage department consumption to balance display
+            // Each agent's storage department (scale 1) consumes 100 Logistics and 20 Admin per tick
+            const totalScale = results.reduce((sum, r) => sum + r.scale, 0);
+            const storageDeptLogistics = totalScale * (100 / 150_000);
+            const storageDeptAdmin = totalScale * (20 / 150_000);
+            balances[logisticsServiceResourceType.name] = balances[logisticsServiceResourceType.name] ?? { prod: 0, cons: 0 };
+            balances[logisticsServiceResourceType.name].cons += storageDeptLogistics;
+            balances[administrativeServiceResourceType.name].cons += storageDeptAdmin;
 
             // Add ad-hoc construction consumption to balance display
             if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {
