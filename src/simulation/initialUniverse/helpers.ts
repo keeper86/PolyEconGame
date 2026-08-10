@@ -17,7 +17,7 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
-import { PRODUCED_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
+import { PRODUCED_HR_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -96,7 +96,7 @@ export function makeAgentPlanetAssets(
     hrDepartment: HRFacility | null,
 ): AgentPlanetAssets {
     if (hrDepartment && hrDepartment.construction === null) {
-        hrDepartment.hrBuffer = PRODUCED_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
+        hrDepartment.hrBuffer = PRODUCED_HR_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
     }
     return {
         productionFacilities: facilities,
@@ -325,4 +325,4 @@ export function makeAgriculturalProduction(planetId: string, agentId: string, sc
     return facility;
 }
 export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
-    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
+    neededWorkers / ((2 / 3) * PRODUCED_HR_QUANTITY);

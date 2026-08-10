@@ -3,7 +3,7 @@
 import { formatNumberWithUnit } from '@/lib/utils';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '@/simulation/constants';
 import type { ManagementFacility } from '@/simulation/planet/facility';
-import { PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 
@@ -51,7 +51,7 @@ export function HRBufferGauge({
 }): React.ReactElement {
     const { maxValue, subArcs, ticks } = useMemo(() => {
         const scale = maxScaleOverride ?? hrDepartment.maxScale;
-        const maxValue = scale * PRODUCED_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
+        const maxValue = scale * PRODUCED_HR_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
         const ratio = demand / maxValue;
         const zones: { limit?: number; color: string }[] = [];
         const ticks: { value: number; valueConfig: { renderContent: () => React.ReactNode } }[] = [];

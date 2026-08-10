@@ -4,9 +4,9 @@ import { queryStorageFacility, removeFromStorageFacility } from '../planet/facil
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { humanResourcesServiceResourceType } from '../planet/services';
-import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 
-export const computeMaxDailyHROutput = (hrFacilityScale: number): number => PRODUCED_QUANTITY * hrFacilityScale;
+export const computeMaxDailyHROutput = (hrFacilityScale: number): number => PRODUCED_HR_QUANTITY * hrFacilityScale;
 
 export const computeBufferCapacity = (maxDailyHROutput: number): number =>
     maxDailyHROutput * HR_BUFFER_CAPACITY_MULTIPLIER;

@@ -1,6 +1,6 @@
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
 
 export function HRBalanceRow({
@@ -96,7 +96,7 @@ export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
                     {' '}
                     Can manage up to{' '}
                     <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(scale * PRODUCED_QUANTITY, 'persons')}
+                        {formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons')}
                     </span>{' '}
                     workers.
                 </div>

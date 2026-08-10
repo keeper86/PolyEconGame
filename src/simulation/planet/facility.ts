@@ -164,6 +164,9 @@ export type ManagementFacility = FacilityBase & {
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
 };
+export type StorageDepartment = ManagementFacility & {
+    storageBuffer: number;
+};
 
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
