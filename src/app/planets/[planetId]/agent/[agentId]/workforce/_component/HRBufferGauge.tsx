@@ -135,6 +135,7 @@ export function HRBufferGauge({
             <div className='h-[120px] w-[220px]'>
                 <GaugeComponent
                     type='radial'
+                    style={{ overflow: 'visible' }}
                     value={Math.max(0, buffer)}
                     minValue={0}
                     maxValue={maxValue}

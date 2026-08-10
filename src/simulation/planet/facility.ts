@@ -120,6 +120,7 @@ export type PidState = {
     expansionIntegral: number;
     contractionIntegral: number;
     smoothedSignal: number;
+    profitEMA: number;
 };
 
 export type ProductionFacility = FacilityBase & {

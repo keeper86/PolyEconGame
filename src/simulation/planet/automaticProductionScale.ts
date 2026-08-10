@@ -32,6 +32,9 @@ export const EXPANSION_INTEGRAL_DECAY = 0.05;
 export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
 export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
+export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.3;
+export const MARKET_CAPTURE_BASE_FRACTION = 1.0;
+
 // ── Contraction constants ──
 export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
 export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
@@ -48,7 +51,15 @@ function getDefaultPidState(): PidState {
         expansionIntegral: 0,
         contractionIntegral: 0,
         smoothedSignal: 0,
+        profitEMA: 0,
     };
+}
+
+function computeFacilityProfitThisTick(facility: ProductionFacility): number {
+    const revenue = facility.lastTickResults.revenue ?? 0;
+    const wages = facility.lastTickResults.wageCosts ?? 0;
+    const inputCosts = facility.lastTickResults.inputCosts ?? 0;
+    return revenue - wages - inputCosts;
 }
 function computeFacilitySignal(facility: ProductionFacility, assets: AgentPlanetAssets, planet: Planet): number {
     const { produces } = facility;
@@ -267,13 +278,119 @@ function agentHasOwnConstructionFacility(facilities: ProductionFacility[]): bool
     );
 }
 
+function getCompetitorCount(
+    gameState: GameState,
+    planet: Planet,
+    resourceName: string,
+    excludeFacilityId: string,
+): number {
+    let count = 0;
+    gameState.agents.forEach((agent) => {
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+        for (const facility of assets.productionFacilities) {
+            if (facility.id === excludeFacilityId) {
+                continue;
+            }
+            if (facility.produces.some((output) => output.resource.name === resourceName)) {
+                count++;
+            }
+        }
+    });
+    return count;
+}
+
+function findMaxAffordableScale(
+    facility: ProductionFacility,
+    assets: AgentPlanetAssets,
+    planet: Planet,
+    currentMax: number,
+    maxDesiredScale: number,
+): number {
+    if (maxDesiredScale <= currentMax) {
+        return currentMax;
+    }
+    const facilityType = getFacilityType(facility);
+    let low = currentMax + 1;
+    let high = maxDesiredScale;
+    let best = currentMax;
+
+    while (low <= high) {
+        const candidateMax = Math.floor((low + high) / 2);
+        const { cost, time } = calculateCostsForConstruction(facilityType, currentMax, candidateMax);
+        const { hasSufficientFunds } = checkExpansionFunds(facility, assets, planet, cost, time);
+        if (hasSufficientFunds) {
+            best = candidateMax;
+            low = candidateMax + 1;
+        } else {
+            high = candidateMax - 1;
+        }
+    }
+    return best;
+}
+
+function computeDynamicExpansionTarget(
+    facility: ProductionFacility,
+    assets: AgentPlanetAssets,
+    planet: Planet,
+    gameState: GameState,
+    hasOwnConstruction: boolean,
+): number {
+    let maxDemandScale = facility.maxScale;
+
+    for (const output of facility.produces) {
+        const lastResult = planet.lastMarketResult[output.resource.name];
+        if (!lastResult || lastResult.unfilledDemand <= 0) {
+            continue;
+        }
+
+        const competitors = getCompetitorCount(gameState, planet, output.resource.name, facility.id);
+        const captureFraction = MARKET_CAPTURE_BASE_FRACTION / (competitors + 1);
+        const outputPerScale = output.quantity;
+        const targetNewProduction = lastResult.unfilledDemand * captureFraction;
+        const scaleForDemand = Math.ceil(targetNewProduction / outputPerScale);
+
+        maxDemandScale = Math.max(maxDemandScale, facility.maxScale + scaleForDemand);
+    }
+
+    const absoluteCap = facility.maxScale + Math.max(1, Math.ceil(facility.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+    let targetMax = Math.min(maxDemandScale, absoluteCap);
+
+    const demography = planet.population.demography;
+    for (const edu of educationLevelKeys) {
+        const reqPerScale = facility.workerRequirement[edu] ?? 0;
+        if (reqPerScale <= 0) {continue;}
+
+        let eduAvailableUnemployed = 0;
+        for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+            for (const skill of SKILL) {
+                eduAvailableUnemployed += demography[age].unoccupied[edu][skill].total;
+            }
+        }
+
+        const usableForEdu = eduAvailableUnemployed / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
+        const maxScaleFromLabor = Math.floor(usableForEdu / reqPerScale);
+        targetMax = Math.min(targetMax, maxScaleFromLabor);
+    }
+
+    if (!hasOwnConstruction) {
+        targetMax = findMaxAffordableScale(facility, assets, planet, facility.maxScale, targetMax);
+    }
+
+    return targetMax;
+}
+
 function initiateCapacityExpansion(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
     planet: Planet,
     hasOwnConstruction: boolean,
+    targetMax: number,
 ): boolean {
-    const { targetMax, cost, time } = calculateExpansionParams(facility);
+    const facilityType = getFacilityType(facility);
+    const { cost, time } = calculateCostsForConstruction(facilityType, facility.maxScale, targetMax);
 
     if (!hasOwnConstruction) {
         const fundsCheck = checkExpansionFunds(facility, assets, planet, cost, time);
@@ -528,6 +645,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;
 
+            const profitThisTick = computeFacilityProfitThisTick(facility);
+            state.profitEMA = 0.1 * profitThisTick + 0.9 * (state.profitEMA ?? 0);
+
             const delta = computePidDelta(signal, state, facility.maxScale);
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
@@ -642,16 +762,31 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            if (expansionConditionsMet && workersAvailable && fundsAvailable) {
-                const expanded = initiateCapacityExpansion(facility, assets, planet, hasOwnConstruction);
-                if (expanded) {
-                    state.expansionIntegral = 0;
-                    if (debugEntry) {
-                        debugEntry.didExpand = true;
-                        debugEntry.blockReason = [];
-                    }
-                    if (isAutoscaleDebugEnabled()) {
-                        debugAggregates.expansionsStarted++;
+            if (expansionConditionsMet) {
+                const dynamicTarget = computeDynamicExpansionTarget(
+                    facility,
+                    assets,
+                    planet,
+                    gameState,
+                    hasOwnConstruction,
+                );
+                if (dynamicTarget > facility.maxScale) {
+                    const expanded = initiateCapacityExpansion(
+                        facility,
+                        assets,
+                        planet,
+                        hasOwnConstruction,
+                        dynamicTarget,
+                    );
+                    if (expanded) {
+                        state.expansionIntegral = 0;
+                        if (debugEntry) {
+                            debugEntry.didExpand = true;
+                            debugEntry.blockReason = [];
+                        }
+                        if (isAutoscaleDebugEnabled()) {
+                            debugAggregates.expansionsStarted++;
+                        }
                     }
                 }
             }
@@ -660,11 +795,12 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 logAutoscaleFacility(debugEntry);
             }
 
-            // Contraction: trigger when facility is at the lower bound, under-performing, and sufficient negative signal has accumulated
+            // Contraction: trigger when facility is at the lower bound, under-performing, sufficient negative signal has accumulated, and the facility is losing money
             if (
                 atLowerBound &&
                 facility.construction === null &&
-                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
+                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
+                state.profitEMA < 0
             ) {
                 const contracted = initiateCapacityContraction(facility, planet, agent, gameState);
                 if (contracted) {
