@@ -216,7 +216,6 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         department: {
             ...makeManagementFacility(),
             storageBuffer: 0,
-            logisticsBuffer: 0,
             storageStarvation: 0,
         } as StorageDepartment,
         ...overrides,

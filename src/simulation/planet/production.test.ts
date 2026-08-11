@@ -749,7 +749,6 @@ describe('productionTick — storage department', () => {
             department: {
                 ...makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
                 storageBuffer: 0,
-                logisticsBuffer: 0,
                 storageStarvation: 0,
             },
         });
@@ -790,7 +789,6 @@ describe('productionTick — storage department', () => {
                     },
                 ),
                 storageBuffer: 0,
-                logisticsBuffer: 0,
                 storageStarvation: 0,
             },
         });

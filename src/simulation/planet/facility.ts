@@ -166,7 +166,6 @@ export type HRFacility = ManagementFacility & {
 };
 export type StorageDepartment = ManagementFacility & {
     storageBuffer: number;
-    logisticsBuffer: number;
     storageStarvation: number;
 };
 
@@ -254,7 +253,7 @@ export const putIntoStorageFacility = (
     storage.current.mass += stored * resource.massPerQuantity;
 
     if (storage.department) {
-        storage.department.logisticsBuffer -= stored * resource.massPerQuantity;
+        storage.department.storageBuffer -= stored * resource.massPerQuantity;
     }
 
     return stored;
@@ -297,7 +296,7 @@ export const removeFromStorageFacility = (
     storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
 
     if (storage.department) {
-        storage.department.logisticsBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
+        storage.department.storageBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
     }
 
     return quantityRemoved;

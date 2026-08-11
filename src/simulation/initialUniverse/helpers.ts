@@ -1,4 +1,9 @@
-import { HR_BUFFER_CAPACITY_MULTIPLIER, INPUT_BUFFER_TARGET_TICKS, SR_HOLDING_COST_PER_TON, TICKS_PER_YEAR } from '../constants';
+import {
+    HR_BUFFER_CAPACITY_MULTIPLIER,
+    INPUT_BUFFER_TARGET_TICKS,
+    SR_HOLDING_COST_PER_TON,
+    TICKS_PER_YEAR,
+} from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
@@ -17,7 +22,11 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
-import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
+import {
+    PRODUCED_HR_QUANTITY,
+    PRODUCED_STORAGE_QUANTITY,
+    storageDepartmentFacilityType,
+} from '../planet/specialFacilities';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,

@@ -1,22 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { SS_BUFFER_MULTIPLIER, SS_RELAXATION_RATE, SR_HOLDING_COST_PER_TON, SERVICE_DEPRECIATION_RATE_PER_TICK } from '../constants';
+import { makeAgent, makeManagementFacility, makePlanet, makeStorageFacility } from '../utils/testHelper';
+import type { Resource } from './claims';
+import type { StorageDepartment, StorageFacility } from './facility';
 import {
     getStorageStarvation,
     inflowPreservation,
     putIntoStorageFacility,
-    removeFromStorageFacility,
     storagePreservationFactor,
 } from './facility';
-import type { StorageFacility, StorageDepartment } from './facility';
-import type { Resource } from './claims';
-import { makeStorageFacility, makeManagementFacility, makeAgent, makePlanet } from '../utils/testHelper';
-import { createEmptyDemographicEventCounters } from './planet';
-import { storageLogisticsTick } from './storageLogistics';
 import type { AgentPlanetAssets } from './planet';
-import { storageServiceResourceType, logisticsServiceResourceType } from './services';
+import { createEmptyDemographicEventCounters } from './planet';
+import { logisticsServiceResourceType, storageServiceResourceType } from './services';
+import { storageLogisticsTick } from './storageLogistics';
 
 function makeResource(name: string, massPerQty = 1, volumePerQty = 0): Resource {
-    return { name, form: 'solid', level: 'raw', volumePerQuantity: volumePerQty, massPerQuantity: massPerQty } as Resource;
+    return {
+        name,
+        form: 'solid',
+        level: 'raw',
+        volumePerQuantity: volumePerQty,
+        massPerQuantity: massPerQty,
+    } as Resource;
 }
 
 function makeAssetsWithStorage(overrides?: {
@@ -24,18 +28,27 @@ function makeAssetsWithStorage(overrides?: {
     hasCommercialLicense?: boolean;
 }): AgentPlanetAssets {
     const storage = makeStorageFacility({
-        department: { ...makeManagementFacility(), storageBuffer: 0, logisticsBuffer: 0, storageStarvation: 0 },
+        department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
         ...overrides?.storageOverrides,
     });
     return {
-        productionFacilities: [], shipConstructionFacilities: [], storageFacility: storage,
-        humanResourcesDepartment: null, hrProductivityMultiplier: 1,
-        transportContracts: [], constructionContracts: [], shipBuyingOffers: [], shipListings: [],
-        deposits: 0, depositHold: 0, activeLoans: [],
+        productionFacilities: [],
+        shipConstructionFacilities: [],
+        storageFacility: storage,
+        humanResourcesDepartment: null,
+        hrProductivityMultiplier: 1,
+        transportContracts: [],
+        constructionContracts: [],
+        shipBuyingOffers: [],
+        shipListings: [],
+        deposits: 0,
+        depositHold: 0,
+        activeLoans: [],
         allocatedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         totalSlotCapacity: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
         unusedWorkers: { none: 0, primary: 0, secondary: 0, tertiary: 0 },
-        usedWorkers: 0, overqualifiedWorkers: {},
+        usedWorkers: 0,
+        overqualifiedWorkers: {},
         market: { sell: {}, buy: {} },
         wagePerEdu: { none: 1, primary: 1, secondary: 1, tertiary: 1 },
         workforceDemography: [],
@@ -44,16 +57,39 @@ function makeAssetsWithStorage(overrides?: {
         profitShareBonus: 0,
         lastDepreciatedPerTick: {},
         monthAcc: {
-            depositsAtMonthStart: 0, productionValue: 0, consumptionValue: 0, wages: 0,
-            revenue: 0, purchases: 0, claimPayments: 0, totalWorkersTicks: 0,
-            forexRevenue: 0, forexPurchases: 0, profitShareBonuses: 0,
-            producedResources: {}, consumedResources: {}, boughtResources: {}, soldResources: {}, depreciatedServices: {},
+            depositsAtMonthStart: 0,
+            productionValue: 0,
+            consumptionValue: 0,
+            wages: 0,
+            revenue: 0,
+            purchases: 0,
+            claimPayments: 0,
+            totalWorkersTicks: 0,
+            forexRevenue: 0,
+            forexPurchases: 0,
+            profitShareBonuses: 0,
+            producedResources: {},
+            consumedResources: {},
+            boughtResources: {},
+            soldResources: {},
+            depreciatedServices: {},
         },
         lastMonthAcc: {
-            productionValue: 0, consumptionValue: 0, wages: 0, revenue: 0,
-            purchases: 0, claimPayments: 0, totalWorkersTicks: 0,
-            forexRevenue: 0, forexPurchases: 0, profitShareBonuses: 0,
-            producedResources: {}, consumedResources: {}, boughtResources: {}, soldResources: {}, depreciatedServices: {},
+            productionValue: 0,
+            consumptionValue: 0,
+            wages: 0,
+            revenue: 0,
+            purchases: 0,
+            claimPayments: 0,
+            totalWorkersTicks: 0,
+            forexRevenue: 0,
+            forexPurchases: 0,
+            profitShareBonuses: 0,
+            producedResources: {},
+            consumedResources: {},
+            boughtResources: {},
+            soldResources: {},
+            depreciatedServices: {},
         },
         licenses: overrides?.hasCommercialLicense !== false ? { commercial: { acquiredTick: 0, frozen: false } } : {},
     };
@@ -106,28 +142,28 @@ describe('putIntoStorageFacility logistics', () => {
     it('debits logisticsBuffer by stored mass', () => {
         const iron = makeResource('Iron Ore', 5);
         const storage = makeStorageFacility();
-        storage.department!.logisticsBuffer = 100;
+        storage.department!.storageBuffer = 100;
         storage.capacity = { volume: 1e9, mass: 1e9 };
         putIntoStorageFacility(storage, iron, 20);
-        expect(storage.department!.logisticsBuffer).toBeCloseTo(0);
+        expect(storage.department!.storageBuffer).toBeCloseTo(0);
     });
 });
 
 describe('storageLogisticsTick', () => {
     it('resets logisticsBuffer to 0', () => {
         const assets = makeAssetsWithStorage();
-        assets.storageFacility.department!.logisticsBuffer = -100;
+        assets.storageFacility.department!.storageBuffer = -100;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        expect(assets.storageFacility.department!.logisticsBuffer).toBe(0);
+        expect(assets.storageFacility.department!.storageBuffer).toBe(0);
     });
 
     it('relaxes SS when buffer >= 0', () => {
         const assets = makeAssetsWithStorage();
         const dept = assets.storageFacility.department!;
         dept.storageStarvation = 0.5;
-        dept.logisticsBuffer = 0;
+        dept.storageBuffer = 0;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
@@ -138,7 +174,7 @@ describe('storageLogisticsTick', () => {
         const assets = makeAssetsWithStorage();
         const dept = assets.storageFacility.department!;
         dept.storageStarvation = 0.1;
-        dept.logisticsBuffer = -500;
+        dept.storageBuffer = -500;
         dept.scale = 5;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
@@ -149,12 +185,12 @@ describe('storageLogisticsTick', () => {
     it('credits buffer from produced storage service', () => {
         const assets = makeAssetsWithStorage();
         const dept = assets.storageFacility.department!;
-        dept.logisticsBuffer = -100;
+        dept.storageBuffer = -100;
         putIntoStorageFacility(assets.storageFacility, storageServiceResourceType, 500);
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        expect(dept.logisticsBuffer).toBeGreaterThan(-100);
+        expect(dept.storageBuffer).toBeGreaterThan(-100);
     });
 
     it('degrades stored physical goods when SS > 0', () => {
@@ -186,11 +222,10 @@ describe('storageLogisticsTick', () => {
     it('skips agents without commercial license', () => {
         const assets = makeAssetsWithStorage({ hasCommercialLicense: false });
         const dept = assets.storageFacility.department!;
-        dept.logisticsBuffer = -100;
+        dept.storageBuffer = -100;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        expect(dept.logisticsBuffer).toBe(-100);
+        expect(dept.storageBuffer).toBe(-100);
     });
 });
-

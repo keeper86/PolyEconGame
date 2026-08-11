@@ -28,17 +28,17 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     }
 
     const produced = pullStorageServiceFromStorage(storage);
-    dept.logisticsBuffer += produced;
+    dept.storageBuffer += produced;
 
-    dept.logisticsBuffer -= storage.current.mass * SR_HOLDING_COST_PER_TON;
+    dept.storageBuffer -= storage.current.mass * SR_HOLDING_COST_PER_TON;
 
     const deptScale = Math.max(1, dept.scale);
     const bufferCapacity = deptScale * SS_BUFFER_MULTIPLIER;
 
-    if (dept.logisticsBuffer < 0) {
-        const deficitRatio = Math.min(1, -dept.logisticsBuffer / bufferCapacity);
+    if (dept.storageBuffer < 0) {
+        const deficitRatio = Math.min(1, -dept.storageBuffer / bufferCapacity);
         dept.storageStarvation += (deficitRatio - dept.storageStarvation) / Math.max(1, deptScale);
-        dept.logisticsBuffer = 0;
+        dept.storageBuffer = 0;
         if (dept.storageStarvation > 0.7) {
             console.log('starvation', dept.storageStarvation);
         }
@@ -46,7 +46,7 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
         dept.storageStarvation *= SS_RELAXATION_RATE;
     }
 
-    dept.logisticsBuffer = Math.max(0, Math.min(bufferCapacity, dept.logisticsBuffer));
+    dept.storageBuffer = Math.max(0, Math.min(bufferCapacity, dept.storageBuffer));
 
     dept.storageStarvation = Math.max(0, Math.min(1, dept.storageStarvation));
 
