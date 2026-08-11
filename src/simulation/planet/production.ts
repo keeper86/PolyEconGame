@@ -701,6 +701,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     assignedByEdu: {},
                     assignedBySkill: {},
                     overqualifiedCount: 0,
+                    hrMultiplier:
+                        facility.id === assets.humanResourcesDepartment?.id ? 1 : assets.hrProductivityMultiplier,
                 };
                 if (facility.id === assets.humanResourcesDepartment?.id) {
                     hrSlots.push(slot);
@@ -815,11 +817,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 workerResults.workerEfficiencyOverall,
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
-            const isHrDepartment =
-                assets.humanResourcesDepartment !== null && facility.id === assets.humanResourcesDepartment.id;
-            const overallEfficiency = isHrDepartment
-                ? rawEfficiency
-                : rawEfficiency * (assets.hrProductivityMultiplier ?? 1);
+            const overallEfficiency = rawEfficiency;
 
             if (overallEfficiency > 0) {
                 planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;

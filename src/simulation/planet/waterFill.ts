@@ -15,6 +15,7 @@ export type WorkerSlot = {
     assignedByEdu: Partial<Record<EducationLevelType, number>>;
     assignedBySkill: Partial<Record<Skill, number>>;
     overqualifiedCount: number;
+    hrMultiplier: number;
 };
 
 export type WaterFillFacilityResult = {
@@ -87,7 +88,7 @@ export function waterFill(
                 }
 
                 slot.assigned += take;
-                slot.effectiveAssigned += take * ageProd * skillProd * xpProd;
+                slot.effectiveAssigned += take * ageProd * skillProd * xpProd * slot.hrMultiplier;
                 slot.assignedByEdu[workerEdu] = (slot.assignedByEdu[workerEdu] ?? 0) + take;
                 slot.assignedBySkill[workerSkill] = (slot.assignedBySkill[workerSkill] ?? 0) + take;
                 if (wi > slot.jobEduIdx) {

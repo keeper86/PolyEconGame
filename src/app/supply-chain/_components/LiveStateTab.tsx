@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Agent } from '@/simulation/planet/planet';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '@/simulation/planet/facility';
 import { computeSupplyChainBalance } from './computeBalance';
 import type { ArbitrageRouteRow } from '@/server/controller/simulation';
 import { ARBITRAGE_MIN_PROFIT_PER_TICK } from '@/simulation/constants';
@@ -106,7 +106,7 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
             ? Object.entries(allAssets).filter(([id]) => id === filterPlanetId)
             : Object.entries(allAssets);
         for (const [, planetAssets] of assetEntries) {
-            for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
+            const processFacility = (fac: ProductionFacility | ManagementFacility) => {
                 const entry = getEntry(fac.name);
                 entry.instanceCount++;
                 entry.totalScale += fac.scale;
@@ -130,6 +130,46 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
                         entry.workerEffScaleSum[edu] = (entry.workerEffScaleSum[edu] ?? 0) + fac.scale;
                     }
                 }
+            };
+
+            const processShipConstruction = (fac: ShipConstructionFacility) => {
+                const entry = getEntry(fac.name);
+                entry.instanceCount++;
+                entry.totalScale += fac.scale;
+                entry.totalMaxScale += fac.maxScale;
+
+                const eff = fac.lastTickResults?.overallEfficiency ?? 0;
+                entry.effWeightedSum += eff * fac.scale;
+
+                for (const [rn, re] of Object.entries(fac.lastTickResults?.resourceEfficiency ?? {})) {
+                    entry.resourceEffWeighted[rn] = (entry.resourceEffWeighted[rn] ?? 0) + re * fac.scale;
+                    entry.resourceEffScaleSum[rn] = (entry.resourceEffScaleSum[rn] ?? 0) + fac.scale;
+                }
+
+                for (const [edu, we] of Object.entries(fac.lastTickResults?.workerEfficiency ?? {})) {
+                    if (we !== undefined) {
+                        entry.workerEffWeighted[edu] = (entry.workerEffWeighted[edu] ?? 0) + we * fac.scale;
+                        entry.workerEffScaleSum[edu] = (entry.workerEffScaleSum[edu] ?? 0) + fac.scale;
+                    }
+                }
+            };
+
+            for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
+                processFacility(fac);
+            }
+
+            const hr = planetAssets.humanResourcesDepartment;
+            if (hr) {
+                processFacility(hr);
+            }
+
+            const sto = planetAssets.storageFacility?.department;
+            if (sto) {
+                processFacility(sto);
+            }
+
+            for (const fac of (planetAssets.shipConstructionFacilities as ShipConstructionFacility[]) ?? []) {
+                processShipConstruction(fac);
             }
         }
     }

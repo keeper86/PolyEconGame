@@ -4,7 +4,7 @@ import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
 import { currencyMapping, DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
-import type { ProductionFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '@/simulation/planet/facility';
 import type { Agent, Planet } from '@/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
@@ -174,7 +174,7 @@ function aggregateFacilities(agents: Agent[]): FacilityPerf[] {
 
     for (const agent of agents) {
         for (const planetAssets of Object.values(agent.assets ?? {})) {
-            for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
+            const processFacility = (fac: ProductionFacility | ManagementFacility) => {
                 const entry = getEntry(fac.name);
                 entry.instanceCount++;
                 entry.totalScale += fac.scale;
@@ -198,6 +198,46 @@ function aggregateFacilities(agents: Agent[]): FacilityPerf[] {
                         entry.workerEffScaleSum[edu] = (entry.workerEffScaleSum[edu] ?? 0) + fac.scale;
                     }
                 }
+            };
+
+            const processShipConstruction = (fac: ShipConstructionFacility) => {
+                const entry = getEntry(fac.name);
+                entry.instanceCount++;
+                entry.totalScale += fac.scale;
+                entry.totalMaxScale += fac.maxScale;
+
+                const eff = fac.lastTickResults?.overallEfficiency ?? 0;
+                entry.effWeightedSum += eff * fac.scale;
+
+                for (const [rn, re] of Object.entries(fac.lastTickResults?.resourceEfficiency ?? {})) {
+                    entry.resourceEffWeighted[rn] = (entry.resourceEffWeighted[rn] ?? 0) + re * fac.scale;
+                    entry.resourceEffScaleSum[rn] = (entry.resourceEffScaleSum[rn] ?? 0) + fac.scale;
+                }
+
+                for (const [edu, we] of Object.entries(fac.lastTickResults?.workerEfficiency ?? {})) {
+                    if (we !== undefined) {
+                        entry.workerEffWeighted[edu] = (entry.workerEffWeighted[edu] ?? 0) + we * fac.scale;
+                        entry.workerEffScaleSum[edu] = (entry.workerEffScaleSum[edu] ?? 0) + fac.scale;
+                    }
+                }
+            };
+
+            for (const fac of (planetAssets.productionFacilities as ProductionFacility[]) ?? []) {
+                processFacility(fac);
+            }
+
+            const hr = planetAssets.humanResourcesDepartment;
+            if (hr) {
+                processFacility(hr);
+            }
+
+            const sto = planetAssets.storageFacility?.department;
+            if (sto) {
+                processFacility(sto);
+            }
+
+            for (const fac of (planetAssets.shipConstructionFacilities as ShipConstructionFacility[]) ?? []) {
+                processShipConstruction(fac);
             }
         }
     }

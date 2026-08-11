@@ -215,7 +215,7 @@ export const putIntoStorageFacility = (
 
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
-    const scale = getStorageDepartmentScale(storage);
+    const maxScale = storage.department?.maxScale ?? 0;
 
     const volumeRestriction =
         resource.volumePerQuantity > 0
@@ -223,7 +223,7 @@ export const putIntoStorageFacility = (
                   0,
                   Math.min(
                       1,
-                      (storage.capacity.volume * scale - storage.current.volume) /
+                      (storage.capacity.volume * maxScale - storage.current.volume) /
                           (effectiveQuantity * resource.volumePerQuantity),
                   ),
               )
@@ -235,7 +235,7 @@ export const putIntoStorageFacility = (
                   0,
                   Math.min(
                       1,
-                      (storage.capacity.mass * scale - storage.current.mass) /
+                      (storage.capacity.mass * maxScale - storage.current.mass) /
                           (effectiveQuantity * resource.massPerQuantity),
                   ),
               )

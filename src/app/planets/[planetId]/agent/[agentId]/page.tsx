@@ -11,6 +11,10 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { FacilityOrShipListCard } from './_component/FacilityListCard';
 import AgentFinancialCharts from './financial/_components/AgentFinancialCharts';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { computeStorageThroughputMass } from '@/simulation/planet/facility';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 
 function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
     const groups = useMemo(() => {
@@ -60,6 +64,107 @@ function ShipFleet({
     );
 }
 
+function fmt(n: number): string {
+    if (Math.abs(n) >= 1_000_000) {return `${(n / 1_000_000).toFixed(1)}M`;}
+    if (Math.abs(n) >= 1_000) {return `${(n / 1_000).toFixed(1)}k`;}
+    return n.toFixed(1);
+}
+function pct(n: number): string {
+    return `${Math.round(Math.min(n, 999) * 100)}%`;
+}
+
+function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
+    const hr = assets.humanResourcesDepartment;
+    const stoDept = assets.storageFacility.department;
+    const stoFac = assets.storageFacility;
+
+    const hrDemand = assets.usedWorkers;
+    const hrBufRatio = hrDemand > 0 ? (hr?.hrBuffer ?? 0) / hrDemand : Number.POSITIVE_INFINITY;
+    const stoDemand = computeStorageThroughputMass(assets);
+    const stoBufRatio = stoDemand > 0 ? (stoDept?.storageBuffer ?? 0) / stoDemand : Number.POSITIVE_INFINITY;
+    const stoDeptScale = stoDept?.scale ?? 0;
+
+    const entry = (label: string, value: string) => (
+        <span>
+            {label}: <span className='font-mono'>{value}</span>
+        </span>
+    );
+
+    return (
+        <div className='rounded-lg border-2 border-orange-400/60 bg-orange-50/30 dark:bg-orange-950/10 p-4 space-y-3 text-xs'>
+            <div className='flex items-center gap-2'>
+                <Badge variant='outline' className='border-orange-400 text-orange-600 text-[10px] font-bold'>
+                    TEMP DEBUG
+                </Badge>
+                <span className='font-semibold text-orange-700 dark:text-orange-400'>Service Departments</span>
+            </div>
+
+            <div>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>HR Department</h3>
+                {!hr ? (
+                    <p className='italic text-muted-foreground'>Not built</p>
+                ) : (
+                    <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
+                        {entry('Scale', `${fmt(hr.scale)} / ${fmt(hr.maxScale)}`)}
+                        {entry('hrBuffer', `${fmt(hr.hrBuffer)}`)}
+                        {entry('Buffer/Demand', isFinite(hrBufRatio) ? hrBufRatio.toFixed(2) : '∞')}
+                        {entry('Prod.Mult', pct(assets.hrProductivityMultiplier))}
+                        {entry('Eff', pct(hr.lastTickResults.overallEfficiency))}
+                        {entry('WageCosts', fmt(hr.lastTickResults.wageCosts))}
+                        {entry('InputCosts', fmt(hr.lastTickResults.inputCosts))}
+                        {entry('CostBalance', fmt(hr.lastTickResults.costBalance))}
+                        {hr.construction &&
+                            entry(
+                                'Constr',
+                                `${hr.construction.type}→${hr.construction.constructionTargetMaxScale} ${fmt(hr.construction.progress)}/${fmt(hr.construction.totalConstructionServiceRequired)}`,
+                            )}
+                    </div>
+                )}
+            </div>
+
+            <Separator />
+
+            <div>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Storage Department</h3>
+                {!stoDept ? (
+                    <p className='italic text-muted-foreground'>Not built</p>
+                ) : (
+                    <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
+                        {entry('Scale', `${fmt(stoDept.scale)} / ${fmt(stoDept.maxScale)}`)}
+                        {entry('storageBuffer', fmt(stoDept.storageBuffer))}
+                        {entry('starvation', (stoDept.storageStarvation ?? 0).toFixed(4))}
+                        {entry('Buffer/Demand', isFinite(stoBufRatio) ? stoBufRatio.toFixed(2) : '∞')}
+                        {entry('Eff', pct(stoDept.lastTickResults.overallEfficiency))}
+                        {entry('WageCosts', fmt(stoDept.lastTickResults.wageCosts))}
+                        {entry('InputCosts', fmt(stoDept.lastTickResults.inputCosts))}
+                        {entry('CostBalance', fmt(stoDept.lastTickResults.costBalance))}
+                        {stoDept.construction &&
+                            entry(
+                                'Constr',
+                                `${stoDept.construction.type}→${stoDept.construction.constructionTargetMaxScale} ${fmt(stoDept.construction.progress)}/${fmt(stoDept.construction.totalConstructionServiceRequired)}`,
+                            )}
+                    </div>
+                )}
+            </div>
+
+            <Separator />
+
+            <div>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Storage Facility (warehouse)</h3>
+                <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
+                    {entry('Dept Scale', `${fmt(stoDeptScale)}`)}
+                    {entry('Volume', `${fmt(stoFac.current.volume)} / ${fmt(stoFac.capacity.volume * stoDeptScale)}`)}
+                    {entry('Mass', `${fmt(stoFac.current.mass)} / ${fmt(stoFac.capacity.mass * stoDeptScale)}`)}
+                    {entry(
+                        'Stored types',
+                        `${Object.values(stoFac.currentInStorage).filter((v) => v.quantity > 0).length}`,
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function AgentPlanetOverviewPage() {
     const {
         agentId,
@@ -103,6 +208,8 @@ export default function AgentPlanetOverviewPage() {
                 <div className='rounded-lg border p-3'>
                     <AgentFinancialCharts agentId={agentId} planetId={planetId} onlyBalances={true} />
                 </div>
+
+                {assets && <ServiceDepartmentsDebug assets={assets} />}
             </div>
 
             {/* ── Owner-only management section ── */}

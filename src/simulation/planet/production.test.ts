@@ -913,7 +913,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        const facility = makeProductionFacility({}, { id: 'hr-scarce-prod', scale: 2 });
+        const facility = makeProductionFacility({ none: 10 }, { id: 'hr-scarce-prod', scale: 2 });
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
@@ -923,6 +923,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 1000,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
+        agent.assets.p.workforceDemography[30].none.novice.active = 25;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -949,13 +950,14 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             buildingTime: 90,
         };
 
-        const shipyard = makeShipConstructionFacility({}, { id: 'hr-scarce-sy', scale: 9, shipType });
+        const shipyard = makeShipConstructionFacility({ secondary: 3 }, { id: 'hr-scarce-sy', scale: 9, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
         agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 1000,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
+        agent.assets.p.workforceDemography[30].secondary.novice.active = 30;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -971,7 +973,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         const agent = makeAgent('test-company');
 
         const hrFacility = makeHRFacility(
-            {},
+            { none: 2 },
             {
                 id: 'hr-own',
                 scale: 1,
@@ -986,6 +988,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 50,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
+        agent.assets.p.workforceDemography[30].none.novice.active = 10;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
