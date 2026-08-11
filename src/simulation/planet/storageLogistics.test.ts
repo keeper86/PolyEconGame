@@ -108,7 +108,7 @@ describe('storagePreservationFactor', () => {
     it('returns 1.0 at SS=0', () => {
         expect(storagePreservationFactor(0)).toBeCloseTo(1.0);
     });
-    it('returns 0.9 at SS=1', () => {
+    it('returns 0.95 at SS=1', () => {
         expect(storagePreservationFactor(1)).toBeCloseTo(0.95);
     });
 });
@@ -126,7 +126,7 @@ describe('getStorageStarvation', () => {
 });
 
 describe('putIntoStorageFacility logistics', () => {
-    it('stores less when SS is high', () => {
+    it('returns pre-loss accepted quantity, stores less when SS is high', () => {
         const iron = makeResource('Iron Ore', 1);
         const s0 = makeStorageFacility();
         s0.department!.storageStarvation = 0;
@@ -136,7 +136,9 @@ describe('putIntoStorageFacility logistics', () => {
         const s1 = makeStorageFacility();
         s1.department!.storageStarvation = 1;
         s1.capacity = { volume: 1e9, mass: 1e9 };
-        expect(putIntoStorageFacility(s1, iron, 100)).toBeCloseTo(50);
+        const accepted = putIntoStorageFacility(s1, iron, 100);
+        expect(accepted).toBeCloseTo(100);
+        expect(s1.currentInStorage['Iron Ore']?.quantity).toBeCloseTo(50, 0);
     });
 
     it('debits logisticsBuffer by stored mass', () => {
@@ -217,6 +219,30 @@ describe('storageLogisticsTick', () => {
         storageLogisticsTick(new Map([['a', agent]]), planet);
         const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThan(1000);
+    });
+
+    it('normalizes starvation update rate independent of department scale', () => {
+        const assets1 = makeAssetsWithStorage();
+        const dept1 = assets1.storageFacility.department!;
+        dept1.scale = 1;
+        dept1.storageStarvation = 0.1;
+        dept1.storageBuffer = -5;
+
+        const assets2 = makeAssetsWithStorage();
+        const dept2 = assets2.storageFacility.department!;
+        dept2.scale = 100;
+        dept2.storageStarvation = 0.1;
+        dept2.storageBuffer = -500;
+
+        const planet = makePlanet();
+        const agent1 = makeAgent('a', 'p', 'A', { assets: { p: assets1 } });
+        const agent2 = makeAgent('b', 'p', 'B', { assets: { p: assets2 } });
+
+        storageLogisticsTick(new Map([['a', agent1], ['b', agent2]]), planet);
+
+        expect(dept1.storageStarvation).toBeGreaterThan(0.1);
+        expect(dept2.storageStarvation).toBeGreaterThan(0.1);
+        expect(dept1.storageStarvation).toBeCloseTo(dept2.storageStarvation, 5);
     });
 
     it('skips agents without commercial license', () => {

@@ -20,7 +20,7 @@ import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import type { ManagementFacility, StorageDepartment } from '@/simulation/planet/facility';
-import { getFacilityType } from '@/simulation/planet/facility';
+import { computeStorageThroughputMass, getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { storageDepartmentFacilityType, PRODUCED_STORAGE_QUANTITY } from '@/simulation/planet/specialFacilities';
@@ -289,27 +289,6 @@ function StorageConstructionCard({
     );
 }
 
-function computeStorageDemand(assets: AgentPlanetAssets): number {
-    let total = 0;
-    for (const f of assets.productionFacilities) {
-        for (const n of f.needs) {
-            total += n.quantity * n.resource.massPerQuantity * f.scale;
-        }
-    }
-    if (assets.humanResourcesDepartment) {
-        for (const n of assets.humanResourcesDepartment.needs) {
-            total += n.quantity * n.resource.massPerQuantity * assets.humanResourcesDepartment.scale;
-        }
-    }
-    const storageDept = assets.storageFacility.department;
-    if (storageDept) {
-        for (const n of storageDept.needs) {
-            total += n.quantity * n.resource.massPerQuantity * storageDept.scale;
-        }
-    }
-    return total;
-}
-
 export default function StorageDepartment({
     agentId,
     planetId,
@@ -351,7 +330,7 @@ export default function StorageDepartment({
     const template = useMemo(() => storageDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
     const department = assets.storageFacility.department;
 
-    const storageDemand = useMemo(() => computeStorageDemand(assets), [assets]);
+    const storageDemand = useMemo(() => computeStorageThroughputMass(assets), [assets]);
     const status = useMemo(
         () => storageBufferStatus(department?.storageBuffer ?? 0, storageDemand),
         [department?.storageBuffer, storageDemand],

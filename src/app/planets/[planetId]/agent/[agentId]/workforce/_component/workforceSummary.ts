@@ -201,29 +201,28 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
                 }
 
                 const xp = cat.workforceExperience;
-                if (xp > 0) {
-                    const sumOnboarding = sumArray(cat.onboarding);
-                    const sumVoluntary = sumArray(cat.voluntaryDeparting);
-                    const sumFired = sumArray(cat.departingFired);
-                    const sumRetired = sumArray(cat.departingRetired);
-                    const totalWorkers = act + sumOnboarding + sumVoluntary + sumFired + sumRetired;
+                const sumOnboarding = sumArray(cat.onboarding);
+                const sumVoluntary = sumArray(cat.voluntaryDeparting);
+                const sumFired = sumArray(cat.departingFired);
+                const sumRetired = sumArray(cat.departingRetired);
+                const totalWorkers = act + sumOnboarding + sumVoluntary + sumFired + sumRetired;
 
-                    if (totalWorkers > 0) {
-                        const xpActive = (xp * act) / totalWorkers;
-                        const xpOnboarding = (xp * sumOnboarding) / totalWorkers;
-                        const xpQuitting = (xp * sumVoluntary) / totalWorkers;
-                        const xpFired = (xp * sumFired) / totalWorkers;
-                        const xpRetired = (xp * sumRetired) / totalWorkers;
+                totalWorkersByEdu[edu] += totalWorkers;
 
-                        ageXPActive += xpActive;
-                        ageXPOnboarding += xpOnboarding;
-                        ageXPDeparting += xpQuitting;
-                        ageXPFired += xpFired;
-                        ageXPRetired += xpRetired;
-                        ageXPByEdu[edu] += xp;
-                        xpSumByEdu[edu] += xp;
-                        totalWorkersByEdu[edu] += totalWorkers;
-                    }
+                if (xp > 0 && totalWorkers > 0) {
+                    const xpActive = (xp * act) / totalWorkers;
+                    const xpOnboarding = (xp * sumOnboarding) / totalWorkers;
+                    const xpQuitting = (xp * sumVoluntary) / totalWorkers;
+                    const xpFired = (xp * sumFired) / totalWorkers;
+                    const xpRetired = (xp * sumRetired) / totalWorkers;
+
+                    ageXPActive += xpActive;
+                    ageXPOnboarding += xpOnboarding;
+                    ageXPDeparting += xpQuitting;
+                    ageXPFired += xpFired;
+                    ageXPRetired += xpRetired;
+                    ageXPByEdu[edu] += xp;
+                    xpSumByEdu[edu] += xp;
                 }
             }
         }

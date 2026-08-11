@@ -353,7 +353,7 @@ function computeDynamicExpansionTarget(
         }
 
         const usableForEdu = eduAvailableUnemployed / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
-        const maxScaleFromLabor = Math.floor(usableForEdu / reqPerScale);
+        const maxScaleFromLabor = facility.maxScale + Math.floor(usableForEdu / reqPerScale);
         targetMax = Math.min(targetMax, maxScaleFromLabor);
     }
 

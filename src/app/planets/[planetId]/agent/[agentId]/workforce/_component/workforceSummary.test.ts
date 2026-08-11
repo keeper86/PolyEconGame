@@ -90,6 +90,22 @@ describe('computeSummary', () => {
             // total workers = 1 + 1 = 2, XP = 5, mean = 2.5
             expect(summary.meanTenureByEdu.tertiary).toBeCloseTo(2.5);
         });
+
+        it('counts zero-XP workers in total for mean tenure', () => {
+            const wf = makeEmptyDemography();
+            setCategory(wf, 25, 'secondary', 'novice', {
+                active: 5,
+                workforceExperience: 0,
+            });
+            setCategory(wf, 30, 'secondary', 'novice', {
+                active: 5,
+                workforceExperience: 50,
+            });
+
+            const summary = computeSummary(wf);
+            // total workers = 5 + 5 = 10, total XP = 0 + 50 = 50, mean tenure = 50/10 = 5
+            expect(summary.meanTenureByEdu.secondary).toBeCloseTo(5.0);
+        });
     });
 
     describe('overallMeanTenure', () => {

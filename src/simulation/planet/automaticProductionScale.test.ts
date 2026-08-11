@@ -346,6 +346,36 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).toBeNull();
     });
 
+    it('does not cap expansion target below current maxScale when labor is limited', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.population = makePopulationByEducation({ none: 10 });
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 100,
+            maxScale: 100,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
+        agent.assets[planet.id].lastMonthAcc.revenue = 1_000_000;
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(100);
+    });
+
     it('initiates capacity expansion for agents with own construction facility even without sufficient funds', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 

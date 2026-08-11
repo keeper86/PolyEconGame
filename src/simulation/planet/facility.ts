@@ -1,7 +1,7 @@
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
-import type { PlanetaryId } from './planet';
+import type { AgentPlanetAssets, PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
@@ -256,7 +256,63 @@ export const putIntoStorageFacility = (
         storage.department.storageBuffer -= stored * resource.massPerQuantity;
     }
 
-    return stored;
+    return additionalQuantity * overallRestriction;
+};
+
+export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number => {
+    let throughput = 0;
+
+    for (const f of assets.productionFacilities) {
+        for (const p of f.produces) {
+            if (p.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += p.quantity * p.resource.massPerQuantity * f.scale;
+        }
+        for (const n of f.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            if (n.resource.form === 'landBoundResource') {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * f.scale;
+        }
+    }
+
+    for (const f of assets.shipConstructionFacilities) {
+        if (!f.produces) {
+            continue;
+        }
+        const proportionPerTick = Math.min(1, Math.sqrt(f.scale) / f.produces.buildingTime);
+        for (const n of f.produces.buildingCost) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * proportionPerTick;
+        }
+    }
+
+    if (assets.humanResourcesDepartment) {
+        for (const n of assets.humanResourcesDepartment.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * assets.humanResourcesDepartment.scale;
+        }
+    }
+
+    const storageDept = assets.storageFacility.department;
+    if (storageDept) {
+        for (const n of storageDept.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * storageDept.scale;
+        }
+    }
+
+    return throughput;
 };
 
 export const queryStorageFacility = (storage: StorageFacility | undefined, resourceName: string): number => {

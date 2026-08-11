@@ -37,9 +37,9 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
 
     if (dept.storageBuffer < 0) {
         const deficitRatio = Math.min(1, -dept.storageBuffer / bufferCapacity);
-        dept.storageStarvation += (deficitRatio - dept.storageStarvation) / Math.max(1, deptScale);
+        dept.storageStarvation += (deficitRatio - dept.storageStarvation) * (1 - SS_RELAXATION_RATE);
         dept.storageBuffer = 0;
-        if (dept.storageStarvation > 0.7) {
+        if (process.env.SIM_DEBUG === '1' && dept.storageStarvation > 0.7) {
             console.log('starvation', dept.storageStarvation);
         }
     } else {

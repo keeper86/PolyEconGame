@@ -339,12 +339,18 @@ export const storageScaleForFacilities = (facilities: ProductionFacility[]): num
     let throughput = 0;
     for (const f of facilities) {
         for (const p of f.produces) {
-            if (p.resource.massPerQuantity <= 0) continue;
+            if (p.resource.massPerQuantity <= 0) {
+                continue;
+            }
             throughput += p.quantity * p.resource.massPerQuantity * f.scale;
         }
         for (const n of f.needs) {
-            if (n.resource.form === 'landBoundResource') continue;
-            if (n.resource.massPerQuantity <= 0) continue;
+            if (n.resource.form === 'landBoundResource') {
+                continue;
+            }
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
             throughput += n.quantity * n.resource.massPerQuantity * f.scale;
         }
     }

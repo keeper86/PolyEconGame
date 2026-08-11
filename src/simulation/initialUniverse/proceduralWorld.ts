@@ -100,7 +100,10 @@ function computeTargets(population: number): Record<string, FacilityTarget> {
         const totalScale = Math.max(1, Math.round(scalePerB * popB));
         targets[key] = {
             totalScale,
-            agentCount: Math.ceil(flatTargetFactor * Math.ceil(totalScale / TARGET_SCALE_PER_AGENT)),
+            agentCount: Math.min(
+                totalScale,
+                Math.max(3, Math.ceil((flatTargetFactor * totalScale) / TARGET_SCALE_PER_AGENT)),
+            ),
         };
     }
     return targets;
