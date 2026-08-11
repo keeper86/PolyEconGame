@@ -238,7 +238,13 @@ describe('storageLogisticsTick', () => {
         const agent1 = makeAgent('a', 'p', 'A', { assets: { p: assets1 } });
         const agent2 = makeAgent('b', 'p', 'B', { assets: { p: assets2 } });
 
-        storageLogisticsTick(new Map([['a', agent1], ['b', agent2]]), planet);
+        storageLogisticsTick(
+            new Map([
+                ['a', agent1],
+                ['b', agent2],
+            ]),
+            planet,
+        );
 
         expect(dept1.storageStarvation).toBeGreaterThan(0.1);
         expect(dept2.storageStarvation).toBeGreaterThan(0.1);
