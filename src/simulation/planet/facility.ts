@@ -166,7 +166,22 @@ export type HRFacility = ManagementFacility & {
 };
 export type StorageDepartment = ManagementFacility & {
     storageBuffer: number;
+    logisticsBuffer: number;
+    storageStarvation: number;
 };
+
+export function getStorageStarvation(storage: StorageFacility): number {
+    return storage.department?.storageStarvation ?? 1.0;
+}
+
+export function inflowPreservation(ss: number): number {
+    const base = 0.5;
+    return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
+}
+
+export function storagePreservationFactor(ss: number): number {
+    return 1 - 0.05 * Math.pow(ss, 6);
+}
 
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
@@ -196,6 +211,9 @@ export const putIntoStorageFacility = (
     resource: Resource,
     additionalQuantity: number,
 ): number => {
+    const ss = getStorageStarvation(storage);
+    const effectiveQuantity = additionalQuantity * inflowPreservation(ss);
+
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
     const scale = getStorageDepartmentScale(storage);
@@ -207,7 +225,7 @@ export const putIntoStorageFacility = (
                   Math.min(
                       1,
                       (storage.capacity.volume * scale - storage.current.volume) /
-                          (additionalQuantity * resource.volumePerQuantity),
+                          (effectiveQuantity * resource.volumePerQuantity),
                   ),
               )
             : 1;
@@ -219,22 +237,27 @@ export const putIntoStorageFacility = (
                   Math.min(
                       1,
                       (storage.capacity.mass * scale - storage.current.mass) /
-                          (additionalQuantity * resource.massPerQuantity),
+                          (effectiveQuantity * resource.massPerQuantity),
                   ),
               )
             : 1;
 
     const overallRestriction = Math.min(volumeRestriction, massRestriction);
+    const stored = effectiveQuantity * overallRestriction;
 
     storage.currentInStorage[resource.name] = {
         resource,
-        quantity: current + additionalQuantity * overallRestriction,
+        quantity: current + stored,
     };
 
-    storage.current.volume += additionalQuantity * resource.volumePerQuantity * overallRestriction;
-    storage.current.mass += additionalQuantity * resource.massPerQuantity * overallRestriction;
+    storage.current.volume += stored * resource.volumePerQuantity;
+    storage.current.mass += stored * resource.massPerQuantity;
 
-    return additionalQuantity * overallRestriction;
+    if (storage.department) {
+        storage.department.logisticsBuffer -= stored * resource.massPerQuantity;
+    }
+
+    return stored;
 };
 
 export const queryStorageFacility = (storage: StorageFacility | undefined, resourceName: string): number => {
@@ -272,6 +295,11 @@ export const removeFromStorageFacility = (
     currentEntry.quantity -= quantityRemoved;
     storage.current.volume -= quantityRemoved * currentEntry.resource.volumePerQuantity;
     storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
+
+    if (storage.department) {
+        storage.department.logisticsBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
+    }
+
     return quantityRemoved;
 };
 

@@ -31,14 +31,21 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
 import { StorageBalanceRow, StorageBuildRow } from './StorageBalanceRow';
 import { StorageBufferGauge } from './StorageBufferGauge';
+import { StorageStarvationBar } from './StorageStarvationBar';
 
 type StorageBufferStatus = 'optimal' | 'stable' | 'strained' | 'critical';
 
 function storageBufferStatus(buffer: number, demand: number): StorageBufferStatus {
     const d = demand > 0 ? buffer / demand : Number.POSITIVE_INFINITY;
-    if (d >= 2.5) {return 'optimal';}
-    if (d >= 1.0) {return 'stable';}
-    if (d >= 0.3) {return 'strained';}
+    if (d >= 2.5) {
+        return 'optimal';
+    }
+    if (d >= 1.0) {
+        return 'stable';
+    }
+    if (d >= 0.3) {
+        return 'strained';
+    }
     return 'critical';
 }
 
@@ -411,8 +418,9 @@ export default function StorageDepartment({
                         <RiArrowRightBoxFill
                             className={`shrink-0 h-8 w-8 ${department.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
                         />
-                        <div className='flex justify-center'>
+                        <div className='flex flex-col items-center gap-1'>
                             <StorageBufferGauge buffer={buffer} demand={storageDemand} department={department} />
+                            <StorageStarvationBar ss={department.storageStarvation ?? 0} />
                         </div>
                     </div>
 

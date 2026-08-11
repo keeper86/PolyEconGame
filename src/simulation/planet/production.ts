@@ -39,7 +39,7 @@ import {
 } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
 import { hasActiveLicense, pushTickerEvent } from './planet';
-import { ALL_SERVICE_RESOURCE_TYPE_NAMES, constructionServiceResourceType } from './services';
+import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
@@ -63,42 +63,6 @@ const RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE = 1e-4;
 
 const SERVICE_DEPRECIATION_COST_MULTIPLIER =
     1 / Math.pow(1 - SERVICE_DEPRECIATION_RATE_PER_TICK, INPUT_BUFFER_TARGET_TICKS_SERVICES);
-
-const depreciateServicesStorage = (agent: Agent, planet: Planet): void => {
-    const assets = agent.assets[planet.id];
-    if (!assets) {
-        return;
-    }
-    const storage = assets.storageFacility;
-    if (!storage) {
-        return;
-    }
-
-    // Reset per-tick depreciation tracker
-    assets.lastDepreciatedPerTick = {};
-
-    ALL_SERVICE_RESOURCE_TYPE_NAMES.forEach((serviceName) => {
-        if (storage.currentInStorage[serviceName]) {
-            const quantity = storage.currentInStorage[serviceName].quantity;
-            const factorToDepreciate = quantity < 0.01 ? 1 : SERVICE_DEPRECIATION_RATE_PER_TICK;
-            const depreciatedQuantity = factorToDepreciate * quantity;
-            removeFromStorageFacility(storage, serviceName, depreciatedQuantity);
-
-            // Depreciation is kind of resource consumption, at least effectively to be able to infer stock from flow.
-            planet.consumedResources[serviceName] = (planet.consumedResources[serviceName] ?? 0) + depreciatedQuantity;
-
-            assets.monthAcc.depreciatedServices[serviceName] = {
-                quantity: (assets.monthAcc.depreciatedServices[serviceName]?.quantity ?? 0) + depreciatedQuantity,
-                value:
-                    (assets.monthAcc.depreciatedServices[serviceName]?.value ?? 0) +
-                    depreciatedQuantity * (planet.marketPrices[serviceName] ?? 0),
-            };
-
-            // Record per-tick depreciation for display on the storage page
-            assets.lastDepreciatedPerTick[serviceName] = depreciatedQuantity;
-        }
-    });
-};
 
 type EnrichedFacility = {
     facility: Facility;
@@ -832,8 +796,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             }
         }
         assets.overqualifiedWorkers = overqualifiedWorkers;
-
-        depreciateServicesStorage(agent, planet);
 
         for (const { facility, resourceEfficiencyMap } of enrichedFacilities) {
             const workerResults: WaterFillFacilityResult = byFacility.get(facility.id) ?? {

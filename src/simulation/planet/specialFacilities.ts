@@ -88,6 +88,8 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
     produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
     storageBuffer: 0,
+    logisticsBuffer: 0,
+    storageStarvation: 0,
 });
 
 export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';

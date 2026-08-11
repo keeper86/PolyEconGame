@@ -746,7 +746,12 @@ describe('productionTick — storage department', () => {
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
-            department: { ...makeManagementFacility({ none: 1 }, { id: 'storage-dept' }), storageBuffer: 0 },
+            department: {
+                ...makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
+                storageBuffer: 0,
+                logisticsBuffer: 0,
+                storageStarvation: 0,
+            },
         });
 
         const wf = agent.assets.p.workforceDemography;
@@ -785,6 +790,8 @@ describe('productionTick — storage department', () => {
                     },
                 ),
                 storageBuffer: 0,
+                logisticsBuffer: 0,
+                storageStarvation: 0,
             },
         });
 

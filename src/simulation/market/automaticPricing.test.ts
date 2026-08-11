@@ -27,7 +27,11 @@ import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { adjustOfferPrice, automaticPricing } from './automaticPricing';
 import type { Resource } from '../planet/claims';
-import { administrativeServiceResourceType, constructionServiceResourceType, logisticsServiceResourceType } from '../planet/services';
+import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
+    logisticsServiceResourceType,
+} from '../planet/services';
 import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';

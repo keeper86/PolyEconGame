@@ -28,6 +28,7 @@ import { hireWorkforce } from './workforce/hireWorkforce';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { hrBufferTick } from './workforce/hrBuffer';
+import { storageLogisticsTick } from './planet/storageLogistics';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 import { TickProfiler } from './TickProfiler';
 
@@ -158,6 +159,7 @@ export function advanceTick(gameState: GameState) {
             constructionTick(gameState, planet);
             productionTick(gameState, planet);
             hrBufferTick(gameState.agents, planet);
+            storageLogisticsTick(gameState.agents, planet);
             automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {
