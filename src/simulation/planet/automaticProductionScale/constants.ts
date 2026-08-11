@@ -1,0 +1,30 @@
+export const INPUT_EFFICIENCY_MIN = 0.5;
+export const MAX_SCALE_EXPAND_FRACTION = 0.025;
+export const EXPANSION_PAYMENT_FLOW_MARGIN = 2.0;
+export const EXPANSION_WORKING_CAPITAL_TICKS = 20;
+
+export const PID_KP = 0.1;
+
+export const PID_KI = 0.001;
+
+export const PID_KD = 0.01;
+export const PID_IMAX = 0.025;
+export const PID_OUT_MAX_UP = 0.1;
+export const PID_OUT_MAX_DOWN = 0.01;
+export const PID_D_ALPHA = 0.3;
+export const SIGNAL_EMA_ALPHA = 0.3;
+
+export const EXPANSION_INTEGRAL_THRESHOLD = 30;
+export const EXPANSION_INTEGRAL_MAX = 180;
+export const EXPANSION_INTEGRAL_DECAY = 0.05;
+export const EXPANSION_PRICE_INFLATION_THRESHOLD = 3.0;
+export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
+
+export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.3;
+
+export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
+export const CONTRACTION_INTEGRAL_MAX = 180;
+export const CONTRACTION_INTEGRAL_DECAY = 0.5;
+export const CONTRACTION_EFFICIENCY_THRESHOLD = 0.5;
+export const MINIMUM_CONTRACTION_EFFICIENCY = 0.5;

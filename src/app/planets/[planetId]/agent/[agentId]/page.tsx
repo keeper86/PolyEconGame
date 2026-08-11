@@ -15,6 +15,7 @@ import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { computeStorageThroughputMass } from '@/simulation/planet/facility';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { formatNumberWithUnit } from '@/lib/utils';
 
 function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
     const groups = useMemo(() => {
@@ -65,9 +66,7 @@ function ShipFleet({
 }
 
 function fmt(n: number): string {
-    if (Math.abs(n) >= 1_000_000) {return `${(n / 1_000_000).toFixed(1)}M`;}
-    if (Math.abs(n) >= 1_000) {return `${(n / 1_000).toFixed(1)}k`;}
-    return n.toFixed(1);
+    return formatNumberWithUnit(n, 'units');
 }
 function pct(n: number): string {
     return `${Math.round(Math.min(n, 999) * 100)}%`;

@@ -82,7 +82,7 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
         tertiary: 2,
     },
     needs: [
-        { resource: administrativeServiceResourceType, quantity: 10 },
+        { resource: administrativeServiceResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 50 },
     ],
     produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],

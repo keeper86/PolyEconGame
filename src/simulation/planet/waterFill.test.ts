@@ -63,6 +63,7 @@ function slot(jobEdu: EducationLevelType, capacity: number, facilityId = 'fac-0'
         capacity,
         assigned: 0,
         effectiveAssigned: 0,
+        hrMultiplier: 1,
         assignedByEdu: {},
         assignedBySkill: {},
         overqualifiedCount: 0,

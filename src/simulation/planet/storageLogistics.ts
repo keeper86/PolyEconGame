@@ -40,7 +40,7 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
         const deficitRatio = Math.min(1, -dept.storageBuffer / producedQuantity);
         dept.storageStarvation += (deficitRatio - dept.storageStarvation) * (1 - SS_RELAXATION_RATE);
         dept.storageBuffer = 0;
-        if (process.env.SIM_DEBUG === '1' && dept.storageStarvation > 0.3) {
+        if (process.env.SIM_DEBUG === '1' && dept.storageStarvation > 0.7) {
             console.warn(
                 'high starvation',
                 dept.storageStarvation,
