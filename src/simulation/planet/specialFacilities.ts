@@ -68,7 +68,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
 });
 
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
-export const PRODUCED_STORAGE_QUANTITY = 10000;
+export const PRODUCED_STORAGE_QUANTITY = 20000;
 export const storageDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
@@ -76,13 +76,13 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
     name: STORAGE_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 40,
+        none: 25,
         primary: 10,
-        secondary: 10,
-        tertiary: 5,
+        secondary: 5,
+        tertiary: 2,
     },
     needs: [
-        { resource: administrativeServiceResourceType, quantity: USED_QUANTITY },
+        { resource: administrativeServiceResourceType, quantity: 15 },
         { resource: logisticsServiceResourceType, quantity: 100 },
     ],
     produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],

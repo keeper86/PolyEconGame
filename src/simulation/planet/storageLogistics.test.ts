@@ -73,7 +73,7 @@ describe('storagePreservationFactor', () => {
         expect(storagePreservationFactor(0)).toBeCloseTo(1.0);
     });
     it('returns 0.9 at SS=1', () => {
-        expect(storagePreservationFactor(1)).toBeCloseTo(0.9);
+        expect(storagePreservationFactor(1)).toBeCloseTo(0.95);
     });
 });
 

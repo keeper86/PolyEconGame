@@ -19,7 +19,8 @@ import {
     type FacilityType,
 } from '../planet/productionFacilities';
 import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
-import { humanResourcesScaleForWorkers } from './helpers';
+import { humanResourcesScaleForWorkers, storageScaleForFacilities } from './helpers';
+import { FACILITY_SCALE_PER_BILLION, TARGET_SCALE_PER_AGENT } from './targets';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
@@ -92,49 +93,21 @@ interface FacilityTarget {
 
 const flatTargetFactor = 0.5;
 
-const TARGETS: Record<string, FacilityTarget> = {
-    administrativeCenter: { totalScale: 732082, agentCount: Math.ceil(flatTargetFactor * 6) },
-    agriculturalFacility: { totalScale: 496457, agentCount: Math.ceil(flatTargetFactor * 5) },
-    beveragePlant: { totalScale: 332506, agentCount: Math.ceil(flatTargetFactor * 4) },
-    cementPlant: { totalScale: 1720320, agentCount: Math.ceil(flatTargetFactor * 13) },
-    clothingFactory: { totalScale: 277088, agentCount: Math.ceil(flatTargetFactor * 3) },
-    coalMine: { totalScale: 132956, agentCount: Math.ceil(flatTargetFactor * 2) },
-    concretePlant: { totalScale: 2150400, agentCount: Math.ceil(flatTargetFactor * 16) },
-    constructionFacility: { totalScale: 2150400, agentCount: Math.ceil(flatTargetFactor * 16) },
-    copperMine: { totalScale: 100191, agentCount: Math.ceil(flatTargetFactor * 2) },
-    copperSmelter: { totalScale: 166985, agentCount: Math.ceil(flatTargetFactor * 3) },
-    cottonFarm: { totalScale: 327894, agentCount: Math.ceil(flatTargetFactor * 4) },
-    educationCenter: { totalScale: 49555, agentCount: Math.ceil(flatTargetFactor * 2) },
-    electronicsFactory: { totalScale: 417463, agentCount: Math.ceil(flatTargetFactor * 4) },
-    foodProcessor: { totalScale: 623449, agentCount: Math.ceil(flatTargetFactor * 6) },
-    furnitureFactory: { totalScale: 455555, agentCount: Math.ceil(flatTargetFactor * 5) },
-    glassFactory: { totalScale: 269510, agentCount: Math.ceil(flatTargetFactor * 3) },
-    groceryChain: { totalScale: 1662529, agentCount: Math.ceil(flatTargetFactor * 13) },
-    hospital: { totalScale: 1034524, agentCount: Math.ceil(flatTargetFactor * 8) },
-    ironMine: { totalScale: 574191, agentCount: Math.ceil(flatTargetFactor * 5) },
-    ironSmelter: { totalScale: 1531177, agentCount: Math.ceil(flatTargetFactor * 12) },
-    itDevicesFactory: { totalScale: 834925, agentCount: Math.ceil(flatTargetFactor * 7) },
-    limestoneQuarry: { totalScale: 379999, agentCount: Math.ceil(flatTargetFactor * 4) },
-    loggingCamp: { totalScale: 383854, agentCount: Math.ceil(flatTargetFactor * 4) },
-    logisticsHub: { totalScale: 1263903, agentCount: Math.ceil(flatTargetFactor * 10) },
-    machineryFactory: { totalScale: 153098, agentCount: Math.ceil(flatTargetFactor * 3) },
-    maintenanceFacility: { totalScale: 1, agentCount: Math.ceil(flatTargetFactor * 2) },
-    oilRefinery: { totalScale: 2010994, agentCount: Math.ceil(flatTargetFactor * 15) },
-    oilWell: { totalScale: 2010994, agentCount: Math.ceil(flatTargetFactor * 15) },
-    packagingPlant: { totalScale: 47798, agentCount: Math.ceil(flatTargetFactor * 2) },
-    paperMill: { totalScale: 56250, agentCount: Math.ceil(flatTargetFactor * 2) },
-    pesticidePlant: { totalScale: 165486, agentCount: Math.ceil(flatTargetFactor * 3) },
-    pharmaPlant: { totalScale: 517262, agentCount: Math.ceil(flatTargetFactor * 5) },
-    retailChain: { totalScale: 1662529, agentCount: Math.ceil(flatTargetFactor * 13) },
-    sandMine: { totalScale: 630206, agentCount: Math.ceil(flatTargetFactor * 6) },
-    sawmill: { totalScale: 227778, agentCount: Math.ceil(flatTargetFactor * 3) },
-    siliconWaferFactory: { totalScale: 208731, agentCount: Math.ceil(flatTargetFactor * 3) },
-    stoneQuarry: { totalScale: 860160, agentCount: Math.ceil(flatTargetFactor * 7) },
-    textileMill: { totalScale: 273245, agentCount: Math.ceil(flatTargetFactor * 3) },
-    vehicleFactory: { totalScale: 120372, agentCount: Math.ceil(flatTargetFactor * 2) },
-    waterFacility: { totalScale: 419045, agentCount: Math.ceil(flatTargetFactor * 4) },
-};
+function computeTargets(population: number): Record<string, FacilityTarget> {
+    const popB = population / 1_000_000_000;
+    const targets: Record<string, FacilityTarget> = {};
+    for (const [key, scalePerB] of Object.entries(FACILITY_SCALE_PER_BILLION)) {
+        const totalScale = Math.max(1, Math.round(scalePerB * popB));
+        targets[key] = {
+            totalScale,
+            agentCount: Math.ceil(flatTargetFactor * Math.ceil(totalScale / TARGET_SCALE_PER_AGENT)),
+        };
+    }
+    return targets;
+}
+
 export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
+    const TARGETS = computeTargets(8_000_000_000);
     const agents: Agent[] = [];
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {
@@ -154,7 +127,8 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             fac.maxScale = scale;
 
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
-            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage` });
+            const storageScale = storageScaleForFacilities([fac]);
+            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, scale: storageScale });
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *
