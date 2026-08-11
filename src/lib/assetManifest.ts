@@ -456,7 +456,7 @@ export const assetManifest = {
     demography_overview: '/images/misc/demography_overview.webp',
     training_center: '/images/facilities/training_center.webp',
     research_and_development: '/images/facilities/research_and_development.webp',
-    storage: '/images/facilities/storage.webp',
+    storage_department: '/images/facilities/storage.webp',
     hr_department: '/images/facilities/human_resources_department.webp',
 } as const;
 

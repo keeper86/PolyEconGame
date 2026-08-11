@@ -1,5 +1,6 @@
 import { allServices } from '@/simulation/market/serviceDefinitions';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
+import { humanResourcesOfficeFacilityType, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import type { Model, SolveResult } from 'javascript-lp-solver';
 import solver from 'javascript-lp-solver';
@@ -119,6 +120,52 @@ function buildLPModel(config: SolverConfig): Model {
         variables[f.name] = varCoeffs;
     }
 
+    const specialFacilities = [
+        humanResourcesOfficeFacilityType(TOOL_PLANET, `${TOOL_ID}-hr`),
+        storageDepartmentFacilityType(TOOL_PLANET, `${TOOL_ID}-sto`),
+    ];
+
+    for (const sf of specialFacilities) {
+        let cost = 1;
+        if (objective === 'labor') {
+            cost =
+                (sf.workerRequirement.none ?? 0) +
+                (sf.workerRequirement.primary ?? 0) +
+                (sf.workerRequirement.secondary ?? 0) +
+                (sf.workerRequirement.tertiary ?? 0);
+        }
+
+        const varCoeffs: Record<string, number> = {
+            obj: cost,
+        };
+
+        for (const prod of sf.produces) {
+            if (prod.resource.level === 'source') {
+                continue;
+            }
+            const key = resourceConstraintKey(prod.resource.name);
+            varCoeffs[key] = (varCoeffs[key] ?? 0) + prod.quantity;
+
+            if (!constraints[key]) {
+                constraints[key] = { min: 0 };
+            }
+        }
+
+        for (const need of sf.needs) {
+            if (need.resource.level === 'source') {
+                continue;
+            }
+            const key = resourceConstraintKey(need.resource.name);
+            varCoeffs[key] = (varCoeffs[key] ?? 0) - need.quantity;
+
+            if (!constraints[key]) {
+                constraints[key] = { min: 0 };
+            }
+        }
+
+        variables[sf.name] = varCoeffs;
+    }
+
     for (const service of allServices) {
         const key = resourceConstraintKey(service.resource.name);
         if (constraints[key]) {
@@ -143,6 +190,14 @@ function buildLPModel(config: SolverConfig): Model {
                 continue;
             }
             if (f.name in variables) {
+                constructionDemand += CONSTRUCTION_DEMAND_COEFF;
+            }
+        }
+        for (const sf of specialFacilities) {
+            if (sf.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) {
+                continue;
+            }
+            if (sf.name in variables) {
                 constructionDemand += CONSTRUCTION_DEMAND_COEFF;
             }
         }
@@ -248,6 +303,17 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
         }
     }
 
+    const specialFacilities = [
+        humanResourcesOfficeFacilityType(TOOL_PLANET, `${TOOL_ID}-hr`),
+        storageDepartmentFacilityType(TOOL_PLANET, `${TOOL_ID}-sto`),
+    ];
+    for (const sf of specialFacilities) {
+        const val = raw[sf.name];
+        if (typeof val === 'number' && val > 0.0001) {
+            scales[sf.name] = Math.round(val * 100) / 100;
+        }
+    }
+
     const populationDemand = computePopulationServiceDemand(config.population);
     const serviceCoverage: Record<string, number> = {};
     for (const service of allServices) {
@@ -276,6 +342,16 @@ export function solveSupplyChain(config: SolverConfig): SolverResult {
         rawWorkerTotals.primary += (f.workerRequirement.primary ?? 0) * scale;
         rawWorkerTotals.secondary += (f.workerRequirement.secondary ?? 0) * scale;
         rawWorkerTotals.tertiary += (f.workerRequirement.tertiary ?? 0) * scale;
+    }
+    for (const sf of specialFacilities) {
+        const scale = scales[sf.name] ?? 0;
+        if (scale <= 0) {
+            continue;
+        }
+        rawWorkerTotals.none += (sf.workerRequirement.none ?? 0) * scale;
+        rawWorkerTotals.primary += (sf.workerRequirement.primary ?? 0) * scale;
+        rawWorkerTotals.secondary += (sf.workerRequirement.secondary ?? 0) * scale;
+        rawWorkerTotals.tertiary += (sf.workerRequirement.tertiary ?? 0) * scale;
     }
     const workerTotals = {
         none: Math.round(rawWorkerTotals.none * 100) / 100,
