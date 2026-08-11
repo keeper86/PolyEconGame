@@ -176,7 +176,7 @@ describe('storageLogisticsTick', () => {
         const assets = makeAssetsWithStorage();
         const dept = assets.storageFacility.department!;
         dept.storageStarvation = 0.1;
-        dept.storageBuffer = -500;
+        dept.storageBuffer = -7000;
         dept.scale = 5;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
@@ -226,13 +226,13 @@ describe('storageLogisticsTick', () => {
         const dept1 = assets1.storageFacility.department!;
         dept1.scale = 1;
         dept1.storageStarvation = 0.1;
-        dept1.storageBuffer = -5;
+        dept1.storageBuffer = -2000;
 
         const assets2 = makeAssetsWithStorage();
         const dept2 = assets2.storageFacility.department!;
         dept2.scale = 100;
         dept2.storageStarvation = 0.1;
-        dept2.storageBuffer = -500;
+        dept2.storageBuffer = -200000;
 
         const planet = makePlanet();
         const agent1 = makeAgent('a', 'p', 'A', { assets: { p: assets1 } });

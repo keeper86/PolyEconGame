@@ -1,5 +1,5 @@
 import {
-    SS_BUFFER_MULTIPLIER,
+    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
     SS_RELAXATION_RATE,
     SR_HOLDING_COST_PER_TON,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
@@ -9,6 +9,7 @@ import { queryStorageFacility, removeFromStorageFacility, storagePreservationFac
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
+import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -33,20 +34,30 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     dept.storageBuffer -= storage.current.mass * SR_HOLDING_COST_PER_TON;
 
     const deptScale = Math.max(1, dept.scale);
-    const bufferCapacity = deptScale * SS_BUFFER_MULTIPLIER;
+    const producedQuantity = deptScale * PRODUCED_STORAGE_QUANTITY;
 
     if (dept.storageBuffer < 0) {
-        const deficitRatio = Math.min(1, -dept.storageBuffer / bufferCapacity);
+        const deficitRatio = Math.min(1, -dept.storageBuffer / producedQuantity);
         dept.storageStarvation += (deficitRatio - dept.storageStarvation) * (1 - SS_RELAXATION_RATE);
         dept.storageBuffer = 0;
-        if (process.env.SIM_DEBUG === '1' && dept.storageStarvation > 0.7) {
-            console.log('starvation', dept.storageStarvation);
+        if (process.env.SIM_DEBUG === '1' && dept.storageStarvation > 0.3) {
+            console.warn(
+                'high starvation',
+                dept.storageStarvation,
+                dept.storageBuffer,
+                producedQuantity,
+                deficitRatio,
+                JSON.stringify(dept.lastTickResults, null, 2),
+            );
         }
     } else {
         dept.storageStarvation *= SS_RELAXATION_RATE;
     }
 
-    dept.storageBuffer = Math.max(0, Math.min(bufferCapacity, dept.storageBuffer));
+    dept.storageBuffer = Math.max(
+        0,
+        Math.min(producedQuantity * STORAGE_BUFFER_CAPACITY_MULTIPLIER, dept.storageBuffer),
+    );
 
     dept.storageStarvation = Math.max(0, Math.min(1, dept.storageStarvation));
 
