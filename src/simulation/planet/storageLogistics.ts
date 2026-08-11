@@ -13,7 +13,9 @@ import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './s
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
-        if (!assets || !hasActiveLicense(assets, 'commercial')) {continue;}
+        if (!assets || !hasActiveLicense(assets, 'commercial')) {
+            continue;
+        }
         processStorageLogistics(assets, planet);
     }
 }
@@ -21,10 +23,9 @@ export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet)
 function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): void {
     const storage = assets.storageFacility;
     const dept = storage.department;
-    if (!dept) {return;}
-
-    dept.logisticsBuffer = dept.logisticsBuffer ?? 0;
-    dept.storageStarvation = dept.storageStarvation ?? 0;
+    if (!dept) {
+        return;
+    }
 
     const produced = pullStorageServiceFromStorage(storage);
     dept.logisticsBuffer += produced;
@@ -37,20 +38,26 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     if (dept.logisticsBuffer < 0) {
         const deficitRatio = Math.min(1, -dept.logisticsBuffer / bufferCapacity);
         dept.storageStarvation += (deficitRatio - dept.storageStarvation) / Math.max(1, deptScale);
+        dept.logisticsBuffer = 0;
+        if (dept.storageStarvation > 0.7) {
+            console.log('starvation', dept.storageStarvation);
+        }
     } else {
         dept.storageStarvation *= SS_RELAXATION_RATE;
     }
 
-    dept.storageStarvation = Math.max(0, Math.min(1, dept.storageStarvation));
+    dept.logisticsBuffer = Math.max(0, Math.min(bufferCapacity, dept.logisticsBuffer));
 
-    dept.logisticsBuffer = 0;
+    dept.storageStarvation = Math.max(0, Math.min(1, dept.storageStarvation));
 
     applyStorageDegradation(storage, planet, assets);
 }
 
 function pullStorageServiceFromStorage(storage: StorageFacility): number {
     const available = queryStorageFacility(storage, storageServiceResourceType.name);
-    if (available <= 0) {return 0;}
+    if (available <= 0) {
+        return 0;
+    }
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
@@ -60,7 +67,9 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
     const preservation = storagePreservationFactor(ss);
 
     for (const [name, entry] of Object.entries(storage.currentInStorage)) {
-        if (!entry || entry.quantity <= 0) {continue;}
+        if (!entry || entry.quantity <= 0) {
+            continue;
+        }
 
         const isService = ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name);
         let decayFactor: number;
@@ -73,7 +82,9 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         }
 
         const decayQty = entry.quantity * decayFactor;
-        if (decayQty < 1e-10) {continue;}
+        if (decayQty < 1e-10) {
+            continue;
+        }
 
         removeFromStorageFacility(storage, name, decayQty);
 

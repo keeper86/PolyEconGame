@@ -814,7 +814,6 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: itDevicesResourceType, quantity: 10 },
         { resource: clothingResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 10 },
-        { resource: logisticsServiceResourceType, quantity: 20 },
     ],
     produces: [{ resource: retailServiceResourceType, quantity: 300 }],
 });
@@ -835,7 +834,6 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
         { resource: pharmaceuticalResourceType, quantity: 5 },
         { resource: chemicalResourceType, quantity: 20 },
         { resource: furnitureResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 20 },
     ],
     produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
 });
@@ -881,7 +879,6 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
             { resource: steelResourceType, quantity: 10 },
             { resource: electronicsResourceType, quantity: 5 },
             { resource: plasticResourceType, quantity: 10 },
-            { resource: logisticsServiceResourceType, quantity: 5 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },
