@@ -1,4 +1,10 @@
-import { HR_BUFFER_CAPACITY_MULTIPLIER, INPUT_BUFFER_TARGET_TICKS, TICKS_PER_YEAR } from '../constants';
+import {
+    HR_BUFFER_CAPACITY_MULTIPLIER,
+    INPUT_BUFFER_TARGET_TICKS,
+    SR_HOLDING_COST_PER_TON,
+    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
+    TICKS_PER_YEAR,
+} from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
@@ -17,7 +23,11 @@ import {
     type AgentPlanetAssets,
 } from '../planet/planet';
 import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
-import { PRODUCED_QUANTITY, storageDepartmentFacilityType } from '../planet/specialFacilities';
+import {
+    PRODUCED_HR_QUANTITY,
+    PRODUCED_STORAGE_QUANTITY,
+    storageDepartmentFacilityType,
+} from '../planet/specialFacilities';
 import {
     MAX_AGE,
     createEmptyPopulationCohort,
@@ -96,7 +106,11 @@ export function makeAgentPlanetAssets(
     hrDepartment: HRFacility | null,
 ): AgentPlanetAssets {
     if (hrDepartment && hrDepartment.construction === null) {
-        hrDepartment.hrBuffer = PRODUCED_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
+        hrDepartment.hrBuffer = PRODUCED_HR_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
+    }
+    if (storage.department && storage.department.construction === null) {
+        storage.department.storageBuffer =
+            PRODUCED_STORAGE_QUANTITY * storage.department.scale * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
     }
     return {
         productionFacilities: facilities,
@@ -206,7 +220,6 @@ export function createPopulation(total: number, buffer: number = 6): Population 
     const perAge = Math.floor(total / (MAX_AGE + 1));
     const pop: Population = {
         demography: Array.from({ length: MAX_AGE + 1 }, () => createEmptyPopulationCohort()),
-        summedPopulation: createEmptyPopulationCohort(),
         lastTransferMatrix: [],
     };
 
@@ -325,4 +338,28 @@ export function makeAgriculturalProduction(planetId: string, agentId: string, sc
     return facility;
 }
 export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
-    neededWorkers / ((2 / 3) * PRODUCED_QUANTITY);
+    neededWorkers / ((2 / 3) * PRODUCED_HR_QUANTITY);
+
+export const storageScaleForFacilities = (facilities: ProductionFacility[]): number => {
+    let throughput = 0;
+    for (const f of facilities) {
+        for (const p of f.produces) {
+            if (p.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += p.quantity * p.resource.massPerQuantity * f.scale;
+        }
+        for (const n of f.needs) {
+            if (n.resource.form === 'landBoundResource') {
+                continue;
+            }
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * f.scale;
+        }
+    }
+    const movement = 2 * throughput;
+    const holding = throughput * 30 * SR_HOLDING_COST_PER_TON;
+    return Math.max(1, Math.ceil((movement + holding) / PRODUCED_STORAGE_QUANTITY));
+};

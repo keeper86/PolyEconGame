@@ -84,10 +84,11 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
 function computeReservationCapital(assets: AgentPlanetAssets): number {
     const lastMonthWages = assets.lastMonthAcc.wages ?? 0;
     const lastMonthPurchases = assets.lastMonthAcc.purchases ?? 0;
-    const monthlyRunRate = lastMonthWages + lastMonthPurchases;
+    const lastClaims = assets.lastMonthAcc.claimPayments ?? 0;
+    const monthlyRunRate = lastMonthWages + lastMonthPurchases + lastClaims;
     // If we have no last month data yet, fall back to current month (which may still be incomplete)
     const effectiveMonthlyRunRate = monthlyRunRate > 0 ? monthlyRunRate : Number.MAX_SAFE_INTEGER;
-    return effectiveMonthlyRunRate * 12; // 1 year of operating costs
+    return effectiveMonthlyRunRate * 120; // 1 year of operating costs
 }
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {

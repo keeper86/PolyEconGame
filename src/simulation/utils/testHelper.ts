@@ -9,6 +9,7 @@ import {
     type ManagementFacility,
     type ProductionFacility,
     type ShipConstructionFacility,
+    type StorageDepartment,
     type StorageFacility,
 } from '../planet/facility';
 import {
@@ -110,7 +111,6 @@ export function makeWorkforceDemography(): WorkforceCohort<WorkforceCategory>[] 
 export function makePopulation(): Population {
     return {
         demography: makePopulationDemography(),
-        summedPopulation: makePopulationCohort(),
         lastTransferMatrix: [],
     };
 }
@@ -213,7 +213,11 @@ export function makeStorageFacility(overrides?: Partial<StorageFacility>): Stora
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
-        department: makeManagementFacility(),
+        department: {
+            ...makeManagementFacility(),
+            storageBuffer: 0,
+            storageStarvation: 0,
+        } as StorageDepartment,
         ...overrides,
     } as StorageFacility;
 }

@@ -132,7 +132,6 @@ export function boardPassengersFromWorkforce(
                 workforce.active -= take;
 
                 planetCell.total -= take;
-                planet.population.summedPopulation.employed[edu][skill].total -= take;
                 if (planetCell.total === 0) {
                     planetCell.wealth = { mean: 0, variance: 0 };
                 }
@@ -223,7 +222,6 @@ export function refundBoardedPassengers(
 
             planetCell.total = newTotal;
             planetCell.wealth = mergedWealth;
-            planet.population.summedPopulation[idx.occ][idx.edu][idx.skill].total += category.total;
         }
     }
 
@@ -424,8 +422,6 @@ export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerMani
         planetCell.wealth = mergedWealth;
 
         setBuffersToMax(planetCell);
-
-        planet.population.summedPopulation[idx.occ][idx.edu][idx.skill].total += category.total;
     }
 }
 

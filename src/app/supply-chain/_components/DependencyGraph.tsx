@@ -18,6 +18,7 @@ const RESOURCE_LEVEL_COL: Record<string, number> = {
     refined: 4,
     manufactured: 6,
     services: 8,
+    internal: 10,
 };
 
 const FACILITY_LEVEL_COL: Record<string, number> = {
@@ -25,6 +26,7 @@ const FACILITY_LEVEL_COL: Record<string, number> = {
     refined: 3,
     manufactured: 5,
     services: 7,
+    internal: 9,
 };
 
 const COL_WIDTH = 220;
@@ -36,6 +38,7 @@ const RESOURCE_LEVEL_COLOR: Record<string, { border: string; bg: string }> = {
     refined: { border: '#2563eb', bg: '#2563eb18' },
     manufactured: { border: '#7c3aed', bg: '#7c3aed18' },
     services: { border: '#059669', bg: '#05966918' },
+    internal: { border: '#0891b2', bg: '#0891b218' },
 };
 
 const FACILITY_LEVEL_COLOR: Record<string, { border: string; bg: string }> = {
@@ -43,6 +46,7 @@ const FACILITY_LEVEL_COLOR: Record<string, { border: string; bg: string }> = {
     refined: { border: '#1d4ed8', bg: '#1d4ed828' },
     manufactured: { border: '#6d28d9', bg: '#6d28d928' },
     services: { border: '#047857', bg: '#04785728' },
+    internal: { border: '#0e7490', bg: '#0e749028' },
 };
 
 function fmt(n: number): string {

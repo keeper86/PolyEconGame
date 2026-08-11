@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import { humanResourcesOfficeFacilityType, PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgentPlanetAssets, makeStorage } from './helpers';
 
 describe('makeAgentPlanetAssets hrBuffer initialization', () => {
@@ -10,7 +10,7 @@ describe('makeAgentPlanetAssets hrBuffer initialization', () => {
         const storage = makeStorage({ planetId: 'p', id: 's' });
         const assets = makeAgentPlanetAssets([], storage, hrDepartment);
 
-        expect(hrDepartment.hrBuffer).toBe(PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
+        expect(hrDepartment.hrBuffer).toBe(PRODUCED_HR_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER);
         expect(assets.hrProductivityMultiplier).toBe(1);
     });
 

@@ -127,7 +127,9 @@ const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: (age, occ, wealth) =>
-        (1 / TICKS_PER_MONTH) * retailAgeMultiplier(age, occ) * engelMultiplier(wealth, RETAIL_WEALTH_SATURATION, 3.0),
+        (1 / TICKS_PER_MONTH) *
+        retailAgeMultiplier(age, occ) *
+        engelMultiplier(wealth, RETAIL_WEALTH_SATURATION, 100.0),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {

@@ -23,7 +23,7 @@ import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { humanResourcesOfficeFacilityType, PRODUCED_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
@@ -395,7 +395,7 @@ export default function HRDepartment({
                         buffer={hrDepartment.hrBuffer}
                         production={
                             (hrDepartment.lastTickResults?.overallEfficiency ?? 0) *
-                            PRODUCED_QUANTITY *
+                            PRODUCED_HR_QUANTITY *
                             hrDepartment.scale
                         }
                     />

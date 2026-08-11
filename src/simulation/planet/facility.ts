@@ -1,7 +1,7 @@
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
-import type { PlanetaryId } from './planet';
+import type { AgentPlanetAssets, PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
 export type ConstructionState = {
@@ -120,6 +120,7 @@ export type PidState = {
     expansionIntegral: number;
     contractionIntegral: number;
     smoothedSignal: number;
+    profitEMA: number;
 };
 
 export type ProductionFacility = FacilityBase & {
@@ -146,7 +147,7 @@ export type StorageFacility = PlanetaryId & {
 
     escrow: { [resourceName in string]: number };
 
-    department: ManagementFacility | null;
+    department: StorageDepartment | null;
 };
 
 export const getStorageDepartmentScale = (storage: StorageFacility): number => storage.department?.scale ?? 0;
@@ -163,6 +164,23 @@ export type ManagementFacility = FacilityBase & {
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
 };
+export type StorageDepartment = ManagementFacility & {
+    storageBuffer: number;
+    storageStarvation: number;
+};
+
+export function getStorageStarvation(storage: StorageFacility): number {
+    return storage.department?.storageStarvation ?? 1.0;
+}
+
+export function inflowPreservation(ss: number): number {
+    const base = 0.5;
+    return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
+}
+
+export function storagePreservationFactor(ss: number): number {
+    return 1 - 0.05 * Math.pow(ss, 6);
+}
 
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
@@ -192,6 +210,9 @@ export const putIntoStorageFacility = (
     resource: Resource,
     additionalQuantity: number,
 ): number => {
+    const ss = getStorageStarvation(storage);
+    const effectiveQuantity = additionalQuantity * inflowPreservation(ss);
+
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
     const scale = getStorageDepartmentScale(storage);
@@ -203,7 +224,7 @@ export const putIntoStorageFacility = (
                   Math.min(
                       1,
                       (storage.capacity.volume * scale - storage.current.volume) /
-                          (additionalQuantity * resource.volumePerQuantity),
+                          (effectiveQuantity * resource.volumePerQuantity),
                   ),
               )
             : 1;
@@ -215,22 +236,83 @@ export const putIntoStorageFacility = (
                   Math.min(
                       1,
                       (storage.capacity.mass * scale - storage.current.mass) /
-                          (additionalQuantity * resource.massPerQuantity),
+                          (effectiveQuantity * resource.massPerQuantity),
                   ),
               )
             : 1;
 
     const overallRestriction = Math.min(volumeRestriction, massRestriction);
+    const stored = effectiveQuantity * overallRestriction;
 
     storage.currentInStorage[resource.name] = {
         resource,
-        quantity: current + additionalQuantity * overallRestriction,
+        quantity: current + stored,
     };
 
-    storage.current.volume += additionalQuantity * resource.volumePerQuantity * overallRestriction;
-    storage.current.mass += additionalQuantity * resource.massPerQuantity * overallRestriction;
+    storage.current.volume += stored * resource.volumePerQuantity;
+    storage.current.mass += stored * resource.massPerQuantity;
+
+    if (storage.department) {
+        storage.department.storageBuffer -= stored * resource.massPerQuantity;
+    }
 
     return additionalQuantity * overallRestriction;
+};
+
+export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number => {
+    let throughput = 0;
+
+    for (const f of assets.productionFacilities) {
+        for (const p of f.produces) {
+            if (p.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += p.quantity * p.resource.massPerQuantity * f.scale;
+        }
+        for (const n of f.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            if (n.resource.form === 'landBoundResource') {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * f.scale;
+        }
+    }
+
+    for (const f of assets.shipConstructionFacilities) {
+        if (!f.produces) {
+            continue;
+        }
+        const proportionPerTick = Math.min(1, Math.sqrt(f.scale) / f.produces.buildingTime);
+        for (const n of f.produces.buildingCost) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * proportionPerTick;
+        }
+    }
+
+    if (assets.humanResourcesDepartment) {
+        for (const n of assets.humanResourcesDepartment.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * assets.humanResourcesDepartment.scale;
+        }
+    }
+
+    const storageDept = assets.storageFacility.department;
+    if (storageDept) {
+        for (const n of storageDept.needs) {
+            if (n.resource.massPerQuantity <= 0) {
+                continue;
+            }
+            throughput += n.quantity * n.resource.massPerQuantity * storageDept.scale;
+        }
+    }
+
+    return throughput;
 };
 
 export const queryStorageFacility = (storage: StorageFacility | undefined, resourceName: string): number => {
@@ -268,6 +350,11 @@ export const removeFromStorageFacility = (
     currentEntry.quantity -= quantityRemoved;
     storage.current.volume -= quantityRemoved * currentEntry.resource.volumePerQuantity;
     storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
+
+    if (storage.department) {
+        storage.department.storageBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
+    }
+
     return quantityRemoved;
 };
 

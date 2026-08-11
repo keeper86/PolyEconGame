@@ -746,7 +746,11 @@ describe('productionTick — storage department', () => {
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
-            department: makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
+            department: {
+                ...makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
+                storageBuffer: 0,
+                storageStarvation: 0,
+            },
         });
 
         const wf = agent.assets.p.workforceDemography;
@@ -767,22 +771,26 @@ describe('productionTick — storage department', () => {
         agent.assets.p.storageFacility = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
-            department: makeManagementFacility(
-                { none: 1 },
-                {
-                    id: 'storage-dept',
-                    scale: 0,
-                    maxScale: 0,
-                    construction: {
-                        type: 'new',
-                        constructionTargetMaxScale: 1,
-                        totalConstructionServiceRequired: 100,
-                        maximumConstructionServiceConsumption: 50,
-                        progress: 0,
-                        lastTickInvestedConstructionServices: 0,
+            department: {
+                ...makeManagementFacility(
+                    { none: 1 },
+                    {
+                        id: 'storage-dept',
+                        scale: 0,
+                        maxScale: 0,
+                        construction: {
+                            type: 'new',
+                            constructionTargetMaxScale: 1,
+                            totalConstructionServiceRequired: 100,
+                            maximumConstructionServiceConsumption: 50,
+                            progress: 0,
+                            lastTickInvestedConstructionServices: 0,
+                        },
                     },
-                },
-            ),
+                ),
+                storageBuffer: 0,
+                storageStarvation: 0,
+            },
         });
 
         const wf = agent.assets.p.workforceDemography;

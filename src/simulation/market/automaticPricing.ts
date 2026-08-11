@@ -202,6 +202,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     for (const facility of [
         ...assets.productionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
+        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
         ...assets.shipConstructionFacilities,
     ]) {
         if (facility.construction === null || facility.construction.type === 'expansion') {

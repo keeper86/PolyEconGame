@@ -58,7 +58,6 @@ describe('applyEducationTransition', () => {
 
         const age = 5;
         planet.population.demography[age].education.none.novice.total = 100;
-        planet.population.summedPopulation.education.none.novice.total = 100;
 
         applyEducationTransition(planet, age, age + 1, 'none', 'novice');
 
@@ -72,7 +71,6 @@ describe('applyEducationTransition', () => {
         const sourceAge = 40;
         const count = 10_000;
         planet.population.demography[sourceAge].education.secondary.novice.total = count;
-        planet.population.summedPopulation.education.secondary.novice.total = count;
 
         applyEducationTransition(planet, sourceAge, sourceAge + 1, 'secondary', 'novice');
 
@@ -88,7 +86,6 @@ describe('applyEducationTransition', () => {
         const sourceAge = 9;
         const count = 10_000;
         planet.population.demography[sourceAge].education.none.novice.total = count;
-        planet.population.summedPopulation.education.none.novice.total = count;
 
         applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none', 'novice');
 
@@ -103,7 +100,6 @@ describe('applyEducationTransition', () => {
         const sourceAge = MIN_EMPLOYABLE_AGE;
         const count = 100_000;
         planet.population.demography[sourceAge].education.none.novice.total = count;
-        planet.population.summedPopulation.education.none.novice.total = count;
 
         applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none', 'novice');
 
@@ -117,7 +113,6 @@ describe('applyEducationTransition', () => {
         const sourceAge = 17;
         const count = 10_000;
         planet.population.demography[sourceAge].education.primary.novice.total = count;
-        planet.population.summedPopulation.education.primary.novice.total = count;
 
         applyEducationTransition(planet, sourceAge, sourceAge + 1, 'primary', 'novice');
 
@@ -131,7 +126,6 @@ describe('applyEducationTransition', () => {
         const age = 5;
         const count = 100;
         planet.population.demography[age].education.none.novice.total = count;
-        planet.population.summedPopulation.education.none.novice.total = count;
 
         applyEducationTransition(planet, age, age + 1, 'none', 'novice');
 

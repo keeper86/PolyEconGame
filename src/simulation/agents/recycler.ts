@@ -91,6 +91,10 @@ export function processFacilityContraction(
     gameState: GameState,
     ratioLimit: number = 0,
 ): boolean {
+    if (targetMax >= facility.maxScale) {
+        return false;
+    }
+
     const agentAssets = agent.assets[planet.id];
     if (!agentAssets) {
         return false;
@@ -102,10 +106,14 @@ export function processFacilityContraction(
     const recoveredCS =
         calculateCostsForConstruction(type, targetMax, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
 
-    assert(
-        recoveredCS > 0 && isFinite(recoveredCS),
-        'Recovered CS should be positive and finite' + recoveredCS + ' ' + type + ' ' + targetMax,
-    );
+    if (recoveredCS <= 0 || !isFinite(recoveredCS)) {
+        if (recoveredCS !== 0) {
+            console.warn(
+                `Recovered CS ${recoveredCS} is not a number: Planet ${planet.id} Agent ${agent.id} Facility ${facility.id}`,
+            );
+        }
+        return false;
+    }
     const marketValue = recoveredCS * csPrice;
 
     const recycler = planet.recycler;
@@ -136,7 +144,7 @@ export function processFacilityContraction(
     // If recycler has a lot of money, give it to the government
     if (
         recyclerAssets.deposits - recyclerAssets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0) >
-        10_000_000
+        1_000_000_000
     ) {
         const governmentAgent = gameState.agents.get(planet.governmentId);
         assert(governmentAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);

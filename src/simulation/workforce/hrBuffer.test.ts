@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import { humanResourcesServiceResourceType } from '../planet/services';
-import { PRODUCED_QUANTITY } from '../planet/specialFacilities';
+import { PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
@@ -16,8 +16,8 @@ import {
 
 describe('computeMaxDailyHROutput', () => {
     it('returns PRODUCED_QUANTITY times scale', () => {
-        expect(computeMaxDailyHROutput(1)).toBe(PRODUCED_QUANTITY);
-        expect(computeMaxDailyHROutput(2.5)).toBe(PRODUCED_QUANTITY * 2.5);
+        expect(computeMaxDailyHROutput(1)).toBe(PRODUCED_HR_QUANTITY);
+        expect(computeMaxDailyHROutput(2.5)).toBe(PRODUCED_HR_QUANTITY * 2.5);
     });
 });
 
@@ -107,7 +107,7 @@ describe('hrBufferStatus', () => {
 describe('processHrBufferForAssets', () => {
     it('pulls HR from storage into the buffer and sets multiplier', () => {
         const hrFacility = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
             maxScale: 3,
             hrBuffer: 500,
         });
@@ -125,9 +125,9 @@ describe('processHrBufferForAssets', () => {
     });
 
     it('clamps buffer at pmax', () => {
-        const pMax = PRODUCED_QUANTITY * 5 * HR_BUFFER_CAPACITY_MULTIPLIER;
+        const pMax = PRODUCED_HR_QUANTITY * 5 * HR_BUFFER_CAPACITY_MULTIPLIER;
         const hrFacility = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
             maxScale: 5,
             hrBuffer: pMax - 500,
         });
@@ -141,9 +141,9 @@ describe('processHrBufferForAssets', () => {
     });
 
     it('uses maxScale for buffer capacity, not current scale', () => {
-        const pMax = PRODUCED_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER;
+        const pMax = PRODUCED_HR_QUANTITY * 2 * HR_BUFFER_CAPACITY_MULTIPLIER;
         const hrFacility = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
             scale: 0.5,
             maxScale: 2,
             hrBuffer: 0,
@@ -158,7 +158,7 @@ describe('processHrBufferForAssets', () => {
         expect(hrFacility.hrBuffer).toBeLessThanOrEqual(pMax);
 
         const hrFacility2 = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
             scale: 0.5,
             maxScale: 2,
             hrBuffer: pMax - 500,
@@ -193,7 +193,7 @@ describe('processHrBufferForAssets', () => {
 
     it('sets productivity multiplier based on coverage', () => {
         const hrFacility = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_QUANTITY }],
+            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
             hrBuffer: 0,
         });
         const assets = makeAgentPlanetAssets('p', {

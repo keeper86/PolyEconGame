@@ -1,5 +1,6 @@
+import { processFacilityContraction } from '../agents/recycler';
+import type { HRFacility, ProductionFacility, StorageDepartment } from '../planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
-import type { HRFacility, ManagementFacility, ProductionFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
 import {
@@ -10,7 +11,6 @@ import {
     storageDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
-import { processFacilityContraction } from '../agents/recycler';
 import type { OutboundMessage, PendingAction } from './messages';
 
 export function handleBuildFacility(
@@ -86,7 +86,7 @@ export function handleBuildFacility(
     if (isHrDepartment) {
         assets.humanResourcesDepartment = newFacility as HRFacility;
     } else if (isStorageDepartment) {
-        assets.storageFacility.department = newFacility as ManagementFacility;
+        assets.storageFacility.department = newFacility as StorageDepartment;
     } else {
         assets.productionFacilities.push(newFacility as ProductionFacility);
     }

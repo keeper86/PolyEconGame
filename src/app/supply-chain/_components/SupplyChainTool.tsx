@@ -18,6 +18,7 @@ import {
     FACILITY_LEVEL_LABELS,
     FACILITY_LEVELS,
 } from '@/simulation/planet/productionFacilities';
+import { humanResourcesOfficeFacilityType, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { solveSupplyChain, type SolverResult, type SolverObjective } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
@@ -38,6 +39,7 @@ const LEVEL_BADGE: Record<string, string> = {
     refined: 'bg-blue-600 text-white',
     manufactured: 'bg-purple-600 text-white',
     services: 'bg-emerald-600 text-white',
+    internal: 'bg-cyan-600 text-white',
 };
 
 interface FacilityCardProps {
@@ -275,7 +277,11 @@ function SolverTab({
     onApplyScales: (scales: Record<string, number>) => void;
 }) {
     const allFacilityNames = useMemo(
-        () => Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
+        () => [
+            ...Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
+            humanResourcesOfficeFacilityType('tool', 'preview-hr').name,
+            storageDepartmentFacilityType('tool', 'preview-sto').name,
+        ],
         [],
     );
     const [allowed, setAllowed] = useState<Set<string>>(() => new Set(allFacilityNames));
@@ -293,6 +299,10 @@ function SolverTab({
             }
             grouped[level].push(name);
         }
+        grouped.internal = [
+            humanResourcesOfficeFacilityType('tool', 'preview-hr').name,
+            storageDepartmentFacilityType('tool', 'preview-sto').name,
+        ];
         return grouped;
     }, []);
 
@@ -337,12 +347,16 @@ function SolverTab({
     }
 
     const resultFacilities = result
-        ? Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)
-              .map((e) => {
+        ? [
+              ...Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map((e) => {
                   const f = e.factory('tool', 'preview');
                   return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
-              })
-              .filter((x) => x.scale > 0)
+              }),
+              ...[humanResourcesOfficeFacilityType, storageDepartmentFacilityType].map((factory) => {
+                  const f = factory('tool', 'preview');
+                  return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
+              }),
+          ].filter((x) => x.scale > 0)
         : [];
 
     return (
@@ -370,7 +384,7 @@ function SolverTab({
             {}
             <div className='space-y-3'>
                 <Label className='font-semibold'>Allowed Facilities</Label>
-                {([...FACILITY_LEVELS, 'source'] as const).map((level) => {
+                {([...FACILITY_LEVELS, 'internal', 'source'] as const).map((level) => {
                     const names = facilitiesByLevel[level];
                     if (!names || names.length === 0) {
                         return null;
@@ -695,7 +709,7 @@ export default function SupplyChainTool() {
         return grouped;
     }, [balance.facilities]);
 
-    const allFilterLevels = ['all', ...FACILITY_LEVELS, 'source'] as const;
+    const allFilterLevels = ['all', ...FACILITY_LEVELS, 'internal', 'source'] as const;
 
     return (
         <div className='space-y-4'>
@@ -935,7 +949,7 @@ export default function SupplyChainTool() {
 
                 {}
                 <TabsContent value='facilities' className='mt-4 space-y-8'>
-                    {(['raw', 'refined', 'manufactured', 'services'] as const).map((level) => (
+                    {(['raw', 'refined', 'manufactured', 'services', 'internal'] as const).map((level) => (
                         <div key={level}>
                             <h3 className='text-base font-semibold mb-3 flex items-center gap-2'>
                                 <span

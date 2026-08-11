@@ -266,9 +266,9 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: fuelResourceType, quantity: 60 },
+        { resource: fuelResourceType, quantity: 80 },
         { resource: plasticResourceType, quantity: 60 },
-        { resource: chemicalResourceType, quantity: 80 },
+        { resource: chemicalResourceType, quantity: 60 },
     ],
 });
 
@@ -343,6 +343,7 @@ export const glassFactory = (planetId: string, id: string): ProductionFacility =
     needs: [
         { resource: sandResourceType, quantity: 150 },
         { resource: limestoneResourceType, quantity: 40 },
+        { resource: chemicalResourceType, quantity: 10 },
     ],
     produces: [{ resource: glassResourceType, quantity: 100 }],
 });
@@ -360,7 +361,7 @@ export const pesticidePlant = (planetId: string, id: string): ProductionFacility
         tertiary: 10,
     },
     needs: [
-        { resource: chemicalResourceType, quantity: 40 },
+        { resource: chemicalResourceType, quantity: 60 },
         { resource: waterResourceType, quantity: 100 },
     ],
     produces: [{ resource: pesticideResourceType, quantity: 30 }],
@@ -379,8 +380,8 @@ export const pharmaPlant = (planetId: string, id: string): ProductionFacility =>
         tertiary: 50,
     },
     needs: [
-        { resource: produceResourceType, quantity: 20 },
-        { resource: chemicalResourceType, quantity: 100 },
+        { resource: produceResourceType, quantity: 30 },
+        { resource: chemicalResourceType, quantity: 120 },
         { resource: waterResourceType, quantity: 100 },
     ],
     produces: [{ resource: pharmaceuticalResourceType, quantity: 10 }],
@@ -403,7 +404,7 @@ export const foodProcessor = (planetId: string, id: string): ProductionFacility 
         { resource: produceResourceType, quantity: 60 },
         { resource: chemicalResourceType, quantity: 5 },
         { resource: waterResourceType, quantity: 100 },
-        { resource: packagingResourceType, quantity: 1 },
+        { resource: packagingResourceType, quantity: 2 },
     ],
     produces: [{ resource: processedFoodResourceType, quantity: 80 }],
 });
@@ -423,9 +424,9 @@ export const beveragePlant = (planetId: string, id: string): ProductionFacility 
     needs: [
         { resource: waterResourceType, quantity: 110 },
         { resource: produceResourceType, quantity: 20 },
-        { resource: chemicalResourceType, quantity: 1 },
+        { resource: chemicalResourceType, quantity: 10 },
         { resource: glassResourceType, quantity: 5 },
-        { resource: packagingResourceType, quantity: 1 },
+        { resource: packagingResourceType, quantity: 2 },
     ],
     produces: [{ resource: beverageResourceType, quantity: 100 }],
 });
@@ -483,6 +484,7 @@ export const textileMill = (planetId: string, id: string): ProductionFacility =>
     needs: [
         { resource: cottonResourceType, quantity: 120 },
         { resource: waterResourceType, quantity: 30 },
+        { resource: plasticResourceType, quantity: 80 },
     ],
     produces: [{ resource: fabricResourceType, quantity: 100 }],
 });
@@ -500,9 +502,9 @@ export const clothingFactory = (planetId: string, id: string): ProductionFacilit
         tertiary: 5,
     },
     needs: [
-        { resource: waterResourceType, quantity: 50 },
+        { resource: waterResourceType, quantity: 100 },
         { resource: fabricResourceType, quantity: 80 },
-        { resource: plasticResourceType, quantity: 10 },
+        { resource: chemicalResourceType, quantity: 20 },
     ],
     produces: [{ resource: clothingResourceType, quantity: 60 }],
 });
@@ -523,6 +525,7 @@ export const furnitureFactory = (planetId: string, id: string): ProductionFacili
         { resource: lumberResourceType, quantity: 100 },
         { resource: steelResourceType, quantity: 20 },
         { resource: fabricResourceType, quantity: 10 },
+        { resource: plasticResourceType, quantity: 30 },
     ],
     produces: [{ resource: furnitureResourceType, quantity: 50 }],
 });
@@ -541,7 +544,7 @@ export const siliconWaferFactory = (planetId: string, id: string): ProductionFac
     },
     needs: [
         { resource: sandResourceType, quantity: 300 },
-        { resource: chemicalResourceType, quantity: 40 },
+        { resource: chemicalResourceType, quantity: 60 },
         { resource: waterResourceType, quantity: 50 },
     ],
     produces: [{ resource: siliconWaferResourceType, quantity: 80 }],
@@ -562,7 +565,7 @@ export const electronicsFactory = (planetId: string, id: string): ProductionFaci
     needs: [
         { resource: siliconWaferResourceType, quantity: 40 },
         { resource: copperResourceType, quantity: 40 },
-        { resource: plasticResourceType, quantity: 20 },
+        { resource: plasticResourceType, quantity: 30 },
     ],
     produces: [{ resource: electronicsResourceType, quantity: 40 }],
 });
@@ -724,7 +727,7 @@ export const administrativeCenter = (planetId: string, id: string): ProductionFa
     name: 'Administrative Center' as const,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
-        none: 5,
+        none: 10,
         primary: 40,
         secondary: 50,
         tertiary: 30,
@@ -744,14 +747,14 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     name: 'Logistics Hub' as const,
     powerConsumptionPerTick: 0.2,
     workerRequirement: {
-        none: 5,
+        none: 100,
         primary: 60,
         secondary: 30,
         tertiary: 10,
     },
     needs: [
-        { resource: vehicleResourceType, quantity: 0.1 },
-        { resource: fuelResourceType, quantity: 40.0 },
+        { resource: vehicleResourceType, quantity: 1 },
+        { resource: fuelResourceType, quantity: 100 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -811,7 +814,6 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: itDevicesResourceType, quantity: 10 },
         { resource: clothingResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 10 },
-        { resource: logisticsServiceResourceType, quantity: 20 },
     ],
     produces: [{ resource: retailServiceResourceType, quantity: 300 }],
 });
@@ -830,9 +832,8 @@ export const hospital = (planetId: string, id: string): ProductionFacility => ({
     },
     needs: [
         { resource: pharmaceuticalResourceType, quantity: 5 },
-        { resource: chemicalResourceType, quantity: 10 },
+        { resource: chemicalResourceType, quantity: 20 },
         { resource: furnitureResourceType, quantity: 5 },
-        { resource: logisticsServiceResourceType, quantity: 20 },
     ],
     produces: [{ resource: healthcareServiceResourceType, quantity: 200 }],
 });
@@ -877,8 +878,7 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         needs: [
             { resource: steelResourceType, quantity: 10 },
             { resource: electronicsResourceType, quantity: 5 },
-            { resource: plasticResourceType, quantity: 3 },
-            { resource: logisticsServiceResourceType, quantity: 5 },
+            { resource: plasticResourceType, quantity: 10 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         lastTickResults: { ...zeroLastTicksProductionResults },

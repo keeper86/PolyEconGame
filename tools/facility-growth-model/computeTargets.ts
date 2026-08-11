@@ -13,15 +13,19 @@ import camelCase from 'camelcase';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
+    logisticsServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import { computePopulationServiceDemand } from '../../src/app/supply-chain/_components/populationDemandHelper';
 import {
     ESTIMATED_HR_OVERHEAD,
     HR_WORLD_BUFFER,
-    PRODUCED_QUANTITY,
+    PRODUCED_HR_QUANTITY,
+    PRODUCED_STORAGE_QUANTITY,
     USED_QUANTITY,
+    storageDepartmentFacilityType,
 } from '../../src/simulation/planet/specialFacilities';
+import { SR_HOLDING_COST_PER_TON, TICKS_PER_MONTH } from '../../src/simulation/constants';
 
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
@@ -53,14 +57,29 @@ const CONFIG: SlackConfig = {
     },
 };
    
-const constructionDemandPerTick = 256_000_000;
+const constructionDemandPerTick = 512_000_000;
 const BALANCE_EPSILON = 0.001;
+
+const CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK = 0.3;
+const STORAGE_MOVEMENT_FACTOR = 2;
+const TARGET_SCALE_PER_AGENT = 150_000;
 
 function resourceConstraintKey(name: string): string {
     return `res__${name}`;
 }
 
-const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_QUANTITY/2);
+const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * USED_QUANTITY) / (PRODUCED_HR_QUANTITY/2);
+
+const stoTemplate = storageDepartmentFacilityType(TOOL_PLANET, TOOL_ID);
+const STO_WORKERS_PER_SCALE =
+    (stoTemplate.workerRequirement.none ?? 0) +
+    (stoTemplate.workerRequirement.primary ?? 0) +
+    (stoTemplate.workerRequirement.secondary ?? 0) +
+    (stoTemplate.workerRequirement.tertiary ?? 0);
+const STO_LOGISTICS_PER_SCALE =
+    stoTemplate.needs.find((n) => n.resource.name === logisticsServiceResourceType.name)!.quantity;
+const STO_ADMIN_PER_SCALE =
+    stoTemplate.needs.find((n) => n.resource.name === administrativeServiceResourceType.name)!.quantity;
 
 function buildModel(slack: SlackConfig): {
     constraints: Record<string, { min: number }>;
@@ -74,6 +93,7 @@ function buildModel(slack: SlackConfig): {
 
     const adminKey = resourceConstraintKey(administrativeServiceResourceType.name);
     const adminSlack = slack.goods[administrativeServiceResourceType.name.toLowerCase()] ?? slack.defaultSlack;
+    const logisticsKey = resourceConstraintKey(logisticsServiceResourceType.name);
 
     for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         const f = entry.factory(TOOL_PLANET, TOOL_ID);
@@ -99,11 +119,40 @@ function buildModel(slack: SlackConfig): {
             (f.workerRequirement.primary ?? 0) +
             (f.workerRequirement.secondary ?? 0) +
             (f.workerRequirement.tertiary ?? 0);
-        const storageWorkersPerScale = 25 / 150_000;
+
+        const producedMass = f.produces.reduce(
+            (sum, p) => (p.resource.massPerQuantity > 0 ? sum + p.quantity * p.resource.massPerQuantity : sum),
+            0,
+        );
+        const consumedMass = f.needs.reduce(
+            (sum, n) =>
+                n.resource.form !== 'landBoundResource' && n.resource.massPerQuantity > 0
+                    ? sum + n.quantity * n.resource.massPerQuantity
+                    : sum,
+            0,
+        );
+        const throughputMass = producedMass + consumedMass;
+        const movement = STORAGE_MOVEMENT_FACTOR * throughputMass;
+        const holding = throughputMass * TICKS_PER_MONTH * SR_HOLDING_COST_PER_TON;
+        const storageScalePerProdScale = (movement + holding) / PRODUCED_STORAGE_QUANTITY;
+
+        const storageLogisticsPerScale = storageScalePerProdScale * STO_LOGISTICS_PER_SCALE;
+        const storageAdminPerScale = storageScalePerProdScale * STO_ADMIN_PER_SCALE;
+        const storageWorkersPerScale = storageScalePerProdScale * STO_WORKERS_PER_SCALE;
+
         const hrAdminDemandPerScale =
             (workersPerScale + storageWorkersPerScale) * HR_ADMIN_PER_WORKER * adminSlack;
         if (hrAdminDemandPerScale > 0) {
             varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - hrAdminDemandPerScale;
+            if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
+        }
+
+        if (storageLogisticsPerScale > 0) {
+            varCoeffs[logisticsKey] = (varCoeffs[logisticsKey] ?? 0) - storageLogisticsPerScale;
+            if (!constraints[logisticsKey]) constraints[logisticsKey] = { min: 0 };
+        }
+        if (storageAdminPerScale > 0) {
+            varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - storageAdminPerScale;
             if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
         }
 
@@ -134,7 +183,7 @@ function buildModel(slack: SlackConfig): {
         if (f.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) continue;        
     }
     if (constructKey in constraints && constructionDemandPerTick > 0) {
-        const civilConstructions = Math.ceil(constructionDemandPerTick * 0.3);
+        const civilConstructions = Math.ceil(constructionDemandPerTick * CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK);
         constraints[constructKey].min = (constraints[constructKey].min ?? 0) + civilConstructions;
 
         // Apply construction facility's own slack
@@ -145,7 +194,7 @@ function buildModel(slack: SlackConfig): {
         }
 
         console.log(
-            `  Construction service: ${civilConstructions.toLocaleString()} units/tick (${constructionDemandPerTick} facilities × 0.3) → slack ${factor.toFixed(1)}× → min ${Math.ceil(civilConstructions * factor).toLocaleString()}`,
+            `  Construction service: ${civilConstructions.toLocaleString()} units/tick (${constructionDemandPerTick} facilities × ${CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK}) → slack ${factor.toFixed(1)}× → min ${Math.ceil(civilConstructions * factor).toLocaleString()}`,
         );
     }
 
@@ -330,9 +379,39 @@ function main(): void {
             const hrAdminConsumption = totalWorkers * HR_ADMIN_PER_WORKER;
             balances[administrativeServiceResourceType.name].cons += hrAdminConsumption;
 
+            // Add storage department consumption to balance display
+            let totalStorageLogistics = 0;
+            let totalStorageAdmin = 0;
+            for (const r of results) {
+                const entry = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
+                    (e) => e.factory(TOOL_PLANET, TOOL_ID).name === r.name,
+                )!;
+                const f = entry.factory(TOOL_PLANET, TOOL_ID);
+                const producedMass = f.produces.reduce(
+                    (sum, p) => (p.resource.massPerQuantity > 0 ? sum + p.quantity * p.resource.massPerQuantity : sum),
+                    0,
+                );
+                const consumedMass = f.needs.reduce(
+                    (sum, n) =>
+                        n.resource.form !== 'landBoundResource' && n.resource.massPerQuantity > 0
+                            ? sum + n.quantity * n.resource.massPerQuantity
+                            : sum,
+                    0,
+                );
+                const throughputMass = producedMass + consumedMass;
+                const movement = STORAGE_MOVEMENT_FACTOR * throughputMass;
+                const holding = throughputMass * TICKS_PER_MONTH * SR_HOLDING_COST_PER_TON;
+                const stoScale = ((movement + holding) / PRODUCED_STORAGE_QUANTITY) * r.scale;
+                totalStorageLogistics += stoScale * STO_LOGISTICS_PER_SCALE;
+                totalStorageAdmin += stoScale * STO_ADMIN_PER_SCALE;
+            }
+            balances[logisticsServiceResourceType.name] = balances[logisticsServiceResourceType.name] ?? { prod: 0, cons: 0 };
+            balances[logisticsServiceResourceType.name].cons += totalStorageLogistics;
+            balances[administrativeServiceResourceType.name].cons += totalStorageAdmin;
+
             // Add ad-hoc construction consumption to balance display
             if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {
-                const civilConstructions = Math.ceil(constructionDemandPerTick * 0.3);
+                const civilConstructions = Math.ceil(constructionDemandPerTick * CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK);
                 balances[constructionServiceResourceType.name].cons += civilConstructions;
             }
 
@@ -353,17 +432,30 @@ function main(): void {
                 );
             }
 
-            // Also output the TARGETS code
-            console.log(
-                '\n\n=== COPY THIS INTO proceduralWorld.ts TARGETS ===\n',
-            );
-            console.log('const TARGETS: Record<string, FacilityTarget> = {');
+            // Write per-billion constants to targets.ts
+            const popB = pop / 1_000_000_000;
+            const lines: string[] = [
+                '// THIS FILE IS AUTO-GENERATED by tools/facility-growth-model/computeTargets.ts',
+                '// Run: npx tsx tools/facility-growth-model/computeTargets.ts',
+                '',
+                'export const FACILITY_SCALE_PER_BILLION: Record<string, number> = {',
+            ];
             for (const r of results) {
-                console.log(
-                    `    ${camelCase(r.name)}: { totalScale: ${r.scale}, agentCount: Math.ceil(flatTargetFactor*${1+Math.ceil(r.scale / 150000)}) },`,
-                );
+                const perB = r.scale / popB;
+                lines.push(`    ${camelCase(r.name)}: ${perB},`);
             }
-            console.log('};');
+            lines.push('};');
+            lines.push('');
+            lines.push(`export const CONSTRUCTION_DEMAND_PER_TICK = ${constructionDemandPerTick};`);
+            lines.push('');
+            lines.push(`export const TARGET_SCALE_PER_AGENT = ${TARGET_SCALE_PER_AGENT};`);
+            lines.push('');
+
+            const fs = require('fs');
+            const path = require('path');
+            const targetPath = path.resolve(__dirname, '../../src/simulation/initialUniverse/targets.ts');
+            fs.writeFileSync(targetPath, lines.join('\n'));
+            console.log(`\nWrote ${targetPath}`);
         })
         .catch((err) => {
             console.error('Failed to load solver:', err);

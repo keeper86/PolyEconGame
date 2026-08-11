@@ -1,9 +1,9 @@
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_STORAGE_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
 
-export function HRBalanceRow({
+export function StorageBalanceRow({
     demand,
     buffer,
     production,
@@ -19,7 +19,10 @@ export function HRBalanceRow({
                 <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full hover:ring-2 hover:ring-primary/50'>
                     <div className='flex flex-col items-center'>
                         {' '}
-                        production <span className='tabular-nums text-muted-foreground'>{production} workers</span>
+                        production{' '}
+                        <span className='tabular-nums text-muted-foreground'>
+                            {formatNumberWithUnit(production, 'tonnes')}
+                        </span>
                     </div>
 
                     <span className='shrink-0'>−</span>
@@ -32,7 +35,10 @@ export function HRBalanceRow({
 
                     <div className='flex flex-col items-center text-foreground'>
                         {' '}
-                        buffer <span className='tabular-nums text-md text-muted-foreground'>{buffer} worker-days</span>
+                        buffer{' '}
+                        <span className='tabular-nums text-md text-muted-foreground'>
+                            {formatNumberWithUnit(buffer, 'tonnes')}
+                        </span>
                     </div>
                 </div>
                 <Separator />
@@ -87,18 +93,18 @@ export function HRBalanceRow({
     );
 }
 
-export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
+export function StorageBuildRow({ scale }: { scale: number }): React.ReactElement {
     return (
         <Link href={'' as never}>
             <Separator />
             <div className='py-1 flex flex-row items-center justify-center gap-3 text-[14px] text-muted-foreground bg-muted/80 w-full h-12'>
                 <div className='flex flex-row items-center gap-1'>
                     {' '}
-                    Can manage up to{' '}
+                    Can transport up to{' '}
                     <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons')}
+                        {formatNumberWithUnit(scale * PRODUCED_STORAGE_QUANTITY, 'tonnes')}
                     </span>{' '}
-                    workers.
+                    per tick.
                 </div>
             </div>
             <Separator />
