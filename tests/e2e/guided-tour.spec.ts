@@ -44,7 +44,9 @@ test.describe('Guided Tour E2E', () => {
         await page.waitForSelector('[role="dialog"]', { state: 'hidden', timeout: 5000 }).catch(() => {});
 
         // Submit the founding form
-        await page.locator('button[type="submit"]').click();
+        const submitButton = await page.locator('button[type="submit"]');
+        await expect(submitButton).toBeEnabled();
+        await submitButton.click();
 
         // Wait for redirect to the financial page
         await page.waitForURL(/\/planets\/[^/]+\/agent\/[^/]+\/financial/, { timeout: 60000 });
