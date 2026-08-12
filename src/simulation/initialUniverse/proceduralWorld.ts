@@ -30,7 +30,8 @@ import {
 } from './personalities';
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
-import { groceryServiceResourceType } from '../planet/services';
+import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
+import { nextRandom } from '../utils/stochasticRound';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -155,6 +156,14 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             const personality = generateAgentPersonality();
             const assets = agent.assets[PROC_PLANET_ID];
+
+            assets.market.buy[constructionServiceResourceType.name] = {
+                resource: constructionServiceResourceType,
+                automated: true,
+                autoConfig: {
+                    bidOfferMaxCostMultiplier: 2 + 4 * nextRandom(),
+                },
+            };
 
             for (const { resource } of fac.produces) {
                 if (!assets.market.sell[resource.name]) {

@@ -6,6 +6,7 @@ import type { HRFacility, PidState, ProductionFacility } from './facility';
 import { calculateCostsForConstruction } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
+import { PRODUCED_HR_QUANTITY } from './specialFacilities';
 
 export * from './automaticProductionScale/constants';
 export { initiateCapacityContraction, initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
@@ -36,19 +37,20 @@ import {
     CONTRACTION_INTEGRAL_DECAY,
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
+    DYNAMIC_EXPANSION_CAP_FRACTION,
     EXPANSION_INTEGRAL_DECAY,
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
     EXPANSION_WORKING_CAPITAL_TICKS,
     MAX_SCALE_CONTRACT_FRACTION,
-    MAX_SCALE_EXPAND_FRACTION,
     SIGNAL_EMA_ALPHA,
 } from './automaticProductionScale/constants';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
     calculateExpansionParams,
     computeDynamicExpansionTarget,
+    findMaxAffordableScale,
     findMaxScaleForCSBudget,
 } from './automaticProductionScale/expansionTarget';
 import {
@@ -63,6 +65,7 @@ import { computeFacilityProfitThisTick, computeFacilitySignal } from './automati
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 
 const HR_TARGET_FILL_RATE = 0.85;
+const HR_EXPANSION_FACTOR = 1.4;
 
 function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
@@ -551,16 +554,25 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrDepartment.construction === null &&
                 hrState.expansionIntegral >= hrDynamicThreshold
             ) {
-                // TODO: should scale to needed worker count
-                let hrTargetMax = Math.max(
-                    Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
-                    hrDepartment.maxScale + 1,
+                const hrDemandScale = Math.max(
+                    1,
+                    Math.ceil((assets.usedWorkers * HR_EXPANSION_FACTOR) / PRODUCED_HR_QUANTITY),
                 );
-                const { cost, time } = calculateCostsForConstruction('management', hrDepartment.maxScale, hrTargetMax);
+                let hrTargetMax = Math.max(hrDemandScale, hrDepartment.maxScale + 1);
 
-                let hrFundsOk = true;
+                const hrAbsoluteCap =
+                    hrDepartment.maxScale +
+                    Math.max(1, Math.ceil(hrDepartment.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+                hrTargetMax = Math.min(hrTargetMax, hrAbsoluteCap);
+
                 if (!hasOwnConstruction) {
-                    hrFundsOk = checkExpansionFunds(hrDepartment, assets, planet, cost, time).hasSufficientFunds;
+                    hrTargetMax = findMaxAffordableScale(
+                        hrDepartment,
+                        assets,
+                        planet,
+                        hrDepartment.maxScale,
+                        hrTargetMax,
+                    );
                     hrTargetMax = findMaxScaleForCSBudget(
                         hrDepartment,
                         hrDepartment.maxScale,
@@ -569,7 +581,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     );
                 }
 
-                if (hrFundsOk && hrTargetMax > hrDepartment.maxScale) {
+                if (hrTargetMax > hrDepartment.maxScale) {
                     const { cost: adjCost, time: adjTime } = calculateCostsForConstruction(
                         'management',
                         hrDepartment.maxScale,

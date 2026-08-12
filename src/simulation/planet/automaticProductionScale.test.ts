@@ -13,13 +13,15 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     SIGNAL_EMA_ALPHA,
+    findMaxAffordableScale,
     findMaxScaleForCSBudget,
     updateAgentProductionScale,
 } from './automaticProductionScale';
+import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
-import { constructionServiceResourceType } from './services';
+import { PRODUCED_HR_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -1456,6 +1458,140 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.construction!.constructionTargetMaxScale).toBeGreaterThan(hrDepartment.maxScale);
     });
 
+    it('targets HR scale proportional to usedWorkers with HR_EXPANSION_FACTOR slack', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 5,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 10_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        const HR_EXPANSION_FACTOR = 1.4;
+        assets.usedWorkers = 10_000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 10_000_000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        const expectedDemandScale = Math.max(1, Math.ceil((10_000 * HR_EXPANSION_FACTOR) / PRODUCED_HR_QUANTITY));
+        expect(expectedDemandScale).toBe(7);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.type).toBe('expansion');
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBe(expectedDemandScale);
+    });
+
+    it('caps HR expansion target at DYNAMIC_EXPANSION_CAP_FRACTION', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 5,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1_000_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.usedWorkers = 200_000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 1_000_000_000;
+
+        const maxAllowed =
+            hrDepartment.maxScale + Math.max(1, Math.ceil(hrDepartment.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+        expect(maxAllowed).toBe(7);
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBe(maxAllowed);
+    });
+
+    it('does NOT expand HR when findMaxAffordableScale limits target to current scale', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.usedWorkers = 4000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 0;
+
+        const affordable = findMaxAffordableScale(hrDepartment, assets, planet, hrDepartment.maxScale, 100);
+        expect(affordable).toBe(hrDepartment.maxScale);
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toBeNull();
+    });
+
     it('accumulates HR contraction integral at lower bound with negative signal', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
@@ -1651,4 +1787,3 @@ function assetsDeposits(agents: Map<string, Agent>, planet: Planet, amount: numb
         }
     }
 }
-
