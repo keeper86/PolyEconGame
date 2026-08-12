@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -14,19 +15,18 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     SIGNAL_EMA_ALPHA,
+    STORAGE_TARGET_FILL_RATE,
     computeStorageExpansionTarget,
     computeStorageSignal,
-    STORAGE_TARGET_FILL_RATE,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import { DYNAMIC_EXPANSION_CAP_FRACTION, MAX_SCALE_EXPAND_FRACTION } from './automaticProductionScale/constants';
+import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
-import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
