@@ -169,6 +169,10 @@ export type StorageDepartment = ManagementFacility & {
     storageStarvation: number;
 };
 
+export type TrainingsDepartment = ManagementFacility & {
+    trainingsBuffer: number;
+};
+
 export function getStorageStarvation(storage: StorageFacility): number {
     return storage.department?.storageStarvation ?? 1.0;
 }

@@ -11,6 +11,7 @@ import {
     humanResourcesServiceResourceType,
     logisticsServiceResourceType,
     storageServiceResourceType,
+    trainingServiceResourceType,
 } from './services';
 
 const zeroLastTicksResults: LastManagementTickResults = {
@@ -128,7 +129,7 @@ export const trainingCenterFacilityType = (planetId: string, id: string): Manage
         { resource: administrativeServiceResourceType, quantity: 1 },
         { resource: educationServiceResourceType, quantity: 10 },
     ],
-    produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    produces: [{ resource: trainingServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
 });
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {

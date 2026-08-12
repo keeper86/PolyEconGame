@@ -380,8 +380,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const hasNoActiveConstruction = facility.construction === null;
             const positiveSignal = signal > 0;
             const integralAboveThreshold = state.expansionIntegral >= dynamicThreshold;
-            const efficiencyAbove95 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.95;
-            const expansionConditionsMet = atMaxScale && hasNoActiveConstruction && integralAboveThreshold;
+            const efficiencyAbove85 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.85;
+            const expansionConditionsMet =
+                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;
@@ -440,7 +441,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     atMaxScale,
                     hasNoActiveConstruction,
                     integralAboveThreshold,
-                    efficiencyAbove95,
+                    efficiencyAbove85,
                     workforceStats!,
                     workersAvailable,
                     fundsAvailable,
@@ -450,7 +451,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 if (!integralAboveThreshold) {
                     debugAggregates.blockedByIntegral++;
                 }
-                if (!efficiencyAbove95) {
+                if (!efficiencyAbove85) {
                     debugAggregates.blockedByEfficiency++;
                 }
                 if (!workersAvailable) {

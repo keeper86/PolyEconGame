@@ -36,8 +36,8 @@ import { nextRandom } from '../utils/stochasticRound';
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
 
-const TOTAL_ARABLE = 3_500_000_00;
-const TOTAL_WATER = 4_000_000_00;
+const TOTAL_ARABLE = 3_500_000_000;
+const TOTAL_WATER = 4_000_000_000;
 const TOTAL_IRON_ORE = 5_000_000_00_000;
 const TOTAL_COAL = 4_000_000_000_00;
 const TOTAL_OIL = 3_000_000_000_00;

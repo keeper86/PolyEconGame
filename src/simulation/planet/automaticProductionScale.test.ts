@@ -20,12 +20,15 @@ import {
     computeStorageSignal,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
+    findMaxScaleForLandboundResources,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
+import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
@@ -1903,6 +1906,194 @@ describe('computeStorageExpansionTarget', () => {
         assets.lastMonthAcc.revenue = 0;
         const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
         expect(target).toBe(maxScale);
+    });
+});
+
+describe('findMaxScaleForLandboundResources', () => {
+    it('caps expansion at current maxScale when pool is exhausted (renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: waterSourceResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(10);
+    });
+
+    it('caps expansion at current maxScale when pool is exhausted (non-renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: false }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: waterSourceResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(10);
+    });
+
+    it('allows expansion when pool has sufficient capacity (renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 10_000, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
+    });
+
+    it('caps expansion at available pool capacity when partial shortage exists', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 500, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 25);
+        expect(result).toBe(15);
+    });
+
+    it('returns desiredScale unchanged when facility has no landbound needs', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
+    });
+
+    it('returns desiredScale when maxScale is already at or above desiredScale', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 10);
+        expect(result).toBe(10);
+    });
+
+    it('caps by the most constraining landbound resource', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 500, renewable: true }),
+            claims: [],
+        };
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 200, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [
+                    { resource: waterSourceResourceType, quantity: 100 },
+                    { resource: arableLandResourceType, quantity: 100 },
+                ],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 25);
+        expect(result).toBe(12);
+    });
+
+    it('is not affected by non-landbound resource entries in planet.resources', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 10_000, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [
+                    { resource: waterSourceResourceType, quantity: 100 },
+                    { resource: crudeOilResourceType, quantity: 200 },
+                ],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
     });
 });
 

@@ -775,7 +775,7 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
         { resource: steelResourceType, quantity: 60 },
         { resource: machineryResourceType, quantity: 3 },
     ],
-    produces: [{ resource: constructionServiceResourceType, quantity: 100 }],
+    produces: [{ resource: constructionServiceResourceType, quantity: 300 }],
 });
 
 export const groceryChain = (planetId: string, id: string): ProductionFacility => ({
@@ -814,7 +814,7 @@ export const retailChain = (planetId: string, id: string): ProductionFacility =>
         { resource: clothingResourceType, quantity: 10 },
         { resource: furnitureResourceType, quantity: 10 },
     ],
-    produces: [{ resource: retailServiceResourceType, quantity: 300 }],
+    produces: [{ resource: retailServiceResourceType, quantity: 200 }],
 });
 
 export const hospital = (planetId: string, id: string): ProductionFacility => ({
