@@ -7,21 +7,26 @@ import {
     makePlanet,
     makePopulationByEducation,
     makeProductionFacility,
+    makeStorageFacility,
 } from '../utils/testHelper';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     SIGNAL_EMA_ALPHA,
+    computeStorageExpansionTarget,
+    computeStorageSignal,
+    STORAGE_TARGET_FILL_RATE,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
+import { DYNAMIC_EXPANSION_CAP_FRACTION, MAX_SCALE_EXPAND_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
-import { PRODUCED_HR_QUANTITY } from './specialFacilities';
+import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
+import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -1772,6 +1777,132 @@ describe('construction budget constraint', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
         expect(facility.construction).not.toBeNull();
+    });
+});
+
+describe('computeStorageSignal', () => {
+    it('returns a positive signal when buffer is below target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        storage.department!.storageBuffer = 0;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeCloseTo(1, 5);
+    });
+
+    it('returns a negative signal when buffer is above target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeLessThan(0);
+    });
+
+    it('returns signal near zero when buffer is exactly at target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer * STORAGE_TARGET_FILL_RATE;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(Math.abs(signal)).toBeLessThan(0.001);
+    });
+
+    it('returns signal 1 when maxBuffer is zero (maxScale is 0)', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 0;
+        storage.department!.scale = 0;
+        storage.department!.storageBuffer = 100;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBe(1);
+    });
+
+    it('clamps signal to [-1, 1] range', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        storage.department!.storageBuffer = -100000;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeGreaterThanOrEqual(-1);
+        expect(signal).toBeLessThanOrEqual(1);
+    });
+
+    it('buffer near full produces negative signal approaching -1', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer * 0.99;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeLessThan(0);
+        expect(signal).toBeGreaterThan(-1);
+    });
+});
+
+describe('computeStorageExpansionTarget', () => {
+    function makeStorageWithAssets(maxScale: number, storageBuffer: number) {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = maxScale;
+        storage.department!.scale = maxScale;
+        storage.department!.storageBuffer = storageBuffer;
+
+        const planet = makePlanet();
+        const assets = makeAgentPlanetAssets('p', {
+            storageFacility: storage,
+            deposits: 1_000_000,
+        });
+        assets.lastMonthAcc.revenue = 100_000;
+        assets.lastMonthAcc.wages = 0;
+        assets.lastMonthAcc.purchases = 0;
+        assets.lastMonthAcc.claimPayments = 0;
+
+        return { storage: storage.department!, assets, planet };
+    }
+
+    it('returns expansion target >= current maxScale + 1 when buffer is below target', () => {
+        const { storage, assets, planet } = makeStorageWithAssets(1, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        expect(target).toBeGreaterThanOrEqual(2);
+    });
+
+    it('caps expansion at DYNAMIC_EXPANSION_CAP_FRACTION', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        const absoluteCap = maxScale + Math.max(1, Math.ceil(maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+        expect(target).toBeLessThanOrEqual(absoluteCap);
+    });
+
+    it('respects constructionBudget limit', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, 0);
+        expect(target).toBe(maxScale);
+    });
+
+    it('skips affordability checks when hasOwnConstruction is true', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        assets.deposits = 0;
+        const target = computeStorageExpansionTarget(storage, assets, planet, true, Infinity);
+        expect(target).toBeGreaterThan(maxScale);
+    });
+
+    it('limits expansion when deposits are insufficient', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        assets.deposits = 1;
+        assets.lastMonthAcc.revenue = 0;
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        expect(target).toBe(maxScale);
     });
 });
 

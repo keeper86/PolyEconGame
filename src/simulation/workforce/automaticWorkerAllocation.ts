@@ -88,8 +88,7 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     const monthlyRunRate = lastMonthWages + lastMonthPurchases + lastClaims;
     // If we have no last month data yet, fall back to current month (which may still be incomplete)
     const effectiveMonthlyRunRate = monthlyRunRate > 0 ? monthlyRunRate : Number.MAX_SAFE_INTEGER;
-    const totalLoans = assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
-    return effectiveMonthlyRunRate * 12 + totalLoans; // 1 year of operating costs
+    return effectiveMonthlyRunRate * 12;
 }
 
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
