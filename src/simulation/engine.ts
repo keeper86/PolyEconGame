@@ -31,6 +31,7 @@ import { hrBufferTick } from './workforce/hrBuffer';
 import { storageLogisticsTick } from './planet/storageLogistics';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 import { TickProfiler } from './TickProfiler';
+import { facilityMaintenanceTick } from './planet/facilityMaintenance';
 
 export { seedRng };
 export { TickProfiler };
@@ -160,6 +161,7 @@ export function advanceTick(gameState: GameState) {
             productionTick(gameState, planet);
             hrBufferTick(gameState.agents, planet);
             storageLogisticsTick(gameState.agents, planet);
+            facilityMaintenanceTick(gameState, planet);
             automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {

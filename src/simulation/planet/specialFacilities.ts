@@ -4,6 +4,7 @@ import type {
     ManagementFacility,
     ShipConstructionFacility,
     StorageDepartment,
+    TrainingsDepartment,
 } from './facility';
 import {
     administrativeServiceResourceType,
@@ -41,6 +42,9 @@ const makeManagementFacilityDefaults = () => ({
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
     lastConstructionCompletedTick: 0,
+    maintenanceStatus: 1,
+    maxMaintenance: 1,
+    cumulativeRepairAcc: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
     },
@@ -113,7 +117,7 @@ export const researchAndDevelopmentFacilityType = (planetId: string, id: string)
 });
 
 export const TRAINING_CENTER_NAME = 'Training Center';
-export const trainingCenterFacilityType = (planetId: string, id: string): ManagementFacility => ({
+export const trainingCenterFacilityType = (planetId: string, id: string): TrainingsDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
@@ -130,7 +134,12 @@ export const trainingCenterFacilityType = (planetId: string, id: string): Manage
         { resource: educationServiceResourceType, quantity: 10 },
     ],
     produces: [{ resource: trainingServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    trainingsBuffer: 0,
 });
+// shorten time for onbording
+// decrease productivity malus for onboarding
+// worker XP increase
+// increase XP bonus for productivity
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {
@@ -142,6 +151,9 @@ export const shipConstructionFacilityType = (planetId: string, id: string): Ship
         scale: 1,
         construction: null,
         lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 10,

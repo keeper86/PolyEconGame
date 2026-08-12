@@ -1,3 +1,4 @@
+import { FACILITY_CONDITION_EFFICIENCY_EXPONENT } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
@@ -31,6 +32,11 @@ export const getFacilityType = (facility: Facility): FacilityType => {
     }
     return facility.type;
 };
+
+export function computeFacilityConditionEfficiency(maintenanceStatus: number): number {
+    const condition = Math.max(0, Math.min(1, maintenanceStatus));
+    return 1 - Math.pow(1 - condition, FACILITY_CONDITION_EFFICIENCY_EXPONENT);
+}
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
 const constructionCostFactor = 10000;
@@ -70,6 +76,9 @@ export type FacilityBase = PlanetaryId & {
     scale: number;
     construction: ConstructionState;
     lastConstructionCompletedTick: number;
+    maintenanceStatus: number;
+    maxMaintenance: number;
+    cumulativeRepairAcc: number;
 
     powerConsumptionPerTick: number;
     workerRequirement: {
