@@ -329,6 +329,31 @@ describe('productionTick (basic)', () => {
 
         expect(facility.lastTickResults?.overallEfficiency).toBe(1);
     });
+
+    it('scales production efficiency by facility condition', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('condition-coupling');
+
+        const facility = makeProductionFacility({ none: 10 }, { scale: 1, maintenanceStatus: 0.5 });
+        facility.needs = [{ resource: waterResourceType, quantity: 5 }];
+        facility.produces = [{ resource: produceResourceType, quantity: 100 }];
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 50,
+        };
+        agent.assets.p.workforceDemography[30].none.novice.active = 20;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        const conditionEfficiency = 1 - 0.5 ** 3;
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(conditionEfficiency, 10);
+        expect(facility.lastTickResults.lastProduced[produceResourceType.name]).toBeCloseTo(
+            100 * conditionEfficiency,
+            5,
+        );
+    });
 });
 
 describe('productionTick — shared stored-resource allocation', () => {
@@ -616,6 +641,40 @@ describe('constructionTick', () => {
         expect(facility.construction!.lastTickInvestedConstructionServices).toBe(30);
         expect(facility.construction!.progress).toBe(30);
         expect(facility.construction).not.toBeNull();
+    });
+
+    it('blends condition per scale-weight when expansion completes', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility(
+            { secondary: 1 },
+            { scale: 1, maxScale: 1, maintenanceStatus: 0.5, maxMaintenance: 0.8, cumulativeRepairAcc: 0.4 },
+        );
+        facility.id = 'condition-blend-expansion';
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 90,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+            resource: constructionServiceResourceType,
+            quantity: 20,
+        };
+
+        const gs = makeGameState(planet, [agent, gov]);
+        constructionTick(gs, planet);
+
+        expect(facility.construction).toBeNull();
+        expect(facility.maxScale).toBe(2);
+        expect(facility.maxMaintenance).toBeCloseTo(0.9, 10);
+        expect(facility.maintenanceStatus).toBeCloseTo(0.75, 10);
+        expect(facility.cumulativeRepairAcc).toBeCloseTo(0.2, 10);
     });
 });
 

@@ -25,7 +25,12 @@ import {
     USED_QUANTITY,
     storageDepartmentFacilityType,
 } from '../../src/simulation/planet/specialFacilities';
-import { SR_HOLDING_COST_PER_TON, TICKS_PER_MONTH } from '../../src/simulation/constants';
+import {
+    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
+    SR_HOLDING_COST_PER_TON,
+    TICKS_PER_MONTH,
+    TICKS_PER_YEAR,
+} from '../../src/simulation/constants';
 
 const TOOL_PLANET = 'tool';
 const TOOL_ID = 'preview';
@@ -63,6 +68,12 @@ const BALANCE_EPSILON = 0.001;
 const CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK = 0.3;
 const STORAGE_MOVEMENT_FACTOR = 2;
 const TARGET_SCALE_PER_AGENT = 150_000;
+
+const FACILITY_MAINTENANCE_WEAR_PER_SCALE_PER_TICK =
+    FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR;
+const FACILITY_MAINTENANCE_USAGE_FACTOR_AT_FULL_EFFICIENCY = 2;
+const FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK =
+    FACILITY_MAINTENANCE_USAGE_FACTOR_AT_FULL_EFFICIENCY * FACILITY_MAINTENANCE_WEAR_PER_SCALE_PER_TICK;
 
 function resourceConstraintKey(name: string): string {
     return `res__${name}`;
@@ -154,6 +165,13 @@ function buildModel(slack: SlackConfig): {
         if (storageAdminPerScale > 0) {
             varCoeffs[adminKey] = (varCoeffs[adminKey] ?? 0) - storageAdminPerScale;
             if (!constraints[adminKey]) constraints[adminKey] = { min: 0 };
+        }
+
+        if (FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK > 0) {
+            const maintenanceKey = resourceConstraintKey(maintenanceServiceResourceType.name);
+            varCoeffs[maintenanceKey] =
+                (varCoeffs[maintenanceKey] ?? 0) - FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+            if (!constraints[maintenanceKey]) constraints[maintenanceKey] = { min: 0 };
         }
 
         variables[name] = varCoeffs;
@@ -413,6 +431,15 @@ function main(): void {
             if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {
                 const civilConstructions = Math.ceil(constructionDemandPerTick * CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK);
                 balances[constructionServiceResourceType.name].cons += civilConstructions;
+            }
+
+            balances[maintenanceServiceResourceType.name] = balances[maintenanceServiceResourceType.name] ?? {
+                prod: 0,
+                cons: 0,
+            };
+            for (const r of results) {
+                balances[maintenanceServiceResourceType.name].cons +=
+                    r.scale * FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
             }
 
             console.log(

@@ -32,6 +32,7 @@ import type {
     StorageFacility,
 } from './facility';
 import {
+    computeFacilityConditionEfficiency,
     createLastTickResults,
     putIntoStorageFacility,
     queryStorageFacility,
@@ -107,8 +108,19 @@ export function consumeConstructionForFacility(
     }
 
     if (cs.progress >= cs.totalConstructionServiceRequired) {
-        const scaleFraction = facility.maxScale > 0 ? Math.round((facility.scale / facility.maxScale) * 4) / 4 : 1;
-        facility.maxScale = cs.constructionTargetMaxScale;
+        const oldMaxScale = facility.maxScale;
+        const scaleFraction = oldMaxScale > 0 ? Math.round((facility.scale / oldMaxScale) * 4) / 4 : 1;
+        const newMaxScale = cs.constructionTargetMaxScale;
+        const addedScale = Math.max(0, newMaxScale - oldMaxScale);
+        if (newMaxScale > 0) {
+            facility.maxMaintenance = (oldMaxScale * facility.maxMaintenance + addedScale) / newMaxScale;
+            facility.maintenanceStatus = Math.min(
+                facility.maxMaintenance,
+                (oldMaxScale * facility.maintenanceStatus + addedScale) / newMaxScale,
+            );
+            facility.cumulativeRepairAcc = (oldMaxScale * facility.cumulativeRepairAcc) / newMaxScale;
+        }
+        facility.maxScale = newMaxScale;
         facility.scale = facility.maxScale * Math.max(0.1, scaleFraction);
         facility.construction = null;
         facility.lastConstructionCompletedTick = tracking.gameStateTick;
@@ -819,7 +831,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 workerResults.workerEfficiencyOverall,
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
-            const overallEfficiency = rawEfficiency;
+            const overallEfficiency = rawEfficiency * computeFacilityConditionEfficiency(facility.maintenanceStatus);
 
             if (overallEfficiency > 0) {
                 planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;

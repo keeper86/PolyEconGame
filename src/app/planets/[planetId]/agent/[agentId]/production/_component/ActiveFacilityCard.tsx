@@ -21,6 +21,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
+import { FacilityConditionRow } from './FacilityConditionRow';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
 import { FacilityHeader, limitingEfficiency } from './FacilityHeader';
@@ -376,6 +377,7 @@ export function ActiveFacilityCard({
 
                 <div className='relative pt-2'>
                     <div className='space-y-2'>
+                        {!facility.construction && <FacilityConditionRow facility={facility} />}
                         {facility.construction ? (
                             <ConstructionCompactRow
                                 facility={facility}

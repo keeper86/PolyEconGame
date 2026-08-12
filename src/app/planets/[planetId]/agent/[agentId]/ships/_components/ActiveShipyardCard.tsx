@@ -17,6 +17,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
+import { FacilityConditionRow } from '../../production/_component/FacilityConditionRow';
 import { WorkerBars } from '../../production/_component/WorkerBars';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 
@@ -184,6 +185,7 @@ export function ActiveShipyardCard({
                         <Separator />
                     </>
                 )}
+                <FacilityConditionRow facility={facility} />
             </FacilityCardShell>
         </>
     );

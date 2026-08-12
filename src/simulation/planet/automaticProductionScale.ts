@@ -15,6 +15,7 @@ export {
     computeDynamicExpansionTarget,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
+    findMaxScaleForLandboundResources,
     OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
 export {
