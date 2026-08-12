@@ -290,7 +290,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
             if (assets.storageFacility?.department?.construction !== null) {
                 totalActiveConstructionDemand +=
-                    assets.storageFacility!.department!.construction.maximumConstructionServiceConsumption;
+                    assets.storageFacility.department?.construction.maximumConstructionServiceConsumption ?? 0;
             }
         }
     });
@@ -551,6 +551,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrDepartment.construction === null &&
                 hrState.expansionIntegral >= hrDynamicThreshold
             ) {
+                // TODO: should scale to needed worker count
                 let hrTargetMax = Math.max(
                     Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
                     hrDepartment.maxScale + 1,

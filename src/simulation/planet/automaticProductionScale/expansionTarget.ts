@@ -50,6 +50,7 @@ export function findMaxAffordableScale(
 
 export const OVER_SHARE_FACTOR = 1.2;
 
+// TODO: choose a better scale cost function that is easily invertible
 export function findMaxScaleForCSBudget(
     facility: FacilityBase,
     currentMax: number,
@@ -64,11 +65,18 @@ export function findMaxScaleForCSBudget(
     let high = maxDesiredScale;
     let best = currentMax;
 
+    const getCsPerTick = (scale: number) => {
+        const { cost, time } = calculateCostsForConstruction(facilityType, currentMax, scale);
+        return time > 0 ? cost / time : Infinity;
+    };
+
+    if (getCsPerTick(maxDesiredScale) <= availableCSBudget) {
+        return maxDesiredScale;
+    }
+
     while (low <= high) {
         const candidateMax = Math.floor((low + high) / 2);
-        const { cost, time } = calculateCostsForConstruction(facilityType, currentMax, candidateMax);
-        const csPerTick = time > 0 ? cost / time : Infinity;
-        if (csPerTick <= availableCSBudget) {
+        if (getCsPerTick(candidateMax) <= availableCSBudget) {
             best = candidateMax;
             low = candidateMax + 1;
         } else {
