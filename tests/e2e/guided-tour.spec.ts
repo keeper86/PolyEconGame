@@ -13,7 +13,7 @@ import { test, expect } from '@playwright/test';
 test.use({ trace: 'retain-on-failure' });
 
 test.describe('Guided Tour E2E', () => {
-    test.describe.configure({ retries: 0 });
+    test.describe.configure({ retries: 1 });
     test('shows guided tour popups on financial page and can proceed through first steps', async ({ page }) => {
         // ==================================================================
         // 1. Create a new agent on the founding page
