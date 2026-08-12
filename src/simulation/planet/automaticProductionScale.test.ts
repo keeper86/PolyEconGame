@@ -13,10 +13,12 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     SIGNAL_EMA_ALPHA,
+    findMaxScaleForCSBudget,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
+import { constructionServiceResourceType } from './services';
 import { constructionServiceResourceType } from './services';
 
 const RESOURCE = produceResourceType;
@@ -1524,3 +1526,129 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.pidState!.contractionIntegral).toBeLessThan(30);
     });
 });
+
+describe('findMaxScaleForCSBudget', () => {
+    it('returns currentMax when budget is zero', () => {
+        const facility = makeProductionFacility({}, { maxScale: 10 });
+        const result = findMaxScaleForCSBudget(facility, 10, 15, 0);
+        expect(result).toBe(10);
+    });
+
+    it('returns maxDesiredScale when budget is sufficient for one step', () => {
+        const facility = makeProductionFacility({}, { maxScale: 10 });
+        const result = findMaxScaleForCSBudget(facility, 10, 11, 1_000_000);
+        expect(result).toBe(11);
+    });
+
+    it('returns intermediate scale when budget is limited', () => {
+        const facility = makeProductionFacility({}, { maxScale: 1 });
+        const result = findMaxScaleForCSBudget(facility, 1, 3, 1);
+        expect(result).toBe(1);
+    });
+});
+
+describe('construction budget constraint', () => {
+    it('does not constrain expansion when no construction production exists', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.producedResources.Construction = 0;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        expect(facility.construction).not.toBeNull();
+    });
+
+    it('blocks expansion when construction market is in deficit and budget is zero', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.producedResources.Construction = 50;
+        planet.consumedResources.Construction = 100;
+        planet.constructionBalanceEMA = -20;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        // Budget is 0, so expansion should be blocked
+        expect(facility.construction).toBeNull();
+    });
+
+    it('allows expansion when construction market has budget available', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            produces: [
+                { resource: RESOURCE, quantity: 100 },
+                { resource: constructionServiceResourceType, quantity: 500 },
+            ],
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.lastMarketResult.Construction = {
+            resourceName: 'Construction',
+            clearingPrice: 5,
+            totalVolume: 100,
+            totalDemand: 100,
+            totalSupply: 100,
+            unfilledDemand: 0,
+            unsoldSupply: 0,
+        };
+        planet.producedResources.Construction = 500;
+        planet.consumedResources.Construction = 0;
+        planet.constructionBalanceEMA = 100;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        expect(facility.construction).not.toBeNull();
+    });
+});
+
+function assetsDeposits(agents: Map<string, Agent>, planet: Planet, amount: number) {
+    for (const agent of agents.values()) {
+        const assets = agent.assets[planet.id];
+        if (assets) {
+            assets.deposits = amount;
+            assets.lastMonthAcc.revenue = amount / 10;
+            assets.lastMonthAcc.wages = 0;
+            assets.lastMonthAcc.purchases = 0;
+            assets.lastMonthAcc.claimPayments = 0;
+        }
+    }
+}
+

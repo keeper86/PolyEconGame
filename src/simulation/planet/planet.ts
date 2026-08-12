@@ -150,6 +150,8 @@ export type Planet = {
         [resourceName in string]: number;
     };
 
+    constructionBalanceEMA: number;
+
     productionCosts: Record<string, number>;
 
     lastProductionCostFloors: Record<string, number>;
@@ -177,26 +179,22 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 });
 
 export interface AutomatedPricingConfig {
-    // Shared price-adjustment limits
-    priceAdjustMaxUp?: number; // default: PRICE_ADJUST_MAX_UP (1.05)
-    priceAdjustMaxDown?: number; // default: PRICE_ADJUST_MAX_DOWN (0.95)
-    costSpringStrength?: number; // default: COST_SPRING_STRENGTH (0.10)
-    bidOfferMaxCostMultiplier?: number; // default: BID_OFFER_MAX_COST_MULTIPLIER (6)
-    inventorySmoothingMaxExtra?: number; // default: INVENTORY_SMOOTHING_MAX_EXTRA (2)
+    priceAdjustMaxUp?: number;
+    priceAdjustMaxDown?: number;
+    costSpringStrength?: number;
+    bidOfferMaxCostMultiplier?: number;
+    inventorySmoothingMaxExtra?: number;
 
-    // Free quantity (absolute order amount, smoothed over days)
-    freeBuyQuantity?: number; // absolute total quantity to buy (spread over fill days)
-    freeRetainment?: number; // absolute quantity to always keep in storage (sell everything above this)
-    freeBuyQuantitySmoothingMaxExtra?: number; // days the buy order takes to fill, default 2
-    freeRetainmentSmoothingMaxExtra?: number; // days the retainment sell-off takes to fill, default 2
+    freeBuyQuantity?: number;
+    freeRetainment?: number;
+    freeBuyQuantitySmoothingMaxExtra?: number;
+    freeRetainmentSmoothingMaxExtra?: number;
 
-    // Sell-side
-    targetSellThrough?: number; // default: 0.6 (goods), 0.7 (services — resolver picks by resource.form)
-    automatedCostFloorBuffer?: number; // default: 0.5
+    targetSellThrough?: number;
+    automatedCostFloorBuffer?: number;
 
-    // Buy-side
-    inputBufferTargetTicks?: number; // default: 30 (goods), 3 (services — resolver picks by resource.form)
-    targetFillRate?: number; // default: 0.6 (goods), 0.7 (services - resolver picks by resource.form)
+    inputBufferTargetTicks?: number;
+    targetFillRate?: number;
 }
 
 export type SellDiagnostics = {

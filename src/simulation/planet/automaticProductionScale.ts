@@ -13,6 +13,7 @@ export {
     calculateExpansionParams,
     computeDynamicExpansionTarget,
     findMaxAffordableScale,
+    findMaxScaleForCSBudget,
     OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
 export {
@@ -45,7 +46,11 @@ import {
     SIGNAL_EMA_ALPHA,
 } from './automaticProductionScale/constants';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
-import { calculateExpansionParams, computeDynamicExpansionTarget } from './automaticProductionScale/expansionTarget';
+import {
+    calculateExpansionParams,
+    computeDynamicExpansionTarget,
+    findMaxScaleForCSBudget,
+} from './automaticProductionScale/expansionTarget';
 import {
     agentHasOwnConstructionFacility,
     checkExpansionFunds,
@@ -254,6 +259,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
     const resourceTotalMaxCapacity = new Map<string, number>();
     const resourceTotalMaxNeeded = new Map<string, number>();
+    let totalActiveConstructionDemand = 0;
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
         if (assets) {
@@ -274,9 +280,32 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                         (resourceTotalMaxNeeded.get(out.resource.name) ?? 0) + needed,
                     );
                 }
+                if (facility.construction !== null) {
+                    totalActiveConstructionDemand += facility.construction.maximumConstructionServiceConsumption;
+                }
+            }
+            if (assets.humanResourcesDepartment?.construction !== null) {
+                totalActiveConstructionDemand +=
+                    assets.humanResourcesDepartment?.construction.maximumConstructionServiceConsumption ?? 0;
+            }
+            if (assets.storageFacility?.department?.construction !== null) {
+                totalActiveConstructionDemand +=
+                    assets.storageFacility!.department!.construction.maximumConstructionServiceConsumption;
             }
         }
     });
+
+    const csProduced = planet.producedResources.Construction ?? 0;
+    const csConsumed = totalActiveConstructionDemand;
+    const csNet = csProduced - csConsumed;
+    planet.constructionBalanceEMA =
+        SIGNAL_EMA_ALPHA * csNet + (1 - SIGNAL_EMA_ALPHA) * (planet.constructionBalanceEMA ?? 0);
+
+    const maxConstructionCapacity = resourceTotalMaxCapacity.get('Construction') ?? 0;
+    const availableCapacity = Math.max(0, maxConstructionCapacity - totalActiveConstructionDemand);
+
+    const constructionBudget =
+        csProduced > 0 ? Math.max(0, Math.min(planet.constructionBalanceEMA * 0.5, availableCapacity * 0.5)) : Infinity;
 
     gameState.agents.forEach((agent) => {
         if (!agent.automated) {
@@ -432,6 +461,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     resourceTotalMaxCapacity,
                     resourceTotalMaxNeeded,
                     hasOwnConstruction,
+                    constructionBudget,
                 );
                 if (dynamicTarget > facility.maxScale) {
                     const expanded = initiateCapacityExpansion(
@@ -521,7 +551,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrDepartment.construction === null &&
                 hrState.expansionIntegral >= hrDynamicThreshold
             ) {
-                const hrTargetMax = Math.max(
+                let hrTargetMax = Math.max(
                     Math.ceil(hrDepartment.maxScale * (1 + MAX_SCALE_EXPAND_FRACTION)),
                     hrDepartment.maxScale + 1,
                 );
@@ -530,14 +560,25 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 let hrFundsOk = true;
                 if (!hasOwnConstruction) {
                     hrFundsOk = checkExpansionFunds(hrDepartment, assets, planet, cost, time).hasSufficientFunds;
+                    hrTargetMax = findMaxScaleForCSBudget(
+                        hrDepartment,
+                        hrDepartment.maxScale,
+                        hrTargetMax,
+                        constructionBudget,
+                    );
                 }
 
-                if (hrFundsOk) {
+                if (hrFundsOk && hrTargetMax > hrDepartment.maxScale) {
+                    const { cost: adjCost, time: adjTime } = calculateCostsForConstruction(
+                        'management',
+                        hrDepartment.maxScale,
+                        hrTargetMax,
+                    );
                     hrDepartment.construction = {
                         type: 'expansion',
                         constructionTargetMaxScale: hrTargetMax,
-                        totalConstructionServiceRequired: cost,
-                        maximumConstructionServiceConsumption: cost / time,
+                        totalConstructionServiceRequired: adjCost,
+                        maximumConstructionServiceConsumption: adjCost / adjTime,
                         progress: 0,
                         lastTickInvestedConstructionServices: 0,
                     };
@@ -606,6 +647,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     assets,
                     planet,
                     hasOwnConstruction,
+                    constructionBudget,
                 );
                 if (stoTargetMax > storageDepartment.maxScale) {
                     const expanded = initiateCapacityExpansion(

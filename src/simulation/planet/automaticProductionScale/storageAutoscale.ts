@@ -3,7 +3,7 @@ import type { StorageDepartment } from '../facility';
 import { PRODUCED_STORAGE_QUANTITY } from '../specialFacilities';
 import type { AgentPlanetAssets, Planet } from '../planet';
 import { DYNAMIC_EXPANSION_CAP_FRACTION, MAX_SCALE_EXPAND_FRACTION } from './constants';
-import { findMaxAffordableScale } from './expansionTarget';
+import { findMaxAffordableScale, findMaxScaleForCSBudget } from './expansionTarget';
 
 export const STORAGE_TARGET_FILL_RATE = 0.85;
 
@@ -18,6 +18,7 @@ export function computeStorageExpansionTarget(
     assets: AgentPlanetAssets,
     planet: Planet,
     hasOwnConstruction: boolean,
+    constructionBudget: number,
 ): number {
     const currentMax = storageDepartment.maxScale;
     const maxBuffer = currentMax * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
@@ -38,6 +39,7 @@ export function computeStorageExpansionTarget(
 
     if (!hasOwnConstruction) {
         targetMax = findMaxAffordableScale(storageDepartment, assets, planet, currentMax, targetMax);
+        targetMax = findMaxScaleForCSBudget(storageDepartment, currentMax, targetMax, constructionBudget);
     }
 
     return targetMax;

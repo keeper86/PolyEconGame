@@ -50,6 +50,34 @@ export function findMaxAffordableScale(
 
 export const OVER_SHARE_FACTOR = 1.2;
 
+export function findMaxScaleForCSBudget(
+    facility: FacilityBase,
+    currentMax: number,
+    maxDesiredScale: number,
+    availableCSBudget: number,
+): number {
+    if (maxDesiredScale <= currentMax || availableCSBudget <= 0) {
+        return currentMax;
+    }
+    const facilityType = getFacilityType(facility as Facility);
+    let low = currentMax + 1;
+    let high = maxDesiredScale;
+    let best = currentMax;
+
+    while (low <= high) {
+        const candidateMax = Math.floor((low + high) / 2);
+        const { cost, time } = calculateCostsForConstruction(facilityType, currentMax, candidateMax);
+        const csPerTick = time > 0 ? cost / time : Infinity;
+        if (csPerTick <= availableCSBudget) {
+            best = candidateMax;
+            low = candidateMax + 1;
+        } else {
+            high = candidateMax - 1;
+        }
+    }
+    return best;
+}
+
 export function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
@@ -57,6 +85,7 @@ export function computeDynamicExpansionTarget(
     resourceTotalMaxCapacity: Map<string, number>,
     resourceTotalMaxNeeded: Map<string, number>,
     hasOwnConstruction: boolean,
+    constructionBudget: number,
 ): number {
     let maxDemandScale = facility.maxScale;
 
@@ -102,6 +131,7 @@ export function computeDynamicExpansionTarget(
 
     if (!hasOwnConstruction) {
         targetMax = findMaxAffordableScale(facility, assets, planet, facility.maxScale, targetMax);
+        targetMax = findMaxScaleForCSBudget(facility, facility.maxScale, targetMax, constructionBudget);
     }
 
     return targetMax;
