@@ -909,7 +909,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         seedRng(12345);
     });
 
-    it('reduces consumed inputs of a production facility when hrProductivityMultiplier < 1', () => {
+    it('worker efficiency is limited by available headcount when hrProductivityMultiplier is low (production)', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -928,15 +928,15 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
-        expect(facility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(60);
-        expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(60);
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(0.375, 2);
+        expect(facility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(75, 0);
+        expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(75, 0);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
-        expect(remaining).toBeCloseTo(940);
+        expect(remaining).toBeCloseTo(925, -1);
     });
 
-    it('reduces consumed building materials of a shipyard when hrProductivityMultiplier < 1', () => {
+    it('worker efficiency is limited by available headcount when hrProductivityMultiplier < 1', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('builder');
         const shipType: TransportShipType = {
@@ -964,8 +964,8 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         const part = Math.min(1, Math.sqrt(9) / 90);
         const requiredPerTick = 900 * part;
-        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(0.3);
-        expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBeCloseTo(requiredPerTick * 0.3);
+        expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(0.333, 2);
+        expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBeCloseTo(requiredPerTick * 0.333, 0);
     });
 
     it('does not apply hrProductivityMultiplier to the HR department itself', () => {
@@ -996,6 +996,29 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         expect(hrFacility.lastTickResults.overallEfficiency).toBeCloseTo(1);
         expect(hrFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(5);
         expect(hrFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(10);
+    });
+
+    it('reaches full worker efficiency with enough workers when hrProductivityMultiplier < 1', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('hr-penalty');
+
+        const facility = makeProductionFacility({ none: 10 }, { scale: 1 });
+        facility.needs = [{ resource: waterResourceType, quantity: 5 }];
+        facility.produces = [{ resource: produceResourceType, quantity: 100 }];
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 50,
+        };
+        agent.assets.p.hrProductivityMultiplier = 0.5;
+        agent.assets.p.workforceDemography[30].none.novice.active = 20;
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1);
+        expect(facility.lastTickResults.totalUsedByEdu.none).toBe(20);
+        expect(facility.lastTickResults.lastProduced[produceResourceType.name]).toBeCloseTo(100);
     });
 
     it('prioritizes HR department allocation over production facilities when workers are scarce', () => {
