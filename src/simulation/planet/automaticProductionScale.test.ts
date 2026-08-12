@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -7,17 +8,25 @@ import {
     makePlanet,
     makePopulationByEducation,
     makeProductionFacility,
+    makeStorageFacility,
 } from '../utils/testHelper';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     SIGNAL_EMA_ALPHA,
+    STORAGE_TARGET_FILL_RATE,
+    computeStorageExpansionTarget,
+    computeStorageSignal,
+    findMaxAffordableScale,
+    findMaxScaleForCSBudget,
     updateAgentProductionScale,
 } from './automaticProductionScale';
+import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
+import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
 const RESOURCE_NAME = RESOURCE.name;
@@ -1454,6 +1463,140 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.construction!.constructionTargetMaxScale).toBeGreaterThan(hrDepartment.maxScale);
     });
 
+    it('targets HR scale proportional to usedWorkers with HR_EXPANSION_FACTOR slack', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 5,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 10_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        const HR_EXPANSION_FACTOR = 1.4;
+        assets.usedWorkers = 10_000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 10_000_000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        const expectedDemandScale = Math.max(1, Math.ceil((10_000 * HR_EXPANSION_FACTOR) / PRODUCED_HR_QUANTITY));
+        expect(expectedDemandScale).toBe(7);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.type).toBe('expansion');
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBe(expectedDemandScale);
+    });
+
+    it('caps HR expansion target at DYNAMIC_EXPANSION_CAP_FRACTION', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 5,
+            scale: 5,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1_000_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.usedWorkers = 200_000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 1_000_000_000;
+
+        const maxAllowed =
+            hrDepartment.maxScale + Math.max(1, Math.ceil(hrDepartment.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+        expect(maxAllowed).toBe(7);
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBe(maxAllowed);
+    });
+
+    it('does NOT expand HR when findMaxAffordableScale limits target to current scale', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.usedWorkers = 4000;
+        hrDepartment.hrBuffer = 0;
+        assets.lastMonthAcc.revenue = 0;
+
+        const affordable = findMaxAffordableScale(hrDepartment, assets, planet, hrDepartment.maxScale, 100);
+        expect(affordable).toBe(hrDepartment.maxScale);
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).toBeNull();
+    });
+
     it('accumulates HR contraction integral at lower bound with negative signal', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
@@ -1524,3 +1667,254 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.pidState!.contractionIntegral).toBeLessThan(30);
     });
 });
+
+describe('findMaxScaleForCSBudget', () => {
+    it('returns currentMax when budget is zero', () => {
+        const facility = makeProductionFacility({}, { maxScale: 10 });
+        const result = findMaxScaleForCSBudget(facility, 10, 15, 0);
+        expect(result).toBe(10);
+    });
+
+    it('returns maxDesiredScale when budget is sufficient for one step', () => {
+        const facility = makeProductionFacility({}, { maxScale: 10 });
+        const result = findMaxScaleForCSBudget(facility, 10, 11, 1_000_000);
+        expect(result).toBe(11);
+    });
+
+    it('returns intermediate scale when budget is limited', () => {
+        const facility = makeProductionFacility({}, { maxScale: 1 });
+        const result = findMaxScaleForCSBudget(facility, 1, 3, 1);
+        expect(result).toBe(1);
+    });
+});
+
+describe('construction budget constraint', () => {
+    it('does not constrain expansion when no construction production exists', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.producedResources.Construction = 0;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        expect(facility.construction).not.toBeNull();
+    });
+
+    it('blocks expansion when construction market is in deficit and budget is zero', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.producedResources.Construction = 50;
+        planet.consumedResources.Construction = 100;
+        planet.constructionBalanceEMA = -20;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        // Budget is 0, so expansion should be blocked
+        expect(facility.construction).toBeNull();
+    });
+
+    it('allows expansion when construction market has budget available', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        const { agents, facility } = makeSetup(planet, {
+            maxScale: 1,
+            scale: 1,
+            produces: [
+                { resource: RESOURCE, quantity: 100 },
+                { resource: constructionServiceResourceType, quantity: 500 },
+            ],
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+            },
+        });
+        planet.lastMarketResult.Construction = {
+            resourceName: 'Construction',
+            clearingPrice: 5,
+            totalVolume: 100,
+            totalDemand: 100,
+            totalSupply: 100,
+            unfilledDemand: 0,
+            unsoldSupply: 0,
+        };
+        planet.producedResources.Construction = 500;
+        planet.consumedResources.Construction = 0;
+        planet.constructionBalanceEMA = 100;
+        planet.marketPrices.Construction = 5;
+        planet.lastProductionCostFloors.Construction = 3;
+        assetsDeposits(agents, planet, 1_000_000);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+        expect(facility.construction).not.toBeNull();
+    });
+});
+
+describe('computeStorageSignal', () => {
+    it('returns a positive signal when buffer is below target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        storage.department!.storageBuffer = 0;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeCloseTo(1, 5);
+    });
+
+    it('returns a negative signal when buffer is above target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeLessThan(0);
+    });
+
+    it('returns signal near zero when buffer is exactly at target fill rate', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer * STORAGE_TARGET_FILL_RATE;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(Math.abs(signal)).toBeLessThan(0.001);
+    });
+
+    it('returns signal 1 when maxBuffer is zero (maxScale is 0)', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 0;
+        storage.department!.scale = 0;
+        storage.department!.storageBuffer = 100;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBe(1);
+    });
+
+    it('clamps signal to [-1, 1] range', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        storage.department!.storageBuffer = -100000;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeGreaterThanOrEqual(-1);
+        expect(signal).toBeLessThanOrEqual(1);
+    });
+
+    it('buffer near full produces negative signal approaching -1', () => {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = 1;
+        storage.department!.scale = 1;
+        const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        storage.department!.storageBuffer = maxBuffer * 0.99;
+
+        const signal = computeStorageSignal(storage.department!);
+        expect(signal).toBeLessThan(0);
+        expect(signal).toBeGreaterThan(-1);
+    });
+});
+
+describe('computeStorageExpansionTarget', () => {
+    function makeStorageWithAssets(maxScale: number, storageBuffer: number) {
+        const storage = makeStorageFacility();
+        storage.department!.maxScale = maxScale;
+        storage.department!.scale = maxScale;
+        storage.department!.storageBuffer = storageBuffer;
+
+        const planet = makePlanet();
+        const assets = makeAgentPlanetAssets('p', {
+            storageFacility: storage,
+            deposits: 1_000_000,
+        });
+        assets.lastMonthAcc.revenue = 100_000;
+        assets.lastMonthAcc.wages = 0;
+        assets.lastMonthAcc.purchases = 0;
+        assets.lastMonthAcc.claimPayments = 0;
+
+        return { storage: storage.department!, assets, planet };
+    }
+
+    it('returns expansion target >= current maxScale + 1 when buffer is below target', () => {
+        const { storage, assets, planet } = makeStorageWithAssets(1, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        expect(target).toBeGreaterThanOrEqual(2);
+    });
+
+    it('caps expansion at DYNAMIC_EXPANSION_CAP_FRACTION', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        const absoluteCap = maxScale + Math.max(1, Math.ceil(maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
+        expect(target).toBeLessThanOrEqual(absoluteCap);
+    });
+
+    it('respects constructionBudget limit', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, 0);
+        expect(target).toBe(maxScale);
+    });
+
+    it('skips affordability checks when hasOwnConstruction is true', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        assets.deposits = 0;
+        const target = computeStorageExpansionTarget(storage, assets, planet, true, Infinity);
+        expect(target).toBeGreaterThan(maxScale);
+    });
+
+    it('limits expansion when deposits are insufficient', () => {
+        const maxScale = 10;
+        const { storage, assets, planet } = makeStorageWithAssets(maxScale, 0);
+        assets.deposits = 1;
+        assets.lastMonthAcc.revenue = 0;
+        const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
+        expect(target).toBe(maxScale);
+    });
+});
+
+function assetsDeposits(agents: Map<string, Agent>, planet: Planet, amount: number) {
+    for (const agent of agents.values()) {
+        const assets = agent.assets[planet.id];
+        if (assets) {
+            assets.deposits = amount;
+            assets.lastMonthAcc.revenue = amount / 10;
+            assets.lastMonthAcc.wages = 0;
+            assets.lastMonthAcc.purchases = 0;
+            assets.lastMonthAcc.claimPayments = 0;
+        }
+    }
+}

@@ -56,6 +56,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         monthPriceAcc: {},
         consumedResources: {},
         producedResources: {},
+        constructionBalanceEMA: 0,
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},

@@ -685,10 +685,13 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
                 const fullTarget = req * facility.scale;
 
+                const hrMult =
+                    facility.id === assets.humanResourcesDepartment?.id ? 1 : assets.hrProductivityMultiplier;
+
                 const xpProdValues = Object.values(xpProdByEduSkill[jobEdu] ?? {});
                 const avgXpProd =
                     xpProdValues.length > 0 ? xpProdValues.reduce((a, b) => a + b, 0) / xpProdValues.length : 1;
-                const combinedProd = ageProd[jobEdu] * avgXpProd;
+                const combinedProd = ageProd[jobEdu] * avgXpProd * hrMult;
                 const bodies = combinedProd > 0 ? Math.ceil(fullTarget / combinedProd) : 0;
                 const slot: WorkerSlot = {
                     facilityId: facility.id,
@@ -701,6 +704,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     assignedByEdu: {},
                     assignedBySkill: {},
                     overqualifiedCount: 0,
+                    hrMultiplier: hrMult,
                 };
                 if (facility.id === assets.humanResourcesDepartment?.id) {
                     hrSlots.push(slot);
@@ -815,11 +819,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 workerResults.workerEfficiencyOverall,
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
-            const isHrDepartment =
-                assets.humanResourcesDepartment !== null && facility.id === assets.humanResourcesDepartment.id;
-            const overallEfficiency = isHrDepartment
-                ? rawEfficiency
-                : rawEfficiency * (assets.hrProductivityMultiplier ?? 1);
+            const overallEfficiency = rawEfficiency;
 
             if (overallEfficiency > 0) {
                 planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;

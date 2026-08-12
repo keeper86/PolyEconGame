@@ -12,7 +12,7 @@ import {
     stoneDepositResourceType,
     waterSourceResourceType,
 } from '../planet/landBoundResources';
-import type { Agent, Planet } from '../planet/planet';
+import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
@@ -30,6 +30,8 @@ import {
 } from './personalities';
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
+import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
+import { nextRandom } from '../utils/stochasticRound';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -155,13 +157,35 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             const personality = generateAgentPersonality();
             const assets = agent.assets[PROC_PLANET_ID];
 
+            assets.market.buy[constructionServiceResourceType.name] = {
+                resource: constructionServiceResourceType,
+                automated: true,
+                autoConfig: {
+                    bidOfferMaxCostMultiplier: 2 + 4 * nextRandom(),
+                },
+            };
+
             for (const { resource } of fac.produces) {
                 if (!assets.market.sell[resource.name]) {
-                    assets.market.sell[resource.name] = {
-                        resource,
-                        automated: true,
-                        autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
-                    };
+                    if (resource.name === groceryServiceResourceType.name) {
+                        const groceryStrategy: AutomatedPricingConfig = {
+                            priceAdjustMaxUp: 1.02,
+                            priceAdjustMaxDown: 0.98,
+                            automatedCostFloorBuffer: 1.0,
+                            targetSellThrough: 0.8,
+                        };
+                        assets.market.sell[resource.name] = {
+                            resource,
+                            automated: true,
+                            autoConfig: groceryStrategy,
+                        };
+                    } else {
+                        assets.market.sell[resource.name] = {
+                            resource,
+                            automated: true,
+                            autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                        };
+                    }
                 }
             }
 
@@ -217,6 +241,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         monthPriceAcc: {},
         consumedResources: {},
         producedResources: {},
+        constructionBalanceEMA: 0,
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},

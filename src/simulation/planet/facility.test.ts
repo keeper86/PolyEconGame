@@ -64,14 +64,14 @@ describe('putIntoStorageFacility', () => {
         expect(storage.current.mass).toBeCloseTo(100);
     });
 
-    it('stores nothing when storage department scale is 0', () => {
+    it('stores nothing when storage department max scale is 0', () => {
         const resource = makeResource();
         const storage = makeStorageFacility({
             capacity: { volume: 100, mass: 100 },
             current: { volume: 50, mass: 50 },
             currentInStorage: { existing: { resource, quantity: 50 } },
         });
-        storage.department = { ...storage.department!, scale: 0 };
+        storage.department = { ...storage.department!, maxScale: 0 };
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 

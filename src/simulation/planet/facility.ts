@@ -150,7 +150,7 @@ export type StorageFacility = PlanetaryId & {
     department: StorageDepartment | null;
 };
 
-export const getStorageDepartmentScale = (storage: StorageFacility): number => storage.department?.scale ?? 0;
+export const getStorageScaleBasis = (storage: StorageFacility): number => storage.department?.maxScale ?? 0;
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
@@ -215,7 +215,7 @@ export const putIntoStorageFacility = (
 
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
-    const scale = getStorageDepartmentScale(storage);
+    const scale = getStorageScaleBasis(storage);
 
     const volumeRestriction =
         resource.volumePerQuantity > 0
@@ -325,7 +325,7 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
 };
 
 export const getAvailableStorageCapacity = (storage: StorageFacility, resource: Resource): number => {
-    const scale = getStorageDepartmentScale(storage);
+    const scale = getStorageScaleBasis(storage);
     const freeVolume = storage.capacity.volume * scale - storage.current.volume;
     const freeMass = storage.capacity.mass * scale - storage.current.mass;
     const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
