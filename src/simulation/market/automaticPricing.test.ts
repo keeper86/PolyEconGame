@@ -803,6 +803,36 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]).toBeUndefined();
     });
+
+    it('creates a Maintenance buy bid for an expanding facility', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'expanding', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 20,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate = (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
 });
 
 describe('automaticPricing — profitabilityGap multiplicatively dampens but never reverses bid pressure', () => {

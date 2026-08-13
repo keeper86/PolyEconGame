@@ -20,7 +20,7 @@ import {
     TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
 import type { Resource } from '../planet/claims';
-import { queryStorageFacility } from '../planet/facility';
+import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
 import type {
     Agent,
@@ -206,7 +206,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
         ...assets.shipConstructionFacilities,
     ]) {
-        if (facility.construction === null || facility.construction.type === 'expansion') {
+        if (isFacilityOperating(facility)) {
             let needs = [];
             if (facility.type === 'ship_construction') {
                 needs = (facility.produces?.buildingCost ?? []).map((resource) => {
@@ -251,7 +251,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             }
         }
 
-        if (facility.construction === null) {
+        if (isFacilityOperating(facility)) {
             const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
             const facilityTarget = facilityMaintenanceConsumptionPerTick(facility) * cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);

@@ -38,6 +38,8 @@ export function computeFacilityConditionEfficiency(maintenanceStatus: number): n
     return 1 - Math.pow(1 - condition, FACILITY_CONDITION_EFFICIENCY_EXPONENT);
 }
 
+export const isFacilityOperating = (facility: Facility): boolean => facility.construction?.type !== 'new';
+
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
 const constructionCostFactor = 10000;
 const facilityConstructionMultiplier: Record<FacilityType, number> = {

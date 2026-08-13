@@ -34,6 +34,7 @@ import type {
 import {
     computeFacilityConditionEfficiency,
     createLastTickResults,
+    isFacilityOperating,
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
@@ -650,18 +651,14 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         }
 
         const activeFacilities: Array<Facility> = [
-            ...assets.productionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
-            ...(assets.storageFacility.department &&
-            (!assets.storageFacility.department.construction ||
-                assets.storageFacility.department.construction.type === 'expansion')
+            ...assets.productionFacilities.filter(isFacilityOperating),
+            ...(assets.storageFacility.department && isFacilityOperating(assets.storageFacility.department)
                 ? [assets.storageFacility.department]
                 : []),
-            ...(assets.humanResourcesDepartment &&
-            (!assets.humanResourcesDepartment.construction ||
-                assets.humanResourcesDepartment.construction.type === 'expansion')
+            ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
                 ? [assets.humanResourcesDepartment]
                 : []),
-            ...assets.shipConstructionFacilities.filter((f) => !f.construction || f.construction.type === 'expansion'),
+            ...assets.shipConstructionFacilities.filter(isFacilityOperating),
         ];
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {

@@ -8,6 +8,7 @@ import {
 import {
     calculateCostsForConstruction,
     getFacilityType,
+    isFacilityOperating,
     queryStorageFacility,
     removeFromStorageFacility,
     type Facility,
@@ -38,7 +39,7 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
             return;
         }
         for (const facility of collectAgentFacilities(assets)) {
-            if (facility.construction !== null) {
+            if (!isFacilityOperating(facility)) {
                 continue;
             }
             applyFacilityMaintenance(facility, assets, planet);

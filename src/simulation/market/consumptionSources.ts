@@ -1,3 +1,4 @@
+import { isFacilityOperating } from '../planet/facility';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
@@ -109,7 +110,7 @@ export function computeConsumptionBreakdown(
     // ── Maintenance services (any operational facility) ────────────────────
     if (isMaintenanceService) {
         for (const f of allFacilities) {
-            if (f.construction !== null) {
+            if (!isFacilityOperating(f)) {
                 continue;
             }
             const rate = facilityMaintenanceConsumptionPerTick(f);
@@ -252,7 +253,7 @@ export function computeAllConsumptionRates(
 
     // ── Maintenance services (any operational facility) ────────────────────
     for (const f of allFacilities) {
-        if (f.construction === null) {
+        if (isFacilityOperating(f)) {
             add(maintenanceServiceResourceType.name, facilityMaintenanceConsumptionPerTick(f));
         }
     }

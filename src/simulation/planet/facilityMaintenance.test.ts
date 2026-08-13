@@ -68,6 +68,17 @@ function markUnderConstruction(facility: ProductionFacility): void {
     };
 }
 
+function markExpanding(facility: ProductionFacility): void {
+    facility.construction = {
+        type: 'expansion',
+        constructionTargetMaxScale: 2,
+        totalConstructionServiceRequired: 100,
+        maximumConstructionServiceConsumption: 10,
+        progress: 0,
+        lastTickInvestedConstructionServices: 0,
+    };
+}
+
 function fullRestoreCost(facility: ProductionFacility): number {
     return calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
 }
@@ -101,6 +112,45 @@ describe('facilityMaintenanceTick', () => {
 
         expect(facility.maintenanceStatus).toBe(1);
         expect(facility.maxMaintenance).toBe(1);
+    });
+
+    it('wears down an expanding facility', () => {
+        const { gameState, planet, facility } = setup();
+        markExpanding(facility);
+        facility.maintenanceStatus = 1;
+        facility.maxMaintenance = 1;
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.maintenanceStatus).toBeCloseTo(1 - FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR, 10);
+    });
+
+    it('repairs an expanding facility from Maintenance service', () => {
+        const { gameState, planet, facility, storage } = setup();
+        markExpanding(facility);
+        facility.maintenanceStatus = HALF_CONDITION;
+        facility.maxMaintenance = 1;
+        seedService(storage, maintenanceServiceResourceType, FACILITY_MAINTENANCE_REPAIR_PER_TICK * 2);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        const expected =
+            HALF_CONDITION -
+            FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR +
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK;
+        expect(facility.maintenanceStatus).toBeCloseTo(expected, 10);
+    });
+
+    it('restores an expanding facility from Construction service', () => {
+        const { gameState, planet, facility, storage } = setup();
+        markExpanding(facility);
+        facility.maxMaintenance = HALF_CONDITION;
+        facility.maintenanceStatus = HALF_CONDITION;
+        seedService(storage, constructionServiceResourceType, fullRestoreCost(facility));
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + FACILITY_RESTORATION_PER_TICK, 10);
     });
 
     it('wears maintenanceStatus down when no Maintenance service is available', () => {
