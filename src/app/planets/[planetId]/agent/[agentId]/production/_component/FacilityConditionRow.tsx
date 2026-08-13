@@ -47,7 +47,7 @@ export function FacilityConditionRow({
     const restoreIsLimiting = facility.lastTickRestorationConsumption < restoreCapacity;
 
     return (
-        <div className='rounded-md border p-2 space-y-1.5'>
+        <span className=''>
             <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: '1fr auto 3fr' }}>
                 <div className='flex flex-wrap gap-1.5 justify-center'>
                     <ProductQuantity
@@ -103,6 +103,6 @@ export function FacilityConditionRow({
                     </div>
                 </div>
             )}
-        </div>
+        </span>
     );
 }

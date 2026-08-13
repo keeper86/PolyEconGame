@@ -97,6 +97,8 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
     storageBuffer: 0,
     storageStarvation: 0,
 });
+// service shield for production
+// increased buffer for storageServiceResourceType
 
 export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';
 export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility => ({

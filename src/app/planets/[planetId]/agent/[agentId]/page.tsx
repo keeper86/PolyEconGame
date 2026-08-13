@@ -10,6 +10,7 @@ import { Globe } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo } from 'react';
 import { FacilityOrShipListCard } from './_component/FacilityListCard';
+import { FacilitiesMaintenanceDebug } from './_component/FacilitiesMaintenanceDebug';
 import AgentFinancialCharts from './financial/_components/AgentFinancialCharts';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { computeStorageThroughputMass } from '@/simulation/planet/facility';
@@ -208,7 +209,12 @@ export default function AgentPlanetOverviewPage() {
                     <AgentFinancialCharts agentId={agentId} planetId={planetId} onlyBalances={true} />
                 </div>
 
-                {assets && <ServiceDepartmentsDebug assets={assets} />}
+                {assets && (
+                    <div className='space-y-4'>
+                        <FacilitiesMaintenanceDebug assets={assets} />
+                        <ServiceDepartmentsDebug assets={assets} />
+                    </div>
+                )}
             </div>
 
             {/* ── Owner-only management section ── */}
