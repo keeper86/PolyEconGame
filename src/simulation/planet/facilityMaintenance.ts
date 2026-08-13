@@ -32,6 +32,14 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
     return (facility.scale * usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
 }
 
+export const facilityFullRestoreCost = (facility: Facility): number =>
+    calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
+
+export const facilityRestorationCapacityPerTick = (facility: Facility): number => {
+    const wanted = Math.min(1 - facility.maxMaintenance, FACILITY_RESTORATION_PER_TICK);
+    return wanted * facilityFullRestoreCost(facility);
+};
+
 export function facilityMaintenanceTick(gameState: GameState, planet: Planet): void {
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -39,6 +47,8 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
             return;
         }
         for (const facility of collectAgentFacilities(assets)) {
+            facility.lastTickMaintenanceConsumption = 0;
+            facility.lastTickRestorationConsumption = 0;
             if (!isFacilityOperating(facility)) {
                 continue;
             }
@@ -66,6 +76,7 @@ function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets,
         maintenanceServiceResourceType.name,
         repairFraction * facility.scale,
     );
+    facility.lastTickMaintenanceConsumption = consumed;
     if (consumed <= 0) {
         return;
     }
@@ -95,13 +106,12 @@ function applyFacilityRestoration(facility: Facility, assets: AgentPlanetAssets,
         return;
     }
 
-    const fullRestoreCost = calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
+    const fullRestoreCost = facilityFullRestoreCost(facility);
     if (fullRestoreCost <= 0) {
         return;
     }
 
-    const wanted = Math.min(1 - facility.maxMaintenance, FACILITY_RESTORATION_PER_TICK);
-    const needed = wanted * fullRestoreCost;
+    const needed = facilityRestorationCapacityPerTick(facility);
     const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
 
     const toConsume = Math.min(needed, available);
@@ -110,6 +120,7 @@ function applyFacilityRestoration(facility: Facility, assets: AgentPlanetAssets,
     }
 
     const consumed = removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);
+    facility.lastTickRestorationConsumption = consumed;
     const restored = consumed / fullRestoreCost;
     facility.maxMaintenance = Math.min(1, facility.maxMaintenance + restored);
     facility.maintenanceStatus = Math.min(facility.maxMaintenance, facility.maintenanceStatus + restored);

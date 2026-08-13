@@ -45,6 +45,8 @@ const makeManagementFacilityDefaults = () => ({
     maintenanceStatus: 1,
     maxMaintenance: 1,
     cumulativeRepairAcc: 0,
+    lastTickMaintenanceConsumption: 0,
+    lastTickRestorationConsumption: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
     },
@@ -154,6 +156,8 @@ export const shipConstructionFacilityType = (planetId: string, id: string): Ship
         maintenanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 10,

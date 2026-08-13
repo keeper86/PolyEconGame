@@ -40,6 +40,8 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
         maintenanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0,
         workerRequirement: {},
         pollutionPerTick: { air: 0, water: 0, soil: 0 },

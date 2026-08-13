@@ -10,6 +10,7 @@ import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
+import { isFacilityOperating } from '@/simulation/planet/facility';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
 import type { BaseShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
@@ -185,7 +186,9 @@ export function ActiveShipyardCard({
                         <Separator />
                     </>
                 )}
-                <FacilityConditionRow facility={facility} />
+                {isFacilityOperating(facility) && (
+                    <FacilityConditionRow facility={facility} agentId={agentId} planetId={planetId} />
+                )}
             </FacilityCardShell>
         </>
     );

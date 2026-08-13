@@ -81,6 +81,8 @@ export type FacilityBase = PlanetaryId & {
     maintenanceStatus: number;
     maxMaintenance: number;
     cumulativeRepairAcc: number;
+    lastTickMaintenanceConsumption: number;
+    lastTickRestorationConsumption: number;
 
     powerConsumptionPerTick: number;
     workerRequirement: {

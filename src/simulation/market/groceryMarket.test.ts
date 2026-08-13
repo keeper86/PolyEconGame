@@ -42,6 +42,8 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
             maintenanceStatus: 1,
             maxMaintenance: 1,
             cumulativeRepairAcc: 0,
+            lastTickMaintenanceConsumption: 0,
+            lastTickRestorationConsumption: 0,
             powerConsumptionPerTick: 0,
             lastTickResults: {
                 overallEfficiency: 1,

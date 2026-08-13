@@ -59,6 +59,8 @@ export function makeProductionFacility(opts: {
         maintenanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
             none: opts.workers.none ?? 0,

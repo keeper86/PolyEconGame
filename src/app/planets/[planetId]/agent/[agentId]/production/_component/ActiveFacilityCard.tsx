@@ -12,7 +12,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
+import { calculateCostsForConstruction, getFacilityType, isFacilityOperating } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
@@ -377,7 +377,9 @@ export function ActiveFacilityCard({
 
                 <div className='relative pt-2'>
                     <div className='space-y-2'>
-                        {!facility.construction && <FacilityConditionRow facility={facility} />}
+                        {isFacilityOperating(facility) && (
+                            <FacilityConditionRow facility={facility} agentId={agentId} planetId={planetId} />
+                        )}
                         {facility.construction ? (
                             <ConstructionCompactRow
                                 facility={facility}

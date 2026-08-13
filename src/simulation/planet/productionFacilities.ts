@@ -91,6 +91,8 @@ const makeFacilityDefaults = () => ({
     maintenanceStatus: 1,
     maxMaintenance: 1,
     cumulativeRepairAcc: 0,
+    lastTickMaintenanceConsumption: 0,
+    lastTickRestorationConsumption: 0,
     pidState: null,
     lastTickResults: {
         ...zeroLastTicksProductionResults,
@@ -872,6 +874,8 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
         maintenanceStatus: 1,
         maxMaintenance: 1,
         cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 5,

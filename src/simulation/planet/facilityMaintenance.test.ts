@@ -382,6 +382,41 @@ describe('facilityMaintenanceTick', () => {
         );
         expect(assets.monthAcc.consumptionValue).toBeCloseTo(consumed * CONSTRUCTION_PRICE, 6);
     });
+
+    it('records per-facility maintenance consumption', () => {
+        const { gameState, planet, facility, storage } = setup();
+        facility.maintenanceStatus = HALF_CONDITION;
+        facility.maxMaintenance = 1;
+        seedService(storage, maintenanceServiceResourceType, FACILITY_MAINTENANCE_REPAIR_PER_TICK * 2);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.lastTickMaintenanceConsumption).toBeCloseTo(FACILITY_MAINTENANCE_REPAIR_PER_TICK, 10);
+        expect(facility.lastTickRestorationConsumption).toBe(0);
+    });
+
+    it('records per-facility restoration consumption', () => {
+        const { gameState, planet, facility, storage } = setup();
+        facility.maxMaintenance = HALF_CONDITION;
+        facility.maintenanceStatus = HALF_CONDITION;
+        const cost = fullRestoreCost(facility);
+        seedService(storage, constructionServiceResourceType, cost);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.lastTickRestorationConsumption).toBeCloseTo(FACILITY_RESTORATION_PER_TICK * cost, 6);
+    });
+
+    it('resets consumption fields when no service is available', () => {
+        const { gameState, planet, facility } = setup();
+        facility.maintenanceStatus = HALF_CONDITION;
+        facility.maxMaintenance = HALF_CONDITION;
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.lastTickMaintenanceConsumption).toBe(0);
+        expect(facility.lastTickRestorationConsumption).toBe(0);
+    });
 });
 
 describe('collectAgentFacilities', () => {
