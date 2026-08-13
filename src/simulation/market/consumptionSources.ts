@@ -1,5 +1,6 @@
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
-import { constructionServiceResourceType } from '../planet/services';
+import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import type { ConsumptionShipInfo } from './consumptionShipInfo';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -11,7 +12,8 @@ export type ConsumptionBreakdownItem = {
         | 'ship_construction'
         | 'construction_service'
         | 'construction_ship'
-        | 'transport_ship';
+        | 'transport_ship'
+        | 'maintenance';
     sourceName: string;
     ratePerTick: number;
 };
@@ -32,6 +34,14 @@ export function computeConsumptionBreakdown(
 ): ConsumptionInfo {
     const breakdown: ConsumptionBreakdownItem[] = [];
     const isConstructionService = resourceName === constructionServiceResourceType.name;
+    const isMaintenanceService = resourceName === maintenanceServiceResourceType.name;
+
+    const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
+        ...productionFacilities,
+        ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
+        ...(storageDepartment ? [storageDepartment] : []),
+        ...shipConstructionFacilities,
+    ];
 
     // ── Production facilities ──────────────────────────────────────────────
     for (const f of productionFacilities) {
@@ -82,12 +92,6 @@ export function computeConsumptionBreakdown(
 
     // ── Construction services (any facility with active construction) ──────
     if (isConstructionService) {
-        const allFacilities: (ProductionFacility | ManagementFacility | ShipConstructionFacility)[] = [
-            ...productionFacilities,
-            ...(humanResourcesDepartment ? [humanResourcesDepartment] : []),
-            ...(storageDepartment ? [storageDepartment] : []),
-            ...shipConstructionFacilities,
-        ];
         for (const f of allFacilities) {
             if (f.construction !== null) {
                 const rate = f.construction.maximumConstructionServiceConsumption;
@@ -98,6 +102,19 @@ export function computeConsumptionBreakdown(
                         ratePerTick: rate,
                     });
                 }
+            }
+        }
+    }
+
+    // ── Maintenance services (any operational facility) ────────────────────
+    if (isMaintenanceService) {
+        for (const f of allFacilities) {
+            if (f.construction !== null) {
+                continue;
+            }
+            const rate = facilityMaintenanceConsumptionPerTick(f);
+            if (rate > 0) {
+                breakdown.push({ sourceType: 'maintenance', sourceName: f.name, ratePerTick: rate });
             }
         }
     }
@@ -230,6 +247,13 @@ export function computeAllConsumptionRates(
     for (const f of allFacilities) {
         if (f.construction !== null) {
             add(constructionServiceResourceType.name, f.construction.maximumConstructionServiceConsumption);
+        }
+    }
+
+    // ── Maintenance services (any operational facility) ────────────────────
+    for (const f of allFacilities) {
+        if (f.construction === null) {
+            add(maintenanceServiceResourceType.name, facilityMaintenanceConsumptionPerTick(f));
         }
     }
 

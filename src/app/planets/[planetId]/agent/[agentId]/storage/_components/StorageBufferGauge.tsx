@@ -76,7 +76,7 @@ export function StorageBufferGauge({
                 },
             });
 
-            if (ratio > 0.05) {
+            if (ratio > 0.03) {
                 zones.push({ limit: demand * 2, color: ZONE_AMBER });
                 ticks.push({
                     value: demand * 2,
@@ -90,7 +90,7 @@ export function StorageBufferGauge({
                 });
             }
 
-            if (ratio > 0.025) {
+            if (ratio > 0.01) {
                 zones.push({ limit: demand * 4, color: ZONE_GREEN });
                 ticks.push({
                     value: demand * 4,

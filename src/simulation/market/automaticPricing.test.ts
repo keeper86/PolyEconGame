@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -11,6 +12,7 @@ import {
     SELL_THROUGH_EMA_ALPHA,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
+    TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
@@ -31,6 +33,7 @@ import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
     logisticsServiceResourceType,
+    maintenanceServiceResourceType,
 } from '../planet/services';
 import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
@@ -751,6 +754,54 @@ describe('automaticPricing — bid diagnostics for dropped demand', () => {
         const bidAfter = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bidAfter.bidStorageTarget).toBe(0);
         expect(bidAfter.diagnostics).toBeUndefined();
+    });
+});
+
+describe('automaticPricing — facility maintenance demand', () => {
+    it('creates a Maintenance buy bid scaled by facility scale for an active facility', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate = (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
+
+    it('skips maintenance demand for facilities under construction', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'under-construction', scale: 10 });
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]).toBeUndefined();
     });
 });
 

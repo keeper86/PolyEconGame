@@ -21,6 +21,7 @@ import {
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import { queryStorageFacility } from '../planet/facility';
+import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
 import type {
     Agent,
     AgentMarketBidState,
@@ -28,7 +29,7 @@ import type {
     AutomatedPricingConfig,
     Planet,
 } from '../planet/planet';
-import { constructionServiceResourceType } from '../planet/services';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { computeAllConsumptionRates } from './consumptionSources';
@@ -244,6 +245,21 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             } else {
                 aggregatedBuyTargets.set(constructionServiceResourceType.name, {
                     resource: constructionServiceResourceType,
+                    storageTarget: facilityTarget,
+                    freeTarget: 0,
+                });
+            }
+        }
+
+        if (facility.construction === null) {
+            const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
+            const facilityTarget = facilityMaintenanceConsumptionPerTick(facility) * cfg.inputBufferTargetTicks;
+            const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
+            if (existing) {
+                existing.storageTarget += facilityTarget;
+            } else {
+                aggregatedBuyTargets.set(maintenanceServiceResourceType.name, {
+                    resource: maintenanceServiceResourceType,
                     storageTarget: facilityTarget,
                     freeTarget: 0,
                 });

@@ -4,7 +4,7 @@ import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ConsumptionInfo } from '@/simulation/market/consumptionSources';
 import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
 import { RESOURCES_BY_NAME, TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
-import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from '@/simulation/planet/services';
 import { transportShipBuildResources } from '@/simulation/ships/ships';
 import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 import { autoConfigToLocal } from './marketTypes';
@@ -186,6 +186,7 @@ export function buildResourceList(
     };
 
     add(constructionServiceResourceType.name);
+    add(maintenanceServiceResourceType.name);
 
     for (const f of facilities) {
         for (const { resource } of f.needs) {

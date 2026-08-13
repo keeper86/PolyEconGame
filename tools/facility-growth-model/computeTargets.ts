@@ -26,10 +26,9 @@ import {
     storageDepartmentFacilityType,
 } from '../../src/simulation/planet/specialFacilities';
 import {
-    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
+    FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK,
     SR_HOLDING_COST_PER_TON,
     TICKS_PER_MONTH,
-    TICKS_PER_YEAR,
 } from '../../src/simulation/constants';
 
 const TOOL_PLANET = 'tool';
@@ -62,18 +61,12 @@ const CONFIG: SlackConfig = {
     },
 };
    
-const constructionDemandPerTick = 512_000_000;
+const constructionDemandPerTick = 1_512_000_000;
 const BALANCE_EPSILON = 0.001;
 
 const CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK = 0.3;
 const STORAGE_MOVEMENT_FACTOR = 2;
 const TARGET_SCALE_PER_AGENT = 150_000;
-
-const FACILITY_MAINTENANCE_WEAR_PER_SCALE_PER_TICK =
-    FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR;
-const FACILITY_MAINTENANCE_USAGE_FACTOR_AT_FULL_EFFICIENCY = 2;
-const FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK =
-    FACILITY_MAINTENANCE_USAGE_FACTOR_AT_FULL_EFFICIENCY * FACILITY_MAINTENANCE_WEAR_PER_SCALE_PER_TICK;
 
 function resourceConstraintKey(name: string): string {
     return `res__${name}`;

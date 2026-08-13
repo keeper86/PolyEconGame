@@ -86,21 +86,7 @@ export function HRBufferGauge({
                 },
             });
 
-            if (ratio > 0.025) {
-                zones.push({ limit: demand * 4, color: ZONE_GREEN });
-                ticks.push({
-                    value: demand * 4,
-                    valueConfig: {
-                        renderContent: () => (
-                            <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue, NUDGE)}>
-                                4 days
-                            </span>
-                        ),
-                    },
-                });
-            }
-
-            if (ratio > 0.05) {
+            if (ratio > 0.03) {
                 zones.push({ limit: demand * 2, color: ZONE_AMBER });
                 ticks.push({
                     value: demand * 2,
@@ -108,6 +94,20 @@ export function HRBufferGauge({
                         renderContent: () => (
                             <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue, NUDGE)}>
                                 2 days
+                            </span>
+                        ),
+                    },
+                });
+            }
+
+            if (ratio > 0.01) {
+                zones.push({ limit: demand * 4, color: ZONE_GREEN });
+                ticks.push({
+                    value: demand * 4,
+                    valueConfig: {
+                        renderContent: () => (
+                            <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue, NUDGE)}>
+                                4 days
                             </span>
                         ),
                     },

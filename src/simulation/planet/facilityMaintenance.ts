@@ -26,6 +26,11 @@ export function collectAgentFacilities(assets: AgentPlanetAssets): Facility[] {
     return facilities;
 }
 
+export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
+    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
+    return (facility.scale * usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+}
+
 export function facilityMaintenanceTick(gameState: GameState, planet: Planet): void {
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -54,16 +59,29 @@ function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets,
         return;
     }
 
-    const needed = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
-    const consumed = removeFromStorageFacility(assets.storageFacility, maintenanceServiceResourceType.name, needed);
+    const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
+    const consumed = removeFromStorageFacility(
+        assets.storageFacility,
+        maintenanceServiceResourceType.name,
+        repairFraction * facility.scale,
+    );
     if (consumed <= 0) {
         return;
     }
 
-    facility.maintenanceStatus = Math.min(facility.maxMaintenance, facility.maintenanceStatus + consumed);
-    assets.monthAcc.consumptionValue += consumed * (planet.marketPrices[maintenanceServiceResourceType.name] ?? 0);
+    const restoredFraction = consumed / facility.scale;
+    facility.maintenanceStatus = Math.min(facility.maxMaintenance, facility.maintenanceStatus + restoredFraction);
 
-    facility.cumulativeRepairAcc += consumed;
+    const price = planet.marketPrices[maintenanceServiceResourceType.name] ?? 0;
+    planet.consumedResources[maintenanceServiceResourceType.name] =
+        (planet.consumedResources[maintenanceServiceResourceType.name] ?? 0) + consumed;
+    assets.monthAcc.consumedResources[maintenanceServiceResourceType.name] = {
+        quantity: (assets.monthAcc.consumedResources[maintenanceServiceResourceType.name]?.quantity ?? 0) + consumed,
+        value: (assets.monthAcc.consumedResources[maintenanceServiceResourceType.name]?.value ?? 0) + consumed * price,
+    };
+    assets.monthAcc.consumptionValue += consumed * price;
+
+    facility.cumulativeRepairAcc += restoredFraction;
     while (facility.cumulativeRepairAcc >= 1) {
         facility.cumulativeRepairAcc -= 1;
         facility.maxMaintenance = Math.max(0, facility.maxMaintenance - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE);

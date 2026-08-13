@@ -30,6 +30,7 @@ import { constructionServiceResourceType, maintenanceServiceResourceType } from 
 const AGENT_ID = 'agent-1';
 const PLANET_ID = 'p';
 const CONSTRUCTION_PRICE = 10;
+const MAINTENANCE_PRICE = 5;
 const HALF_CONDITION = 0.5;
 const ALMOST_FULL_REPAIR_CYCLE = 0.999;
 
@@ -170,6 +171,67 @@ describe('facilityMaintenanceTick', () => {
 
         expect(facility.maxMaintenance).toBe(0);
         expect(facility.maintenanceStatus).toBe(0);
+    });
+
+    it('scales maintenance service consumption with facility scale', () => {
+        const scale = 10;
+        const { gameState, planet, facility, storage } = setup({ scale });
+        facility.maintenanceStatus = HALF_CONDITION;
+        facility.maxMaintenance = 1;
+        seedService(storage, maintenanceServiceResourceType, FACILITY_MAINTENANCE_REPAIR_PER_TICK * scale * 2);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.maintenanceStatus).toBeCloseTo(
+            HALF_CONDITION +
+                FACILITY_MAINTENANCE_REPAIR_PER_TICK -
+                FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR,
+            10,
+        );
+        expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * scale,
+            10,
+        );
+    });
+
+    it('accumulates repair cycles by restored condition fraction, not consumed services', () => {
+        const scale = 10;
+        const { gameState, planet, facility, storage } = setup({ scale });
+        facility.maintenanceStatus = 0;
+        facility.maxMaintenance = 1;
+        facility.cumulativeRepairAcc = ALMOST_FULL_REPAIR_CYCLE;
+        seedService(storage, maintenanceServiceResourceType, FACILITY_MAINTENANCE_REPAIR_PER_TICK * scale);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(facility.maxMaintenance).toBeCloseTo(1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, 10);
+        expect(facility.cumulativeRepairAcc).toBeCloseTo(
+            ALMOST_FULL_REPAIR_CYCLE + FACILITY_MAINTENANCE_REPAIR_PER_TICK - 1,
+            10,
+        );
+    });
+
+    it('records maintenance repair consumption in accounting', () => {
+        const { gameState, planet, agent, facility, storage } = setup();
+        facility.maintenanceStatus = HALF_CONDITION;
+        facility.maxMaintenance = 1;
+        planet.marketPrices[maintenanceServiceResourceType.name] = MAINTENANCE_PRICE;
+        seedService(storage, maintenanceServiceResourceType, FACILITY_MAINTENANCE_REPAIR_PER_TICK * 2);
+
+        facilityMaintenanceTick(gameState, planet);
+
+        const consumed = FACILITY_MAINTENANCE_REPAIR_PER_TICK;
+        const assets = agent.assets[PLANET_ID]!;
+        expect(planet.consumedResources[maintenanceServiceResourceType.name]).toBeCloseTo(consumed, 10);
+        expect(assets.monthAcc.consumedResources[maintenanceServiceResourceType.name].quantity).toBeCloseTo(
+            consumed,
+            10,
+        );
+        expect(assets.monthAcc.consumedResources[maintenanceServiceResourceType.name].value).toBeCloseTo(
+            consumed * MAINTENANCE_PRICE,
+            10,
+        );
+        expect(assets.monthAcc.consumptionValue).toBeCloseTo(consumed * MAINTENANCE_PRICE, 10);
     });
 
     it('does not restore a facility at full maxMaintenance', () => {
