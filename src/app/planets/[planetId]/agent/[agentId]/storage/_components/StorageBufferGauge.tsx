@@ -22,7 +22,7 @@ function getRadialNudge(value: number, maxValue: number, nudgePx: number = 10): 
     const angleRad = angleDeg * (Math.PI / 180);
 
     const x = Math.sin(angleRad) * nudgePx;
-    const y = -Math.cos(angleRad) * nudgePx;
+    const y = 0;
 
     return {
         transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`,

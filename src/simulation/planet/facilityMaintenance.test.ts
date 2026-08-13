@@ -27,6 +27,7 @@ import {
     collectAgentFacilities,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
+    facilityRestorationCostFactor,
 } from './facilityMaintenance';
 import type { Agent, GameState, Planet } from './planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
@@ -102,6 +103,29 @@ describe('computeFacilityConditionEfficiency', () => {
     it('clamps out-of-range condition to [0, 1]', () => {
         expect(computeFacilityConditionEfficiency(1.5)).toBeCloseTo(1);
         expect(computeFacilityConditionEfficiency(-0.5)).toBeCloseTo(0);
+    });
+});
+
+describe('facilityRestorationCostFactor', () => {
+    it('costs full replacement at zero maxMaintenance', () => {
+        expect(facilityRestorationCostFactor(0)).toBeCloseTo(1, 2);
+    });
+
+    it('costs about 20% of replacement at full maxMaintenance', () => {
+        expect(facilityRestorationCostFactor(1)).toBeCloseTo(0.2, 2);
+    });
+
+    it('costs 60% of replacement at half maxMaintenance', () => {
+        expect(facilityRestorationCostFactor(0.5)).toBeCloseTo(0.6, 10);
+    });
+
+    it('decreases monotonically with maxMaintenance', () => {
+        expect(facilityRestorationCostFactor(0.4)).toBeGreaterThan(facilityRestorationCostFactor(0.6));
+    });
+
+    it('clamps out-of-range input to [0, 1]', () => {
+        expect(facilityRestorationCostFactor(-1)).toBeCloseTo(facilityRestorationCostFactor(0), 10);
+        expect(facilityRestorationCostFactor(2)).toBeCloseTo(facilityRestorationCostFactor(1), 10);
     });
 });
 
@@ -312,7 +336,7 @@ describe('facilityMaintenanceTick', () => {
 
         expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + FACILITY_RESTORATION_PER_TICK, 10);
         expect(queryStorageFacility(storage, constructionServiceResourceType.name)).toBeCloseTo(
-            cost - FACILITY_RESTORATION_PER_TICK * cost,
+            cost - FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
             6,
         );
     });
@@ -321,8 +345,7 @@ describe('facilityMaintenanceTick', () => {
         const { gameState, planet, facility, storage } = setup();
         facility.maxMaintenance = HALF_CONDITION;
         facility.maintenanceStatus = HALF_CONDITION;
-        const cost = fullRestoreCost(facility);
-        seedService(storage, constructionServiceResourceType, cost * (FACILITY_RESTORATION_PER_TICK / 2));
+        seedService(storage, constructionServiceResourceType, facilityRestorationCapacityPerTick(facility) / 2);
 
         facilityMaintenanceTick(gameState, planet);
 
@@ -373,7 +396,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        const consumed = FACILITY_RESTORATION_PER_TICK * cost;
+        const consumed = FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5);
         const assets = agent.assets[PLANET_ID]!;
         expect(planet.consumedResources[constructionServiceResourceType.name]).toBeCloseTo(consumed, 6);
         expect(assets.monthAcc.consumedResources[constructionServiceResourceType.name].quantity).toBeCloseTo(
@@ -408,7 +431,10 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.lastTickRestorationConsumption).toBeCloseTo(FACILITY_RESTORATION_PER_TICK * cost, 6);
+        expect(facility.lastTickRestorationConsumption).toBeCloseTo(
+            FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
+            6,
+        );
     });
 
     it('resets consumption fields when no service is available', () => {
@@ -465,7 +491,7 @@ describe('collectAgentFacilities', () => {
                 const cost = fullRestoreCost(facility);
 
                 expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    FACILITY_RESTORATION_PER_TICK * cost,
+                    FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
                     10,
                 );
             });
@@ -476,7 +502,7 @@ describe('collectAgentFacilities', () => {
                 const cost = fullRestoreCost(facility);
 
                 expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    (FACILITY_RESTORATION_PER_TICK / 2) * cost,
+                    (FACILITY_RESTORATION_PER_TICK / 2) * cost * facilityRestorationCostFactor(facility.maxMaintenance),
                     10,
                 );
             });

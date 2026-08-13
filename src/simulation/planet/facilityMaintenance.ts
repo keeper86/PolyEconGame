@@ -3,6 +3,7 @@ import {
     FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FACILITY_RESTORATION_PER_TICK,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
+    RESTORATION_COST_FACTOR_SIGMOID_STEEPNESS,
     TICKS_PER_YEAR,
 } from '../constants';
 import {
@@ -35,9 +36,14 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
 export const facilityFullRestoreCost = (facility: Facility): number =>
     calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
 
+export function facilityRestorationCostFactor(maxMaintenance: number): number {
+    const x = Math.max(0, Math.min(1, maxMaintenance));
+    return 0.2 + 0.8 / (1 + Math.exp(RESTORATION_COST_FACTOR_SIGMOID_STEEPNESS * (x - 0.5)));
+}
+
 export const facilityRestorationCapacityPerTick = (facility: Facility): number => {
     const wanted = Math.min(1 - facility.maxMaintenance, FACILITY_RESTORATION_PER_TICK);
-    return wanted * facilityFullRestoreCost(facility);
+    return wanted * facilityFullRestoreCost(facility) * facilityRestorationCostFactor(facility.maxMaintenance);
 };
 
 export function facilityMaintenanceTick(gameState: GameState, planet: Planet): void {
@@ -111,6 +117,7 @@ function applyFacilityRestoration(facility: Facility, assets: AgentPlanetAssets,
         return;
     }
 
+    const costFactor = facilityRestorationCostFactor(facility.maxMaintenance);
     const needed = facilityRestorationCapacityPerTick(facility);
     const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
 
@@ -121,7 +128,7 @@ function applyFacilityRestoration(facility: Facility, assets: AgentPlanetAssets,
 
     const consumed = removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);
     facility.lastTickRestorationConsumption = consumed;
-    const restored = consumed / fullRestoreCost;
+    const restored = consumed / (fullRestoreCost * costFactor);
     facility.maxMaintenance = Math.min(1, facility.maxMaintenance + restored);
     facility.maintenanceStatus = Math.min(facility.maxMaintenance, facility.maintenanceStatus + restored);
 

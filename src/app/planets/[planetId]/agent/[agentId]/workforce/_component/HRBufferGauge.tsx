@@ -30,7 +30,7 @@ function getRadialNudge(value: number, maxValue: number, nudgePx: number = 10): 
 
     // 0 degrees is UP (12 o'clock). +X is Right, +Y is Down (SVG coordinates)
     const x = Math.sin(angleRad) * nudgePx;
-    const y = -Math.cos(angleRad) * nudgePx;
+    const y = 0;
 
     return {
         transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`,
@@ -131,7 +131,7 @@ export function HRBufferGauge({
     }, [demand, hrDepartment.maxScale, maxScaleOverride]);
 
     return (
-        <div className='flex flex-col items-center gap-1 py-2 translate-y-[-1px]'>
+        <div className='flex flex-col items-center gap-1 py-2 translate-y-[-3px]'>
             <div className='h-[120px] w-[220px]'>
                 <GaugeComponent
                     type='radial'
