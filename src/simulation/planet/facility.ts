@@ -61,12 +61,11 @@ export const calculateCostsForConstruction = (
     }
 
     const m = facilityConstructionMultiplier[facilityType];
-    const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
     const linearTerm = targetScale - currentScale;
 
     const minimumTime = MINIMUM_CONSTRUCTION_TIME_IN_TICKS * (facilityType === 'management' ? 0.5 : 1);
     return {
-        cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
+        cost: Math.round(m * constructionCostFactor * linearTerm),
         time: minimumTime + 30 * m * Math.log(targetScale - currentScale),
     };
 };

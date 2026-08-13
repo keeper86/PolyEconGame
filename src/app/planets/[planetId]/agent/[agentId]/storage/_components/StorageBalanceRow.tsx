@@ -46,7 +46,7 @@ export function StorageBalanceRow({
         );
     }
 
-    const scaledBuffer = buffer / demand;
+    const bufferRatio = buffer / demand;
     return (
         <Link href={'' as never}>
             <Separator />
@@ -55,7 +55,7 @@ export function StorageBalanceRow({
                     {' '}
                     production{' '}
                     <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(production / demand, 'days')}
+                        {formatNumberWithUnit(production, 'tonnes')}
                     </span>
                 </div>
 
@@ -64,7 +64,7 @@ export function StorageBalanceRow({
                     {' '}
                     demand{' '}
                     <span className='tabular-nums text-red-600 dark:text-red-400'>
-                        {formatNumberWithUnit(1, 'days')}
+                        {formatNumberWithUnit(demand, 'tonnes')}
                     </span>
                 </div>
 
@@ -75,16 +75,16 @@ export function StorageBalanceRow({
                     buffer{' '}
                     <span
                         className={`tabular-nums text-md ${
-                            scaledBuffer >= 4
+                            bufferRatio >= 4
                                 ? 'text-blue-600 dark:text-blue-400'
-                                : scaledBuffer >= 2
+                                : bufferRatio >= 2
                                   ? 'text-green-600 dark:text-green-400'
-                                  : scaledBuffer >= 1
+                                  : bufferRatio >= 1
                                     ? 'text-amber-600 dark:text-amber-400'
                                     : 'text-red-600 dark:text-red-400'
                         }`}
                     >
-                        {formatNumberWithUnit(scaledBuffer, 'days')}
+                        {formatNumberWithUnit(buffer, 'tonnes')}
                     </span>
                 </div>
             </div>

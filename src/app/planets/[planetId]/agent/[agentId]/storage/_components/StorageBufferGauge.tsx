@@ -56,7 +56,7 @@ export function StorageBufferGauge({
                 valueConfig: {
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(0, maxValue, NUDGE)}>
-                            0 days
+                            {formatNumberWithUnit(0, 'tonnes')}
                         </span>
                     ),
                 },
@@ -70,7 +70,7 @@ export function StorageBufferGauge({
                 valueConfig: {
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand, maxValue, NUDGE)}>
-                            1 day
+                            {formatNumberWithUnit(demand, 'tonnes')}
                         </span>
                     ),
                 },
@@ -83,7 +83,7 @@ export function StorageBufferGauge({
                     valueConfig: {
                         renderContent: () => (
                             <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue, NUDGE)}>
-                                2 days
+                                {formatNumberWithUnit(demand * 2, 'tonnes')}
                             </span>
                         ),
                     },
@@ -97,7 +97,7 @@ export function StorageBufferGauge({
                     valueConfig: {
                         renderContent: () => (
                             <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue, NUDGE)}>
-                                4 days
+                                {formatNumberWithUnit(demand * 4, 'tonnes')}
                             </span>
                         ),
                     },
@@ -111,7 +111,7 @@ export function StorageBufferGauge({
             valueConfig: {
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(maxValue, maxValue, NUDGE)}>
-                        {maxValue > 0 && demand > 0 ? formatNumberWithUnit(maxValue / demand, 'days') : 'max'}
+                        {maxValue > 0 ? formatNumberWithUnit(maxValue, 'tonnes') : 'max'}
                     </span>
                 ),
             },
