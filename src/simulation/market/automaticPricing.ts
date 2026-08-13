@@ -21,7 +21,10 @@ import {
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
-import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
+import {
+    facilityMaintenanceConsumptionPerTick,
+    facilityRestorationCapacityPerTick,
+} from '../planet/facilityMaintenance';
 import type {
     Agent,
     AgentMarketBidState,
@@ -263,6 +266,22 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     storageTarget: facilityTarget,
                     freeTarget: 0,
                 });
+            }
+
+            if (facility.maxMaintenance < 1) {
+                const restorationCfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
+                const restorationTarget =
+                    facilityRestorationCapacityPerTick(facility) * restorationCfg.inputBufferTargetTicks;
+                const restorationExisting = aggregatedBuyTargets.get(constructionServiceResourceType.name);
+                if (restorationExisting) {
+                    restorationExisting.storageTarget += restorationTarget;
+                } else {
+                    aggregatedBuyTargets.set(constructionServiceResourceType.name, {
+                        resource: constructionServiceResourceType,
+                        storageTarget: restorationTarget,
+                        freeTarget: 0,
+                    });
+                }
             }
         }
     }

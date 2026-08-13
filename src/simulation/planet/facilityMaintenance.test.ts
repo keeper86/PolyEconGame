@@ -23,7 +23,11 @@ import {
     type ProductionFacility,
     type StorageFacility,
 } from './facility';
-import { collectAgentFacilities, facilityMaintenanceTick } from './facilityMaintenance';
+import {
+    collectAgentFacilities,
+    facilityMaintenanceTick,
+    facilityRestorationCapacityPerTick,
+} from './facilityMaintenance';
 import type { Agent, GameState, Planet } from './planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
 
@@ -446,6 +450,50 @@ describe('collectAgentFacilities', () => {
         assets.humanResourcesDepartment = null;
 
         const facilities = collectAgentFacilities(assets);
+
+        describe('facilityRestorationCapacityPerTick', () => {
+            it('returns 0 at full maxMaintenance', () => {
+                const facility = makeProductionFacility();
+                facility.maxMaintenance = 1;
+
+                expect(facilityRestorationCapacityPerTick(facility)).toBe(0);
+            });
+
+            it('returns FACILITY_RESTORATION_PER_TICK times full restore cost when headroom exceeds the per-tick cap', () => {
+                const facility = makeProductionFacility();
+                facility.maxMaintenance = 0.5;
+                const cost = fullRestoreCost(facility);
+
+                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
+                    FACILITY_RESTORATION_PER_TICK * cost,
+                    10,
+                );
+            });
+
+            it('clamps to the remaining headroom when nearly full', () => {
+                const facility = makeProductionFacility();
+                facility.maxMaintenance = 1 - FACILITY_RESTORATION_PER_TICK / 2;
+                const cost = fullRestoreCost(facility);
+
+                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
+                    (FACILITY_RESTORATION_PER_TICK / 2) * cost,
+                    10,
+                );
+            });
+
+            it('scales with the full restore cost of the facility type', () => {
+                const rawFacility = makeProductionFacility();
+                rawFacility.maxMaintenance = 0.5;
+
+                const servicesFacility = makeProductionFacility();
+                servicesFacility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
+                servicesFacility.maxMaintenance = 0.5;
+
+                expect(facilityRestorationCapacityPerTick(servicesFacility)).toBeGreaterThan(
+                    facilityRestorationCapacityPerTick(rawFacility),
+                );
+            });
+        });
 
         expect(facilities).toHaveLength(0);
     });
