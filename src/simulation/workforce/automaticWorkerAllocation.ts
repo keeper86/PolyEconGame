@@ -1,11 +1,18 @@
-import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { LABOR_SHARE, MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
 import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { operatingProfit } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
+import {
+    ACCEPTABLE_IDLE_FRACTION,
+    REFERENCE_AGE,
+    buildBaseReservationWageMap,
+    computeLaborMarket,
+    outsideOption,
+    profitPerWorkerPerTick,
+} from './laborMarket';
 import { totalActiveForEdu } from './workforceAggregates';
 
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
@@ -91,9 +98,11 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     return effectiveMonthlyRunRate * 12;
 }
 
-export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
+export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
+    const costOfLivingMap = buildBaseReservationWageMap(planet);
+    const laborMarket = computeLaborMarket(agents, planet);
 
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -119,6 +128,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
 
         const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
         const isProfitable = profitSignal > 0;
+        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
 
         for (const edu of educationLevelKeys) {
             // How many exact matches are we missing?
@@ -154,7 +164,20 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
             }
 
-            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, assets.wagePerEdu[edu] * factor));
+            let wage = assets.wagePerEdu[edu] * factor;
+            if (profitPerWorker > 0) {
+                const fairWage =
+                    outsideOption(
+                        costOfLivingMap,
+                        REFERENCE_AGE,
+                        edu,
+                        laborMarket.tightness[edu],
+                        laborMarket.marketWage[edu],
+                    ) +
+                    LABOR_SHARE * profitPerWorker;
+                wage = Math.max(wage, fairWage);
+            }
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, wage));
         }
 
         // --- Enforce Monotonicity

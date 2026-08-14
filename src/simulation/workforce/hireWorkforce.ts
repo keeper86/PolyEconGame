@@ -1,32 +1,29 @@
 import assert from 'node:assert';
-import {
-    LABOR_SHARE,
-    MIN_EMPLOYABLE_AGE,
-    NOTICE_PERIOD_MONTHS,
-    TICKS_PER_MONTH,
-    XP_WAGE_PREMIUM_SHARE,
-} from '../constants';
-import { computeCostOfLiving } from '../market/serviceDefinitions';
-import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { hasActiveLicense, operatingProfit } from '../planet/planet';
-import { educationLevelKeys, type EducationLevelType } from '../population/education';
+import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import type { Agent, Planet } from '../planet/planet';
+import { hasActiveLicense } from '../planet/planet';
+import { educationLevelKeys } from '../population/education';
 import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import type { WorkforceCategoryIndex, WorkforceCohort, WorkforceDemography } from './workforce';
-import { nullWorkforceCohortFactory, productivityFromXP } from './workforce';
-import { totalActiveForEdu } from './workforceAggregates';
+import {
+    ACCEPTABLE_IDLE_FRACTION,
+    buildBaseReservationWageMap,
+    computeLaborMarket,
+    reservationWage,
+} from './laborMarket';
+import type { WorkforceCohort } from './workforce';
+import { nullWorkforceCohortFactory } from './workforce';
 
-export const ACCEPTABLE_IDLE_FRACTION = 0.05;
-
-export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, tick = 1, profiler?: TickProfiler): void {
+export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
 
     if (profiler?.isEnabled) {
         t = profiler.mark();
     }
-    const baseReservationWageMap = buildBaseReservationWageMap(planet);
+    const costOfLivingMap = buildBaseReservationWageMap(planet);
+    const laborMarket = computeLaborMarket(agents, planet);
     if (profiler?.isEnabled) {
         t = profiler.markAndAccum('hireMinWage', '  hire_minWageMap', t);
     }
@@ -65,8 +62,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, tick =
             t = profiler.markAndAccum('hirePreCount', '  hire_preCount', t);
         }
 
-        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
-
         if (profiler?.isEnabled) {
             t = profiler.mark();
         }
@@ -90,7 +85,14 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, tick =
                         continue;
                     }
 
-                    const workerReservationWage = reservationWage(baseReservationWageMap, age, edu, 0, profitPerWorker);
+                    const workerReservationWage = reservationWage(
+                        costOfLivingMap,
+                        age,
+                        edu,
+                        0,
+                        laborMarket.tightness[edu],
+                        laborMarket.marketWage[edu],
+                    );
                     assert(workerReservationWage > 0, `reservationWage must be > 0, got ${workerReservationWage}`);
 
                     const probToAccept = (1.0 / (1 + Math.exp(-(wage / workerReservationWage - 1)))) * 0.05;
@@ -149,51 +151,3 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, tick =
 }
 
 export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);
-
-export const RESERVATION_WAGE_BASE_MULTIPLIER = 0.7;
-
-const ageMultiplier: (age: number) => number = (age) => {
-    return 1 + (age - 25) / 100;
-};
-
-const buildBaseReservationWageMap = (planet: Planet): ((category: WorkforceCategoryIndex) => number) => {
-    const costOfLiving = computeCostOfLiving(planet) * 2;
-    const costOfLivingRich = computeCostOfLiving(planet, true) * 10;
-
-    return (category: WorkforceCategoryIndex): number => {
-        const baseWage = costOfLiving * RESERVATION_WAGE_BASE_MULTIPLIER * ageMultiplier(category.age);
-        const requiredWage = Math.max(costOfLiving, baseWage);
-        const requiredWageRich = Math.max(costOfLivingRich, baseWage) * 5;
-
-        const qualificationFactor =
-            0.5 * ((educationLevelKeys.indexOf(category.edu) + 1) / educationLevelKeys.length + 1 / 3);
-
-        return requiredWage + qualificationFactor * (requiredWageRich - requiredWage);
-    };
-};
-
-export const reservationWage = (
-    baseReservationWageMap: (category: WorkforceCategoryIndex) => number,
-    age: number,
-    edu: EducationLevelType,
-    xp: number,
-    profitPerWorkerPerTick: number,
-): number => {
-    const base = baseReservationWageMap({ age, edu });
-    const xpPremium = XP_WAGE_PREMIUM_SHARE * base * (productivityFromXP(xp) - 1);
-    const profitShare = LABOR_SHARE * Math.max(0, profitPerWorkerPerTick);
-    return base + xpPremium + profitShare;
-};
-
-const profitPerWorkerPerTick = (assets: AgentPlanetAssets, workforce: WorkforceDemography, tick: number): number => {
-    const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
-    if (profitSignal <= 0) {
-        return 0;
-    }
-    const windowTicks = TICKS_PER_MONTH + ((tick - 1) % TICKS_PER_MONTH);
-    let activeHeadcount = 0;
-    for (const edu of educationLevelKeys) {
-        activeHeadcount += totalActiveForEdu(workforce, edu);
-    }
-    return profitSignal / windowTicks / Math.max(1, activeHeadcount);
-};

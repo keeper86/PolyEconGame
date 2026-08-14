@@ -69,6 +69,8 @@ export const LABOR_SHARE = 0.5;
 
 export const XP_WAGE_PREMIUM_SHARE = 0.4;
 
+export const JOB_FINDING_TIGHTNESS_SCALE = 1;
+
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;
 

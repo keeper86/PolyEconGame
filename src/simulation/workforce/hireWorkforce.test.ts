@@ -16,7 +16,8 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { hireWorkforce, reservationWage } from './hireWorkforce';
+import { hireWorkforce } from './hireWorkforce';
+import { reservationWage } from './laborMarket';
 import { VOLUNTARY_QUIT_RATE_PER_TICK, workforceDemographicTick } from './workforceDemographicTick';
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
@@ -36,19 +37,26 @@ function totalOnboardingForEdu(workforce: ReturnType<typeof makeWorkforceDemogra
 }
 
 describe('reservationWage', () => {
-    const baseMap = () => 100;
+    const costOfLivingMap = () => 100;
 
-    it('equals the base when xp and profit are zero', () => {
-        expect(reservationWage(baseMap, 30, 'none', 0, 0)).toBe(100);
+    it('equals the cost of living when there are no vacancies', () => {
+        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000)).toBe(100);
+    });
+
+    it('rises toward the market wage as the labour market tightens', () => {
+        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 1, 1000)).toBeGreaterThan(
+            reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000),
+        );
     });
 
     it('rises with experience', () => {
-        expect(reservationWage(baseMap, 30, 'none', 40, 0)).toBeGreaterThan(reservationWage(baseMap, 30, 'none', 0, 0));
+        expect(reservationWage(costOfLivingMap, 30, 'none', 40, 0, 1000)).toBeGreaterThan(
+            reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000),
+        );
     });
 
-    it('rises with per-worker profit and floors losses at zero', () => {
-        expect(reservationWage(baseMap, 30, 'none', 0, 10)).toBeGreaterThan(reservationWage(baseMap, 30, 'none', 0, 0));
-        expect(reservationWage(baseMap, 30, 'none', 0, -10)).toBe(reservationWage(baseMap, 30, 'none', 0, 0));
+    it('stays at the cost of living when the market wage is below it', () => {
+        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 1, 50)).toBe(100);
     });
 });
 
@@ -109,23 +117,24 @@ describe('hireWorkforce', () => {
         expect(sumPopOcc(p, 'primary', 'employed')).toBe(50);
     });
 
-    it('hires fewer workers when the agent is profitable', () => {
-        const { planet: poorPlanet } = makePlanetWithPopulation({ primary: 1000 });
-        const poorAgent = makeAgent();
-        poorAgent.assets.p.allocatedWorkers.primary = 500;
-        poorAgent.assets.p.wagePerEdu.primary = 100;
+    it('hires fewer workers when the outside option is high', () => {
+        const { planet: cheapPlanet } = makePlanetWithPopulation({ primary: 1000 });
+        const cheapAgent = makeAgent();
+        cheapAgent.assets.p.allocatedWorkers.primary = 500;
+        cheapAgent.assets.p.wagePerEdu.primary = 1e9;
+        cheapPlanet.wagePerEdu.primary = 1;
 
-        const { planet: richPlanet } = makePlanetWithPopulation({ primary: 1000 });
-        const richAgent = makeAgent();
-        richAgent.assets.p.allocatedWorkers.primary = 500;
-        richAgent.assets.p.wagePerEdu.primary = 100;
-        richAgent.assets.p.lastMonthAcc.revenue = 1_000_000_000;
+        const { planet: dearPlanet } = makePlanetWithPopulation({ primary: 1000 });
+        const dearAgent = makeAgent();
+        dearAgent.assets.p.allocatedWorkers.primary = 500;
+        dearAgent.assets.p.wagePerEdu.primary = 1e9;
+        dearPlanet.wagePerEdu.primary = 1_000_000_000;
 
-        hireWorkforce(agentMap(poorAgent), poorPlanet);
-        hireWorkforce(agentMap(richAgent), richPlanet);
+        hireWorkforce(agentMap(cheapAgent), cheapPlanet);
+        hireWorkforce(agentMap(dearAgent), dearPlanet);
 
-        expect(totalOnboardingForEdu(richAgent.assets.p.workforceDemography!, 'primary')).toBeLessThan(
-            totalOnboardingForEdu(poorAgent.assets.p.workforceDemography!, 'primary'),
+        expect(totalOnboardingForEdu(dearAgent.assets.p.workforceDemography!, 'primary')).toBeLessThan(
+            totalOnboardingForEdu(cheapAgent.assets.p.workforceDemography!, 'primary'),
         );
     });
 

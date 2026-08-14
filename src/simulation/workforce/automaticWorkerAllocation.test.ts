@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { automaticWorkerAllocation } from './automaticWorkerAllocation';
+import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 
@@ -116,5 +116,25 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
+    });
+});
+
+describe('automaticWageAdjustment', () => {
+    it('pays a higher wage when profitable', () => {
+        const { planet: poorPlanet } = makePlanetWithPopulation({});
+        const poorAgent = makeAgent();
+        poorAgent.assets.p.workforceDemography![30].none.active = 10;
+        poorAgent.assets.p.wagePerEdu.none = 100;
+
+        const { planet: richPlanet } = makePlanetWithPopulation({});
+        const richAgent = makeAgent();
+        richAgent.assets.p.workforceDemography![30].none.active = 10;
+        richAgent.assets.p.wagePerEdu.none = 100;
+        richAgent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(poorAgent), poorPlanet);
+        automaticWageAdjustment(agentMap(richAgent), richPlanet);
+
+        expect(richAgent.assets.p.wagePerEdu.none).toBeGreaterThan(poorAgent.assets.p.wagePerEdu.none);
     });
 });

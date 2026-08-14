@@ -116,7 +116,7 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforce', 'workforce', t);
             }
-            hireWorkforce(gameState.agents, planet, gameState.tick, profile);
+            hireWorkforce(gameState.agents, planet, profile);
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
             }
@@ -162,7 +162,7 @@ export function advanceTick(gameState: GameState) {
             hrBufferTick(gameState.agents, planet);
             facilityMaintenanceTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
-            automaticWageAdjustment(gameState.agents, planet);
+            automaticWageAdjustment(gameState.agents, planet, gameState.tick);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);
