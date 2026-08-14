@@ -106,6 +106,32 @@ describe('preProductionFinancialTick', () => {
         expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(initialPopWealth + 0.3, -6);
     });
 
+    it('credits each education level its own wage instead of a uniform average', () => {
+        const assets = agent.assets[planet.id]!;
+        assets.deposits = 10_000;
+        assets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 3.0 };
+
+        addWorker(assets, 30, 'none', 10);
+        addEmployed(planet, 30, 'none', 10);
+
+        addWorker(assets, 30, 'tertiary', 5);
+        addEmployed(planet, 30, 'tertiary', 5);
+
+        const initialHouseholdDeposits = planet.bank!.householdDeposits;
+        const noneWealthBefore = planet.population.demography[30].employed.none.wealth.mean;
+        const tertiaryWealthBefore = planet.population.demography[30].employed.tertiary.wealth.mean;
+
+        preProductionFinancialTick(agentMap(agent), planet);
+
+        expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 25, -6);
+        expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(noneWealthBefore + 1, -6);
+        expect(planet.population.demography[30].employed.tertiary.wealth.mean).toBeCloseTo(
+            tertiaryWealthBefore + 3,
+            -6,
+        );
+        expect(assets.deposits).toBe(10_000 - 25);
+    });
+
     it('grants buffer coverage loan when automated agent needs working capital for input buffer', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;

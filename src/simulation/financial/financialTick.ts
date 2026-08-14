@@ -111,37 +111,33 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             }
         }
 
-        if (totalAgentWorkerCount > 0) {
-            const perCapitaWage = wageBill / totalAgentWorkerCount;
-            // Fused wage-crediting: iterate workforce and credit corresponding population categories in the same pass
-            for (let age = 0; age < workforce.length; age++) {
-                const cohort = workforce[age];
-                for (let li = 0; li < educationLevelKeys.length; li++) {
-                    const edu = educationLevelKeys[li];
-                    const cat = cohort[edu];
-                    const agentWorkersHere =
-                        cat.active +
-                        cat.onboarding[0] +
-                        cat.onboarding[1] +
-                        cat.onboarding[2] +
-                        cat.voluntaryDeparting[0] +
-                        cat.voluntaryDeparting[1] +
-                        cat.voluntaryDeparting[2] +
-                        cat.departingFired[0] +
-                        cat.departingFired[1] +
-                        cat.departingFired[2] +
-                        cat.departingRetired[0] +
-                        cat.departingRetired[1] +
-                        cat.departingRetired[2];
-                    if (agentWorkersHere <= 0) {
-                        continue;
-                    }
-                    const popCat = demography[age].employed[edu];
-                    if (popCat.total <= 0) {
-                        continue;
-                    }
-                    creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
+        for (let age = 0; age < workforce.length; age++) {
+            const cohort = workforce[age];
+            for (let li = 0; li < educationLevelKeys.length; li++) {
+                const edu = educationLevelKeys[li];
+                const cat = cohort[edu];
+                const agentWorkersHere =
+                    cat.active +
+                    cat.onboarding[0] +
+                    cat.onboarding[1] +
+                    cat.onboarding[2] +
+                    cat.voluntaryDeparting[0] +
+                    cat.voluntaryDeparting[1] +
+                    cat.voluntaryDeparting[2] +
+                    cat.departingFired[0] +
+                    cat.departingFired[1] +
+                    cat.departingFired[2] +
+                    cat.departingRetired[0] +
+                    cat.departingRetired[1] +
+                    cat.departingRetired[2];
+                if (agentWorkersHere <= 0) {
+                    continue;
                 }
+                const popCat = demography[age].employed[edu];
+                if (popCat.total <= 0) {
+                    continue;
+                }
+                creditWageIncome(bank, popCat, assets.wagePerEdu[edu], agentWorkersHere);
             }
         }
     });
