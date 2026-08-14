@@ -9,21 +9,13 @@ import type { EducationLevelType } from '../population/education';
 import { agentMap, makeAgent, makePlanetWithPopulation, makeProductionFacility } from '../utils/testHelper';
 import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
-function addWorker(
-    assets: AgentPlanetAssets,
-    age: number,
-    edu: EducationLevelType,
-    skill: string,
-    count: number,
-): void {
+function addWorker(assets: AgentPlanetAssets, age: number, edu: EducationLevelType, count: number): void {
     const wf = assets.workforceDemography!;
-    const s = skill as 'novice' | 'professional' | 'expert';
-    wf[age][edu][s].active += count;
+    wf[age][edu].active += count;
 }
 
-function addEmployed(planet: Planet, age: number, edu: EducationLevelType, skill: string, count: number): void {
-    const s = skill as 'novice' | 'professional' | 'expert';
-    planet.population.demography[age].employed[edu][s].total += count;
+function addEmployed(planet: Planet, age: number, edu: EducationLevelType, count: number): void {
+    planet.population.demography[age].employed[edu].total += count;
 }
 
 describe('preProductionFinancialTick', () => {
@@ -48,7 +40,7 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
 
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
 
         preProductionFinancialTick(agentMap(agent), planet);
 
@@ -60,7 +52,7 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
 
-        addWorker(assets, 25, 'none', 'novice', 2000);
+        addWorker(assets, 25, 'none', 2000);
 
         preProductionFinancialTick(agentMap(agent), planet);
 
@@ -74,7 +66,7 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 500;
 
-        addWorker(assets, 25, 'none', 'novice', 500);
+        addWorker(assets, 25, 'none', 500);
 
         preProductionFinancialTick(agentMap(agent), planet);
 
@@ -86,9 +78,9 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
 
-        addWorker(assets, 30, 'none', 'novice', 1);
+        addWorker(assets, 30, 'none', 1);
 
-        addEmployed(planet, 30, 'none', 'novice', 1);
+        addEmployed(planet, 30, 'none', 1);
 
         const initialHouseholdDeposits = planet.bank!.householdDeposits;
 
@@ -101,27 +93,24 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
 
-        addWorker(assets, 30, 'none', 'novice', 3);
+        addWorker(assets, 30, 'none', 3);
 
-        addEmployed(planet, 30, 'none', 'novice', 10);
+        addEmployed(planet, 30, 'none', 10);
 
         const initialHouseholdDeposits = planet.bank!.householdDeposits;
-        const initialPopWealth = planet.population.demography[30].employed.none.novice.wealth.mean;
+        const initialPopWealth = planet.population.demography[30].employed.none.wealth.mean;
 
         preProductionFinancialTick(agentMap(agent), planet);
 
         expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 3, -6);
-        expect(planet.population.demography[30].employed.none.novice.wealth.mean).toBeCloseTo(
-            initialPopWealth + 0.3,
-            -6,
-        );
+        expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(initialPopWealth + 0.3, -6);
     });
 
     it('grants buffer coverage loan when automated agent needs working capital for input buffer', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
 
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
 
         const facility = makeProductionFacility();
         facility.needs = [
@@ -147,7 +136,7 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
 
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
 
         const facility = makeProductionFacility();
         facility.needs = [
@@ -170,7 +159,7 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
 
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
 
         const facility = makeProductionFacility();
         facility.needs = [
@@ -199,10 +188,10 @@ describe('preProductionFinancialTick', () => {
         const agent2 = makeAgent('agent-2', planet.id, 'Agent 2');
         agent2.assets[planet.id]!.wagePerEdu = { none: 2.0, primary: 2.0, secondary: 2.0, tertiary: 2.0 };
 
-        addWorker(agent.assets[planet.id]!, 25, 'none', 'novice', 1);
+        addWorker(agent.assets[planet.id]!, 25, 'none', 1);
         agent.assets[planet.id]!.deposits = 1_000;
 
-        addWorker(agent2.assets[planet.id]!, 25, 'none', 'novice', 3);
+        addWorker(agent2.assets[planet.id]!, 25, 'none', 3);
         agent2.assets[planet.id]!.deposits = 1_000;
 
         preProductionFinancialTick(agentMap(agent, agent2), planet);
@@ -213,7 +202,7 @@ describe('preProductionFinancialTick', () => {
     it('skips agents without assets on the planet', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
 
         const agent2 = makeAgent('agent-2', 'other-planet', 'Agent 2');
 
@@ -226,8 +215,8 @@ describe('preProductionFinancialTick', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
 
-        addWorker(assets, 25, 'none', 'novice', 5);
-        addWorker(assets, 25, 'primary', 'novice', 3);
+        addWorker(assets, 25, 'none', 5);
+        addWorker(assets, 25, 'primary', 3);
 
         preProductionFinancialTick(agentMap(agent), planet);
 
@@ -239,7 +228,7 @@ describe('preProductionFinancialTick', () => {
     it('updates bank equity at the end', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
-        addWorker(assets, 25, 'none', 'novice', 10);
+        addWorker(assets, 25, 'none', 10);
         planet.bank!.equity = 0;
 
         preProductionFinancialTick(agentMap(agent), planet);
@@ -634,12 +623,12 @@ describe('money conservation', () => {
         const assets1 = agent1.assets[planet.id]!;
         assets1.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         assets1.deposits = 10_000;
-        addWorker(assets1, 25, 'none', 'novice', 100);
+        addWorker(assets1, 25, 'none', 100);
 
         const assets2 = agent2.assets[planet.id]!;
         assets2.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         assets2.deposits = 5_000;
-        addWorker(assets2, 30, 'primary', 'professional', 50);
+        addWorker(assets2, 30, 'primary', 50);
 
         const agents = agentMap(agent1, agent2);
         const before = totalMoney(agents, planet);

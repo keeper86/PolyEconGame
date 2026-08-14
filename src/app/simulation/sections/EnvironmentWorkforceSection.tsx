@@ -79,8 +79,8 @@ retirees        = stochasticRound(active × perTickProb)
                 <h2 className='text-2xl font-bold mt-8 mb-3'>3. Population Tick (every tick)</h2>
                 <p>
                     The population subsystem maintains a full age-structured demography: a cohort array indexed by age
-                    (0–100), each cell broken down by occupation × education × skill. The per-tick update applies
-                    mortality, disability, retirement of non-workers, service consumption (grocery buffer), and births.
+                    (0–100), each cell broken down by occupation × education. The per-tick update applies mortality,
+                    disability, retirement of non-workers, service consumption (grocery buffer), and births.
                 </p>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>3.1 Mortality</h3>
@@ -195,7 +195,7 @@ ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above exact demand)`}
                     {`gap = target[edu] − currentActive[edu]
 if gap > 0:
     hire min(gap, unoccupied[edu]) workers
-    workforce[exact age][edu][skill].active += count`}
+    workforce[exact age][edu].active += count`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.3 Firing</h3>

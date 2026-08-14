@@ -100,10 +100,6 @@ export const SHIP_MARKET_EMA_ALPHA = 0.3;
 export const SELL_THROUGH_EMA_ALPHA = 0.3;
 export const FILL_RATE_EMA_ALPHA = 0.3;
 
-export const NOVICE_EFFICIENCY = 1.0;
-export const PROFESSIONAL_EFFICIENCY = 1.5;
-export const EXPERT_EFFICIENCY = 2.0;
-
 export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;
 
 export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {

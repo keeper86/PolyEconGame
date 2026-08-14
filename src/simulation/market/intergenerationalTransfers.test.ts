@@ -7,7 +7,7 @@ import type { Planet } from '../planet/planet';
 const groceryDef = SERVICE_DEFINITIONS.grocery;
 
 import { educationLevelKeys } from '../population/education';
-import { OCCUPATIONS, SKILL } from '../population/population';
+import { OCCUPATIONS } from '../population/population';
 import { makePlanet } from '../utils/testHelper';
 import {
     createZeroTransferMatrix,
@@ -25,10 +25,8 @@ function totalHouseholdWealth(planet: Planet): number {
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    sum += cat.total * cat.wealth.mean;
-                }
+                const cat = cohort[occ][edu];
+                sum += cat.total * cat.wealth.mean;
             }
         }
     }
@@ -48,7 +46,7 @@ function placePeople(
 ): void {
     const occ = opts?.occ ?? 'unoccupied';
     const edu = opts?.edu ?? 'none';
-    const cat = planet.population.demography[age][occ][edu].novice;
+    const cat = planet.population.demography[age][occ][edu];
     cat.total = total;
     cat.wealth = { mean: opts?.wealthMean ?? 0, variance: 0 };
 
@@ -62,10 +60,8 @@ function wealthAt(
     edu: (typeof educationLevelKeys)[number] = 'none',
 ): number {
     let sum = 0;
-    for (const skill of SKILL) {
-        const cat = planet.population.demography[age][occ][edu][skill];
-        sum += cat.total * cat.wealth.mean;
-    }
+    const cat = planet.population.demography[age][occ][edu];
+    sum += cat.total * cat.wealth.mean;
     return sum;
 }
 
@@ -292,9 +288,9 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
         });
 
         const partialFood = foodTarget * 0.5 * 100;
-        planet.population.demography[1].unoccupied.none.novice.total = 100;
-        planet.population.demography[1].unoccupied.none.novice.wealth = { mean: 0, variance: 0 };
-        planet.population.demography[1].unoccupied.none.novice.services.grocery.buffer = partialFood / 100;
+        planet.population.demography[1].unoccupied.none.total = 100;
+        planet.population.demography[1].unoccupied.none.wealth = { mean: 0, variance: 0 };
+        planet.population.demography[1].unoccupied.none.services.grocery.buffer = partialFood / 100;
 
         intergenerationalTransfersForPlanet(planet);
 

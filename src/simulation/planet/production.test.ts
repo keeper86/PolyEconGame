@@ -34,7 +34,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -78,7 +78,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -121,7 +121,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].primary.novice.active = 1;
+        wf[30].primary.active = 1;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -169,7 +169,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         planet.resources[resA.name] = {
             pool: makePool({ type: resA, quantity: 0, renewable: false }),
@@ -240,7 +240,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         planet.resources[resA.name] = {
             pool: makePool({ type: resA, quantity: 0, renewable: false }),
@@ -300,7 +300,7 @@ describe('productionTick (basic)', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 2;
+        wf[30].secondary.active = 2;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -342,7 +342,7 @@ describe('productionTick (basic)', () => {
             resource: waterResourceType,
             quantity: 50,
         };
-        agent.assets.p.workforceDemography[30].none.novice.active = 20;
+        agent.assets.p.workforceDemography[30].none.active = 20;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -374,7 +374,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         facilityB.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 2;
+        wf[30].none.active = 2;
 
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
@@ -413,7 +413,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         facilityB.produces = [{ resource: ironOreResourceType, quantity: 100 }];
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 2;
+        wf[30].none.active = 2;
 
         const initialWater = 500;
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
@@ -813,7 +813,7 @@ describe('productionTick — storage department', () => {
         });
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 2;
+        wf[30].none.active = 2;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -853,7 +853,7 @@ describe('productionTick — storage department', () => {
         });
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 1;
+        wf[30].none.active = 1;
 
         const initialEfficiency = agent.assets.p.storageFacility.department!.lastTickResults.overallEfficiency;
 
@@ -892,7 +892,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         agent.assets.p.storageFacility.current.mass += 50 * waterResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 1;
+        wf[30].none.active = 1;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -951,7 +951,7 @@ describe('productionTick — humanResourcesDepartment', () => {
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
         const wf = agent.assets.p.workforceDemography;
-        wf[30].none.novice.active = 1;
+        wf[30].none.active = 1;
 
         const initialEfficiency = mgmtFacility.lastTickResults.overallEfficiency;
 
@@ -982,7 +982,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 1000,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
-        agent.assets.p.workforceDemography[30].none.novice.active = 25;
+        agent.assets.p.workforceDemography[30].none.active = 25;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1016,7 +1016,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 1000,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
-        agent.assets.p.workforceDemography[30].secondary.novice.active = 30;
+        agent.assets.p.workforceDemography[30].secondary.active = 30;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1047,7 +1047,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 50,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
-        agent.assets.p.workforceDemography[30].none.novice.active = 10;
+        agent.assets.p.workforceDemography[30].none.active = 10;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1070,7 +1070,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 50,
         };
         agent.assets.p.hrProductivityMultiplier = 0.5;
-        agent.assets.p.workforceDemography[30].none.novice.active = 20;
+        agent.assets.p.workforceDemography[30].none.active = 20;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1105,7 +1105,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             quantity: 100,
         };
 
-        agent.assets.p.workforceDemography[30].none.novice.active = 5;
+        agent.assets.p.workforceDemography[30].none.active = 5;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1149,7 +1149,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         agent.assets.p.storageFacility.current.mass = 60 * steelResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 9;
+        wf[30].secondary.active = 9;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -1209,7 +1209,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
 
         agent.assets.p.shipConstructionFacilities = [shipyard];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
         const initialEfficiency = shipyard.lastTickResults.overallEfficiency;
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -1246,7 +1246,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         agent.assets.p.shipConstructionFacilities = [shipyard];
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         const gs = makeGameState(planet, [agent, gov], 10);
 
@@ -1286,7 +1286,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         agent.assets.p.shipConstructionFacilities = [shipyard];
 
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         const gs = makeGameState(planet, [agent, gov]);
 
@@ -1314,9 +1314,9 @@ describe('productionTick — XP boost effect on production', () => {
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
 
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
-        wf[30].secondary.novice.workforceExperience = 40;
+        wf[30].secondary.workforceExperience = 40;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -1360,7 +1360,7 @@ describe('productionTick — XP boost effect on production', () => {
 
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.novice.active = 1;
+        wf[30].secondary.active = 1;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),
@@ -1393,7 +1393,7 @@ describe('productionTick — XP boost effect on production', () => {
         expect(storedIron).toBeLessThan(550);
     });
 
-    it('XP is averaged across all workers in the same edu+skill category', () => {
+    it('XP is averaged across all workers in the same edu category', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('mixed-xp-company');
 
@@ -1405,10 +1405,10 @@ describe('productionTick — XP boost effect on production', () => {
         agent.assets.p.productionFacilities = [facility];
         const wf = agent.assets.p.workforceDemography;
 
-        wf[30].secondary.novice.active = 1;
-        wf[30].secondary.novice.workforceExperience = 0;
-        wf[50].secondary.novice.active = 1;
-        wf[50].secondary.novice.workforceExperience = 80;
+        wf[30].secondary.active = 1;
+        wf[30].secondary.workforceExperience = 0;
+        wf[50].secondary.active = 1;
+        wf[50].secondary.workforceExperience = 80;
 
         planet.resources[ironOreDepositResourceType.name] = {
             pool: makePool({ type: ironOreDepositResourceType, quantity: 0, renewable: false }),

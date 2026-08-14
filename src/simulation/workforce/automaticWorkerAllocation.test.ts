@@ -109,9 +109,9 @@ describe('updateAllocatedWorkers', () => {
         agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 900;
-        wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 100;
-        wf[30].none.novice.departingFired[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[30].none.active = 900;
+        wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[30].none.departingFired[NOTICE_PERIOD_MONTHS - 1] = 100;
 
         automaticWorkerAllocation(agentMap(agent), planet);
 

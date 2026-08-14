@@ -1,6 +1,5 @@
 import { MIN_EMPLOYABLE_AGE } from '../../constants';
 import { educationLevelKeys } from '../../population/education';
-import { SKILL } from '../../population/population';
 import type { ResourceQuantity } from '../claims';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
 import { calculateCostsForConstruction, getFacilityType } from '../facility';
@@ -147,9 +146,7 @@ export function computeDynamicExpansionTarget(
 
         let eduAvailableUnemployed = 0;
         for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-            for (const skill of SKILL) {
-                eduAvailableUnemployed += demography[age].unoccupied[edu][skill].total;
-            }
+            eduAvailableUnemployed += demography[age].unoccupied[edu].total;
         }
 
         const usableForEdu = eduAvailableUnemployed / (1 + EXPANSION_WORKER_RESERVE_MARGIN);

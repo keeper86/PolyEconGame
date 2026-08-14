@@ -6,14 +6,12 @@ import { educationLevelKeys, type EducationLevelType } from '../population/educa
 import { mortalityProbability } from '../population/mortality';
 import {
     MAX_AGE,
-    SKILL,
     mergeGaussianMoments,
     nullPopulationCategory,
     type Occupation,
     type PopulationCategory,
     type PopulationCategoryIndex,
     type ServiceName,
-    type Skill,
 } from '../population/population';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { Provision } from './ships';
@@ -24,17 +22,16 @@ const educationDef = SERVICE_DEFINITIONS.education;
 
 export type PassengerManifest = Record<string, PopulationCategory>;
 
-export function manifestKey(age: number, occ: Occupation, edu: EducationLevelType, skill: Skill): string {
-    return `${age}:${occ}:${edu}:${skill}`;
+export function manifestKey(age: number, occ: Occupation, edu: EducationLevelType): string {
+    return `${age}:${occ}:${edu}`;
 }
 
 export function parseManifestKey(key: string): PopulationCategoryIndex {
-    const [ageStr, occ, edu, skill] = key.split(':');
+    const [ageStr, occ, edu] = key.split(':');
     return {
         age: parseInt(ageStr, 10),
         occ: occ as Occupation,
         edu: edu as EducationLevelType,
-        skill: skill as Skill,
     };
 }
 
@@ -107,41 +104,36 @@ export function boardPassengersFromWorkforce(
             if (remaining <= 0) {
                 break;
             }
-            for (const skill of SKILL) {
-                if (remaining <= 0) {
-                    break;
-                }
 
-                const workforce = wfCohort[edu]?.[skill];
-                if (!workforce || workforce.active <= 0) {
-                    continue;
-                }
-
-                const planetCell = popCohort.employed?.[edu]?.[skill];
-                if (!planetCell || planetCell.total <= 0) {
-                    continue;
-                }
-
-                const take = Math.min(workforce.active, planetCell.total, remaining);
-                if (take <= 0) {
-                    continue;
-                }
-
-                const preMutationWealth = { ...planetCell.wealth };
-
-                workforce.active -= take;
-
-                planetCell.total -= take;
-                if (planetCell.total === 0) {
-                    planetCell.wealth = { mean: 0, variance: 0 };
-                }
-
-                const key = manifestKey(age, 'employed', edu, skill);
-                mergeIntoManifest(manifest, key, { ...planetCell, wealth: preMutationWealth }, take);
-
-                boarded += take;
-                remaining -= take;
+            const workforce = wfCohort[edu];
+            if (!workforce || workforce.active <= 0) {
+                continue;
             }
+
+            const planetCell = popCohort.employed[edu];
+            if (!planetCell || planetCell.total <= 0) {
+                continue;
+            }
+
+            const take = Math.min(workforce.active, planetCell.total, remaining);
+            if (take <= 0) {
+                continue;
+            }
+
+            const preMutationWealth = { ...planetCell.wealth };
+
+            workforce.active -= take;
+
+            planetCell.total -= take;
+            if (planetCell.total === 0) {
+                planetCell.wealth = { mean: 0, variance: 0 };
+            }
+
+            const key = manifestKey(age, 'employed', edu);
+            mergeIntoManifest(manifest, key, { ...planetCell, wealth: preMutationWealth }, take);
+
+            boarded += take;
+            remaining -= take;
         }
     }
 
@@ -193,12 +185,12 @@ export function refundBoardedPassengers(
         }
         const idx = parseManifestKey(key);
 
-        const workforce = assets?.workforceDemography[idx.age]?.[idx.edu]?.[idx.skill];
+        const workforce = assets?.workforceDemography[idx.age]?.[idx.edu];
         if (workforce) {
             workforce.active += category.total;
         }
 
-        const planetCell = planet.population.demography[idx.age]?.[idx.occ]?.[idx.edu]?.[idx.skill];
+        const planetCell = planet.population.demography[idx.age]?.[idx.occ]?.[idx.edu];
         if (planetCell) {
             const mergedWealth = mergeGaussianMoments(
                 planetCell.total,
@@ -328,7 +320,7 @@ export function advanceManifestAge(
 
         category.total -= disabledCount;
 
-        const disabledKey = manifestKey(idx.age, 'unableToWork', idx.edu, idx.skill);
+        const disabledKey = manifestKey(idx.age, 'unableToWork', idx.edu);
         mergeIntoManifest(working, disabledKey, category, disabledCount);
     }
 
@@ -358,7 +350,7 @@ export function advanceManifestAge(
 
         const idx = parseManifestKey(key);
         const targetAge = Math.min(idx.age + yearBoundariesCrossed, MAX_AGE);
-        const newKey = manifestKey(targetAge, idx.occ, idx.edu, idx.skill);
+        const newKey = manifestKey(targetAge, idx.occ, idx.edu);
         mergeIntoManifest(result, newKey, category, category.total);
     }
 
@@ -392,7 +384,7 @@ export function unloadPassengersToWorkforce(
         if (!wfCohort) {
             continue;
         }
-        const wfCell = wfCohort[idx.edu]?.[idx.skill];
+        const wfCell = wfCohort[idx.edu];
         if (!wfCell) {
             continue;
         }
@@ -411,7 +403,7 @@ export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerMani
         const idx = parseManifestKey(key);
         const age = Math.min(idx.age, MAX_AGE);
 
-        const planetCell = demography[age]?.[idx.occ]?.[idx.edu]?.[idx.skill];
+        const planetCell = demography[age]?.[idx.occ]?.[idx.edu];
         if (!planetCell) {
             continue;
         }

@@ -1,6 +1,6 @@
 import type { Bank } from '../planet/planet';
 import type { Cohort, PopulationCategory } from '../population/population';
-import { mergeGaussianMoments, SKILL } from '../population/population';
+import { mergeGaussianMoments } from '../population/population';
 import type { EducationLevelType } from '../population/education';
 import type { Occupation } from '../population/population';
 
@@ -86,23 +86,21 @@ export function distributeWealthChangeTracked(
     floor?: number,
 ): number {
     let actualAggregate = 0;
-    for (const skill of SKILL) {
-        const cat = demography[age][occ][edu][skill];
-        if (cat.total <= 0) {
-            continue;
-        }
-        const oldMean = cat.wealth.mean;
-        let newMean = oldMean + perCapita;
-        if (floor !== undefined && newMean < floor) {
-            newMean = floor;
-        }
-        const actualPerCapita = newMean - oldMean;
-        actualAggregate += actualPerCapita * cat.total;
-        cat.wealth = {
-            mean: newMean,
-            variance: cat.wealth.variance,
-        };
+    const cat = demography[age][occ][edu];
+    if (cat.total <= 0) {
+        return 0;
     }
+    const oldMean = cat.wealth.mean;
+    let newMean = oldMean + perCapita;
+    if (floor !== undefined && newMean < floor) {
+        newMean = floor;
+    }
+    const actualPerCapita = newMean - oldMean;
+    actualAggregate += actualPerCapita * cat.total;
+    cat.wealth = {
+        mean: newMean,
+        variance: cat.wealth.variance,
+    };
     return actualAggregate;
 }
 

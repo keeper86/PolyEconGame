@@ -54,7 +54,6 @@ function makeBid(bidPrice: number, quantity: number): BidOrder {
         age: 0,
         edu: 'none',
         occ: 'unoccupied',
-        skill: 'novice',
         population: quantity,
         bidPrice,
         quantity,

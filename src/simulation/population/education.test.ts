@@ -57,12 +57,12 @@ describe('applyEducationTransition', () => {
         const planet = makePlanet();
 
         const age = 5;
-        planet.population.demography[age].education.none.novice.total = 100;
+        planet.population.demography[age].education.none.total = 100;
 
-        applyEducationTransition(planet, age, age + 1, 'none', 'novice');
+        applyEducationTransition(planet, age, age + 1, 'none');
 
-        expect(planet.population.demography[age + 1].unoccupied.none.novice.total).toBe(0);
-        expect(planet.population.demography[age + 1].unoccupied.primary.novice.total).toBe(0);
+        expect(planet.population.demography[age + 1].unoccupied.none.total).toBe(0);
+        expect(planet.population.demography[age + 1].unoccupied.primary.total).toBe(0);
     });
 
     it('places dropouts into unoccupied keeping their current edu level', () => {
@@ -70,14 +70,14 @@ describe('applyEducationTransition', () => {
 
         const sourceAge = 40;
         const count = 10_000;
-        planet.population.demography[sourceAge].education.secondary.novice.total = count;
+        planet.population.demography[sourceAge].education.secondary.total = count;
 
-        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'secondary', 'novice');
+        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'secondary');
 
-        const unoccSecondary = planet.population.demography[sourceAge + 1].unoccupied.secondary.novice.total;
+        const unoccSecondary = planet.population.demography[sourceAge + 1].unoccupied.secondary.total;
         expect(unoccSecondary).toBeGreaterThan(0);
 
-        expect(planet.population.demography[sourceAge + 1].unoccupied.none.novice.total).toBe(0);
+        expect(planet.population.demography[sourceAge + 1].unoccupied.none.total).toBe(0);
     });
 
     it('none-level graduates who do not continue land in unoccupied with edu=primary', () => {
@@ -85,13 +85,13 @@ describe('applyEducationTransition', () => {
 
         const sourceAge = 9;
         const count = 10_000;
-        planet.population.demography[sourceAge].education.none.novice.total = count;
+        planet.population.demography[sourceAge].education.none.total = count;
 
-        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none', 'novice');
+        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none');
 
-        const unoccPrimary = planet.population.demography[sourceAge + 1].unoccupied.primary.novice.total;
+        const unoccPrimary = planet.population.demography[sourceAge + 1].unoccupied.primary.total;
         expect(unoccPrimary).toBeGreaterThan(0);
-        expect(planet.population.demography[sourceAge + 1].unoccupied.none.novice.total).toBe(0);
+        expect(planet.population.demography[sourceAge + 1].unoccupied.none.total).toBe(0);
     });
 
     it('none-level kids who never graduate by age 14 drop out as edu=none', () => {
@@ -99,11 +99,11 @@ describe('applyEducationTransition', () => {
 
         const sourceAge = MIN_EMPLOYABLE_AGE;
         const count = 100_000;
-        planet.population.demography[sourceAge].education.none.novice.total = count;
+        planet.population.demography[sourceAge].education.none.total = count;
 
-        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none', 'novice');
+        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'none');
 
-        const unoccNone = planet.population.demography[sourceAge + 1].unoccupied.none.novice.total;
+        const unoccNone = planet.population.demography[sourceAge + 1].unoccupied.none.total;
         expect(unoccNone).toBeGreaterThan(0);
     });
 
@@ -112,12 +112,12 @@ describe('applyEducationTransition', () => {
 
         const sourceAge = 17;
         const count = 10_000;
-        planet.population.demography[sourceAge].education.primary.novice.total = count;
+        planet.population.demography[sourceAge].education.primary.total = count;
 
-        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'primary', 'novice');
+        applyEducationTransition(planet, sourceAge, sourceAge + 1, 'primary');
 
-        expect(planet.population.demography[sourceAge + 1].unoccupied.secondary.novice.total).toBeGreaterThan(0);
-        expect(planet.population.demography[sourceAge + 1].unoccupied.none.novice.total).toBe(0);
+        expect(planet.population.demography[sourceAge + 1].unoccupied.secondary.total).toBeGreaterThan(0);
+        expect(planet.population.demography[sourceAge + 1].unoccupied.none.total).toBe(0);
     });
 
     it('moves everyone to the next age-bracket in education when graduation is near-zero', () => {
@@ -125,16 +125,16 @@ describe('applyEducationTransition', () => {
 
         const age = 5;
         const count = 100;
-        planet.population.demography[age].education.none.novice.total = count;
+        planet.population.demography[age].education.none.total = count;
 
-        applyEducationTransition(planet, age, age + 1, 'none', 'novice');
+        applyEducationTransition(planet, age, age + 1, 'none');
 
         const inEducation =
-            planet.population.demography[age + 1].education.none.novice.total +
-            planet.population.demography[age + 1].education.primary.novice.total;
+            planet.population.demography[age + 1].education.none.total +
+            planet.population.demography[age + 1].education.primary.total;
         const unoccupied =
-            planet.population.demography[age + 1].unoccupied.none.novice.total +
-            planet.population.demography[age + 1].unoccupied.primary.novice.total;
+            planet.population.demography[age + 1].unoccupied.none.total +
+            planet.population.demography[age + 1].unoccupied.primary.total;
 
         expect(inEducation + unoccupied).toBe(count);
         expect(unoccupied).toBe(0);

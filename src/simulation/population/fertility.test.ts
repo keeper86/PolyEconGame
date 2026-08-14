@@ -58,22 +58,22 @@ describe('computeBirthsThisTick', () => {
 });
 
 describe('applyBirths', () => {
-    it('adds newborns to cohort 0 education/none/novice slot', () => {
+    it('adds newborns to cohort 0 education/none slot', () => {
         const pop = makePopulation();
         applyBirths(pop, 10);
-        expect(pop.demography[0].education.none.novice.total).toBe(10);
+        expect(pop.demography[0].education.none.total).toBe(10);
     });
 
     it('accumulates births over multiple calls', () => {
         const pop = makePopulation();
         applyBirths(pop, 5);
         applyBirths(pop, 3);
-        expect(pop.demography[0].education.none.novice.total).toBe(8);
+        expect(pop.demography[0].education.none.total).toBe(8);
     });
 
     it('does nothing when births = 0', () => {
         const pop = makePopulation();
         applyBirths(pop, 0);
-        expect(pop.demography[0].education.none.novice.total).toBe(0);
+        expect(pop.demography[0].education.none.total).toBe(0);
     });
 });

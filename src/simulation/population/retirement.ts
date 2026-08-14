@@ -28,7 +28,7 @@ export function applyRetirement(planet: Planet): void {
             return;
         }
 
-        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+        forEachPopulationCohort(cohort, (category, occ, edu) => {
             if (category.total <= 0 || !RETIREMENT_SOURCE_OCCUPATIONS.includes(occ)) {
                 category.retirements.countThisTick = 0;
                 return;
@@ -37,8 +37,8 @@ export function applyRetirement(planet: Planet): void {
             const toRetire = stochasticRound(category.total * prob);
             const retired = transferPopulation(
                 planet,
-                { age, occ, edu, skill },
-                { age, occ: 'unableToWork', edu, skill },
+                { age, occ, edu },
+                { age, occ: 'unableToWork', edu },
                 toRetire,
             ).count;
             category.retirements.countThisMonth += retired;

@@ -8,7 +8,7 @@ import {
 } from '../constants';
 import { getCurrencyResourceName } from '../market/currencyResources';
 import type { Agent } from '../planet/planet';
-import { MAX_AGE, SKILL } from '../population/population';
+import { MAX_AGE } from '../population/population';
 import { travelTime } from '../ships/shipHandlers';
 import { effectiveShipValue } from '../ships/shipMarket';
 import type { TransportShip } from '../ships/ships';
@@ -922,9 +922,7 @@ describe('seedArbitrageTraderAgents – initial active workforce', () => {
             }
             for (let age = 0; age <= MAX_AGE; age++) {
                 for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-                    for (const skill of SKILL) {
-                        total += wd[age][edu][skill].active;
-                    }
+                    total += wd[age][edu].active;
                 }
             }
         }

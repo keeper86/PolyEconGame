@@ -1,6 +1,6 @@
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet/planet';
 import { educationLevelKeys } from './population/education';
-import { SKILL, forEachPopulationCohort } from './population/population';
+import { forEachPopulationCohort } from './population/population';
 
 export function checkPopulationWorkforceConsistency(
     agents: Map<string, Agent>,
@@ -12,9 +12,7 @@ export function checkPopulationWorkforceConsistency(
         for (const edu of educationLevelKeys) {
             let popEmployed = 0;
             for (const cohort of planet.population.demography) {
-                for (const skill of SKILL) {
-                    popEmployed += cohort.employed[edu][skill].total;
-                }
+                popEmployed += cohort.employed[edu].total;
             }
 
             let wfTotal = 0;
@@ -24,12 +22,10 @@ export function checkPopulationWorkforceConsistency(
                     continue;
                 }
                 for (let age = 0; age < wf.length; age++) {
-                    for (const skill of SKILL) {
-                        const cell = wf[age][edu][skill];
-                        wfTotal += cell.active;
-                        for (const d of cell.voluntaryDeparting) {
-                            wfTotal += d;
-                        }
+                    const cell = wf[age][edu];
+                    wfTotal += cell.active;
+                    for (const d of cell.voluntaryDeparting) {
+                        wfTotal += d;
                     }
                 }
             }
@@ -50,20 +46,18 @@ export function checkAgeMomentConsistency(agents: Map<string, Agent>, planets: M
 
     for (const [planetId, planet] of planets) {
         for (let age = 0; age < planet.population.demography.length; age++) {
-            forEachPopulationCohort(planet.population.demography[age], (cat, occ, edu, skill) => {
+            forEachPopulationCohort(planet.population.demography[age], (cat, occ, edu) => {
                 if (cat.total < 0) {
                     discrepancies.push(
-                        `planet=${planetId} age=${age} occ=${occ} edu=${edu} skill=${skill}: negative total=${cat.total}`,
+                        `planet=${planetId} age=${age} occ=${occ} edu=${edu}: negative total=${cat.total}`,
                     );
                 }
                 if (Number.isNaN(cat.wealth.mean) || Number.isNaN(cat.wealth.variance)) {
-                    discrepancies.push(
-                        `planet=${planetId} age=${age} occ=${occ} edu=${edu} skill=${skill}: NaN wealth moments`,
-                    );
+                    discrepancies.push(`planet=${planetId} age=${age} occ=${occ} edu=${edu}: NaN wealth moments`);
                 }
                 if (cat.wealth.variance < 0) {
                     discrepancies.push(
-                        `planet=${planetId} age=${age} occ=${occ} edu=${edu} skill=${skill}: negative variance=${cat.wealth.variance}`,
+                        `planet=${planetId} age=${age} occ=${occ} edu=${edu}: negative variance=${cat.wealth.variance}`,
                     );
                 }
             });

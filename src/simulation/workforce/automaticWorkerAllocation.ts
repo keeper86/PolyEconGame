@@ -4,9 +4,8 @@ import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
-import { totalActiveForEduSkill } from './workforceAggregates';
+import { totalActiveForEdu } from './workforceAggregates';
 
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
     const allFacilities: Array<Facility> = [
@@ -181,9 +180,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             if (excessCash > 0) {
                 let totalWorkers = 0;
                 for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        totalWorkers += totalActiveForEduSkill(workforce, edu, skill);
-                    }
+                    totalWorkers += totalActiveForEdu(workforce, edu);
                 }
 
                 let totalCredit = 0;
@@ -195,23 +192,21 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                             continue;
                         }
                         for (const edu of educationLevelKeys) {
-                            for (const skill of SKILL) {
-                                const agentWorkers = ageCohort[edu]?.[skill];
-                                if (!agentWorkers) {
-                                    continue;
-                                }
-                                const activeWorkers = agentWorkers.active;
-                                if (activeWorkers <= 0) {
-                                    continue;
-                                }
-                                const cat = demography[age].employed[edu][skill];
-                                if (cat.total <= 0) {
-                                    // cat should be populated if agent has active workers there
-                                    continue;
-                                }
-
-                                totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
+                            const agentWorkers = ageCohort[edu];
+                            if (!agentWorkers) {
+                                continue;
                             }
+                            const activeWorkers = agentWorkers.active;
+                            if (activeWorkers <= 0) {
+                                continue;
+                            }
+                            const cat = demography[age].employed[edu];
+                            if (cat.total <= 0) {
+                                // cat should be populated if agent has active workers there
+                                continue;
+                            }
+
+                            totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
                         }
                     }
 

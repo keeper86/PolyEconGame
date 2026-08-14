@@ -218,7 +218,7 @@ function addTo(
     edu: 'none' | 'primary' | 'secondary' | 'tertiary',
     count: number,
 ): void {
-    pop.demography[age][occ][edu].novice.total += count;
+    pop.demography[age][occ][edu].total += count;
 }
 
 export function createPopulation(total: number, buffer: number = 6): Population {

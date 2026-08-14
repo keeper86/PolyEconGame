@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import type { EducationLevelType } from '../population/education';
-import { SKILL } from '../population/population';
 
 import { postProductionLaborMarketTick } from './laborMarketMonthTick';
 import { hireWorkforce } from './hireWorkforce';
@@ -15,10 +14,8 @@ import { NOTICE_PERIOD_MONTHS } from '../constants';
 function totalDepartingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            for (const dep of workforce[age][edu][skill].voluntaryDeparting) {
-                total += dep;
-            }
+        for (const dep of workforce[age][edu].voluntaryDeparting) {
+            total += dep;
         }
     }
     return total;
@@ -36,40 +33,40 @@ describe('postProductionLaborMarketTick', () => {
     it('shifts the departing pipeline down by one slot', () => {
         const workforce = agent.assets.p.workforceDemography!;
 
-        workforce[30].none.novice.voluntaryDeparting[1] = 5;
-        workforce[30].none.novice.voluntaryDeparting[2] = 3;
+        workforce[30].none.voluntaryDeparting[1] = 5;
+        workforce[30].none.voluntaryDeparting[2] = 3;
 
-        planet.population.demography[30].employed.none.novice.total = 100;
+        planet.population.demography[30].employed.none.total = 100;
 
         postProductionLaborMarketTick(agentMap(agent), planet);
 
-        expect(workforce[30].none.novice.voluntaryDeparting[0]).toBe(5);
-        expect(workforce[30].none.novice.voluntaryDeparting[1]).toBe(3);
-        expect(workforce[30].none.novice.voluntaryDeparting[2]).toBe(0);
+        expect(workforce[30].none.voluntaryDeparting[0]).toBe(5);
+        expect(workforce[30].none.voluntaryDeparting[1]).toBe(3);
+        expect(workforce[30].none.voluntaryDeparting[2]).toBe(0);
     });
 
     it('drains slot-0 workers back to the unoccupied population', () => {
         const workforce = agent.assets.p.workforceDemography!;
 
-        workforce[25].primary.novice.voluntaryDeparting[0] = 10;
+        workforce[25].primary.voluntaryDeparting[0] = 10;
 
-        planet.population.demography[25].employed.primary.novice.total = 20;
-        planet.population.demography[25].unoccupied.primary.novice.total = 50;
+        planet.population.demography[25].employed.primary.total = 20;
+        planet.population.demography[25].unoccupied.primary.total = 50;
 
         postProductionLaborMarketTick(agentMap(agent), planet);
 
-        expect(planet.population.demography[25].employed.primary.novice.total).toBe(10);
-        expect(planet.population.demography[25].unoccupied.primary.novice.total).toBe(60);
+        expect(planet.population.demography[25].employed.primary.total).toBe(10);
+        expect(planet.population.demography[25].unoccupied.primary.total).toBe(60);
     });
 
     it('clears the last pipeline slot after advancing', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 7;
+        workforce[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 7;
 
         postProductionLaborMarketTick(agentMap(agent), planet);
 
-        expect(workforce[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
-        expect(workforce[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
+        expect(workforce[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 2]).toBe(7);
+        expect(workforce[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
     it('does nothing when workforceDemography is absent', () => {
@@ -111,17 +108,15 @@ describe('postProductionLaborMarketTick — population conservation', () => {
         const wf = agent.assets.p.workforceDemography!;
         let movedToDeparting = 0;
         for (let age = 0; age < wf.length && movedToDeparting < 50; age++) {
-            for (const skill of SKILL) {
-                const cat = wf[age].none[skill];
-                const take = Math.min(cat.active, 50 - movedToDeparting);
-                if (take > 0) {
-                    cat.active -= take;
-                    cat.voluntaryDeparting[0] = take;
-                    movedToDeparting += take;
-                }
-                if (movedToDeparting >= 50) {
-                    break;
-                }
+            const cat = wf[age].none;
+            const take = Math.min(cat.active, 50 - movedToDeparting);
+            if (take > 0) {
+                cat.active -= take;
+                cat.voluntaryDeparting[0] = take;
+                movedToDeparting += take;
+            }
+            if (movedToDeparting >= 50) {
+                break;
             }
         }
 
@@ -136,17 +131,17 @@ describe('postProductionLaborMarketTick — population conservation', () => {
 
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[30].none.novice.active = 100;
+        wf[30].none.active = 100;
         agent.assets.p.allocatedWorkers.none = 100;
 
         let totalInPipeline = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
             const count = (m + 1) * 10;
-            wf[30].none.novice.voluntaryDeparting[m] = count;
+            wf[30].none.voluntaryDeparting[m] = count;
             totalInPipeline += count;
         }
 
-        planet.population.demography[30].employed.none.novice.total = 100 + totalInPipeline;
+        planet.population.demography[30].employed.none.total = 100 + totalInPipeline;
 
         const popBefore = totalPopulation(planet);
 
@@ -154,7 +149,7 @@ describe('postProductionLaborMarketTick — population conservation', () => {
 
         let pipelineAfter = 0;
         for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-            pipelineAfter += wf[30].none.novice.voluntaryDeparting[m];
+            pipelineAfter += wf[30].none.voluntaryDeparting[m];
         }
 
         expect(pipelineAfter).toBe(totalInPipeline - 10);
@@ -170,9 +165,9 @@ describe('departingFired pipeline — consistency', () => {
 
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[30].none.novice.active = 1000;
+        wf[30].none.active = 1000;
 
-        planet.population.demography[30].employed.none.novice.total = 1000;
+        planet.population.demography[30].employed.none.total = 1000;
         agent.assets.p.allocatedWorkers.none = 500;
 
         hireWorkforce(agentMap(agent), planet);
@@ -181,12 +176,10 @@ describe('departingFired pipeline — consistency', () => {
         let totalVoluntary = 0;
         for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = wf[age][edu][skill];
-                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                        totalFired += cat.departingFired[m];
-                        totalVoluntary += cat.voluntaryDeparting[m];
-                    }
+                const cat = wf[age][edu];
+                for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                    totalFired += cat.departingFired[m];
+                    totalVoluntary += cat.voluntaryDeparting[m];
                 }
             }
         }
@@ -202,20 +195,20 @@ describe('departingFired pipeline — consistency', () => {
 
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[30].none.novice.voluntaryDeparting[2] = 50;
-        wf[30].none.novice.departingFired[2] = 30;
-        wf[30].none.novice.active = 100;
+        wf[30].none.voluntaryDeparting[2] = 50;
+        wf[30].none.departingFired[2] = 30;
+        wf[30].none.active = 100;
         agent.assets.p.allocatedWorkers.none = 100;
 
-        planet.population.demography[30].employed.none.novice.total = 200;
+        planet.population.demography[30].employed.none.total = 200;
 
         postProductionLaborMarketTick(agentMap(agent), planet);
 
-        expect(wf[30].none.novice.voluntaryDeparting[1]).toBe(50);
-        expect(wf[30].none.novice.departingFired[1]).toBe(30);
+        expect(wf[30].none.voluntaryDeparting[1]).toBe(50);
+        expect(wf[30].none.departingFired[1]).toBe(30);
 
-        expect(wf[30].none.novice.voluntaryDeparting[2]).toBe(0);
-        expect(wf[30].none.novice.departingFired[2]).toBe(0);
+        expect(wf[30].none.voluntaryDeparting[2]).toBe(0);
+        expect(wf[30].none.departingFired[2]).toBe(0);
     });
 });
 
@@ -235,15 +228,13 @@ describe('pipeline drain edge cases', () => {
         // but since onboarding pipeline just started, the workers are at the end.
         // Move them to active directly for this test then put them in departing.
         for (let age = 0; age < wf.length; age++) {
-            for (const skill of SKILL) {
-                const cat = wf[age].none[skill];
-                // Sum all onboarding slots and put into active
-                cat.active += cat.onboarding.reduce((s, n) => s + n, 0);
-                cat.onboarding.fill(0);
-                if (cat.active > 0) {
-                    cat.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += cat.active;
-                    cat.active = 0;
-                }
+            const cat = wf[age].none;
+            // Sum all onboarding slots and put into active
+            cat.active += cat.onboarding.reduce((s, n) => s + n, 0);
+            cat.onboarding.fill(0);
+            if (cat.active > 0) {
+                cat.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += cat.active;
+                cat.active = 0;
             }
         }
 
@@ -271,17 +262,15 @@ describe('pipeline drain edge cases', () => {
 
         let placed = 0;
         for (let age = 0; age < wf.length && placed < 10; age++) {
-            for (const skill of SKILL) {
-                const cat = wf[age].none[skill];
-                if (cat.active > 0) {
-                    const take = Math.min(cat.active, 10 - placed);
-                    cat.active -= take;
-                    cat.voluntaryDeparting[0] += take;
-                    placed += take;
-                }
-                if (placed >= 10) {
-                    break;
-                }
+            const cat = wf[age].none;
+            if (cat.active > 0) {
+                const take = Math.min(cat.active, 10 - placed);
+                cat.active -= take;
+                cat.voluntaryDeparting[0] += take;
+                placed += take;
+            }
+            if (placed >= 10) {
+                break;
             }
         }
 

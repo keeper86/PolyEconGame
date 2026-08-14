@@ -1,26 +1,18 @@
 import assert from 'assert';
 import {
-    EXPERT_EFFICIENCY,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
-    NOVICE_EFFICIENCY,
     NOTICE_PERIOD_MONTHS,
     PRICE_CEIL,
     PRICE_FLOOR,
-    PROFESSIONAL_EFFICIENCY,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { SKILL, type Skill } from '../population/population';
 import { createShip } from '../ships/ships';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-import {
-    totalActiveForEduSkill,
-    totalDepartingForEduSkill,
-    totalOnboardingForEduSkill,
-} from '../workforce/workforceAggregates';
+import { totalActiveForEdu, totalDepartingForEdu, totalOnboardingForEdu } from '../workforce/workforceAggregates';
 import { ONBOARDING_EFFICIENCY, productivityFromXP, totalWorkersInCategory } from '../workforce/workforce';
 import type { ResourceQuantity } from './claims';
 import { extractFromClaimedResource, getLandBoundCostPerUnit, queryClaimedResource } from './claims';
@@ -50,12 +42,10 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
     let sumAge = 0;
     let count = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            const active = workforce[age][edu][skill].active;
-            if (active > 0) {
-                sumAge += age * active;
-                count += active;
-            }
+        const active = workforce[age][edu].active;
+        if (active > 0) {
+            sumAge += age * active;
+            count += active;
         }
     }
     return count > 0 ? sumAge / count : 30;
@@ -604,19 +594,16 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         const workforce = assets.workforceDemography;
 
-        const workerPool = {} as Record<EducationLevelType, Record<Skill, number>>;
+        const workerPool = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
-            workerPool[edu] = {} as Record<Skill, number>;
-            for (const skill of SKILL) {
-                const active = workforce ? totalActiveForEduSkill(workforce, edu, skill) : 0;
-                const departing = workforce ? totalDepartingForEduSkill(workforce, edu, skill) : 0;
-                const onboarding = workforce ? totalOnboardingForEduSkill(workforce, edu, skill) : 0;
-                const onboardingEfficiency = gameState.tick < TICKS_PER_YEAR ? 1 : ONBOARDING_EFFICIENCY;
-                workerPool[edu][skill] =
-                    active +
-                    stochasticRound(departing * DEPARTING_EFFICIENCY) +
-                    stochasticRound(onboarding * onboardingEfficiency);
-            }
+            const active = workforce ? totalActiveForEdu(workforce, edu) : 0;
+            const departing = workforce ? totalDepartingForEdu(workforce, edu) : 0;
+            const onboarding = workforce ? totalOnboardingForEdu(workforce, edu) : 0;
+            const onboardingEfficiency = gameState.tick < TICKS_PER_YEAR ? 1 : ONBOARDING_EFFICIENCY;
+            workerPool[edu] =
+                active +
+                stochasticRound(departing * DEPARTING_EFFICIENCY) +
+                stochasticRound(onboarding * onboardingEfficiency);
         }
 
         const ageProd = {} as Record<EducationLevelType, number>;
@@ -624,30 +611,21 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             ageProd[edu] = ageProductivityMultiplier(workforce ? weightedMeanAgeForEdu(workforce, edu) : 30);
         }
 
-        const skillProd: Record<Skill, number> = {
-            novice: NOVICE_EFFICIENCY,
-            professional: PROFESSIONAL_EFFICIENCY,
-            expert: EXPERT_EFFICIENCY,
-        };
-
-        const xpProdByEduSkill = {} as Record<EducationLevelType, Record<Skill, number>>;
+        const xpProdByEdu = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
-            xpProdByEduSkill[edu] = {} as Record<Skill, number>;
-            for (const skill of SKILL) {
-                if (!workforce) {
-                    xpProdByEduSkill[edu][skill] = 1;
-                    continue;
-                }
-                let totalXP = 0;
-                let totalWorkers = 0;
-                for (let age = 0; age < workforce.length; age++) {
-                    const category = workforce[age][edu][skill];
-                    totalXP += category.workforceExperience;
-                    totalWorkers += totalWorkersInCategory(category);
-                }
-                const avgXP = totalWorkers > 0 ? totalXP / totalWorkers : 0;
-                xpProdByEduSkill[edu][skill] = productivityFromXP(avgXP);
+            if (!workforce) {
+                xpProdByEdu[edu] = 1;
+                continue;
             }
+            let totalXP = 0;
+            let totalWorkers = 0;
+            for (let age = 0; age < workforce.length; age++) {
+                const category = workforce[age][edu];
+                totalXP += category.workforceExperience;
+                totalWorkers += totalWorkersInCategory(category);
+            }
+            const avgXP = totalWorkers > 0 ? totalXP / totalWorkers : 0;
+            xpProdByEdu[edu] = productivityFromXP(avgXP);
         }
 
         const activeFacilities: Array<Facility> = [
@@ -697,9 +675,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 const hrMult =
                     facility.id === assets.humanResourcesDepartment?.id ? 1 : assets.hrProductivityMultiplier;
 
-                const xpProdValues = Object.values(xpProdByEduSkill[jobEdu] ?? {});
-                const avgXpProd =
-                    xpProdValues.length > 0 ? xpProdValues.reduce((a, b) => a + b, 0) / xpProdValues.length : 1;
+                const avgXpProd = xpProdByEdu[jobEdu] ?? 1;
                 const combinedProd = ageProd[jobEdu] * avgXpProd * hrMult;
                 const bodies = combinedProd > 0 ? Math.ceil(fullTarget / combinedProd) : 0;
                 const slot: WorkerSlot = {
@@ -711,7 +687,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                     assigned: 0,
                     effectiveAssigned: 0,
                     assignedByEdu: {},
-                    assignedBySkill: {},
                     overqualifiedCount: 0,
                     hrMultiplier: hrMult,
                 };
@@ -727,32 +702,18 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         assets.totalSlotCapacity = totalSlotCapacity;
 
-        let remaining: Record<EducationLevelType, Record<Skill, number>>;
+        let remaining: Record<EducationLevelType, number>;
         let byFacility: Map<string, WaterFillFacilityResult>;
         let used: number;
 
         if (hrSlots.length > 0) {
-            const hrResult = waterFill(
-                hrSlots,
-                workerPool,
-                ageProd,
-                skillProd,
-                xpProdByEduSkill,
-                effectiveDemandBySlot,
-            );
-            const otherResult = waterFill(
-                allSlots,
-                hrResult.remaining,
-                ageProd,
-                skillProd,
-                xpProdByEduSkill,
-                effectiveDemandBySlot,
-            );
+            const hrResult = waterFill(hrSlots, workerPool, ageProd, xpProdByEdu, effectiveDemandBySlot);
+            const otherResult = waterFill(allSlots, hrResult.remaining, ageProd, xpProdByEdu, effectiveDemandBySlot);
             byFacility = new Map([...hrResult.byFacility, ...otherResult.byFacility]);
             remaining = otherResult.remaining;
             used = hrResult.used + otherResult.used;
         } else {
-            const result = waterFill(allSlots, workerPool, ageProd, skillProd, xpProdByEduSkill, effectiveDemandBySlot);
+            const result = waterFill(allSlots, workerPool, ageProd, xpProdByEdu, effectiveDemandBySlot);
             remaining = result.remaining;
             byFacility = result.byFacility;
             used = result.used;
@@ -763,21 +724,19 @@ export function productionTick(gameState: GameState, planet: Planet): void {
         if (workforce) {
             for (let age = 0; age < workforce.length; age++) {
                 for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        const cat = workforce[age][edu][skill];
-                        const pool = workerPool[edu][skill];
-                        const unassigned = remaining[edu][skill];
-                        const assignmentRatio = pool > 0 ? (pool - unassigned) / pool / TICKS_PER_YEAR : 0;
-                        cat.workforceExperience += cat.active * assignmentRatio;
-                        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                            cat.workforceExperience += cat.onboarding[m] * ONBOARDING_EFFICIENCY * assignmentRatio;
-                        }
-                        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                            cat.workforceExperience +=
-                                (cat.voluntaryDeparting[m] + cat.departingFired[m] + cat.departingRetired[m]) *
-                                DEPARTING_EFFICIENCY *
-                                assignmentRatio;
-                        }
+                    const cat = workforce[age][edu];
+                    const pool = workerPool[edu];
+                    const unassigned = remaining[edu];
+                    const assignmentRatio = pool > 0 ? (pool - unassigned) / pool / TICKS_PER_YEAR : 0;
+                    cat.workforceExperience += cat.active * assignmentRatio;
+                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                        cat.workforceExperience += cat.onboarding[m] * ONBOARDING_EFFICIENCY * assignmentRatio;
+                    }
+                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                        cat.workforceExperience +=
+                            (cat.voluntaryDeparting[m] + cat.departingFired[m] + cat.departingRetired[m]) *
+                            DEPARTING_EFFICIENCY *
+                            assignmentRatio;
                     }
                 }
             }
@@ -785,11 +744,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
         const unusedWorkers = {} as Record<EducationLevelType, number>;
         for (const edu of educationLevelKeys) {
-            let sum = 0;
-            for (const skill of SKILL) {
-                sum += remaining[edu][skill];
-            }
-            unusedWorkers[edu] = sum;
+            unusedWorkers[edu] = remaining[edu];
         }
         assets.unusedWorkers = unusedWorkers;
 
@@ -819,8 +774,6 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 overqualifiedWorkers: {},
                 totalUsedByEdu: emptyEduRecord(),
                 exactUsedByEdu: emptyEduRecord(),
-                totalUsedBySkill: { novice: 0, professional: 0, expert: 0 },
-                exactUsedBySkill: { novice: 0, professional: 0, expert: 0 },
             };
 
             const resourceEfficiencies = Object.values(resourceEfficiencyMap);

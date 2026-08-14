@@ -887,11 +887,11 @@ describe('marketTick — agent buying', () => {
 
         const allAgents = agentMap(foodAgent, coalSeller, steelMaker);
 
-        const householdFoodBefore = planet.population.demography[14].unoccupied.none.novice.services.grocery.buffer;
+        const householdFoodBefore = planet.population.demography[14].unoccupied.none.services.grocery.buffer;
 
         marketTick(allAgents, planet);
 
-        const householdFoodAfter = planet.population.demography[14].unoccupied.none.novice.services.grocery.buffer;
+        const householdFoodAfter = planet.population.demography[14].unoccupied.none.services.grocery.buffer;
 
         expect(householdFoodAfter).toBeGreaterThanOrEqual(householdFoodBefore);
     });

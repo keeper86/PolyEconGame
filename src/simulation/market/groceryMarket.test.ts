@@ -11,7 +11,7 @@ import {
     retailServiceResourceType,
 } from '../planet/services';
 import { putIntoStorageFacility } from '../planet/facility';
-import { forEachPopulationCohort, SKILL } from '../population/population';
+import { forEachPopulationCohort } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
@@ -72,12 +72,10 @@ function giveHouseholdsWealth(planet: Planet, wealthPerPerson: number): number {
     const demography = planet.population.demography;
     let totalPop = 0;
     for (let age = 0; age < demography.length; age++) {
-        for (const skill of SKILL) {
-            const cat = demography[age].unoccupied.none[skill];
-            if (cat.total > 0) {
-                cat.wealth = { mean: wealthPerPerson, variance: 0 };
-                totalPop += cat.total;
-            }
+        const cat = demography[age].unoccupied.none;
+        if (cat.total > 0) {
+            cat.wealth = { mean: wealthPerPerson, variance: 0 };
+            totalPop += cat.total;
         }
     }
     return totalPop;
@@ -158,7 +156,7 @@ describe('groceryMarketTick', () => {
         marketTick(agentMap(groceryAgent), planet);
 
         const expected = groceryDef.bufferTargetTicks;
-        const cat = planet.population.demography[14].unoccupied.none.novice;
+        const cat = planet.population.demography[14].unoccupied.none;
         expect(cat.total).toBeGreaterThan(0);
         expect(cat.services.grocery.buffer).toBeCloseTo(expected, 4);
     });
@@ -173,8 +171,8 @@ describe('groceryMarketTick', () => {
             }),
         );
 
-        const richCat = demography[14].unoccupied.none.novice;
-        const poorCat = demography[20].unoccupied.none.novice;
+        const richCat = demography[14].unoccupied.none;
+        const poorCat = demography[20].unoccupied.none;
 
         richCat.wealth = { mean: 200, variance: 0 };
         poorCat.wealth = { mean: 1, variance: 0 };

@@ -62,7 +62,7 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
     const inheritanceByAge = new Map<number, number>();
 
     population.demography.forEach((cohort, age) => {
-        return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+        return forEachPopulationCohort(cohort, (category, occ, edu) => {
             if (category.total === 0) {
                 category.deaths.countThisTick = 0;
                 return;
@@ -71,10 +71,10 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
             let dead = 0;
 
             if (occ === 'employed') {
-                dead = workforceEvents[age][edu][skill].deaths;
+                dead = workforceEvents[age][edu].deaths;
                 if (dead > category.total) {
                     throw new Error(
-                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected at most ${category.total} deaths, but got ${dead}.`,
+                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}: expected at most ${category.total} deaths, but got ${dead}.`,
                     );
                 }
             } else {
@@ -86,10 +86,10 @@ export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAc
                 dead = stochasticRound(category.total * mortalityPerTick);
             }
 
-            const result = transferPopulation(planet, { age, occ, edu, skill }, undefined, dead);
+            const result = transferPopulation(planet, { age, occ, edu }, undefined, dead);
             if (result.count !== dead) {
                 console.warn(
-                    `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected ${dead} deaths, but actually transferred ${result.count}.`,
+                    `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}: expected ${dead} deaths, but actually transferred ${result.count}.`,
                 );
             }
             category.deaths.countThisMonth += result.count;

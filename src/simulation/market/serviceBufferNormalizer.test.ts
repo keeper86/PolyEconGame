@@ -9,7 +9,7 @@ function setCategoryBuffer(
     occ: 'education' | 'employed',
     buffer: number,
 ): void {
-    const cat = planet.population.demography[age][occ].none.novice;
+    const cat = planet.population.demography[age][occ].none;
     cat.total = 1;
     cat.services.education.buffer = buffer;
     cat.services.grocery.buffer = buffer;

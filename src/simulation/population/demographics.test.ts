@@ -15,17 +15,17 @@ describe('calculateDemographicStats', () => {
 
     it('counts total population across all ages', () => {
         const pop = makePopulation();
-        pop.demography[0].education.none.novice.total = 10;
-        pop.demography[20].employed.primary.novice.total = 50;
-        pop.demography[80].unableToWork.none.novice.total = 5;
+        pop.demography[0].education.none.total = 10;
+        pop.demography[20].employed.primary.total = 50;
+        pop.demography[80].unableToWork.none.total = 5;
         const stats = calculateDemographicStats(pop);
         expect(stats.populationTotal).toBe(65);
     });
 
     it('computes totalInCohort per age', () => {
         const pop = makePopulation();
-        pop.demography[5].education.none.novice.total = 20;
-        pop.demography[5].education.primary.novice.total = 30;
+        pop.demography[5].education.none.total = 20;
+        pop.demography[5].education.primary.total = 30;
         const stats = calculateDemographicStats(pop);
         expect(stats.totalInCohort[5]).toBe(50);
         expect(stats.totalInCohort[0]).toBe(0);
@@ -34,17 +34,17 @@ describe('calculateDemographicStats', () => {
     it('counts fertile women only in fertile age range (50% of cohort)', () => {
         const pop = makePopulation();
 
-        pop.demography[20].unoccupied.none.novice.total = 100;
+        pop.demography[20].unoccupied.none.total = 100;
 
-        pop.demography[10].education.none.novice.total = 200;
+        pop.demography[10].education.none.total = 200;
         const stats = calculateDemographicStats(pop);
         expect(stats.fertileWomen).toBe(50);
     });
 
     it('includes both boundary ages of fertile range', () => {
         const pop = makePopulation();
-        pop.demography[START_FERTILE_AGE].unoccupied.none.novice.total = 100;
-        pop.demography[END_FERTILE_AGE].unoccupied.none.novice.total = 100;
+        pop.demography[START_FERTILE_AGE].unoccupied.none.total = 100;
+        pop.demography[END_FERTILE_AGE].unoccupied.none.total = 100;
         const stats = calculateDemographicStats(pop);
 
         expect(stats.fertileWomen).toBe(100);

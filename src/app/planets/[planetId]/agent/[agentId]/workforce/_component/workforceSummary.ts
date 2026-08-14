@@ -4,7 +4,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { WorkforceCohort, WorkforceCategory } from '@/simulation/workforce/workforce';
 import { productivityFromXP } from '@/simulation/workforce/workforce';
-import { MAX_AGE, SKILL } from '@/simulation/population/population';
+import { MAX_AGE } from '@/simulation/population/population';
 import { ageProductivityMultiplier } from '@/simulation/planet/production';
 
 export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
@@ -153,77 +153,75 @@ export function computeSummary(workforce: WorkforceDemography): WorkforceSummary
         }
 
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const cat = cohort[edu][skill];
-                const act = cat.active;
-                const onb = sumArray(cat.onboarding);
-                const onbNext = cat.onboarding[cat.onboarding.length - 1] ?? 0;
+            const cat = cohort[edu];
+            const act = cat.active;
+            const onb = sumArray(cat.onboarding);
+            const onbNext = cat.onboarding[cat.onboarding.length - 1] ?? 0;
 
-                activeByEdu[edu] += act;
-                onboardingByEdu[edu] += onb;
-                nextMonthOnboardingByEdu[edu] += onbNext;
-                totalActive += act;
-                totalOnboarding += onb;
-                ageActive += act;
-                ageOnboarding += onb;
-                ageByEdu[edu] += act + onb;
+            activeByEdu[edu] += act;
+            onboardingByEdu[edu] += onb;
+            nextMonthOnboardingByEdu[edu] += onbNext;
+            totalActive += act;
+            totalOnboarding += onb;
+            ageActive += act;
+            ageOnboarding += onb;
+            ageByEdu[edu] += act + onb;
 
-                if (act > 0) {
-                    ageSumByEdu[edu].weightedAge += act * age;
-                    ageSumByEdu[edu].count += act;
+            if (act > 0) {
+                ageSumByEdu[edu].weightedAge += act * age;
+                ageSumByEdu[edu].count += act;
+            }
+
+            for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
+                const depCount = cat.voluntaryDeparting[m] ?? 0;
+                const firedCount = cat.departingFired[m] ?? 0;
+                departingByEdu[edu] += depCount;
+                totalDeparting += depCount;
+                firedByEdu[edu] += firedCount;
+                ageDeparting += depCount;
+                ageFired += firedCount;
+                ageByEdu[edu] += depCount;
+                ageByEdu[edu] += firedCount;
+
+                if (m === 0) {
+                    nextMonthDepartingByEdu[edu] += depCount;
+                    nextMonthFiredByEdu[edu] += firedCount;
                 }
+            }
 
-                for (let m = 0; m < cat.voluntaryDeparting.length; m++) {
-                    const depCount = cat.voluntaryDeparting[m] ?? 0;
-                    const firedCount = cat.departingFired[m] ?? 0;
-                    departingByEdu[edu] += depCount;
-                    totalDeparting += depCount;
-                    firedByEdu[edu] += firedCount;
-                    ageDeparting += depCount;
-                    ageFired += firedCount;
-                    ageByEdu[edu] += depCount;
-                    ageByEdu[edu] += firedCount;
-
-                    if (m === 0) {
-                        nextMonthDepartingByEdu[edu] += depCount;
-                        nextMonthFiredByEdu[edu] += firedCount;
-                    }
+            for (let m = 0; m < cat.departingRetired.length; m++) {
+                const retiredCount = cat.departingRetired[m] ?? 0;
+                retiredByEdu[edu] += retiredCount;
+                ageRetired += retiredCount;
+                ageByEdu[edu] += retiredCount;
+                if (m === 0) {
+                    nextMonthRetiredByEdu[edu] += retiredCount;
                 }
+            }
 
-                for (let m = 0; m < cat.departingRetired.length; m++) {
-                    const retiredCount = cat.departingRetired[m] ?? 0;
-                    retiredByEdu[edu] += retiredCount;
-                    ageRetired += retiredCount;
-                    ageByEdu[edu] += retiredCount;
-                    if (m === 0) {
-                        nextMonthRetiredByEdu[edu] += retiredCount;
-                    }
-                }
+            const xp = cat.workforceExperience;
+            const sumOnboarding = sumArray(cat.onboarding);
+            const sumVoluntary = sumArray(cat.voluntaryDeparting);
+            const sumFired = sumArray(cat.departingFired);
+            const sumRetired = sumArray(cat.departingRetired);
+            const totalWorkers = act + sumOnboarding + sumVoluntary + sumFired + sumRetired;
 
-                const xp = cat.workforceExperience;
-                const sumOnboarding = sumArray(cat.onboarding);
-                const sumVoluntary = sumArray(cat.voluntaryDeparting);
-                const sumFired = sumArray(cat.departingFired);
-                const sumRetired = sumArray(cat.departingRetired);
-                const totalWorkers = act + sumOnboarding + sumVoluntary + sumFired + sumRetired;
+            totalWorkersByEdu[edu] += totalWorkers;
 
-                totalWorkersByEdu[edu] += totalWorkers;
+            if (xp > 0 && totalWorkers > 0) {
+                const xpActive = (xp * act) / totalWorkers;
+                const xpOnboarding = (xp * sumOnboarding) / totalWorkers;
+                const xpQuitting = (xp * sumVoluntary) / totalWorkers;
+                const xpFired = (xp * sumFired) / totalWorkers;
+                const xpRetired = (xp * sumRetired) / totalWorkers;
 
-                if (xp > 0 && totalWorkers > 0) {
-                    const xpActive = (xp * act) / totalWorkers;
-                    const xpOnboarding = (xp * sumOnboarding) / totalWorkers;
-                    const xpQuitting = (xp * sumVoluntary) / totalWorkers;
-                    const xpFired = (xp * sumFired) / totalWorkers;
-                    const xpRetired = (xp * sumRetired) / totalWorkers;
-
-                    ageXPActive += xpActive;
-                    ageXPOnboarding += xpOnboarding;
-                    ageXPDeparting += xpQuitting;
-                    ageXPFired += xpFired;
-                    ageXPRetired += xpRetired;
-                    ageXPByEdu[edu] += xp;
-                    xpSumByEdu[edu] += xp;
-                }
+                ageXPActive += xpActive;
+                ageXPOnboarding += xpOnboarding;
+                ageXPDeparting += xpQuitting;
+                ageXPFired += xpFired;
+                ageXPRetired += xpRetired;
+                ageXPByEdu[edu] += xp;
+                xpSumByEdu[edu] += xp;
             }
         }
 

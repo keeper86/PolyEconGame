@@ -64,14 +64,14 @@ export function applyDisability(planet: Planet, workforceEvents: WorkforceEventA
     const population = planet.population;
 
     population.demography.forEach((cohort, age) => {
-        return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+        return forEachPopulationCohort(cohort, (category, occ, edu) => {
             if (occ === 'unableToWork') {
                 return;
             }
 
             let disabilityEvents = 0;
             if (occ === 'employed') {
-                disabilityEvents = workforceEvents[age][edu][skill].disabilities;
+                disabilityEvents = workforceEvents[age][edu].disabilities;
             } else {
                 const perTickDisabilityProb = computeTotalDisabilityProbability(
                     age,
@@ -84,8 +84,8 @@ export function applyDisability(planet: Planet, workforceEvents: WorkforceEventA
 
             const moved = transferPopulation(
                 planet,
-                { age, occ, edu, skill },
-                { age, occ: 'unableToWork', edu, skill },
+                { age, occ, edu },
+                { age, occ: 'unableToWork', edu },
                 disabilityEvents,
             ).count;
             category.disabilities.countThisMonth += moved;

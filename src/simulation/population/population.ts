@@ -6,12 +6,10 @@ import { educationLevelKeys } from './education';
 
 export const forEachOccupiedPopulation = <T>(
     cohort: WorkforceCohort<T>,
-    forEachFunction: (category: T, edu: EducationLevelType, skill: Skill) => void,
+    forEachFunction: (category: T, edu: EducationLevelType) => void,
 ): void => {
     for (const l of educationLevelKeys) {
-        for (const s of SKILL) {
-            forEachFunction(cohort[l][s], l, s);
-        }
+        forEachFunction(cohort[l], l);
     }
 };
 
@@ -22,18 +20,6 @@ export const MAX_AGE: number = 100;
 export const OCCUPATIONS = ['education', 'employed', 'unoccupied', 'unableToWork'] as const;
 export type Occupation = (typeof OCCUPATIONS)[number];
 
-export const SKILL = ['novice', 'professional', 'expert'] as const;
-export type Skill = (typeof SKILL)[number];
-
-export const emptySkillCategory: { [S in Skill]: number } = {
-    novice: 0,
-    professional: 0,
-    expert: 0,
-};
-export const emptySkillDemography: { [S in Skill]: number }[] = Array.from({ length: MAX_AGE + 1 }, () => ({
-    ...emptySkillCategory,
-}));
-
 export type PopulationTransferCohort = { [L in EducationLevelType]: { [O in Occupation]: number } };
 export type PopulationTransferMatrix = PopulationTransferCohort[];
 
@@ -41,7 +27,6 @@ export type PopulationCategoryIndex = {
     age: number;
     occ: Occupation;
     edu: EducationLevelType;
-    skill: Skill;
 };
 
 export type GaussianMoments = {
@@ -136,10 +121,7 @@ export const createEmptyPopulationCohort = (overrides?: Partial<PopulationCatego
     for (const o of OCCUPATIONS) {
         cohort[o] = {} as WorkforceCohort<PopulationCategory>;
         for (const l of educationLevelKeys) {
-            cohort[o][l] = {} as Record<Skill, PopulationCategory>;
-            for (const s of SKILL) {
-                cohort[o][l][s] = { ...nullPopulationCategory(), ...overrides };
-            }
+            cohort[o][l] = { ...nullPopulationCategory(), ...overrides };
         }
     }
     return cohort;
@@ -169,8 +151,8 @@ export const transferPopulation = (
     if (count <= 0) {
         return { count: 0, inheritedWealth: 0 };
     }
-    const fromCategory = population.demography[from.age][from.occ][from.edu][from.skill];
-    const toCategory = to ? population.demography[to.age][to.occ][to.edu][to.skill] : undefined;
+    const fromCategory = population.demography[from.age][from.occ][from.edu];
+    const toCategory = to ? population.demography[to.age][to.occ][to.edu] : undefined;
 
     const transferMaximum = Math.min(fromCategory.total, count);
     if (transferMaximum <= 0) {
@@ -228,9 +210,7 @@ export const reducePopulationCohort = (cohort: Cohort<PopulationCategory>): Popu
     let total = nullPopulationCategory();
     for (const o of OCCUPATIONS) {
         for (const l of educationLevelKeys) {
-            for (const s of SKILL) {
-                total = populationSumFunction(total, cohort[o][l][s]);
-            }
+            total = populationSumFunction(total, cohort[o][l]);
         }
     }
     return total;
@@ -289,9 +269,9 @@ export const populationSumFunction = (a: PopulationCategory, b: PopulationCatego
 
 export const forEachPopulationCohort = (
     cohort: Cohort<PopulationCategory>,
-    forEachFunction: (category: PopulationCategory, occ: Occupation, edu: EducationLevelType, skill: Skill) => void,
+    forEachFunction: (category: PopulationCategory, occ: Occupation, edu: EducationLevelType) => void,
 ): void => {
     for (const occ of OCCUPATIONS) {
-        forEachOccupiedPopulation(cohort[occ], (category, edu, skill) => forEachFunction(category, occ, edu, skill));
+        forEachOccupiedPopulation(cohort[occ], (category, edu) => forEachFunction(category, occ, edu));
     }
 };

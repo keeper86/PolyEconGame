@@ -26,84 +26,84 @@ describe('perTickRetirement', () => {
 describe('applyRetirement', () => {
     it('does nothing for ages below RETIREMENT_AGE', () => {
         const planet = makePlanet();
-        planet.population.demography[30].employed.none.novice.total = 100;
-        planet.population.demography[30].unoccupied.none.novice.total = 50;
+        planet.population.demography[30].employed.none.total = 100;
+        planet.population.demography[30].unoccupied.none.total = 50;
 
         applyRetirement(planet);
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(100);
-        expect(planet.population.demography[30].unoccupied.none.novice.total).toBe(50);
-        expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(0);
+        expect(planet.population.demography[30].employed.none.total).toBe(100);
+        expect(planet.population.demography[30].unoccupied.none.total).toBe(50);
+        expect(planet.population.demography[30].unableToWork.none.total).toBe(0);
     });
 
     it('does not touch employed population ever', () => {
         const planet = makePlanet();
-        planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total = 1000;
+        planet.population.demography[RETIREMENT_AGE].employed.primary.total = 1000;
 
         let totalRetired = 0;
         for (let tick = 0; tick < 360; tick++) {
-            const before = planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total;
+            const before = planet.population.demography[RETIREMENT_AGE].employed.primary.total;
             applyRetirement(planet);
-            totalRetired += before - planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total;
+            totalRetired += before - planet.population.demography[RETIREMENT_AGE].employed.primary.total;
         }
 
         expect(totalRetired).toBe(0);
-        expect(planet.population.demography[RETIREMENT_AGE].employed.primary.novice.total).toBe(1000);
+        expect(planet.population.demography[RETIREMENT_AGE].employed.primary.total).toBe(1000);
     });
 
     it('retires unoccupied workers across education levels', () => {
         const planet = makePlanet();
-        planet.population.demography[70].unoccupied.secondary.novice.total = 500;
+        planet.population.demography[70].unoccupied.secondary.total = 500;
 
         for (let tick = 0; tick < 360; tick++) {
             applyRetirement(planet);
         }
 
-        expect(planet.population.demography[70].unableToWork.secondary.novice.total).toBeGreaterThan(0);
+        expect(planet.population.demography[70].unableToWork.secondary.total).toBeGreaterThan(0);
         expect(
-            planet.population.demography[70].unoccupied.secondary.novice.total +
-                planet.population.demography[70].unableToWork.secondary.novice.total,
+            planet.population.demography[70].unoccupied.secondary.total +
+                planet.population.demography[70].unableToWork.secondary.total,
         ).toBe(500);
     });
 
     it('does not touch unableToWork population', () => {
         const planet = makePlanet();
-        planet.population.demography[70].unableToWork.none.novice.total = 50;
+        planet.population.demography[70].unableToWork.none.total = 50;
 
         applyRetirement(planet);
 
-        expect(planet.population.demography[70].unableToWork.none.novice.total).toBe(50);
+        expect(planet.population.demography[70].unableToWork.none.total).toBe(50);
     });
 
     it('retires everyone at age 82+ (annual prob = 1.0) over enough ticks', () => {
         const planet = makePlanet();
-        planet.population.demography[82].unoccupied.tertiary.novice.total = 100;
+        planet.population.demography[82].unoccupied.tertiary.total = 100;
 
         for (let tick = 0; tick < 720; tick++) {
             applyRetirement(planet);
         }
 
-        expect(planet.population.demography[82].unoccupied.tertiary.novice.total).toBe(0);
-        expect(planet.population.demography[82].unableToWork.tertiary.novice.total).toBe(100);
+        expect(planet.population.demography[82].unoccupied.tertiary.total).toBe(0);
+        expect(planet.population.demography[82].unableToWork.tertiary.total).toBe(100);
     });
 
     it('records retirement events in countThisMonth', () => {
         const planet = makePlanet();
-        planet.population.demography[70].unoccupied.none.novice.total = 1000;
+        planet.population.demography[70].unoccupied.none.total = 1000;
 
         applyRetirement(planet);
 
-        expect(planet.population.demography[70].unoccupied.none.novice.retirements.countThisMonth).toBeGreaterThan(0);
+        expect(planet.population.demography[70].unoccupied.none.retirements.countThisMonth).toBeGreaterThan(0);
     });
 
     it('conserves population across all ages', () => {
         const planet = makePlanet();
         const pop = planet.population;
 
-        pop.demography[30].unoccupied.none.novice.total = 5000;
-        pop.demography[RETIREMENT_AGE].unoccupied.none.novice.total = 1000;
-        pop.demography[70].unoccupied.primary.novice.total = 500;
-        pop.demography[80].education.secondary.novice.total = 200;
+        pop.demography[30].unoccupied.none.total = 5000;
+        pop.demography[RETIREMENT_AGE].unoccupied.none.total = 1000;
+        pop.demography[70].unoccupied.primary.total = 500;
+        pop.demography[80].education.secondary.total = 200;
 
         let totalBefore = 0;
         for (const cohort of pop.demography) {
