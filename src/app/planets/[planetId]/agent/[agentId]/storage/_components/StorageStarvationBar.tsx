@@ -3,58 +3,78 @@
 import { inflowPreservation, storagePreservationFactor } from '@/simulation/planet/facility';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
+import { useIsSmallScreen } from '@/hooks/useMobile';
+import { FaTruck } from 'react-icons/fa';
+import { Warehouse } from 'lucide-react';
 
-function starvColor(ss: number): string {
-    if (ss < 0.2) {
-        return '#22c55e';
-    }
-    if (ss < 0.5) {
-        return '#f59e0b';
-    }
-    return '#ef4444';
-}
+const BANDS = [
+    { color: '#7f1d1d', limit: 0.9 },
+    { color: '#b91c1c', limit: 0.75 },
+    { color: '#ea580c', limit: 0.5 },
+    { color: '#f59e0b', limit: 0.25 },
+    { color: '#d9e70eff', limit: 0.1 },
+    { color: '#16a34a', limit: 0 },
+] as const;
 
-function starvLabel(ss: number): string {
-    if (ss < 0.1) {
-        return 'Well supplied';
-    }
-    if (ss < 0.3) {
-        return 'Mild strain';
-    }
-    if (ss < 0.6) {
-        return 'Underfed';
-    }
-    return 'Starved';
+function classifyBand(starvationLevel: number): number {
+    const index = BANDS.findIndex((band) => starvationLevel > band.limit);
+    return index === -1 ? BANDS.length - 1 : index;
 }
 
 export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement {
+    const smallScreen = useIsSmallScreen();
     const pct = ss * 100;
-    const color = starvColor(ss);
-    const label = starvLabel(ss);
+    const color = BANDS[classifyBand(ss)].color;
     const inflowPct = (inflowPreservation(ss) * 100).toFixed(0);
     const storagePct = (storagePreservationFactor(ss) * 100).toFixed(0);
 
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <div className='flex flex-col gap-0.5 w-full'>
-                    <div className='flex items-center justify-between text-[10px] text-muted-foreground'>
-                        <span>Logistics</span>
-                        <span>{label}</span>
-                    </div>
-                    <div className='h-2 w-full rounded-full bg-muted overflow-hidden'>
-                        <div
-                            className='h-full rounded-full transition-all duration-300'
-                            style={{ width: `${pct}%`, backgroundColor: color }}
-                        />
-                    </div>
+                <div className='flex flex-row items-center gap-4 py-2 px-2 text-xs text-muted-foreground'>
+                    <span className='flex flex-1 flex-col gap-1 items-start'>
+                        <span className='flex w-full flex-row justify-between'>
+                            <span className='flex items-center gap-1'>
+                                <Warehouse className='h-4 w-4' />
+                                Storage {smallScreen ? '' : 'health'}
+                            </span>
+                            <span style={{ color }}>{storagePct}%</span>
+                        </span>
+
+                        <div className='h-2 w-full rounded-full bg-muted overflow-hidden'>
+                            <div
+                                className='h-full rounded-full transition-all duration-300'
+                                style={{ width: `${storagePct}%`, backgroundColor: color }}
+                            />
+                        </div>
+                    </span>
+                    <span className='flex flex-1 flex-col gap-1 items-start'>
+                        <span className='flex w-full flex-row justify-between'>
+                            <span className='flex items-center gap-1'>
+                                <FaTruck className='h-4 w-4' />
+                                Transport {smallScreen ? '' : 'efficiency'}
+                            </span>
+                            <span style={{ color }}>{inflowPct}%</span>
+                        </span>
+
+                        <div className='h-2 w-full rounded-full bg-muted overflow-hidden'>
+                            <div
+                                className='h-full rounded-full transition-all duration-300'
+                                style={{ width: `${inflowPct}%`, backgroundColor: color }}
+                            />
+                        </div>
+                    </span>
                 </div>
             </TooltipTrigger>
             <TooltipContent side='bottom' className='max-w-[200px]'>
                 <div className='text-xs space-y-1'>
-                    <div>Logistics Health: {(100 - pct).toFixed(0)}%</div>
-                    <div>Inflow Efficiency: {inflowPct}%</div>
-                    <div>Storage Preservation: {storagePct}%</div>
+                    <div style={{ color }}>Logistics Health: {(100 - pct).toFixed(0)}%</div>
+                    <div style={{ color: BANDS[classifyBand(1 - inflowPreservation(ss))].color }}>
+                        Inflow Efficiency: {inflowPct}%
+                    </div>
+                    <div style={{ color: BANDS[classifyBand(1 - storagePreservationFactor(ss))].color }}>
+                        Storage Preservation: {storagePct}%
+                    </div>
                     <div className='text-muted-foreground'>
                         {ss >= 0.5
                             ? 'Expand your Storage Department to reduce losses.'
