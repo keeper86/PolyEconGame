@@ -65,6 +65,10 @@ export const MAX_WAGE = 1000.0;
 
 export const WAGE_ADJUSTMENT_RATE = 0.02;
 
+export const LABOR_SHARE = 0.5;
+
+export const XP_WAGE_PREMIUM_SHARE = 0.4;
+
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;
 

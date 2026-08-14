@@ -2,6 +2,7 @@ import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
 import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
+import { operatingProfit } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
@@ -116,13 +117,8 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
         };
         const overqualified = assets.overqualifiedWorkers ?? {};
 
-        const last = assets.lastMonthAcc;
-        const operationalProfit = last.revenue - last.wages - last.purchases - last.claimPayments;
-
-        const hasLastMonthData = last.revenue !== 0 || last.wages !== 0;
-        const isProfitable = hasLastMonthData
-            ? operationalProfit > 0
-            : assets.deposits - assets.monthAcc.depositsAtMonthStart > 0;
+        const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
+        const isProfitable = profitSignal > 0;
 
         for (const edu of educationLevelKeys) {
             // How many exact matches are we missing?

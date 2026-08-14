@@ -116,7 +116,7 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforce', 'workforce', t);
             }
-            hireWorkforce(gameState.agents, planet, profile);
+            hireWorkforce(gameState.agents, planet, gameState.tick, profile);
             if (process.env.SIM_DEBUG) {
                 assertPerCellWorkforcePopulationConsistency(gameState.agents, planet, 'othermonth');
             }

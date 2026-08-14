@@ -16,7 +16,7 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { hireWorkforce } from './hireWorkforce';
+import { hireWorkforce, reservationWage } from './hireWorkforce';
 import { VOLUNTARY_QUIT_RATE_PER_TICK, workforceDemographicTick } from './workforceDemographicTick';
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
@@ -26,6 +26,31 @@ function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>
     }
     return total;
 }
+
+function totalOnboardingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        total += workforce[age][edu].onboarding[NOTICE_PERIOD_MONTHS - 1];
+    }
+    return total;
+}
+
+describe('reservationWage', () => {
+    const baseMap = () => 100;
+
+    it('equals the base when xp and profit are zero', () => {
+        expect(reservationWage(baseMap, 30, 'none', 0, 0)).toBe(100);
+    });
+
+    it('rises with experience', () => {
+        expect(reservationWage(baseMap, 30, 'none', 40, 0)).toBeGreaterThan(reservationWage(baseMap, 30, 'none', 0, 0));
+    });
+
+    it('rises with per-worker profit and floors losses at zero', () => {
+        expect(reservationWage(baseMap, 30, 'none', 0, 10)).toBeGreaterThan(reservationWage(baseMap, 30, 'none', 0, 0));
+        expect(reservationWage(baseMap, 30, 'none', 0, -10)).toBe(reservationWage(baseMap, 30, 'none', 0, 0));
+    });
+});
 
 describe('hireWorkforce', () => {
     let agent: Agent;
@@ -82,6 +107,26 @@ describe('hireWorkforce', () => {
         expect(onboardingTotal).toBe(50);
         // Population should have been transferred from unoccupied to employed
         expect(sumPopOcc(p, 'primary', 'employed')).toBe(50);
+    });
+
+    it('hires fewer workers when the agent is profitable', () => {
+        const { planet: poorPlanet } = makePlanetWithPopulation({ primary: 1000 });
+        const poorAgent = makeAgent();
+        poorAgent.assets.p.allocatedWorkers.primary = 500;
+        poorAgent.assets.p.wagePerEdu.primary = 100;
+
+        const { planet: richPlanet } = makePlanetWithPopulation({ primary: 1000 });
+        const richAgent = makeAgent();
+        richAgent.assets.p.allocatedWorkers.primary = 500;
+        richAgent.assets.p.wagePerEdu.primary = 100;
+        richAgent.assets.p.lastMonthAcc.revenue = 1_000_000_000;
+
+        hireWorkforce(agentMap(poorAgent), poorPlanet);
+        hireWorkforce(agentMap(richAgent), richPlanet);
+
+        expect(totalOnboardingForEdu(richAgent.assets.p.workforceDemography!, 'primary')).toBeLessThan(
+            totalOnboardingForEdu(poorAgent.assets.p.workforceDemography!, 'primary'),
+        );
     });
 
     it('does not hire when already at target', () => {
