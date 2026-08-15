@@ -98,7 +98,7 @@ export function advanceTick(gameState: GameState) {
                 );
             }
 
-            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
+            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile, gameState.tick);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
             }
@@ -162,7 +162,7 @@ export function advanceTick(gameState: GameState) {
             hrBufferTick(gameState.agents, planet);
             facilityMaintenanceTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
-            automaticWageAdjustment(gameState.agents, planet, gameState.tick);
+            automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('production', 'production + construction + wageAdjust', t);

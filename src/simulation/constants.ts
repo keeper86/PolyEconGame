@@ -63,13 +63,35 @@ export const STARTER_LOAN_AMOUNT = 5_000_000;
 export const MIN_WAGE = 1.0;
 export const MAX_WAGE = 1000.0;
 
-export const WAGE_ADJUSTMENT_RATE = 0.02;
-
 export const LABOR_SHARE = 0.5;
 
-export const XP_WAGE_PREMIUM_SHARE = 0.4;
+export const SEARCH_HORIZON_TICKS = 3 * TICKS_PER_MONTH;
 
-export const JOB_FINDING_TIGHTNESS_SCALE = 1;
+export const BASE_QUIT_RATE = 0.0003;
+
+export const MORALE_SENSITIVITY = 0.01;
+
+export const QUIT_SENSITIVITY = 0.005;
+
+export const ACCEPT_BASE = 0.05;
+
+export const WAGE_ACCEPT_SCALE = 1.0;
+
+export const BASELINE_VOLUNTARY_QUIT_RATIO = BASE_QUIT_RATE * TICKS_PER_MONTH * NOTICE_PERIOD_MONTHS;
+
+export const WAGE_PID_KP = 0.02;
+
+export const WAGE_PID_KI = 0.005;
+
+export const WAGE_PID_IMAX = 0.5;
+
+export const WAGE_PID_DRIFT_DOWN = 0.002;
+
+export const FILL_GAIN = 1.0;
+
+export const RETENTION_GAIN = 1.0;
+
+export const AFFORDABILITY_GAIN = 0.2;
 
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;

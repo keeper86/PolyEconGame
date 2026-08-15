@@ -1,5 +1,5 @@
-import assert from 'node:assert';
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { computeCostOfLiving } from '../market/serviceDefinitions';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
@@ -7,12 +7,7 @@ import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import {
-    ACCEPTABLE_IDLE_FRACTION,
-    buildBaseReservationWageMap,
-    computeLaborMarket,
-    reservationWage,
-} from './laborMarket';
+import { ACCEPTABLE_IDLE_FRACTION, acceptProbability, computeLaborMarket, outsideIncome } from './laborMarket';
 import type { WorkforceCohort } from './workforce';
 import { nullWorkforceCohortFactory } from './workforce';
 
@@ -22,8 +17,8 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
     if (profiler?.isEnabled) {
         t = profiler.mark();
     }
-    const costOfLivingMap = buildBaseReservationWageMap(planet);
     const laborMarket = computeLaborMarket(agents, planet);
+    const costOfLiving = computeCostOfLiving(planet);
     if (profiler?.isEnabled) {
         t = profiler.markAndAccum('hireMinWage', '  hire_minWageMap', t);
     }
@@ -74,6 +69,8 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
             if (gap > 0) {
                 // --- HIRING ---
                 const wage = assets.wagePerEdu[edu] ?? 0;
+                const outside = outsideIncome(laborMarket.tightness[edu], laborMarket.vacancyWage[edu]);
+                const threshold = Math.max(costOfLiving, outside);
 
                 type Bucket = { age: number; avail: number; probToAccept: number };
                 const buckets: Bucket[] = [];
@@ -85,17 +82,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                         continue;
                     }
 
-                    const workerReservationWage = reservationWage(
-                        costOfLivingMap,
-                        age,
-                        edu,
-                        0,
-                        laborMarket.tightness[edu],
-                        laborMarket.marketWage[edu],
-                    );
-                    assert(workerReservationWage > 0, `reservationWage must be > 0, got ${workerReservationWage}`);
-
-                    const probToAccept = (1.0 / (1 + Math.exp(-(wage / workerReservationWage - 1)))) * 0.05;
+                    const probToAccept = acceptProbability(wage, threshold);
                     buckets.push({ age, avail, probToAccept });
                     totalWilling += avail * probToAccept;
                 }

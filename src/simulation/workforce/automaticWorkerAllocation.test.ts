@@ -120,21 +120,33 @@ describe('updateAllocatedWorkers', () => {
 });
 
 describe('automaticWageAdjustment', () => {
-    it('pays a higher wage when profitable', () => {
-        const { planet: poorPlanet } = makePlanetWithPopulation({});
-        const poorAgent = makeAgent();
-        poorAgent.assets.p.workforceDemography![30].none.active = 10;
-        poorAgent.assets.p.wagePerEdu.none = 100;
+    it('raises the wage when profitable and understaffed', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+            wf[30][edu].active = 10;
+            agent.assets.p.allocatedWorkers[edu] = 100;
+            agent.assets.p.wagePerEdu[edu] = 100;
+        }
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
 
-        const { planet: richPlanet } = makePlanetWithPopulation({});
-        const richAgent = makeAgent();
-        richAgent.assets.p.workforceDemography![30].none.active = 10;
-        richAgent.assets.p.wagePerEdu.none = 100;
-        richAgent.assets.p.lastMonthAcc.revenue = 100_000;
+        automaticWageAdjustment(agentMap(agent), planet);
 
-        automaticWageAdjustment(agentMap(poorAgent), poorPlanet);
-        automaticWageAdjustment(agentMap(richAgent), richPlanet);
+        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+    });
 
-        expect(richAgent.assets.p.wagePerEdu.none).toBeGreaterThan(poorAgent.assets.p.wagePerEdu.none);
+    it('lowers the wage when unprofitable', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+            wf[30][edu].active = 10;
+            agent.assets.p.wagePerEdu[edu] = 100;
+        }
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 });

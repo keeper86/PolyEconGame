@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { BASE_QUIT_RATE, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 
@@ -17,8 +17,8 @@ import {
     totalPopulation,
 } from '../utils/testHelper';
 import { hireWorkforce } from './hireWorkforce';
-import { reservationWage } from './laborMarket';
-import { VOLUNTARY_QUIT_RATE_PER_TICK, workforceDemographicTick } from './workforceDemographicTick';
+import { acceptProbability, jobFindingProbability, moraleDeficit, outsideIncome, quitPropensity } from './laborMarket';
+import { workforceDemographicTick } from './workforceDemographicTick';
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
@@ -36,27 +36,34 @@ function totalOnboardingForEdu(workforce: ReturnType<typeof makeWorkforceDemogra
     return total;
 }
 
-describe('reservationWage', () => {
-    const costOfLivingMap = () => 100;
-
-    it('equals the cost of living when there are no vacancies', () => {
-        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000)).toBe(100);
+describe('labor market helpers', () => {
+    it('jobFindingProbability is the exact multi-draw probability over the search horizon', () => {
+        expect(jobFindingProbability(0)).toBe(0);
+        expect(jobFindingProbability(1)).toBe(1);
+        expect(jobFindingProbability(0.01)).toBeCloseTo(1 - Math.pow(0.99, SEARCH_HORIZON_TICKS), 10);
     });
 
-    it('rises toward the market wage as the labour market tightens', () => {
-        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 1, 1000)).toBeGreaterThan(
-            reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000),
-        );
+    it('outsideIncome equals the job-finding probability times the vacancy wage', () => {
+        expect(outsideIncome(0, 100)).toBe(0);
+        expect(outsideIncome(1, 100)).toBe(100);
+        expect(outsideIncome(0.01, 100)).toBeCloseTo((1 - Math.pow(0.99, SEARCH_HORIZON_TICKS)) * 100, 6);
     });
 
-    it('rises with experience', () => {
-        expect(reservationWage(costOfLivingMap, 30, 'none', 40, 0, 1000)).toBeGreaterThan(
-            reservationWage(costOfLivingMap, 30, 'none', 0, 0, 1000),
-        );
+    it('acceptProbability rises with wage and saturates at ACCEPT_BASE', () => {
+        expect(acceptProbability(0, 100)).toBeLessThan(acceptProbability(100, 100));
+        expect(acceptProbability(100, 100)).toBeCloseTo(0.025, 5);
+        expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('stays at the cost of living when the market wage is below it', () => {
-        expect(reservationWage(costOfLivingMap, 30, 'none', 0, 1, 50)).toBe(100);
+    it('moraleDeficit is zero when unprofitable and grows as profit share grows', () => {
+        expect(moraleDeficit(100, 0)).toBe(0);
+        expect(moraleDeficit(100, 100)).toBe(0);
+        expect(moraleDeficit(100, 300)).toBeGreaterThan(0);
+    });
+
+    it('quitPropensity starts at the base rate and rises with a better outside option', () => {
+        expect(quitPropensity(100, 0, 0, 0)).toBe(BASE_QUIT_RATE);
+        expect(quitPropensity(100, 0, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0, 0));
     });
 });
 
@@ -97,7 +104,7 @@ describe('hireWorkforce', () => {
     });
 
     it('hires workers from unoccupied pool when under target', () => {
-        const { planet: p } = makePlanetWithPopulation({ primary: 1000 });
+        const { planet: p } = makePlanetWithPopulation({ primary: 100_000 });
         agent.assets.p.allocatedWorkers.primary = 500;
         agent.assets.p.wagePerEdu.primary = 1e9;
 
@@ -110,31 +117,26 @@ describe('hireWorkforce', () => {
         for (let age = 0; age < workforce.length; age++) {
             onboardingTotal += workforce[age].primary.onboarding[NOTICE_PERIOD_MONTHS - 1];
         }
-        // With probToAccept ≈ 1.0 * 0.05 = 0.05 (friction scalar), totalWilling = 1000 * 0.05 = 50
-        // Cap: Math.floor(min(500, 50)) = 50
-        expect(onboardingTotal).toBe(50);
+        // The wage dominates the outside option, so workers accept at the base rate and the full target is filled.
+        expect(onboardingTotal).toBe(500);
         // Population should have been transferred from unoccupied to employed
-        expect(sumPopOcc(p, 'primary', 'employed')).toBe(50);
+        expect(sumPopOcc(p, 'primary', 'employed')).toBe(500);
     });
 
-    it('hires fewer workers when the outside option is high', () => {
-        const { planet: cheapPlanet } = makePlanetWithPopulation({ primary: 1000 });
-        const cheapAgent = makeAgent();
-        cheapAgent.assets.p.allocatedWorkers.primary = 500;
-        cheapAgent.assets.p.wagePerEdu.primary = 1e9;
-        cheapPlanet.wagePerEdu.primary = 1;
+    it('hires fewer workers when other vacancies offer a higher wage', () => {
+        const { planet: p } = makePlanetWithPopulation({ primary: 100_000 });
+        const lowWageAgent = makeAgent();
+        lowWageAgent.assets.p.allocatedWorkers.primary = 500;
+        lowWageAgent.assets.p.wagePerEdu.primary = 10;
 
-        const { planet: dearPlanet } = makePlanetWithPopulation({ primary: 1000 });
-        const dearAgent = makeAgent();
-        dearAgent.assets.p.allocatedWorkers.primary = 500;
-        dearAgent.assets.p.wagePerEdu.primary = 1e9;
-        dearPlanet.wagePerEdu.primary = 1_000_000_000;
+        const highWageAgent = makeAgent();
+        highWageAgent.assets.p.allocatedWorkers.primary = 500;
+        highWageAgent.assets.p.wagePerEdu.primary = 1e9;
 
-        hireWorkforce(agentMap(cheapAgent), cheapPlanet);
-        hireWorkforce(agentMap(dearAgent), dearPlanet);
+        hireWorkforce(agentMap(lowWageAgent, highWageAgent), p);
 
-        expect(totalOnboardingForEdu(dearAgent.assets.p.workforceDemography!, 'primary')).toBeLessThan(
-            totalOnboardingForEdu(cheapAgent.assets.p.workforceDemography!, 'primary'),
+        expect(totalOnboardingForEdu(lowWageAgent.assets.p.workforceDemography!, 'primary')).toBeLessThan(
+            totalOnboardingForEdu(highWageAgent.assets.p.workforceDemography!, 'primary'),
         );
     });
 
@@ -429,7 +431,7 @@ describe('voluntary quit rate', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuits = Math.floor(activeAfterHire * VOLUNTARY_QUIT_RATE_PER_TICK);
+        const expectedQuits = Math.floor(activeAfterHire * BASE_QUIT_RATE);
 
         let allDeparting = 0;
         for (let age = 0; age < wf.length; age++) {

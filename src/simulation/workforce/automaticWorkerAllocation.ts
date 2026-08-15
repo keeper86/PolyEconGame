@@ -1,41 +1,23 @@
-import { LABOR_SHARE, MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import {
+    AFFORDABILITY_GAIN,
+    BASELINE_VOLUNTARY_QUIT_RATIO,
+    FILL_GAIN,
+    MAX_WAGE,
+    MIN_WAGE,
+    RETENTION_GAIN,
+    WAGE_PID_DRIFT_DOWN,
+    WAGE_PID_IMAX,
+    WAGE_PID_KI,
+    WAGE_PID_KP,
+} from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
-import type { Facility } from '../planet/facility';
+import { nullWagePidState } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { operatingProfit } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import {
-    ACCEPTABLE_IDLE_FRACTION,
-    REFERENCE_AGE,
-    buildBaseReservationWageMap,
-    computeLaborMarket,
-    outsideOption,
-    profitPerWorkerPerTick,
-} from './laborMarket';
-import { totalActiveForEdu } from './workforceAggregates';
-
-function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
-    const allFacilities: Array<Facility> = [
-        ...assets.productionFacilities,
-        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
-        ...assets.shipConstructionFacilities,
-    ];
-    if (assets.humanResourcesDepartment) {
-        allFacilities.push(assets.humanResourcesDepartment);
-    }
-    const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    for (const facility of allFacilities) {
-        const tick = facility.lastTickResults;
-        if (!tick) {
-            continue;
-        }
-        for (const edu of educationLevelKeys) {
-            exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
-        }
-    }
-    return exactUsed;
-}
+import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
+import { totalActiveForEdu, totalOnboardingForEdu, totalVoluntaryDepartingForEdu } from './workforceAggregates';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -98,11 +80,9 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     return effectiveMonthlyRunRate * 12;
 }
 
-export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
+export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
-    const costOfLivingMap = buildBaseReservationWageMap(planet);
-    const laborMarket = computeLaborMarket(agents, planet);
 
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -117,67 +97,26 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const exactUsed = computeExactUsedByEdu(assets);
-        const totalSlotCapacity: Record<EducationLevelType, number> = assets.totalSlotCapacity ?? {
-            none: 0,
-            primary: 0,
-            secondary: 0,
-            tertiary: 0,
-        };
-        const overqualified = assets.overqualifiedWorkers ?? {};
-
         const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
-        const isProfitable = profitSignal > 0;
-        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
+        const pidState = assets.humanResourcesDepartment?.wagePidState ?? nullWagePidState();
 
         for (const edu of educationLevelKeys) {
-            // How many exact matches are we missing?
-            const gap = totalSlotCapacity[edu] - exactUsed[edu];
+            const target = assets.allocatedWorkers[edu] ?? 0;
+            const headcount = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
+            const fillShortfall = target > 0 ? Math.max(0, target - headcount) / target : 0;
+            const quitRatio = totalVoluntaryDepartingForEdu(workforce, edu) / Math.max(1, headcount);
+            const excessQuit = Math.max(0, quitRatio - BASELINE_VOLUNTARY_QUIT_RATIO);
 
-            // How many higher-tier workers are actively covering this job?
-            let substitutesCovering = 0;
-            if (overqualified[edu]) {
-                for (const count of Object.values(overqualified[edu]!)) {
-                    substitutesCovering += count;
-                }
-            }
+            const currentWage = assets.wagePerEdu[edu] ?? MIN_WAGE;
+            const upward = profitSignal > 0 ? FILL_GAIN * fillShortfall + RETENTION_GAIN * excessQuit : 0;
+            const error = upward - (profitSignal <= 0 ? AFFORDABILITY_GAIN : 0) - WAGE_PID_DRIFT_DOWN;
 
-            // Are machines actually sitting empty?
-            const idleSlots = gap - Math.floor(substitutesCovering);
+            const cell = pidState[edu];
+            cell.integral = Math.max(-WAGE_PID_IMAX, Math.min(WAGE_PID_IMAX, cell.integral + error));
+            const delta = WAGE_PID_KP * error + WAGE_PID_KI * cell.integral;
+            cell.prevError = error;
 
-            let factor: number;
-            if (isProfitable && idleSlots > 0) {
-                // True Emergency: Leaving money on the table because machines are empty.
-                factor = 1 + WAGE_ADJUSTMENT_RATE;
-            } else if (isProfitable && gap > 0) {
-                // Inefficient: Machines are running via substitutes, but payroll is bloated.
-                // Nudge the wage up gently to attract the exact match.
-                factor = 1 + WAGE_ADJUSTMENT_RATE * 0.25;
-            } else if (isProfitable && gap <= 0) {
-                // Optimized: We have the exact workers we need. Slowly lower wages.
-                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.25;
-            } else if (!isProfitable && idleSlots > 0) {
-                // Unprofitable but missing bodies: Hold or lower slightly.
-                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.5;
-            } else {
-                // Unprofitable and fully staffed/substituted: Bleeding cash, cut payroll heavily.
-                factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
-            }
-
-            let wage = assets.wagePerEdu[edu] * factor;
-            if (profitPerWorker > 0) {
-                const fairWage =
-                    outsideOption(
-                        costOfLivingMap,
-                        REFERENCE_AGE,
-                        edu,
-                        laborMarket.tightness[edu],
-                        laborMarket.marketWage[edu],
-                    ) +
-                    LABOR_SHARE * profitPerWorker;
-                wage = Math.max(wage, fairWage);
-            }
-            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, wage));
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, currentWage * (1 + delta)));
         }
 
         // --- Enforce Monotonicity

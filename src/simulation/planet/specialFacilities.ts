@@ -1,3 +1,4 @@
+import { nullWagePidState } from './facility';
 import type {
     HRFacility,
     LastManagementTickResults,
@@ -72,6 +73,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
     hrBuffer: 0,
+    wagePidState: nullWagePidState(),
 });
 
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';

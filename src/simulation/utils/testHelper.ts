@@ -5,6 +5,7 @@ import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createLastTickResults,
+    nullWagePidState,
     type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
@@ -252,6 +253,7 @@ export function makeHRFacility(
     return {
         ...makeManagementFacility(workerReq, overrides as Partial<ManagementFacility>),
         hrBuffer: 0,
+        wagePidState: nullWagePidState(),
         ...overrides,
     };
 }

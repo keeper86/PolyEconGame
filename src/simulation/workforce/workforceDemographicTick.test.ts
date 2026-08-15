@@ -1,14 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { NOTICE_PERIOD_MONTHS } from '../constants';
+import { BASE_QUIT_RATE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { RETIREMENT_AGE } from '../population/retirement';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { Agent, Planet } from '../planet/planet';
-import {
-    VOLUNTARY_QUIT_RATE_PER_TICK,
-    createWorkforceEventAccumulator,
-    workforceDemographicTick,
-} from './workforceDemographicTick';
+import { createWorkforceEventAccumulator, workforceDemographicTick } from './workforceDemographicTick';
 import { agentMap, makeAgent, makeEnvironment, makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 
 function totalWorkforce(agent: Agent, planetId: string, edu: EducationLevelType): number {
@@ -62,7 +58,7 @@ describe('workforceDemographicTick — voluntary quits', () => {
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuitters = Math.floor(10000 * VOLUNTARY_QUIT_RATE_PER_TICK);
+        const expectedQuitters = Math.floor(10000 * BASE_QUIT_RATE);
         expect(wf[30].none.active).toBeLessThanOrEqual(10000 - expectedQuitters);
         expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThanOrEqual(expectedQuitters);
     });

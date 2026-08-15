@@ -173,8 +173,21 @@ export type ManagementFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
+export type WagePidState = {
+    integral: number;
+    prevError: number;
+};
+
+export const nullWagePidState = (): Record<EducationLevelType, WagePidState> => ({
+    none: { integral: 0, prevError: 0 },
+    primary: { integral: 0, prevError: 0 },
+    secondary: { integral: 0, prevError: 0 },
+    tertiary: { integral: 0, prevError: 0 },
+});
+
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
+    wagePidState: Record<EducationLevelType, WagePidState>;
 };
 export type StorageDepartment = ManagementFacility & {
     storageBuffer: number;

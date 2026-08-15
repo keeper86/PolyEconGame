@@ -11,10 +11,9 @@ import { MAX_AGE } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { TickProfiler } from '../TickProfiler';
+import { computeLaborMarket, profitPerWorkerPerTick, quitPropensity } from './laborMarket';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
 import { subtractProportionalXP } from './workforce';
-
-export const VOLUNTARY_QUIT_RATE_PER_TICK = 0.0003;
 
 type EventCounts = {
     deaths: number;
@@ -41,8 +40,10 @@ export function workforceDemographicTick(
     agents: Map<string, Agent>,
     planet: Planet,
     profiler?: TickProfiler,
+    tick = 1,
 ): WorkforceEventAccumulator {
     const accumulator = createWorkforceEventAccumulator(planet.population.demography.length);
+    const laborMarket = computeLaborMarket(agents, planet);
 
     // Per-planet environmental computations — hoisted once per planet, not per agent
     const environmentalMortality = computeEnvironmentalMortality(planet.environment);
@@ -60,6 +61,7 @@ export function workforceDemographicTick(
         }
 
         const workforce = assets.workforceDemography;
+        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
 
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
@@ -87,9 +89,14 @@ export function workforceDemographicTick(
                     continue;
                 }
 
-                // applyVoluntaryQuits for non-empty categories
                 if (category.active > 0) {
-                    const voluntaryQuitters = stochasticRound(category.active * VOLUNTARY_QUIT_RATE_PER_TICK);
+                    const quitRate = quitPropensity(
+                        assets.wagePerEdu[l] ?? 0,
+                        profitPerWorker,
+                        laborMarket.tightness[l],
+                        laborMarket.vacancyWage[l],
+                    );
+                    const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {
                         category.active -= voluntaryQuitters;
                         category.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] += voluntaryQuitters;
