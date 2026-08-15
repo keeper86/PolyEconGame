@@ -1,14 +1,17 @@
 import {
     AFFORDABILITY_GAIN,
-    BASELINE_VOLUNTARY_QUIT_RATIO,
+    FILL_DEAD_ZONE,
+    FILL_EROSION,
     FILL_GAIN,
+    FILL_KI,
+    FILL_KP,
     MAX_WAGE,
     MIN_WAGE,
     RETENTION_GAIN,
-    WAGE_PID_DRIFT_DOWN,
+    TARGET_QUIT_RATIO,
+    TURNOVER_KI,
+    TURNOVER_KP,
     WAGE_PID_IMAX,
-    WAGE_PID_KI,
-    WAGE_PID_KP,
 } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
 import { nullWagePidState } from '../planet/facility';
@@ -98,24 +101,45 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
         }
 
         const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
+        const isProfitable = profitSignal > 0;
         const pidState = assets.humanResourcesDepartment?.wagePidState ?? nullWagePidState();
 
         for (const edu of educationLevelKeys) {
             const target = assets.allocatedWorkers[edu] ?? 0;
             const headcount = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
-            const fillShortfall = target > 0 ? Math.max(0, target - headcount) / target : 0;
+            const fillShortfall = target > 0 ? (target - headcount) / target : 0;
             const quitRatio = totalVoluntaryDepartingForEdu(workforce, edu) / Math.max(1, headcount);
-            const excessQuit = Math.max(0, quitRatio - BASELINE_VOLUNTARY_QUIT_RATIO);
 
-            const currentWage = assets.wagePerEdu[edu] ?? MIN_WAGE;
-            const upward = profitSignal > 0 ? FILL_GAIN * fillShortfall + RETENTION_GAIN * excessQuit : 0;
-            const error = upward - (profitSignal <= 0 ? AFFORDABILITY_GAIN : 0) - WAGE_PID_DRIFT_DOWN;
+            let fillErr: number;
+            if (!isProfitable) {
+                fillErr = -AFFORDABILITY_GAIN;
+            } else if (fillShortfall > FILL_DEAD_ZONE) {
+                fillErr = FILL_GAIN * (fillShortfall - FILL_DEAD_ZONE);
+            } else if (fillShortfall < -FILL_DEAD_ZONE) {
+                fillErr = -FILL_EROSION;
+            } else {
+                fillErr = 0;
+            }
+
+            let turnErr = RETENTION_GAIN * (quitRatio - TARGET_QUIT_RATIO);
+            if (!isProfitable) {
+                turnErr = Math.min(0, turnErr);
+            }
 
             const cell = pidState[edu];
-            cell.integral = Math.max(-WAGE_PID_IMAX, Math.min(WAGE_PID_IMAX, cell.integral + error));
-            const delta = WAGE_PID_KP * error + WAGE_PID_KI * cell.integral;
-            cell.prevError = error;
+            cell.fill.integral = Math.max(-WAGE_PID_IMAX, Math.min(WAGE_PID_IMAX, cell.fill.integral + fillErr));
+            cell.turnover.integral = Math.max(
+                -WAGE_PID_IMAX,
+                Math.min(WAGE_PID_IMAX, cell.turnover.integral + turnErr),
+            );
+            cell.fill.prevError = fillErr;
+            cell.turnover.prevError = turnErr;
 
+            const fillOut = FILL_KP * fillErr + FILL_KI * cell.fill.integral;
+            const turnOut = TURNOVER_KP * turnErr + TURNOVER_KI * cell.turnover.integral;
+
+            const currentWage = assets.wagePerEdu[edu] ?? MIN_WAGE;
+            const delta = fillOut + turnOut;
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, currentWage * (1 + delta)));
         }
 

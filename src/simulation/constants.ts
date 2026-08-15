@@ -35,11 +35,12 @@ export const STORAGE_BUFFER_CAPACITY_MULTIPLIER = 10;
 export const SS_RELAXATION_RATE = 0.95;
 export const SR_HOLDING_COST_PER_TON = 0.001;
 
+// TODO: These should be coupled to wages and cost of living
 export const GROCERY_WEALTH_SATURATION = 500;
 export const HEALTHCARE_WEALTH_SATURATION = 800;
 export const LOGISTICS_WEALTH_SATURATION = 1000;
 export const EDUCATION_WEALTH_SATURATION = 400;
-export const RETAIL_WEALTH_SATURATION = 100000;
+export const RETAIL_WEALTH_SATURATION = 1000;
 
 export const COST_SPRING_STRENGTH = PRICE_ADJUST_MAX_UP - PRICE_ADJUST_MAX_DOWN;
 
@@ -77,21 +78,27 @@ export const ACCEPT_BASE = 0.05;
 
 export const WAGE_ACCEPT_SCALE = 1.0;
 
-export const BASELINE_VOLUNTARY_QUIT_RATIO = BASE_QUIT_RATE * TICKS_PER_MONTH * NOTICE_PERIOD_MONTHS;
+export const FILL_DEAD_ZONE = 0.025;
 
-export const WAGE_PID_KP = 0.02;
+export const FILL_EROSION = 0.002;
 
-export const WAGE_PID_KI = 0.005;
-
-export const WAGE_PID_IMAX = 0.5;
-
-export const WAGE_PID_DRIFT_DOWN = 0.002;
+export const TARGET_QUIT_RATIO = BASE_QUIT_RATE * TICKS_PER_MONTH * NOTICE_PERIOD_MONTHS;
 
 export const FILL_GAIN = 1.0;
 
 export const RETENTION_GAIN = 1.0;
 
 export const AFFORDABILITY_GAIN = 0.2;
+
+export const FILL_KP = 0.02;
+
+export const FILL_KI = 0.005;
+
+export const TURNOVER_KP = 0.02;
+
+export const TURNOVER_KI = 0.005;
+
+export const WAGE_PID_IMAX = 0.5;
 
 export const LOAN_CASH_FLOW_MONTHS = 6;
 export const LOAN_TICKS_PER_MONTH = TICKS_PER_MONTH;

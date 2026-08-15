@@ -173,16 +173,25 @@ export type ManagementFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
-export type WagePidState = {
+export type WagePidCell = {
     integral: number;
     prevError: number;
 };
 
+export type WagePidState = {
+    fill: WagePidCell;
+    turnover: WagePidCell;
+};
+
+const nullWagePidCell = (): WagePidCell => ({ integral: 0, prevError: 0 });
+
+const nullWagePid = (): WagePidState => ({ fill: nullWagePidCell(), turnover: nullWagePidCell() });
+
 export const nullWagePidState = (): Record<EducationLevelType, WagePidState> => ({
-    none: { integral: 0, prevError: 0 },
-    primary: { integral: 0, prevError: 0 },
-    secondary: { integral: 0, prevError: 0 },
-    tertiary: { integral: 0, prevError: 0 },
+    none: nullWagePid(),
+    primary: nullWagePid(),
+    secondary: nullWagePid(),
+    tertiary: nullWagePid(),
 });
 
 export type HRFacility = ManagementFacility & {

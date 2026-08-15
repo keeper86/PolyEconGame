@@ -149,4 +149,37 @@ describe('automaticWageAdjustment', () => {
 
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
+
+    it('raises the wage when fully staffed but turnover is too high', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+            wf[30][edu].active = 100;
+            agent.assets.p.allocatedWorkers[edu] = 100;
+            agent.assets.p.wagePerEdu[edu] = 100;
+            wf[30][edu].voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 50;
+        }
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+    });
+
+    it('lowers the wage when fully staffed with too little turnover', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        const wf = agent.assets.p.workforceDemography!;
+        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
+            wf[30][edu].active = 100;
+            agent.assets.p.allocatedWorkers[edu] = 100;
+            agent.assets.p.wagePerEdu[edu] = 100;
+        }
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+    });
 });
