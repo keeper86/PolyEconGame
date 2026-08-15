@@ -17,7 +17,14 @@ import {
     totalPopulation,
 } from '../utils/testHelper';
 import { hireWorkforce } from './hireWorkforce';
-import { acceptProbability, jobFindingProbability, moraleDeficit, outsideIncome, quitPropensity } from './laborMarket';
+import {
+    acceptProbability,
+    computeLaborMarket,
+    jobFindingProbability,
+    moraleDeficit,
+    outsideIncome,
+    quitPropensity,
+} from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
 
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
@@ -64,6 +71,68 @@ describe('labor market helpers', () => {
     it('quitPropensity starts at the base rate and rises with a better outside option', () => {
         expect(quitPropensity(100, 0, 0, 0)).toBe(BASE_QUIT_RATE);
         expect(quitPropensity(100, 0, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0, 0));
+    });
+});
+
+describe('computeLaborMarket — reachable outside options', () => {
+    it('accumulates vacancies from all suitable job levels for each worker education', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1000, primary: 2000, secondary: 3000, tertiary: 4000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, primary: 50, secondary: 0, tertiary: 0 });
+        agent.assets.p.wagePerEdu = { none: 10, primary: 20, secondary: 30, tertiary: 40 };
+
+        const market = computeLaborMarket(agentMap(agent), planet);
+
+        expect(market.reachableVacancies.none).toBe(100);
+        expect(market.reachableVacancies.primary).toBe(150);
+        expect(market.reachableVacancies.secondary).toBe(150);
+        expect(market.reachableVacancies.tertiary).toBe(150);
+    });
+
+    it('values reachable vacancies at the worker own education wage, not the job wage', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 0, tertiary: 1000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100 });
+        agent.assets.p.wagePerEdu = { none: 100, primary: 90, secondary: 80, tertiary: 10 };
+
+        const market = computeLaborMarket(agentMap(agent), planet);
+
+        expect(market.reachableVacancyWage.none).toBe(100);
+        expect(market.reachableVacancyWage.tertiary).toBe(10);
+        expect(market.reachableTightness.tertiary).toBeCloseTo(100 / 1000);
+    });
+
+    it('divides reachable vacancies by unemployed workers for tightness', () => {
+        const { planet } = makePlanetWithPopulation({ none: 2000, tertiary: 4000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 200 });
+
+        const market = computeLaborMarket(agentMap(agent), planet);
+
+        expect(market.reachableTightness.none).toBeCloseTo(200 / 2000);
+        expect(market.reachableTightness.tertiary).toBeCloseTo(200 / 4000);
+    });
+
+    it('does not broaden the lowest education level', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 10, primary: 20 });
+
+        const market = computeLaborMarket(agentMap(agent), planet);
+
+        expect(market.reachableVacancies.none).toBe(10);
+        expect(market.reachableVacancies.primary).toBe(30);
+    });
+
+    it('yields zero reachable vacancy wage when no suitable vacancies exist', () => {
+        const { planet } = makePlanetWithPopulation({ tertiary: 1000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({});
+
+        const market = computeLaborMarket(agentMap(agent), planet);
+
+        expect(market.reachableVacancies.tertiary).toBe(0);
+        expect(market.reachableVacancyWage.tertiary).toBe(0);
     });
 });
 

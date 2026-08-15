@@ -69,7 +69,10 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
             if (gap > 0) {
                 // --- HIRING ---
                 const wage = assets.wagePerEdu[edu] ?? 0;
-                const outside = outsideIncome(laborMarket.tightness[edu], laborMarket.vacancyWage[edu]);
+                const outside = outsideIncome(
+                    laborMarket.reachableTightness[edu],
+                    laborMarket.reachableVacancyWage[edu],
+                );
                 const threshold = Math.max(costOfLiving, outside);
 
                 type Bucket = { age: number; avail: number; probToAccept: number };

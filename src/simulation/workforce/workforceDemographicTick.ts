@@ -93,8 +93,8 @@ export function workforceDemographicTick(
                     const quitRate = quitPropensity(
                         assets.wagePerEdu[l] ?? 0,
                         profitPerWorker,
-                        laborMarket.tightness[l],
-                        laborMarket.vacancyWage[l],
+                        laborMarket.reachableTightness[l],
+                        laborMarket.reachableVacancyWage[l],
                     );
                     const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {

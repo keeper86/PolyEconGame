@@ -25,6 +25,9 @@ export type LaborMarket = {
     tightness: PerEducation;
     marketWage: PerEducation;
     vacancyWage: PerEducation;
+    reachableVacancies: PerEducation;
+    reachableTightness: PerEducation;
+    reachableVacancyWage: PerEducation;
 };
 
 export const jobFindingProbability = (tightness: number): number =>
@@ -59,6 +62,8 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
     const vacancies: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const unemployed: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const vacancyWageSum: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const reachableVacancies: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const reachableVacancyWageSum: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
     const demography = planet.population.demography;
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
@@ -76,23 +81,45 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
         if (!workforce) {
             continue;
         }
+        const agentVacancies: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         for (const edu of educationLevelKeys) {
             const target = assets.allocatedWorkers[edu] ?? 0;
             const current = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
             const vacancy = Math.max(0, target - current);
+            agentVacancies[edu] = vacancy;
             vacancies[edu] += vacancy;
             vacancyWageSum[edu] += vacancy * (assets.wagePerEdu[edu] ?? 0);
+        }
+        let cumulative = 0;
+        for (const workerEdu of educationLevelKeys) {
+            cumulative += agentVacancies[workerEdu];
+            reachableVacancies[workerEdu] += cumulative;
+            reachableVacancyWageSum[workerEdu] += cumulative * (assets.wagePerEdu[workerEdu] ?? 0);
         }
     }
 
     const tightness: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const vacancyWage: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const reachableTightness: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const reachableVacancyWage: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     for (const edu of educationLevelKeys) {
         tightness[edu] = vacancies[edu] / Math.max(1, unemployed[edu]);
         vacancyWage[edu] = vacancies[edu] > 0 ? vacancyWageSum[edu] / vacancies[edu] : 0;
+        reachableTightness[edu] = reachableVacancies[edu] / Math.max(1, unemployed[edu]);
+        reachableVacancyWage[edu] =
+            reachableVacancies[edu] > 0 ? reachableVacancyWageSum[edu] / reachableVacancies[edu] : 0;
     }
 
-    return { vacancies, unemployed, tightness, marketWage: { ...planet.wagePerEdu }, vacancyWage };
+    return {
+        vacancies,
+        unemployed,
+        tightness,
+        marketWage: { ...planet.wagePerEdu },
+        vacancyWage,
+        reachableVacancies,
+        reachableTightness,
+        reachableVacancyWage,
+    };
 };
 
 export const profitPerWorkerPerTick = (
