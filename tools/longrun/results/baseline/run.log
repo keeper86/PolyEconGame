@@ -1,0 +1,52 @@
+SIM_DEBUG=unset (disabled for benchmark)
+=== scenario: baseline ===
+Balanced economy — control run that must stay stable over the full horizon.
+[baseline] world ready: 122 agents, 1 planet, 360 ticks
+[baseline] starting…
+[baseline] done: 136.94 ms/tick, 7.3 ticks/s. Planet: benchmark-earth
+
+Yearly overview:
+metric	y1
+totalPopulation	9804852.667
+employable	857665.333
+employed	3788688.333
+unableToWork	1194640.167
+inEducation	3963858.833
+dependencyRatio	1.112
+avgGroceryStarvation	0.000
+avgHealthcareStarvation	0.403
+deathsLastMonth	14794.250
+deathsThisMonth	16047.833
+foodPrice	3.880
+waterPrice	1.816
+priceLevelRaw	2.171
+priceLevelRefined	11.111
+priceLevelManufactured	107.436
+priceLevelServices	12.213
+refinedToRawPriceRatio	5.077
+manufacturedToRawPriceRatio	53.582
+groceryFillRate	0.949
+gdpAnnual	8932974203.528
+costOfLiving	0.506
+bankEquity	0.000
+bankDeposits	13618021717.241
+totalLoans	13618021717.241
+agentsInDistress	0.000
+totalAgentDeposits	13387159463.164
+workerUtilization	0.998
+avgWage	1.580
+productionEfficiency	0.991
+avgFacilityCondition	0.945
+priceCeilHits	0.000
+priceFloorHits	0.000
+
+Bands (mode=report):
+  FAIL  totalPopulation @y30 (relative to year 1) = n/a expected [0.8, 1.2]
+  FAIL  avgGroceryStarvation @y30 = n/a expected [-∞, 0.25]
+  FAIL  groceryFillRate @y30 = n/a expected [0.6, ∞]
+  FAIL  avgFacilityCondition @y30 = n/a expected [0.5, ∞]
+
+Wrote /home/tobias/Projekte/PolyEconGame/tools/longrun/results/baseline/series.csv
+Wrote /home/tobias/Projekte/PolyEconGame/tools/longrun/results/baseline/summary.json
+
+[baseline] completed, some bands fail

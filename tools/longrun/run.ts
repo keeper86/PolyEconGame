@@ -1,0 +1,293 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
+import { advanceTick, seedRng } from '../../src/simulation/engine';
+import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
+import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
+import {
+    buildScaleComparison,
+    computeGapMetrics,
+    formatScaleComparison,
+    sampleActualScales,
+    sampleInFlightConstruction,
+} from './solverDiagnostic';
+import { buildBenchmarkWorld } from './world';
+
+const OUT_ROOT = path.join(__dirname, 'results');
+
+const GAP_METRIC_KEYS = [
+    'year',
+    'scalePopFacingSolver',
+    'scalePopFacingTargets',
+    'scalePopFacingSeeded',
+    'scalePopFacingActual',
+    'scalePopFacingActualToSolver',
+    'scalePopFacingActualToTargets',
+    'scalePopFacingActualToSeeded',
+    'scalePopFacingTargetsToSolver',
+    'scaleEndogenousSolver',
+    'scaleEndogenousTargets',
+    'scaleEndogenousSeeded',
+    'scaleEndogenousActual',
+    'scaleEndogenousActualToTargets',
+    'scaleEndogenousActualToSeeded',
+    'inFlightConstruction',
+] as const;
+
+function arg(name: string): string | undefined {
+    const prefix = `--${name}=`;
+    const found = process.argv.find((a) => a.startsWith(prefix));
+    return found ? found.slice(prefix.length) : undefined;
+}
+
+function toCsv(rows: MetricMap[]): string {
+    const header = METRIC_KEYS.join(',');
+    const lines = rows.map((row) => METRIC_KEYS.map((k) => row[k] ?? '').join(','));
+    return [header, ...lines].join('\n');
+}
+
+function yearlySeries(monthly: MetricMap[]): Map<number, MetricMap> {
+    const years = new Map<number, MetricMap>();
+    const sums = new Map<number, Record<string, number>>();
+    const counts = new Map<number, number>();
+
+    for (const sample of monthly) {
+        const year = Math.floor((sample.tick - 1) / TICKS_PER_YEAR) + 1;
+        if (!sums.has(year)) {
+            sums.set(year, {});
+            counts.set(year, 0);
+        }
+        const acc = sums.get(year)!;
+        for (const key of METRIC_KEYS) {
+            if (key === 'tick') {
+                continue;
+            }
+            acc[key] = (acc[key] ?? 0) + (sample[key] ?? 0);
+        }
+        counts.set(year, counts.get(year)! + 1);
+    }
+
+    for (const [year, acc] of sums) {
+        const n = counts.get(year)!;
+        const mean: MetricMap = { tick: year };
+        for (const key of METRIC_KEYS) {
+            if (key === 'tick') {
+                continue;
+            }
+            mean[key] = (acc[key] ?? 0) / n;
+        }
+        years.set(year, mean);
+    }
+    return years;
+}
+
+interface BandResult {
+    metric: string;
+    horizonYears: number;
+    actual: number;
+    min?: number;
+    max?: number;
+    relativeToStart: boolean;
+    pass: boolean;
+}
+
+function evaluateBands(yearly: Map<number, MetricMap>, bands: MetricBand[]): BandResult[] {
+    const refYear = yearly.get(1);
+    return bands.map((band) => {
+        const horizon = band.horizonYears;
+        const startYear = Math.max(1, horizon - band.windowYears + 1);
+        let sum = 0;
+        let count = 0;
+        for (let y = startYear; y <= horizon; y++) {
+            const row = yearly.get(y);
+            if (!row) {
+                continue;
+            }
+            sum += row[band.metric] ?? 0;
+            count += 1;
+        }
+        if (count === 0) {
+            return {
+                metric: band.metric,
+                horizonYears: horizon,
+                actual: Number.NaN,
+                min: band.min,
+                max: band.max,
+                relativeToStart: band.relativeToStart ?? false,
+                pass: false,
+            };
+        }
+        let actual = sum / count;
+        if (band.relativeToStart) {
+            const ref = refYear?.[band.metric] ?? 0;
+            actual = ref > 0 ? actual / ref : Number.NaN;
+        }
+        const pass =
+            Number.isFinite(actual) &&
+            (band.min === undefined || actual >= band.min) &&
+            (band.max === undefined || actual <= band.max);
+        return {
+            metric: band.metric,
+            horizonYears: horizon,
+            actual,
+            min: band.min,
+            max: band.max,
+            relativeToStart: band.relativeToStart ?? false,
+            pass,
+        };
+    });
+}
+
+function runScenario(
+    scenario: Scenario,
+    years: number,
+    sampleEvery: number,
+): { monthly: MetricMap[]; msPerTick: number; seedGap: string; scaleGaps: Array<Record<string, number>> } {
+    seedRng(scenario.seed);
+    const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
+    const population = scenario.world.population ?? 10_000_000;
+
+    const totalTicks = years * TICKS_PER_YEAR;
+    const monthly: MetricMap[] = [];
+    const scaleGaps: Array<Record<string, number>> = [];
+
+    const seedComparison = buildScaleComparison(population, sampleActualScales(gameState));
+    seedComparison.inFlightConstruction = sampleInFlightConstruction(gameState);
+    const seedGap = formatScaleComparison(seedComparison);
+
+    console.log(`[${scenario.name}] world ready: ${agents.length} agents, 1 planet, ${totalTicks} ticks`);
+    console.log(`[${scenario.name}] starting…`);
+
+    const t0 = process.hrtime.bigint();
+
+    for (let t = 1; t <= totalTicks; t++) {
+        gameState.tick = t;
+        advanceTick(gameState);
+        if (t % sampleEvery === 0) {
+            monthly.push(sampleMetrics(gameState));
+        }
+        if (t % TICKS_PER_YEAR === 0) {
+            const actual = sampleActualScales(gameState);
+            const inFlight = sampleInFlightConstruction(gameState);
+            scaleGaps.push({ year: t / TICKS_PER_YEAR, ...computeGapMetrics(population, actual, inFlight) });
+        }
+    }
+
+    const t1 = process.hrtime.bigint();
+    const wallMs = Number(t1 - t0) / 1e6;
+    const msPerTick = wallMs / totalTicks;
+
+    console.log(
+        `[${scenario.name}] done: ${msPerTick.toFixed(2)} ms/tick, ${(1000 / msPerTick).toFixed(1)} ticks/s. Planet: ${planet.id}`,
+    );
+
+    return { monthly, msPerTick, seedGap, scaleGaps };
+}
+
+function printYearly(yearly: Map<number, MetricMap>, keys: string[]): void {
+    const years = [1, 5, 10, 15, 20, 25, 30].filter((y) => yearly.has(y));
+    const header = ['metric', ...years.map((y) => `y${y}`)].join('\t');
+    console.log(header);
+    for (const key of keys) {
+        if (key === 'tick') {
+            continue;
+        }
+        const cells = years.map((y) => {
+            const v = yearly.get(y)?.[key] ?? 0;
+            return Number.isFinite(v) ? v.toFixed(3) : 'n/a';
+        });
+        console.log([key, ...cells].join('\t'));
+    }
+}
+
+function main(): void {
+    const debug = process.argv.includes('--debug');
+    if (debug) {
+        process.env.SIM_DEBUG = '1';
+    } else {
+        delete process.env.SIM_DEBUG;
+        delete process.env.SIM_DEBUG_AUTOSCALE;
+    }
+    console.log(
+        `SIM_DEBUG=${process.env.SIM_DEBUG ?? 'unset'} (${debug ? 'enabled via --debug' : 'disabled for benchmark'})`,
+    );
+
+    const scenarioName = arg('scenario') ?? 'baseline';
+    const scenario = getScenario(scenarioName);
+    if (!scenario) {
+        console.error(`Unknown scenario '${scenarioName}'. Available: ${SCENARIOS.map((s) => s.name).join(', ')}`);
+        process.exit(2);
+    }
+
+    const years = Number(arg('years') ?? scenario.years);
+    const bandsMode = arg('bands') ?? 'report';
+    const sampleEvery = TICKS_PER_MONTH;
+
+    console.log(`=== scenario: ${scenario.name} ===`);
+    console.log(scenario.description);
+
+    const { monthly, msPerTick, seedGap, scaleGaps } = runScenario(scenario, years, sampleEvery);
+    const yearly = yearlySeries(monthly);
+    const bandResults = bandsMode === 'off' ? [] : evaluateBands(yearly, scenario.bands);
+
+    const outDir = path.join(OUT_ROOT, scenario.name);
+    fs.mkdirSync(outDir, { recursive: true });
+
+    const csvPath = path.join(outDir, 'series.csv');
+    fs.writeFileSync(csvPath, toCsv(monthly));
+
+    fs.writeFileSync(path.join(outDir, 'seedGap.txt'), seedGap + '\n');
+
+    const gapHeader = GAP_METRIC_KEYS.join(',');
+    const gapLines = scaleGaps.map((row) => GAP_METRIC_KEYS.map((key) => row[key] ?? '').join(','));
+    fs.writeFileSync(path.join(outDir, 'scaleGaps.csv'), [gapHeader, ...gapLines].join('\n') + '\n');
+
+    const summary = {
+        scenario: scenario.name,
+        description: scenario.description,
+        seed: scenario.seed,
+        years,
+        msPerTick,
+        ticksPerSecond: msPerTick > 0 ? 1000 / msPerTick : 0,
+        bands: bandResults.map((b) => ({ ...b, actual: Number.isFinite(b.actual) ? b.actual : null })),
+        yearly: Object.fromEntries([...yearly.entries()].map(([y, row]) => [y, row])),
+    };
+    fs.writeFileSync(path.join(outDir, 'summary.json'), JSON.stringify(summary, null, 2));
+
+    console.log(`\nYearly overview:`);
+    printYearly(yearly, METRIC_KEYS);
+
+    if (bandsMode === 'off') {
+        console.log(`\nWrote ${csvPath}`);
+        console.log(`Wrote ${path.join(outDir, 'summary.json')}`);
+        console.log(`\n[${scenario.name}] completed (bands off)`);
+        return;
+    }
+
+    console.log(`\nBands (mode=${bandsMode}):`);
+    let allPass = true;
+    for (const b of bandResults) {
+        const rel = b.relativeToStart ? ' (relative to year 1)' : '';
+        const actual = Number.isFinite(b.actual) ? b.actual.toFixed(3) : 'n/a';
+        const range = `[${b.min ?? '-∞'}, ${b.max ?? '∞'}]`;
+        console.log(
+            `  ${b.pass ? 'PASS' : 'FAIL'}  ${b.metric} @y${b.horizonYears}${rel} = ${actual} expected ${range}`,
+        );
+        if (!b.pass) {
+            allPass = false;
+        }
+    }
+
+    console.log(`\nWrote ${csvPath}`);
+    console.log(`Wrote ${path.join(outDir, 'summary.json')}`);
+
+    if (bandsMode === 'strict' && !allPass) {
+        console.error(`\n[${scenario.name}] band check FAILED (strict mode)`);
+        process.exitCode = 1;
+    } else {
+        console.log(`\n[${scenario.name}] completed${allPass ? ', all bands pass' : ', some bands fail'}`);
+    }
+}
+
+main();
