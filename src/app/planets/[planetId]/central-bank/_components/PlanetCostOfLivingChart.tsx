@@ -10,6 +10,7 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     bucketDecadeLabel,
+    raiseWagesMonotone,
     type Granularity,
 } from './financialChartLogic';
 
@@ -56,17 +57,18 @@ function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): Cha
         const base = ghost ? null : p.avgCostOfLiving;
         const baseRich = ghost ? null : p.avgCostOfLivingRich;
         const diff = ghost ? null : p.avgCostOfLivingRich - p.avgCostOfLiving;
-        const w0 = ghost ? null : p.avgWageEdu0;
-        const w1 = ghost ? null : p.avgWageEdu1;
-        const w2 = ghost ? null : p.avgWageEdu2;
-        const w3 = ghost ? null : p.avgWageEdu3;
+        const [w0r, w1r, w2r, w3r] = raiseWagesMonotone([p.avgWageEdu0, p.avgWageEdu1, p.avgWageEdu2, p.avgWageEdu3]);
+        const w0 = ghost ? null : w0r;
+        const w1 = ghost ? null : w1r;
+        const w2 = ghost ? null : w2r;
+        const w3 = ghost ? null : w3r;
         const gBase = ghost ? p.avgCostOfLiving : null;
         const gBaseRich = ghost ? p.avgCostOfLivingRich : null;
         const gDiff = ghost ? p.avgCostOfLivingRich - p.avgCostOfLiving : null;
-        const gw0 = ghost ? p.avgWageEdu0 : null;
-        const gw1 = ghost ? p.avgWageEdu1 : null;
-        const gw2 = ghost ? p.avgWageEdu2 : null;
-        const gw3 = ghost ? p.avgWageEdu3 : null;
+        const gw0 = ghost ? w0r : null;
+        const gw1 = ghost ? w1r : null;
+        const gw2 = ghost ? w2r : null;
+        const gw3 = ghost ? w3r : null;
         return {
             monthIdx: idx,
             year: tickToDate(p.bucket).year,
@@ -165,6 +167,12 @@ export function PlanetCostOfLivingChart({
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             return sorted.slice(-11).map((p) => {
                 const { year, monthIndex } = tickToDate(p.bucket);
+                const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
+                    p.avgWageEdu0,
+                    p.avgWageEdu1,
+                    p.avgWageEdu2,
+                    p.avgWageEdu3,
+                ]);
                 return {
                     xVal: year + 1,
                     year: year + 1,
@@ -172,26 +180,32 @@ export function PlanetCostOfLivingChart({
                     costOfLiving: p.avgCostOfLiving,
                     costOfLivingRich: p.avgCostOfLivingRich,
                     costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
-                    wageEdu0: p.avgWageEdu0,
-                    wageEdu1: p.avgWageEdu1,
-                    wageEdu2: p.avgWageEdu2,
-                    wageEdu3: p.avgWageEdu3,
+                    wageEdu0,
+                    wageEdu1,
+                    wageEdu2,
+                    wageEdu3,
                 };
             });
         }
 
         return data.map((p) => {
             const { year } = tickToDate(p.bucket);
+            const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
+                p.avgWageEdu0,
+                p.avgWageEdu1,
+                p.avgWageEdu2,
+                p.avgWageEdu3,
+            ]);
             return {
                 label: bucketDecadeLabel(p.bucket),
                 year,
                 costOfLiving: p.avgCostOfLiving,
                 costOfLivingRich: p.avgCostOfLivingRich,
                 costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
-                wageEdu0: p.avgWageEdu0,
-                wageEdu1: p.avgWageEdu1,
-                wageEdu2: p.avgWageEdu2,
-                wageEdu3: p.avgWageEdu3,
+                wageEdu0,
+                wageEdu1,
+                wageEdu2,
+                wageEdu3,
             };
         });
     }, [data, granularity, currentTick]);

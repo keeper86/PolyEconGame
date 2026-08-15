@@ -144,13 +144,10 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
         }
 
         // --- Enforce Monotonicity
-        for (let i = 0; i < educationLevelKeys.length - 1; i++) {
+        const maxWage = assets.wagePerEdu[educationLevelKeys[0]] ?? MIN_WAGE;
+        for (let i = 1; i < educationLevelKeys.length - 1; i++) {
             const currentEdu = educationLevelKeys[i];
-            const nextEdu = educationLevelKeys[i + 1];
-
-            if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
-                assets.wagePerEdu[currentEdu] = assets.wagePerEdu[nextEdu];
-            }
+            assets.wagePerEdu[currentEdu] = Math.max(maxWage, assets.wagePerEdu[currentEdu]);
         }
 
         if (agent.automated && agent.id !== planet.governmentId) {
