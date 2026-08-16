@@ -27,9 +27,13 @@ import {
 } from '../../src/simulation/planet/specialFacilities';
 import {
     FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK,
+    MAINTENANCE_SERVICE_PER_STATUS_UNIT,
+    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     SR_HOLDING_COST_PER_TON,
     TICKS_PER_MONTH,
+    TICKS_PER_YEAR,
 } from '../../src/simulation/constants';
+import { calculateCostsForConstruction, getFacilityType, type ProductionFacility } from '../../src/simulation/planet/facility';
 import solver from 'javascript-lp-solver';
 
 const TOOL_PLANET = 'tool';
@@ -62,10 +66,13 @@ const CONFIG: SlackConfig = {
     },
 };
 
-const constructionDemandPerTick = 1_512_000_000;
+const RESTORATION_RATE_PER_TICK =
+    (FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK / MAINTENANCE_SERVICE_PER_STATUS_UNIT) *
+    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE;
+const EXPANSION_HEADROOM_PER_YEAR = 0.025;
+const EXPANSION_RATE_PER_TICK = EXPANSION_HEADROOM_PER_YEAR / TICKS_PER_YEAR;
 const BALANCE_EPSILON = 0.001;
 
-const CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK = 0.3;
 const STORAGE_MOVEMENT_FACTOR = 2;
 const TARGET_SCALE_PER_AGENT = 150_000;
 
@@ -88,13 +95,19 @@ const STO_ADMIN_PER_SCALE = stoTemplate.needs.find(
     (n) => n.resource.name === administrativeServiceResourceType.name,
 )!.quantity;
 
+const HR_SCALE_PER_WORKER = 1 / ((2 / 3) * PRODUCED_HR_QUANTITY);
+
+function constructionDemandPerScaleFor(facility: ProductionFacility): number {
+    const perScaleCost = calculateCostsForConstruction(getFacilityType(facility), 0, 1).cost;
+    return (RESTORATION_RATE_PER_TICK + EXPANSION_RATE_PER_TICK) * perScaleCost;
+}
+
 function buildModel(
     slack: SlackConfig,
     quiet = false,
 ): {
     constraints: Record<string, { min: number }>;
     variables: Record<string, Record<string, number>>;
-    constructionDemandPerTick: number;
 } {
     const populationDemand = computePopulationServiceDemand(slack.population);
 
@@ -170,6 +183,26 @@ function buildModel(
             varCoeffs[maintenanceKey] =
                 (varCoeffs[maintenanceKey] ?? 0) - FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
             if (!constraints[maintenanceKey]) constraints[maintenanceKey] = { min: 0 };
+
+            const storageMaintenance = storageScalePerProdScale * FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+            if (storageMaintenance > 0) {
+                varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - storageMaintenance;
+            }
+
+            const hrMaintenance =
+                (workersPerScale + storageWorkersPerScale) *
+                HR_SCALE_PER_WORKER *
+                FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+            if (hrMaintenance > 0) {
+                varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - hrMaintenance;
+            }
+        }
+
+        const constructionDemandPerScale = constructionDemandPerScaleFor(f);
+        if (constructionDemandPerScale > 0) {
+            const constructionKey = resourceConstraintKey(constructionServiceResourceType.name);
+            varCoeffs[constructionKey] = (varCoeffs[constructionKey] ?? 0) - constructionDemandPerScale;
+            if (!constraints[constructionKey]) constraints[constructionKey] = { min: 0 };
         }
 
         variables[name] = varCoeffs;
@@ -194,34 +227,9 @@ function buildModel(
         }
     }
 
-    const constructKey = resourceConstraintKey(constructionServiceResourceType.name);
-    for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
-        const f = entry.factory(TOOL_PLANET, TOOL_ID);
-        if (f.name === 'Coal Power Plant') continue;
-        if (f.produces.some((p) => p.resource.name === constructionServiceResourceType.name)) continue;
-    }
-    if (constructKey in constraints && constructionDemandPerTick > 0) {
-        const civilConstructions = Math.ceil(constructionDemandPerTick * CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK);
-        constraints[constructKey].min = (constraints[constructKey].min ?? 0) + civilConstructions;
-
-        // Apply construction facility's own slack
-        const slackOverride = slack.goods[constructionServiceResourceType.name.toLowerCase()];
-        const factor = slackOverride ?? slack.defaultSlack;
-        if (factor > 1) {
-            constraints[constructKey].min = Math.ceil(constraints[constructKey].min * factor);
-        }
-
-        if (!quiet) {
-            console.log(
-                `  Construction service: ${civilConstructions.toLocaleString()} units/tick (${constructionDemandPerTick} facilities × ${CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK}) → slack ${factor.toFixed(1)}× → min ${Math.ceil(civilConstructions * factor).toLocaleString()}`,
-            );
-        }
-    }
-
     // Apply slack to all intermediate goods
     for (const [resKey, constraint] of Object.entries(constraints)) {
         const resName = resKey.replace(/^res__/, '');
-        if (resKey === constructKey) continue;
 
         const hasProducer = Object.values(variables).some((v) => (v[resKey] ?? 0) > 0);
         if (!hasProducer) continue;
@@ -235,7 +243,7 @@ function buildModel(
         }
     }
 
-    return { constraints, variables, constructionDemandPerTick };
+    return { constraints, variables };
 }
 
 export interface TargetScalesResult {
@@ -244,9 +252,20 @@ export interface TargetScalesResult {
     constructionDemandPerTick: number;
 }
 
+function totalConstructionDemand(rawScales: Record<string, number | boolean>): number {
+    let total = 0;
+    for (const entry of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
+        const f = entry.factory(TOOL_PLANET, TOOL_ID);
+        if (f.name === 'Coal Power Plant') continue;
+        const scale = (rawScales[f.name] as number | undefined) ?? 0;
+        total += scale * constructionDemandPerScaleFor(f);
+    }
+    return total;
+}
+
 export function computeTargetScales(population: number, slackOverrides: Partial<SlackConfig> = {}): TargetScalesResult {
     const config: SlackConfig = { ...CONFIG, ...slackOverrides, population };
-    const { constraints, variables, constructionDemandPerTick } = buildModel(config, true);
+    const { constraints, variables } = buildModel(config, true);
 
     const model = {
         optimize: 'obj',
@@ -261,7 +280,7 @@ export function computeTargetScales(population: number, slackOverrides: Partial<
     };
 
     if (!raw.feasible) {
-        return { feasible: false, scales: {}, constructionDemandPerTick };
+        return { feasible: false, scales: {}, constructionDemandPerTick: 0 };
     }
 
     const scales: Record<string, number> = {};
@@ -276,7 +295,7 @@ export function computeTargetScales(population: number, slackOverrides: Partial<
             scales[key] = finalScale;
         }
     }
-    return { feasible: true, scales, constructionDemandPerTick };
+    return { feasible: true, scales, constructionDemandPerTick: totalConstructionDemand(raw) };
 }
 
 function main(): void {
@@ -287,7 +306,7 @@ function main(): void {
     console.log(`Default slack: ${(CONFIG.defaultSlack - 1) * 100}%`);
     console.log('');
 
-    const { constraints, variables, constructionDemandPerTick } = buildModel(CONFIG);
+    const { constraints, variables } = buildModel(CONFIG);
 
     const model = {
         optimize: 'obj',
@@ -453,11 +472,11 @@ function main(): void {
     balances[logisticsServiceResourceType.name].cons += totalStorageLogistics;
     balances[administrativeServiceResourceType.name].cons += totalStorageAdmin;
 
-    // Add ad-hoc construction consumption to balance display
-    if (constructionServiceResourceType.name in balances && constructionDemandPerTick > 0) {
-        const civilConstructions = Math.ceil(constructionDemandPerTick * CONSTRUCTION_SERVICE_PER_FACILITY_PER_TICK);
-        balances[constructionServiceResourceType.name].cons += civilConstructions;
-    }
+    balances[constructionServiceResourceType.name] = balances[constructionServiceResourceType.name] ?? {
+        prod: 0,
+        cons: 0,
+    };
+    balances[constructionServiceResourceType.name].cons += totalConstructionDemand(raw);
 
     balances[maintenanceServiceResourceType.name] = balances[maintenanceServiceResourceType.name] ?? {
         prod: 0,
@@ -493,8 +512,6 @@ function main(): void {
         lines.push(`    ${camelCase(r.name)}: ${perB},`);
     }
     lines.push('};');
-    lines.push('');
-    lines.push(`export const CONSTRUCTION_DEMAND_PER_TICK = ${constructionDemandPerTick};`);
     lines.push('');
     lines.push(`export const TARGET_SCALE_PER_AGENT = ${TARGET_SCALE_PER_AGENT};`);
     lines.push('');

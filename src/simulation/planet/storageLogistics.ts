@@ -5,7 +5,7 @@ import {
     SERVICE_DEPRECIATION_RATE_PER_TICK,
 } from '../constants';
 import type { StorageFacility } from './facility';
-import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
+import { isStorageStarvationEffectDisabled, queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
@@ -74,7 +74,7 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
 
 function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
-    const ss = storage.department?.storageStarvation ?? 1;
+    const ss = isStorageStarvationEffectDisabled() ? 0 : storage.department?.storageStarvation ?? 1;
     const preservation = storagePreservationFactor(ss);
 
     for (const [name, entry] of Object.entries(storage.currentInStorage)) {

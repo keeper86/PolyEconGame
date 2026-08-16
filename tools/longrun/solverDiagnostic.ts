@@ -303,7 +303,7 @@ export function formatScaleComparison(comparison: ScaleComparison): string {
     );
     lines.push('');
     lines.push(
-        `computeTargets assumed construction demand: ${comparison.constructionDemandPerTick.toLocaleString()} units/tick (fixed, not population-scaled)`,
+        `computeTargets derived construction demand: ${comparison.constructionDemandPerTick.toLocaleString()} units/tick (restoration + 2.5%/yr expansion headroom)`,
     );
     lines.push(`In-flight construction backlog in sim: ${comparison.inFlightConstruction.toLocaleString()} units`);
     lines.push('');

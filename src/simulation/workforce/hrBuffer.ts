@@ -23,8 +23,14 @@ export const computeCoverageRatio = (buffer: number, demand: number): number => 
     return buffer / demand;
 };
 
+let hrProductivityEffectDisabled = false;
+
+export function setHrProductivityEffectDisabled(disabled: boolean): void {
+    hrProductivityEffectDisabled = disabled;
+}
+
 export const computeProductivityMultiplier = (coverage: number): number => {
-    if (coverage >= 1.0) {
+    if (hrProductivityEffectDisabled || coverage >= 1.0) {
         return 1.0;
     }
     if (coverage >= 0.3) {

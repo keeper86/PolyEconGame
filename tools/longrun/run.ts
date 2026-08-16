@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
+import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
+import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
@@ -145,6 +147,9 @@ function runScenario(
     sampleEvery: number,
 ): { monthly: MetricMap[]; msPerTick: number; seedGap: string; scaleGaps: Array<Record<string, number>> } {
     seedRng(scenario.seed);
+    setConditionEfficiencyDisabled(scenario.world.disableConditionEfficiency === true);
+    setHrProductivityEffectDisabled(scenario.world.disableHrProductivityEffect === true);
+    setStorageStarvationEffectDisabled(scenario.world.disableStorageStarvationEffect === true);
     const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
     const population = scenario.world.population ?? 10_000_000;
 
@@ -161,11 +166,15 @@ function runScenario(
 
     const t0 = process.hrtime.bigint();
 
+    let prevPopulation = sampleMetrics(gameState).totalPopulation;
     for (let t = 1; t <= totalTicks; t++) {
         gameState.tick = t;
         advanceTick(gameState);
         if (t % sampleEvery === 0) {
-            monthly.push(sampleMetrics(gameState));
+            const sample = sampleMetrics(gameState);
+            sample.birthsThisMonth = Math.max(0, sample.totalPopulation - prevPopulation + sample.deathsThisMonth);
+            prevPopulation = sample.totalPopulation;
+            monthly.push(sample);
         }
         if (t % TICKS_PER_YEAR === 0) {
             const actual = sampleActualScales(gameState);

@@ -1,14 +1,75 @@
 import { PRICE_CEIL, PRICE_FLOOR, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
+import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
+import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import type { GameState, Planet } from '../../src/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '../../src/simulation/planet/resourceCatalog';
-import { waterResourceType } from '../../src/simulation/planet/resources';
-import { groceryServiceResourceType } from '../../src/simulation/planet/services';
+import {
+    chemicalResourceType,
+    coalResourceType,
+    copperResourceType,
+    electronicsResourceType,
+    ironOreResourceType,
+    plasticResourceType,
+    sandResourceType,
+    siliconWaferResourceType,
+    steelResourceType,
+    waterResourceType,
+} from '../../src/simulation/planet/resources';
+import {
+    administrativeServiceResourceType,
+    groceryServiceResourceType,
+    logisticsServiceResourceType,
+    maintenanceServiceResourceType,
+} from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
+import { facilityNameToKey } from './solverDiagnostic';
 
 export type MetricMap = Record<string, number>;
+
+const EXISTENTIAL_CHAIN_KEYS: ReadonlySet<string> = new Set([
+    'waterFacility',
+    'agriculturalFacility',
+    'foodProcessor',
+    'beveragePlant',
+    'groceryChain',
+    'hospital',
+    'pharmaPlant',
+]);
+
+const FOOD_CHAIN_KEYS: ReadonlySet<string> = new Set([
+    'agriculturalFacility',
+    'foodProcessor',
+    'beveragePlant',
+    'groceryChain',
+]);
+
+function isExistentialFacility(name: string): boolean {
+    const key = facilityNameToKey(name);
+    return key !== undefined && EXISTENTIAL_CHAIN_KEYS.has(key);
+}
+
+function isFoodChainFacility(name: string): boolean {
+    const key = facilityNameToKey(name);
+    return key !== undefined && FOOD_CHAIN_KEYS.has(key);
+}
+
+function isMaintenanceFacility(name: string): boolean {
+    return facilityNameToKey(name) === 'maintenanceFacility';
+}
+
+function minValue(map: Record<string, number> | undefined): number {
+    if (!map) {
+        return 1;
+    }
+    const values = Object.values(map);
+    if (values.length === 0) {
+        return 1;
+    }
+    return Math.min(...values);
+}
 
 function priceOf(planet: Planet, name: string): number {
     const result = planet.lastMarketResult[name];
@@ -16,6 +77,14 @@ function priceOf(planet: Planet, name: string): number {
         return result.clearingPrice;
     }
     return planet.marketPrices[name] ?? 0;
+}
+
+function fillRateOf(planet: Planet, name: string): number {
+    const result = planet.lastMarketResult[name];
+    if (result && result.totalDemand > 0) {
+        return result.totalVolume / result.totalDemand;
+    }
+    return 0;
 }
 
 function tierAveragePrice(planet: Planet, level: string): number {
@@ -47,6 +116,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let healthcareStarvationWeighted = 0;
     let deathsLastMonth = 0;
     let deathsThisMonth = 0;
+    let maxGroceryStarvation = 0;
+    let starvationMild = 0;
+    let starvationSevere = 0;
+    let starvationFatal = 0;
+    let wealthWeighted = 0;
 
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
@@ -56,10 +130,22 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     continue;
                 }
                 totalPopulation += cat.total;
-                groceryStarvationWeighted += cat.total * cat.services.grocery.starvationLevel;
+                const starvation = cat.services.grocery.starvationLevel;
+                groceryStarvationWeighted += cat.total * starvation;
                 healthcareStarvationWeighted += cat.total * cat.services.healthcare.starvationLevel;
                 deathsLastMonth += cat.deaths.countLastMonth;
                 deathsThisMonth += cat.deaths.countThisMonth;
+                wealthWeighted += cat.total * cat.wealth.mean;
+                if (starvation > maxGroceryStarvation) {
+                    maxGroceryStarvation = starvation;
+                }
+                if (starvation > 0.8) {
+                    starvationFatal += cat.total;
+                } else if (starvation > 0.3) {
+                    starvationSevere += cat.total;
+                } else if (starvation > 0) {
+                    starvationMild += cat.total;
+                }
                 if (occ === 'unoccupied') {
                     employable += cat.total;
                 } else if (occ === 'employed') {
@@ -84,6 +170,64 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let facilityCount = 0;
     let wageSum = 0;
     let wageCount = 0;
+    let loansWageCoverage = 0;
+    let loansBufferCoverage = 0;
+    let loansRollover = 0;
+    let loansStarter = 0;
+    let loansOther = 0;
+    let workerEfficiencySum = 0;
+    let resourceEfficiencySum = 0;
+    let conditionEfficiencySum = 0;
+    let conditionEfficiencyCount = 0;
+    let maxMaintenanceSum = 0;
+    let maxMaintenanceCount = 0;
+    let facilitiesBelowFullMaintenance = 0;
+    let hrBufferSum = 0;
+    let storageStarvationSum = 0;
+    let storageStarvationCount = 0;
+    let existentialAgentCount = 0;
+    let nonExistentialAgentCount = 0;
+    let existentialSlotCapacity = 0;
+    let nonExistentialSlotCapacity = 0;
+    let existentialUsedWorkers = 0;
+    let nonExistentialUsedWorkers = 0;
+    let existentialMaxScale = 0;
+    let nonExistentialMaxScale = 0;
+    let existentialOperatingScale = 0;
+    let nonExistentialOperatingScale = 0;
+    let existentialContractionIntegral = 0;
+    let nonExistentialContractionIntegral = 0;
+    let existentialNegativeProfitFacilities = 0;
+    let nonExistentialNegativeProfitFacilities = 0;
+    let existentialAtLowerBoundFacilities = 0;
+    let nonExistentialAtLowerBoundFacilities = 0;
+    let foodChainSlotCapacity = 0;
+    let foodChainUsedWorkers = 0;
+    let maintFacilityScale = 0;
+    let maintFacilityMaxScale = 0;
+    let maintFacilityConditionWeighted = 0;
+    let maintFacilityOutput = 0;
+    let maintAggregateConsumption = 0;
+    let maintSteadyStateDemand = 0;
+    let maintCatchupBacklog = 0;
+    let maintAggregateBuffer = 0;
+    let maintFacilityRevenue = 0;
+    let maintFacilityInputCosts = 0;
+    let maintFacilityWageCosts = 0;
+    let maintFacilityOverallEfficiency = 0;
+    let maintFacilityResourceEfficiency = 0;
+    let maintFacilityWorkerEfficiency = 0;
+    let maintFacilityConditionEfficiency = 0;
+    let maintFacilityCount = 0;
+    let maintInputEfficiencySteel = 0;
+    let maintInputEfficiencyElectronics = 0;
+    let maintInputEfficiencyPlastic = 0;
+    let siliconWaferResourceEfficiency = 0;
+    let siliconWaferWorkerEfficiency = 0;
+    let siliconWaferInputSand = 0;
+    let siliconWaferInputChemical = 0;
+    let siliconWaferInputWater = 0;
+    let siliconWaferCount = 0;
 
     for (const agent of gameState.agents.values()) {
         const assets = agent.assets[planet.id];
@@ -91,23 +235,144 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             continue;
         }
         totalAgentDeposits += assets.deposits;
+        maintAggregateBuffer += queryStorageFacility(assets.storageFacility, maintenanceServiceResourceType.name);
         if (assets.deposits < 0) {
             agentsInDistress += 1;
         }
         totalLoans += totalOutstandingLoans(assets.activeLoans);
+        for (const loan of assets.activeLoans) {
+            const rp = loan.remainingPrincipal;
+            if (loan.type === 'wageCoverage') {
+                loansWageCoverage += rp;
+            } else if (loan.type === 'bufferCoverage') {
+                loansBufferCoverage += rp;
+            } else if (loan.type === 'rollover') {
+                loansRollover += rp;
+            } else if (loan.type === 'starter') {
+                loansStarter += rp;
+            } else {
+                loansOther += rp;
+            }
+        }
         usedWorkers += assets.usedWorkers;
+        let agentSlots = 0;
         for (const edu of educationLevelKeys) {
-            totalSlots += assets.totalSlotCapacity[edu] ?? 0;
+            const slots = assets.totalSlotCapacity[edu] ?? 0;
+            totalSlots += slots;
+            agentSlots += slots;
+        }
+        const agentExistential = assets.productionFacilities.some((f) => isExistentialFacility(f.name));
+        const agentFoodChain = assets.productionFacilities.some((f) => isFoodChainFacility(f.name));
+        if (agentExistential) {
+            existentialAgentCount += 1;
+            existentialSlotCapacity += agentSlots;
+            existentialUsedWorkers += assets.usedWorkers;
+        } else {
+            nonExistentialAgentCount += 1;
+            nonExistentialSlotCapacity += agentSlots;
+            nonExistentialUsedWorkers += assets.usedWorkers;
+        }
+        if (agentFoodChain) {
+            foodChainSlotCapacity += agentSlots;
+            foodChainUsedWorkers += assets.usedWorkers;
         }
         for (const facility of assets.productionFacilities) {
             productionFacilityCount += 1;
             productionEfficiencySum += facility.lastTickResults?.overallEfficiency ?? 0;
             facilityConditionSum += facility.maintenanceStatus ?? 1;
             facilityCount += 1;
+            const results = facility.lastTickResults;
+            workerEfficiencySum += minValue(results?.workerEfficiency);
+            resourceEfficiencySum += minValue(results?.resourceEfficiency);
+            conditionEfficiencySum += computeFacilityConditionEfficiency(facility.maintenanceStatus ?? 1);
+            conditionEfficiencyCount += 1;
+            maxMaintenanceSum += facility.maxMaintenance ?? 1;
+            maxMaintenanceCount += 1;
+            if ((facility.maxMaintenance ?? 1) < 0.99) {
+                facilitiesBelowFullMaintenance += 1;
+            }
+
+            maintAggregateConsumption += facility.lastTickMaintenanceConsumption ?? 0;
+            maintSteadyStateDemand += facilityMaintenanceConsumptionPerTick(facility);
+            maintCatchupBacklog += Math.max(0, (facility.maxMaintenance ?? 1) - (facility.maintenanceStatus ?? 1)) * facility.scale * 100;
+            if (facility.name === 'Silicon Wafer Factory') {
+                siliconWaferResourceEfficiency += minValue(facility.lastTickResults?.resourceEfficiency);
+                siliconWaferWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                const swEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                siliconWaferInputSand += swEff[sandResourceType.name] ?? 1;
+                siliconWaferInputChemical += swEff[chemicalResourceType.name] ?? 1;
+                siliconWaferInputWater += swEff[waterResourceType.name] ?? 1;
+                siliconWaferCount += 1;
+            }
+
+            if (isMaintenanceFacility(facility.name)) {
+                maintFacilityScale += facility.scale;
+                maintFacilityMaxScale += facility.maxScale;
+                maintFacilityConditionWeighted += (facility.maintenanceStatus ?? 1) * facility.scale;
+                maintFacilityOutput += facility.lastTickResults?.lastProduced?.[maintenanceServiceResourceType.name] ?? 0;
+                maintFacilityRevenue += facility.lastTickResults?.revenue ?? 0;
+                maintFacilityInputCosts += facility.lastTickResults?.inputCosts ?? 0;
+                maintFacilityWageCosts += facility.lastTickResults?.wageCosts ?? 0;
+                maintFacilityOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                maintFacilityResourceEfficiency += minValue(facility.lastTickResults?.resourceEfficiency);
+                maintFacilityWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                maintFacilityConditionEfficiency += computeFacilityConditionEfficiency(facility.maintenanceStatus ?? 1);
+                maintFacilityCount += 1;
+                const resEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                maintInputEfficiencySteel += resEff[steelResourceType.name] ?? 1;
+                maintInputEfficiencyElectronics += resEff[electronicsResourceType.name] ?? 1;
+                maintInputEfficiencyPlastic += resEff[plasticResourceType.name] ?? 1;
+            }
+
+            const pid = facility.pidState;
+            const profitEma = pid?.profitEMA ?? 0;
+            const contractionIntegral = pid?.contractionIntegral ?? 0;
+            const atLowerBound = facility.scale <= facility.maxScale * 0.1 + 1e-9;
+            if (isExistentialFacility(facility.name)) {
+                existentialMaxScale += facility.maxScale;
+                existentialOperatingScale += facility.scale;
+                existentialContractionIntegral += contractionIntegral;
+                if (profitEma < 0) {
+                    existentialNegativeProfitFacilities += 1;
+                }
+                if (atLowerBound) {
+                    existentialAtLowerBoundFacilities += 1;
+                }
+            } else {
+                nonExistentialMaxScale += facility.maxScale;
+                nonExistentialOperatingScale += facility.scale;
+                nonExistentialContractionIntegral += contractionIntegral;
+                if (profitEma < 0) {
+                    nonExistentialNegativeProfitFacilities += 1;
+                }
+                if (atLowerBound) {
+                    nonExistentialAtLowerBoundFacilities += 1;
+                }
+            }
         }
         if (assets.humanResourcesDepartment) {
             facilityConditionSum += assets.humanResourcesDepartment.maintenanceStatus ?? 1;
             facilityCount += 1;
+            conditionEfficiencySum += computeFacilityConditionEfficiency(
+                assets.humanResourcesDepartment.maintenanceStatus ?? 1,
+            );
+            conditionEfficiencyCount += 1;
+            maxMaintenanceSum += assets.humanResourcesDepartment.maxMaintenance ?? 1;
+            maxMaintenanceCount += 1;
+            if ((assets.humanResourcesDepartment.maxMaintenance ?? 1) < 0.99) {
+                facilitiesBelowFullMaintenance += 1;
+            }
+            hrBufferSum += assets.humanResourcesDepartment.hrBuffer ?? 0;
+        }
+        const storageDept = assets.storageFacility?.department;
+        if (storageDept) {
+            storageStarvationSum += storageDept.storageStarvation ?? 0;
+            storageStarvationCount += 1;
+            maxMaintenanceSum += storageDept.maxMaintenance ?? 1;
+            maxMaintenanceCount += 1;
+            if ((storageDept.maxMaintenance ?? 1) < 0.99) {
+                facilitiesBelowFullMaintenance += 1;
+            }
         }
         if (typeof assets.wagePerEdu?.none === 'number') {
             wageSum += assets.wagePerEdu.none;
@@ -137,6 +402,50 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
 
+    const maintenanceResult = planet.lastMarketResult[maintenanceServiceResourceType.name];
+    const adminResult = planet.lastMarketResult[administrativeServiceResourceType.name];
+    const logisticsResult = planet.lastMarketResult[logisticsServiceResourceType.name];
+
+    const maintFacilityCondition = maintFacilityScale > 0 ? maintFacilityConditionWeighted / maintFacilityScale : 1;
+    const maintFillRate =
+        maintenanceResult && maintenanceResult.totalDemand > 0
+            ? maintenanceResult.totalVolume / maintenanceResult.totalDemand
+            : 0;
+    const maintRepairSurgeRatio = maintSteadyStateDemand > 0 ? maintAggregateConsumption / maintSteadyStateDemand : 0;
+    const maintFacilityCostFloor = planet.lastProductionCostFloors[maintenanceServiceResourceType.name] ?? 0;
+    const maintFacilityProfit = maintFacilityRevenue - maintFacilityInputCosts - maintFacilityWageCosts;
+    const maintFacilityOverallEfficiencyAvg =
+        maintFacilityCount > 0 ? maintFacilityOverallEfficiency / maintFacilityCount : 0;
+    const maintFacilityResourceEfficiencyAvg =
+        maintFacilityCount > 0 ? maintFacilityResourceEfficiency / maintFacilityCount : 0;
+    const maintFacilityWorkerEfficiencyAvg =
+        maintFacilityCount > 0 ? maintFacilityWorkerEfficiency / maintFacilityCount : 0;
+    const maintFacilityConditionEfficiencyAvg =
+        maintFacilityCount > 0 ? maintFacilityConditionEfficiency / maintFacilityCount : 0;
+    const maintInputEfficiencySteelAvg =
+        maintFacilityCount > 0 ? maintInputEfficiencySteel / maintFacilityCount : 0;
+    const maintInputEfficiencyElectronicsAvg =
+        maintFacilityCount > 0 ? maintInputEfficiencyElectronics / maintFacilityCount : 0;
+    const maintInputEfficiencyPlasticAvg =
+        maintFacilityCount > 0 ? maintInputEfficiencyPlastic / maintFacilityCount : 0;
+    const siliconWaferResourceEfficiencyAvg =
+        siliconWaferCount > 0 ? siliconWaferResourceEfficiency / siliconWaferCount : 0;
+    const siliconWaferWorkerEfficiencyAvg =
+        siliconWaferCount > 0 ? siliconWaferWorkerEfficiency / siliconWaferCount : 0;
+    const siliconWaferInputSandAvg = siliconWaferCount > 0 ? siliconWaferInputSand / siliconWaferCount : 0;
+    const siliconWaferInputChemicalAvg = siliconWaferCount > 0 ? siliconWaferInputChemical / siliconWaferCount : 0;
+    const siliconWaferInputWaterAvg = siliconWaferCount > 0 ? siliconWaferInputWater / siliconWaferCount : 0;
+    const fillRateSteel = fillRateOf(planet, steelResourceType.name);
+    const fillRateElectronics = fillRateOf(planet, electronicsResourceType.name);
+    const fillRatePlastic = fillRateOf(planet, plasticResourceType.name);
+    const fillRateIronOre = fillRateOf(planet, ironOreResourceType.name);
+    const fillRateCoal = fillRateOf(planet, coalResourceType.name);
+    const fillRateCopper = fillRateOf(planet, copperResourceType.name);
+    const fillRateSiliconWafer = fillRateOf(planet, siliconWaferResourceType.name);
+
+    const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
+    const foodPrice = priceOf(planet, groceryServiceResourceType.name);
+
     return {
         tick: gameState.tick,
         totalPopulation,
@@ -147,9 +456,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         dependencyRatio: employable + employed > 0 ? (inEducation + unableToWork) / (employable + employed) : 0,
         avgGroceryStarvation: totalPopulation > 0 ? groceryStarvationWeighted / totalPopulation : 0,
         avgHealthcareStarvation: totalPopulation > 0 ? healthcareStarvationWeighted / totalPopulation : 0,
+        maxGroceryStarvation,
+        starvationMildFraction: totalPopulation > 0 ? starvationMild / totalPopulation : 0,
+        starvationSevereFraction: totalPopulation > 0 ? starvationSevere / totalPopulation : 0,
+        starvationFatalFraction: totalPopulation > 0 ? starvationFatal / totalPopulation : 0,
         deathsLastMonth,
         deathsThisMonth,
-        foodPrice: priceOf(planet, groceryServiceResourceType.name),
+        birthsThisMonth: 0,
+        meanWealth,
+        foodPrice,
+        wealthToFoodPrice: foodPrice > 0 ? meanWealth / foodPrice : 0,
         waterPrice: priceOf(planet, waterResourceType.name),
         priceLevelRaw: tierAveragePrice(planet, 'raw'),
         priceLevelRefined: tierAveragePrice(planet, 'refined'),
@@ -159,17 +475,95 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         manufacturedToRawPriceRatio:
             tierAveragePrice(planet, 'raw') > 0 ? tierAveragePrice(planet, 'manufactured') / tierAveragePrice(planet, 'raw') : 0,
         groceryFillRate,
+        groceryTotalDemand: groceryResult?.totalDemand ?? 0,
+        groceryTotalSupply: groceryResult?.totalSupply ?? 0,
+        groceryTotalVolume: groceryResult?.totalVolume ?? 0,
         gdpAnnual,
         costOfLiving: computeCostOfLiving(planet, false),
         bankEquity: planet.bank.equity,
         bankDeposits: planet.bank.deposits,
+        bankLoans: planet.bank.loans,
+        householdDeposits: planet.bank.householdDeposits,
         totalLoans,
+        loansWageCoverage,
+        loansBufferCoverage,
+        loansRollover,
+        loansStarter,
+        loansOther,
         agentsInDistress,
         totalAgentDeposits,
         workerUtilization: totalSlots > 0 ? usedWorkers / totalSlots : 0,
         avgWage: wageCount > 0 ? wageSum / wageCount : 0,
+        existentialAgentCount,
+        nonExistentialAgentCount,
+        existentialSlotCapacity,
+        nonExistentialSlotCapacity,
+        existentialUsedWorkers,
+        nonExistentialUsedWorkers,
+        existentialFillRatio: existentialSlotCapacity > 0 ? existentialUsedWorkers / existentialSlotCapacity : 0,
+        nonExistentialFillRatio: nonExistentialSlotCapacity > 0 ? nonExistentialUsedWorkers / nonExistentialSlotCapacity : 0,
+        foodChainFillRatio: foodChainSlotCapacity > 0 ? foodChainUsedWorkers / foodChainSlotCapacity : 0,
+        existentialMaxScale,
+        nonExistentialMaxScale,
+        existentialOperatingScale,
+        nonExistentialOperatingScale,
+        existentialContractionIntegral,
+        nonExistentialContractionIntegral,
+        existentialNegativeProfitFacilities,
+        nonExistentialNegativeProfitFacilities,
+        existentialAtLowerBoundFacilities,
+        nonExistentialAtLowerBoundFacilities,
         productionEfficiency: productionFacilityCount > 0 ? productionEfficiencySum / productionFacilityCount : 0,
         avgFacilityCondition: facilityCount > 0 ? facilityConditionSum / facilityCount : 1,
+        avgWorkerEfficiency: productionFacilityCount > 0 ? workerEfficiencySum / productionFacilityCount : 1,
+        avgResourceEfficiency: productionFacilityCount > 0 ? resourceEfficiencySum / productionFacilityCount : 1,
+        avgConditionEfficiency: conditionEfficiencyCount > 0 ? conditionEfficiencySum / conditionEfficiencyCount : 1,
+        avgMaxMaintenance: maxMaintenanceCount > 0 ? maxMaintenanceSum / maxMaintenanceCount : 1,
+        facilitiesBelowFullMaintenance,
+        avgHrBuffer: productionFacilityCount > 0 ? hrBufferSum / productionFacilityCount : 0,
+        hrCoverageRatio: usedWorkers > 0 ? hrBufferSum / usedWorkers : 0,
+        avgStorageStarvation: storageStarvationCount > 0 ? storageStarvationSum / storageStarvationCount : 0,
+        maintenanceServicePrice: priceOf(planet, maintenanceServiceResourceType.name),
+        maintenanceServiceVolume: maintenanceResult?.totalVolume ?? 0,
+        maintenanceServiceDemand: maintenanceResult?.totalDemand ?? 0,
+        adminServicePrice: priceOf(planet, administrativeServiceResourceType.name),
+        adminServiceVolume: adminResult?.totalVolume ?? 0,
+        logisticsServicePrice: priceOf(planet, logisticsServiceResourceType.name),
+        logisticsServiceVolume: logisticsResult?.totalVolume ?? 0,
+        maintFacilityScale,
+        maintFacilityMaxScale,
+        maintFacilityCondition,
+        maintFacilityOutput,
+        maintFacilityCostFloor,
+        maintFacilityRevenue,
+        maintFacilityInputCosts,
+        maintFacilityWageCosts,
+        maintFacilityProfit,
+        maintFacilityOverallEfficiency: maintFacilityOverallEfficiencyAvg,
+        maintFacilityResourceEfficiency: maintFacilityResourceEfficiencyAvg,
+        maintFacilityWorkerEfficiency: maintFacilityWorkerEfficiencyAvg,
+        maintFacilityConditionEfficiency: maintFacilityConditionEfficiencyAvg,
+        maintInputEfficiencySteel: maintInputEfficiencySteelAvg,
+        maintInputEfficiencyElectronics: maintInputEfficiencyElectronicsAvg,
+        maintInputEfficiencyPlastic: maintInputEfficiencyPlasticAvg,
+        fillRateSteel,
+        fillRateElectronics,
+        fillRatePlastic,
+        fillRateIronOre,
+        fillRateCoal,
+        fillRateCopper,
+        fillRateSiliconWafer,
+        siliconWaferResourceEfficiency: siliconWaferResourceEfficiencyAvg,
+        siliconWaferWorkerEfficiency: siliconWaferWorkerEfficiencyAvg,
+        siliconWaferInputSand: siliconWaferInputSandAvg,
+        siliconWaferInputChemical: siliconWaferInputChemicalAvg,
+        siliconWaferInputWater: siliconWaferInputWaterAvg,
+        maintAggregateConsumption,
+        maintSteadyStateDemand,
+        maintCatchupBacklog,
+        maintAggregateBuffer,
+        maintFillRate,
+        maintRepairSurgeRatio,
         priceCeilHits,
         priceFloorHits,
     };
@@ -185,9 +579,16 @@ export const METRIC_KEYS: string[] = [
     'dependencyRatio',
     'avgGroceryStarvation',
     'avgHealthcareStarvation',
+    'maxGroceryStarvation',
+    'starvationMildFraction',
+    'starvationSevereFraction',
+    'starvationFatalFraction',
     'deathsLastMonth',
     'deathsThisMonth',
+    'birthsThisMonth',
+    'meanWealth',
     'foodPrice',
+    'wealthToFoodPrice',
     'waterPrice',
     'priceLevelRaw',
     'priceLevelRefined',
@@ -196,17 +597,95 @@ export const METRIC_KEYS: string[] = [
     'refinedToRawPriceRatio',
     'manufacturedToRawPriceRatio',
     'groceryFillRate',
+    'groceryTotalDemand',
+    'groceryTotalSupply',
+    'groceryTotalVolume',
     'gdpAnnual',
     'costOfLiving',
     'bankEquity',
     'bankDeposits',
+    'bankLoans',
+    'householdDeposits',
     'totalLoans',
+    'loansWageCoverage',
+    'loansBufferCoverage',
+    'loansRollover',
+    'loansStarter',
+    'loansOther',
     'agentsInDistress',
     'totalAgentDeposits',
     'workerUtilization',
     'avgWage',
+    'existentialAgentCount',
+    'nonExistentialAgentCount',
+    'existentialSlotCapacity',
+    'nonExistentialSlotCapacity',
+    'existentialUsedWorkers',
+    'nonExistentialUsedWorkers',
+    'existentialFillRatio',
+    'nonExistentialFillRatio',
+    'foodChainFillRatio',
+    'existentialMaxScale',
+    'nonExistentialMaxScale',
+    'existentialOperatingScale',
+    'nonExistentialOperatingScale',
+    'existentialContractionIntegral',
+    'nonExistentialContractionIntegral',
+    'existentialNegativeProfitFacilities',
+    'nonExistentialNegativeProfitFacilities',
+    'existentialAtLowerBoundFacilities',
+    'nonExistentialAtLowerBoundFacilities',
     'productionEfficiency',
     'avgFacilityCondition',
+    'avgWorkerEfficiency',
+    'avgResourceEfficiency',
+    'avgConditionEfficiency',
+    'avgMaxMaintenance',
+    'facilitiesBelowFullMaintenance',
+    'avgHrBuffer',
+    'hrCoverageRatio',
+    'avgStorageStarvation',
+    'maintenanceServicePrice',
+    'maintenanceServiceVolume',
+    'maintenanceServiceDemand',
+    'adminServicePrice',
+    'adminServiceVolume',
+    'logisticsServicePrice',
+    'logisticsServiceVolume',
+    'maintFacilityScale',
+    'maintFacilityMaxScale',
+    'maintFacilityCondition',
+    'maintFacilityOutput',
+    'maintFacilityCostFloor',
+    'maintFacilityRevenue',
+    'maintFacilityInputCosts',
+    'maintFacilityWageCosts',
+    'maintFacilityProfit',
+    'maintFacilityOverallEfficiency',
+    'maintFacilityResourceEfficiency',
+    'maintFacilityWorkerEfficiency',
+    'maintFacilityConditionEfficiency',
+    'maintInputEfficiencySteel',
+    'maintInputEfficiencyElectronics',
+    'maintInputEfficiencyPlastic',
+    'fillRateSteel',
+    'fillRateElectronics',
+    'fillRatePlastic',
+    'fillRateIronOre',
+    'fillRateCoal',
+    'fillRateCopper',
+    'fillRateSiliconWafer',
+    'siliconWaferResourceEfficiency',
+    'siliconWaferWorkerEfficiency',
+    'siliconWaferInputSand',
+    'siliconWaferInputChemical',
+    'siliconWaferInputWater',
+    'maintAggregateConsumption',
+    'maintSteadyStateDemand',
+    'maintCatchupBacklog',
+    'maintAggregateBuffer',
+    'maintFillRate',
+    'maintRepairSurgeRatio',
     'priceCeilHits',
     'priceFloorHits',
 ];

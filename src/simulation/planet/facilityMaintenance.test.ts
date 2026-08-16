@@ -21,6 +21,7 @@ import {
     computeFacilityConditionEfficiency,
     getFacilityType,
     queryStorageFacility,
+    setConditionEfficiencyDisabled,
     type ProductionFacility,
     type StorageFacility,
 } from './facility';
@@ -104,6 +105,17 @@ describe('computeFacilityConditionEfficiency', () => {
     it('clamps out-of-range condition to [0, 1]', () => {
         expect(computeFacilityConditionEfficiency(1.5)).toBeCloseTo(1);
         expect(computeFacilityConditionEfficiency(-0.5)).toBeCloseTo(0);
+    });
+
+    it('returns 1 regardless of condition when the malus is disabled', () => {
+        setConditionEfficiencyDisabled(true);
+        try {
+            expect(computeFacilityConditionEfficiency(0)).toBeCloseTo(1);
+            expect(computeFacilityConditionEfficiency(0.5)).toBeCloseTo(1);
+            expect(computeFacilityConditionEfficiency(1)).toBeCloseTo(1);
+        } finally {
+            setConditionEfficiencyDisabled(false);
+        }
     });
 });
 

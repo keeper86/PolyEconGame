@@ -19,6 +19,7 @@ import { splitScale } from '../../src/simulation/initialUniverse/proceduralWorld
 import { makePool } from '../../src/simulation/initialUniverse/resourceClaimFactory';
 import { nextRandom } from '../../src/simulation/utils/stochasticRound';
 import { FACILITY_SCALE_PER_BILLION } from '../../src/simulation/initialUniverse/targets';
+import { computeSolverScales } from './solverDiagnostic';
 import {
     arableLandResourceType,
     coalDepositResourceType,
@@ -38,7 +39,11 @@ import {
     type FacilityType,
 } from '../../src/simulation/planet/productionFacilities';
 import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../../src/simulation/planet/specialFacilities';
-import { constructionServiceResourceType, groceryServiceResourceType } from '../../src/simulation/planet/services';
+import {
+    constructionServiceResourceType,
+    groceryServiceResourceType,
+    maintenanceServiceResourceType,
+} from '../../src/simulation/planet/services';
 import type { EducationLevelType } from '../../src/simulation/population/education';
 import { educationLevelKeys } from '../../src/simulation/population/education';
 
@@ -54,6 +59,12 @@ export interface BenchmarkWorldConfig {
     waterPoolQuantity?: number;
     employableFraction?: number;
     groceryBuffer?: number;
+    solverSeedSlack?: number;
+    maintenanceScaleFactor?: number;
+    maintenanceBufferTicks?: number;
+    disableConditionEfficiency?: boolean;
+    disableHrProductivityEffect?: boolean;
+    disableStorageStarvationEffect?: boolean;
 }
 
 interface FacilityTarget {
@@ -61,11 +72,27 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-function computeTargets(population: number, agentsPerProduct: number): Record<string, FacilityTarget> {
+const SOLVER_SEED_BASELINE_FLOOR_KEYS: ReadonlySet<string> = new Set([
+    'maintenanceFacility',
+    'administrativeCenter',
+]);
+
+function computeTargets(
+    population: number,
+    agentsPerProduct: number,
+    solverSeedSlack?: number,
+    maintenanceScaleFactor?: number,
+): Record<string, FacilityTarget> {
     const popB = population / 1_000_000_000;
+    const solverScales = solverSeedSlack !== undefined ? computeSolverScales(population) : undefined;
     const targets: Record<string, FacilityTarget> = {};
-    for (const [key, scalePerB] of Object.entries(FACILITY_SCALE_PER_BILLION)) {
-        const totalScale = Math.max(1, Math.round(scalePerB * popB));
+    for (const key of Object.keys(FACILITY_SCALE_PER_BILLION)) {
+        const useSolver = solverScales !== undefined && !SOLVER_SEED_BASELINE_FLOOR_KEYS.has(key);
+        const baseScale = useSolver
+            ? Math.max(1, Math.round((solverScales[key] ?? 0) * solverSeedSlack))
+            : Math.max(1, Math.round(FACILITY_SCALE_PER_BILLION[key] * popB));
+        const totalScale =
+            key === 'maintenanceFacility' ? Math.max(1, Math.round(baseScale * (maintenanceScaleFactor ?? 1))) : baseScale;
         targets[key] = {
             totalScale,
             agentCount: Math.min(totalScale, Math.max(1, agentsPerProduct)),
@@ -136,7 +163,7 @@ export function buildBenchmarkWorld(
     const agentsPerProduct = config.agentsPerProduct ?? 3;
     const groceryBuffer = config.groceryBuffer ?? 6;
 
-    const TARGETS = computeTargets(population, agentsPerProduct);
+    const TARGETS = computeTargets(population, agentsPerProduct, config.solverSeedSlack, config.maintenanceScaleFactor);
     const agents: Agent[] = [];
 
     for (const [facilityType, target] of Object.entries(TARGETS)) {
@@ -219,6 +246,17 @@ export function buildBenchmarkWorld(
                         autoConfig: buildBuyAutoConfigForResource(personality.buyAutoConfig, resource),
                     };
                 }
+            }
+
+            if (config.maintenanceBufferTicks !== undefined && !assets.market.buy[maintenanceServiceResourceType.name]) {
+                assets.market.buy[maintenanceServiceResourceType.name] = {
+                    resource: maintenanceServiceResourceType,
+                    automated: true,
+                    autoConfig: {
+                        ...buildBuyAutoConfigForResource(personality.buyAutoConfig, maintenanceServiceResourceType),
+                        inputBufferTargetTicks: config.maintenanceBufferTicks,
+                    },
+                };
             }
 
             agents.push(agent);

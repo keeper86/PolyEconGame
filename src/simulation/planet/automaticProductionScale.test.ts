@@ -16,6 +16,7 @@ import {
     PID_KP,
     SIGNAL_EMA_ALPHA,
     STORAGE_TARGET_FILL_RATE,
+    computeProfitMargin,
     computeStorageExpansionTarget,
     computeStorageSignal,
     findMaxAffordableScale,
@@ -164,14 +165,47 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeLessThan(initial + 0.07 * facility.maxScale);
     });
 
-    it('scales down when supply excess is strong', () => {
+    it('scales down when unprofitable', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
+        const { agents, facility } = makeSetup(planet, {
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: -100,
+                revenueEMA: 0,
+            },
+        });
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeLessThan(initial);
+    });
+
+    it('holds scale when strongly oversupplied but profitable', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeLessThan(initial);
+        expect(facility.scale).toBe(initial);
+    });
+
+    it('scales up on unfilled demand even when unsold supply exceeds demand', () => {
+        const planet = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, unsoldSupply: 90, totalSupply: 100 }),
+        );
+        const { agents, facility } = makeSetup(planet);
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeGreaterThan(initial);
     });
 
     it('scales up when demand excess is strong and conditions are met', () => {
@@ -289,6 +323,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
@@ -347,6 +382,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -374,6 +410,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
         const agent = agents.values().next().value as Agent;
@@ -402,6 +439,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -461,6 +499,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -511,6 +550,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -543,6 +583,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD * 3,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -565,6 +606,16 @@ describe('updateAgentProductionScale', () => {
         const { agents, facility } = makeSetup(planet, {
             scale: 0.5,
             maxScale: 1,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: -100,
+                revenueEMA: 0,
+            },
             construction: {
                 type: 'expansion',
                 constructionTargetMaxScale: 2,
@@ -609,6 +660,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -635,10 +687,10 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).toEqual(existingConstruction);
     });
 
-    it('accumulates contraction integral only at lower bound with negative signal', () => {
+    it('accumulates contraction integral with negative signal regardless of operating capacity', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, {
-            scale: 0.1,
+            scale: 50,
             maxScale: 100,
             pidState: {
                 contractionIntegral: 10,
@@ -647,18 +699,18 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
-                profitEMA: 0,
+                profitEMA: -100,
+                revenueEMA: 0,
             },
         });
         const before = facility.pidState!.contractionIntegral;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        // At lower bound with negative signal, the integral accumulates
         expect(facility.pidState!.contractionIntegral).toBeGreaterThan(before);
     });
 
-    it('decays contraction integral when not at lower bound', () => {
+    it('contracts (reduces maxScale) with sustained negative signal', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, {
             scale: 50,
@@ -670,14 +722,14 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
-                profitEMA: 0,
+                profitEMA: -100,
+                revenueEMA: 0,
             },
         });
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        // Not at lower bound, so the integral should decay
-        expect(facility.pidState!.contractionIntegral).toBeLessThan(30);
+        expect(facility.maxScale).toBeLessThan(100);
     });
 
     it('scales up when profitable (revenue exceeds costs) and demand exceeds threshold', () => {
@@ -895,6 +947,7 @@ describe('updateAgentProductionScale', () => {
             expansionIntegral: 0,
             smoothedSignal: 0,
             profitEMA: 0,
+            revenueEMA: 0,
         };
 
         const N = 20;
@@ -912,6 +965,7 @@ describe('updateAgentProductionScale', () => {
         facility.pidState = {
             smoothedSignal: 0.8,
             profitEMA: 0,
+            revenueEMA: 0,
             filteredError: 0.8,
             prevError: 0.8,
             integral: 0,
@@ -925,6 +979,7 @@ describe('updateAgentProductionScale', () => {
         facilityB.pidState = {
             smoothedSignal: 0.8,
             profitEMA: 0,
+            revenueEMA: 0,
             filteredError: 0.8,
             prevError: 1.0,
             integral: 0,
@@ -967,6 +1022,7 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -1106,6 +1162,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1264,6 +1321,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1299,6 +1357,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1365,6 +1424,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1402,6 +1462,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1442,6 +1503,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1482,6 +1544,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1528,6 +1591,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1573,6 +1637,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1600,7 +1665,7 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.construction).toBeNull();
     });
 
-    it('accumulates HR contraction integral at lower bound with negative signal', () => {
+    it('accumulates HR contraction integral with negative signal regardless of capacity', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
         const hrDepartment = makeHRFacility(undefined, {
@@ -1615,6 +1680,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1635,7 +1701,7 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.pidState!.contractionIntegral).toBeGreaterThan(0);
     });
 
-    it('decays HR contraction integral when not at lower bound', () => {
+    it('resets HR contraction integral when contraction triggers', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
         const hrDepartment = makeHRFacility(undefined, {
@@ -1650,6 +1716,7 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 30,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
 
@@ -1668,6 +1735,23 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
         expect(hrDepartment.pidState!.contractionIntegral).toBeLessThan(30);
+    });
+});
+
+describe('computeProfitMargin', () => {
+    it('returns 0 when profitable or break-even', () => {
+        expect(computeProfitMargin(100, 1000)).toBe(0);
+        expect(computeProfitMargin(0, 1000)).toBe(0);
+    });
+
+    it('returns -1 when losing money with no revenue', () => {
+        expect(computeProfitMargin(-100, 0)).toBe(-1);
+        expect(computeProfitMargin(-1, -5)).toBe(-1);
+    });
+
+    it('returns the loss fraction bounded to -1 when unprofitable with revenue', () => {
+        expect(computeProfitMargin(-100, 1000)).toBeCloseTo(-0.1);
+        expect(computeProfitMargin(-2000, 1000)).toBe(-1);
     });
 });
 
@@ -1705,6 +1789,7 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
         planet.producedResources.Construction = 0;
@@ -1729,6 +1814,7 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
         planet.producedResources.Construction = 50;
@@ -1760,6 +1846,7 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
             },
         });
         planet.lastMarketResult.Construction = {
