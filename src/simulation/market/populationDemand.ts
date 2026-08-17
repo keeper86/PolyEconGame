@@ -194,7 +194,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
+                let quantityPerPerson = rate * (1 + bufferFillDeficit);
 
                 if (remainingWealth < 1.2 * rate * willingPrice) {
                     willingPrice = remainingWealth / rate / 1.2;

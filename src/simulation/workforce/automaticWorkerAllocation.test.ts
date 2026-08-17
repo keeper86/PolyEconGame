@@ -120,62 +120,45 @@ describe('updateAllocatedWorkers', () => {
 });
 
 describe('automaticWageAdjustment', () => {
-    it('raises the wage when profitable and understaffed', () => {
+    it('raises the wage when profitable and slots are idle', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-            wf[30][edu].active = 10;
-            agent.assets.p.allocatedWorkers[edu] = 100;
-            agent.assets.p.wagePerEdu[edu] = 100;
-        }
+        agent.assets.p.totalSlotCapacity = { none: 0, primary: 0, secondary: 0, tertiary: 100 };
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.lastMonthAcc.revenue = 100_000;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
     });
 
     it('lowers the wage when unprofitable', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-            wf[30][edu].active = 10;
-            agent.assets.p.wagePerEdu[edu] = 100;
-        }
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
 
         automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('raises the wage when fully staffed but turnover is too high', () => {
+    it('raises the wage gently when profitable with a gap covered by substitutes', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-            wf[30][edu].active = 100;
-            agent.assets.p.allocatedWorkers[edu] = 100;
-            agent.assets.p.wagePerEdu[edu] = 100;
-            wf[30][edu].voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 50;
-        }
+        agent.assets.p.totalSlotCapacity = { none: 0, primary: 0, secondary: 0, tertiary: 100 };
+        agent.assets.p.overqualifiedWorkers = { tertiary: { secondary: 100 } };
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.lastMonthAcc.revenue = 100_000;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
     });
 
-    it('lowers the wage when fully staffed with too little turnover', () => {
+    it('lowers the wage when profitable and fully staffed', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        const wf = agent.assets.p.workforceDemography!;
-        for (const edu of ['none', 'primary', 'secondary', 'tertiary'] as const) {
-            wf[30][edu].active = 100;
-            agent.assets.p.allocatedWorkers[edu] = 100;
-            agent.assets.p.wagePerEdu[edu] = 100;
-        }
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.lastMonthAcc.revenue = 100_000;
 
         automaticWageAdjustment(agentMap(agent), planet);

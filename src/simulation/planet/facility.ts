@@ -143,6 +143,8 @@ export type PidState = {
     smoothedSignal: number;
     profitEMA: number;
     revenueEMA: number;
+    profitAtExpansionScale: number;
+    profitAtContractionScale: number;
 };
 
 export type ProductionFacility = FacilityBase & {

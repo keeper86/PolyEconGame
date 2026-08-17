@@ -1,26 +1,33 @@
-import {
-    AFFORDABILITY_GAIN,
-    FILL_DEAD_ZONE,
-    FILL_EROSION,
-    FILL_GAIN,
-    FILL_KI,
-    FILL_KP,
-    MAX_WAGE,
-    MIN_WAGE,
-    RETENTION_GAIN,
-    TARGET_QUIT_RATIO,
-    TURNOVER_KI,
-    TURNOVER_KP,
-    WAGE_PID_IMAX,
-} from '../constants';
+import { MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
-import { nullWagePidState } from '../planet/facility';
+import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { operatingProfit } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
-import { totalActiveForEdu, totalOnboardingForEdu, totalVoluntaryDepartingForEdu } from './workforceAggregates';
+import { totalActiveForEdu } from './workforceAggregates';
+
+function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
+    const allFacilities: Array<Facility> = [
+        ...assets.productionFacilities,
+        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
+        ...assets.shipConstructionFacilities,
+    ];
+    if (assets.humanResourcesDepartment) {
+        allFacilities.push(assets.humanResourcesDepartment);
+    }
+    const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (const facility of allFacilities) {
+        const tick = facility.lastTickResults;
+        if (!tick) {
+            continue;
+        }
+        for (const edu of educationLevelKeys) {
+            exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
+        }
+    }
+    return exactUsed;
+}
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -78,7 +85,6 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     const lastMonthPurchases = assets.lastMonthAcc.purchases ?? 0;
     const lastClaims = assets.lastMonthAcc.claimPayments ?? 0;
     const monthlyRunRate = lastMonthWages + lastMonthPurchases + lastClaims;
-    // If we have no last month data yet, fall back to current month (which may still be incomplete)
     const effectiveMonthlyRunRate = monthlyRunRate > 0 ? monthlyRunRate : Number.MAX_SAFE_INTEGER;
     return effectiveMonthlyRunRate * 12;
 }
@@ -100,54 +106,56 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
-        const isProfitable = profitSignal > 0;
-        const pidState = assets.humanResourcesDepartment?.wagePidState ?? nullWagePidState();
+        const exactUsed = computeExactUsedByEdu(assets);
+        const totalSlotCapacity: Record<EducationLevelType, number> = assets.totalSlotCapacity ?? {
+            none: 0,
+            primary: 0,
+            secondary: 0,
+            tertiary: 0,
+        };
+        const overqualified = assets.overqualifiedWorkers ?? {};
+
+        const last = assets.lastMonthAcc;
+        const operationalProfit = last.revenue - last.wages - last.purchases - last.claimPayments;
+        const hasLastMonthData = last.revenue !== 0 || last.wages !== 0;
+        const isProfitable = hasLastMonthData
+            ? operationalProfit > 0
+            : assets.deposits - assets.monthAcc.depositsAtMonthStart > 0;
 
         for (const edu of educationLevelKeys) {
-            const target = assets.allocatedWorkers[edu] ?? 0;
-            const headcount = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
-            const fillShortfall = target > 0 ? (target - headcount) / target : 0;
-            const quitRatio = totalVoluntaryDepartingForEdu(workforce, edu) / Math.max(1, headcount);
+            const gap = totalSlotCapacity[edu] - exactUsed[edu];
 
-            let fillErr: number;
-            if (!isProfitable) {
-                fillErr = -AFFORDABILITY_GAIN;
-            } else if (fillShortfall > FILL_DEAD_ZONE) {
-                fillErr = FILL_GAIN * (fillShortfall - FILL_DEAD_ZONE);
-            } else if (fillShortfall < -FILL_DEAD_ZONE) {
-                fillErr = -FILL_EROSION;
+            let substitutesCovering = 0;
+            if (overqualified[edu]) {
+                for (const count of Object.values(overqualified[edu]!)) {
+                    substitutesCovering += count;
+                }
+            }
+
+            const idleSlots = gap - Math.floor(substitutesCovering);
+
+            let factor: number;
+            if (isProfitable && idleSlots > 0) {
+                factor = 1 + WAGE_ADJUSTMENT_RATE;
+            } else if (isProfitable && gap > 0) {
+                factor = 1 + WAGE_ADJUSTMENT_RATE * 0.25;
+            } else if (isProfitable && gap <= 0) {
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.25;
+            } else if (!isProfitable && idleSlots > 0) {
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 0.5;
             } else {
-                fillErr = 0;
+                factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
             }
 
-            let turnErr = RETENTION_GAIN * (quitRatio - TARGET_QUIT_RATIO);
-            if (!isProfitable) {
-                turnErr = Math.min(0, turnErr);
-            }
-
-            const cell = pidState[edu];
-            cell.fill.integral = Math.max(-WAGE_PID_IMAX, Math.min(WAGE_PID_IMAX, cell.fill.integral + fillErr));
-            cell.turnover.integral = Math.max(
-                -WAGE_PID_IMAX,
-                Math.min(WAGE_PID_IMAX, cell.turnover.integral + turnErr),
-            );
-            cell.fill.prevError = fillErr;
-            cell.turnover.prevError = turnErr;
-
-            const fillOut = FILL_KP * fillErr + FILL_KI * cell.fill.integral;
-            const turnOut = TURNOVER_KP * turnErr + TURNOVER_KI * cell.turnover.integral;
-
-            const currentWage = assets.wagePerEdu[edu] ?? MIN_WAGE;
-            const delta = fillOut + turnOut;
-            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, currentWage * (1 + delta)));
+            assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, assets.wagePerEdu[edu] * factor));
         }
 
-        // --- Enforce Monotonicity
-        const maxWage = assets.wagePerEdu[educationLevelKeys[0]] ?? MIN_WAGE;
-        for (let i = 1; i < educationLevelKeys.length - 1; i++) {
+        for (let i = 0; i < educationLevelKeys.length - 1; i++) {
             const currentEdu = educationLevelKeys[i];
-            assets.wagePerEdu[currentEdu] = Math.max(maxWage, assets.wagePerEdu[currentEdu]);
+            const nextEdu = educationLevelKeys[i + 1];
+            if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
+                assets.wagePerEdu[currentEdu] = assets.wagePerEdu[nextEdu];
+            }
         }
 
         if (agent.automated && agent.id !== planet.governmentId) {
@@ -181,10 +189,8 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                             }
                             const cat = demography[age].employed[edu];
                             if (cat.total <= 0) {
-                                // cat should be populated if agent has active workers there
                                 continue;
                             }
-
                             totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
                         }
                     }

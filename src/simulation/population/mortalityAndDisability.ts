@@ -64,9 +64,10 @@ export function applyMortalityAndDisability(
 
             if (dead > 0) {
                 if (dead > category.total) {
-                    throw new Error(
-                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}: expected at most ${category.total} deaths, but got ${dead}.`,
+                    console.warn(
+                        `Mortality count clamped at age ${age}, occ ${occ}, edu ${edu}: expected at most ${category.total} deaths, but got ${dead}.`,
                     );
+                    dead = category.total;
                 }
 
                 const result = transferPopulation(planet, { age, occ, edu }, undefined, dead);

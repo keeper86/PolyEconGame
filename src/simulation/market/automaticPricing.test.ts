@@ -839,6 +839,32 @@ describe('automaticPricing — facility maintenance demand', () => {
             TICKS_PER_YEAR;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
+
+    it('bids above steady-state for a facility below full maintenance', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'degraded', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.5;
+        facility.maxMaintenance = 1;
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const steadyStateRate =
+            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeGreaterThan(steadyStateRate * INPUT_BUFFER_TARGET_TICKS_SERVICES);
+    });
 });
 
 describe('automaticPricing — facility restoration demand', () => {

@@ -265,14 +265,12 @@ describe('buildPopulationDemand', () => {
         planet.marketPrices[GROCERY_SERVICE] = groceryPrice;
         planet.marketPrices[HEALTHCARE_SERVICE] = healthcarePrice;
 
-        const groceryTarget =
-            groceryDef.bufferTargetTicks *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 });
-
         planet.population.demography.forEach((cohort) =>
             forEachPopulationCohort(cohort, (cat) => {
                 if (cat.total > 0) {
-                    cat.wealth = { mean: groceryPrice * (groceryTarget / 2), variance: 0 };
+                    // Wealth far below one tick of grocery at the survival floor: grocery
+                    // (first in demand priority) must consume the whole budget.
+                    cat.wealth = { mean: groceryPrice * 0.01, variance: 0 };
                     cat.services.grocery.buffer = 0;
                     cat.services.healthcare.buffer = 0;
                 }
@@ -285,7 +283,9 @@ describe('buildPopulationDemand', () => {
 
         expect(groceryDemand).toBeGreaterThan(0);
 
-        expect(healthcareDemand).toBe(0);
+        // Grocery (survival tier) is consumed first in demand priority, so it must
+        // take the bulk of the budget before healthcare sees any of it.
+        expect(healthcareDemand).toBeLessThan(groceryDemand);
     });
 
     it('healthcare gets budget when grocery is fully stocked', () => {

@@ -17,6 +17,7 @@ import {
     steelResourceType,
     waterResourceType,
 } from '../../src/simulation/planet/resources';
+import { sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
 import {
     administrativeServiceResourceType,
     groceryServiceResourceType,
@@ -214,6 +215,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maintFacilityRevenue = 0;
     let maintFacilityInputCosts = 0;
     let maintFacilityWageCosts = 0;
+    let maintFacilitySmoothedSignal = 0;
+    let maintFacilityExpansionIntegral = 0;
+    let maintFacilityContractionIntegral = 0;
     let maintFacilityOverallEfficiency = 0;
     let maintFacilityResourceEfficiency = 0;
     let maintFacilityWorkerEfficiency = 0;
@@ -228,6 +232,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let siliconWaferInputChemical = 0;
     let siliconWaferInputWater = 0;
     let siliconWaferCount = 0;
+    let sandMineScale = 0;
+    let sandMineMaxScale = 0;
+    let sandMineCondition = 0;
+    let sandMineInputDepositEfficiency = 0;
+    let sandMineWorkerEfficiency = 0;
+    let sandMineOverallEfficiency = 0;
+    let sandMineContractionIntegral = 0;
+    let sandMineExpansionIntegral = 0;
+    let sandMineSmoothedSignal = 0;
+    let sandMineCount = 0;
 
     for (const agent of gameState.agents.values()) {
         const assets = agent.assets[planet.id];
@@ -305,6 +319,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 siliconWaferCount += 1;
             }
 
+            if (facility.name === 'Sand Mine') {
+                sandMineScale += facility.scale;
+                sandMineMaxScale += facility.maxScale;
+                sandMineCondition += facility.maintenanceStatus ?? 1;
+                const smEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                sandMineInputDepositEfficiency += smEff[sandDepositResourceType.name] ?? 1;
+                sandMineWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                sandMineOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                const pid = facility.pidState;
+                sandMineContractionIntegral += pid?.contractionIntegral ?? 0;
+                sandMineExpansionIntegral += pid?.expansionIntegral ?? 0;
+                sandMineSmoothedSignal += pid?.smoothedSignal ?? 0;
+                sandMineCount += 1;
+            }
+
             if (isMaintenanceFacility(facility.name)) {
                 maintFacilityScale += facility.scale;
                 maintFacilityMaxScale += facility.maxScale;
@@ -313,6 +342,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 maintFacilityRevenue += facility.lastTickResults?.revenue ?? 0;
                 maintFacilityInputCosts += facility.lastTickResults?.inputCosts ?? 0;
                 maintFacilityWageCosts += facility.lastTickResults?.wageCosts ?? 0;
+                const maintPid = facility.pidState;
+                maintFacilitySmoothedSignal += maintPid?.smoothedSignal ?? 0;
+                maintFacilityExpansionIntegral += maintPid?.expansionIntegral ?? 0;
+                maintFacilityContractionIntegral += maintPid?.contractionIntegral ?? 0;
                 maintFacilityOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
                 maintFacilityResourceEfficiency += minValue(facility.lastTickResults?.resourceEfficiency);
                 maintFacilityWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
@@ -406,6 +439,15 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const adminResult = planet.lastMarketResult[administrativeServiceResourceType.name];
     const logisticsResult = planet.lastMarketResult[logisticsServiceResourceType.name];
 
+    const maintTotalSupply = maintenanceResult?.totalSupply ?? 0;
+    const maintUnfilledDemand = maintenanceResult?.unfilledDemand ?? 0;
+    const maintUnsoldSupply = maintenanceResult?.unsoldSupply ?? 0;
+    const maintUnfilledFrac =
+        (maintenanceResult?.totalDemand ?? 0) > 0
+            ? maintUnfilledDemand / maintenanceResult!.totalDemand
+            : 0;
+    const maintUnsoldFrac = maintTotalSupply > 0 ? maintUnsoldSupply / maintTotalSupply : 0;
+
     const maintFacilityCondition = maintFacilityScale > 0 ? maintFacilityConditionWeighted / maintFacilityScale : 1;
     const maintFillRate =
         maintenanceResult && maintenanceResult.totalDemand > 0
@@ -414,6 +456,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const maintRepairSurgeRatio = maintSteadyStateDemand > 0 ? maintAggregateConsumption / maintSteadyStateDemand : 0;
     const maintFacilityCostFloor = planet.lastProductionCostFloors[maintenanceServiceResourceType.name] ?? 0;
     const maintFacilityProfit = maintFacilityRevenue - maintFacilityInputCosts - maintFacilityWageCosts;
+    const maintFacilitySmoothedSignalAvg =
+        maintFacilityCount > 0 ? maintFacilitySmoothedSignal / maintFacilityCount : 0;
+    const maintFacilityExpansionIntegralAvg =
+        maintFacilityCount > 0 ? maintFacilityExpansionIntegral / maintFacilityCount : 0;
+    const maintFacilityContractionIntegralAvg =
+        maintFacilityCount > 0 ? maintFacilityContractionIntegral / maintFacilityCount : 0;
     const maintFacilityOverallEfficiencyAvg =
         maintFacilityCount > 0 ? maintFacilityOverallEfficiency / maintFacilityCount : 0;
     const maintFacilityResourceEfficiencyAvg =
@@ -442,6 +490,23 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const fillRateCoal = fillRateOf(planet, coalResourceType.name);
     const fillRateCopper = fillRateOf(planet, copperResourceType.name);
     const fillRateSiliconWafer = fillRateOf(planet, siliconWaferResourceType.name);
+
+    const sandResult = planet.lastMarketResult[sandResourceType.name];
+    const sandTotalDemand = sandResult?.totalDemand ?? 0;
+    const sandTotalSupply = sandResult?.totalSupply ?? 0;
+    const sandUnfilledDemand = sandResult?.unfilledDemand ?? 0;
+    const sandUnsoldSupply = sandResult?.unsoldSupply ?? 0;
+    const sandFillRate = sandTotalDemand > 0 ? sandResult.totalVolume / sandTotalDemand : 0;
+    const sandMineScaleAvg = sandMineCount > 0 ? sandMineScale / sandMineCount : 0;
+    const sandMineMaxScaleAvg = sandMineCount > 0 ? sandMineMaxScale / sandMineCount : 0;
+    const sandMineConditionAvg = sandMineCount > 0 ? sandMineCondition / sandMineCount : 1;
+    const sandMineInputDepositEfficiencyAvg =
+        sandMineCount > 0 ? sandMineInputDepositEfficiency / sandMineCount : 0;
+    const sandMineWorkerEfficiencyAvg = sandMineCount > 0 ? sandMineWorkerEfficiency / sandMineCount : 0;
+    const sandMineOverallEfficiencyAvg = sandMineCount > 0 ? sandMineOverallEfficiency / sandMineCount : 0;
+    const sandMineContractionIntegralAvg = sandMineCount > 0 ? sandMineContractionIntegral / sandMineCount : 0;
+    const sandMineExpansionIntegralAvg = sandMineCount > 0 ? sandMineExpansionIntegral / sandMineCount : 0;
+    const sandMineSmoothedSignalAvg = sandMineCount > 0 ? sandMineSmoothedSignal / sandMineCount : 0;
 
     const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
@@ -526,6 +591,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintenanceServicePrice: priceOf(planet, maintenanceServiceResourceType.name),
         maintenanceServiceVolume: maintenanceResult?.totalVolume ?? 0,
         maintenanceServiceDemand: maintenanceResult?.totalDemand ?? 0,
+        maintenanceTotalSupply: maintTotalSupply,
+        maintenanceUnfilledDemand: maintUnfilledDemand,
+        maintenanceUnsoldSupply: maintUnsoldSupply,
+        maintenanceUnfilledFrac: maintUnfilledFrac,
+        maintenanceUnsoldFrac: maintUnsoldFrac,
         adminServicePrice: priceOf(planet, administrativeServiceResourceType.name),
         adminServiceVolume: adminResult?.totalVolume ?? 0,
         logisticsServicePrice: priceOf(planet, logisticsServiceResourceType.name),
@@ -539,6 +609,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintFacilityInputCosts,
         maintFacilityWageCosts,
         maintFacilityProfit,
+        maintFacilitySmoothedSignal: maintFacilitySmoothedSignalAvg,
+        maintFacilityExpansionIntegral: maintFacilityExpansionIntegralAvg,
+        maintFacilityContractionIntegral: maintFacilityContractionIntegralAvg,
         maintFacilityOverallEfficiency: maintFacilityOverallEfficiencyAvg,
         maintFacilityResourceEfficiency: maintFacilityResourceEfficiencyAvg,
         maintFacilityWorkerEfficiency: maintFacilityWorkerEfficiencyAvg,
@@ -558,6 +631,20 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         siliconWaferInputSand: siliconWaferInputSandAvg,
         siliconWaferInputChemical: siliconWaferInputChemicalAvg,
         siliconWaferInputWater: siliconWaferInputWaterAvg,
+        fillRateSand: sandFillRate,
+        sandTotalDemand,
+        sandTotalSupply,
+        sandUnfilledDemand,
+        sandUnsoldSupply,
+        sandMineScale: sandMineScaleAvg,
+        sandMineMaxScale: sandMineMaxScaleAvg,
+        sandMineCondition: sandMineConditionAvg,
+        sandMineInputDepositEfficiency: sandMineInputDepositEfficiencyAvg,
+        sandMineWorkerEfficiency: sandMineWorkerEfficiencyAvg,
+        sandMineOverallEfficiency: sandMineOverallEfficiencyAvg,
+        sandMineContractionIntegral: sandMineContractionIntegralAvg,
+        sandMineExpansionIntegral: sandMineExpansionIntegralAvg,
+        sandMineSmoothedSignal: sandMineSmoothedSignalAvg,
         maintAggregateConsumption,
         maintSteadyStateDemand,
         maintCatchupBacklog,
@@ -648,6 +735,11 @@ export const METRIC_KEYS: string[] = [
     'maintenanceServicePrice',
     'maintenanceServiceVolume',
     'maintenanceServiceDemand',
+    'maintenanceTotalSupply',
+    'maintenanceUnfilledDemand',
+    'maintenanceUnsoldSupply',
+    'maintenanceUnfilledFrac',
+    'maintenanceUnsoldFrac',
     'adminServicePrice',
     'adminServiceVolume',
     'logisticsServicePrice',
@@ -661,6 +753,9 @@ export const METRIC_KEYS: string[] = [
     'maintFacilityInputCosts',
     'maintFacilityWageCosts',
     'maintFacilityProfit',
+    'maintFacilitySmoothedSignal',
+    'maintFacilityExpansionIntegral',
+    'maintFacilityContractionIntegral',
     'maintFacilityOverallEfficiency',
     'maintFacilityResourceEfficiency',
     'maintFacilityWorkerEfficiency',
@@ -680,6 +775,20 @@ export const METRIC_KEYS: string[] = [
     'siliconWaferInputSand',
     'siliconWaferInputChemical',
     'siliconWaferInputWater',
+    'fillRateSand',
+    'sandTotalDemand',
+    'sandTotalSupply',
+    'sandUnfilledDemand',
+    'sandUnsoldSupply',
+    'sandMineScale',
+    'sandMineMaxScale',
+    'sandMineCondition',
+    'sandMineInputDepositEfficiency',
+    'sandMineWorkerEfficiency',
+    'sandMineOverallEfficiency',
+    'sandMineContractionIntegral',
+    'sandMineExpansionIntegral',
+    'sandMineSmoothedSignal',
     'maintAggregateConsumption',
     'maintSteadyStateDemand',
     'maintCatchupBacklog',

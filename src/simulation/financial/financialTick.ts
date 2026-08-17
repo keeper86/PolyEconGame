@@ -111,6 +111,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             }
         }
 
+        const perCapitaWage = wageBill / totalAgentWorkerCount;
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
             for (let li = 0; li < educationLevelKeys.length; li++) {
@@ -137,7 +138,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                 if (popCat.total <= 0) {
                     continue;
                 }
-                creditWageIncome(bank, popCat, assets.wagePerEdu[edu], agentWorkersHere);
+                creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
             }
         }
     });

@@ -1,4 +1,3 @@
-import assert from 'assert';
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
@@ -27,7 +26,12 @@ export {
     type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityProfitThisTick, computeFacilitySignal, computeProfitMargin } from './automaticProductionScale/signalComputation';
+export {
+    computeFacilityProfitThisTick,
+    computeFacilitySignal,
+    computeProfitMargin,
+    estimateProfitAtScale,
+} from './automaticProductionScale/signalComputation';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -62,7 +66,7 @@ import {
     type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-import { computeFacilityProfitThisTick, computeFacilitySignal, computeProfitMargin } from './automaticProductionScale/signalComputation';
+import { computeFacilitySignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 
 const HR_TARGET_FILL_RATE = 0.85;
@@ -327,6 +331,13 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         }
         const hasOwnConstruction = agentHasOwnConstructionFacility(assets.productionFacilities);
 
+        const smoothedSellThroughByResource: Record<string, number> = {};
+        for (const [name, offer] of Object.entries(assets.market?.sell ?? {})) {
+            if (offer.smoothedSellThrough !== undefined) {
+                smoothedSellThroughByResource[name] = offer.smoothedSellThrough;
+            }
+        }
+
         for (const facility of assets.productionFacilities) {
             if (facility.construction !== null && facility.construction.type === 'new') {
                 continue;
@@ -341,16 +352,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
-            const profitThisTick = computeFacilityProfitThisTick(facility);
-            state.profitEMA = 0.1 * profitThisTick + 0.9 * (state.profitEMA ?? 0);
-            state.revenueEMA = 0.1 * (facility.lastTickResults.revenue ?? 0) + 0.9 * (state.revenueEMA ?? 0);
-
-            const shortageSignal = computeFacilitySignal(facility, planet);
-            const profitMargin = computeProfitMargin(state.profitEMA, state.revenueEMA);
-            const rawSignal = profitMargin < 0 ? profitMargin : shortageSignal;
-
-            assert(rawSignal >= -1, 'Signal should be >= -1, but got ' + rawSignal);
-            assert(rawSignal <= 1, 'Signal should be capped at 1, but got' + rawSignal);
+            const rawSignal = computeFacilitySignal(facility, planet, smoothedSellThroughByResource);
 
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;

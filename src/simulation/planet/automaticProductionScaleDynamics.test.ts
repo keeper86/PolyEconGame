@@ -6,17 +6,19 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '../constants';
 import { fillRateFactor } from '../market/automaticPricing';
-import { makePlanet, makeProductionFacility } from '../utils/testHelper';
+import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import {
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_IMAX,
     computeFacilitySignal,
     computePidDelta,
+    estimateProfitAtScale,
     getDefaultPidState,
+    updateAgentProductionScale,
 } from './automaticProductionScale';
 import type { ProductionFacility } from './facility';
-import type { MarketResult, Planet } from './planet';
+import type { GameState, MarketResult, Planet } from './planet';
 import { maintenanceServiceResourceType } from './services';
 
 const RESOURCE_NAME = maintenanceServiceResourceType.name;
@@ -44,9 +46,12 @@ function createMaintenanceChainFixture(overrides?: {
     price?: number;
     scale?: number;
     maxScale?: number;
+    producesQuantity?: number;
     revenue?: number;
     wageCosts?: number;
     inputCosts?: number;
+    resourceEfficiency?: Record<string, number>;
+    overallEfficiency?: number;
 }): ChainFixture {
     const unfilledFrac = overrides?.unfilledFrac ?? 0;
     const price = overrides?.price ?? 10;
@@ -66,13 +71,35 @@ function createMaintenanceChainFixture(overrides?: {
         name: 'Maintenance Facility',
         maxScale: overrides?.maxScale ?? 1,
         scale: overrides?.scale ?? 1,
-        produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+        produces: [{ resource: maintenanceServiceResourceType, quantity: overrides?.producesQuantity ?? 100 }],
     });
     facility.lastTickResults.revenue = overrides?.revenue ?? 0;
     facility.lastTickResults.wageCosts = overrides?.wageCosts ?? 0;
     facility.lastTickResults.inputCosts = overrides?.inputCosts ?? 0;
+    facility.lastTickResults.resourceEfficiency = overrides?.resourceEfficiency ?? {};
+    facility.lastTickResults.overallEfficiency = overrides?.overallEfficiency ?? 1;
 
     return { facility, planet };
+}
+
+function makeChainGameState(planet: Planet, facility: ProductionFacility): GameState {
+    const agent = makeAgent('maint-agent', planet.id, 'Maintenance Co', {
+        automated: true,
+        assets: {
+            [planet.id]: makeAgentPlanetAssets(planet.id, { productionFacilities: [facility] }),
+        },
+    });
+    return {
+        tick: 0,
+        planets: new Map([[planet.id, planet]]),
+        agents: new Map([[agent.id, agent]]),
+        shipCapitalMarket: { tradeHistory: [], emaPrice: {} },
+        forexMarketMakers: new Map(),
+        shipbuilderAgents: new Map(),
+        arbitrageTraders: new Map(),
+        tickerEvents: [],
+        nextEventId: 1,
+    };
 }
 
 function simulateServiceBufferFill({
@@ -147,6 +174,46 @@ describe('service buffer fill dynamics', () => {
     });
 });
 
+describe('computeFacilitySignal (demand-based)', () => {
+    it('is positive on shortage and negative on oversupply', () => {
+        const shortage = createMaintenanceChainFixture({ unfilledFrac: 0.8 });
+        expect(computeFacilitySignal(shortage.facility, shortage.planet)).toBeCloseTo(0.8, 5);
+
+        const oversupply = createMaintenanceChainFixture({ unfilledFrac: 0 });
+        expect(computeFacilitySignal(oversupply.facility, oversupply.planet, { [RESOURCE_NAME]: 0.6 })).toBeCloseTo(
+            -0.4,
+            5,
+        );
+    });
+
+    it('treats full sell-through as no surplus regardless of market stock', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
+        fixture.planet.lastMarketResult[RESOURCE_NAME] = makeMarketResult({
+            totalSupply: 1000,
+            unsoldSupply: 900,
+            totalDemand: 100,
+            unfilledDemand: 0,
+        });
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 1 })).toBe(0);
+    });
+
+    it('is zero when supply and demand are balanced', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 1 })).toBeCloseTo(0, 5);
+    });
+
+    it('is zero when there is no market data', () => {
+        const { facility, planet } = createMaintenanceChainFixture({});
+        planet.lastMarketResult = {};
+        expect(computeFacilitySignal(facility, planet, { [RESOURCE_NAME]: 1 })).toBe(0);
+    });
+
+    it('treats a missing sell-through as fully sold', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.3 });
+        expect(computeFacilitySignal(fixture.facility, fixture.planet)).toBeCloseTo(0.3, 5);
+    });
+});
+
 describe('PID utilization response', () => {
     it('converges scale to maxScale in well under 100 ticks of sustained shortage', () => {
         const { facility, planet } = createMaintenanceChainFixture({ unfilledFrac: 0.8, scale: 0.5, maxScale: 1 });
@@ -194,5 +261,104 @@ describe('the race between price and supply', () => {
         const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
         const doublingTicks = Math.log(2) / Math.log(factor);
         expect(EXPANSION_INTEGRAL_THRESHOLD / doublingTicks).toBeGreaterThan(2);
+    });
+});
+
+describe('profitable-but-input-starved maintenance facility must not spuriously contract', () => {
+    it('holds capacity when the output market is short and the facility is profitable', () => {
+        const { facility, planet } = createMaintenanceChainFixture({
+            unfilledFrac: 0.8,
+            maxScale: 100,
+            scale: 100,
+            producesQuantity: 1,
+            revenue: 200,
+            wageCosts: 100,
+            inputCosts: 50,
+            resourceEfficiency: { Steel: 0.5 },
+            overallEfficiency: 0.5,
+        });
+        const gameState = makeChainGameState(planet, facility);
+
+        for (let tick = 0; tick < 60; tick++) {
+            updateAgentProductionScale(gameState, planet);
+        }
+
+        expect(facility.maxScale).toBe(100);
+    });
+
+    it('holds capacity when the output market is short and the facility is input-starved and momentarily unprofitable', () => {
+        const { facility, planet } = createMaintenanceChainFixture({
+            unfilledFrac: 0.8,
+            maxScale: 100,
+            scale: 100,
+            producesQuantity: 1,
+            revenue: 0,
+            wageCosts: 100,
+            inputCosts: 0,
+            resourceEfficiency: { Steel: 0.5 },
+            overallEfficiency: 0.5,
+        });
+        const gameState = makeChainGameState(planet, facility);
+
+        for (let tick = 0; tick < 60; tick++) {
+            updateAgentProductionScale(gameState, planet);
+        }
+
+        expect(facility.maxScale).toBe(100);
+    });
+});
+
+describe('estimateProfitAtScale (marginal profit)', () => {
+    it('price-response: a higher output price raises profit at expansion scale', () => {
+        const cheap = createMaintenanceChainFixture({ price: 10, scale: 100, maxScale: 100, producesQuantity: 1 });
+        const expensive = createMaintenanceChainFixture({ price: 20, scale: 100, maxScale: 100, producesQuantity: 1 });
+        const target = 100 * 1.025;
+
+        expect(estimateProfitAtScale(expensive.facility, expensive.planet, target)).toBeGreaterThan(
+            estimateProfitAtScale(cheap.facility, cheap.planet, target),
+        );
+    });
+
+    it('input-scarcity non-linearity: expansion does not raise profit for an input-starved facility', () => {
+        const fixture = createMaintenanceChainFixture({
+            scale: 100,
+            maxScale: 100,
+            producesQuantity: 1,
+            wageCosts: 100,
+            resourceEfficiency: { Steel: 0.5 },
+            overallEfficiency: 0.5,
+        });
+
+        const current = estimateProfitAtScale(fixture.facility, fixture.planet, 100);
+        const expanded = estimateProfitAtScale(fixture.facility, fixture.planet, 100 * 1.025);
+
+        expect(expanded).toBeLessThan(current);
+    });
+
+    it('expand decision: a non-starved profitable facility is more profitable at expansion scale', () => {
+        const fixture = createMaintenanceChainFixture({
+            unfilledFrac: 0.8,
+            price: 12,
+            scale: 50,
+            maxScale: 100,
+            producesQuantity: 1,
+        });
+
+        expect(estimateProfitAtScale(fixture.facility, fixture.planet, 50 * 1.025)).toBeGreaterThan(
+            estimateProfitAtScale(fixture.facility, fixture.planet, 50),
+        );
+    });
+
+    it('contract decision: an unprofitable facility is more profitable at contraction scale', () => {
+        const fixture = createMaintenanceChainFixture({
+            scale: 100,
+            maxScale: 100,
+            producesQuantity: 1,
+            wageCosts: 1000,
+        });
+
+        expect(estimateProfitAtScale(fixture.facility, fixture.planet, 100 * 0.975)).toBeGreaterThan(
+            estimateProfitAtScale(fixture.facility, fixture.planet, 100),
+        );
     });
 });

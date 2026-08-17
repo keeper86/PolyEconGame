@@ -39,6 +39,7 @@ describe('preProductionFinancialTick', () => {
     it('deducts wages from deposits when agent has sufficient funds', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
+        agent.automated = false;
 
         addWorker(assets, 25, 'none', 10);
 
@@ -51,6 +52,7 @@ describe('preProductionFinancialTick', () => {
     it('grants a wage coverage loan when deposits are insufficient for wages', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 1_000;
+        agent.automated = false;
 
         addWorker(assets, 25, 'none', 2000);
 
@@ -106,9 +108,10 @@ describe('preProductionFinancialTick', () => {
         expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(initialPopWealth + 0.3, -6);
     });
 
-    it('credits each education level its own wage instead of a uniform average', () => {
+    it('credits a uniform per-capita wage across education levels', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
+        agent.automated = false;
         assets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 3.0 };
 
         addWorker(assets, 30, 'none', 10);
@@ -123,10 +126,14 @@ describe('preProductionFinancialTick', () => {
 
         preProductionFinancialTick(agentMap(agent), planet);
 
+        const perCapitaWage = 25 / 15;
         expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 25, -6);
-        expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(noneWealthBefore + 1, -6);
+        expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(
+            noneWealthBefore + perCapitaWage,
+            -6,
+        );
         expect(planet.population.demography[30].employed.tertiary.wealth.mean).toBeCloseTo(
-            tertiaryWealthBefore + 3,
+            tertiaryWealthBefore + perCapitaWage,
             -6,
         );
         expect(assets.deposits).toBe(10_000 - 25);

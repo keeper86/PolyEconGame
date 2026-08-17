@@ -141,6 +141,20 @@ function evaluateBands(yearly: Map<number, MetricMap>, bands: MetricBand[]): Ban
     });
 }
 
+function formatDuration(ms: number): string {
+    const totalSeconds = Math.round(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+        return `${hours}h${minutes}m${seconds}s`;
+    }
+    if (minutes > 0) {
+        return `${minutes}m${seconds}s`;
+    }
+    return `${seconds}s`;
+}
+
 function runScenario(
     scenario: Scenario,
     years: number,
@@ -177,9 +191,20 @@ function runScenario(
             monthly.push(sample);
         }
         if (t % TICKS_PER_YEAR === 0) {
+            const year = t / TICKS_PER_YEAR;
+            const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
+            const msPerTick = elapsedMs / t;
+            const etaMs = msPerTick * (totalTicks - t);
+            const lastSample = monthly[monthly.length - 1];
+            console.log(
+                `[${scenario.name}] y${year}/${years}  pop=${lastSample?.totalPopulation?.toFixed(0) ?? 'n/a'}  ` +
+                    `condition=${lastSample?.avgFacilityCondition?.toFixed(3) ?? 'n/a'}  ` +
+                    `${formatDuration(elapsedMs)} elapsed, ~${formatDuration(etaMs)} left`,
+            );
+
             const actual = sampleActualScales(gameState);
             const inFlight = sampleInFlightConstruction(gameState);
-            scaleGaps.push({ year: t / TICKS_PER_YEAR, ...computeGapMetrics(population, actual, inFlight) });
+            scaleGaps.push({ year, ...computeGapMetrics(population, actual, inFlight) });
         }
     }
 
@@ -230,6 +255,10 @@ function main(): void {
     }
 
     const years = Number(arg('years') ?? scenario.years);
+    const agentsPerProductArg = arg('agentsPerProduct');
+    if (agentsPerProductArg !== undefined) {
+        scenario.world = { ...scenario.world, agentsPerProduct: Number(agentsPerProductArg) };
+    }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;
 

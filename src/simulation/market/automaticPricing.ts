@@ -22,7 +22,7 @@ import {
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import {
-    facilityMaintenanceConsumptionPerTick,
+    facilityMaintenanceRepairNeedPerTick,
     facilityRestorationCapacityPerTick,
 } from '../planet/facilityMaintenance';
 import type {
@@ -256,7 +256,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         if (isFacilityOperating(facility)) {
             const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
-            const facilityTarget = facilityMaintenanceConsumptionPerTick(facility) * cfg.inputBufferTargetTicks;
+            const facilityTarget = facilityMaintenanceRepairNeedPerTick(facility) * cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;

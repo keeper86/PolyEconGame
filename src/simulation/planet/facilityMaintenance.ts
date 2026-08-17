@@ -37,6 +37,15 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
     );
 }
 
+export function facilityMaintenanceRepairNeedPerTick(facility: Facility): number {
+    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
+    const degradation = (usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+    const degradedStatus = Math.max(0, facility.maintenanceStatus - degradation);
+    const repairCap = Math.max(0, facility.maxMaintenance - degradedStatus);
+    const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
+    return repairFraction * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+}
+
 export const facilityFullRestoreCost = (facility: Facility): number =>
     calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
 

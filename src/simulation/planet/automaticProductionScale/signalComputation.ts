@@ -1,4 +1,6 @@
 import assert from 'assert';
+import { PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP, TARGET_FILL_RATE, TARGET_FILL_RATE_SERVICES } from '../../constants';
+import { fillRateFactor } from '../../market/automaticPricing';
 import type { ProductionFacility } from '../facility';
 import type { Planet } from '../planet';
 
@@ -19,18 +21,20 @@ export function computeProfitMargin(profitEMA: number, revenueEMA: number): numb
     return Math.max(-1, profitEMA / revenueEMA);
 }
 
-export function computeFacilitySignal(facility: ProductionFacility, planet: Planet): number {
+export function computeFacilitySignal(
+    facility: ProductionFacility,
+    planet: Planet,
+    smoothedSellThroughByResource: Readonly<Record<string, number>> = {},
+): number {
     const { produces } = facility;
 
-    let weightedUnfilledSum = 0;
+    let weightedSignalSum = 0;
     let totalWeight = 0;
-    let noData = 0;
 
     for (const output of produces) {
         const lastResult = planet.lastMarketResult[output.resource.name];
 
         if (!lastResult) {
-            noData++;
             continue;
         }
 
@@ -40,28 +44,60 @@ export function computeFacilitySignal(facility: ProductionFacility, planet: Plan
         const totalDemand = lastResult.totalDemand;
         const unfilledFrac = totalDemand > 0 ? lastResult.unfilledDemand / totalDemand : 0;
 
-        assert(
-            unfilledFrac >= 0 && unfilledFrac <= 1,
-            'Unfilled fraction should be between 0 and 1, but got' + unfilledFrac,
-        );
+        const smoothedSellThrough = smoothedSellThroughByResource[output.resource.name];
+        const unsoldFrac = smoothedSellThrough !== undefined ? Math.max(0, 1 - smoothedSellThrough) : 0;
 
-        weightedUnfilledSum += price * unfilledFrac;
+        weightedSignalSum += price * (unfilledFrac - unsoldFrac);
         totalWeight += price;
     }
 
     if (totalWeight === 0) {
-        if (noData !== produces.length) {
-            console.error('No market data for any outputs of facility', facility.id);
-        }
         return 0;
     }
 
-    const shortageSignal = weightedUnfilledSum / totalWeight;
+    const signal = weightedSignalSum / totalWeight;
 
     assert(
-        isFinite(shortageSignal) && shortageSignal >= 0 && shortageSignal <= 1,
-        'Shortage signal should be between 0 and 1, but got' + shortageSignal,
+        isFinite(signal) && signal >= -1 && signal <= 1,
+        'Facility signal should be between -1 and 1, but got' + signal,
     );
 
-    return shortageSignal;
+    return signal;
+}
+
+function clamp01(value: number): number {
+    return Math.max(0, Math.min(1, value));
+}
+
+export function estimateProfitAtScale(facility: ProductionFacility, planet: Planet, targetScale: number): number {
+    const currentScale = facility.scale;
+    const efficiency = facility.lastTickResults.overallEfficiency ?? 0;
+    const wages = facility.lastTickResults.wageCosts ?? 0;
+    const inputCosts = facility.lastTickResults.inputCosts ?? 0;
+
+    const resourceEfficiencies = Object.values(facility.lastTickResults.resourceEfficiency ?? {});
+    const inputStarved = resourceEfficiencies.length > 0 && Math.min(...resourceEfficiencies) < 1;
+
+    let revenue = 0;
+    for (const output of facility.produces) {
+        const result = planet.lastMarketResult[output.resource.name];
+        if (!result || result.totalDemand <= 0) {
+            continue;
+        }
+
+        const targetFillRate = output.resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE;
+        const fillRate = result.totalDemand > 0 ? clamp01(1 - result.unfilledDemand / result.totalDemand) : 1;
+        const fairPrice =
+            result.clearingPrice * fillRateFactor(fillRate, targetFillRate, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+
+        const effectiveScale = inputStarved ? Math.min(targetScale, currentScale) : targetScale;
+        const outputAtScale = output.quantity * effectiveScale * efficiency;
+        const sold = Math.min(outputAtScale, result.totalDemand);
+        revenue += fairPrice * sold;
+    }
+
+    const scaleRatio = currentScale > 0 ? targetScale / currentScale : 1;
+    const cost = (wages + inputCosts) * scaleRatio;
+
+    return revenue - cost;
 }

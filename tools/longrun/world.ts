@@ -89,7 +89,7 @@ function computeTargets(
     for (const key of Object.keys(FACILITY_SCALE_PER_BILLION)) {
         const useSolver = solverScales !== undefined && !SOLVER_SEED_BASELINE_FLOOR_KEYS.has(key);
         const baseScale = useSolver
-            ? Math.max(1, Math.round((solverScales[key] ?? 0) * solverSeedSlack))
+            ? Math.max(1, Math.round((solverScales[key] ?? 0) * (solverSeedSlack ?? 1)))
             : Math.max(1, Math.round(FACILITY_SCALE_PER_BILLION[key] * popB));
         const totalScale =
             key === 'maintenanceFacility' ? Math.max(1, Math.round(baseScale * (maintenanceScaleFactor ?? 1))) : baseScale;
@@ -135,7 +135,7 @@ const BASE_RESOURCES: Array<{ resource: ReturnType<typeof makePool>['resource'];
     { resource: oilReservoirResourceType, quantity: 1_000_000_000, renewable: false },
     { resource: forestResourceType, quantity: 500_000_000, renewable: true },
     { resource: copperDepositResourceType, quantity: 500_000_000, renewable: false },
-    { resource: sandDepositResourceType, quantity: 500_000_000, renewable: false },
+    { resource: sandDepositResourceType, quantity: 5_000_000_000, renewable: false },
     { resource: limestoneDepositResourceType, quantity: 500_000_000, renewable: false },
     { resource: stoneDepositResourceType, quantity: 1_000_000_000, renewable: false },
 ];

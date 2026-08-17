@@ -64,6 +64,8 @@ export const STARTER_LOAN_AMOUNT = 5_000_000;
 export const MIN_WAGE = 1.0;
 export const MAX_WAGE = 1000.0;
 
+export const WAGE_ADJUSTMENT_RATE = 0.02;
+
 export const LABOR_SHARE = 0.5;
 
 export const SEARCH_HORIZON_TICKS = 3 * TICKS_PER_MONTH;
