@@ -24,7 +24,7 @@ export function computeProfitMargin(profitEMA: number, revenueEMA: number): numb
 export function computeFacilitySignal(
     facility: ProductionFacility,
     planet: Planet,
-    smoothedSellThroughByResource: Readonly<Record<string, number>> = {},
+    flowSellThroughByResource: Readonly<Record<string, number>> = {},
 ): number {
     const { produces } = facility;
 
@@ -44,10 +44,10 @@ export function computeFacilitySignal(
         const totalDemand = lastResult.totalDemand;
         const unfilledFrac = totalDemand > 0 ? lastResult.unfilledDemand / totalDemand : 0;
 
-        const smoothedSellThrough = smoothedSellThroughByResource[output.resource.name];
-        const unsoldFrac = smoothedSellThrough !== undefined ? Math.max(0, 1 - smoothedSellThrough) : 0;
+        const flowSellThrough = flowSellThroughByResource[output.resource.name];
+        const flowDeviation = flowSellThrough !== undefined ? flowSellThrough - 1 : 0;
 
-        weightedSignalSum += price * (unfilledFrac - unsoldFrac);
+        weightedSignalSum += price * (unfilledFrac + flowDeviation);
         totalWeight += price;
     }
 
@@ -55,14 +55,7 @@ export function computeFacilitySignal(
         return 0;
     }
 
-    const signal = weightedSignalSum / totalWeight;
-
-    assert(
-        isFinite(signal) && signal >= -1 && signal <= 1,
-        'Facility signal should be between -1 and 1, but got' + signal,
-    );
-
-    return signal;
+    return Math.max(-1, Math.min(1, weightedSignalSum / totalWeight));
 }
 
 function clamp01(value: number): number {

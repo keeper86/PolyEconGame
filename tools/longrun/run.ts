@@ -189,6 +189,12 @@ function runScenario(
             sample.birthsThisMonth = Math.max(0, sample.totalPopulation - prevPopulation + sample.deathsThisMonth);
             prevPopulation = sample.totalPopulation;
             monthly.push(sample);
+            if (sample.totalPopulation < 1) {
+                console.log(
+                    `[${scenario.name}] population extinct at y${(t / TICKS_PER_YEAR).toFixed(2)}, aborting run`,
+                );
+                break;
+            }
         }
         if (t % TICKS_PER_YEAR === 0) {
             const year = t / TICKS_PER_YEAR;

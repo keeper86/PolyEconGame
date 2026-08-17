@@ -17,9 +17,10 @@ import {
     steelResourceType,
     waterResourceType,
 } from '../../src/simulation/planet/resources';
-import { sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
+import { coalDepositResourceType, ironOreDepositResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
 import {
     administrativeServiceResourceType,
+    constructionServiceResourceType,
     groceryServiceResourceType,
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
@@ -59,6 +60,10 @@ function isFoodChainFacility(name: string): boolean {
 
 function isMaintenanceFacility(name: string): boolean {
     return facilityNameToKey(name) === 'maintenanceFacility';
+}
+
+function isConstructionFacility(name: string): boolean {
+    return facilityNameToKey(name) === 'constructionFacility';
 }
 
 function minValue(map: Record<string, number> | undefined): number {
@@ -226,6 +231,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maintInputEfficiencySteel = 0;
     let maintInputEfficiencyElectronics = 0;
     let maintInputEfficiencyPlastic = 0;
+    let constructionFacilityScale = 0;
+    let constructionFacilityMaxScale = 0;
+    let constructionFacilityConditionWeighted = 0;
+    let constructionFacilitySmoothedSignal = 0;
+    let constructionFacilityCount = 0;
+    let restorationAggregateConsumption = 0;
     let siliconWaferResourceEfficiency = 0;
     let siliconWaferWorkerEfficiency = 0;
     let siliconWaferInputSand = 0;
@@ -242,6 +253,31 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let sandMineExpansionIntegral = 0;
     let sandMineSmoothedSignal = 0;
     let sandMineCount = 0;
+    let coalMineScale = 0;
+    let coalMineMaxScale = 0;
+    let coalMineCondition = 0;
+    let coalMineInputDepositEfficiency = 0;
+    let coalMineWorkerEfficiency = 0;
+    let coalMineOverallEfficiency = 0;
+    let coalMineContractionIntegral = 0;
+    let coalMineExpansionIntegral = 0;
+    let coalMineSmoothedSignal = 0;
+    let coalMineCount = 0;
+    let ironMineScale = 0;
+    let ironMineMaxScale = 0;
+    let ironMineCondition = 0;
+    let ironMineInputDepositEfficiency = 0;
+    let ironMineWorkerEfficiency = 0;
+    let ironMineOverallEfficiency = 0;
+    let ironMineCount = 0;
+    let ironSmelterScale = 0;
+    let ironSmelterMaxScale = 0;
+    let ironSmelterCondition = 0;
+    let ironSmelterInputIronOre = 0;
+    let ironSmelterInputCoal = 0;
+    let ironSmelterWorkerEfficiency = 0;
+    let ironSmelterOverallEfficiency = 0;
+    let ironSmelterCount = 0;
 
     for (const agent of gameState.agents.values()) {
         const assets = agent.assets[planet.id];
@@ -309,6 +345,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             maintAggregateConsumption += facility.lastTickMaintenanceConsumption ?? 0;
             maintSteadyStateDemand += facilityMaintenanceConsumptionPerTick(facility);
             maintCatchupBacklog += Math.max(0, (facility.maxMaintenance ?? 1) - (facility.maintenanceStatus ?? 1)) * facility.scale * 100;
+            restorationAggregateConsumption += facility.lastTickRestorationConsumption ?? 0;
             if (facility.name === 'Silicon Wafer Factory') {
                 siliconWaferResourceEfficiency += minValue(facility.lastTickResults?.resourceEfficiency);
                 siliconWaferWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
@@ -334,6 +371,44 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 sandMineCount += 1;
             }
 
+            if (facility.name === 'Coal Mine') {
+                coalMineScale += facility.scale;
+                coalMineMaxScale += facility.maxScale;
+                coalMineCondition += facility.maintenanceStatus ?? 1;
+                const cmEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                coalMineInputDepositEfficiency += cmEff[coalDepositResourceType.name] ?? 1;
+                coalMineWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                coalMineOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                const pid = facility.pidState;
+                coalMineContractionIntegral += pid?.contractionIntegral ?? 0;
+                coalMineExpansionIntegral += pid?.expansionIntegral ?? 0;
+                coalMineSmoothedSignal += pid?.smoothedSignal ?? 0;
+                coalMineCount += 1;
+            }
+
+            if (facility.name === 'Iron Mine') {
+                ironMineScale += facility.scale;
+                ironMineMaxScale += facility.maxScale;
+                ironMineCondition += facility.maintenanceStatus ?? 1;
+                const imEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                ironMineInputDepositEfficiency += imEff[ironOreDepositResourceType.name] ?? 1;
+                ironMineWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                ironMineOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                ironMineCount += 1;
+            }
+
+            if (facility.name === 'Iron Smelter') {
+                ironSmelterScale += facility.scale;
+                ironSmelterMaxScale += facility.maxScale;
+                ironSmelterCondition += facility.maintenanceStatus ?? 1;
+                const isEff = facility.lastTickResults?.resourceEfficiency ?? {};
+                ironSmelterInputIronOre += isEff[ironOreResourceType.name] ?? 1;
+                ironSmelterInputCoal += isEff[coalResourceType.name] ?? 1;
+                ironSmelterWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                ironSmelterOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                ironSmelterCount += 1;
+            }
+
             if (isMaintenanceFacility(facility.name)) {
                 maintFacilityScale += facility.scale;
                 maintFacilityMaxScale += facility.maxScale;
@@ -355,6 +430,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 maintInputEfficiencySteel += resEff[steelResourceType.name] ?? 1;
                 maintInputEfficiencyElectronics += resEff[electronicsResourceType.name] ?? 1;
                 maintInputEfficiencyPlastic += resEff[plasticResourceType.name] ?? 1;
+            }
+
+            if (isConstructionFacility(facility.name)) {
+                constructionFacilityScale += facility.scale;
+                constructionFacilityMaxScale += facility.maxScale;
+                constructionFacilityConditionWeighted += (facility.maintenanceStatus ?? 1) * facility.scale;
+                constructionFacilitySmoothedSignal += facility.pidState?.smoothedSignal ?? 0;
+                constructionFacilityCount += 1;
             }
 
             const pid = facility.pidState;
@@ -448,6 +531,24 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             : 0;
     const maintUnsoldFrac = maintTotalSupply > 0 ? maintUnsoldSupply / maintTotalSupply : 0;
 
+    const constructionResult = planet.lastMarketResult[constructionServiceResourceType.name];
+    const constructionTotalSupply = constructionResult?.totalSupply ?? 0;
+    const constructionUnfilledDemand = constructionResult?.unfilledDemand ?? 0;
+    const constructionUnfilledFrac =
+        (constructionResult?.totalDemand ?? 0) > 0
+            ? constructionUnfilledDemand / constructionResult!.totalDemand
+            : 0;
+    const constructionUnsoldFrac =
+        constructionTotalSupply > 0 ? (constructionResult?.unsoldSupply ?? 0) / constructionTotalSupply : 0;
+    const constructionFacilityCondition =
+        constructionFacilityScale > 0 ? constructionFacilityConditionWeighted / constructionFacilityScale : 1;
+    const constructionFacilitySignal =
+        constructionFacilityCount > 0 ? constructionFacilitySmoothedSignal / constructionFacilityCount : 0;
+    const constructionFacilityScaleAvg =
+        constructionFacilityCount > 0 ? constructionFacilityScale / constructionFacilityCount : 0;
+    const constructionFacilityMaxScaleAvg =
+        constructionFacilityCount > 0 ? constructionFacilityMaxScale / constructionFacilityCount : 0;
+
     const maintFacilityCondition = maintFacilityScale > 0 ? maintFacilityConditionWeighted / maintFacilityScale : 1;
     const maintFillRate =
         maintenanceResult && maintenanceResult.totalDemand > 0
@@ -507,6 +608,36 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const sandMineContractionIntegralAvg = sandMineCount > 0 ? sandMineContractionIntegral / sandMineCount : 0;
     const sandMineExpansionIntegralAvg = sandMineCount > 0 ? sandMineExpansionIntegral / sandMineCount : 0;
     const sandMineSmoothedSignalAvg = sandMineCount > 0 ? sandMineSmoothedSignal / sandMineCount : 0;
+
+    const coalResult = planet.lastMarketResult[coalResourceType.name];
+    const coalTotalDemand = coalResult?.totalDemand ?? 0;
+    const coalTotalSupply = coalResult?.totalSupply ?? 0;
+    const coalUnfilledDemand = coalResult?.unfilledDemand ?? 0;
+    const coalUnsoldSupply = coalResult?.unsoldSupply ?? 0;
+    const coalMineScaleAvg = coalMineCount > 0 ? coalMineScale / coalMineCount : 0;
+    const coalMineMaxScaleAvg = coalMineCount > 0 ? coalMineMaxScale / coalMineCount : 0;
+    const coalMineConditionAvg = coalMineCount > 0 ? coalMineCondition / coalMineCount : 1;
+    const coalMineInputDepositEfficiencyAvg =
+        coalMineCount > 0 ? coalMineInputDepositEfficiency / coalMineCount : 0;
+    const coalMineWorkerEfficiencyAvg = coalMineCount > 0 ? coalMineWorkerEfficiency / coalMineCount : 0;
+    const coalMineOverallEfficiencyAvg = coalMineCount > 0 ? coalMineOverallEfficiency / coalMineCount : 0;
+    const coalMineContractionIntegralAvg = coalMineCount > 0 ? coalMineContractionIntegral / coalMineCount : 0;
+    const coalMineExpansionIntegralAvg = coalMineCount > 0 ? coalMineExpansionIntegral / coalMineCount : 0;
+    const coalMineSmoothedSignalAvg = coalMineCount > 0 ? coalMineSmoothedSignal / coalMineCount : 0;
+    const ironMineScaleAvg = ironMineCount > 0 ? ironMineScale / ironMineCount : 0;
+    const ironMineMaxScaleAvg = ironMineCount > 0 ? ironMineMaxScale / ironMineCount : 0;
+    const ironMineConditionAvg = ironMineCount > 0 ? ironMineCondition / ironMineCount : 1;
+    const ironMineInputDepositEfficiencyAvg =
+        ironMineCount > 0 ? ironMineInputDepositEfficiency / ironMineCount : 0;
+    const ironMineWorkerEfficiencyAvg = ironMineCount > 0 ? ironMineWorkerEfficiency / ironMineCount : 0;
+    const ironMineOverallEfficiencyAvg = ironMineCount > 0 ? ironMineOverallEfficiency / ironMineCount : 0;
+    const ironSmelterScaleAvg = ironSmelterCount > 0 ? ironSmelterScale / ironSmelterCount : 0;
+    const ironSmelterMaxScaleAvg = ironSmelterCount > 0 ? ironSmelterMaxScale / ironSmelterCount : 0;
+    const ironSmelterConditionAvg = ironSmelterCount > 0 ? ironSmelterCondition / ironSmelterCount : 1;
+    const ironSmelterInputIronOreAvg = ironSmelterCount > 0 ? ironSmelterInputIronOre / ironSmelterCount : 0;
+    const ironSmelterInputCoalAvg = ironSmelterCount > 0 ? ironSmelterInputCoal / ironSmelterCount : 0;
+    const ironSmelterWorkerEfficiencyAvg = ironSmelterCount > 0 ? ironSmelterWorkerEfficiency / ironSmelterCount : 0;
+    const ironSmelterOverallEfficiencyAvg = ironSmelterCount > 0 ? ironSmelterOverallEfficiency / ironSmelterCount : 0;
 
     const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
@@ -596,6 +727,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintenanceUnsoldSupply: maintUnsoldSupply,
         maintenanceUnfilledFrac: maintUnfilledFrac,
         maintenanceUnsoldFrac: maintUnsoldFrac,
+        constructionServicePrice: priceOf(planet, constructionServiceResourceType.name),
+        constructionServiceVolume: constructionResult?.totalVolume ?? 0,
+        constructionServiceDemand: constructionResult?.totalDemand ?? 0,
+        constructionUnfilledFrac,
+        constructionUnsoldFrac,
         adminServicePrice: priceOf(planet, administrativeServiceResourceType.name),
         adminServiceVolume: adminResult?.totalVolume ?? 0,
         logisticsServicePrice: priceOf(planet, logisticsServiceResourceType.name),
@@ -645,12 +781,43 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         sandMineContractionIntegral: sandMineContractionIntegralAvg,
         sandMineExpansionIntegral: sandMineExpansionIntegralAvg,
         sandMineSmoothedSignal: sandMineSmoothedSignalAvg,
+        coalTotalDemand,
+        coalTotalSupply,
+        coalUnfilledDemand,
+        coalUnsoldSupply,
+        coalMineScale: coalMineScaleAvg,
+        coalMineMaxScale: coalMineMaxScaleAvg,
+        coalMineCondition: coalMineConditionAvg,
+        coalMineInputDepositEfficiency: coalMineInputDepositEfficiencyAvg,
+        coalMineWorkerEfficiency: coalMineWorkerEfficiencyAvg,
+        coalMineOverallEfficiency: coalMineOverallEfficiencyAvg,
+        coalMineContractionIntegral: coalMineContractionIntegralAvg,
+        coalMineExpansionIntegral: coalMineExpansionIntegralAvg,
+        coalMineSmoothedSignal: coalMineSmoothedSignalAvg,
+        ironMineScale: ironMineScaleAvg,
+        ironMineMaxScale: ironMineMaxScaleAvg,
+        ironMineCondition: ironMineConditionAvg,
+        ironMineInputDepositEfficiency: ironMineInputDepositEfficiencyAvg,
+        ironMineWorkerEfficiency: ironMineWorkerEfficiencyAvg,
+        ironMineOverallEfficiency: ironMineOverallEfficiencyAvg,
+        ironSmelterScale: ironSmelterScaleAvg,
+        ironSmelterMaxScale: ironSmelterMaxScaleAvg,
+        ironSmelterCondition: ironSmelterConditionAvg,
+        ironSmelterInputIronOre: ironSmelterInputIronOreAvg,
+        ironSmelterInputCoal: ironSmelterInputCoalAvg,
+        ironSmelterWorkerEfficiency: ironSmelterWorkerEfficiencyAvg,
+        ironSmelterOverallEfficiency: ironSmelterOverallEfficiencyAvg,
         maintAggregateConsumption,
         maintSteadyStateDemand,
         maintCatchupBacklog,
         maintAggregateBuffer,
         maintFillRate,
         maintRepairSurgeRatio,
+        constructionFacilityScale: constructionFacilityScaleAvg,
+        constructionFacilityMaxScale: constructionFacilityMaxScaleAvg,
+        constructionFacilityCondition,
+        constructionFacilitySignal,
+        restorationAggregateConsumption,
         priceCeilHits,
         priceFloorHits,
     };
@@ -740,6 +907,11 @@ export const METRIC_KEYS: string[] = [
     'maintenanceUnsoldSupply',
     'maintenanceUnfilledFrac',
     'maintenanceUnsoldFrac',
+    'constructionServicePrice',
+    'constructionServiceVolume',
+    'constructionServiceDemand',
+    'constructionUnfilledFrac',
+    'constructionUnsoldFrac',
     'adminServicePrice',
     'adminServiceVolume',
     'logisticsServicePrice',
@@ -789,12 +961,43 @@ export const METRIC_KEYS: string[] = [
     'sandMineContractionIntegral',
     'sandMineExpansionIntegral',
     'sandMineSmoothedSignal',
+    'coalTotalDemand',
+    'coalTotalSupply',
+    'coalUnfilledDemand',
+    'coalUnsoldSupply',
+    'coalMineScale',
+    'coalMineMaxScale',
+    'coalMineCondition',
+    'coalMineInputDepositEfficiency',
+    'coalMineWorkerEfficiency',
+    'coalMineOverallEfficiency',
+    'coalMineContractionIntegral',
+    'coalMineExpansionIntegral',
+    'coalMineSmoothedSignal',
+    'ironMineScale',
+    'ironMineMaxScale',
+    'ironMineCondition',
+    'ironMineInputDepositEfficiency',
+    'ironMineWorkerEfficiency',
+    'ironMineOverallEfficiency',
+    'ironSmelterScale',
+    'ironSmelterMaxScale',
+    'ironSmelterCondition',
+    'ironSmelterInputIronOre',
+    'ironSmelterInputCoal',
+    'ironSmelterWorkerEfficiency',
+    'ironSmelterOverallEfficiency',
     'maintAggregateConsumption',
     'maintSteadyStateDemand',
     'maintCatchupBacklog',
     'maintAggregateBuffer',
     'maintFillRate',
     'maintRepairSurgeRatio',
+    'constructionFacilityScale',
+    'constructionFacilityMaxScale',
+    'constructionFacilityCondition',
+    'constructionFacilitySignal',
+    'restorationAggregateConsumption',
     'priceCeilHits',
     'priceFloorHits',
 ];

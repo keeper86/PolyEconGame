@@ -15,6 +15,7 @@ export {
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
+    findMaxScaleForMarketInputs,
     OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
 export {
@@ -43,6 +44,7 @@ import {
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
     DYNAMIC_EXPANSION_CAP_FRACTION,
+    EXPANSION_INPUT_EFFICIENCY_MIN,
     EXPANSION_INTEGRAL_DECAY,
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
@@ -331,13 +333,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         }
         const hasOwnConstruction = agentHasOwnConstructionFacility(assets.productionFacilities);
 
-        const smoothedSellThroughByResource: Record<string, number> = {};
-        for (const [name, offer] of Object.entries(assets.market?.sell ?? {})) {
-            if (offer.smoothedSellThrough !== undefined) {
-                smoothedSellThroughByResource[name] = offer.smoothedSellThrough;
-            }
-        }
-
         for (const facility of assets.productionFacilities) {
             if (facility.construction !== null && facility.construction.type === 'new') {
                 continue;
@@ -352,7 +347,16 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
-            const rawSignal = computeFacilitySignal(facility, planet, smoothedSellThroughByResource);
+            const flowSellThroughByResource: Record<string, number> = {};
+            for (const output of facility.produces) {
+                const offer = assets.market?.sell?.[output.resource.name];
+                const produced = facility.lastTickResults?.lastProduced?.[output.resource.name] ?? 0;
+                if (produced > 0 && offer) {
+                    flowSellThroughByResource[output.resource.name] = (offer.lastSold ?? 0) / produced;
+                }
+            }
+
+            const rawSignal = computeFacilitySignal(facility, planet, flowSellThroughByResource);
 
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;
@@ -376,19 +380,24 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
-            const dynamicThreshold = Math.min(
-                EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD *
-                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
-            );
+            const dynamicThreshold = hasOwnConstruction
+                ? EXPANSION_INTEGRAL_THRESHOLD
+                : Math.min(
+                      EXPANSION_INTEGRAL_MAX,
+                      EXPANSION_INTEGRAL_THRESHOLD *
+                          Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
+                  );
 
             const atMaxScale = facility.scale >= facility.maxScale;
             const hasNoActiveConstruction = facility.construction === null;
             const positiveSignal = signal > 0;
             const integralAboveThreshold = state.expansionIntegral >= dynamicThreshold;
             const efficiencyAbove85 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.85;
+            const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
+            const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
+            const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
             const expansionConditionsMet =
-                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85;
+                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;

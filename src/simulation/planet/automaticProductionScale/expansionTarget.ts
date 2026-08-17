@@ -105,6 +105,27 @@ export function findMaxScaleForLandboundResources(
     return cap;
 }
 
+export function findMaxScaleForMarketInputs(
+    facility: { maxScale: number; needs: ResourceQuantity[] },
+    resourceTotalMaxCapacity: Map<string, number>,
+    resourceTotalMaxNeeded: Map<string, number>,
+    desiredScale: number,
+): number {
+    if (desiredScale <= facility.maxScale) {
+        return desiredScale;
+    }
+    let cap = desiredScale;
+    for (const need of facility.needs) {
+        if (need.resource.form === 'landBoundResource') {
+            continue;
+        }
+        const capacity = resourceTotalMaxCapacity.get(need.resource.name) ?? 0;
+        const needed = resourceTotalMaxNeeded.get(need.resource.name) ?? 0;
+        cap = Math.min(cap, facility.maxScale + Math.floor((capacity - needed) / need.quantity));
+    }
+    return cap;
+}
+
 export function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
@@ -160,6 +181,7 @@ export function computeDynamicExpansionTarget(
     }
 
     targetMax = findMaxScaleForLandboundResources(facility, planet, targetMax);
+    targetMax = findMaxScaleForMarketInputs(facility, resourceTotalMaxCapacity, resourceTotalMaxNeeded, targetMax);
 
     return targetMax;
 }
