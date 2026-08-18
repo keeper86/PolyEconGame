@@ -72,7 +72,7 @@ export function TickOrderSection() {
                 </li>
                 <li>
                     <code>automaticWageAdjustment</code> — moves each education-level wage toward the worker's outside
-                    option plus a labour share of profit per worker (±2 % step; runs every tick)
+                    option scaled by the company's profit margin (±2 % step; runs every tick)
                 </li>
                 <li>
                     <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions

@@ -1,9 +1,10 @@
-import { LABOR_SHARE, MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
+import { MARGIN_WAGE_PREMIUM, MAX_WAGE, MIN_WAGE, WAGE_ADJUSTMENT_RATE } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
+import { operatingProfit } from '../planet/planet';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { ACCEPTABLE_IDLE_FRACTION, computeLaborMarket, outsideIncome, profitPerWorkerPerTick } from './laborMarket';
+import { ACCEPTABLE_IDLE_FRACTION, computeLaborMarket, outsideIncome } from './laborMarket';
 import { totalActiveForEdu } from './workforceAggregates';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
@@ -66,7 +67,7 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     return effectiveMonthlyRunRate * 12;
 }
 
-export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
     const laborMarket = computeLaborMarket(agents, planet);
@@ -84,15 +85,17 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
-        const laborSharePremium = profitPerWorker * (LABOR_SHARE / (1 - LABOR_SHARE));
+        const revenue = assets.lastMonthAcc.revenue + assets.monthAcc.revenue;
+        const profit = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
+        const margin = revenue > 0 ? Math.max(0, profit / revenue) : 0;
+        const multiplier = 1 + MARGIN_WAGE_PREMIUM * margin;
 
         for (const edu of educationLevelKeys) {
             const outside = outsideIncome(
                 laborMarket.reachableTightness[edu],
                 laborMarket.reachableVacancyWage[edu],
             );
-            const target = Math.max(outside, laborSharePremium);
+            const target = outside * multiplier;
             const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
             const step = Math.max(-maxStep, Math.min(maxStep, target - current));

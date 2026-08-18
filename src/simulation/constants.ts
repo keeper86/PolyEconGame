@@ -66,6 +66,8 @@ export const WAGE_ADJUSTMENT_RATE = 0.02;
 
 export const LABOR_SHARE = 0.5;
 
+export const MARGIN_WAGE_PREMIUM = 0.5;
+
 export const SEARCH_HORIZON_TICKS = 3 * TICKS_PER_MONTH;
 
 export const BASE_QUIT_RATE = 0.0003;

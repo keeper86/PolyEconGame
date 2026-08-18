@@ -120,28 +120,22 @@ describe('updateAllocatedWorkers', () => {
 });
 
 describe('automaticWageAdjustment', () => {
-    it('raises the wage toward the labour-share target when profitable, even with a full workforce', () => {
-        const { planet } = makePlanetWithPopulation({});
+    it('raises the wage above the outside option when the profit margin is high', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1 });
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.lastMonthAcc.revenue = 100_000;
 
-        automaticWageAdjustment(agentMap(agent), planet, 1);
+        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
+        competitor.assets.p.allocatedWorkers.none = 100;
+        competitor.assets.p.wagePerEdu.none = 100;
+
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });
 
-    it('lowers the wage toward the outside option when unprofitable', () => {
-        const { planet } = makePlanetWithPopulation({});
-        const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-
-        automaticWageAdjustment(agentMap(agent), planet, 1);
-
-        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
-    });
-
-    it('raises the wage toward a better outside option when the labour market is tight', () => {
+    it('moves the wage toward the outside option when there is no profit', () => {
         const { planet } = makePlanetWithPopulation({ none: 1 });
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
@@ -150,9 +144,19 @@ describe('automaticWageAdjustment', () => {
         competitor.assets.p.allocatedWorkers.none = 100;
         competitor.assets.p.wagePerEdu.none = 200;
 
-        automaticWageAdjustment(agentMap(agent, competitor), planet, 1);
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+    });
+
+    it('lowers the wage when there is no outside option and no profit', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
     it('pushes higher education wages up instead of lowering the lower education wage', () => {
@@ -164,7 +168,7 @@ describe('automaticWageAdjustment', () => {
         competitor.assets.p.allocatedWorkers.none = 100;
         competitor.assets.p.wagePerEdu.none = 200;
 
-        automaticWageAdjustment(agentMap(agent, competitor), planet, 1);
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
         expect(agent.assets.p.wagePerEdu.primary).toBeGreaterThanOrEqual(agent.assets.p.wagePerEdu.none);
@@ -177,18 +181,22 @@ describe('automaticWageAdjustment', () => {
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
 
-        automaticWageAdjustment(agentMap(agent), planet, 1);
+        automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBe(MIN_WAGE);
     });
 
     it('never raises the wage above MAX_WAGE', () => {
-        const { planet } = makePlanetWithPopulation({});
+        const { planet } = makePlanetWithPopulation({ none: 1 });
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MAX_WAGE, primary: MAX_WAGE, secondary: MAX_WAGE, tertiary: MAX_WAGE };
         agent.assets.p.lastMonthAcc.revenue = 100_000_000;
 
-        automaticWageAdjustment(agentMap(agent), planet, 1);
+        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
+        competitor.assets.p.allocatedWorkers.none = 100;
+        competitor.assets.p.wagePerEdu.none = MAX_WAGE;
+
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBe(MAX_WAGE);
     });
