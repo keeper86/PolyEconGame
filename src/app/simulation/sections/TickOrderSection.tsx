@@ -71,8 +71,8 @@ export function TickOrderSection() {
                     input consumption, pollution
                 </li>
                 <li>
-                    <code>automaticWageAdjustment</code> — tâtonnement wage adjustment per education level (±2 % based
-                    on vacancy rate; runs every tick)
+                    <code>automaticWageAdjustment</code> — moves each education-level wage toward the worker's outside
+                    option plus a labour share of profit per worker (±2 % step; runs every tick)
                 </li>
                 <li>
                     <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
