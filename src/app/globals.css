@@ -1,5 +1,5 @@
 html {
-    scrollbar-gutter: none;
+    scrollbar-gutter: auto;
 }
 @import 'tailwindcss';
 @tailwind base;

@@ -24,9 +24,11 @@ function classifyBand(starvationLevel: number): number {
 export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement {
     const smallScreen = useIsSmallScreen();
     const pct = ss * 100;
-    const color = BANDS[classifyBand(ss)].color;
+    const healthColor = BANDS[classifyBand(ss)].color;
     const inflowPct = (inflowPreservation(ss) * 100).toFixed(0);
     const storagePct = (storagePreservationFactor(ss) * 100).toFixed(0);
+    const inflowColor = BANDS[classifyBand(1 - inflowPreservation(ss))].color;
+    const storageColor = BANDS[classifyBand(1 - storagePreservationFactor(ss))].color;
 
     return (
         <Tooltip>
@@ -38,13 +40,13 @@ export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement
                                 <Warehouse className='h-4 w-4' />
                                 Storage {smallScreen ? '' : 'health'}
                             </span>
-                            <span style={{ color }}>{storagePct}%</span>
+                            <span style={{ color: storageColor }}>{storagePct}%</span>
                         </span>
 
                         <div className='h-2 w-full rounded-full bg-muted overflow-hidden'>
                             <div
                                 className='h-full rounded-full transition-all duration-300'
-                                style={{ width: `${storagePct}%`, backgroundColor: color }}
+                                style={{ width: `${storagePct}%`, backgroundColor: storageColor }}
                             />
                         </div>
                     </span>
@@ -54,13 +56,13 @@ export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement
                                 <FaTruck className='h-4 w-4' />
                                 Transport {smallScreen ? '' : 'efficiency'}
                             </span>
-                            <span style={{ color }}>{inflowPct}%</span>
+                            <span style={{ color: inflowColor }}>{inflowPct}%</span>
                         </span>
 
                         <div className='h-2 w-full rounded-full bg-muted overflow-hidden'>
                             <div
                                 className='h-full rounded-full transition-all duration-300'
-                                style={{ width: `${inflowPct}%`, backgroundColor: color }}
+                                style={{ width: `${inflowPct}%`, backgroundColor: inflowColor }}
                             />
                         </div>
                     </span>
@@ -68,7 +70,7 @@ export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement
             </TooltipTrigger>
             <TooltipContent side='bottom' className='max-w-[200px]'>
                 <div className='text-xs space-y-1'>
-                    <div style={{ color }}>Logistics Health: {(100 - pct).toFixed(0)}%</div>
+                    <div style={{ color: healthColor }}>Logistics Health: {(100 - pct).toFixed(0)}%</div>
                     <div style={{ color: BANDS[classifyBand(1 - inflowPreservation(ss))].color }}>
                         Inflow Efficiency: {inflowPct}%
                     </div>

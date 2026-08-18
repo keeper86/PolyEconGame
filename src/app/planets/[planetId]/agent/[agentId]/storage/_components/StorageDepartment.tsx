@@ -250,7 +250,7 @@ function StorageConstructionCard({
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: `$1fr 2rem 3fr` }}>
+                <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: `1fr 2rem 3fr` }}>
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.needs.map(({ resource, quantity }) => (
                             <ProductQuantity

@@ -1,6 +1,9 @@
 import { isFacilityOperating } from '../planet/facility';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '../planet/facility';
-import { facilityMaintenanceConsumptionPerTick } from '../planet/facilityMaintenance';
+import {
+    facilityMaintenanceConsumptionPerTick,
+    facilityRestorationCapacityPerTick,
+} from '../planet/facilityMaintenance';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import type { ConsumptionShipInfo } from './consumptionShipInfo';
 
@@ -14,6 +17,7 @@ export type ConsumptionBreakdownItem = {
         | 'construction_service'
         | 'construction_ship'
         | 'transport_ship'
+        | 'restoration'
         | 'maintenance';
     sourceName: string;
     ratePerTick: number;
@@ -116,6 +120,18 @@ export function computeConsumptionBreakdown(
             const rate = facilityMaintenanceConsumptionPerTick(f);
             if (rate > 0) {
                 breakdown.push({ sourceType: 'maintenance', sourceName: f.name, ratePerTick: rate });
+            }
+        }
+    }
+
+    if (isConstructionService) {
+        for (const f of allFacilities) {
+            if (!isFacilityOperating(f) || f.maxMaintenance >= 1) {
+                continue;
+            }
+            const rate = facilityRestorationCapacityPerTick(f);
+            if (rate > 0) {
+                breakdown.push({ sourceType: 'restoration', sourceName: f.name, ratePerTick: rate });
             }
         }
     }
@@ -255,6 +271,12 @@ export function computeAllConsumptionRates(
     for (const f of allFacilities) {
         if (isFacilityOperating(f)) {
             add(maintenanceServiceResourceType.name, facilityMaintenanceConsumptionPerTick(f));
+        }
+    }
+
+    for (const f of allFacilities) {
+        if (isFacilityOperating(f) && f.maxMaintenance < 1) {
+            add(constructionServiceResourceType.name, facilityRestorationCapacityPerTick(f));
         }
     }
 

@@ -16,8 +16,7 @@ function buildLeontiefMatrix(): Leontief {
     const produced = new Map<string, number>();
     for (const key of Object.keys(ALL_PRODUCTION_FACILITY_ENTRIES) as FacilityType[]) {
         const f = ALL_PRODUCTION_FACILITY_ENTRIES[key].factory(TOOL_PLANET, TOOL_ID);
-        const out = f.produces[0];
-        if (out) {
+        for (const out of f.produces) {
             produced.set(out.resource.name, out.quantity);
         }
     }
@@ -28,23 +27,26 @@ function buildLeontiefMatrix(): Leontief {
 
     for (const key of Object.keys(ALL_PRODUCTION_FACILITY_ENTRIES) as FacilityType[]) {
         const f = ALL_PRODUCTION_FACILITY_ENTRIES[key].factory(TOOL_PLANET, TOOL_ID);
-        const out = f.produces[0];
-        if (!out) {
+        if (f.produces.length === 0) {
             continue;
         }
-        const j = idx.get(out.resource.name)!;
-        for (const need of f.needs) {
-            if (need.resource.form === 'landBoundResource') {
-                continue;
+        const totalOutput = f.produces.reduce((sum, out) => sum + out.quantity, 0);
+        for (const out of f.produces) {
+            const j = idx.get(out.resource.name)!;
+            const share = out.quantity / totalOutput;
+            for (const need of f.needs) {
+                if (need.resource.form === 'landBoundResource') {
+                    continue;
+                }
+                const i = idx.get(need.resource.name);
+                if (i === undefined) {
+                    continue;
+                }
+                a[i][j] += (need.quantity * share) / out.quantity;
             }
-            const i = idx.get(need.resource.name);
-            if (i === undefined) {
-                continue;
-            }
-            a[i][j] += need.quantity / out.quantity;
+            const mi = idx.get(MAINTENANCE)!;
+            a[mi][j] += (FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK * share) / out.quantity;
         }
-        const mi = idx.get(MAINTENANCE)!;
-        a[mi][j] += FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK / out.quantity;
     }
 
     return { resources, a, maintenanceIndex: idx.get(MAINTENANCE)! };

@@ -754,9 +754,11 @@ export default function BuySection({
                                                                         ? HardHat
                                                                         : item.sourceType === 'transport_ship'
                                                                           ? Ship
-                                                                          : item.sourceType === 'maintenance'
-                                                                            ? Wrench
-                                                                            : Wrench;
+                                                                          : item.sourceType === 'restoration'
+                                                                            ? HardHat
+                                                                            : item.sourceType === 'maintenance'
+                                                                              ? Wrench
+                                                                              : Wrench;
                                                         return (
                                                             <Stat
                                                                 key={i}

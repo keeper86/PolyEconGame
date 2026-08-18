@@ -24,15 +24,25 @@ function runOne(name: string, years: number, bands: string): Promise<{ name: str
 
     return new Promise((resolve) => {
         const child = spawn('npx', args, { stdio: ['ignore', log, log] });
-        child.on('close', (code) => {
+        let settled = false;
+        const finalize = (code: number | null) => {
+            if (settled) {
+                return;
+            }
+            settled = true;
             fs.closeSync(log);
-            console.log(`[orchestrator] ${name} finished with exit code ${code}`);
             resolve({ name, code });
+        };
+        child.on('close', (code) => {
+            if (settled) {
+                return;
+            }
+            console.log(`[orchestrator] ${name} finished with exit code ${code}`);
+            finalize(code);
         });
         child.on('error', (err) => {
-            fs.closeSync(log);
             console.error(`[orchestrator] ${name} failed to spawn: ${err.message}`);
-            resolve({ name, code: null });
+            finalize(null);
         });
     });
 }
