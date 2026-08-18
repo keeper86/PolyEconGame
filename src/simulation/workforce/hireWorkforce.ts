@@ -8,8 +8,6 @@ import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
 import { ACCEPTABLE_IDLE_FRACTION, acceptProbability, computeLaborMarket, outsideIncome } from './laborMarket';
-import type { WorkforceCohort } from './workforce';
-import { nullWorkforceCohortFactory } from './workforce';
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
@@ -139,5 +137,3 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
         t = profiler.markAndAccum('hireAfter', '  hire_after', t);
     }
 }
-
-export const nullWageMapFactory = (): WorkforceCohort<number> => nullWorkforceCohortFactory(() => 0);

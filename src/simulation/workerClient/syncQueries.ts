@@ -14,18 +14,6 @@ function getCache(): SnapshotCache | null {
     return getCachedGameState();
 }
 
-export function getCurrentTickSync(): { tick: number } {
-    return { tick: getLatestTick() };
-}
-
-export function getFullStateSync(): { tick: number; planets: Planet[]; agents: Agent[] } {
-    const cache = getCache();
-    if (!cache) {
-        return { tick: getLatestTick(), planets: [], agents: [] };
-    }
-    return { tick: cache.tick, planets: cache.planets, agents: cache.agents };
-}
-
 export function getPlanetSync(planetId: string): { planet: Planet | null } {
     const cache = getCache();
     if (!cache) {

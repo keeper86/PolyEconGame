@@ -1,9 +1,5 @@
-import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import type { Planet } from '../planet/planet';
+import { NOTICE_PERIOD_MONTHS } from '../constants';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
-import type { PopulationCategoryIndex } from '../population/population';
-import { transferPopulation } from '../population/population';
-import { distributeProportionally } from '../utils/distributeProportionally';
 
 export const ONBOARDING_EFFICIENCY = 0.75;
 
@@ -34,26 +30,12 @@ export type WorkforceCohort<T> = {
     [L in EducationLevelType]: T;
 };
 
-export type WorkforceCategoryIndex = Omit<PopulationCategoryIndex, 'occ'>;
-
 export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
 
 export type Workforce = {
     demography: WorkforceDemography;
     summedWorkforce: WorkforceCohort<WorkforceCategory>;
     count: number;
-};
-
-export const sumWorkForceCohort = (
-    cohorts: WorkforceCohort<WorkforceCategory>[],
-): WorkforceCohort<WorkforceCategory> => {
-    const total = nullWorkforceCohort();
-    for (const cohort of cohorts) {
-        for (const l of educationLevelKeys) {
-            total[l] = workForceSumFunction(total[l], cohort[l]);
-        }
-    }
-    return total;
 };
 
 export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCohort<T> => {
@@ -115,56 +97,6 @@ export const totalOnboarding = (category: WorkforceCategory): number =>
 
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>
     category.active + totalOnboarding(category) + totalDeparting(category);
-
-export function hireFromPopulation(
-    planet: Planet,
-    edu: EducationLevelType,
-    count: number,
-): {
-    count: number;
-    hiredByAge: number[];
-} {
-    if (count <= 0) {
-        return { count: 0, hiredByAge: [] };
-    }
-
-    const demography = planet.population.demography;
-
-    type Bucket = { age: number; avail: number };
-    const buckets: Bucket[] = [];
-    let totalAvailable = 0;
-    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        const avail = demography[age].unoccupied[edu].total;
-        if (avail > 0) {
-            buckets.push({ age, avail });
-            totalAvailable += avail;
-        }
-    }
-
-    const toHire = Math.min(count, totalAvailable);
-    if (toHire <= 0) {
-        return { count: 0, hiredByAge: [] };
-    }
-
-    const allocatedBuckets = distributeProportionally(
-        toHire,
-        buckets.map((b) => b.avail),
-    );
-
-    const hiredByAge: number[] = new Array(demography.length).fill(0);
-    let hired = 0;
-
-    for (let i = 0; i < buckets.length; i++) {
-        const { age } = buckets[i];
-        const actual = allocatedBuckets[i];
-        if (actual > 0) {
-            transferPopulation(planet, { age, occ: 'unoccupied', edu }, { age, occ: 'employed', edu }, actual);
-            hiredByAge[age] += actual;
-            hired += actual;
-        }
-    }
-    return { count: hired, hiredByAge };
-}
 
 export const productivityFromXP = (xp: number): number => {
     const A = 1;

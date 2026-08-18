@@ -66,7 +66,6 @@ export type DeathStats = DemographyStat & {
 export type DisabilityStats = DemographyStat & {
     type: 'disability';
 };
-export type DemographicEventType = RetirementStats['type'] | DeathStats['type'] | DisabilityStats['type'];
 
 export type ServiceState = {
     buffer: number;
@@ -126,15 +125,6 @@ export const createEmptyPopulationCohort = (overrides?: Partial<PopulationCatego
     }
     return cohort;
 };
-
-export function forEachServiceState(
-    category: PopulationCategory,
-    forEachFunction: (serviceName: ServiceName, state: ServiceState) => void,
-): void {
-    for (const [serviceName, state] of Object.entries(category.services)) {
-        forEachFunction(serviceName as ServiceName, state);
-    }
-}
 
 export type TransferResult = {
     count: number;

@@ -690,22 +690,6 @@ export const ironMine = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: ironOreResourceType, quantity: 400 }],
 });
 
-export const coalPowerPlant = (planetId: string, id: string): ProductionFacility => ({
-    ...makeFacilityDefaults(),
-    planetId,
-    id,
-    name: 'Coal Power Plant' as const,
-    powerConsumptionPerTick: -200,
-    workerRequirement: {
-        none: 0,
-        primary: 10,
-        secondary: 20,
-        tertiary: 5,
-    },
-    needs: [{ resource: coalResourceType, quantity: 40 }],
-    produces: [],
-});
-
 export const packagingPlant = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
@@ -960,8 +944,6 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
 
 export type FacilityType = keyof typeof ALL_PRODUCTION_FACILITY_ENTRIES;
 export const FACILITY_LEVELS: ResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'] as const;
-export const INTERNAL_FACILITY_LEVELS: ResourceProcessLevel[] = ['internal'] as const;
-export type FacilityLevel = ResourceProcessLevel[] | 'refined' | 'manufactured' | 'services';
 export const FACILITY_LEVEL_LABELS: Record<ResourceProcessLevel, string> = {
     raw: 'Raw Extraction',
     refined: 'Refinement',

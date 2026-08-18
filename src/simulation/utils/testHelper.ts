@@ -26,35 +26,10 @@ import {
 } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type {
-    Cohort,
-    DeathStats,
-    DisabilityStats,
-    GaussianMoments,
-    Occupation,
-    Population,
-    PopulationCategory,
-    RetirementStats,
-} from '../population/population';
+import type { Cohort, Occupation, Population, PopulationCategory } from '../population/population';
 import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS } from '../population/population';
 import type { TransportShipType } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-
-export function makeGaussianMoments(overrides?: Partial<GaussianMoments>): GaussianMoments {
-    return { mean: 0, variance: 0, ...overrides };
-}
-
-export function makeDeathStats(overrides?: Partial<DeathStats>): DeathStats {
-    return { type: 'death', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
-
-export function makeDisabilityStats(overrides?: Partial<DisabilityStats>): DisabilityStats {
-    return { type: 'disability', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
-
-export function makeRetirementStats(overrides?: Partial<RetirementStats>): RetirementStats {
-    return { type: 'retirement', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
 
 export function makePopulationCategory(overrides?: Partial<PopulationCategory>): PopulationCategory {
     return {

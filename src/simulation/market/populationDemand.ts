@@ -1,8 +1,5 @@
 import { BID_OFFER_MAX_COST_MULTIPLIER } from '../constants';
-import type { ProductionFacility } from '../planet/facility';
 import type { Planet } from '../planet/planet';
-import { educationCenter, groceryChain, hospital, logisticsHub, retailChain } from '../planet/productionFacilities';
-import type { ServiceName } from '../population/population';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
 import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
@@ -107,35 +104,6 @@ export function binHouseholdBids(
 
     return bins.filter((b) => b.quantity > 0);
 }
-
-const groceryChainTemplate: ProductionFacility = groceryChain('', '');
-const retailTemplate: ProductionFacility = retailChain('', '');
-const healthcareTemplate: ProductionFacility = hospital('', '');
-const educationTemplate: ProductionFacility = educationCenter('', '');
-const logisticsTemplate: ProductionFacility = logisticsHub('', '');
-
-export const serviceFacilityTemplate: Record<ServiceName, { template: ProductionFacility; produced: number }> = {
-    grocery: {
-        template: groceryChainTemplate,
-        produced: groceryChainTemplate.produces[0].quantity,
-    },
-    retail: {
-        template: retailTemplate,
-        produced: retailTemplate.produces[0].quantity,
-    },
-    healthcare: {
-        template: healthcareTemplate,
-        produced: healthcareTemplate.produces[0].quantity,
-    },
-    education: {
-        template: educationTemplate,
-        produced: educationTemplate.produces[0].quantity,
-    },
-    logistics: {
-        template: logisticsTemplate,
-        produced: logisticsTemplate.produces[0].quantity,
-    },
-};
 
 export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));

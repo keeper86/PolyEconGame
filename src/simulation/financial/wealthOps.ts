@@ -58,25 +58,6 @@ export function creditWealth(cat: PopulationCategory, perCapita: number): number
     return aggregate;
 }
 
-export function debitWealth(cat: PopulationCategory, perCapita: number, floor?: number): number {
-    if (cat.total <= 0 || perCapita >= 0) {
-        return 0;
-    }
-    const oldMean = cat.wealth.mean;
-    let newMean = oldMean + perCapita;
-    if (floor !== undefined && newMean < floor) {
-        newMean = floor;
-    }
-    const actualPerCapitaDebit = oldMean - newMean;
-    const aggregate = actualPerCapitaDebit * cat.total;
-
-    cat.wealth = {
-        mean: newMean,
-        variance: cat.wealth.variance,
-    };
-    return aggregate;
-}
-
 export function distributeWealthChangeTracked(
     demography: Cohort<PopulationCategory>[],
     age: number,

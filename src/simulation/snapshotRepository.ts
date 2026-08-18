@@ -207,17 +207,6 @@ export type AgentPlanetSummary = {
     };
 };
 
-export type AgentOverviewData = {
-    agentId: string;
-    name: string;
-    associatedPlanetId: string;
-    wealth: number;
-
-    deposits: number;
-    shipCount: number;
-    planets: AgentPlanetSummary[];
-};
-
 export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][string]): AgentPlanetSummary => {
     const start = perfStart('summarisePlanetAssets');
     let facilityCount = 0;

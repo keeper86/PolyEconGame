@@ -1,18 +1,12 @@
-import { randomUUID } from 'node:crypto';
 import { sendToWorker, onWorkerMessage } from './manager';
 import type { InboundMessage, OutboundMessage } from './messages';
 import type { CommandSpec } from './commandSpec';
-import type { WorkerQuery, WorkerQueryResult, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import { getPending } from './pendingRequests';
-import { getQueryCacheKey, getCachedOrCompute } from './queryCache';
 import { logger } from '../../server/logger';
-export { rejectAllPending } from './pendingRequests';
 
-const GLOBAL_KEY_LISTENER = Symbol.for('__polyecon_workerQueries_listener__');
 const GLOBAL_KEY_LOG_LISTENER = Symbol.for('__polyecon_workerLog_listener__');
 
 const g = globalThis as unknown as {
-    [GLOBAL_KEY_LISTENER]?: boolean;
     [GLOBAL_KEY_LOG_LISTENER]?: boolean;
 };
 
@@ -40,71 +34,6 @@ function ensureLogListener(): void {
 
 ensureLogListener();
 
-function ensureQueryResponseListener(): void {
-    if (g[GLOBAL_KEY_LISTENER]) {
-        return;
-    }
-    g[GLOBAL_KEY_LISTENER] = true;
-
-    onWorkerMessage((msg: OutboundMessage) => {
-        if (msg.type !== 'queryResponse' && msg.type !== 'queryError') {
-            return;
-        }
-
-        const requestId = (msg as { requestId?: string }).requestId;
-        if (!requestId) {
-            return;
-        }
-
-        const entry = getPending().get(requestId);
-        if (!entry) {
-            return;
-        }
-        getPending().delete(requestId);
-        clearTimeout(entry.timer);
-
-        if (msg.type === 'queryError') {
-            entry.reject(new Error((msg as WorkerErrorResponse).error));
-        } else {
-            entry.resolve((msg as WorkerSuccessResponse).data);
-        }
-    });
-}
-
-export function sendQuery<T extends WorkerQuery['type']>(
-    query: Extract<WorkerQuery, { type: T }>,
-    timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<WorkerQueryResult[T]> {
-    const cacheKey = getQueryCacheKey(query);
-
-    return getCachedOrCompute(cacheKey, () => {
-        ensureQueryResponseListener();
-
-        const requestId = randomUUID();
-
-        return new Promise<WorkerQueryResult[T]>((resolve, reject) => {
-            const timer = setTimeout(() => {
-                getPending().delete(requestId);
-                reject(new Error(`Worker query '${query.type}' timed out after ${timeoutMs}ms (id=${requestId})`));
-            }, timeoutMs);
-
-            getPending().set(requestId, {
-                resolve: resolve as (value: unknown) => void,
-                reject,
-                timer,
-            });
-
-            try {
-                sendToWorker({ ...query, requestId } as never);
-            } catch (err) {
-                getPending().delete(requestId);
-                clearTimeout(timer);
-                reject(err);
-            }
-        });
-    });
-}
-
 export function sendCommandSpec<
     TInbound extends InboundMessage & { requestId: string },
     TSuccess extends OutboundMessage & { requestId: string },
@@ -115,8 +44,6 @@ export function sendCommandSpec<
     spec: CommandSpec<TInbound, TSuccess, TFailure, TResult>,
     timeoutMs = DEFAULT_TIMEOUT_MS,
 ): Promise<{ result: TResult; processedAtTick: number }> {
-    ensureQueryResponseListener();
-
     const { requestId } = message;
 
     return new Promise<{ result: TResult; processedAtTick: number }>((resolve, reject) => {

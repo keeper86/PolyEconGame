@@ -106,32 +106,6 @@ function findShipById(gameState: GameState, agentId: string, shipId: string): Sh
     return gameState.agents.get(agentId)?.ships.find((s) => s.id === shipId);
 }
 
-export function findCheapestShipListing(
-    gameState: GameState,
-    shipTypeName: string,
-    maxPrice: number,
-): { listing: ShipListing; sellerAgent: Agent } | null {
-    let best: { listing: ShipListing; sellerAgent: Agent } | null = null;
-
-    for (const agent of gameState.agents.values()) {
-        for (const assets of Object.values(agent.assets)) {
-            for (const listing of assets.shipListings) {
-                if (listing.shipTypeName !== shipTypeName) {
-                    continue;
-                }
-                if (listing.askPrice > maxPrice) {
-                    continue;
-                }
-                if (!best || listing.askPrice < best.listing.askPrice) {
-                    best = { listing, sellerAgent: agent };
-                }
-            }
-        }
-    }
-
-    return best;
-}
-
 export function createShipListing(ship: Ship, assets: { shipListings: ShipListing[] }, listing: ShipListing): void {
     ship.state = { type: 'listed', planetId: listing.planetId };
     assets.shipListings.push(listing);

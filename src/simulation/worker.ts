@@ -1,7 +1,6 @@
 import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
-import { computeLoanConditions } from './financial/loanConditions';
 import { totalOutstandingLoans } from './financial/loanTypes';
 import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
 import { constructionServiceResourceType } from './planet/services';
@@ -21,7 +20,6 @@ import type { GameState } from './planet/planet';
 
 import { PRICE_FLOOR, TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { createInitialGameState } from './initialUniverse';
-import type { WorkerQueryMessage } from './queries';
 import { deserializeSnapshot, gameStateToWire, serializeGameState } from './snapshotCompression';
 import { SNAPSHOT_INTERVAL_TICKS, SNAPSHOT_MAX_RETAINED } from './snapshotConfig';
 import { computePopulationTotal } from './snapshotRepository';
@@ -593,98 +591,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             };
             tryFlushMessages(Date.now());
         }, interval);
-    }
-
-    function handleQuery(msg: WorkerQueryMessage): void {
-        const { requestId } = msg;
-        try {
-            const snap = state;
-            let data: unknown;
-
-            switch (msg.type) {
-                case 'getCurrentTick': {
-                    data = { tick: snap.tick };
-                    break;
-                }
-                case 'getFullState': {
-                    const planets = [...snap.planets.values()];
-                    const agents = [...snap.agents.values()];
-                    data = { tick: snap.tick, planets, agents };
-                    break;
-                }
-                case 'getPlanet': {
-                    data = { tick: snap.tick, planet: snap.planets.get(msg.planetId) ?? null };
-                    break;
-                }
-                case 'getAllPlanets': {
-                    const planets = [...snap.planets.values()];
-                    data = { tick: snap.tick, planets };
-                    break;
-                }
-                case 'getAgent': {
-                    data = { tick: snap.tick, agent: snap.agents.get(msg.agentId) ?? null };
-                    break;
-                }
-                case 'getAllAgents': {
-                    const agents = [...snap.agents.values()];
-                    data = { tick: snap.tick, agents };
-                    break;
-                }
-                case 'getLoanConditions': {
-                    const agent = snap.agents.get(msg.agentId);
-                    const planet = snap.planets.get(msg.planetId);
-                    if (!agent || !planet) {
-                        data = { tick: snap.tick, conditions: null, activeLoans: [] };
-                    } else {
-                        data = {
-                            tick: snap.tick,
-                            conditions: computeLoanConditions(agent, planet, snap.shipCapitalMarket),
-                            activeLoans: agent.assets[msg.planetId]?.activeLoans ?? [],
-                        };
-                    }
-                    break;
-                }
-                case 'getShipCapitalMarket': {
-                    data = { tick: snap.tick, shipCapitalMarket: snap.shipCapitalMarket };
-                    break;
-                }
-                case 'getPlanetWithAgents': {
-                    const planet = snap.planets.get(msg.planetId);
-                    const agents = [...snap.agents.values()].filter((a) => a.assets[msg.planetId] !== undefined);
-                    const forexMMs = [...snap.forexMarketMakers.values()].filter(
-                        (mm) => mm.assets[msg.planetId] !== undefined,
-                    );
-                    data = { tick: snap.tick, planet: planet ?? null, agents: [...agents, ...forexMMs] };
-                    break;
-                }
-                case 'getTickerEvents': {
-                    data = {
-                        tick: snap.tick,
-                        tickerEvents: state.tickerEvents,
-                    };
-                    break;
-                }
-                default: {
-                    const _exhaustive: never = msg;
-                    throw new Error(`Unknown query type: ${(_exhaustive as { type: string }).type}`);
-                }
-            }
-
-            const response: OutboundMessage = {
-                type: 'queryResponse',
-                requestId,
-                queryType: msg.type,
-                data,
-            } as OutboundMessage;
-            safePostMessage(response);
-        } catch (err) {
-            const errorResponse: OutboundMessage = {
-                type: 'queryError',
-                requestId,
-                error: err instanceof Error ? err.message : String(err),
-            };
-            safePostMessage(errorResponse);
-        }
     }
 
     messagePort?.on('message', async (msg: InboundMessage) => {
@@ -1804,11 +1710,6 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             if (!processingTick) {
                 drainActionQueue();
             }
-            return;
-        }
-
-        if ('requestId' in msg) {
-            handleQuery(msg as WorkerQueryMessage);
             return;
         }
     });
