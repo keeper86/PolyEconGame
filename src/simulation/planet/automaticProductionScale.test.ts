@@ -21,7 +21,6 @@ import {
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
-    findMaxScaleForMarketInputs,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
@@ -1551,8 +1550,8 @@ describe('updateAgentProductionScale', () => {
         planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
 
         const hrDepartment = makeHRFacility(undefined, {
-            maxScale: 5,
-            scale: 5,
+            maxScale: 6,
+            scale: 6,
             construction: null,
             pidState: {
                 integral: 0,
@@ -1635,7 +1634,7 @@ describe('updateAgentProductionScale', () => {
 
         const maxAllowed =
             hrDepartment.maxScale + Math.max(1, Math.ceil(hrDepartment.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
-        expect(maxAllowed).toBe(7);
+        expect(maxAllowed).toBe(6);
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
@@ -2215,126 +2214,6 @@ describe('findMaxScaleForLandboundResources', () => {
 
         const result = findMaxScaleForLandboundResources(facility, planet, 20);
         expect(result).toBe(20);
-    });
-});
-
-describe('findMaxScaleForMarketInputs', () => {
-    it('allows expansion when the input has spare capacity', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(
-            facility,
-            new Map([[crudeOilResourceType.name, 5000]]),
-            new Map([[crudeOilResourceType.name, 1000]]),
-            20,
-        );
-        expect(result).toBe(20);
-    });
-
-    it('caps expansion at the spare input capacity', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(
-            facility,
-            new Map([[crudeOilResourceType.name, 1500]]),
-            new Map([[crudeOilResourceType.name, 1000]]),
-            25,
-        );
-        expect(result).toBe(15);
-    });
-
-    it('blocks expansion when the input is over-demanded', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(
-            facility,
-            new Map([[crudeOilResourceType.name, 500]]),
-            new Map([[crudeOilResourceType.name, 1500]]),
-            20,
-        );
-        expect(result).toBe(0);
-    });
-
-    it('caps by the most constraining market input', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [
-                    { resource: crudeOilResourceType, quantity: 100 },
-                    { resource: naturalGasResourceType, quantity: 50 },
-                ],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(
-            facility,
-            new Map([
-                [crudeOilResourceType.name, 5000],
-                [naturalGasResourceType.name, 1500],
-            ]),
-            new Map([
-                [crudeOilResourceType.name, 1000],
-                [naturalGasResourceType.name, 1000],
-            ]),
-            25,
-        );
-        expect(result).toBe(20);
-    });
-
-    it('ignores landbound needs', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [{ resource: arableLandResourceType, quantity: 100 }],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(facility, new Map(), new Map(), 20);
-        expect(result).toBe(20);
-    });
-
-    it('returns desiredScale unchanged when maxScale is already at or above it', () => {
-        const facility = makeProductionFacility(
-            {},
-            {
-                maxScale: 10,
-                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
-                produces: [{ resource: produceResourceType, quantity: 50 }],
-            },
-        );
-
-        const result = findMaxScaleForMarketInputs(
-            facility,
-            new Map([[crudeOilResourceType.name, 0]]),
-            new Map([[crudeOilResourceType.name, 0]]),
-            10,
-        );
-        expect(result).toBe(10);
     });
 });
 

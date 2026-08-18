@@ -15,7 +15,6 @@ export {
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
-    findMaxScaleForMarketInputs,
     OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
 export {

@@ -189,6 +189,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maxMaintenanceCount = 0;
     let facilitiesBelowFullMaintenance = 0;
     let hrBufferSum = 0;
+    let hrScaleSum = 0;
+    let hrMaxScaleSum = 0;
+    let hrSignalSum = 0;
+    let hrExpansionIntegralSum = 0;
+    let hrCount = 0;
     let storageStarvationSum = 0;
     let storageStarvationCount = 0;
     let existentialAgentCount = 0;
@@ -267,8 +272,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let ironMineMaxScale = 0;
     let ironMineCondition = 0;
     let ironMineInputDepositEfficiency = 0;
+    let ironMineInputCoalEfficiency = 0;
     let ironMineWorkerEfficiency = 0;
     let ironMineOverallEfficiency = 0;
+    let ironMineContractionIntegral = 0;
+    let ironMineExpansionIntegral = 0;
+    let ironMineSmoothedSignal = 0;
     let ironMineCount = 0;
     let ironSmelterScale = 0;
     let ironSmelterMaxScale = 0;
@@ -277,6 +286,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let ironSmelterInputCoal = 0;
     let ironSmelterWorkerEfficiency = 0;
     let ironSmelterOverallEfficiency = 0;
+    let ironSmelterContractionIntegral = 0;
+    let ironSmelterExpansionIntegral = 0;
+    let ironSmelterSmoothedSignal = 0;
     let ironSmelterCount = 0;
 
     for (const agent of gameState.agents.values()) {
@@ -392,8 +404,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironMineCondition += facility.maintenanceStatus ?? 1;
                 const imEff = facility.lastTickResults?.resourceEfficiency ?? {};
                 ironMineInputDepositEfficiency += imEff[ironOreDepositResourceType.name] ?? 1;
+                ironMineInputCoalEfficiency += imEff[coalResourceType.name] ?? 1;
                 ironMineWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
                 ironMineOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                const pid = facility.pidState;
+                ironMineContractionIntegral += pid?.contractionIntegral ?? 0;
+                ironMineExpansionIntegral += pid?.expansionIntegral ?? 0;
+                ironMineSmoothedSignal += pid?.smoothedSignal ?? 0;
                 ironMineCount += 1;
             }
 
@@ -406,6 +423,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironSmelterInputCoal += isEff[coalResourceType.name] ?? 1;
                 ironSmelterWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
                 ironSmelterOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                const pid = facility.pidState;
+                ironSmelterContractionIntegral += pid?.contractionIntegral ?? 0;
+                ironSmelterExpansionIntegral += pid?.expansionIntegral ?? 0;
+                ironSmelterSmoothedSignal += pid?.smoothedSignal ?? 0;
                 ironSmelterCount += 1;
             }
 
@@ -479,6 +500,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 facilitiesBelowFullMaintenance += 1;
             }
             hrBufferSum += assets.humanResourcesDepartment.hrBuffer ?? 0;
+            hrScaleSum += assets.humanResourcesDepartment.scale;
+            hrMaxScaleSum += assets.humanResourcesDepartment.maxScale;
+            hrSignalSum += assets.humanResourcesDepartment.pidState?.smoothedSignal ?? 0;
+            hrExpansionIntegralSum += assets.humanResourcesDepartment.pidState?.expansionIntegral ?? 0;
+            hrCount += 1;
         }
         const storageDept = assets.storageFacility?.department;
         if (storageDept) {
@@ -629,8 +655,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const ironMineConditionAvg = ironMineCount > 0 ? ironMineCondition / ironMineCount : 1;
     const ironMineInputDepositEfficiencyAvg =
         ironMineCount > 0 ? ironMineInputDepositEfficiency / ironMineCount : 0;
+    const ironMineInputCoalEfficiencyAvg =
+        ironMineCount > 0 ? ironMineInputCoalEfficiency / ironMineCount : 0;
     const ironMineWorkerEfficiencyAvg = ironMineCount > 0 ? ironMineWorkerEfficiency / ironMineCount : 0;
     const ironMineOverallEfficiencyAvg = ironMineCount > 0 ? ironMineOverallEfficiency / ironMineCount : 0;
+    const ironMineContractionIntegralAvg = ironMineCount > 0 ? ironMineContractionIntegral / ironMineCount : 0;
+    const ironMineExpansionIntegralAvg = ironMineCount > 0 ? ironMineExpansionIntegral / ironMineCount : 0;
+    const ironMineSmoothedSignalAvg = ironMineCount > 0 ? ironMineSmoothedSignal / ironMineCount : 0;
     const ironSmelterScaleAvg = ironSmelterCount > 0 ? ironSmelterScale / ironSmelterCount : 0;
     const ironSmelterMaxScaleAvg = ironSmelterCount > 0 ? ironSmelterMaxScale / ironSmelterCount : 0;
     const ironSmelterConditionAvg = ironSmelterCount > 0 ? ironSmelterCondition / ironSmelterCount : 1;
@@ -638,6 +669,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const ironSmelterInputCoalAvg = ironSmelterCount > 0 ? ironSmelterInputCoal / ironSmelterCount : 0;
     const ironSmelterWorkerEfficiencyAvg = ironSmelterCount > 0 ? ironSmelterWorkerEfficiency / ironSmelterCount : 0;
     const ironSmelterOverallEfficiencyAvg = ironSmelterCount > 0 ? ironSmelterOverallEfficiency / ironSmelterCount : 0;
+    const ironSmelterContractionIntegralAvg = ironSmelterCount > 0 ? ironSmelterContractionIntegral / ironSmelterCount : 0;
+    const ironSmelterExpansionIntegralAvg = ironSmelterCount > 0 ? ironSmelterExpansionIntegral / ironSmelterCount : 0;
+    const ironSmelterSmoothedSignalAvg = ironSmelterCount > 0 ? ironSmelterSmoothedSignal / ironSmelterCount : 0;
 
     const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
@@ -716,6 +750,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         avgConditionEfficiency: conditionEfficiencyCount > 0 ? conditionEfficiencySum / conditionEfficiencyCount : 1,
         avgMaxMaintenance: maxMaintenanceCount > 0 ? maxMaintenanceSum / maxMaintenanceCount : 1,
         facilitiesBelowFullMaintenance,
+        hrScale: hrCount > 0 ? hrScaleSum / hrCount : 0,
+        hrMaxScale: hrCount > 0 ? hrMaxScaleSum / hrCount : 0,
+        hrSignal: hrCount > 0 ? hrSignalSum / hrCount : 0,
+        hrExpansionIntegral: hrCount > 0 ? hrExpansionIntegralSum / hrCount : 0,
         avgHrBuffer: productionFacilityCount > 0 ? hrBufferSum / productionFacilityCount : 0,
         hrCoverageRatio: usedWorkers > 0 ? hrBufferSum / usedWorkers : 0,
         avgStorageStarvation: storageStarvationCount > 0 ? storageStarvationSum / storageStarvationCount : 0,
@@ -798,8 +836,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         ironMineMaxScale: ironMineMaxScaleAvg,
         ironMineCondition: ironMineConditionAvg,
         ironMineInputDepositEfficiency: ironMineInputDepositEfficiencyAvg,
+        ironMineInputCoalEfficiency: ironMineInputCoalEfficiencyAvg,
         ironMineWorkerEfficiency: ironMineWorkerEfficiencyAvg,
         ironMineOverallEfficiency: ironMineOverallEfficiencyAvg,
+        ironMineContractionIntegral: ironMineContractionIntegralAvg,
+        ironMineExpansionIntegral: ironMineExpansionIntegralAvg,
+        ironMineSmoothedSignal: ironMineSmoothedSignalAvg,
         ironSmelterScale: ironSmelterScaleAvg,
         ironSmelterMaxScale: ironSmelterMaxScaleAvg,
         ironSmelterCondition: ironSmelterConditionAvg,
@@ -807,6 +849,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         ironSmelterInputCoal: ironSmelterInputCoalAvg,
         ironSmelterWorkerEfficiency: ironSmelterWorkerEfficiencyAvg,
         ironSmelterOverallEfficiency: ironSmelterOverallEfficiencyAvg,
+        ironSmelterContractionIntegral: ironSmelterContractionIntegralAvg,
+        ironSmelterExpansionIntegral: ironSmelterExpansionIntegralAvg,
+        ironSmelterSmoothedSignal: ironSmelterSmoothedSignalAvg,
         maintAggregateConsumption,
         maintSteadyStateDemand,
         maintCatchupBacklog,
@@ -896,6 +941,10 @@ export const METRIC_KEYS: string[] = [
     'avgConditionEfficiency',
     'avgMaxMaintenance',
     'facilitiesBelowFullMaintenance',
+    'hrScale',
+    'hrMaxScale',
+    'hrSignal',
+    'hrExpansionIntegral',
     'avgHrBuffer',
     'hrCoverageRatio',
     'avgStorageStarvation',
@@ -978,8 +1027,12 @@ export const METRIC_KEYS: string[] = [
     'ironMineMaxScale',
     'ironMineCondition',
     'ironMineInputDepositEfficiency',
+    'ironMineInputCoalEfficiency',
     'ironMineWorkerEfficiency',
     'ironMineOverallEfficiency',
+    'ironMineContractionIntegral',
+    'ironMineExpansionIntegral',
+    'ironMineSmoothedSignal',
     'ironSmelterScale',
     'ironSmelterMaxScale',
     'ironSmelterCondition',
@@ -987,6 +1040,9 @@ export const METRIC_KEYS: string[] = [
     'ironSmelterInputCoal',
     'ironSmelterWorkerEfficiency',
     'ironSmelterOverallEfficiency',
+    'ironSmelterContractionIntegral',
+    'ironSmelterExpansionIntegral',
+    'ironSmelterSmoothedSignal',
     'maintAggregateConsumption',
     'maintSteadyStateDemand',
     'maintCatchupBacklog',
