@@ -25,10 +25,9 @@ function placeEmployedWorkers(
     age: number,
     count: number,
     edu: 'none' | 'primary' | 'secondary' | 'tertiary' = 'none',
-    skill: 'novice' | 'professional' | 'expert' = 'novice',
 ): void {
-    agent.assets[planet.id].workforceDemography![age][edu][skill].active = count;
-    planet.population.demography[age].employed[edu][skill].total = count;
+    agent.assets[planet.id].workforceDemography![age][edu].active = count;
+    planet.population.demography[age].employed[edu].total = count;
 }
 
 describe('workforceDemographicTick + populationTick — single tick consistency', () => {
@@ -188,9 +187,9 @@ describe('workforceDemographicTick + populationTick + postProductionLaborMarketT
             [agent2.id, agent2],
         ]);
 
-        agent.assets.p.workforceDemography![83].secondary.novice.active = 5000;
-        agent2.assets.p.workforceDemography![83].secondary.novice.active = 5000;
-        planet.population.demography[83].employed.secondary.novice.total = 10000;
+        agent.assets.p.workforceDemography![83].secondary.active = 5000;
+        agent2.assets.p.workforceDemography![83].secondary.active = 5000;
+        planet.population.demography[83].employed.secondary.total = 10000;
 
         for (let month = 0; month < NOTICE_PERIOD_MONTHS + 1; month++) {
             for (let t = 0; t < TICKS_PER_MONTH; t++) {

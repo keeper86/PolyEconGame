@@ -1,15 +1,10 @@
 import type { EducationLevelType } from '../population/education';
 import type { WorkforceCohort, WorkforceCategory } from './workforce';
-import { SKILL, type Skill } from '../population/population';
 
-export function totalActiveForEduSkill(
-    workforce: WorkforceCohort<WorkforceCategory>[],
-    edu: EducationLevelType,
-    skill: Skill,
-): number {
+export function totalActiveForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        total += workforce[age][edu][skill].active;
+        total += workforce[age][edu].active;
     }
     return total;
 }
@@ -17,49 +12,39 @@ export function totalActiveForEduSkill(
 export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            for (const d of workforce[age][edu][skill].voluntaryDeparting) {
-                total += d;
-            }
-            for (const d of workforce[age][edu][skill].departingFired) {
-                total += d;
-            }
-            for (const d of workforce[age][edu][skill].departingRetired) {
-                total += d;
-            }
+        for (const d of workforce[age][edu].voluntaryDeparting) {
+            total += d;
         }
-    }
-    return total;
-}
-
-export function totalOnboardingForEduSkill(
-    workforce: WorkforceCohort<WorkforceCategory>[],
-    edu: EducationLevelType,
-    skill: Skill,
-): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const d of workforce[age][edu][skill].onboarding) {
+        for (const d of workforce[age][edu].departingFired) {
+            total += d;
+        }
+        for (const d of workforce[age][edu].departingRetired) {
             total += d;
         }
     }
     return total;
 }
 
-export function totalDepartingForEduSkill(
+export function totalVoluntaryDepartingForEdu(
     workforce: WorkforceCohort<WorkforceCategory>[],
     edu: EducationLevelType,
-    skill: Skill,
 ): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const d of workforce[age][edu][skill].voluntaryDeparting) {
+        for (const d of workforce[age][edu].voluntaryDeparting) {
             total += d;
         }
-        for (const d of workforce[age][edu][skill].departingFired) {
-            total += d;
-        }
-        for (const d of workforce[age][edu][skill].departingRetired) {
+    }
+    return total;
+}
+
+export function totalOnboardingForEdu(
+    workforce: WorkforceCohort<WorkforceCategory>[],
+    edu: EducationLevelType,
+): number {
+    let total = 0;
+    for (let age = 0; age < workforce.length; age++) {
+        for (const d of workforce[age][edu].onboarding) {
             total += d;
         }
     }

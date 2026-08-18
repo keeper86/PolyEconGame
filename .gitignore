@@ -15,7 +15,9 @@
 node-ramp-*.json
 
 # benchmarks
-/tools/benchmark/results/**/*
+**/results/**/*
+/tools/longrun/results/**/*
+
 
 # playwright
 /test-results/

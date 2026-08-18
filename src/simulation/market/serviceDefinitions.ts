@@ -102,7 +102,7 @@ const healthcareDefinition: ServiceDefinition = {
     consumptionRatePerPersonPerTick: (age, occ, wealth) =>
         (1 / TICKS_PER_MONTH / 3) *
         healthcareAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION, 0.4),
+        engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION, 1.0),
 } as const;
 
 const logisticsDefinition: ServiceDefinition = {
@@ -127,9 +127,7 @@ const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: (age, occ, wealth) =>
-        (1 / TICKS_PER_MONTH) *
-        retailAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, RETAIL_WEALTH_SATURATION, 100.0),
+        (1 / TICKS_PER_MONTH) * retailAgeMultiplier(age, occ) * engelMultiplier(wealth, RETAIL_WEALTH_SATURATION, 2.0),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {

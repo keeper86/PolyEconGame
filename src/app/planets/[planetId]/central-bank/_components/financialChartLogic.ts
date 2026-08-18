@@ -11,3 +11,13 @@ export function bucketDecadeLabel(bucket: number): string {
     const decadeStart = Math.floor(year / 10) * 10;
     return `${decadeStart}s`;
 }
+
+export function raiseWagesMonotone(wages: number[]): number[] {
+    const raised = [...wages];
+    for (let i = 0; i < raised.length - 1; i++) {
+        if (raised[i] > raised[i + 1]) {
+            raised[i + 1] = raised[i];
+        }
+    }
+    return raised;
+}

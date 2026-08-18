@@ -88,13 +88,13 @@ describe('consumeServices (per-category model)', () => {
         const { population: pop } = planet;
         const populationCount = 360;
 
-        pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 10;
-        pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0.5;
+        pop.demography[30].unoccupied.none.total = populationCount;
+        pop.demography[30].unoccupied.none.services.grocery.buffer = 10;
+        pop.demography[30].unoccupied.none.services.grocery.starvationLevel = 0.5;
 
         consumeServices(planet);
 
-        const cat = pop.demography[30].unoccupied.none.novice;
+        const cat = pop.demography[30].unoccupied.none;
 
         // Buffer (in ticks) now depletes by exactly the demanded amount (age-adjusted).
         // At age 30 with unoccupied occ, standardAgeMultiplier ≈ 0.9715.
@@ -111,13 +111,13 @@ describe('consumeServices (per-category model)', () => {
         const { population: pop } = planet;
         const populationCount = 360;
 
-        pop.demography[30].unoccupied.none.novice.total = populationCount;
-        pop.demography[30].unoccupied.none.novice.services.grocery.buffer = 0;
-        pop.demography[30].unoccupied.none.novice.services.grocery.starvationLevel = 0;
+        pop.demography[30].unoccupied.none.total = populationCount;
+        pop.demography[30].unoccupied.none.services.grocery.buffer = 0;
+        pop.demography[30].unoccupied.none.services.grocery.starvationLevel = 0;
 
         consumeServices(planet);
 
-        const cat = pop.demography[30].unoccupied.none.novice;
+        const cat = pop.demography[30].unoccupied.none;
 
         expect(cat.services.grocery.buffer).toBe(0);
 
@@ -130,19 +130,19 @@ describe('consumeServices (per-category model)', () => {
 
         consumeServices(planet);
 
-        expect(pop.demography[0].education.none.novice.services.grocery.starvationLevel).toBe(0);
+        expect(pop.demography[0].education.none.services.grocery.starvationLevel).toBe(0);
     });
 
     it('handles zero service buffer gracefully', () => {
         const planet = makePlanet();
         const { population: pop } = planet;
-        pop.demography[20].unoccupied.none.novice.total = 100;
-        pop.demography[20].unoccupied.none.novice.services.grocery.buffer = 0;
-        pop.demography[20].unoccupied.none.novice.services.grocery.starvationLevel = 0;
+        pop.demography[20].unoccupied.none.total = 100;
+        pop.demography[20].unoccupied.none.services.grocery.buffer = 0;
+        pop.demography[20].unoccupied.none.services.grocery.starvationLevel = 0;
 
         consumeServices(planet);
 
-        const cat = pop.demography[20].unoccupied.none.novice;
+        const cat = pop.demography[20].unoccupied.none;
         expect(cat.services.grocery.buffer).toBe(0);
 
         expect(cat.services.grocery.starvationLevel).toBeGreaterThan(0);
@@ -153,16 +153,16 @@ describe('consumeServices (per-category model)', () => {
         const { population: pop } = planet;
         const populationCount = 100;
 
-        pop.demography[25].employed.tertiary.expert.total = populationCount;
+        pop.demography[25].employed.tertiary.total = populationCount;
 
-        pop.demography[25].employed.tertiary.expert.services.grocery.buffer = 10;
-        pop.demography[25].employed.tertiary.expert.services.healthcare.buffer = 8;
-        pop.demography[25].employed.tertiary.expert.services.retail.buffer = 6;
-        pop.demography[25].employed.tertiary.expert.services.logistics.buffer = 4;
+        pop.demography[25].employed.tertiary.services.grocery.buffer = 10;
+        pop.demography[25].employed.tertiary.services.healthcare.buffer = 8;
+        pop.demography[25].employed.tertiary.services.retail.buffer = 6;
+        pop.demography[25].employed.tertiary.services.logistics.buffer = 4;
 
         consumeServices(planet);
 
-        const cat = pop.demography[25].employed.tertiary.expert;
+        const cat = pop.demography[25].employed.tertiary;
 
         // With age-adjusted buffer consumption, each service's buffer decreases by exactly
         // 1 tick when the buffer covers the age-adjusted demand.

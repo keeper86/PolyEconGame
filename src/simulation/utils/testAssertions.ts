@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import { educationLevelKeys } from '../population/education';
 import type { Agent, Planet } from '../planet/planet';
-import { OCCUPATIONS, SKILL } from '../population/population';
+import { OCCUPATIONS } from '../population/population';
 import { totalPopulation, sumPopOcc, sumWorkforceForEdu } from './testHelper';
 
 export function assertWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
@@ -28,12 +28,10 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
         const cohort = planet.population.demography[age];
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    expect(
-                        cohort[occ][edu][skill].total,
-                        `negative population at age=${age}, occ=${occ}, edu=${edu}, skill=${skill}: ${cohort[occ][edu][skill].total}`,
-                    ).toBeGreaterThanOrEqual(0);
-                }
+                expect(
+                    cohort[occ][edu].total,
+                    `negative population at age=${age}, occ=${occ}, edu=${edu}: ${cohort[occ][edu].total}`,
+                ).toBeGreaterThanOrEqual(0);
             }
         }
     }
@@ -45,22 +43,20 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
         }
         for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cell = wf[age][edu][skill];
+                const cell = wf[age][edu];
+                expect(
+                    cell.active,
+                    `negative active at age=${age}, edu=${edu} for agent ${agent.id}`,
+                ).toBeGreaterThanOrEqual(0);
+                for (let m = 0; m < cell.voluntaryDeparting.length; m++) {
                     expect(
-                        cell.active,
-                        `negative active at age=${age}, edu=${edu}, skill=${skill} for agent ${agent.id}`,
+                        cell.voluntaryDeparting[m],
+                        `negative departing at age=${age}, edu=${edu}, m=${m} for agent ${agent.id}`,
                     ).toBeGreaterThanOrEqual(0);
-                    for (let m = 0; m < cell.voluntaryDeparting.length; m++) {
-                        expect(
-                            cell.voluntaryDeparting[m],
-                            `negative departing at age=${age}, edu=${edu}, skill=${skill}, m=${m} for agent ${agent.id}`,
-                        ).toBeGreaterThanOrEqual(0);
-                        expect(
-                            cell.departingFired[m],
-                            `negative departingFired at age=${age}, edu=${edu}, skill=${skill}, m=${m} for agent ${agent.id}`,
-                        ).toBeGreaterThanOrEqual(0);
-                    }
+                    expect(
+                        cell.departingFired[m],
+                        `negative departingFired at age=${age}, edu=${edu}, m=${m} for agent ${agent.id}`,
+                    ).toBeGreaterThanOrEqual(0);
                 }
             }
         }
@@ -70,28 +66,26 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
 export function assertPerCellWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
     for (let age = 0; age < planet.population.demography.length; age++) {
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const popEmployed = planet.population.demography[age].employed[edu][skill].total;
+            const popEmployed = planet.population.demography[age].employed[edu].total;
 
-                let wfTotal = 0;
-                for (const agent of agents) {
-                    const wf = agent.assets[planet.id]?.workforceDemography;
-                    if (!wf || age >= wf.length) {
-                        continue;
-                    }
-                    const cell = wf[age][edu][skill];
-                    wfTotal += cell.active;
-                    wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
+            let wfTotal = 0;
+            for (const agent of agents) {
+                const wf = agent.assets[planet.id]?.workforceDemography;
+                if (!wf || age >= wf.length) {
+                    continue;
                 }
+                const cell = wf[age][edu];
+                wfTotal += cell.active;
+                wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
+            }
 
-                if (popEmployed !== 0 || wfTotal !== 0) {
-                    expect(
-                        wfTotal,
-                        `${label} per-cell mismatch at age=${age}, edu=${edu}, skill=${skill}: wf=${wfTotal}, pop(employed)=${popEmployed}`,
-                    ).toBe(popEmployed);
-                }
+            if (popEmployed !== 0 || wfTotal !== 0) {
+                expect(
+                    wfTotal,
+                    `${label} per-cell mismatch at age=${age}, edu=${edu}: wf=${wfTotal}, pop(employed)=${popEmployed}`,
+                ).toBe(popEmployed);
             }
         }
     }

@@ -55,9 +55,9 @@ function seedWorkforce(
     if (!wf) {
         return;
     }
-    wf[age].none.novice.active += count;
+    wf[age].none.active += count;
 
-    const demCell = planet.population.demography[age].employed.none.novice;
+    const demCell = planet.population.demography[age].employed.none;
     demCell.total += count;
     demCell.wealth = wealth;
     demCell.services = {
@@ -352,8 +352,8 @@ describe('shipTick passenger boarding', () => {
 
         shipTick(state);
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(0);
-        expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(0);
+        expect(planet.population.demography[30].employed.none.total).toBe(0);
+        expect(agent.assets.p1!.workforceDemography[30].none.active).toBe(0);
     });
 
     it('boarding succeeds even without provisions — transitions to provisioning phase', () => {
@@ -380,7 +380,7 @@ describe('shipTick passenger boarding', () => {
 
         expect(ship.state.type).toBe('passenger_provisioning');
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(0);
+        expect(planet.population.demography[30].employed.none.total).toBe(0);
     });
 
     it('zero-passenger dispatch progresses without storage', () => {
@@ -447,8 +447,8 @@ describe('shipTick passenger boarding', () => {
 
         expect(ship.state.type).toBe('idle');
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(500);
-        expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(500);
+        expect(planet.population.demography[30].employed.none.total).toBe(500);
+        expect(agent.assets.p1!.workforceDemography[30].none.active).toBe(500);
     });
 
     it('stays in boarding when no workers are available (waits for workers)', () => {
@@ -595,7 +595,7 @@ describe('shipTick passenger transporting / arrival', () => {
             from: 'p1',
             to: 'p2',
             arrivalTick: 100,
-            manifest: { '30:employed:none:novice': { ...nullPopulationCategory(), total: 50 } },
+            manifest: { '30:employed:none': { ...nullPopulationCategory(), total: 50 } },
         };
         agent.ships.push(ship);
         const state = makeGameState([planet, planet2], [agent], 50);
@@ -603,7 +603,7 @@ describe('shipTick passenger transporting / arrival', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('passenger_transporting');
-        expect(planet2.population.demography[30].employed.none.novice.total).toBe(0);
+        expect(planet2.population.demography[30].employed.none.total).toBe(0);
     });
 
     it('unloads passengers into destination planet on arrival', () => {
@@ -618,7 +618,7 @@ describe('shipTick passenger transporting / arrival', () => {
             to: 'p2',
             arrivalTick: 100,
             manifest: {
-                '30:employed:none:novice': {
+                '30:employed:none': {
                     ...nullPopulationCategory(),
                     total: 50,
                     wealth: { mean: 100, variance: 10 },
@@ -635,7 +635,7 @@ describe('shipTick passenger transporting / arrival', () => {
         if (shipState.type === 'idle') {
             expect(shipState.planetId).toBe('p2');
         }
-        expect(planet2.population.demography[30].employed.none.novice.total).toBe(50);
+        expect(planet2.population.demography[30].employed.none.total).toBe(50);
     });
 
     it('sets service buffers to max values on arrival', () => {
@@ -650,7 +650,7 @@ describe('shipTick passenger transporting / arrival', () => {
             to: 'p2',
             arrivalTick: 10,
             manifest: {
-                '30:employed:none:novice': {
+                '30:employed:none': {
                     ...nullPopulationCategory(),
                     total: 10,
                     wealth: { mean: 50, variance: 0 },
@@ -669,7 +669,7 @@ describe('shipTick passenger transporting / arrival', () => {
 
         shipTick(state);
 
-        const cell = planet2.population.demography[30].employed.none.novice;
+        const cell = planet2.population.demography[30].employed.none;
         expect(cell.services.grocery.buffer).toBe(groceryDef.bufferTargetTicks);
         expect(cell.services.grocery.starvationLevel).toBe(0);
         expect(cell.services.healthcare.buffer).toBe(healthcareDef.bufferTargetTicks);
@@ -685,7 +685,7 @@ describe('shipTick passenger transporting / arrival', () => {
             from: 'p1',
             to: 'p2',
             arrivalTick: 10,
-            manifest: { '30:employed:none:novice': { ...nullPopulationCategory(), total: 5 } },
+            manifest: { '30:employed:none': { ...nullPopulationCategory(), total: 5 } },
         };
         agent.ships.push(ship);
 
@@ -706,9 +706,9 @@ describe('boardPassengersFromWorkforce', () => {
 
         expect(boarded).toBe(100);
 
-        expect(agent.assets.p1!.workforceDemography[35].none.novice.active).toBe(100);
+        expect(agent.assets.p1!.workforceDemography[35].none.active).toBe(100);
 
-        expect(planet.population.demography[35].employed.none.novice.total).toBe(100);
+        expect(planet.population.demography[35].employed.none.total).toBe(100);
 
         const keys = Object.keys(manifest);
         expect(keys.length).toBeGreaterThan(0);
@@ -734,12 +734,12 @@ describe('refundBoardedPassengers', () => {
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 300);
 
-        expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(0);
+        expect(agent.assets.p1!.workforceDemography[40].none.active).toBe(0);
 
         refundBoardedPassengers(agent, planet, 'p1', manifest);
 
-        expect(agent.assets.p1!.workforceDemography[40].none.novice.active).toBe(300);
-        expect(planet.population.demography[40].employed.none.novice.total).toBe(300);
+        expect(agent.assets.p1!.workforceDemography[40].none.active).toBe(300);
+        expect(planet.population.demography[40].employed.none.total).toBe(300);
 
         expect(Object.keys(manifest)).toHaveLength(0);
     });
@@ -748,7 +748,7 @@ describe('refundBoardedPassengers', () => {
 describe('calculateProvisions', () => {
     it('computes correct grocery and healthcare goals for a manifest', () => {
         const manifest = {
-            '30:employed:none:novice': { ...nullPopulationCategory(), total: 100 },
+            '30:employed:none': { ...nullPopulationCategory(), total: 100 },
         };
         const flightTicks = 50;
         const provisions = calculateProvisions(manifest, flightTicks);
@@ -770,7 +770,7 @@ describe('calculateProvisions', () => {
 
     it('includes education provision for education-occupation passengers', () => {
         const manifest = {
-            '25:education:primary:novice': { ...nullPopulationCategory(), total: 50 },
+            '25:education:primary': { ...nullPopulationCategory(), total: 50 },
         };
         const flightTicks = 30;
         const provisions = calculateProvisions(manifest, flightTicks);
@@ -794,7 +794,7 @@ describe('advanceManifestAge disability phase', () => {
     it('moves some passengers to unableToWork over a long flight', () => {
         const flightTicks = TICKS_PER_YEAR * 10;
         const manifest = {
-            '50:employed:none:novice': {
+            '50:employed:none': {
                 ...nullPopulationCategory(),
                 total: 10_000,
                 wealth: { mean: 100, variance: 0 },
@@ -817,7 +817,7 @@ describe('unloadPassengersToWorkforce', () => {
         const planet = makePlanet({ id: 'p2' });
 
         const manifest = {
-            '30:employed:none:novice': {
+            '30:employed:none': {
                 ...nullPopulationCategory(),
                 total: 75,
                 wealth: { mean: 200, variance: 5 },
@@ -826,8 +826,8 @@ describe('unloadPassengersToWorkforce', () => {
 
         unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(75);
-        expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(75);
+        expect(planet.population.demography[30].employed.none.total).toBe(75);
+        expect(agent.assets.p2!.workforceDemography[30].none.active).toBe(75);
     });
 
     it('does not add unableToWork passengers to workforce', () => {
@@ -836,7 +836,7 @@ describe('unloadPassengersToWorkforce', () => {
         const planet = makePlanet({ id: 'p2' });
 
         const manifest = {
-            '30:unableToWork:none:novice': {
+            '30:unableToWork:none': {
                 ...nullPopulationCategory(),
                 total: 20,
                 wealth: { mean: 50, variance: 0 },
@@ -845,9 +845,9 @@ describe('unloadPassengersToWorkforce', () => {
 
         unloadPassengersToWorkforce(agent, planet, 'p2', manifest);
 
-        expect(planet.population.demography[30].unableToWork.none.novice.total).toBe(20);
+        expect(planet.population.demography[30].unableToWork.none.total).toBe(20);
 
-        expect(agent.assets.p2!.workforceDemography[30].none.novice.active).toBe(0);
+        expect(agent.assets.p2!.workforceDemography[30].none.active).toBe(0);
     });
 });
 
@@ -877,8 +877,8 @@ describe('boardPassengersFromWorkforce wealth snapshot', () => {
         const manifest: Record<string, ReturnType<typeof nullPopulationCategory>> = {};
         boardPassengersFromWorkforce(agent, planet, 'p1', manifest, 50);
 
-        expect(planet.population.demography[40].employed.none.novice.total).toBe(0);
-        expect(planet.population.demography[40].employed.none.novice.wealth.mean).toBe(0);
+        expect(planet.population.demography[40].employed.none.total).toBe(0);
+        expect(planet.population.demography[40].employed.none.wealth.mean).toBe(0);
 
         const total = Object.values(manifest).reduce((s, c) => s + c.total, 0);
         expect(total).toBe(50);
@@ -891,12 +891,12 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
     it('redistributes to the largest surviving cohort deterministically', () => {
         const flightTicks = TICKS_PER_YEAR * 5;
         const manifest = {
-            '90:employed:none:novice': {
+            '90:employed:none': {
                 ...nullPopulationCategory(),
                 total: 10,
                 wealth: { mean: 1000, variance: 0 },
             },
-            '20:employed:none:novice': {
+            '20:employed:none': {
                 ...nullPopulationCategory(),
                 total: 10_000,
                 wealth: { mean: 100, variance: 0 },
@@ -918,17 +918,17 @@ describe('advanceManifestAge orphaned wealth redistribution', () => {
     it('always assigns orphaned wealth to the highest-total survivor', () => {
         const flightTicks = TICKS_PER_YEAR * 5;
         const manifest = {
-            '90:employed:none:novice': {
+            '90:employed:none': {
                 ...nullPopulationCategory(),
                 total: 10,
                 wealth: { mean: 10_000, variance: 0 },
             },
-            '20:employed:none:novice': {
+            '20:employed:none': {
                 ...nullPopulationCategory(),
                 total: 5_000,
                 wealth: { mean: 1, variance: 0 },
             },
-            '21:employed:none:novice': {
+            '21:employed:none': {
                 ...nullPopulationCategory(),
                 total: 100,
                 wealth: { mean: 1, variance: 0 },
@@ -952,7 +952,7 @@ describe('advanceManifestAge integer population invariant', () => {
         const manifest: PassengerManifest = {};
 
         for (const age of [20, 35, 50, 65, 80]) {
-            const key = manifestKey(age, 'employed', 'none', 'novice');
+            const key = manifestKey(age, 'employed', 'none');
             manifest[key] = {
                 ...nullPopulationCategory(),
                 total: 1000,
@@ -998,9 +998,9 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
 
         expect(ship.state.type).toBe('idle');
 
-        expect(planet.population.demography[30].employed.none.novice.total).toBe(200);
+        expect(planet.population.demography[30].employed.none.total).toBe(200);
 
-        expect(agent.assets.p1!.workforceDemography[30].none.novice.active).toBe(200);
+        expect(agent.assets.p1!.workforceDemography[30].none.active).toBe(200);
     });
 
     it('boarding deadline without posterAgentId restores carrier agent workforce', () => {
@@ -1030,6 +1030,6 @@ describe('shipTick passenger_boarding deadline — refunds agent workforce', () 
         shipTick(state);
 
         expect(ship.state.type).toBe('idle');
-        expect(agent.assets.p1!.workforceDemography[25].none.novice.active).toBe(100);
+        expect(agent.assets.p1!.workforceDemography[25].none.active).toBe(100);
     });
 });

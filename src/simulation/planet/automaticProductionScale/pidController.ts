@@ -10,6 +10,9 @@ export function getDefaultPidState(): PidState {
         contractionIntegral: 0,
         smoothedSignal: 0,
         profitEMA: 0,
+        revenueEMA: 0,
+        profitAtExpansionScale: 0,
+        profitAtContractionScale: 0,
     };
 }
 

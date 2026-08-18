@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import type { EducationLevelType } from '../population/education';
-import { MAX_AGE, SKILL } from '../population/population';
+import { MAX_AGE } from '../population/population';
 
 import { workforceAdvanceYearTick } from './workforceAdvanceYearTick';
 import { makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
@@ -12,9 +12,7 @@ import type { makeWorkforceDemography } from '../utils/testHelper';
 function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            total += workforce[age][edu][skill].active;
-        }
+        total += workforce[age][edu].active;
     }
     return total;
 }
@@ -22,10 +20,8 @@ function totalActiveForEdu(workforce: ReturnType<typeof makeWorkforceDemography>
 function totalDepartingForEdu(workforce: ReturnType<typeof makeWorkforceDemography>, edu: EducationLevelType): number {
     let total = 0;
     for (let age = 0; age < workforce.length; age++) {
-        for (const skill of SKILL) {
-            for (const dep of workforce[age][edu][skill].voluntaryDeparting) {
-                total += dep;
-            }
+        for (const dep of workforce[age][edu].voluntaryDeparting) {
+            total += dep;
         }
     }
     return total;
@@ -43,89 +39,89 @@ describe('workforceAdvanceYearTick', () => {
 
     it('shifts workers from age 25 to age 26', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[25].primary.novice.active = 100;
+        workforce[25].primary.active = 100;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(workforce[25].primary.novice.active).toBe(0);
-        expect(workforce[26].primary.novice.active).toBe(100);
+        expect(workforce[25].primary.active).toBe(0);
+        expect(workforce[26].primary.active).toBe(100);
     });
 
     it('workers at MAX_AGE are dropped (overflow)', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[MAX_AGE].secondary.novice.active = 50;
+        workforce[MAX_AGE].secondary.active = 50;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(workforce[MAX_AGE].secondary.novice.active).toBe(50);
+        expect(workforce[MAX_AGE].secondary.active).toBe(50);
     });
 
     it('shifts departing pipeline entries along with active workers', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[30].tertiary.professional.voluntaryDeparting[1] = 8;
+        workforce[30].tertiary.voluntaryDeparting[1] = 8;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(workforce[30].tertiary.professional.voluntaryDeparting[1]).toBe(0);
-        expect(workforce[31].tertiary.professional.voluntaryDeparting[1]).toBe(8);
+        expect(workforce[30].tertiary.voluntaryDeparting[1]).toBe(0);
+        expect(workforce[31].tertiary.voluntaryDeparting[1]).toBe(8);
     });
 
     it('shifts departingFired pipeline along with departing', () => {
         const workforce = agent.assets.p.workforceDemography!;
-        workforce[30].none.novice.departingFired[2] = 5;
+        workforce[30].none.departingFired[2] = 5;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(workforce[30].none.novice.departingFired[2]).toBe(0);
-        expect(workforce[31].none.novice.departingFired[2]).toBe(5);
+        expect(workforce[30].none.departingFired[2]).toBe(0);
+        expect(workforce[31].none.departingFired[2]).toBe(5);
     });
 
     it('merges workers at MAX_AGE-1 into MAX_AGE', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[MAX_AGE].secondary.novice.active = 100;
-        wf[MAX_AGE - 1].secondary.novice.active = 100;
+        wf[MAX_AGE].secondary.active = 100;
+        wf[MAX_AGE - 1].secondary.active = 100;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(wf[MAX_AGE].secondary.novice.active).toBe(200);
-        expect(wf[MAX_AGE - 1].secondary.novice.active).toBe(0);
+        expect(wf[MAX_AGE].secondary.active).toBe(200);
+        expect(wf[MAX_AGE - 1].secondary.active).toBe(0);
     });
 
     it('workers in distinct ages each advance independently', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[25].secondary.novice.active = 100;
-        wf[30].secondary.novice.active = 100;
+        wf[25].secondary.active = 100;
+        wf[30].secondary.active = 100;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(wf[26].secondary.novice.active).toBe(100);
-        expect(wf[31].secondary.novice.active).toBe(100);
+        expect(wf[26].secondary.active).toBe(100);
+        expect(wf[31].secondary.active).toBe(100);
 
-        expect(wf[25].secondary.novice.active).toBe(0);
-        expect(wf[30].secondary.novice.active).toBe(0);
+        expect(wf[25].secondary.active).toBe(0);
+        expect(wf[30].secondary.active).toBe(0);
     });
 
     it('resets source age after shifting', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
-        wf[22].none.expert.active = 50;
+        wf[22].none.active = 50;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(wf[22].none.expert.active).toBe(0);
-        expect(wf[23].none.expert.active).toBe(50);
+        expect(wf[22].none.active).toBe(0);
+        expect(wf[23].none.active).toBe(50);
     });
 
     it('conserves total active workers across age shift (workers below MAX_AGE)', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[25].none.novice.active = 100;
-        wf[30].none.professional.active = 200;
-        wf[60].none.expert.active = 50;
-        wf[25].primary.novice.active = 80;
+        wf[25].none.active = 100;
+        wf[30].none.active = 200;
+        wf[60].none.active = 50;
+        wf[25].primary.active = 80;
 
         const totalBefore = totalActiveForEdu(wf, 'none') + totalActiveForEdu(wf, 'primary');
 
@@ -139,9 +135,9 @@ describe('workforceAdvanceYearTick', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[30].none.novice.voluntaryDeparting[2] = 10;
-        wf[30].none.professional.voluntaryDeparting[0] = 5;
-        wf[40].primary.novice.voluntaryDeparting[0] = 20;
+        wf[30].none.voluntaryDeparting[2] = 10;
+        wf[30].none.voluntaryDeparting[0] = 5;
+        wf[40].primary.voluntaryDeparting[0] = 20;
 
         const depNoneBefore = totalDepartingForEdu(wf, 'none');
         const depPrimBefore = totalDepartingForEdu(wf, 'primary');
@@ -156,16 +152,16 @@ describe('workforceAdvanceYearTick', () => {
         const agent = makeAgent();
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[0].none.novice.active = 100;
-        wf[0].primary.professional.voluntaryDeparting[1] = 10;
+        wf[0].none.active = 100;
+        wf[0].primary.voluntaryDeparting[1] = 10;
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
-        expect(wf[0].none.novice.active).toBe(0);
-        expect(wf[0].primary.professional.voluntaryDeparting[1]).toBe(0);
+        expect(wf[0].none.active).toBe(0);
+        expect(wf[0].primary.voluntaryDeparting[1]).toBe(0);
 
-        expect(wf[1].none.novice.active).toBe(100);
-        expect(wf[1].primary.professional.voluntaryDeparting[1]).toBe(10);
+        expect(wf[1].none.active).toBe(100);
+        expect(wf[1].primary.voluntaryDeparting[1]).toBe(10);
     });
 
     it('workforce in the middle of the age range survives year tick without data loss', () => {
@@ -173,15 +169,15 @@ describe('workforceAdvanceYearTick', () => {
         const wf = agent.assets.p.workforceDemography!;
 
         for (const edu of educationLevelKeys) {
-            wf[40][edu].novice.active = 100;
-            wf[40][edu].novice.voluntaryDeparting[2] = 10;
+            wf[40][edu].active = 100;
+            wf[40][edu].voluntaryDeparting[2] = 10;
         }
 
         workforceAdvanceYearTick(new Map([[agent.id, agent]]), planet);
 
         for (const edu of educationLevelKeys) {
-            expect(wf[41][edu].novice.active).toBe(100);
-            expect(wf[41][edu].novice.voluntaryDeparting[2]).toBe(10);
+            expect(wf[41][edu].active).toBe(100);
+            expect(wf[41][edu].voluntaryDeparting[2]).toBe(10);
         }
     });
 

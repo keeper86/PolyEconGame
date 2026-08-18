@@ -11,6 +11,7 @@ import {
     computeProductivityMultiplier,
     hrBufferStatus,
     processHrBufferForAssets,
+    setHrProductivityEffectDisabled,
     updateHrBuffer,
 } from './hrBuffer';
 
@@ -75,6 +76,17 @@ describe('computeProductivityMultiplier', () => {
         expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.7);
         expect(computeProductivityMultiplier(0.0)).toBeCloseTo(0.5);
         expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.6);
+    });
+
+    it('returns 1.0 regardless of coverage when the effect is disabled', () => {
+        setHrProductivityEffectDisabled(true);
+        try {
+            expect(computeProductivityMultiplier(0)).toBeCloseTo(1);
+            expect(computeProductivityMultiplier(0.3)).toBeCloseTo(1);
+            expect(computeProductivityMultiplier(1)).toBeCloseTo(1);
+        } finally {
+            setHrProductivityEffectDisabled(false);
+        }
     });
 });
 

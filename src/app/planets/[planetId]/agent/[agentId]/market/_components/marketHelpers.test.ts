@@ -1,4 +1,4 @@
-import { administrativeServiceResourceType } from '@/simulation/planet/services';
+import { administrativeServiceResourceType, maintenanceServiceResourceType } from '@/simulation/planet/services';
 import { makeAgentPlanetAssets, makeHRFacility } from '@/simulation/utils/testHelper';
 import { describe, expect, it } from 'vitest';
 import { buildResourceList, clampArea } from './marketHelpers';
@@ -93,5 +93,14 @@ describe('buildResourceList', () => {
         const names = resources.map((r) => r.name);
 
         expect(names).not.toContain(administrativeServiceResourceType.name);
+    });
+
+    it('always includes Maintenance when showing relevant resources', () => {
+        const assets = makeAgentPlanetAssets('p');
+
+        const resources = buildResourceList(assets, false);
+        const names = resources.map((r) => r.name);
+
+        expect(names).toContain(maintenanceServiceResourceType.name);
     });
 });

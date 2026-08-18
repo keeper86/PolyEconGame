@@ -320,6 +320,9 @@ export type MonthAccumulator = {
     depreciatedServices: Record<string, ResourceAccumulator>;
 };
 
+export const operatingProfit = (acc: MonthAccumulator): number =>
+    acc.revenue - acc.wages - acc.purchases - acc.claimPayments;
+
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
     shipConstructionFacilities: ShipConstructionFacility[];

@@ -141,7 +141,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
     const allBids = new Map<string, BidOrder[]>(householdDemandPriority.map((resourceName) => [resourceName, []]));
 
     planet.population.demography.forEach((cohort, age) =>
-        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+        forEachPopulationCohort(cohort, (category, occ, edu) => {
             const pop = category.total;
             if (pop <= 0) {
                 return;
@@ -150,7 +150,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
             const wm = category.wealth;
             if (wm.mean < 0 || !Number.isFinite(wm.mean)) {
                 throw new Error(
-                    `Invalid mean wealth for cohort category: age=${age} occ=${occ} edu=${edu} skill=${skill} meanWealth=${wm.mean}`,
+                    `Invalid mean wealth for cohort category: age=${age} occ=${occ} edu=${edu} meanWealth=${wm.mean}`,
                 );
             }
 
@@ -194,7 +194,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                let quantityPerPerson = rate * service.bufferTargetTicks * bufferFillDeficit;
+                let quantityPerPerson = rate * (1 + bufferFillDeficit);
 
                 if (remainingWealth < 1.2 * rate * willingPrice) {
                     willingPrice = remainingWealth / rate / 1.2;
@@ -216,7 +216,6 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     age,
                     edu,
                     occ,
-                    skill,
                     population: pop,
                     bidPrice: willingPrice,
                     quantity: quantityPerPerson * pop,

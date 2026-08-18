@@ -1,26 +1,32 @@
 import type { Resource } from './claims';
 
-const serviceResourceDefault = {
-    form: 'services' as const,
-    level: 'services' as const,
+const internalResourceDefault = {
+    form: 'internal' as const,
+    level: 'internal' as const,
     volumePerQuantity: 0,
     massPerQuantity: 0,
 };
 
 export const humanResourcesServiceResourceType: Resource = {
-    form: 'internal',
-    level: 'internal',
-    volumePerQuantity: 0,
-    massPerQuantity: 0,
+    ...internalResourceDefault,
     name: 'Human Resources',
 };
 
 export const storageServiceResourceType: Resource = {
-    form: 'internal',
-    level: 'internal',
+    ...internalResourceDefault,
+    name: 'Storage',
+};
+
+export const trainingServiceResourceType: Resource = {
+    ...internalResourceDefault,
+    name: 'Training',
+};
+
+const serviceResourceDefault = {
+    form: 'services' as const,
+    level: 'services' as const,
     volumePerQuantity: 0,
     massPerQuantity: 0,
-    name: 'Storage',
 };
 
 export const logisticsServiceResourceType: Resource = {

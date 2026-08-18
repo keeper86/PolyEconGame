@@ -1,7 +1,7 @@
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
-import { MAX_AGE, SKILL } from '../population/population';
+import { MAX_AGE } from '../population/population';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
 import { nullWorkforceCategory } from './workforce';
 
@@ -27,16 +27,14 @@ const mergeCategories = (destination: WorkforceCategory, source: WorkforceCatego
 
 const zeroCohort = (cohort: WorkforceCohort<WorkforceCategory>): void => {
     for (const edu of educationLevelKeys) {
-        for (const skill of SKILL) {
-            const cat = cohort[edu][skill];
-            cat.active = 0;
-            cat.workforceExperience = 0;
-            for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                cat.voluntaryDeparting[m] = 0;
-                cat.departingFired[m] = 0;
-                cat.departingRetired[m] = 0;
-                cat.onboarding[m] = 0;
-            }
+        const cat = cohort[edu];
+        cat.active = 0;
+        cat.workforceExperience = 0;
+        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+            cat.voluntaryDeparting[m] = 0;
+            cat.departingFired[m] = 0;
+            cat.departingRetired[m] = 0;
+            cat.onboarding[m] = 0;
         }
     }
 };
@@ -44,19 +42,16 @@ const zeroCohort = (cohort: WorkforceCohort<WorkforceCategory>): void => {
 const cloneCohort = (cohort: WorkforceCohort<WorkforceCategory>): WorkforceCohort<WorkforceCategory> => {
     const out = {} as WorkforceCohort<WorkforceCategory>;
     for (const edu of educationLevelKeys) {
-        out[edu] = {} as (typeof out)[typeof edu];
-        for (const skill of SKILL) {
-            const src = cohort[edu][skill];
-            const dst = nullWorkforceCategory();
-            dst.active = src.active;
-            for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                dst.voluntaryDeparting[m] = src.voluntaryDeparting[m] ?? 0;
-                dst.departingFired[m] = src.departingFired[m] ?? 0;
-                dst.departingRetired[m] = src.departingRetired[m] ?? 0;
-                dst.onboarding[m] = src.onboarding[m] ?? 0;
-            }
-            out[edu][skill] = dst;
+        const src = cohort[edu];
+        const dst = nullWorkforceCategory();
+        dst.active = src.active;
+        for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+            dst.voluntaryDeparting[m] = src.voluntaryDeparting[m] ?? 0;
+            dst.departingFired[m] = src.departingFired[m] ?? 0;
+            dst.departingRetired[m] = src.departingRetired[m] ?? 0;
+            dst.onboarding[m] = src.onboarding[m] ?? 0;
         }
+        out[edu] = dst;
     }
     return out;
 };
@@ -85,15 +80,11 @@ export function workforceAdvanceYearTick(agents: Map<string, Agent>, planet: Pla
 
             if (age === MAX_AGE) {
                 for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        mergeCategories(dst[edu][skill], maxAgeSnapshot[edu][skill]);
-                    }
+                    mergeCategories(dst[edu], maxAgeSnapshot[edu]);
                 }
             }
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    mergeCategories(dst[edu][skill], src[edu][skill]);
-                }
+                mergeCategories(dst[edu], src[edu]);
             }
         }
 

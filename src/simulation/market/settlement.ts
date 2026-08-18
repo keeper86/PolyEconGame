@@ -28,7 +28,7 @@ export function settleHouseholds(
         }
 
         const record = bidOrders[i];
-        const category = demography[record.age][record.occ][record.edu][record.skill];
+        const category = demography[record.age][record.occ][record.edu];
         assert(category.total > 0, `Invalid population category: ${category.total}`);
         const perPersonCost = bidCosts[i] / category.total;
 

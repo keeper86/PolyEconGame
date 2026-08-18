@@ -1,3 +1,4 @@
+import { FACILITY_CONDITION_EFFICIENCY_EXPONENT } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
@@ -32,8 +33,24 @@ export const getFacilityType = (facility: Facility): FacilityType => {
     return facility.type;
 };
 
+let conditionEfficiencyDisabled = false;
+
+export function setConditionEfficiencyDisabled(disabled: boolean): void {
+    conditionEfficiencyDisabled = disabled;
+}
+
+export function computeFacilityConditionEfficiency(maintenanceStatus: number): number {
+    if (conditionEfficiencyDisabled) {
+        return 1;
+    }
+    const condition = Math.max(0, Math.min(1, maintenanceStatus));
+    return 1 - Math.pow(1 - condition, FACILITY_CONDITION_EFFICIENCY_EXPONENT);
+}
+
+export const isFacilityOperating = (facility: Facility): boolean => facility.construction?.type !== 'new';
+
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
-const constructionCostFactor = 10000;
+const constructionCostFactor = 20000;
 const facilityConstructionMultiplier: Record<FacilityType, number> = {
     raw: 1,
     refined: 2,
@@ -53,12 +70,11 @@ export const calculateCostsForConstruction = (
     }
 
     const m = facilityConstructionMultiplier[facilityType];
-    const integralTerm = (Math.pow(targetScale, 1.1) - Math.pow(currentScale, 1.1)) / 1.1;
     const linearTerm = targetScale - currentScale;
 
     const minimumTime = MINIMUM_CONSTRUCTION_TIME_IN_TICKS * (facilityType === 'management' ? 0.5 : 1);
     return {
-        cost: Math.round(m * constructionCostFactor * (integralTerm + linearTerm)),
+        cost: Math.round(m * constructionCostFactor * linearTerm),
         time: minimumTime + 30 * m * Math.log(targetScale - currentScale),
     };
 };
@@ -70,6 +86,11 @@ export type FacilityBase = PlanetaryId & {
     scale: number;
     construction: ConstructionState;
     lastConstructionCompletedTick: number;
+    maintenanceStatus: number;
+    maxMaintenance: number;
+    cumulativeRepairAcc: number;
+    lastTickMaintenanceConsumption: number;
+    lastTickRestorationConsumption: number;
 
     powerConsumptionPerTick: number;
     workerRequirement: {
@@ -121,6 +142,9 @@ export type PidState = {
     contractionIntegral: number;
     smoothedSignal: number;
     profitEMA: number;
+    revenueEMA: number;
+    profitAtExpansionScale: number;
+    profitAtContractionScale: number;
 };
 
 export type ProductionFacility = FacilityBase & {
@@ -161,24 +185,66 @@ export type ManagementFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
+export type WagePidCell = {
+    integral: number;
+    prevError: number;
+};
+
+export type WagePidState = {
+    fill: WagePidCell;
+    turnover: WagePidCell;
+};
+
+const nullWagePidCell = (): WagePidCell => ({ integral: 0, prevError: 0 });
+
+const nullWagePid = (): WagePidState => ({ fill: nullWagePidCell(), turnover: nullWagePidCell() });
+
+export const nullWagePidState = (): Record<EducationLevelType, WagePidState> => ({
+    none: nullWagePid(),
+    primary: nullWagePid(),
+    secondary: nullWagePid(),
+    tertiary: nullWagePid(),
+});
+
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
+    wagePidState: Record<EducationLevelType, WagePidState>;
 };
 export type StorageDepartment = ManagementFacility & {
     storageBuffer: number;
     storageStarvation: number;
 };
 
+export type TrainingsDepartment = ManagementFacility & {
+    trainingsBuffer: number;
+};
+
 export function getStorageStarvation(storage: StorageFacility): number {
     return storage.department?.storageStarvation ?? 1.0;
 }
 
+let storageStarvationEffectDisabled = false;
+
+export function setStorageStarvationEffectDisabled(disabled: boolean): void {
+    storageStarvationEffectDisabled = disabled;
+}
+
+export function isStorageStarvationEffectDisabled(): boolean {
+    return storageStarvationEffectDisabled;
+}
+
 export function inflowPreservation(ss: number): number {
+    if (storageStarvationEffectDisabled) {
+        return 1;
+    }
     const base = 0.5;
     return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
 }
 
 export function storagePreservationFactor(ss: number): number {
+    if (storageStarvationEffectDisabled) {
+        return 1;
+    }
     return 1 - 0.05 * Math.pow(ss, 6);
 }
 

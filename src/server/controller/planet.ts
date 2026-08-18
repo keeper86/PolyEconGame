@@ -6,8 +6,8 @@ import { constructionServiceResourceType, groceryServiceResourceType } from '@/s
 import { z } from 'zod';
 import type { Agent, Planet } from '../../simulation/planet/planet';
 import { educationLevelKeys } from '../../simulation/population/education';
-import type { ServiceName, Skill } from '../../simulation/population/population';
-import { OCCUPATIONS, SKILL } from '../../simulation/population/population';
+import type { ServiceName } from '../../simulation/population/population';
+import { OCCUPATIONS } from '../../simulation/population/population';
 import { computePopulationTotal } from '../../simulation/snapshotRepository';
 import { EPSILON, RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
 import { getRecyclerPaymentRatio } from '../../simulation/agents/recycler';
@@ -58,10 +58,7 @@ function buildDemographyRows(planet: Planet): DemographyRow[] {
             const o = OCCUPATIONS[occIdx];
             for (let eduIdx = 0; eduIdx < educationLevelKeys.length; eduIdx++) {
                 const e = educationLevelKeys[eduIdx];
-                let cell = 0;
-                for (const skill of SKILL) {
-                    cell += cohort[o][e][skill].total;
-                }
+                const cell = cohort[o][e].total;
                 edu[eduIdx] += cell;
                 occ[occIdx] += cell;
                 total += cell;
@@ -194,9 +191,7 @@ function emptyServiceBuffers(): AggRow['serviceBuffers'] {
     };
 }
 
-function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', activeSkills: readonly Skill[]): AggRow[] {
-    const skillSet = new Set(activeSkills);
-
+function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education'): AggRow[] {
     const rows: AggRow[] = [];
 
     for (let age = 0; age < planet.population.demography.length; age++) {
@@ -213,11 +208,7 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
             const o = OCCUPATIONS[oi];
             for (let ei = 0; ei < educationLevelKeys.length; ei++) {
                 const e = educationLevelKeys[ei];
-                let cell = 0;
-
-                for (const skill of activeSkills) {
-                    cell += cohort[o][e][skill].total;
-                }
+                const cell = cohort[o][e].total;
                 edu[ei] += cell;
                 occ[oi] += cell;
                 total += cell;
@@ -253,27 +244,22 @@ function buildAggRows(planet: Planet, groupMode: 'occupation' | 'education', act
 
             for (const o of occs) {
                 for (const e of edus) {
-                    for (const skill of SKILL) {
-                        if (!skillSet.has(skill)) {
-                            continue;
-                        }
-                        const occ_ = o as (typeof OCCUPATIONS)[number];
-                        const edu_ = e as (typeof educationLevelKeys)[number];
-                        const cat = cohort[occ_][edu_][skill];
-                        if (!cat || cat.total <= 0) {
-                            continue;
-                        }
-                        gPop += cat.total;
+                    const occ_ = o as (typeof OCCUPATIONS)[number];
+                    const edu_ = e as (typeof educationLevelKeys)[number];
+                    const cat = cohort[occ_][edu_];
+                    if (!cat || cat.total <= 0) {
+                        continue;
+                    }
+                    gPop += cat.total;
 
-                        gFoodStock += cat.services.grocery.buffer * cat.total;
-                        gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
-                        gWeightedWealth += cat.total * cat.wealth.mean;
-                        for (const def of nonGroceryDefs) {
-                            const svcKey = serviceKeyOf(def) as Exclude<ServiceName, 'grocery'>;
-                            const svc = cat.services[svcKey];
-                            svcBuffers[svcKey][gi][0] += svc.buffer * cat.total;
-                            svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
-                        }
+                    gFoodStock += cat.services.grocery.buffer * cat.total;
+                    gWeightedStarvation += cat.total * cat.services.grocery.starvationLevel;
+                    gWeightedWealth += cat.total * cat.wealth.mean;
+                    for (const def of nonGroceryDefs) {
+                        const svcKey = serviceKeyOf(def) as Exclude<ServiceName, 'grocery'>;
+                        const svc = cat.services[svcKey];
+                        svcBuffers[svcKey][gi][0] += svc.buffer * cat.total;
+                        svcBuffers[svcKey][gi][1] += cat.total * svc.starvationLevel;
                     }
                 }
             }
@@ -296,8 +282,6 @@ const normalizedBuffersSchema = z.object({
 });
 
 const groupModeSchema = z.enum(['occupation', 'education']);
-const skillLevelSchema = z.enum(SKILL);
-const skillsSchema = z.array(skillLevelSchema).min(1);
 
 const groupValueTuple = z.tuple([z.number(), z.number(), z.number(), z.number()]);
 
@@ -317,8 +301,6 @@ export const getPlanetDemographicsFull = () =>
                 planetId: z.string(),
 
                 groupMode: groupModeSchema.default('occupation'),
-
-                activeSkills: skillsSchema.default([...SKILL]),
             }),
         )
         .output(
@@ -362,7 +344,7 @@ export const getPlanetDemographicsFull = () =>
                 data: {
                     planetName: planet.name,
                     groupMode: input.groupMode,
-                    rows: buildAggRows(planet, input.groupMode, input.activeSkills),
+                    rows: buildAggRows(planet, input.groupMode),
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
                     lastTransferMatrix: planet.population.lastTransferMatrix,
                     normalizedBuffers: {

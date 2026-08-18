@@ -1,6 +1,5 @@
 import { MIN_EMPLOYABLE_AGE } from '../../constants';
 import { educationLevelKeys } from '../../population/education';
-import { SKILL } from '../../population/population';
 import type { FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
 import type { AgentPlanetAssets, Planet } from '../planet';
 import { constructionServiceResourceType } from '../services';
@@ -36,9 +35,7 @@ export function computeExpansionWorkforceStats(facility: FacilityBase, planet: P
 
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                totalAvailableUnemployed += demography[age].unoccupied[edu][skill].total;
-            }
+            totalAvailableUnemployed += demography[age].unoccupied[edu].total;
         }
     }
 

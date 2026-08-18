@@ -40,7 +40,6 @@ export default function PlanetDemographicsPage() {
         trpc.simulation.getPlanetDemographicsFull.queryOptions({
             planetId,
             groupMode: group,
-            activeSkills: ['novice', 'professional', 'expert'],
         }),
     );
 

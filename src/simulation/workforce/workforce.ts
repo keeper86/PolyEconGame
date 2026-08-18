@@ -2,7 +2,7 @@ import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { PopulationCategoryIndex } from '../population/population';
-import { SKILL, transferPopulation, type Skill } from '../population/population';
+import { transferPopulation } from '../population/population';
 import { distributeProportionally } from '../utils/distributeProportionally';
 
 export const ONBOARDING_EFFICIENCY = 0.75;
@@ -31,9 +31,7 @@ export const nullWorkforceCategory = (): WorkforceCategory => ({
 });
 
 export type WorkforceCohort<T> = {
-    [L in EducationLevelType]: {
-        [S in Skill]: T;
-    };
+    [L in EducationLevelType]: T;
 };
 
 export type WorkforceCategoryIndex = Omit<PopulationCategoryIndex, 'occ'>;
@@ -52,9 +50,7 @@ export const sumWorkForceCohort = (
     const total = nullWorkforceCohort();
     for (const cohort of cohorts) {
         for (const l of educationLevelKeys) {
-            for (const s of SKILL) {
-                total[l][s] = workForceSumFunction(total[l][s], cohort[l][s]);
-            }
+            total[l] = workForceSumFunction(total[l], cohort[l]);
         }
     }
     return total;
@@ -63,10 +59,7 @@ export const sumWorkForceCohort = (
 export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCohort<T> => {
     const cohort = {} as WorkforceCohort<T>;
     for (const l of educationLevelKeys) {
-        cohort[l] = {} as Record<Skill, T>;
-        for (const s of SKILL) {
-            cohort[l][s] = nullFactory();
-        }
+        cohort[l] = nullFactory();
     }
     return cohort;
 };
@@ -86,29 +79,23 @@ export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory)
 export const reduceWorkforceCohort = (cohort: WorkforceCohort<WorkforceCategory>): WorkforceCategory => {
     let total = nullWorkforceCategory();
     for (const l of educationLevelKeys) {
-        for (const s of SKILL) {
-            total = workForceSumFunction(total, cohort[l][s]);
-        }
+        total = workForceSumFunction(total, cohort[l]);
     }
     return total;
 };
 
 export const forEachWorkforceCohort = (
     cohort: WorkforceCohort<WorkforceCategory>,
-    forEachFunction: (category: WorkforceCategory, edu: EducationLevelType, skill: Skill) => void,
+    forEachFunction: (category: WorkforceCategory, edu: EducationLevelType) => void,
 ): void => {
     for (const l of educationLevelKeys) {
-        for (const s of SKILL) {
-            forEachFunction(cohort[l][s], l, s);
-        }
+        forEachFunction(cohort[l], l);
     }
 };
 
-export const XP_TO_PROFESSIONAL_THRESHOLD = 5;
-// returns true if worker should gain skill === professional
-export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): boolean {
+export function subtractProportionalXP(category: WorkforceCategory, n: number, totalWorkersBefore: number): void {
     if (totalWorkersBefore <= 0 || n <= 0) {
-        return false;
+        return;
     }
     if (!Number.isFinite(category.workforceExperience)) {
         if (process.env.SIM_DEBUG === '1') {
@@ -117,11 +104,10 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
             );
         }
         category.workforceExperience = 0;
-        return false;
+        return;
     }
     const fraction = Math.min(n / totalWorkersBefore, 1);
     category.workforceExperience -= fraction * category.workforceExperience;
-    return (fraction * category.workforceExperience) / n > XP_TO_PROFESSIONAL_THRESHOLD;
 }
 
 export const totalOnboarding = (category: WorkforceCategory): number =>
@@ -130,46 +116,34 @@ export const totalOnboarding = (category: WorkforceCategory): number =>
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>
     category.active + totalOnboarding(category) + totalDeparting(category);
 
-const emptySkillCategory = (): Record<Skill, number> => ({
-    novice: 0,
-    professional: 0,
-    expert: 0,
-});
-
-const emptySkillDemography: Record<Skill, number>[] = [];
-
 export function hireFromPopulation(
     planet: Planet,
     edu: EducationLevelType,
     count: number,
 ): {
     count: number;
-    hiredByAge: {
-        [S in Skill]: number;
-    }[];
+    hiredByAge: number[];
 } {
     if (count <= 0) {
-        return { count: 0, hiredByAge: emptySkillDemography };
+        return { count: 0, hiredByAge: [] };
     }
 
     const demography = planet.population.demography;
 
-    type Bucket = { age: number; skill: Skill; avail: number };
+    type Bucket = { age: number; avail: number };
     const buckets: Bucket[] = [];
     let totalAvailable = 0;
     for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        for (const skill of SKILL) {
-            const avail = demography[age].unoccupied[edu][skill].total;
-            if (avail > 0) {
-                buckets.push({ age, skill, avail });
-                totalAvailable += avail;
-            }
+        const avail = demography[age].unoccupied[edu].total;
+        if (avail > 0) {
+            buckets.push({ age, avail });
+            totalAvailable += avail;
         }
     }
 
     const toHire = Math.min(count, totalAvailable);
     if (toHire <= 0) {
-        return { count: 0, hiredByAge: emptySkillDemography };
+        return { count: 0, hiredByAge: [] };
     }
 
     const allocatedBuckets = distributeProportionally(
@@ -177,24 +151,15 @@ export function hireFromPopulation(
         buckets.map((b) => b.avail),
     );
 
-    const hiredByAge: {
-        [S in Skill]: number;
-    }[] = new Array(demography.length).fill(0).map(() => ({
-        ...emptySkillCategory(),
-    }));
+    const hiredByAge: number[] = new Array(demography.length).fill(0);
     let hired = 0;
 
     for (let i = 0; i < buckets.length; i++) {
-        const { age, skill } = buckets[i];
+        const { age } = buckets[i];
         const actual = allocatedBuckets[i];
         if (actual > 0) {
-            transferPopulation(
-                planet,
-                { age, occ: 'unoccupied', edu, skill },
-                { age, occ: 'employed', edu, skill },
-                actual,
-            );
-            hiredByAge[age][skill] += actual;
+            transferPopulation(planet, { age, occ: 'unoccupied', edu }, { age, occ: 'employed', edu }, actual);
+            hiredByAge[age] += actual;
             hired += actual;
         }
     }

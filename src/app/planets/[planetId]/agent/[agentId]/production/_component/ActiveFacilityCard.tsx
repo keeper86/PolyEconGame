@@ -12,7 +12,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '@/simulation/planet/facility';
+import { calculateCostsForConstruction, getFacilityType, isFacilityOperating } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Users, Wallet } from 'lucide-react';
 import Link from 'next/link';
@@ -21,6 +21,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
+import { FacilityConditionRow } from './FacilityConditionRow';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
 import { FacilityHeader, limitingEfficiency } from './FacilityHeader';
@@ -376,6 +377,9 @@ export function ActiveFacilityCard({
 
                 <div className='relative pt-2'>
                     <div className='space-y-2'>
+                        {isFacilityOperating(facility) && (
+                            <FacilityConditionRow facility={facility} agentId={agentId} planetId={planetId} />
+                        )}
                         {facility.construction ? (
                             <ConstructionCompactRow
                                 facility={facility}

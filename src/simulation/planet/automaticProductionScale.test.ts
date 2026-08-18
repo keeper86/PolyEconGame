@@ -14,18 +14,21 @@ import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrB
 import {
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
-    SIGNAL_EMA_ALPHA,
     STORAGE_TARGET_FILL_RATE,
+    computeProfitMargin,
     computeStorageExpansionTarget,
     computeStorageSignal,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
+    findMaxScaleForLandboundResources,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
+import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
@@ -60,7 +63,7 @@ function makeSetup(
         {
             maxScale: 1,
             scale: 0.5,
-            produces: [{ resource: RESOURCE, quantity: 100 }],
+            produces: [{ resource: RESOURCE, quantity: 1 }],
             lastTickResults: {
                 overallEfficiency: 1,
                 workerEfficiency: {},
@@ -89,6 +92,20 @@ function makeSetup(
     });
 
     return { agents: new Map([[agent.id, agent]]), facility };
+}
+
+function makeOversupplySetup(
+    planet: Planet,
+    facilityOverrides?: Parameters<typeof makeProductionFacility>[1],
+    opts?: { produced?: number; sold?: number },
+): ReturnType<typeof makeSetup> {
+    const setup = makeSetup(planet, facilityOverrides);
+    const produced = opts?.produced ?? 100;
+    const sold = opts?.sold ?? 20;
+    setup.facility.lastTickResults.lastProduced[RESOURCE_NAME] = produced;
+    const agent = setup.agents.values().next().value as Agent;
+    agent.assets[planet.id].market.sell[RESOURCE_NAME] = { resource: RESOURCE, lastSold: sold };
+    return setup;
 }
 
 function makeGameState(agents: Map<string, Agent>): GameState {
@@ -139,15 +156,15 @@ function makePlanetWithWorkersAndCostFloor(clearingPrice: number, costFloor: num
 }
 
 describe('updateAgentProductionScale', () => {
-    it('makes only a very small scale change for a weak supply-excess signal', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 20, totalSupply: 100 }));
+    it('holds scale when the market is balanced regardless of profitability', () => {
+        const planet = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planet);
+        facility.lastTickResults.wageCosts = 6;
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeLessThanOrEqual(initial);
-        expect(facility.scale).toBeGreaterThan(initial - 0.07 * facility.maxScale);
+        expect(facility.scale).toBeCloseTo(initial, 10);
     });
 
     it('makes only a very small scale change for a weak demand-excess signal', () => {
@@ -161,9 +178,30 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeLessThan(initial + 0.07 * facility.maxScale);
     });
 
-    it('scales down when supply excess is strong', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
-        const { agents, facility } = makeSetup(planet);
+    it('scales down when oversupplied', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({}));
+        const { agents, facility } = makeOversupplySetup(planet);
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeLessThan(initial);
+    });
+
+    it('contracts when strongly oversupplied even when profitable', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({}));
+        const { agents, facility } = makeOversupplySetup(planet, undefined, { sold: 0 });
+        facility.lastTickResults.revenue = 1000;
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeLessThan(initial);
+    });
+
+    it('contracts when unsold supply exceeds unfilled demand', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
+        const { agents, facility } = makeOversupplySetup(planet, undefined, { produced: 100, sold: 20 });
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -286,6 +324,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
@@ -344,6 +385,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -358,6 +402,8 @@ describe('updateAgentProductionScale', () => {
     it('does not cap expansion target below current maxScale when labor is limited', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
         planet.population = makePopulationByEducation({ none: 10 });
+        planet.lastMarketResult[RESOURCE_NAME].totalDemand = 1000;
+        planet.lastMarketResult[RESOURCE_NAME].unfilledDemand = 800;
 
         const { agents, facility } = makeSetup(planet, {
             scale: 100,
@@ -371,6 +417,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
         const agent = agents.values().next().value as Agent;
@@ -399,6 +448,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -458,6 +510,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -508,6 +563,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -540,6 +598,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD * 3,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -558,8 +619,8 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('continues PID scale adjustment during active expansion construction', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
-        const { agents, facility } = makeSetup(planet, {
+        const planet = makePlanetWithAvg(makeMarketResult({}));
+        const { agents, facility } = makeOversupplySetup(planet, {
             scale: 0.5,
             maxScale: 1,
             construction: {
@@ -571,6 +632,7 @@ describe('updateAgentProductionScale', () => {
                 lastTickInvestedConstructionServices: 0,
             },
         });
+        facility.lastTickResults.wageCosts = 100;
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -606,6 +668,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -632,10 +697,10 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).toEqual(existingConstruction);
     });
 
-    it('accumulates contraction integral only at lower bound with negative signal', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
-        const { agents, facility } = makeSetup(planet, {
-            scale: 0.1,
+    it('accumulates contraction integral with negative signal regardless of operating capacity', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({}));
+        const { agents, facility } = makeOversupplySetup(planet, {
+            scale: 50,
             maxScale: 100,
             pidState: {
                 contractionIntegral: 10,
@@ -645,19 +710,22 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
+        facility.lastTickResults.wageCosts = 1000;
         const before = facility.pidState!.contractionIntegral;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        // At lower bound with negative signal, the integral accumulates
         expect(facility.pidState!.contractionIntegral).toBeGreaterThan(before);
     });
 
-    it('decays contraction integral when not at lower bound', () => {
-        const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
-        const { agents, facility } = makeSetup(planet, {
+    it('contracts (reduces maxScale) with sustained negative signal', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({}));
+        const { agents, facility } = makeOversupplySetup(planet, {
             scale: 50,
             maxScale: 100,
             pidState: {
@@ -668,16 +736,19 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
+        facility.lastTickResults.wageCosts = 1000;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        // Not at lower bound, so the integral should decay
-        expect(facility.pidState!.contractionIntegral).toBeLessThan(30);
+        expect(facility.maxScale).toBeLessThan(100);
     });
 
-    it('scales up when profitable (revenue exceeds costs) and demand exceeds threshold', () => {
+    it('scales up when profitable and demand is short', () => {
         const planet = makePlanetWithAvg(
             makeMarketResult({
                 unfilledDemand: 80,
@@ -685,22 +756,7 @@ describe('updateAgentProductionScale', () => {
                 clearingPrice: 12,
             }),
         );
-        const { agents, facility } = makeSetup(planet, {
-            lastTickResults: {
-                overallEfficiency: 1,
-                workerEfficiency: {},
-                resourceEfficiency: {},
-                overqualifiedWorkers: {},
-                exactUsedByEdu: {},
-                totalUsedByEdu: {},
-                lastProduced: { [RESOURCE_NAME]: 100 },
-                lastConsumed: {},
-                revenue: 1200,
-                wageCosts: 600,
-                inputCosts: 400,
-                costBalance: 200,
-            },
-        });
+        const { agents, facility } = makeSetup(planet);
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -772,8 +828,8 @@ describe('updateAgentProductionScale', () => {
                 maxScale: 1,
                 scale: 0.5,
                 produces: [
-                    { resource: OIL, quantity: 300 },
-                    { resource: GAS, quantity: 100 },
+                    { resource: OIL, quantity: 1 },
+                    { resource: GAS, quantity: 1 },
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
@@ -844,8 +900,8 @@ describe('updateAgentProductionScale', () => {
                 maxScale: 1,
                 scale: 0.5,
                 produces: [
-                    { resource: OIL, quantity: 300 },
-                    { resource: GAS, quantity: 100 },
+                    { resource: OIL, quantity: 1 },
+                    { resource: GAS, quantity: 1 },
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
@@ -892,6 +948,9 @@ describe('updateAgentProductionScale', () => {
             expansionIntegral: 0,
             smoothedSignal: 0,
             profitEMA: 0,
+            revenueEMA: 0,
+            profitAtExpansionScale: 0,
+            profitAtContractionScale: 0,
         };
 
         const N = 20;
@@ -909,6 +968,9 @@ describe('updateAgentProductionScale', () => {
         facility.pidState = {
             smoothedSignal: 0.8,
             profitEMA: 0,
+            revenueEMA: 0,
+            profitAtExpansionScale: 0,
+            profitAtContractionScale: 0,
             filteredError: 0.8,
             prevError: 0.8,
             integral: 0,
@@ -922,6 +984,9 @@ describe('updateAgentProductionScale', () => {
         facilityB.pidState = {
             smoothedSignal: 0.8,
             profitEMA: 0,
+            revenueEMA: 0,
+            profitAtExpansionScale: 0,
+            profitAtContractionScale: 0,
             filteredError: 0.8,
             prevError: 1.0,
             integral: 0,
@@ -964,6 +1029,9 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -1034,24 +1102,20 @@ describe('updateAgentProductionScale', () => {
     });
 
     it('smooths input signal with EMA and persists smoothedSignal across ticks', () => {
-        const planetSpike = makePlanetWithAvg(
-            makeMarketResult({ unfilledDemand: 90, totalDemand: 100, clearingPrice: 12 }),
+        const planetProfitable = makePlanetWithAvg(
+            makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }),
         );
-        const planetBalanced = makePlanetWithAvg(makeMarketResult());
-        const { agents, facility } = makeSetup(planetSpike, { scale: 0.5, maxScale: 1 });
+        const planetUnprofitable = makePlanetWithAvg(makeMarketResult());
+        const { agents, facility } = makeSetup(planetProfitable, { scale: 0.5, maxScale: 1 });
 
-        updateAgentProductionScale(makeGameState(agents), planetSpike);
+        updateAgentProductionScale(makeGameState(agents), planetProfitable);
         const firstSmoothed = facility.pidState!.smoothedSignal;
-        const scaleAfterSpike = facility.scale;
-
-        updateAgentProductionScale(makeGameState(agents), planetBalanced);
-        const secondSmoothed = facility.pidState!.smoothedSignal;
-
         expect(firstSmoothed).toBeGreaterThan(0);
-        expect(firstSmoothed).toBeLessThan(0.3);
-        expect(secondSmoothed).toBeCloseTo((1 - SIGNAL_EMA_ALPHA) * firstSmoothed, 5);
-        expect(facility.scale - scaleAfterSpike).toBeLessThan(scaleAfterSpike - 0.5);
-        expect(facility.scale).toBeLessThan(scaleAfterSpike + PID_KP * firstSmoothed * facility.maxScale);
+
+        facility.lastTickResults.wageCosts = 100;
+        updateAgentProductionScale(makeGameState(agents), planetUnprofitable);
+        const secondSmoothed = facility.pidState!.smoothedSignal;
+        expect(secondSmoothed).toBeLessThan(firstSmoothed);
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
@@ -1103,6 +1167,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1127,6 +1194,49 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.construction).not.toBeNull();
         expect(hrDepartment.construction!.constructionTargetMaxScale).toBeGreaterThan(hrDepartment.maxScale);
         expect(hrDepartment.construction!.type).toBe('expansion');
+    });
+
+    it('initiates HR expansion on workforce demand alone without a cleared integral', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const hrDepartment = makeHRFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            construction: null,
+            pidState: {
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                contractionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+
+        const agent = makeAgent('a1', planet.id, 'Agent 1', {
+            automated: true,
+            assets: {
+                [planet.id]: makeAgentPlanetAssets(planet.id, {
+                    productionFacilities: [],
+                    humanResourcesDepartment: hrDepartment,
+                    deposits: 1_000_000,
+                }),
+            },
+        });
+
+        const assets = agent.assets[planet.id];
+        assets.usedWorkers = 3000;
+        assets.lastMonthAcc.revenue = 1_000_000;
+
+        updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
+
+        expect(hrDepartment.construction).not.toBeNull();
+        expect(hrDepartment.construction!.constructionTargetMaxScale).toBeGreaterThan(hrDepartment.maxScale);
     });
 
     it('does NOT initiate HR department expansion when demand is within HR scale', () => {
@@ -1261,6 +1371,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1296,6 +1409,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1362,6 +1478,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1399,6 +1518,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1439,6 +1561,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1468,8 +1593,8 @@ describe('updateAgentProductionScale', () => {
         planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
 
         const hrDepartment = makeHRFacility(undefined, {
-            maxScale: 5,
-            scale: 5,
+            maxScale: 6,
+            scale: 6,
             construction: null,
             pidState: {
                 integral: 0,
@@ -1479,6 +1604,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1525,6 +1653,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1541,12 +1672,11 @@ describe('updateAgentProductionScale', () => {
 
         const assets = agent.assets[planet.id];
         assets.usedWorkers = 200_000;
-        hrDepartment.hrBuffer = 0;
         assets.lastMonthAcc.revenue = 1_000_000_000;
 
         const maxAllowed =
             hrDepartment.maxScale + Math.max(1, Math.ceil(hrDepartment.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
-        expect(maxAllowed).toBe(7);
+        expect(maxAllowed).toBe(6);
 
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
@@ -1570,6 +1700,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1597,7 +1730,7 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.construction).toBeNull();
     });
 
-    it('accumulates HR contraction integral at lower bound with negative signal', () => {
+    it('accumulates HR contraction integral with negative signal regardless of capacity', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
         const hrDepartment = makeHRFacility(undefined, {
@@ -1612,6 +1745,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1632,7 +1768,7 @@ describe('updateAgentProductionScale', () => {
         expect(hrDepartment.pidState!.contractionIntegral).toBeGreaterThan(0);
     });
 
-    it('decays HR contraction integral when not at lower bound', () => {
+    it('resets HR contraction integral when contraction triggers', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 
         const hrDepartment = makeHRFacility(undefined, {
@@ -1647,6 +1783,9 @@ describe('updateAgentProductionScale', () => {
                 contractionIntegral: 30,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
 
@@ -1665,6 +1804,23 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(new Map([[agent.id, agent]])), planet);
 
         expect(hrDepartment.pidState!.contractionIntegral).toBeLessThan(30);
+    });
+});
+
+describe('computeProfitMargin', () => {
+    it('returns 0 when profitable or break-even', () => {
+        expect(computeProfitMargin(100, 1000)).toBe(0);
+        expect(computeProfitMargin(0, 1000)).toBe(0);
+    });
+
+    it('returns -1 when losing money with no revenue', () => {
+        expect(computeProfitMargin(-100, 0)).toBe(-1);
+        expect(computeProfitMargin(-1, -5)).toBe(-1);
+    });
+
+    it('returns the loss fraction bounded to -1 when unprofitable with revenue', () => {
+        expect(computeProfitMargin(-100, 1000)).toBeCloseTo(-0.1);
+        expect(computeProfitMargin(-2000, 1000)).toBe(-1);
     });
 });
 
@@ -1702,6 +1858,9 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
         planet.producedResources.Construction = 0;
@@ -1726,6 +1885,9 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
         planet.producedResources.Construction = 50;
@@ -1746,8 +1908,8 @@ describe('construction budget constraint', () => {
             maxScale: 1,
             scale: 1,
             produces: [
-                { resource: RESOURCE, quantity: 100 },
-                { resource: constructionServiceResourceType, quantity: 500 },
+                { resource: RESOURCE, quantity: 1 },
+                { resource: constructionServiceResourceType, quantity: 1 },
             ],
             pidState: {
                 integral: 0,
@@ -1757,6 +1919,9 @@ describe('construction budget constraint', () => {
                 contractionIntegral: 0,
                 smoothedSignal: 0,
                 profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
             },
         });
         planet.lastMarketResult.Construction = {
@@ -1903,6 +2068,194 @@ describe('computeStorageExpansionTarget', () => {
         assets.lastMonthAcc.revenue = 0;
         const target = computeStorageExpansionTarget(storage, assets, planet, false, Infinity);
         expect(target).toBe(maxScale);
+    });
+});
+
+describe('findMaxScaleForLandboundResources', () => {
+    it('caps expansion at current maxScale when pool is exhausted (renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: waterSourceResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(10);
+    });
+
+    it('caps expansion at current maxScale when pool is exhausted (non-renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: false }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: waterSourceResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(10);
+    });
+
+    it('allows expansion when pool has sufficient capacity (renewable)', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 10_000, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
+    });
+
+    it('caps expansion at available pool capacity when partial shortage exists', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 500, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 25);
+        expect(result).toBe(15);
+    });
+
+    it('returns desiredScale unchanged when facility has no landbound needs', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: crudeOilResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
+    });
+
+    it('returns desiredScale when maxScale is already at or above desiredScale', () => {
+        const planet = makePlanet();
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [{ resource: arableLandResourceType, quantity: 100 }],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 10);
+        expect(result).toBe(10);
+    });
+
+    it('caps by the most constraining landbound resource', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 500, renewable: true }),
+            claims: [],
+        };
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 200, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [
+                    { resource: waterSourceResourceType, quantity: 100 },
+                    { resource: arableLandResourceType, quantity: 100 },
+                ],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 25);
+        expect(result).toBe(12);
+    });
+
+    it('is not affected by non-landbound resource entries in planet.resources', () => {
+        const planet = makePlanet();
+        planet.resources[waterSourceResourceType.name] = {
+            pool: makePool({ type: waterSourceResourceType, quantity: 10_000, renewable: true }),
+            claims: [],
+        };
+
+        const facility = makeProductionFacility(
+            {},
+            {
+                planetId: planet.id,
+                maxScale: 10,
+                scale: 10,
+                needs: [
+                    { resource: waterSourceResourceType, quantity: 100 },
+                    { resource: crudeOilResourceType, quantity: 200 },
+                ],
+                produces: [{ resource: produceResourceType, quantity: 50 }],
+            },
+        );
+
+        const result = findMaxScaleForLandboundResources(facility, planet, 20);
+        expect(result).toBe(20);
     });
 });
 

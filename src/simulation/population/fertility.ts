@@ -35,7 +35,7 @@ export function computeBirthsThisTick(
 
 export function applyBirths(population: Population, birthsThisTick: number): void {
     if (birthsThisTick > 0) {
-        const cat = population.demography[0].education.none.novice;
+        const cat = population.demography[0].education.none;
         const prevTotal = cat.total;
         const newTotal = prevTotal + birthsThisTick;
 
