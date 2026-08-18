@@ -1,5 +1,5 @@
 import { MIN_EMPLOYABLE_AGE } from '../../constants';
-import { educationLevelKeys } from '../../population/education';
+import { educationLevelKeys, type EducationLevelType } from '../../population/education';
 import type { ResourceQuantity } from '../claims';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
 import { calculateCostsForConstruction, getFacilityType } from '../facility';
@@ -138,18 +138,26 @@ export function computeDynamicExpansionTarget(
     let targetMax = Math.min(maxDemandScale, absoluteCap);
 
     const demography = planet.population.demography;
-    for (const edu of educationLevelKeys) {
+    const unemployedByEdu: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
+        for (const edu of educationLevelKeys) {
+            unemployedByEdu[edu] += demography[age].unoccupied[edu].total;
+        }
+    }
+
+    for (let eduIndex = 0; eduIndex < educationLevelKeys.length; eduIndex++) {
+        const edu = educationLevelKeys[eduIndex];
         const reqPerScale = facility.workerRequirement[edu] ?? 0;
         if (reqPerScale <= 0) {
             continue;
         }
 
-        let eduAvailableUnemployed = 0;
-        for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-            eduAvailableUnemployed += demography[age].unoccupied[edu].total;
+        let availableForJobTier = 0;
+        for (let i = eduIndex; i < educationLevelKeys.length; i++) {
+            availableForJobTier += unemployedByEdu[educationLevelKeys[i]];
         }
 
-        const usableForEdu = eduAvailableUnemployed / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
+        const usableForEdu = availableForJobTier / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
         const maxScaleFromLabor = facility.maxScale + Math.floor(usableForEdu / reqPerScale);
         targetMax = Math.min(targetMax, maxScaleFromLabor);
     }

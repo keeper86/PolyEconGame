@@ -1,6 +1,7 @@
 import { PRICE_CEIL, PRICE_FLOOR, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
+import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import type { GameState, Planet } from '../../src/simulation/planet/planet';
@@ -540,6 +541,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         groceryResult && groceryResult.totalDemand > 0
             ? Math.max(0, 1 - groceryResult.unfilledDemand / groceryResult.totalDemand)
             : 0;
+    const groceryBuffer = computeNormalizedBuffer(planet, 'grocery');
 
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
@@ -705,6 +707,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         manufacturedToRawPriceRatio:
             tierAveragePrice(planet, 'raw') > 0 ? tierAveragePrice(planet, 'manufactured') / tierAveragePrice(planet, 'raw') : 0,
         groceryFillRate,
+        groceryBuffer,
         groceryTotalDemand: groceryResult?.totalDemand ?? 0,
         groceryTotalSupply: groceryResult?.totalSupply ?? 0,
         groceryTotalVolume: groceryResult?.totalVolume ?? 0,
@@ -896,6 +899,7 @@ export const METRIC_KEYS: string[] = [
     'refinedToRawPriceRatio',
     'manufacturedToRawPriceRatio',
     'groceryFillRate',
+    'groceryBuffer',
     'groceryTotalDemand',
     'groceryTotalSupply',
     'groceryTotalVolume',

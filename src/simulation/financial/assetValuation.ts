@@ -4,6 +4,12 @@ import { calculateCostsForConstruction, getFacilityType } from '../planet/facili
 import type { Agent, AgentPlanetAssets } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
 
+function facilityConditionFactor(facility: Facility): number {
+    const maintenance = Math.max(0, Math.min(1, facility.maintenanceStatus));
+    const restoration = Math.max(0, Math.min(1, facility.maxMaintenance));
+    return maintenance * restoration;
+}
+
 export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: number): number {
     if (csPrice <= 0) {
         return 0;
@@ -17,11 +23,12 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
     let total = 0;
     for (const facility of allFacilities) {
         const type = getFacilityType(facility);
+        const conditionFactor = facilityConditionFactor(facility);
 
         // Value completed portion at maxScale
         const completedCS =
             calculateCostsForConstruction(type, 0, facility.maxScale).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
-        total += completedCS * csPrice;
+        total += completedCS * csPrice * conditionFactor;
 
         // Add prorated value of in-construction portion
         if (facility.construction !== null) {
