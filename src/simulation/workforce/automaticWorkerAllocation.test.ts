@@ -120,67 +120,60 @@ describe('updateAllocatedWorkers', () => {
 });
 
 describe('automaticWageAdjustment', () => {
-    it('raises the wage above the cost of living when the profit margin is high', () => {
+    it('raises the wage when short of workers', () => {
         const { planet } = makePlanetWithPopulation({});
-        planet._costOfLiving = 100;
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.lastMonthAcc.revenue = 100_000;
+        agent.assets.p.allocatedWorkers.none = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });
 
-    it('raises the wage above MIN_WAGE when profitable even when the cost of living is below MIN_WAGE', () => {
+    it('lowers the wage when overstaffed', () => {
         const { planet } = makePlanetWithPopulation({});
-        planet._costOfLiving = 0.1;
-        const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
-        agent.assets.p.lastMonthAcc.revenue = 100_000;
-
-        automaticWageAdjustment(agentMap(agent), planet);
-
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(MIN_WAGE);
-    });
-
-    it('raises the wage when the labour market is tight', () => {
-        const { planet } = makePlanetWithPopulation({ none: 1 });
-        planet._costOfLiving = 100;
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-
-        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
-        competitor.assets.p.allocatedWorkers.none = 100;
-        competitor.assets.p.wagePerEdu.none = 100;
-
-        automaticWageAdjustment(agentMap(agent, competitor), planet);
-
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
-    });
-
-    it('lowers the wage toward the cost of living when there is no margin and a loose market', () => {
-        const { planet } = makePlanetWithPopulation({});
-        planet._costOfLiving = 100;
-        const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 200, primary: 200, secondary: 200, tertiary: 200 };
+        agent.assets.p.workforceDemography[30].none.active = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(200);
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+    });
+
+    it('relaxes the wage down when balanced with no churn', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.workforceDemography[30].none.active = 100;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+    });
+
+    it('raises the wage when churn is high', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.workforceDemography[30].none.active = 100;
+        agent.assets.p.workforceDemography[30].none.voluntaryDeparting[0] = 10;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });
 
     it('pushes higher education wages up instead of lowering the lower education wage', () => {
-        const { planet } = makePlanetWithPopulation({ none: 1, primary: 1_000_000 });
-        planet._costOfLiving = 100;
+        const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.allocatedWorkers.none = 100;
 
-        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
-        competitor.assets.p.allocatedWorkers.none = 100;
-        competitor.assets.p.wagePerEdu.none = 200;
-
-        automaticWageAdjustment(agentMap(agent, competitor), planet);
+        automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
         expect(agent.assets.p.wagePerEdu.primary).toBeGreaterThanOrEqual(agent.assets.p.wagePerEdu.none);
@@ -190,9 +183,9 @@ describe('automaticWageAdjustment', () => {
 
     it('never lowers the wage below MIN_WAGE', () => {
         const { planet } = makePlanetWithPopulation({});
-        planet._costOfLiving = 0;
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
+        agent.assets.p.workforceDemography[30].none.active = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
@@ -200,17 +193,12 @@ describe('automaticWageAdjustment', () => {
     });
 
     it('never raises the wage above MAX_WAGE', () => {
-        const { planet } = makePlanetWithPopulation({ none: 1 });
-        planet._costOfLiving = MAX_WAGE;
+        const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MAX_WAGE, primary: MAX_WAGE, secondary: MAX_WAGE, tertiary: MAX_WAGE };
-        agent.assets.p.lastMonthAcc.revenue = 100_000_000;
+        agent.assets.p.allocatedWorkers.none = 100;
 
-        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
-        competitor.assets.p.allocatedWorkers.none = 100;
-        competitor.assets.p.wagePerEdu.none = MAX_WAGE;
-
-        automaticWageAdjustment(agentMap(agent, competitor), planet);
+        automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBe(MAX_WAGE);
     });

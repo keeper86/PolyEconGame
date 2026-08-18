@@ -66,11 +66,13 @@ export const WAGE_ADJUSTMENT_RATE = 0.02;
 
 export const LABOR_SHARE = 0.5;
 
-export const MARGIN_WAGE_PREMIUM = 0.5;
+export const WAGE_FEEDBACK_GAIN = 0.2;
 
-export const TIGHTNESS_WAGE_PREMIUM = 0.5;
+export const CHURN_WAGE_WEIGHT = 1.0;
 
-export const SEARCH_HORIZON_TICKS = 3 * TICKS_PER_MONTH;
+export const WAGE_NEUTRAL_PRESSURE = 0.03;
+
+export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
 export const BASE_QUIT_RATE = 0.0003;
 

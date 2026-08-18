@@ -1,12 +1,17 @@
-import { MARGIN_WAGE_PREMIUM, MAX_WAGE, MIN_WAGE, TIGHTNESS_WAGE_PREMIUM, WAGE_ADJUSTMENT_RATE } from '../constants';
+import {
+    CHURN_WAGE_WEIGHT,
+    MAX_WAGE,
+    MIN_WAGE,
+    WAGE_ADJUSTMENT_RATE,
+    WAGE_FEEDBACK_GAIN,
+    WAGE_NEUTRAL_PRESSURE,
+} from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
-import { computeCostOfLiving } from '../market/serviceDefinitions';
-import { operatingProfit } from '../planet/planet';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { ACCEPTABLE_IDLE_FRACTION, computeLaborMarket } from './laborMarket';
-import { totalActiveForEdu } from './workforceAggregates';
+import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
+import { totalActiveForEdu, totalOnboardingForEdu, totalVoluntaryDepartingForEdu } from './workforceAggregates';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -71,8 +76,6 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
-    const laborMarket = computeLaborMarket(agents, planet);
-    const costOfLiving = computeCostOfLiving(planet);
 
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -87,18 +90,18 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const revenue = assets.lastMonthAcc.revenue + assets.monthAcc.revenue;
-        const profit = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
-        const margin = revenue > 0 ? Math.max(0, profit / revenue) : 0;
-        const marginPremium = MARGIN_WAGE_PREMIUM * margin;
-
         for (const edu of educationLevelKeys) {
-            const tightness = Math.min(1, laborMarket.reachableTightness[edu]);
-            const tightnessPremium = TIGHTNESS_WAGE_PREMIUM * tightness;
-            const target = Math.max(MIN_WAGE, costOfLiving) * (1 + tightnessPremium + marginPremium);
+            const target = assets.allocatedWorkers[edu] ?? 0;
+            const active = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
+            const departing = totalVoluntaryDepartingForEdu(workforce, edu);
+
+            const shortageFraction = (target - active) / Math.max(1, target);
+            const churnFraction = departing / Math.max(1, active);
+            const pressure = shortageFraction + CHURN_WAGE_WEIGHT * churnFraction - WAGE_NEUTRAL_PRESSURE;
+
             const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
-            const step = Math.max(-maxStep, Math.min(maxStep, target - current));
+            const step = Math.max(-maxStep, Math.min(maxStep, WAGE_FEEDBACK_GAIN * current * pressure));
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, current + step));
         }
 
