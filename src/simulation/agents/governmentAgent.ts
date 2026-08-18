@@ -1,6 +1,6 @@
 import { educationLevelKeys } from '../population/education';
 import type { PopulationCategory } from '../population/population';
-import { MAX_AGE, SKILL } from '../population/population';
+import { MAX_AGE } from '../population/population';
 import type { Agent, Planet } from '../planet/planet';
 
 export const governmentTick = (planet: Planet, agent: Agent) => {
@@ -21,19 +21,17 @@ export const governmentTick = (planet: Planet, agent: Agent) => {
         }
         const unableToWork = ageCohort.unableToWork;
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const cat = unableToWork[edu][skill];
-                if (cat.total > 0) {
-                    cells.push(cat);
-                }
-                const eduCat = ageCohort.education[edu][skill];
-                if (eduCat.total > 0) {
-                    cells.push(eduCat);
-                }
-                const unemployedCat = ageCohort.unoccupied[edu][skill];
-                if (unemployedCat.total > 0) {
-                    cells.push(unemployedCat);
-                }
+            const cat = unableToWork[edu];
+            if (cat.total > 0) {
+                cells.push(cat);
+            }
+            const eduCat = ageCohort.education[edu];
+            if (eduCat.total > 0) {
+                cells.push(eduCat);
+            }
+            const unemployedCat = ageCohort.unoccupied[edu];
+            if (unemployedCat.total > 0) {
+                cells.push(unemployedCat);
             }
         }
     }

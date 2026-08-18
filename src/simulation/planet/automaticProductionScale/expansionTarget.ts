@@ -1,6 +1,6 @@
 import { MIN_EMPLOYABLE_AGE } from '../../constants';
 import { educationLevelKeys } from '../../population/education';
-import { SKILL } from '../../population/population';
+import type { ResourceQuantity } from '../claims';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
 import { calculateCostsForConstruction, getFacilityType } from '../facility';
 import type { AgentPlanetAssets, Planet } from '../planet';
@@ -86,6 +86,25 @@ export function findMaxScaleForCSBudget(
     return best;
 }
 
+export function findMaxScaleForLandboundResources(
+    facility: { maxScale: number; needs: ResourceQuantity[] },
+    planet: Planet,
+    desiredScale: number,
+): number {
+    if (desiredScale <= facility.maxScale) {
+        return desiredScale;
+    }
+    let cap = desiredScale;
+    for (const need of facility.needs) {
+        if (need.resource.form !== 'landBoundResource') {
+            continue;
+        }
+        const poolQuantity = planet.resources[need.resource.name]?.pool?.quantity ?? 0;
+        cap = Math.min(cap, facility.maxScale + Math.floor(poolQuantity / need.quantity));
+    }
+    return cap;
+}
+
 export function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
@@ -127,9 +146,7 @@ export function computeDynamicExpansionTarget(
 
         let eduAvailableUnemployed = 0;
         for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-            for (const skill of SKILL) {
-                eduAvailableUnemployed += demography[age].unoccupied[edu][skill].total;
-            }
+            eduAvailableUnemployed += demography[age].unoccupied[edu].total;
         }
 
         const usableForEdu = eduAvailableUnemployed / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
@@ -141,6 +158,8 @@ export function computeDynamicExpansionTarget(
         targetMax = findMaxAffordableScale(facility, assets, planet, facility.maxScale, targetMax);
         targetMax = findMaxScaleForCSBudget(facility, facility.maxScale, targetMax, constructionBudget);
     }
+
+    targetMax = findMaxScaleForLandboundResources(facility, planet, targetMax);
 
     return targetMax;
 }

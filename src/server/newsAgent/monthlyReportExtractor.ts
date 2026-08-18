@@ -9,7 +9,7 @@ import type { Agent, Planet } from '@/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { educationLevelKeys } from '@/simulation/population/education';
-import { OCCUPATIONS, SKILL } from '@/simulation/population/population';
+import { OCCUPATIONS } from '@/simulation/population/population';
 import { computePopulationTotal } from '@/simulation/snapshotRepository';
 import {
     getAllAgentsSync,
@@ -98,24 +98,22 @@ function computeDemographicMetrics(planet: Planet): {
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total <= 0) {
-                        continue;
-                    }
-
-                    totalPop += cat.total;
-                    if (occ === 'employed') {
-                        totalEmployed += cat.total;
-                    }
-                    deathsLastMonth += cat.deaths.countLastMonth;
-
-                    const svc = cat.services;
-                    groceryStarveSum += svc.grocery.starvationLevel * cat.total;
-                    healthcareStarveSum += svc.healthcare.starvationLevel * cat.total;
-                    retailStarveSum += svc.retail.starvationLevel * cat.total;
-                    educationStarveSum += svc.education.starvationLevel * cat.total;
+                const cat = cohort[occ][edu];
+                if (cat.total <= 0) {
+                    continue;
                 }
+
+                totalPop += cat.total;
+                if (occ === 'employed') {
+                    totalEmployed += cat.total;
+                }
+                deathsLastMonth += cat.deaths.countLastMonth;
+
+                const svc = cat.services;
+                groceryStarveSum += svc.grocery.starvationLevel * cat.total;
+                healthcareStarveSum += svc.healthcare.starvationLevel * cat.total;
+                retailStarveSum += svc.retail.starvationLevel * cat.total;
+                educationStarveSum += svc.education.starvationLevel * cat.total;
             }
         }
     }

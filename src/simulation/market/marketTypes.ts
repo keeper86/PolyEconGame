@@ -1,13 +1,12 @@
 import type { Agent } from '../planet/planet';
 import type { Resource } from '../planet/claims';
 import type { EducationLevelType } from '../population/education';
-import type { GaussianMoments, Occupation, Skill } from '../population/population';
+import type { GaussianMoments, Occupation } from '../population/population';
 
 export interface BidOrder {
     age: number;
     edu: EducationLevelType;
     occ: Occupation;
-    skill: Skill;
     population: number;
     bidPrice: number;
     quantity: number;

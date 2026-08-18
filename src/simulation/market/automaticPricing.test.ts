@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
+    MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -11,9 +13,11 @@ import {
     SELL_THROUGH_EMA_ALPHA,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
+    TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
+import { facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
     clothingResourceType,
@@ -31,6 +35,7 @@ import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
     logisticsServiceResourceType,
+    maintenanceServiceResourceType,
 } from '../planet/services';
 import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
@@ -751,6 +756,268 @@ describe('automaticPricing — bid diagnostics for dropped demand', () => {
         const bidAfter = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bidAfter.bidStorageTarget).toBe(0);
         expect(bidAfter.diagnostics).toBeUndefined();
+    });
+});
+
+describe('automaticPricing — facility maintenance demand', () => {
+    it('creates a Maintenance buy bid scaled by facility scale for an active facility', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate =
+            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
+
+    it('skips maintenance demand for facilities under construction', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'under-construction', scale: 10 });
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]).toBeUndefined();
+    });
+
+    it('creates a Maintenance buy bid for an expanding facility', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'expanding', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 20,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate =
+            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
+
+    it('bids above steady-state for a facility below full maintenance', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'degraded', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.5;
+        facility.maxMaintenance = 1;
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const steadyStateRate =
+            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            TICKS_PER_YEAR;
+        expect(bid.bidStorageTarget).toBeGreaterThan(steadyStateRate * INPUT_BUFFER_TARGET_TICKS_SERVICES);
+    });
+});
+
+describe('automaticPricing — facility restoration demand', () => {
+    function makeDegradedProducer(id: string) {
+        const facility = makeProductionFacility({ none: 1 }, { id, scale: 1 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maxMaintenance = 0.5;
+        facility.maintenanceStatus = 0.5;
+        return facility;
+    }
+
+    function makeConstructionPlanet() {
+        const planet = makePlanetWithPrice({ [constructionServiceResourceType.name]: 5 });
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 2;
+        return planet;
+    }
+
+    function makeAgentWithFacilities(facilities: ReturnType<typeof makeProductionFacility>[]) {
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = facilities;
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        return agent;
+    }
+
+    it('creates a Construction buy bid scaled by restoration capacity for a degraded operating facility', () => {
+        const facility = makeDegradedProducer('degraded');
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate = facilityRestorationCapacityPerTick(facility);
+        expect(expectedRate).toBeGreaterThan(0);
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
+
+    it('skips restoration demand when maxMaintenance is already full', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'healthy', scale: 1 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        expect(agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]).toBeUndefined();
+    });
+
+    it('skips restoration demand for facilities under construction', () => {
+        const facility = makeDegradedProducer('under-construction');
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const buildingOnly = 20 * INPUT_BUFFER_TARGET_TICKS_SERVICES;
+        expect(bid.bidStorageTarget).toBeCloseTo(buildingOnly, 10);
+    });
+
+    it('sums restoration demand with active expansion construction demand', () => {
+        const facility = makeDegradedProducer('expanding');
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expected = (20 + facilityRestorationCapacityPerTick(facility)) * INPUT_BUFFER_TARGET_TICKS_SERVICES;
+        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
+    });
+
+    it('sums restoration demand across multiple degraded facilities', () => {
+        const facilityA = makeDegradedProducer('a');
+        const facilityB = makeDegradedProducer('b');
+
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facilityA, facilityB]);
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expected =
+            (facilityRestorationCapacityPerTick(facilityA) + facilityRestorationCapacityPerTick(facilityB)) *
+            INPUT_BUFFER_TARGET_TICKS_SERVICES;
+        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
+    });
+
+    it('respects a custom autoConfig inputBufferTargetTicks override', () => {
+        const facility = makeDegradedProducer('degraded');
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [constructionServiceResourceType.name]: {
+                    resource: constructionServiceResourceType,
+                    automated: true,
+                    bidPrice: 4,
+                    autoConfig: { inputBufferTargetTicks: 7 },
+                },
+            },
+        };
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        expect(bid.bidStorageTarget).toBeCloseTo(facilityRestorationCapacityPerTick(facility) * 7, 10);
+    });
+
+    it('does not create a restoration bid for a non-automated agent without an automated Construction buy', () => {
+        const facility = makeDegradedProducer('degraded');
+        const planet = makeConstructionPlanet();
+        const agent = makeAgentWithFacilities([facility]);
+        agent.automated = false;
+        agent.assets[PLANET_ID].market = {
+            sell: {
+                [WATER]: { resource: waterResourceType, automated: true, offerPrice: 10, lastSold: 0 },
+            },
+            buy: {},
+        };
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        expect(agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]).toBeUndefined();
     });
 });
 

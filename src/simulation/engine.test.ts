@@ -29,7 +29,7 @@ function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Recor
     const wf = agent.assets[planetId].workforceDemography;
     for (const [edu, count] of Object.entries(workers)) {
         if (count !== undefined && count > 0) {
-            wf[30][edu as EducationLevelType].novice.active = count;
+            wf[30][edu as EducationLevelType].active = count;
         }
     }
 }
@@ -211,7 +211,7 @@ describe('engine basic behavior', () => {
     });
 
     it('populationTick runs without error on a populated planet', () => {
-        const pop = makePopulationWithWorkers(1000, { edu: 'none', skill: 'novice' });
+        const pop = makePopulationWithWorkers(1000, { edu: 'none' });
         planet.population = pop;
 
         populationTick(planet, createWorkforceEventAccumulator());

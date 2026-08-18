@@ -56,6 +56,11 @@ export function makeProductionFacility(opts: {
         scale: opts.scale,
         construction: null,
         lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: opts.powerPerTick,
         workerRequirement: {
             none: opts.workers.none ?? 0,
@@ -213,7 +218,7 @@ function addTo(
     edu: 'none' | 'primary' | 'secondary' | 'tertiary',
     count: number,
 ): void {
-    pop.demography[age][occ][edu].novice.total += count;
+    pop.demography[age][occ][edu].total += count;
 }
 
 export function createPopulation(total: number, buffer: number = 6): Population {

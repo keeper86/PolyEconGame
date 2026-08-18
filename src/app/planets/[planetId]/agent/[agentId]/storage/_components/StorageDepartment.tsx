@@ -19,11 +19,11 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
-import type { ManagementFacility, StorageDepartment } from '@/simulation/planet/facility';
+import type { ManagementFacility } from '@/simulation/planet/facility';
 import { computeStorageThroughputMass, getFacilityType } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { storageDepartmentFacilityType, PRODUCED_STORAGE_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_STORAGE_QUANTITY, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -250,10 +250,7 @@ function StorageConstructionCard({
             }
         >
             <div className='flex-1 space-y-2 pb-3'>
-                <div
-                    className='grid w-full items-center gap-x-2 py-2'
-                    style={{ gridTemplateColumns: `${facility.needs.length || 1}fr 2rem 2fr` }}
-                >
+                <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns: `1fr 2rem 3fr` }}>
                     <div className='flex flex-wrap gap-1.5 justify-center'>
                         {facility.needs.map(({ resource, quantity }) => (
                             <ProductQuantity
@@ -268,17 +265,14 @@ function StorageConstructionCard({
                             />
                         ))}
                     </div>
-                    <RiArrowRightBoxFill
-                        className={`shrink-0 h-8 w-8 ${facility.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                    <RiArrowRightBoxFill className={`shrink-0 h-8 w-8 text-muted-foreground`} />
+
+                    <StorageBufferGauge
+                        buffer={0}
+                        demand={storageDemand}
+                        department={facility}
+                        maxScaleOverride={targetScale}
                     />
-                    <div className='flex justify-center'>
-                        <StorageBufferGauge
-                            buffer={0}
-                            demand={storageDemand}
-                            department={facility}
-                            maxScaleOverride={targetScale}
-                        />
-                    </div>
                 </div>
             </div>
             <div className='relative mt-auto space-y-2'>
@@ -366,6 +360,7 @@ export default function StorageDepartment({
             const globalMin = limitingEfficiency(results);
             const eff = results.overallEfficiency;
             const buffer = department.storageBuffer ?? 0;
+
             return (
                 <ActiveFacilityCard
                     key={department.id}
@@ -377,7 +372,7 @@ export default function StorageDepartment({
                     hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     headerBadge={statusBadge}
                 >
-                    <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>
+                    <div className='grid w-full items-center gap-x-2' style={{ gridTemplateColumns }}>
                         <div className='flex flex-wrap gap-1.5 justify-center'>
                             {department.needs.map(({ resource, quantity }) => {
                                 const resEff = results.resourceEfficiency[resource.name] ?? 0;
@@ -397,9 +392,8 @@ export default function StorageDepartment({
                         <RiArrowRightBoxFill
                             className={`shrink-0 h-8 w-8 ${department.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
                         />
-                        <div className='flex flex-col items-center gap-1'>
+                        <div className='flex justify-center'>
                             <StorageBufferGauge buffer={buffer} demand={storageDemand} department={department} />
-                            <StorageStarvationBar ss={department.storageStarvation ?? 0} />
                         </div>
                     </div>
 
@@ -411,7 +405,9 @@ export default function StorageDepartment({
                             PRODUCED_STORAGE_QUANTITY *
                             department.scale
                         }
-                    />
+                    >
+                        <StorageStarvationBar ss={department.storageStarvation ?? 0} />
+                    </StorageBalanceRow>
                 </ActiveFacilityCard>
             );
         }

@@ -1,6 +1,6 @@
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
-import { OCCUPATIONS, SKILL, type ServiceName } from '../population/population';
+import { OCCUPATIONS, type ServiceName } from '../population/population';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 
 export function computeNormalizedBuffer(planet: Planet, serviceName: ServiceName): number {
@@ -13,16 +13,14 @@ export function computeNormalizedBuffer(planet: Planet, serviceName: ServiceName
         }
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    if (cat.total <= 0) {
-                        continue;
-                    }
-                    const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(age, occ, cat.wealth);
-                    if (rate > 0) {
-                        bufferSum += cat.services[serviceName].buffer * cat.total;
-                        consumerPop += cat.total;
-                    }
+                const cat = cohort[occ][edu];
+                if (cat.total <= 0) {
+                    continue;
+                }
+                const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(age, occ, cat.wealth);
+                if (rate > 0) {
+                    bufferSum += cat.services[serviceName].buffer * cat.total;
+                    consumerPop += cat.total;
                 }
             }
         }

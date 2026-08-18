@@ -20,7 +20,11 @@ import {
     TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
 import type { Resource } from '../planet/claims';
-import { queryStorageFacility } from '../planet/facility';
+import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
+import {
+    facilityMaintenanceRepairNeedPerTick,
+    facilityRestorationCapacityPerTick,
+} from '../planet/facilityMaintenance';
 import type {
     Agent,
     AgentMarketBidState,
@@ -28,7 +32,7 @@ import type {
     AutomatedPricingConfig,
     Planet,
 } from '../planet/planet';
-import { constructionServiceResourceType } from '../planet/services';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { computeAllConsumptionRates } from './consumptionSources';
@@ -205,7 +209,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
         ...assets.shipConstructionFacilities,
     ]) {
-        if (facility.construction === null || facility.construction.type === 'expansion') {
+        if (isFacilityOperating(facility)) {
             let needs = [];
             if (facility.type === 'ship_construction') {
                 needs = (facility.produces?.buildingCost ?? []).map((resource) => {
@@ -247,6 +251,37 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     storageTarget: facilityTarget,
                     freeTarget: 0,
                 });
+            }
+        }
+
+        if (isFacilityOperating(facility)) {
+            const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
+            const facilityTarget = facilityMaintenanceRepairNeedPerTick(facility) * cfg.inputBufferTargetTicks;
+            const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
+            if (existing) {
+                existing.storageTarget += facilityTarget;
+            } else {
+                aggregatedBuyTargets.set(maintenanceServiceResourceType.name, {
+                    resource: maintenanceServiceResourceType,
+                    storageTarget: facilityTarget,
+                    freeTarget: 0,
+                });
+            }
+
+            if (facility.maxMaintenance < 1) {
+                const restorationCfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
+                const restorationTarget =
+                    facilityRestorationCapacityPerTick(facility) * restorationCfg.inputBufferTargetTicks;
+                const restorationExisting = aggregatedBuyTargets.get(constructionServiceResourceType.name);
+                if (restorationExisting) {
+                    restorationExisting.storageTarget += restorationTarget;
+                } else {
+                    aggregatedBuyTargets.set(constructionServiceResourceType.name, {
+                        resource: constructionServiceResourceType,
+                        storageTarget: restorationTarget,
+                        freeTarget: 0,
+                    });
+                }
             }
         }
     }
@@ -389,7 +424,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
 // ── Sell-side helpers ─────────────────────────────────────────────────────────
 
-function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
+export function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
     if (clamped >= target) {
         const t = (clamped - target) / (1 - target);
@@ -519,7 +554,7 @@ export function adjustOfferPrice(
 
 // ── Buy-side helpers ──────────────────────────────────────────────────────────
 
-function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
+export function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
     const clamped = Math.max(0, Math.min(1, fillRate));
     if (clamped >= target) {
         const t = (clamped - target) / (1 - target);

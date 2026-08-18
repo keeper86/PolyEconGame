@@ -36,8 +36,8 @@ import { nextRandom } from '../utils/stochasticRound';
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
 
-const TOTAL_ARABLE = 3_500_000_00;
-const TOTAL_WATER = 4_000_000_00;
+const TOTAL_ARABLE = 3_500_000_000;
+const TOTAL_WATER = 4_000_000_000;
 const TOTAL_IRON_ORE = 5_000_000_00_000;
 const TOTAL_COAL = 4_000_000_000_00;
 const TOTAL_OIL = 3_000_000_000_00;
@@ -161,7 +161,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 resource: constructionServiceResourceType,
                 automated: true,
                 autoConfig: {
-                    bidOfferMaxCostMultiplier: 2 + 4 * nextRandom(),
+                    bidOfferMaxCostMultiplier: 2 + 5 * nextRandom(),
                 },
             };
 
@@ -171,7 +171,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                         const groceryStrategy: AutomatedPricingConfig = {
                             priceAdjustMaxUp: 1.02,
                             priceAdjustMaxDown: 0.98,
-                            automatedCostFloorBuffer: 1.0,
+                            automatedCostFloorBuffer: 1.1,
                             targetSellThrough: 0.8,
                         };
                         assets.market.sell[resource.name] = {

@@ -24,7 +24,6 @@ function makeHouseholdBid(bidPrice: number, quantity: number): BidOrder {
         age: 20,
         edu: 'none',
         occ: 'unoccupied',
-        skill: 'novice',
         population: quantity,
         bidPrice,
         quantity,

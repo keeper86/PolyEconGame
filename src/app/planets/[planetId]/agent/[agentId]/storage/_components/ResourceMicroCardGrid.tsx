@@ -201,10 +201,11 @@ type Props = {
     tick: number;
 };
 
+// TODO: consolidate and unify storage related functions. Use same logic anywhere.
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
     const storage = assets.storageFacility;
     const usedVol = storage.current.volume;
-    const scale = storage.department?.scale ?? 0;
+    const scale = storage.department?.maxScale ?? 0;
     const capVol = storage.capacity.volume * scale;
     const usedMass = storage.current.mass;
     const capMass = storage.capacity.mass * scale;

@@ -6,36 +6,14 @@ import type { ManagementFacility } from '@/simulation/planet/facility';
 import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
+import { getRadialNudge, resolveTickLabels, resolveZones, type TickLabelCandidate } from '../../_component/gaugeTicks';
 
 const ZONE_RED = '#ef4444';
 const ZONE_AMBER = '#f59e0b';
 const ZONE_GREEN = '#22c55e';
 const ZONE_BLUE = '#3b82f6';
 
-// Replaced fixed translation classes, added inline-block so transform works perfectly
 const tickStyle = 'text-outline-strong text-xs text-muted-foreground inline-block';
-
-/**
- * Calculates a dynamic radial translation to nudge tick labels outward.
- * react-gauge-component's default radial gauge sweeps 270 degrees
- * starting at bottom-left (-135deg) and ending at bottom-right (+135deg).
- */
-function getRadialNudge(value: number, maxValue: number, nudgePx: number = 10): React.CSSProperties {
-    const safeMax = maxValue > 0 ? maxValue : 1;
-    const ratio = Math.max(0, Math.min(1, value / safeMax));
-
-    // Map ratio (0 to 1) to angle (-135 to 135 degrees)
-    const angleDeg = ratio * 270 - 135;
-    const angleRad = angleDeg * (Math.PI / 180);
-
-    // 0 degrees is UP (12 o'clock). +X is Right, +Y is Down (SVG coordinates)
-    const x = Math.sin(angleRad) * nudgePx;
-    const y = -Math.cos(angleRad) * nudgePx;
-
-    return {
-        transform: `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px)`,
-    };
-}
 
 // TODO: Remove hrDepartment, we only need scale.
 export function HRBufferGauge({
@@ -52,86 +30,79 @@ export function HRBufferGauge({
     const { maxValue, subArcs, ticks } = useMemo(() => {
         const scale = maxScaleOverride ?? hrDepartment.maxScale;
         const maxValue = scale * PRODUCED_HR_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
-        const ratio = demand / maxValue;
-        const zones: { limit?: number; color: string }[] = [];
-        const ticks: { value: number; valueConfig: { renderContent: () => React.ReactNode } }[] = [];
+        const subArcs = resolveZones(
+            [
+                { from: 0, to: demand, color: ZONE_RED },
+                { from: demand, to: demand * 2, color: ZONE_AMBER },
+                { from: demand * 2, to: demand * 4, color: ZONE_GREEN },
+                { from: demand * 4, to: maxValue, color: ZONE_BLUE },
+            ],
+            maxValue,
+        );
 
-        // Uniform radial push distance (in pixels). Tweak this value to push text further out/in globally!
-        const NUDGE = 10;
-
-        if (demand === 0 || ratio > 0.05) {
-            zones.push({ limit: 0, color: ZONE_RED });
-            ticks.push({
-                value: 0,
-                valueConfig: {
-                    renderContent: () => (
-                        <span className={tickStyle} style={getRadialNudge(0, maxValue, NUDGE)}>
-                            0 days
-                        </span>
-                    ),
-                },
-            });
-        }
-
-        if (demand > 0 && demand <= maxValue) {
-            zones.push({ limit: demand, color: ZONE_RED });
-            ticks.push({
-                value: demand,
-                valueConfig: {
-                    renderContent: () => (
-                        <span className={tickStyle} style={getRadialNudge(demand, maxValue, NUDGE)}>
-                            1 day
-                        </span>
-                    ),
-                },
-            });
-
-            if (ratio > 0.025) {
-                zones.push({ limit: demand * 4, color: ZONE_GREEN });
-                ticks.push({
-                    value: demand * 4,
-                    valueConfig: {
-                        renderContent: () => (
-                            <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue, NUDGE)}>
-                                4 days
-                            </span>
-                        ),
-                    },
-                });
-            }
-
-            if (ratio > 0.05) {
-                zones.push({ limit: demand * 2, color: ZONE_AMBER });
-                ticks.push({
-                    value: demand * 2,
-                    valueConfig: {
-                        renderContent: () => (
-                            <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue, NUDGE)}>
-                                2 days
-                            </span>
-                        ),
-                    },
-                });
-            }
-        }
-
-        zones.push({ color: ZONE_BLUE });
-        ticks.push({
-            value: maxValue,
-            valueConfig: {
+        const candidates: TickLabelCandidate[] = [
+            {
+                value: maxValue,
+                priority: 0,
                 renderContent: () => (
-                    <span className={tickStyle} style={getRadialNudge(maxValue, maxValue, NUDGE)}>
+                    <span className={tickStyle} style={getRadialNudge(maxValue, maxValue)}>
                         {maxValue > 0 && demand > 0 ? formatNumberWithUnit(maxValue / demand, 'days') : 'max'}
                     </span>
                 ),
             },
-        });
+            {
+                value: 0,
+                priority: 2,
+                renderContent: () => (
+                    <span className={tickStyle} style={getRadialNudge(0, maxValue)}>
+                        0 days
+                    </span>
+                ),
+            },
+        ];
 
-        return { maxValue, subArcs: zones, ticks };
+        if (demand > 0) {
+            candidates.push(
+                {
+                    value: demand,
+                    priority: 1,
+                    renderContent: () => (
+                        <span className={tickStyle} style={getRadialNudge(demand, maxValue)}>
+                            1 day
+                        </span>
+                    ),
+                },
+                {
+                    value: demand * 2,
+                    priority: 3,
+                    renderContent: () => (
+                        <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue)}>
+                            2 days
+                        </span>
+                    ),
+                },
+                {
+                    value: demand * 4,
+                    priority: 4,
+                    renderContent: () => (
+                        <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue)}>
+                            4 days
+                        </span>
+                    ),
+                },
+            );
+        }
+
+        const ticks = resolveTickLabels(candidates, maxValue).map(({ value, renderContent }) => ({
+            value,
+            valueConfig: { renderContent },
+        }));
+
+        return { maxValue, subArcs, ticks };
     }, [demand, hrDepartment.maxScale, maxScaleOverride]);
 
     return (
-        <div className='flex flex-col items-center gap-1 py-2 translate-y-[-1px]'>
+        <div className='flex flex-col items-center gap-1 py-2 translate-y-[-3px]'>
             <div className='h-[120px] w-[220px]'>
                 <GaugeComponent
                     type='radial'

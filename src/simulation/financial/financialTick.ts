@@ -2,7 +2,6 @@ import { INPUT_BUFFER_TARGET_TICKS, MIN_WAGE, TICKS_PER_MONTH } from '../constan
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
 import type { Loan } from './loanTypes';
 import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
@@ -55,37 +54,33 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             tertiary: 0,
         };
 
-        // Single-pass workforce count: iterate workforce[age][edu][skill] once instead of 8+ times
+        // Single-pass workforce count
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
             for (let li = 0; li < educationLevelKeys.length; li++) {
                 const edu = educationLevelKeys[li];
-                const eduCohort = cohort[edu];
-                for (let si = 0; si < SKILL.length; si++) {
-                    const skill = SKILL[si];
-                    const cat = eduCohort[skill];
-                    const totalWorkers =
-                        cat.active +
-                        cat.onboarding[0] +
-                        cat.onboarding[1] +
-                        cat.onboarding[2] +
-                        cat.voluntaryDeparting[0] +
-                        cat.voluntaryDeparting[1] +
-                        cat.voluntaryDeparting[2] +
-                        cat.departingFired[0] +
-                        cat.departingFired[1] +
-                        cat.departingFired[2] +
-                        cat.departingRetired[0] +
-                        cat.departingRetired[1] +
-                        cat.departingRetired[2];
-                    if (totalWorkers <= 0) {
-                        continue;
-                    }
-                    totalWorkersForEdu[edu] += totalWorkers;
-                    wageBill += totalWorkers * assets.wagePerEdu[edu];
-                    weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
-                    totalPlanetWorkersForEdu[edu] += totalWorkers;
+                const cat = cohort[edu];
+                const totalWorkers =
+                    cat.active +
+                    cat.onboarding[0] +
+                    cat.onboarding[1] +
+                    cat.onboarding[2] +
+                    cat.voluntaryDeparting[0] +
+                    cat.voluntaryDeparting[1] +
+                    cat.voluntaryDeparting[2] +
+                    cat.departingFired[0] +
+                    cat.departingFired[1] +
+                    cat.departingFired[2] +
+                    cat.departingRetired[0] +
+                    cat.departingRetired[1] +
+                    cat.departingRetired[2];
+                if (totalWorkers <= 0) {
+                    continue;
                 }
+                totalWorkersForEdu[edu] += totalWorkers;
+                wageBill += totalWorkers * assets.wagePerEdu[edu];
+                weightedWageSum[edu] += assets.wagePerEdu[edu] * totalWorkers;
+                totalPlanetWorkersForEdu[edu] += totalWorkers;
             }
         }
 
@@ -116,41 +111,34 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
             }
         }
 
-        if (totalAgentWorkerCount > 0) {
-            const perCapitaWage = wageBill / totalAgentWorkerCount;
-            // Fused wage-crediting: iterate workforce and credit corresponding population categories in the same pass
-            for (let age = 0; age < workforce.length; age++) {
-                const cohort = workforce[age];
-                for (let li = 0; li < educationLevelKeys.length; li++) {
-                    const edu = educationLevelKeys[li];
-                    const eduCohort = cohort[edu];
-                    for (let si = 0; si < SKILL.length; si++) {
-                        const skill = SKILL[si];
-                        const cat = eduCohort[skill];
-                        const agentWorkersHere =
-                            cat.active +
-                            cat.onboarding[0] +
-                            cat.onboarding[1] +
-                            cat.onboarding[2] +
-                            cat.voluntaryDeparting[0] +
-                            cat.voluntaryDeparting[1] +
-                            cat.voluntaryDeparting[2] +
-                            cat.departingFired[0] +
-                            cat.departingFired[1] +
-                            cat.departingFired[2] +
-                            cat.departingRetired[0] +
-                            cat.departingRetired[1] +
-                            cat.departingRetired[2];
-                        if (agentWorkersHere <= 0) {
-                            continue;
-                        }
-                        const popCat = demography[age].employed[edu][skill];
-                        if (popCat.total <= 0) {
-                            continue;
-                        }
-                        creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
-                    }
+        const perCapitaWage = wageBill / totalAgentWorkerCount;
+        for (let age = 0; age < workforce.length; age++) {
+            const cohort = workforce[age];
+            for (let li = 0; li < educationLevelKeys.length; li++) {
+                const edu = educationLevelKeys[li];
+                const cat = cohort[edu];
+                const agentWorkersHere =
+                    cat.active +
+                    cat.onboarding[0] +
+                    cat.onboarding[1] +
+                    cat.onboarding[2] +
+                    cat.voluntaryDeparting[0] +
+                    cat.voluntaryDeparting[1] +
+                    cat.voluntaryDeparting[2] +
+                    cat.departingFired[0] +
+                    cat.departingFired[1] +
+                    cat.departingFired[2] +
+                    cat.departingRetired[0] +
+                    cat.departingRetired[1] +
+                    cat.departingRetired[2];
+                if (agentWorkersHere <= 0) {
+                    continue;
                 }
+                const popCat = demography[age].employed[edu];
+                if (popCat.total <= 0) {
+                    continue;
+                }
+                creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
             }
         }
     });

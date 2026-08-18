@@ -4,7 +4,7 @@ import { nullWorkforceCategory } from '@/simulation/workforce/workforce';
 import { nullWorkforceCohortFactory } from '@/simulation/workforce/workforce';
 import type { WorkforceCategory, WorkforceDemography } from '@/simulation/workforce/workforce';
 import type { EducationLevelType } from '@/simulation/population/education';
-import { MAX_AGE, type Skill } from '@/simulation/population/population';
+import { MAX_AGE } from '@/simulation/population/population';
 
 function makeEmptyDemography(): WorkforceDemography {
     const arr: WorkforceDemography = [];
@@ -18,17 +18,16 @@ function setCategory(
     demography: WorkforceDemography,
     age: number,
     edu: EducationLevelType,
-    skill: Skill,
     overrides: Partial<WorkforceCategory>,
 ): void {
-    Object.assign(demography[age][edu][skill], overrides);
+    Object.assign(demography[age][edu], overrides);
 }
 
 describe('computeSummary', () => {
     describe('meanTenureByEdu', () => {
         it('average XP when only active workers present', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 30, 'secondary', 'novice', {
+            setCategory(wf, 30, 'secondary', {
                 active: 10,
                 workforceExperience: 50,
             });
@@ -39,7 +38,7 @@ describe('computeSummary', () => {
 
         it('average XP with active + onboarding + departing workers', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 30, 'secondary', 'novice', {
+            setCategory(wf, 30, 'secondary', {
                 active: 5,
                 onboarding: [1, 1, 0],
                 voluntaryDeparting: [2, 0, 0],
@@ -52,17 +51,17 @@ describe('computeSummary', () => {
             expect(summary.meanTenureByEdu.secondary).toBeCloseTo(80 / 9);
         });
 
-        it('average XP across multiple skills and ages', () => {
+        it('average XP across multiple ages', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 30, 'secondary', 'novice', {
+            setCategory(wf, 30, 'secondary', {
                 active: 5,
                 workforceExperience: 40,
             });
-            setCategory(wf, 30, 'secondary', 'professional', {
+            setCategory(wf, 40, 'secondary', {
                 active: 3,
                 workforceExperience: 45,
             });
-            setCategory(wf, 40, 'secondary', 'novice', {
+            setCategory(wf, 50, 'secondary', {
                 active: 2,
                 workforceExperience: 30,
             });
@@ -80,7 +79,7 @@ describe('computeSummary', () => {
 
         it('handles onboarding contributing to total worker count', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 25, 'tertiary', 'professional', {
+            setCategory(wf, 25, 'tertiary', {
                 active: 1,
                 onboarding: [0, 1, 0],
                 workforceExperience: 5,
@@ -93,11 +92,11 @@ describe('computeSummary', () => {
 
         it('counts zero-XP workers in total for mean tenure', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 25, 'secondary', 'novice', {
+            setCategory(wf, 25, 'secondary', {
                 active: 5,
                 workforceExperience: 0,
             });
-            setCategory(wf, 30, 'secondary', 'novice', {
+            setCategory(wf, 30, 'secondary', {
                 active: 5,
                 workforceExperience: 50,
             });
@@ -111,11 +110,11 @@ describe('computeSummary', () => {
     describe('overallMeanTenure', () => {
         it('divides weighted XP by total workers across all education levels', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 30, 'none', 'novice', {
+            setCategory(wf, 30, 'none', {
                 active: 8,
                 workforceExperience: 32,
             });
-            setCategory(wf, 30, 'primary', 'novice', {
+            setCategory(wf, 30, 'primary', {
                 active: 2,
                 onboarding: [1, 0, 0],
                 workforceExperience: 15,
@@ -138,11 +137,11 @@ describe('computeSummary', () => {
     describe('meanAgeByEdu (not affected by fix)', () => {
         it('still computes mean age from active workers only', () => {
             const wf = makeEmptyDemography();
-            setCategory(wf, 30, 'secondary', 'novice', {
+            setCategory(wf, 30, 'secondary', {
                 active: 5,
                 workforceExperience: 50,
             });
-            setCategory(wf, 40, 'secondary', 'novice', {
+            setCategory(wf, 40, 'secondary', {
                 active: 5,
                 workforceExperience: 50,
             });

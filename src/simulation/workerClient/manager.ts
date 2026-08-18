@@ -8,7 +8,6 @@ import type { InboundMessage, OutboundMessage } from '../worker';
 import type { Planet, Agent } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
 import type { TickerEvent } from '../../server/controller/simulation';
-import { rejectAllPending } from './pendingRequests';
 
 export type MessageHandler = (msg: OutboundMessage) => void;
 
@@ -283,48 +282,4 @@ export function onWorkerMessage(handler: MessageHandler): () => void {
     const handlers = getMessageHandlers();
     handlers.add(handler);
     return () => handlers.delete(handler);
-}
-
-export async function stopWorker(): Promise<void> {
-    const p = getPool();
-    const port = getPort();
-    if (!p) {
-        return;
-    }
-    rejectAllPending('Worker stopped');
-    setPool(null);
-    if (port) {
-        port.close();
-        setPort(null);
-    }
-    await p.destroy();
-    console.log('[workerManager] Worker shut down gracefully.');
-}
-
-export async function restartWorker(): Promise<void> {
-    const existing = getPool();
-    const existingPort = getPort();
-    if (existing) {
-        rejectAllPending('Worker restarting');
-        setPool(null);
-        if (existingPort) {
-            existingPort.close();
-            setPort(null);
-        }
-        try {
-            await existing.destroy();
-        } catch (err) {
-            console.error('[workerManager] Error destroying pool during restart:', err);
-        }
-    }
-
-    try {
-        getMessageHandlers().forEach((h) => h({ type: 'workerRestarted', reason: 'manual' } as OutboundMessage));
-    } catch (err) {
-        console.error('[workerManager] Error broadcasting restart message:', err);
-    }
-
-    const { pool, port } = createPool();
-    setPool(pool);
-    setPort(port);
 }

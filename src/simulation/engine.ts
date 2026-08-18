@@ -31,6 +31,7 @@ import { hrBufferTick } from './workforce/hrBuffer';
 import { storageLogisticsTick } from './planet/storageLogistics';
 import { workforceDemographicTick } from './workforce/workforceDemographicTick';
 import { TickProfiler } from './TickProfiler';
+import { facilityMaintenanceTick } from './planet/facilityMaintenance';
 
 export { seedRng };
 export { TickProfiler };
@@ -97,7 +98,7 @@ export function advanceTick(gameState: GameState) {
                 );
             }
 
-            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
+            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile, gameState.tick);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
             }
@@ -159,6 +160,7 @@ export function advanceTick(gameState: GameState) {
             constructionTick(gameState, planet);
             productionTick(gameState, planet);
             hrBufferTick(gameState.agents, planet);
+            facilityMaintenanceTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
             automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);

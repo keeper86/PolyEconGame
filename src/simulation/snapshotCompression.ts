@@ -35,15 +35,6 @@ function wireToGameState(wire: WireGameState): GameState {
     }
     const agents = new Map<string, Agent>();
     for (const a of wire.agents) {
-        for (const ship of a.ships) {
-            if ((ship as { maxMaintenance?: number }).maxMaintenance === undefined) {
-                ship.maxMaintenance = ship.maintainanceStatus;
-            }
-            if ((ship as { cumulativeRepairAcc?: number }).cumulativeRepairAcc === undefined) {
-                ship.cumulativeRepairAcc = 0;
-            }
-        }
-
         for (const assets of Object.values(a.assets)) {
             if (!assets.shipListings) {
                 assets.shipListings = [];

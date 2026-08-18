@@ -1,7 +1,7 @@
 import type { Planet } from '../planet/planet';
 import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
 import type { TickProfiler } from '../TickProfiler';
-import { OCCUPATIONS, SKILL } from './population';
+import { OCCUPATIONS } from './population';
 import { educationLevelKeys } from './education';
 
 import { populationAdvanceYear } from './aging';
@@ -14,18 +14,16 @@ export function resetPopulationMonthCounters(planet: Planet): void {
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = cohort[occ][edu][skill];
-                    // Rotate deaths
-                    cat.deaths.countLastMonth = cat.deaths.countThisMonth;
-                    cat.deaths.countThisMonth = 0;
-                    // Rotate disabilities
-                    cat.disabilities.countLastMonth = cat.disabilities.countThisMonth;
-                    cat.disabilities.countThisMonth = 0;
-                    // Rotate retirements
-                    cat.retirements.countLastMonth = cat.retirements.countThisMonth;
-                    cat.retirements.countThisMonth = 0;
-                }
+                const cat = cohort[occ][edu];
+                // Rotate deaths
+                cat.deaths.countLastMonth = cat.deaths.countThisMonth;
+                cat.deaths.countThisMonth = 0;
+                // Rotate disabilities
+                cat.disabilities.countLastMonth = cat.disabilities.countThisMonth;
+                cat.disabilities.countThisMonth = 0;
+                // Rotate retirements
+                cat.retirements.countLastMonth = cat.retirements.countThisMonth;
+                cat.retirements.countThisMonth = 0;
             }
         }
     }

@@ -165,7 +165,7 @@ export function getStepsForPage(
                 target: '[data-tour="workforce-wages"]',
                 content:
                     'Education levels: Uneducated (basic labor), Primary, Secondary (skilled), ' +
-                    'and Tertiary (specialists). Different facilities need different skill mixes. ' +
+                    'and Tertiary (specialists). Different facilities need different education mixes. ' +
                     'Higher pay attracts more skilled employees but increases your costs.',
                 title: '\uD83C\uDFEB Education Levels',
                 placement: 'bottom',

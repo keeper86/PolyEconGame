@@ -19,8 +19,8 @@ function totalWealth(demography: ReturnType<typeof makePopulation>['demography']
 describe('redistributeInheritance', () => {
     it('is a no-op when records are empty', () => {
         const pop = makePopulation();
-        pop.demography[30].unoccupied.none.novice.total = 100;
-        pop.demography[30].unoccupied.none.novice.wealth = { mean: 50, variance: 0 };
+        pop.demography[30].unoccupied.none.total = 100;
+        pop.demography[30].unoccupied.none.wealth = { mean: 50, variance: 0 };
         const wealthBefore = totalWealth(pop.demography);
 
         redistributeInheritance(pop.demography, []);
@@ -31,11 +31,11 @@ describe('redistributeInheritance', () => {
     it('conserves total wealth exactly', () => {
         const pop = makePopulation();
 
-        pop.demography[50].unoccupied.none.novice.total = 1000;
-        pop.demography[50].unoccupied.none.novice.wealth = { mean: 10, variance: 0 };
+        pop.demography[50].unoccupied.none.total = 1000;
+        pop.demography[50].unoccupied.none.wealth = { mean: 10, variance: 0 };
 
-        pop.demography[48].employed.primary.novice.total = 500;
-        pop.demography[48].employed.primary.novice.wealth = { mean: 5, variance: 0 };
+        pop.demography[48].employed.primary.total = 500;
+        pop.demography[48].employed.primary.wealth = { mean: 5, variance: 0 };
 
         const wealthBefore = totalWealth(pop.demography);
 
@@ -52,17 +52,17 @@ describe('redistributeInheritance', () => {
         const sourceAge = 75;
         const targetAge = sourceAge - GENERATION_GAP;
 
-        pop.demography[targetAge].unoccupied.none.novice.total = 100;
-        pop.demography[targetAge].unoccupied.none.novice.wealth = { mean: 0, variance: 0 };
+        pop.demography[targetAge].unoccupied.none.total = 100;
+        pop.demography[targetAge].unoccupied.none.wealth = { mean: 0, variance: 0 };
 
-        pop.demography[10].unoccupied.none.novice.total = 100;
-        pop.demography[10].unoccupied.none.novice.wealth = { mean: 0, variance: 0 };
+        pop.demography[10].unoccupied.none.total = 100;
+        pop.demography[10].unoccupied.none.wealth = { mean: 0, variance: 0 };
 
         const records: InheritanceRecord[] = [{ sourceAge, amount: 1000 }];
         redistributeInheritance(pop.demography, records);
 
-        const wealthAtTarget = pop.demography[targetAge].unoccupied.none.novice.wealth.mean;
-        const wealthAtFar = pop.demography[10].unoccupied.none.novice.wealth.mean;
+        const wealthAtTarget = pop.demography[targetAge].unoccupied.none.wealth.mean;
+        const wealthAtFar = pop.demography[10].unoccupied.none.wealth.mean;
 
         expect(wealthAtTarget).toBeGreaterThan(wealthAtFar);
         expect(wealthAtTarget).toBeGreaterThan(0);
@@ -71,17 +71,17 @@ describe('redistributeInheritance', () => {
     it('handles inheritance from very young people (no negative target age)', () => {
         const pop = makePopulation();
 
-        pop.demography[0].education.none.novice.total = 500;
-        pop.demography[0].education.none.novice.wealth = { mean: 0, variance: 0 };
+        pop.demography[0].education.none.total = 500;
+        pop.demography[0].education.none.wealth = { mean: 0, variance: 0 };
 
-        pop.demography[5].education.none.novice.total = 200;
-        pop.demography[5].education.none.novice.wealth = { mean: 0, variance: 0 };
+        pop.demography[5].education.none.total = 200;
+        pop.demography[5].education.none.wealth = { mean: 0, variance: 0 };
 
         const records: InheritanceRecord[] = [{ sourceAge: 5, amount: 100 }];
         redistributeInheritance(pop.demography, records);
 
-        const wealthAt0 = pop.demography[0].education.none.novice.wealth.mean;
-        const wealthAt5 = pop.demography[5].education.none.novice.wealth.mean;
+        const wealthAt0 = pop.demography[0].education.none.wealth.mean;
+        const wealthAt5 = pop.demography[5].education.none.wealth.mean;
 
         expect(wealthAt0 + wealthAt5).toBeGreaterThan(0);
 
@@ -91,8 +91,8 @@ describe('redistributeInheritance', () => {
 
     it('handles zero-amount records gracefully', () => {
         const pop = makePopulation();
-        pop.demography[30].unoccupied.none.novice.total = 100;
-        pop.demography[30].unoccupied.none.novice.wealth = { mean: 10, variance: 0 };
+        pop.demography[30].unoccupied.none.total = 100;
+        pop.demography[30].unoccupied.none.wealth = { mean: 10, variance: 0 };
         const wealthBefore = totalWealth(pop.demography);
 
         const records: InheritanceRecord[] = [{ sourceAge: 55, amount: 0 }];

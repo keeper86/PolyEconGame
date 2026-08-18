@@ -10,6 +10,7 @@ import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { usePlanetId } from '@/hooks/usePlanetId';
 import { useTRPC } from '@/lib/trpc';
+import { isFacilityOperating } from '@/simulation/planet/facility';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
 import type { BaseShipType } from '@/simulation/ships/ships';
 import { defaultBuildingCost } from '@/simulation/ships/ships';
@@ -17,6 +18,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
+import { FacilityConditionRow } from '../../production/_component/FacilityConditionRow';
 import { WorkerBars } from '../../production/_component/WorkerBars';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 
@@ -183,6 +185,9 @@ export function ActiveShipyardCard({
                         </div>
                         <Separator />
                     </>
+                )}
+                {isFacilityOperating(facility) && (
+                    <FacilityConditionRow facility={facility} agentId={agentId} planetId={planetId} />
                 )}
             </FacilityCardShell>
         </>

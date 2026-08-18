@@ -73,31 +73,6 @@ export type Environment = {
     };
 };
 
-export type AgentMarketPosition = {
-    limits: {
-        mass: number;
-        volume: number;
-        buy: number;
-        sell: number;
-    };
-
-    buy: {
-        [resourceName in string]: { resource: Resource; quantity: number; price: number };
-    };
-    sell: {
-        [resourceName in string]: { resource: Resource; quantity: number; price: number };
-    };
-};
-
-export type PlanetaryMarket = {
-    agentPositions: {
-        [agentId in string]: AgentMarketPosition;
-    };
-    populationDemand: {
-        [resourceName in string]: { resource: Resource; quantity: number; price: number };
-    };
-};
-
 export type ResourceOrderBook = {
     asks: Array<{ price: number; quantity: number }>;
     bids: Array<{ price: number; quantity: number }>;
@@ -319,6 +294,9 @@ export type MonthAccumulator = {
     soldResources: Record<string, ResourceAccumulator>;
     depreciatedServices: Record<string, ResourceAccumulator>;
 };
+
+export const operatingProfit = (acc: MonthAccumulator): number =>
+    acc.revenue - acc.wages - acc.purchases - acc.claimPayments;
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];

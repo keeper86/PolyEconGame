@@ -1,15 +1,10 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 
-import { NOTICE_PERIOD_MONTHS } from '../constants';
+import { BASE_QUIT_RATE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { RETIREMENT_AGE } from '../population/retirement';
-import { SKILL } from '../population/population';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { Agent, Planet } from '../planet/planet';
-import {
-    VOLUNTARY_QUIT_RATE_PER_TICK,
-    createWorkforceEventAccumulator,
-    workforceDemographicTick,
-} from './workforceDemographicTick';
+import { createWorkforceEventAccumulator, workforceDemographicTick } from './workforceDemographicTick';
 import { agentMap, makeAgent, makeEnvironment, makePlanet, makePlanetWithPopulation } from '../utils/testHelper';
 
 function totalWorkforce(agent: Agent, planetId: string, edu: EducationLevelType): number {
@@ -19,13 +14,11 @@ function totalWorkforce(agent: Agent, planetId: string, edu: EducationLevelType)
     }
     let total = 0;
     for (const cohort of wf) {
-        for (const skill of SKILL) {
-            const cat = cohort[edu][skill];
-            total += cat.active;
-            total += cat.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
-            total += cat.departingFired.reduce((s: number, d: number) => s + d, 0);
-            total += cat.departingRetired.reduce((s: number, d: number) => s + d, 0);
-        }
+        const cat = cohort[edu];
+        total += cat.active;
+        total += cat.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+        total += cat.departingFired.reduce((s: number, d: number) => s + d, 0);
+        total += cat.departingRetired.reduce((s: number, d: number) => s + d, 0);
     }
     return total;
 }
@@ -37,10 +30,8 @@ describe('createWorkforceEventAccumulator', () => {
 
         for (const cohort of acc) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    expect(cohort[edu][skill].deaths).toBe(0);
-                    expect(cohort[edu][skill].disabilities).toBe(0);
-                }
+                expect(cohort[edu].deaths).toBe(0);
+                expect(cohort[edu].disabilities).toBe(0);
             }
         }
     });
@@ -62,39 +53,37 @@ describe('workforceDemographicTick — voluntary quits', () => {
 
     it('moves a fraction of active workers into the voluntary departing pipeline', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 10000;
-        planet.population.demography[30].employed.none.novice.total = 10000;
+        wf[30].none.active = 10000;
+        planet.population.demography[30].employed.none.total = 10000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const expectedQuitters = Math.floor(10000 * VOLUNTARY_QUIT_RATE_PER_TICK);
-        expect(wf[30].none.novice.active).toBeLessThanOrEqual(10000 - expectedQuitters);
-        expect(wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThanOrEqual(
-            expectedQuitters,
-        );
+        const expectedQuitters = Math.floor(10000 * BASE_QUIT_RATE);
+        expect(wf[30].none.active).toBeLessThanOrEqual(10000 - expectedQuitters);
+        expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThanOrEqual(expectedQuitters);
     });
 
     it('does not move workers when active count is too small (floor rounds to 0)', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 1;
-        planet.population.demography[30].employed.none.novice.total = 1;
+        wf[30].none.active = 1;
+        planet.population.demography[30].employed.none.total = 1;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        expect(wf[30].none.novice.active).toBeLessThanOrEqual(1);
+        expect(wf[30].none.active).toBeLessThanOrEqual(1);
     });
 
-    it('applies voluntary quits independently per edu × skill × age', () => {
+    it('applies voluntary quits independently per edu × age', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 50000;
-        wf[40].primary.novice.active = 50000;
-        planet.population.demography[30].employed.none.novice.total = 50000;
-        planet.population.demography[40].employed.primary.novice.total = 50000;
+        wf[30].none.active = 50000;
+        wf[40].primary.active = 50000;
+        planet.population.demography[30].employed.none.total = 50000;
+        planet.population.demography[40].employed.primary.total = 50000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        expect(wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
-        expect(wf[40].primary.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
+        expect(wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
+        expect(wf[40].primary.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1]).toBeGreaterThan(0);
     });
 });
 
@@ -113,57 +102,57 @@ describe('workforceDemographicTick — mortality and disability', () => {
 
     it('applies mortality to active workers', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[70].none.novice.active = 100000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf[70].none.active = 100000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        expect(acc[70].none.novice.deaths).toBeGreaterThan(0);
-        expect(wf[70].none.novice.active).toBeLessThan(100000);
+        expect(acc[70].none.deaths).toBeGreaterThan(0);
+        expect(wf[70].none.active).toBeLessThan(100000);
     });
 
     it('applies disability to active workers', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[50].none.novice.active = 100000;
-        planet.population.demography[50].employed.none.novice.total = 100000;
+        wf[50].none.active = 100000;
+        planet.population.demography[50].employed.none.total = 100000;
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        expect(acc[50].none.novice.disabilities).toBeGreaterThan(0);
-        expect(wf[50].none.novice.active).toBeLessThan(100000);
+        expect(acc[50].none.disabilities).toBeGreaterThan(0);
+        expect(wf[50].none.active).toBeLessThan(100000);
     });
 
     it('applies mortality to departing pipeline workers', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[70].none.novice.voluntaryDeparting[1] = 100000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf[70].none.voluntaryDeparting[1] = 100000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        expect(acc[70].none.novice.deaths).toBeGreaterThan(0);
-        expect(wf[70].none.novice.voluntaryDeparting[1]).toBeLessThan(100000);
+        expect(acc[70].none.deaths).toBeGreaterThan(0);
+        expect(wf[70].none.voluntaryDeparting[1]).toBeLessThan(100000);
     });
 
     it('applies mortality to departingFired pipeline workers', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[70].none.novice.departingFired[1] = 100000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf[70].none.departingFired[1] = 100000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        expect(acc[70].none.novice.deaths).toBeGreaterThan(0);
-        expect(wf[70].none.novice.departingFired[1]).toBeLessThan(100000);
+        expect(acc[70].none.deaths).toBeGreaterThan(0);
+        expect(wf[70].none.departingFired[1]).toBeLessThan(100000);
     });
 
     it('applies disability to departingFired pipeline workers', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[50].none.novice.departingFired[1] = 100000;
-        planet.population.demography[50].employed.none.novice.total = 100000;
+        wf[50].none.departingFired[1] = 100000;
+        planet.population.demography[50].employed.none.total = 100000;
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
-        expect(acc[50].none.novice.disabilities).toBeGreaterThan(0);
-        expect(wf[50].none.novice.departingFired[1]).toBeLessThan(100000);
+        expect(acc[50].none.disabilities).toBeGreaterThan(0);
+        expect(wf[50].none.departingFired[1]).toBeLessThan(100000);
     });
 
     it('accumulates events from multiple agents', () => {
@@ -171,9 +160,9 @@ describe('workforceDemographicTick — mortality and disability', () => {
         const wf1 = agent.assets.p.workforceDemography!;
         const wf2 = agent2.assets.p.workforceDemography!;
 
-        wf1[70].none.novice.active = 50000;
-        wf2[70].none.novice.active = 50000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf1[70].none.active = 50000;
+        wf2[70].none.active = 50000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         const agents = new Map([
             [agent.id, agent],
@@ -181,7 +170,7 @@ describe('workforceDemographicTick — mortality and disability', () => {
         ]);
         const acc = workforceDemographicTick(agents, planet);
 
-        expect(acc[70].none.novice.deaths).toBeGreaterThan(0);
+        expect(acc[70].none.deaths).toBeGreaterThan(0);
     });
 
     it('does nothing for empty workforce', () => {
@@ -189,18 +178,16 @@ describe('workforceDemographicTick — mortality and disability', () => {
 
         for (const cohort of acc) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    expect(cohort[edu][skill].deaths).toBe(0);
-                    expect(cohort[edu][skill].disabilities).toBe(0);
-                }
+                expect(cohort[edu].deaths).toBe(0);
+                expect(cohort[edu].disabilities).toBe(0);
             }
         }
     });
 
     it('updates per-agent death and disability counters', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[70].none.novice.active = 100000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf[70].none.active = 100000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
@@ -220,50 +207,50 @@ describe('workforceDemographicTick — retirement', () => {
 
     it('retires active workers at retirement age into departingRetired pipeline', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[RETIREMENT_AGE].none.novice.active = 100000;
-        planet.population.demography[RETIREMENT_AGE].employed.none.novice.total = 100000;
+        wf[RETIREMENT_AGE].none.active = 100000;
+        planet.population.demography[RETIREMENT_AGE].employed.none.total = 100000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        const retired = wf[RETIREMENT_AGE].none.novice.departingRetired[NOTICE_PERIOD_MONTHS - 1];
+        const retired = wf[RETIREMENT_AGE].none.departingRetired[NOTICE_PERIOD_MONTHS - 1];
         expect(retired).toBeGreaterThan(0);
 
-        const activeAfter = wf[RETIREMENT_AGE].none.novice.active;
+        const activeAfter = wf[RETIREMENT_AGE].none.active;
         expect(activeAfter).toBeLessThan(100000);
     });
 
     it('does not retire workers below retirement age', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 10000;
-        planet.population.demography[30].employed.none.novice.total = 10000;
+        wf[30].none.active = 10000;
+        planet.population.demography[30].employed.none.total = 10000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        expect(wf[30].none.novice.departingRetired[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
+        expect(wf[30].none.departingRetired[NOTICE_PERIOD_MONTHS - 1]).toBe(0);
     });
 
     it('retires workers from the voluntary departing pipeline', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[75].none.novice.voluntaryDeparting[1] = 100000;
-        planet.population.demography[75].employed.none.novice.total = 100000;
+        wf[75].none.voluntaryDeparting[1] = 100000;
+        planet.population.demography[75].employed.none.total = 100000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        expect(wf[75].none.novice.departingRetired[1]).toBeGreaterThan(0);
+        expect(wf[75].none.departingRetired[1]).toBeGreaterThan(0);
 
-        expect(wf[75].none.novice.voluntaryDeparting[1]).toBeLessThan(100000);
+        expect(wf[75].none.voluntaryDeparting[1]).toBeLessThan(100000);
     });
 
     it('retires workers from the departingFired pipeline', () => {
         const wf = agent.assets.p.workforceDemography!;
-        wf[75].none.novice.departingFired[1] = 100000;
-        planet.population.demography[75].employed.none.novice.total = 100000;
+        wf[75].none.departingFired[1] = 100000;
+        planet.population.demography[75].employed.none.total = 100000;
 
         workforceDemographicTick(agentMap(agent), planet);
 
-        expect(wf[75].none.novice.departingRetired[1]).toBeGreaterThan(0);
+        expect(wf[75].none.departingRetired[1]).toBeGreaterThan(0);
 
-        expect(wf[75].none.novice.departingFired[1]).toBeLessThan(100000);
+        expect(wf[75].none.departingFired[1]).toBeLessThan(100000);
     });
 
     it('retirement probability increases with age', () => {
@@ -272,16 +259,16 @@ describe('workforceDemographicTick — retirement', () => {
         const wf67 = agent67.assets.p.workforceDemography!;
         const wf80 = agent80.assets.p.workforceDemography!;
 
-        wf67[RETIREMENT_AGE].none.novice.active = 100000;
-        wf80[80].none.novice.active = 100000;
-        planet.population.demography[RETIREMENT_AGE].employed.none.novice.total = 100000;
-        planet.population.demography[80].employed.none.novice.total = 100000;
+        wf67[RETIREMENT_AGE].none.active = 100000;
+        wf80[80].none.active = 100000;
+        planet.population.demography[RETIREMENT_AGE].employed.none.total = 100000;
+        planet.population.demography[80].employed.none.total = 100000;
 
         workforceDemographicTick(agentMap(agent67), planet);
         workforceDemographicTick(agentMap(agent80), planet);
 
-        const retired67 = wf67[RETIREMENT_AGE].none.novice.departingRetired[NOTICE_PERIOD_MONTHS - 1];
-        const retired80 = wf80[80].none.novice.departingRetired[NOTICE_PERIOD_MONTHS - 1];
+        const retired67 = wf67[RETIREMENT_AGE].none.departingRetired[NOTICE_PERIOD_MONTHS - 1];
+        const retired80 = wf80[80].none.departingRetired[NOTICE_PERIOD_MONTHS - 1];
 
         expect(retired80).toBeGreaterThan(retired67);
     });
@@ -296,16 +283,16 @@ describe('workforceDemographicTick — conservation', () => {
             }),
         });
         const wf = agent.assets.p.workforceDemography!;
-        wf[70].none.novice.active = 100000;
-        planet.population.demography[70].employed.none.novice.total = 100000;
+        wf[70].none.active = 100000;
+        planet.population.demography[70].employed.none.total = 100000;
 
         const before = totalWorkforce(agent, 'p', 'none');
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
         const after = totalWorkforce(agent, 'p', 'none');
-        const totalDeaths = acc[70].none.novice.deaths;
-        const totalDisabilities = acc[70].none.novice.disabilities;
+        const totalDeaths = acc[70].none.deaths;
+        const totalDisabilities = acc[70].none.disabilities;
 
         expect(before - after).toBe(totalDeaths + totalDisabilities);
     });
@@ -314,16 +301,15 @@ describe('workforceDemographicTick — conservation', () => {
         const agent = makeAgent();
         const planet = makePlanet();
         const wf = agent.assets.p.workforceDemography!;
-        wf[RETIREMENT_AGE].none.novice.active = 10000;
-        planet.population.demography[RETIREMENT_AGE].employed.none.novice.total = 10000;
+        wf[RETIREMENT_AGE].none.active = 10000;
+        planet.population.demography[RETIREMENT_AGE].employed.none.total = 10000;
 
         const before = totalWorkforce(agent, 'p', 'none');
 
         const acc = workforceDemographicTick(agentMap(agent), planet);
 
         const after = totalWorkforce(agent, 'p', 'none');
-        const deathsAndDisabilities =
-            acc[RETIREMENT_AGE].none.novice.deaths + acc[RETIREMENT_AGE].none.novice.disabilities;
+        const deathsAndDisabilities = acc[RETIREMENT_AGE].none.deaths + acc[RETIREMENT_AGE].none.disabilities;
 
         expect(before - after).toBe(deathsAndDisabilities);
     });
@@ -338,8 +324,8 @@ describe('workforceDemographicTick — conservation', () => {
         const wf = agent.assets.p.workforceDemography!;
 
         for (let age = 20; age <= 80; age++) {
-            wf[age].none.novice.active = 1000;
-            planet.population.demography[age].employed.none.novice.total = 1000;
+            wf[age].none.active = 1000;
+            planet.population.demography[age].employed.none.total = 1000;
         }
 
         const before = totalWorkforce(agent, 'p', 'none');
@@ -381,35 +367,33 @@ describe('workforceDemographicTick — edge cases', () => {
         });
         const wf = agent.assets.p.workforceDemography!;
 
-        wf[30].none.novice.active = 500;
-        wf[30].none.novice.voluntaryDeparting[1] = 200;
-        wf[30].none.novice.departingFired[0] = 100;
-        wf[70].primary.novice.active = 1000;
-        wf[70].primary.novice.departingRetired[2] = 50;
-        planet.population.demography[30].employed.none.novice.total = 800;
-        planet.population.demography[70].employed.primary.novice.total = 1050;
+        wf[30].none.active = 500;
+        wf[30].none.voluntaryDeparting[1] = 200;
+        wf[30].none.departingFired[0] = 100;
+        wf[70].primary.active = 1000;
+        wf[70].primary.departingRetired[2] = 50;
+        planet.population.demography[30].employed.none.total = 800;
+        planet.population.demography[70].employed.primary.total = 1050;
 
         workforceDemographicTick(agentMap(agent), planet);
 
         for (let age = 0; age < wf.length; age++) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const cat = wf[age][edu][skill];
-                    expect(cat.active, `negative active at age ${age} ${edu} ${skill}`).toBeGreaterThanOrEqual(0);
-                    for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
-                        expect(
-                            cat.voluntaryDeparting[m],
-                            `negative voluntary at age ${age} ${edu} ${skill} slot ${m}`,
-                        ).toBeGreaterThanOrEqual(0);
-                        expect(
-                            cat.departingFired[m],
-                            `negative fired at age ${age} ${edu} ${skill} slot ${m}`,
-                        ).toBeGreaterThanOrEqual(0);
-                        expect(
-                            cat.departingRetired[m],
-                            `negative retired at age ${age} ${edu} ${skill} slot ${m}`,
-                        ).toBeGreaterThanOrEqual(0);
-                    }
+                const cat = wf[age][edu];
+                expect(cat.active, `negative active at age ${age} ${edu}`).toBeGreaterThanOrEqual(0);
+                for (let m = 0; m < NOTICE_PERIOD_MONTHS; m++) {
+                    expect(
+                        cat.voluntaryDeparting[m],
+                        `negative voluntary at age ${age} ${edu} slot ${m}`,
+                    ).toBeGreaterThanOrEqual(0);
+                    expect(
+                        cat.departingFired[m],
+                        `negative fired at age ${age} ${edu} slot ${m}`,
+                    ).toBeGreaterThanOrEqual(0);
+                    expect(
+                        cat.departingRetired[m],
+                        `negative retired at age ${age} ${edu} slot ${m}`,
+                    ).toBeGreaterThanOrEqual(0);
                 }
             }
         }

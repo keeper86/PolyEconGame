@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { automaticWorkerAllocation } from './automaticWorkerAllocation';
+import { automaticWageAdjustment, automaticWorkerAllocation } from './automaticWorkerAllocation';
 import { makeAgent, makePlanetWithPopulation, makeProductionFacility, agentMap } from '../utils/testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 
@@ -109,12 +109,60 @@ describe('updateAllocatedWorkers', () => {
         agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
 
         const wf = agent.assets.p.workforceDemography!;
-        wf[30].none.novice.active = 900;
-        wf[30].none.novice.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 100;
-        wf[30].none.novice.departingFired[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[30].none.active = 900;
+        wf[30].none.voluntaryDeparting[NOTICE_PERIOD_MONTHS - 1] = 100;
+        wf[30].none.departingFired[NOTICE_PERIOD_MONTHS - 1] = 100;
 
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
+    });
+});
+
+describe('automaticWageAdjustment', () => {
+    it('raises the wage when profitable and slots are idle', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.totalSlotCapacity = { none: 0, primary: 0, secondary: 0, tertiary: 100 };
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
+    });
+
+    it('lowers the wage when unprofitable', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+    });
+
+    it('raises the wage gently when profitable with a gap covered by substitutes', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.totalSlotCapacity = { none: 0, primary: 0, secondary: 0, tertiary: 100 };
+        agent.assets.p.overqualifiedWorkers = { tertiary: { secondary: 100 } };
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.tertiary).toBeGreaterThan(100);
+    });
+
+    it('lowers the wage when profitable and fully staffed', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        agent.assets.p.lastMonthAcc.revenue = 100_000;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 });

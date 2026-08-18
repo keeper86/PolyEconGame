@@ -5,6 +5,7 @@ import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createLastTickResults,
+    nullWagePidState,
     type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
@@ -25,36 +26,10 @@ import {
 } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import type {
-    Cohort,
-    DeathStats,
-    DisabilityStats,
-    GaussianMoments,
-    Occupation,
-    Population,
-    PopulationCategory,
-    RetirementStats,
-    Skill,
-} from '../population/population';
-import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS, SKILL } from '../population/population';
+import type { Cohort, Occupation, Population, PopulationCategory } from '../population/population';
+import { forEachPopulationCohort, MAX_AGE, nullPopulationCategory, OCCUPATIONS } from '../population/population';
 import type { TransportShipType } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
-
-export function makeGaussianMoments(overrides?: Partial<GaussianMoments>): GaussianMoments {
-    return { mean: 0, variance: 0, ...overrides };
-}
-
-export function makeDeathStats(overrides?: Partial<DeathStats>): DeathStats {
-    return { type: 'death', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
-
-export function makeDisabilityStats(overrides?: Partial<DisabilityStats>): DisabilityStats {
-    return { type: 'disability', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
-
-export function makeRetirementStats(overrides?: Partial<RetirementStats>): RetirementStats {
-    return { type: 'retirement', countThisMonth: 0, countThisTick: 0, countLastMonth: 0, ...overrides };
-}
 
 export function makePopulationCategory(overrides?: Partial<PopulationCategory>): PopulationCategory {
     return {
@@ -80,10 +55,7 @@ export function makePopulationCohort(): Cohort<PopulationCategory> {
     for (const occ of OCCUPATIONS) {
         cohort[occ] = {} as WorkforceCohort<PopulationCategory>;
         for (const edu of educationLevelKeys) {
-            cohort[occ][edu] = {} as Record<Skill, PopulationCategory>;
-            for (const skill of SKILL) {
-                cohort[occ][edu][skill] = nullPopulationCategory();
-            }
+            cohort[occ][edu] = nullPopulationCategory();
         }
     }
     return cohort;
@@ -92,10 +64,7 @@ export function makePopulationCohort(): Cohort<PopulationCategory> {
 export function makeWorkforceCohort(): WorkforceCohort<WorkforceCategory> {
     const cohort = {} as WorkforceCohort<WorkforceCategory>;
     for (const edu of educationLevelKeys) {
-        cohort[edu] = {} as Record<Skill, WorkforceCategory>;
-        for (const skill of SKILL) {
-            cohort[edu][skill] = makeWorkforceCategory();
-        }
+        cohort[edu] = makeWorkforceCategory();
     }
     return cohort;
 }
@@ -119,14 +88,12 @@ export function makePopulationWithWorkers(
     total: number,
     opts?: {
         edu?: EducationLevelType;
-        skill?: Skill;
         occ?: Occupation;
         minAge?: number;
         maxAge?: number;
     },
 ): Population {
     const edu = opts?.edu ?? 'none';
-    const skill = opts?.skill ?? 'novice';
     const occ = opts?.occ ?? 'unoccupied';
     const minAge = opts?.minAge ?? MIN_EMPLOYABLE_AGE;
     const maxAge = opts?.maxAge ?? 64;
@@ -138,7 +105,7 @@ export function makePopulationWithWorkers(
 
     for (let age = minAge; age <= maxAge; age++) {
         const extra = remainder > 0 ? 1 : 0;
-        pop.demography[age][occ][edu][skill].total = perAge + extra;
+        pop.demography[age][occ][edu].total = perAge + extra;
         if (remainder > 0) {
             remainder--;
         }
@@ -159,7 +126,7 @@ export function makePopulationByEducation(distribution: Partial<Record<Education
         let remainder = total - perAge * workingAges;
         for (let age = minAge; age <= maxAge; age++) {
             const extra = remainder > 0 ? 1 : 0;
-            pop.demography[age].unoccupied[edu].novice.total = perAge + extra;
+            pop.demography[age].unoccupied[edu].total = perAge + extra;
             if (remainder > 0) {
                 remainder--;
             }
@@ -235,6 +202,11 @@ export function makeManagementFacility(
         scale: 1,
         construction: null,
         lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -256,6 +228,7 @@ export function makeHRFacility(
     return {
         ...makeManagementFacility(workerReq, overrides as Partial<ManagementFacility>),
         hrBuffer: 0,
+        wagePidState: nullWagePidState(),
         ...overrides,
     };
 }
@@ -273,6 +246,11 @@ export function makeProductionFacility(
         scale: 1,
         construction: null,
         lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         lastTickResults: {
             ...createLastTickResults(),
             lastProduced: {},
@@ -311,6 +289,12 @@ export function makeShipConstructionFacility(
         maxScale: 1,
         scale: 1,
         construction: null,
+        lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0,
         workerRequirement: (workerReq ?? {}) as Record<string, number>,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
@@ -510,9 +494,7 @@ export function totalPopulation(planet: Planet): number {
 export function sumPopOcc(planet: Planet, edu: EducationLevelType, occ: Occupation): number {
     let total = 0;
     for (const cohort of planet.population.demography) {
-        for (const skill of SKILL) {
-            total += cohort[occ][edu][skill].total;
-        }
+        total += cohort[occ][edu].total;
     }
     return total;
 }
@@ -524,21 +506,19 @@ export function sumWorkforceForEdu(agent: Agent, planetId: string, edu: Educatio
     }
     let total = 0;
     for (const cohort of wf) {
-        for (const skill of SKILL) {
-            const cell = cohort[edu][skill];
-            total += cell.active;
-            for (const dep of cell.onboarding) {
-                total += dep;
-            }
-            for (const dep of cell.voluntaryDeparting) {
-                total += dep;
-            }
-            for (const dep of cell.departingFired) {
-                total += dep;
-            }
-            for (const dep of cell.departingRetired) {
-                total += dep;
-            }
+        const cell = cohort[edu];
+        total += cell.active;
+        for (const dep of cell.onboarding) {
+            total += dep;
+        }
+        for (const dep of cell.voluntaryDeparting) {
+            total += dep;
+        }
+        for (const dep of cell.departingFired) {
+            total += dep;
+        }
+        for (const dep of cell.departingRetired) {
+            total += dep;
         }
     }
     return total;
@@ -551,9 +531,7 @@ export function sumActiveForEdu(agent: Agent, planetId: string, edu: EducationLe
     }
     let total = 0;
     for (const cohort of wf) {
-        for (const skill of SKILL) {
-            total += cohort[edu][skill].active;
-        }
+        total += cohort[edu].active;
     }
     return total;
 }
@@ -561,9 +539,7 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
     for (const edu of educationLevelKeys) {
         let popEmployed = 0;
         for (const cohort of planet.population.demography) {
-            for (const skill of SKILL) {
-                popEmployed += cohort.employed[edu][skill].total;
-            }
+            popEmployed += cohort.employed[edu].total;
         }
 
         let wfTotal = 0;
@@ -573,14 +549,12 @@ export function assertPopulationWorkforceConsistency(agents: Map<string, Agent>,
                 continue;
             }
             for (let age = 0; age < wf.length; age++) {
-                for (const skill of SKILL) {
-                    const cell = wf[age][edu][skill];
-                    wfTotal += cell.active;
-                    wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
-                }
+                const cell = wf[age][edu];
+                wfTotal += cell.active;
+                wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
             }
         }
 
@@ -603,29 +577,27 @@ export function assertPerCellWorkforcePopulationConsistency(
 ): void {
     for (let age = 0; age < planet.population.demography.length; age++) {
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                const popEmployed = planet.population.demography[age].employed[edu][skill].total;
+            const popEmployed = planet.population.demography[age].employed[edu].total;
 
-                let wfTotal = 0;
-                for (const [_id, agent] of agents) {
-                    const wf = agent.assets[planet.id]?.workforceDemography;
-                    if (!wf || age >= wf.length) {
-                        continue;
-                    }
-                    const cell = wf[age][edu][skill];
-                    wfTotal += cell.active;
-                    wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
-                    wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
+            let wfTotal = 0;
+            for (const [_id, agent] of agents) {
+                const wf = agent.assets[planet.id]?.workforceDemography;
+                if (!wf || age >= wf.length) {
+                    continue;
                 }
+                const cell = wf[age][edu];
+                wfTotal += cell.active;
+                wfTotal += cell.onboarding.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
+                wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
+            }
 
-                if (popEmployed !== 0 || wfTotal !== 0) {
-                    if (wfTotal !== popEmployed) {
-                        console.error(
-                            `${label} per-cell mismatch at age=${age}, edu=${edu}, skill=${skill}: wf=${wfTotal} ≠ pop(employed)=${popEmployed}`,
-                        );
-                    }
+            if (popEmployed !== 0 || wfTotal !== 0) {
+                if (wfTotal !== popEmployed) {
+                    console.error(
+                        `${label} per-cell mismatch at age=${age}, edu=${edu}: wf=${wfTotal} ≠ pop(employed)=${popEmployed}`,
+                    );
                 }
             }
         }

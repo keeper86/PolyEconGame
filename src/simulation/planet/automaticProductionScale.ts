@@ -1,4 +1,3 @@
-import assert from 'assert';
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
@@ -15,6 +14,7 @@ export {
     computeDynamicExpansionTarget,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
+    findMaxScaleForLandboundResources,
     OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
 export {
@@ -26,7 +26,12 @@ export {
     type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityProfitThisTick, computeFacilitySignal } from './automaticProductionScale/signalComputation';
+export {
+    computeFacilityProfitThisTick,
+    computeFacilitySignal,
+    computeProfitMargin,
+    estimateProfitAtScale,
+} from './automaticProductionScale/signalComputation';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -38,6 +43,7 @@ import {
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
     DYNAMIC_EXPANSION_CAP_FRACTION,
+    EXPANSION_INPUT_EFFICIENCY_MIN,
     EXPANSION_INTEGRAL_DECAY,
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
@@ -61,7 +67,7 @@ import {
     type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-import { computeFacilityProfitThisTick, computeFacilitySignal } from './automaticProductionScale/signalComputation';
+import { computeFacilitySignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 
 const HR_TARGET_FILL_RATE = 0.85;
@@ -338,17 +344,21 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 continue;
             }
 
-            const rawSignal = computeFacilitySignal(facility, assets, planet);
-            assert(rawSignal >= -1, 'Signal should be >= -1, but got ' + rawSignal);
-            assert(rawSignal <= 1, 'Signal should be capped at 1, but got' + rawSignal);
-
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
+
+            const flowSellThroughByResource: Record<string, number> = {};
+            for (const output of facility.produces) {
+                const offer = assets.market?.sell?.[output.resource.name];
+                const produced = facility.lastTickResults?.lastProduced?.[output.resource.name] ?? 0;
+                if (produced > 0 && offer) {
+                    flowSellThroughByResource[output.resource.name] = (offer.lastSold ?? 0) / produced;
+                }
+            }
+
+            const rawSignal = computeFacilitySignal(facility, planet, flowSellThroughByResource);
 
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;
-
-            const profitThisTick = computeFacilityProfitThisTick(facility);
-            state.profitEMA = 0.1 * profitThisTick + 0.9 * (state.profitEMA ?? 0);
 
             const delta = computePidDelta(signal, state, facility.maxScale);
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
@@ -360,8 +370,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const atLowerBound = facility.scale <= facility.maxScale * 0.1;
-            if (atLowerBound && signal < 0) {
+            if (facility.scale < facility.maxScale && signal < 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
                     state.contractionIntegral + Math.abs(signal),
@@ -370,18 +379,24 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
-            const dynamicThreshold = Math.min(
-                EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD *
-                    Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
-            );
+            const dynamicThreshold = hasOwnConstruction
+                ? EXPANSION_INTEGRAL_THRESHOLD
+                : Math.min(
+                      EXPANSION_INTEGRAL_MAX,
+                      EXPANSION_INTEGRAL_THRESHOLD *
+                          Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
+                  );
 
             const atMaxScale = facility.scale >= facility.maxScale;
             const hasNoActiveConstruction = facility.construction === null;
             const positiveSignal = signal > 0;
             const integralAboveThreshold = state.expansionIntegral >= dynamicThreshold;
-            const efficiencyAbove95 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.95;
-            const expansionConditionsMet = atMaxScale && hasNoActiveConstruction && integralAboveThreshold;
+            const efficiencyAbove85 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.85;
+            const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
+            const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
+            const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
+            const expansionConditionsMet =
+                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;
@@ -440,7 +455,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     atMaxScale,
                     hasNoActiveConstruction,
                     integralAboveThreshold,
-                    efficiencyAbove95,
+                    efficiencyAbove85,
                     workforceStats!,
                     workersAvailable,
                     fundsAvailable,
@@ -450,7 +465,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 if (!integralAboveThreshold) {
                     debugAggregates.blockedByIntegral++;
                 }
-                if (!efficiencyAbove95) {
+                if (!efficiencyAbove85) {
                     debugAggregates.blockedByEfficiency++;
                 }
                 if (!workersAvailable) {
@@ -501,10 +516,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             if (
-                atLowerBound &&
+                facility.scale < facility.maxScale &&
                 facility.construction === null &&
-                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
-                state.profitEMA < 0
+                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
                 const contracted = processFacilityContraction(
                     planet,
@@ -542,8 +556,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 hrState.expansionIntegral = Math.max(0, hrState.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const hrAtLowerBound = hrDepartment.scale <= hrDepartment.maxScale * 0.1;
-            if (hrAtLowerBound && hrSignal < 0) {
+            if (hrDepartment.scale < hrDepartment.maxScale && hrSignal < 0) {
                 hrState.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
                     hrState.contractionIntegral + Math.abs(hrSignal),
@@ -558,15 +571,16 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
+            const hrDemandScale = Math.max(
+                1,
+                Math.ceil((assets.usedWorkers * HR_EXPANSION_FACTOR) / PRODUCED_HR_QUANTITY),
+            );
+            const hrDemandExceedsCapacity = hrDemandScale > hrDepartment.maxScale;
+
             if (
-                hrUtilization >= 0.8 &&
                 hrDepartment.construction === null &&
-                hrState.expansionIntegral >= hrDynamicThreshold
+                (hrDemandExceedsCapacity || (hrUtilization >= 0.8 && hrState.expansionIntegral >= hrDynamicThreshold))
             ) {
-                const hrDemandScale = Math.max(
-                    1,
-                    Math.ceil((assets.usedWorkers * HR_EXPANSION_FACTOR) / PRODUCED_HR_QUANTITY),
-                );
                 let hrTargetMax = Math.max(hrDemandScale, hrDepartment.maxScale + 1);
 
                 const hrAbsoluteCap =
@@ -610,7 +624,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             if (
-                hrAtLowerBound &&
+                hrDepartment.scale < hrDepartment.maxScale &&
                 hrDepartment.construction === null &&
                 hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {
@@ -644,8 +658,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 stoState.expansionIntegral = Math.max(0, stoState.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const stoAtLowerBound = storageDepartment.scale <= storageDepartment.maxScale * 0.1;
-            if (stoAtLowerBound && stoSignal < 0) {
+            if (storageDepartment.scale < storageDepartment.maxScale && stoSignal < 0) {
                 stoState.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
                     stoState.contractionIntegral + Math.abs(stoSignal),
@@ -692,7 +705,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             if (
-                stoAtLowerBound &&
+                storageDepartment.scale < storageDepartment.maxScale &&
                 storageDepartment.construction === null &&
                 stoState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
             ) {

@@ -31,7 +31,7 @@ export function applyMortalityAndDisability(
     population.demography.forEach((cohort, age) => {
         let ageTotal = 0;
 
-        forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
+        forEachPopulationCohort(cohort, (category, occ, edu) => {
             // ── Count (pre-mortality snapshot) ──
             ageTotal += category.total;
             if (category.total > 0) {
@@ -49,7 +49,7 @@ export function applyMortalityAndDisability(
             let dead = 0;
 
             if (occ === 'employed') {
-                dead = workforceEvents[age][edu][skill].deaths;
+                dead = workforceEvents[age][edu].deaths;
             } else {
                 const starvationLevel = category.services.grocery.starvationLevel;
                 const mortalityPerTick = computeMortalityProbabilityPerTick(
@@ -64,15 +64,16 @@ export function applyMortalityAndDisability(
 
             if (dead > 0) {
                 if (dead > category.total) {
-                    throw new Error(
-                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected at most ${category.total} deaths, but got ${dead}.`,
+                    console.warn(
+                        `Mortality count clamped at age ${age}, occ ${occ}, edu ${edu}: expected at most ${category.total} deaths, but got ${dead}.`,
                     );
+                    dead = category.total;
                 }
 
-                const result = transferPopulation(planet, { age, occ, edu, skill }, undefined, dead);
+                const result = transferPopulation(planet, { age, occ, edu }, undefined, dead);
                 if (result.count !== dead) {
                     console.warn(
-                        `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected ${dead} deaths, but actually transferred ${result.count}.`,
+                        `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}: expected ${dead} deaths, but actually transferred ${result.count}.`,
                     );
                 }
                 category.deaths.countThisMonth += result.count;
@@ -95,7 +96,7 @@ export function applyMortalityAndDisability(
             let disabled = 0;
 
             if (occ === 'employed') {
-                disabled = workforceEvents[age][edu][skill].disabilities;
+                disabled = workforceEvents[age][edu].disabilities;
             } else {
                 const starvationLevel = category.services.grocery.starvationLevel;
                 const perTickDisabilityProb = computeTotalDisabilityProbability(
@@ -109,8 +110,8 @@ export function applyMortalityAndDisability(
             if (disabled > 0) {
                 const moved = transferPopulation(
                     planet,
-                    { age, occ, edu, skill },
-                    { age, occ: 'unableToWork', edu, skill },
+                    { age, occ, edu },
+                    { age, occ: 'unableToWork', edu },
                     disabled,
                 ).count;
                 category.disabilities.countThisMonth += moved;

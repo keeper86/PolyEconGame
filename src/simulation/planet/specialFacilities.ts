@@ -1,9 +1,11 @@
+import { nullWagePidState } from './facility';
 import type {
     HRFacility,
     LastManagementTickResults,
     ManagementFacility,
     ShipConstructionFacility,
     StorageDepartment,
+    TrainingsDepartment,
 } from './facility';
 import {
     administrativeServiceResourceType,
@@ -11,6 +13,7 @@ import {
     humanResourcesServiceResourceType,
     logisticsServiceResourceType,
     storageServiceResourceType,
+    trainingServiceResourceType,
 } from './services';
 
 const zeroLastTicksResults: LastManagementTickResults = {
@@ -40,6 +43,11 @@ const makeManagementFacilityDefaults = () => ({
     pollutionPerTick: { ...defaultPollutionPerTick },
     construction: null,
     lastConstructionCompletedTick: 0,
+    maintenanceStatus: 1,
+    maxMaintenance: 1,
+    cumulativeRepairAcc: 0,
+    lastTickMaintenanceConsumption: 0,
+    lastTickRestorationConsumption: 0,
     lastTickResults: {
         ...zeroLastTicksResults,
     },
@@ -65,6 +73,7 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     needs: [{ resource: administrativeServiceResourceType, quantity: USED_QUANTITY }],
     produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
     hrBuffer: 0,
+    wagePidState: nullWagePidState(),
 });
 
 export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
@@ -90,6 +99,8 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
     storageBuffer: 0,
     storageStarvation: 0,
 });
+// service shield for production
+// increased buffer for storageServiceResourceType
 
 export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';
 export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
@@ -112,7 +123,7 @@ export const researchAndDevelopmentFacilityType = (planetId: string, id: string)
 });
 
 export const TRAINING_CENTER_NAME = 'Training Center';
-export const trainingCenterFacilityType = (planetId: string, id: string): ManagementFacility => ({
+export const trainingCenterFacilityType = (planetId: string, id: string): TrainingsDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
@@ -128,8 +139,13 @@ export const trainingCenterFacilityType = (planetId: string, id: string): Manage
         { resource: administrativeServiceResourceType, quantity: 1 },
         { resource: educationServiceResourceType, quantity: 10 },
     ],
-    produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    produces: [{ resource: trainingServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+    trainingsBuffer: 0,
 });
+// shorten time for onbording
+// decrease productivity malus for onboarding
+// worker XP increase
+// increase XP bonus for productivity
 
 export const shipConstructionFacilityType = (planetId: string, id: string): ShipConstructionFacility => {
     return {
@@ -141,6 +157,11 @@ export const shipConstructionFacilityType = (planetId: string, id: string): Ship
         scale: 1,
         construction: null,
         lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 10,

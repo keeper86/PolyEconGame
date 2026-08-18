@@ -1,7 +1,6 @@
 import { MIN_EMPLOYABLE_AGE } from '../constants';
 import type { Planet } from '../planet/planet';
 import { stochasticRound } from '../utils/stochasticRound';
-import type { Skill } from './population';
 import { transferPopulation } from './population';
 
 export type EducationLevelType = 'none' | 'primary' | 'secondary' | 'tertiary';
@@ -97,9 +96,8 @@ export function applyEducationTransition(
     sourceAge: number,
     targetAge: number,
     edu: EducationLevelType,
-    skill: Skill,
 ): void {
-    const count = planet.population.demography[sourceAge].education[edu][skill].total;
+    const count = planet.population.demography[sourceAge].education[edu].total;
     if (count <= 0) {
         return;
     }
@@ -120,8 +118,8 @@ export function applyEducationTransition(
         if (transitioners > 0) {
             transferPopulation(
                 planet,
-                { age: sourceAge, occ: 'education', edu, skill },
-                { age: targetAge, occ: 'education', edu: nextEdu, skill },
+                { age: sourceAge, occ: 'education', edu },
+                { age: targetAge, occ: 'education', edu: nextEdu },
                 transitioners,
             );
         }
@@ -129,8 +127,8 @@ export function applyEducationTransition(
         if (voluntaryDropouts > 0) {
             transferPopulation(
                 planet,
-                { age: sourceAge, occ: 'education', edu, skill },
-                { age: targetAge, occ: 'unoccupied', edu: nextEdu, skill },
+                { age: sourceAge, occ: 'education', edu },
+                { age: targetAge, occ: 'unoccupied', edu: nextEdu },
                 voluntaryDropouts,
             );
         }
@@ -150,16 +148,16 @@ export function applyEducationTransition(
             }
             transferPopulation(
                 planet,
-                { age: sourceAge, occ: 'education', edu, skill },
-                { age: targetAge, occ: 'unoccupied', edu, skill },
+                { age: sourceAge, occ: 'education', edu },
+                { age: targetAge, occ: 'unoccupied', edu },
                 dropouts,
             );
         }
         if (remainers > 0) {
             transferPopulation(
                 planet,
-                { age: sourceAge, occ: 'education', edu, skill },
-                { age: targetAge, occ: 'education', edu, skill },
+                { age: sourceAge, occ: 'education', edu },
+                { age: targetAge, occ: 'education', edu },
                 remainers,
             );
         }

@@ -102,12 +102,3 @@ export function getCurrencyResource(planetId: string): Resource {
 export function isCurrencyResource(resource: Resource): boolean {
     return resource.form === 'currency';
 }
-
-export function getCurrencyIssuingPlanetId(resource: Resource): string | null {
-    if (!isCurrencyResource(resource)) {
-        return null;
-    }
-    return resource.name.startsWith(CURRENCY_RESOURCE_PREFIX)
-        ? resource.name.slice(CURRENCY_RESOURCE_PREFIX.length)
-        : null;
-}

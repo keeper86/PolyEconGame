@@ -4,9 +4,8 @@ import type { Facility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { SKILL } from '../population/population';
-import { ACCEPTABLE_IDLE_FRACTION } from './hireWorkforce';
-import { totalActiveForEduSkill } from './workforceAggregates';
+import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
+import { totalActiveForEdu } from './workforceAggregates';
 
 function computeExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
     const allFacilities: Array<Facility> = [
@@ -86,7 +85,6 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
     const lastMonthPurchases = assets.lastMonthAcc.purchases ?? 0;
     const lastClaims = assets.lastMonthAcc.claimPayments ?? 0;
     const monthlyRunRate = lastMonthWages + lastMonthPurchases + lastClaims;
-    // If we have no last month data yet, fall back to current month (which may still be incomplete)
     const effectiveMonthlyRunRate = monthlyRunRate > 0 ? monthlyRunRate : Number.MAX_SAFE_INTEGER;
     return effectiveMonthlyRunRate * 12;
 }
@@ -119,17 +117,14 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
 
         const last = assets.lastMonthAcc;
         const operationalProfit = last.revenue - last.wages - last.purchases - last.claimPayments;
-
         const hasLastMonthData = last.revenue !== 0 || last.wages !== 0;
         const isProfitable = hasLastMonthData
             ? operationalProfit > 0
             : assets.deposits - assets.monthAcc.depositsAtMonthStart > 0;
 
         for (const edu of educationLevelKeys) {
-            // How many exact matches are we missing?
             const gap = totalSlotCapacity[edu] - exactUsed[edu];
 
-            // How many higher-tier workers are actively covering this job?
             let substitutesCovering = 0;
             if (overqualified[edu]) {
                 for (const count of Object.values(overqualified[edu]!)) {
@@ -137,36 +132,27 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                 }
             }
 
-            // Are machines actually sitting empty?
             const idleSlots = gap - Math.floor(substitutesCovering);
 
             let factor: number;
             if (isProfitable && idleSlots > 0) {
-                // True Emergency: Leaving money on the table because machines are empty.
                 factor = 1 + WAGE_ADJUSTMENT_RATE;
             } else if (isProfitable && gap > 0) {
-                // Inefficient: Machines are running via substitutes, but payroll is bloated.
-                // Nudge the wage up gently to attract the exact match.
                 factor = 1 + WAGE_ADJUSTMENT_RATE * 0.25;
             } else if (isProfitable && gap <= 0) {
-                // Optimized: We have the exact workers we need. Slowly lower wages.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 0.25;
             } else if (!isProfitable && idleSlots > 0) {
-                // Unprofitable but missing bodies: Hold or lower slightly.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 0.5;
             } else {
-                // Unprofitable and fully staffed/substituted: Bleeding cash, cut payroll heavily.
                 factor = 1 - WAGE_ADJUSTMENT_RATE * 2;
             }
 
             assets.wagePerEdu[edu] = Math.max(MIN_WAGE, Math.min(MAX_WAGE, assets.wagePerEdu[edu] * factor));
         }
 
-        // --- Enforce Monotonicity
         for (let i = 0; i < educationLevelKeys.length - 1; i++) {
             const currentEdu = educationLevelKeys[i];
             const nextEdu = educationLevelKeys[i + 1];
-
             if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
                 assets.wagePerEdu[currentEdu] = assets.wagePerEdu[nextEdu];
             }
@@ -181,9 +167,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             if (excessCash > 0) {
                 let totalWorkers = 0;
                 for (const edu of educationLevelKeys) {
-                    for (const skill of SKILL) {
-                        totalWorkers += totalActiveForEduSkill(workforce, edu, skill);
-                    }
+                    totalWorkers += totalActiveForEdu(workforce, edu);
                 }
 
                 let totalCredit = 0;
@@ -195,23 +179,19 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
                             continue;
                         }
                         for (const edu of educationLevelKeys) {
-                            for (const skill of SKILL) {
-                                const agentWorkers = ageCohort[edu]?.[skill];
-                                if (!agentWorkers) {
-                                    continue;
-                                }
-                                const activeWorkers = agentWorkers.active;
-                                if (activeWorkers <= 0) {
-                                    continue;
-                                }
-                                const cat = demography[age].employed[edu][skill];
-                                if (cat.total <= 0) {
-                                    // cat should be populated if agent has active workers there
-                                    continue;
-                                }
-
-                                totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
+                            const agentWorkers = ageCohort[edu];
+                            if (!agentWorkers) {
+                                continue;
                             }
+                            const activeWorkers = agentWorkers.active;
+                            if (activeWorkers <= 0) {
+                                continue;
+                            }
+                            const cat = demography[age].employed[edu];
+                            if (cat.total <= 0) {
+                                continue;
+                            }
+                            totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
                         }
                     }
 

@@ -1,5 +1,4 @@
 import type { TickerEvent } from 'src/server/controller/simulation';
-import type { WorkerQueryMessage, WorkerSuccessResponse, WorkerErrorResponse } from '../queries';
 import type { ResourceQuantity } from '../planet/claims';
 import type { WireGameState } from '../snapshotCompression';
 import type { AutomatedPricingConfig } from '../planet/planet';
@@ -276,8 +275,7 @@ export type InboundMessage =
           agentId: string;
           planetId: string;
           facilityId: string;
-      }
-    | WorkerQueryMessage;
+      };
 
 export type OutboundMessage =
     | { type: 'pong'; tick: number }
@@ -440,10 +438,7 @@ export type OutboundMessage =
           processedAtTick: number;
       }
     | { type: 'licenseAcquisitionFailed'; requestId: string; reason: string; processedAtTick: number }
-    | { type: 'workerRestarted'; reason?: string }
-    | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string }
-    | WorkerSuccessResponse
-    | WorkerErrorResponse;
+    | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string };
 
 export type PendingAction =
     | {

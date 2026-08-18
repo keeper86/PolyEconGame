@@ -1,11 +1,6 @@
-import type { Environment, Planet } from '../planet/planet';
+import type { Environment } from '../planet/planet';
 
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
-import { stochasticRound } from '../utils/stochasticRound';
-import type { WorkforceEventAccumulator } from '../workforce/workforceDemographicTick';
-import type { InheritanceRecord } from './inheritance';
-import { redistributeInheritance } from './inheritance';
-import { forEachPopulationCohort, transferPopulation } from './population';
 
 export const mortalityProbability = (age: number) => {
     const mortalityByThousands: number[] = [
@@ -54,56 +49,3 @@ export const computeMortalityProbabilityPerTick = (
         ),
     );
 };
-
-export function applyMortality(planet: Planet, workforceEvents: WorkforceEventAccumulator): void {
-    const environmentalMortality = computeEnvironmentalMortality(planet.environment);
-    const population = planet.population;
-
-    const inheritanceByAge = new Map<number, number>();
-
-    population.demography.forEach((cohort, age) => {
-        return forEachPopulationCohort(cohort, (category, occ, edu, skill) => {
-            if (category.total === 0) {
-                category.deaths.countThisTick = 0;
-                return;
-            }
-
-            let dead = 0;
-
-            if (occ === 'employed') {
-                dead = workforceEvents[age][edu][skill].deaths;
-                if (dead > category.total) {
-                    throw new Error(
-                        `Mortality count exceeds population at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected at most ${category.total} deaths, but got ${dead}.`,
-                    );
-                }
-            } else {
-                const mortalityPerTick = computeMortalityProbabilityPerTick(
-                    category.services.grocery.starvationLevel,
-                    environmentalMortality,
-                    age,
-                );
-                dead = stochasticRound(category.total * mortalityPerTick);
-            }
-
-            const result = transferPopulation(planet, { age, occ, edu, skill }, undefined, dead);
-            if (result.count !== dead) {
-                console.warn(
-                    `Mortality transfer mismatch at age ${age}, occ ${occ}, edu ${edu}, skill ${skill}: expected ${dead} deaths, but actually transferred ${result.count}.`,
-                );
-            }
-            category.deaths.countThisMonth += result.count;
-            category.deaths.countThisTick = result.count;
-
-            if (result.inheritedWealth > 0) {
-                inheritanceByAge.set(age, (inheritanceByAge.get(age) ?? 0) + result.inheritedWealth);
-            }
-        });
-    });
-
-    const records: InheritanceRecord[] = [];
-    for (const [sourceAge, amount] of inheritanceByAge) {
-        records.push({ sourceAge, amount });
-    }
-    redistributeInheritance(population.demography, records);
-}

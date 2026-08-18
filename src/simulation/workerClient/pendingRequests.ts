@@ -16,12 +16,3 @@ export function getPending(): Map<string, PendingRequest> {
     }
     return g[GLOBAL_KEY_PENDING];
 }
-
-export function rejectAllPending(reason = 'Worker shut down'): void {
-    const p = getPending();
-    for (const [id, entry] of p) {
-        clearTimeout(entry.timer);
-        entry.reject(new Error(reason));
-        p.delete(id);
-    }
-}

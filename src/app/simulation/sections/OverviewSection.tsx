@@ -32,7 +32,7 @@ SERVICE_PER_PERSON_PER_TICK = 1 / 30   (1 unit grocery / person / month)`}
                 <p>
                     Education levels used throughout are: <code>none</code>, <code>primary</code>,{' '}
                     <code>secondary</code>, <code>tertiary</code>. Population cells are indexed by{' '}
-                    <code>[age][occupation][education][skill]</code>, where occupations are <code>unoccupied</code>,{' '}
+                    <code>[age][occupation][education]</code>, where occupations are <code>unoccupied</code>,{' '}
                     <code>employed</code>, <code>education</code>, <code>unableToWork</code>.
                 </p>
             </section>
@@ -87,7 +87,7 @@ SERVICE_PER_PERSON_PER_TICK = 1 / 30   (1 unit grocery / person / month)`}
                             </tr>
                             <tr>
                                 <td className='p-2 border font-medium'>Education</td>
-                                <td className='p-2 border'>Workforce skill advancement</td>
+                                <td className='p-2 border'>Drives education attainment & graduation</td>
                                 <td className='text-right p-2 border'>30</td>
                                 <td className='text-right p-2 border'>1/360 per person/tick</td>
                             </tr>

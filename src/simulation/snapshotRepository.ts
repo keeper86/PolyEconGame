@@ -1,5 +1,5 @@
 import type { Planet, Agent } from './planet/planet';
-import { OCCUPATIONS, SKILL } from './population/population';
+import { OCCUPATIONS } from './population/population';
 import { educationLevelKeys } from './population/education';
 import { totalOutstandingLoans } from './financial/loanTypes';
 import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
@@ -36,9 +36,7 @@ export const computePopulationTotal = (planet: Planet): number => {
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    total += cohort[occ][edu][skill].total;
-                }
+                total += cohort[occ][edu].total;
             }
         }
     }
@@ -207,17 +205,6 @@ export type AgentPlanetSummary = {
         commercial?: { acquiredTick: number; frozen: boolean };
         workforce?: { acquiredTick: number; frozen: boolean };
     };
-};
-
-export type AgentOverviewData = {
-    agentId: string;
-    name: string;
-    associatedPlanetId: string;
-    wealth: number;
-
-    deposits: number;
-    shipCount: number;
-    planets: AgentPlanetSummary[];
 };
 
 export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][string]): AgentPlanetSummary => {

@@ -23,8 +23,14 @@ export const computeCoverageRatio = (buffer: number, demand: number): number => 
     return buffer / demand;
 };
 
+let hrProductivityEffectDisabled = false;
+
+export function setHrProductivityEffectDisabled(disabled: boolean): void {
+    hrProductivityEffectDisabled = disabled;
+}
+
 export const computeProductivityMultiplier = (coverage: number): number => {
-    if (coverage >= 1.0) {
+    if (hrProductivityEffectDisabled || coverage >= 1.0) {
         return 1.0;
     }
     if (coverage >= 0.3) {
@@ -69,7 +75,7 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const producedHr = pullAllHrFromStorage(assets.storageFacility);
     const demand = assets.usedWorkers;
     const maxDailyHROutput = computeMaxDailyHROutput(hrDepartment.maxScale);
-    if (demand > maxDailyHROutput) {
+    if (demand > maxDailyHROutput * 1.5) {
         console.warn(
             `Demand ${demand} exceeds max daily output ${maxDailyHROutput}, ratio ${demand / maxDailyHROutput}`,
         );

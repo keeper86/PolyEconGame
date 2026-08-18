@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { educationLevelKeys } from '../population/education';
-import { MAX_AGE, OCCUPATIONS, SKILL } from '../population/population';
+import { MAX_AGE, OCCUPATIONS } from '../population/population';
 
 import {
     makeAgent,
@@ -53,26 +53,22 @@ describe('makeWorkforceCategory', () => {
 });
 
 describe('makePopulationCohort', () => {
-    it('has the correct shape: [occ][edu][skill]', () => {
+    it('has the correct shape: [occ][edu]', () => {
         const cohort = makePopulationCohort();
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    expect(cohort[occ][edu][skill].total).toBe(0);
-                }
+                expect(cohort[occ][edu].total).toBe(0);
             }
         }
     });
 });
 
 describe('makeWorkforceCohort', () => {
-    it('has the correct shape: [edu][skill]', () => {
+    it('has the correct shape: [edu]', () => {
         const cohort = makeWorkforceCohort();
         for (const edu of educationLevelKeys) {
-            for (const skill of SKILL) {
-                expect(cohort[edu][skill].active).toBe(0);
-                expect(cohort[edu][skill].voluntaryDeparting).toHaveLength(NOTICE_PERIOD_MONTHS);
-            }
+            expect(cohort[edu].active).toBe(0);
+            expect(cohort[edu].voluntaryDeparting).toHaveLength(NOTICE_PERIOD_MONTHS);
         }
     });
 });
@@ -103,7 +99,7 @@ describe('makePopulationWithWorkers', () => {
         const pop = makePopulationWithWorkers(1000);
         let total = 0;
         for (const cohort of pop.demography) {
-            total += cohort.unoccupied.none.novice.total;
+            total += cohort.unoccupied.none.total;
         }
         expect(total).toBe(1000);
     });
@@ -111,10 +107,10 @@ describe('makePopulationWithWorkers', () => {
     it('only places workers in working ages', () => {
         const pop = makePopulationWithWorkers(100);
         for (let age = 0; age < 14; age++) {
-            expect(pop.demography[age].unoccupied.none.novice.total).toBe(0);
+            expect(pop.demography[age].unoccupied.none.total).toBe(0);
         }
         for (let age = 65; age <= MAX_AGE; age++) {
-            expect(pop.demography[age].unoccupied.none.novice.total).toBe(0);
+            expect(pop.demography[age].unoccupied.none.total).toBe(0);
         }
     });
 
@@ -122,7 +118,7 @@ describe('makePopulationWithWorkers', () => {
         const pop = makePopulationWithWorkers(100, { edu: 'secondary' });
         let total = 0;
         for (const cohort of pop.demography) {
-            total += cohort.unoccupied.secondary.novice.total;
+            total += cohort.unoccupied.secondary.total;
         }
         expect(total).toBe(100);
     });
@@ -134,8 +130,8 @@ describe('makePopulationByEducation', () => {
         let noneTotal = 0;
         let primaryTotal = 0;
         for (const cohort of pop.demography) {
-            noneTotal += cohort.unoccupied.none.novice.total;
-            primaryTotal += cohort.unoccupied.primary.novice.total;
+            noneTotal += cohort.unoccupied.none.total;
+            primaryTotal += cohort.unoccupied.primary.total;
         }
         expect(noneTotal).toBe(500);
         expect(primaryTotal).toBe(300);
@@ -222,14 +218,14 @@ describe('sumWorkforceForEdu / sumActiveForEdu', () => {
     it('counts active workers', () => {
         const agent = makeAgent();
 
-        agent.assets.p.workforceDemography[25].none.novice.active = 10;
+        agent.assets.p.workforceDemography[25].none.active = 10;
         expect(sumActiveForEdu(agent, 'p', 'none')).toBe(10);
         expect(sumWorkforceForEdu(agent, 'p', 'none')).toBe(10);
     });
 
     it('counts departing workers in sumWorkforceForEdu', () => {
         const agent = makeAgent();
-        agent.assets.p.workforceDemography[30].primary.novice.voluntaryDeparting[0] = 5;
+        agent.assets.p.workforceDemography[30].primary.voluntaryDeparting[0] = 5;
         expect(sumWorkforceForEdu(agent, 'p', 'primary')).toBe(5);
         expect(sumActiveForEdu(agent, 'p', 'primary')).toBe(0);
     });

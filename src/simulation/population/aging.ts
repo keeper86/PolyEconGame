@@ -1,6 +1,6 @@
 import type { Planet } from '../planet/planet';
 import { applyEducationTransition, educationLevelKeys } from './education';
-import { MAX_AGE, OCCUPATIONS, SKILL, forEachPopulationCohort, transferPopulation } from './population';
+import { MAX_AGE, OCCUPATIONS, forEachPopulationCohort, transferPopulation } from './population';
 
 export const populationAdvanceYear = (planet: Planet): void => {
     const demo = planet.population.demography;
@@ -10,22 +10,15 @@ export const populationAdvanceYear = (planet: Planet): void => {
 
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
-                for (const skill of SKILL) {
-                    const count = demo[age][occ][edu][skill].total;
-                    if (count <= 0) {
-                        continue;
-                    }
+                const count = demo[age][occ][edu].total;
+                if (count <= 0) {
+                    continue;
+                }
 
-                    if (occ === 'education') {
-                        applyEducationTransition(planet, age, targetAge, edu, skill);
-                    } else {
-                        transferPopulation(
-                            planet,
-                            { age, occ, edu, skill },
-                            { age: targetAge, occ, edu, skill },
-                            count,
-                        );
-                    }
+                if (occ === 'education') {
+                    applyEducationTransition(planet, age, targetAge, edu);
+                } else {
+                    transferPopulation(planet, { age, occ, edu }, { age: targetAge, occ, edu }, count);
                 }
             }
         }

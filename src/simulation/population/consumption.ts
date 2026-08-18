@@ -5,12 +5,6 @@ import { forEachPopulationCohort } from './population';
 export const STARVATION_ADJUST_TICKS = 30;
 export const STARVATION_MAX_LEVEL = 1;
 
-export interface ConsumptionResult {
-    servicesConsumed: Record<string, number>;
-    consumptionFactor: number;
-    starvationLevel: number;
-}
-
 export function consumeServices(planet: Planet) {
     planet.population.demography.forEach((cohort, age) => {
         return forEachPopulationCohort(cohort, (category, occ) => {
