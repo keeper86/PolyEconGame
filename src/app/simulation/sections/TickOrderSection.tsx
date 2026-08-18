@@ -71,8 +71,9 @@ export function TickOrderSection() {
                     input consumption, pollution
                 </li>
                 <li>
-                    <code>automaticWageAdjustment</code> — moves each education-level wage toward the worker's outside
-                    option scaled by the company's profit margin (±2 % step; runs every tick)
+                    <code>automaticWageAdjustment</code> — moves each education-level wage toward the cost of living
+                    (no lower than the minimum wage), scaled by labour-market tightness and the company's profit margin
+                    (±2 % step; runs every tick)
                 </li>
                 <li>
                     <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions
