@@ -28,6 +28,8 @@ import {
 } from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
+import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
+import { sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 
 export type MetricMap = Record<string, number>;
@@ -119,6 +121,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let employed = 0;
     let unableToWork = 0;
     let inEducation = 0;
+    const unoccByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     let groceryStarvationWeighted = 0;
     let healthcareStarvationWeighted = 0;
     let deathsLastMonth = 0;
@@ -155,6 +158,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 }
                 if (occ === 'unoccupied') {
                     employable += cat.total;
+                    unoccByEdu[edu] += cat.total;
                 } else if (occ === 'employed') {
                     employed += cat.total;
                 } else if (occ === 'unableToWork') {
@@ -291,6 +295,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let ironSmelterExpansionIntegral = 0;
     let ironSmelterSmoothedSignal = 0;
     let ironSmelterCount = 0;
+
+    const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const wageByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const capacityByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const slotsFilledByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
     for (const agent of gameState.agents.values()) {
         const assets = agent.assets[planet.id];
@@ -521,7 +531,20 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             wageSum += assets.wagePerEdu.none;
             wageCount += 1;
         }
+        const wf = assets.workforceDemography;
+        const slotsFilled = sumTotalUsedByEdu(assets);
+        for (const edu of educationLevelKeys) {
+            allocByEdu[edu] += assets.allocatedWorkers?.[edu] ?? 0;
+            wageByEdu[edu] += assets.wagePerEdu?.[edu] ?? 0;
+            capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
+            slotsFilledByEdu[edu] += slotsFilled[edu];
+            if (wf) {
+                activeByEdu[edu] += totalActiveForEdu(wf, edu);
+            }
+        }
     }
+
+    const laborMarket = computeLaborMarket(gameState.agents, planet);
 
     let priceCeilHits = 0;
     let priceFloorHits = 0;
@@ -685,6 +708,38 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         employed,
         unableToWork,
         inEducation,
+        unoccNone: unoccByEdu.none,
+        unoccPrimary: unoccByEdu.primary,
+        unoccSecondary: unoccByEdu.secondary,
+        unoccTertiary: unoccByEdu.tertiary,
+        allocNone: allocByEdu.none,
+        allocPrimary: allocByEdu.primary,
+        allocSecondary: allocByEdu.secondary,
+        allocTertiary: allocByEdu.tertiary,
+        activeNone: activeByEdu.none,
+        activePrimary: activeByEdu.primary,
+        activeSecondary: activeByEdu.secondary,
+        activeTertiary: activeByEdu.tertiary,
+        wageNone: wageByEdu.none,
+        wagePrimary: wageByEdu.primary,
+        wageSecondary: wageByEdu.secondary,
+        wageTertiary: wageByEdu.tertiary,
+        capacityNone: capacityByEdu.none,
+        capacityPrimary: capacityByEdu.primary,
+        capacitySecondary: capacityByEdu.secondary,
+        capacityTertiary: capacityByEdu.tertiary,
+        slotsFilledNone: slotsFilledByEdu.none,
+        slotsFilledPrimary: slotsFilledByEdu.primary,
+        slotsFilledSecondary: slotsFilledByEdu.secondary,
+        slotsFilledTertiary: slotsFilledByEdu.tertiary,
+        vacancyWageNone: laborMarket.reachableVacancyWage.none,
+        vacancyWagePrimary: laborMarket.reachableVacancyWage.primary,
+        vacancyWageSecondary: laborMarket.reachableVacancyWage.secondary,
+        vacancyWageTertiary: laborMarket.reachableVacancyWage.tertiary,
+        tightnessNone: laborMarket.reachableTightness.none,
+        tightnessPrimary: laborMarket.reachableTightness.primary,
+        tightnessSecondary: laborMarket.reachableTightness.secondary,
+        tightnessTertiary: laborMarket.reachableTightness.tertiary,
         dependencyRatio: employable + employed > 0 ? (inEducation + unableToWork) / (employable + employed) : 0,
         avgGroceryStarvation: totalPopulation > 0 ? groceryStarvationWeighted / totalPopulation : 0,
         avgHealthcareStarvation: totalPopulation > 0 ? healthcareStarvationWeighted / totalPopulation : 0,
@@ -878,6 +933,38 @@ export const METRIC_KEYS: string[] = [
     'employed',
     'unableToWork',
     'inEducation',
+    'unoccNone',
+    'unoccPrimary',
+    'unoccSecondary',
+    'unoccTertiary',
+    'allocNone',
+    'allocPrimary',
+    'allocSecondary',
+    'allocTertiary',
+    'activeNone',
+    'activePrimary',
+    'activeSecondary',
+    'activeTertiary',
+    'wageNone',
+    'wagePrimary',
+    'wageSecondary',
+    'wageTertiary',
+    'capacityNone',
+    'capacityPrimary',
+    'capacitySecondary',
+    'capacityTertiary',
+    'slotsFilledNone',
+    'slotsFilledPrimary',
+    'slotsFilledSecondary',
+    'slotsFilledTertiary',
+    'vacancyWageNone',
+    'vacancyWagePrimary',
+    'vacancyWageSecondary',
+    'vacancyWageTertiary',
+    'tightnessNone',
+    'tightnessPrimary',
+    'tightnessSecondary',
+    'tightnessTertiary',
     'dependencyRatio',
     'avgGroceryStarvation',
     'avgHealthcareStarvation',

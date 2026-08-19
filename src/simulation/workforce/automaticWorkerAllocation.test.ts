@@ -124,30 +124,37 @@ describe('automaticWageAdjustment', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.totalSlotCapacity.none = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });
 
-    it('lowers the wage when overstaffed', () => {
+    it('does not treat overqualified slot-filling as a shortage', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.workforceDemography[30].none.active = 100;
+        agent.assets.p.totalSlotCapacity.none = 100;
+
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
 
         automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThanOrEqual(100);
     });
 
-    it('relaxes the wage down when balanced with no churn', () => {
+    it('relaxes the wage when slots are filled', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.allocatedWorkers.none = 100;
-        agent.assets.p.workforceDemography[30].none.active = 100;
+        agent.assets.p.totalSlotCapacity.none = 100;
+
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
 
         automaticWageAdjustment(agentMap(agent), planet);
 
@@ -174,7 +181,7 @@ describe('automaticWageAdjustment', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.totalSlotCapacity.none = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 
@@ -199,7 +206,7 @@ describe('automaticWageAdjustment', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: MAX_WAGE, primary: MAX_WAGE, secondary: MAX_WAGE, tertiary: MAX_WAGE };
-        agent.assets.p.allocatedWorkers.none = 100;
+        agent.assets.p.totalSlotCapacity.none = 100;
 
         automaticWageAdjustment(agentMap(agent), planet);
 

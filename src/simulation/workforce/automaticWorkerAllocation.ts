@@ -11,7 +11,7 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION, computeLaborMarket, outsideIncome } from './laborMarket';
-import { totalActiveForEdu, totalOnboardingForEdu } from './workforceAggregates';
+import { sumTotalUsedByEdu, totalActiveForEdu } from './workforceAggregates';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -23,13 +23,6 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             continue;
         }
 
-        const allFacilities = [
-            ...assets.productionFacilities,
-            ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-            ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
-            ...assets.shipConstructionFacilities,
-        ];
-
         const totalSlotCapacity: Record<EducationLevelType, number> = assets.totalSlotCapacity ?? {
             none: 0,
             primary: 0,
@@ -37,23 +30,11 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
             tertiary: 0,
         };
 
-        const totalUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-        const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-
-        for (const facility of allFacilities) {
-            const tick = facility.lastTickResults;
-            if (!tick) {
-                continue;
-            }
-            for (const edu of educationLevelKeys) {
-                totalUsed[edu] += tick.totalUsedByEdu[edu] ?? 0;
-                exactUsed[edu] += tick.exactUsedByEdu[edu] ?? 0;
-            }
-        }
+        const totalUsed = sumTotalUsedByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         for (const edu of educationLevelKeys) {
-            const deficit = Math.max(0, totalSlotCapacity[edu] - exactUsed[edu]);
+            const deficit = Math.max(0, totalSlotCapacity[edu] - totalUsed[edu]);
 
             let target = totalUsed[edu] + deficit;
             target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
@@ -91,12 +72,13 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
+        const slotsFilled = sumTotalUsedByEdu(assets);
+
         for (const edu of educationLevelKeys) {
-            const target = assets.allocatedWorkers[edu] ?? 0;
-            const active = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
             const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
 
-            const shortageFraction = (target - active) / Math.max(1, target);
+            const capacity = assets.totalSlotCapacity?.[edu] ?? 0;
+            const shortageFraction = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
             const outside = outsideIncome(laborMarket.reachableTightness[edu], laborMarket.reachableVacancyWage[edu]);
             const incomeGain = current > 0 ? Math.max(0, outside - current) / current : 0;
             const pressure = shortageFraction + CHURN_WAGE_WEIGHT * incomeGain - WAGE_NEUTRAL_PRESSURE;

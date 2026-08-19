@@ -71,8 +71,9 @@ export function TickOrderSection() {
                     input consumption, pollution
                 </li>
                 <li>
-                    <code>automaticWageAdjustment</code> — nudges each education-level wage up when short of workers or
-                    losing them to churn, and relaxes it down when overstaffed (±2 % step; runs every tick)
+                    <code>automaticWageAdjustment</code> — nudges each education-level wage up when its required slots
+                    are unfilled (overqualification-aware) or workers are lost to churn, and relaxes it down otherwise
+                    (±2 % step; runs every tick)
                 </li>
                 <li>
                     <code>updateAgentProductionScale</code> — signal-based facility scale and construction decisions

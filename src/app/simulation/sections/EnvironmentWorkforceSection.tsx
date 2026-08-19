@@ -179,10 +179,10 @@ birthsPerTick = stochasticRound(birthsPerYear / 360)`}
                     tick&apos;s results:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`deficit     = max(0, totalRequirement[edu] − exactUsed[edu])
+                    {`deficit     = max(0, totalSlotCapacity[edu] − totalUsed[edu])
 target[edu] = ceil((totalUsed[edu] + deficit) × (1 + ACCEPTABLE_IDLE_FRACTION))
 
-ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above exact demand)`}
+ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above demand)`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.2 Hiring</h3>

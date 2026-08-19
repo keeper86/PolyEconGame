@@ -9,7 +9,7 @@ import {
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
-import { totalActiveForEdu, totalOnboardingForEdu } from './workforceAggregates';
+import { sumTotalUsedByEdu } from './workforceAggregates';
 
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 
@@ -65,10 +65,10 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
             continue;
         }
         const agentVacancies: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        const slotsFilled = sumTotalUsedByEdu(assets);
         for (const edu of educationLevelKeys) {
             const target = assets.allocatedWorkers[edu] ?? 0;
-            const current = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
-            const vacancy = Math.max(0, target - current);
+            const vacancy = Math.max(0, target - slotsFilled[edu]);
             agentVacancies[edu] = vacancy;
             vacancies[edu] += vacancy;
             vacancyWageSum[edu] += vacancy * (assets.wagePerEdu[edu] ?? 0);

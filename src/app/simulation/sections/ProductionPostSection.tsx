@@ -78,19 +78,20 @@ For services output:
             <section id='financial-post'>
                 <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (every tick)</h2>
                 <p>
-                    After production, automated agents run a <strong>tâtonnement wage adjustment</strong> per education
-                    level every tick. Wages rise when there are unfilled vacancies and fall when there is a surplus of
-                    idle workers:
+                    After production, automated agents run a <strong>feedback-controller wage adjustment</strong> per
+                    education level every tick. Two forces push wages up — unfilled required slots (computed
+                    overqualification-aware, so a tier backfilled by higher-educated workers does not read as a
+                    shortage) and the worker outside option — while a neutral pressure relaxes them down otherwise:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`vacancyRate  = max(0, allocated[edu] − active[edu]) / allocated[edu]
-surplusRate  = max(0, active[edu] − allocated[edu]) / allocated[edu]
+                    {`shortage[edu] = max(0, slotCapacity[edu] − slotsFilled[edu]) / slotCapacity[edu]
+incomeGain    = max(0, outsideOption − wage) / wage
+pressure      = shortage + CHURN_WAGE_WEIGHT × incomeGain − WAGE_NEUTRAL_PRESSURE
 
-wage × (1 + WAGE_ADJUSTMENT_RATE)   if vacancyRate  > 0
-wage × (1 − WAGE_ADJUSTMENT_RATE)   if surplusRate  > 0
+wage × (1 + clamp(WAGE_FEEDBACK_GAIN × pressure, ±WAGE_ADJUSTMENT_RATE))
 
-WAGE_ADJUSTMENT_RATE = 0.02   (±2 % per month)
-MIN_WAGE             = 1.0`}
+WAGE_ADJUSTMENT_RATE = 0.02   (±2 % per tick)
+MIN_WAGE = 1.0   MAX_WAGE = 1000.0`}
                 </pre>
                 <p className='mt-2'>
                     Because wages are paid to all active <em>and</em> departing workers, the wage bill can temporarily
