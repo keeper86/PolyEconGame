@@ -77,7 +77,7 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
-        expect(agent.assets.p.allocatedWorkers.primary).toBe(1050);
+        expect(agent.assets.p.allocatedWorkers.primary).toBe(2100);
     });
 
     it('cascades unfillable demand to the next higher education level', () => {
@@ -89,7 +89,7 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
-        expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
+        expect(agent.assets.p.allocatedWorkers.primary).toBe(1575);
     });
 
     it('never reduces allocation below zero', () => {
@@ -175,6 +175,25 @@ describe('automaticWageAdjustment', () => {
         automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
+    });
+
+    it('dampens the wage rise when already paying well above the market', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1 });
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: 200, primary: 200, secondary: 200, tertiary: 200 };
+        agent.assets.p.totalSlotCapacity.none = 100;
+
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 80, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
+
+        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
+        competitor.assets.p.allocatedWorkers.none = 100;
+        competitor.assets.p.wagePerEdu.none = 100;
+
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(200);
     });
 
     it('pushes higher education wages up instead of lowering the lower education wage', () => {

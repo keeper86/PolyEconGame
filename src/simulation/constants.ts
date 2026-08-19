@@ -70,6 +70,9 @@ export const CHURN_WAGE_WEIGHT = 1.0;
 
 export const WAGE_NEUTRAL_PRESSURE = 0.03;
 
+export const PREMIUM_DAMPEN_THRESHOLD = 1.15;
+export const PREMIUM_DAMPEN_GAIN = 2.0;
+
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
 export const BASE_QUIT_RATE = 0.0003;
