@@ -98,7 +98,7 @@ export function advanceTick(gameState: GameState) {
                 );
             }
 
-            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile, gameState.tick);
+            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
             }

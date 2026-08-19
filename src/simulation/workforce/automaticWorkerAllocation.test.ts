@@ -154,15 +154,18 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('raises the wage when churn is high', () => {
-        const { planet } = makePlanetWithPopulation({});
+    it('raises the wage when the outside option exceeds the current wage', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1 });
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.allocatedWorkers.none = 100;
         agent.assets.p.workforceDemography[30].none.active = 100;
-        agent.assets.p.workforceDemography[30].none.voluntaryDeparting[0] = 10;
 
-        automaticWageAdjustment(agentMap(agent), planet);
+        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
+        competitor.assets.p.allocatedWorkers.none = 100;
+        competitor.assets.p.wagePerEdu.none = 200;
+
+        automaticWageAdjustment(agentMap(agent, competitor), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
     });

@@ -25,19 +25,6 @@ export function totalDepartingForEdu(workforce: WorkforceCohort<WorkforceCategor
     return total;
 }
 
-export function totalVoluntaryDepartingForEdu(
-    workforce: WorkforceCohort<WorkforceCategory>[],
-    edu: EducationLevelType,
-): number {
-    let total = 0;
-    for (let age = 0; age < workforce.length; age++) {
-        for (const d of workforce[age][edu].voluntaryDeparting) {
-            total += d;
-        }
-    }
-    return total;
-}
-
 export function totalOnboardingForEdu(
     workforce: WorkforceCohort<WorkforceCategory>[],
     edu: EducationLevelType,

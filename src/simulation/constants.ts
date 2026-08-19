@@ -64,8 +64,6 @@ export const MAX_WAGE = 1000.0;
 
 export const WAGE_ADJUSTMENT_RATE = 0.02;
 
-export const LABOR_SHARE = 0.5;
-
 export const WAGE_FEEDBACK_GAIN = 0.2;
 
 export const CHURN_WAGE_WEIGHT = 1.0;
@@ -75,8 +73,6 @@ export const WAGE_NEUTRAL_PRESSURE = 0.03;
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 
 export const BASE_QUIT_RATE = 0.0003;
-
-export const MORALE_SENSITIVITY = 0.01;
 
 export const QUIT_SENSITIVITY = 0.005;
 

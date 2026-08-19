@@ -21,7 +21,6 @@ import {
     acceptProbability,
     computeLaborMarket,
     jobFindingProbability,
-    moraleDeficit,
     outsideIncome,
     quitPropensity,
 } from './laborMarket';
@@ -62,15 +61,9 @@ describe('labor market helpers', () => {
         expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('moraleDeficit is zero when unprofitable and grows as profit share grows', () => {
-        expect(moraleDeficit(100, 0)).toBe(0);
-        expect(moraleDeficit(100, 100)).toBe(0);
-        expect(moraleDeficit(100, 300)).toBeGreaterThan(0);
-    });
-
     it('quitPropensity starts at the base rate and rises with a better outside option', () => {
-        expect(quitPropensity(100, 0, 0, 0)).toBe(BASE_QUIT_RATE);
-        expect(quitPropensity(100, 0, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0, 0));
+        expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
+        expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
     });
 });
 
