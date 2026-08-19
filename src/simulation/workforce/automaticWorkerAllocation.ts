@@ -12,7 +12,7 @@ import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
-import { sumTotalUsedByEdu, totalActiveForEdu } from './workforceAggregates';
+import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from './workforceAggregates';
 
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -32,12 +32,13 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         };
 
         const totalUsed = sumTotalUsedByEdu(assets);
+        const slotFill = sumSlotFillByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         for (const edu of educationLevelKeys) {
-            const deficit = Math.max(0, totalSlotCapacity[edu] - totalUsed[edu]);
+            const ownUnfilled = Math.max(0, totalSlotCapacity[edu] - slotFill[edu]);
 
-            let target = totalUsed[edu] + deficit;
+            let target = totalUsed[edu] + ownUnfilled;
             target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
             newTarget[edu] = target;
         }
@@ -72,7 +73,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             continue;
         }
 
-        const slotsFilled = sumTotalUsedByEdu(assets);
+        const slotsFilled = sumSlotFillByEdu(assets);
 
         const lastMonth = assets.lastMonthAcc;
         const affordable = lastMonth.revenue - lastMonth.purchases - lastMonth.claimPayments;

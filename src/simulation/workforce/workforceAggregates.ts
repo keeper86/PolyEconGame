@@ -1,3 +1,4 @@
+import type { Facility } from '../planet/facility';
 import type { AgentPlanetAssets } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
 import type { WorkforceCohort, WorkforceCategory } from './workforce';
@@ -40,12 +41,7 @@ export function totalOnboardingForEdu(
 }
 
 export function sumTotalUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
-    const allFacilities = [
-        ...assets.productionFacilities,
-        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
-        ...assets.shipConstructionFacilities,
-    ];
+    const allFacilities = allWorkforceFacilities(assets);
     const totalUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     for (const facility of allFacilities) {
         const tick = facility.lastTickResults;
@@ -57,4 +53,51 @@ export function sumTotalUsedByEdu(assets: AgentPlanetAssets): Record<EducationLe
         }
     }
     return totalUsed;
+}
+
+export function sumExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
+    const allFacilities = allWorkforceFacilities(assets);
+    const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (const facility of allFacilities) {
+        const tick = facility.lastTickResults;
+        if (!tick) {
+            continue;
+        }
+        for (const edu of educationLevelKeys) {
+            exactUsed[edu] += tick.exactUsedByEdu?.[edu] ?? 0;
+        }
+    }
+    return exactUsed;
+}
+
+function allWorkforceFacilities(assets: AgentPlanetAssets): Facility[] {
+    return [
+        ...assets.productionFacilities,
+        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
+        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
+        ...assets.shipConstructionFacilities,
+    ];
+}
+
+export function sumSlotFillByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
+    const allFacilities = allWorkforceFacilities(assets);
+    const slotFill: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (const facility of allFacilities) {
+        const tick = facility.lastTickResults;
+        if (!tick) {
+            continue;
+        }
+        for (const jobEdu of educationLevelKeys) {
+            const exact = tick.exactUsedByEdu?.[jobEdu] ?? 0;
+            const overqualified = tick.overqualifiedWorkers?.[jobEdu];
+            let filled = exact;
+            if (overqualified) {
+                for (const count of Object.values(overqualified)) {
+                    filled += count ?? 0;
+                }
+            }
+            slotFill[jobEdu] += filled;
+        }
+    }
+    return slotFill;
 }

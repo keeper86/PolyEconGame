@@ -138,7 +138,9 @@ describe('automaticWageAdjustment', () => {
         agent.assets.p.totalSlotCapacity.none = 100;
 
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 100, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { primary: 100 } };
         agent.assets.p.productionFacilities = [fac];
 
         automaticWageAdjustment(agentMap(agent), planet);
@@ -154,6 +156,7 @@ describe('automaticWageAdjustment', () => {
 
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
         fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
 
         automaticWageAdjustment(agentMap(agent), planet);
@@ -170,6 +173,7 @@ describe('automaticWageAdjustment', () => {
 
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
         fac.lastTickResults.totalUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
 
         agent.assets.p.lastMonthAcc.revenue = 100;

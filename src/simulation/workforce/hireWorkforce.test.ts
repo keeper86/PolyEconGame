@@ -71,7 +71,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('accumulates vacancies from all suitable job levels for each worker education', () => {
         const { planet } = makePlanetWithPopulation({ none: 1000, primary: 2000, secondary: 3000, tertiary: 4000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, primary: 50, secondary: 0, tertiary: 0 });
+        agent.assets.p.totalSlotCapacity = { none: 100, primary: 50, secondary: 0, tertiary: 0 };
         agent.assets.p.wagePerEdu = { none: 10, primary: 20, secondary: 30, tertiary: 40 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
@@ -85,7 +85,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('values reachable vacancies at the worker own education wage, not the job wage', () => {
         const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 0, tertiary: 1000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100 });
+        agent.assets.p.totalSlotCapacity = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.wagePerEdu = { none: 100, primary: 90, secondary: 80, tertiary: 10 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
@@ -98,7 +98,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('divides reachable vacancies by unemployed workers for tightness', () => {
         const { planet } = makePlanetWithPopulation({ none: 2000, tertiary: 4000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 200 });
+        agent.assets.p.totalSlotCapacity = { none: 200, primary: 0, secondary: 0, tertiary: 0 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
 
@@ -109,7 +109,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('does not broaden the lowest education level', () => {
         const { planet } = makePlanetWithPopulation({ none: 1000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 10, primary: 20 });
+        agent.assets.p.totalSlotCapacity = { none: 10, primary: 20, secondary: 0, tertiary: 0 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
 
@@ -432,18 +432,19 @@ describe('preProductionLaborMarketTick — population conservation', () => {
 });
 
 describe('per-education level isolation', () => {
-    it('hiring one education level does not affect another', () => {
-        const { planet } = makePlanetWithPopulation({ none: 5000, primary: 3000, secondary: 2000 });
+    it('backfills a shortfall from a higher tier when the native pool is depleted', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, primary: 100_000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers.primary = 500;
-
-        const noneBefore = sumPopOcc(planet, 'none', 'unoccupied');
-        const secBefore = sumPopOcc(planet, 'secondary', 'unoccupied');
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.wagePerEdu.primary = 1e9;
 
         hireWorkforce(agentMap(agent), planet);
 
-        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBe(noneBefore);
-        expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBe(secBefore);
+        const wf = agent.assets.p.workforceDemography!;
+        // No native none workers exist, so the none slot shortfall is filled by primary workers.
+        expect(sumPopOcc(planet, 'none', 'employed')).toBe(0);
+        expect(totalOnboardingForEdu(wf, 'primary')).toBe(500);
     });
 
     it('firing one education level does not affect another', () => {

@@ -29,7 +29,7 @@ import {
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
-import { sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
+import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 
 export type MetricMap = Record<string, number>;
@@ -301,6 +301,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wageByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const capacityByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const slotsFilledByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const slotFillByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const overqualByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
 
     for (const agent of gameState.agents.values()) {
         const assets = agent.assets[planet.id];
@@ -533,11 +535,15 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         }
         const wf = assets.workforceDemography;
         const slotsFilled = sumTotalUsedByEdu(assets);
+        const slotFill = sumSlotFillByEdu(assets);
+        const exactUsed = sumExactUsedByEdu(assets);
         for (const edu of educationLevelKeys) {
             allocByEdu[edu] += assets.allocatedWorkers?.[edu] ?? 0;
             wageByEdu[edu] += assets.wagePerEdu?.[edu] ?? 0;
             capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
             slotsFilledByEdu[edu] += slotsFilled[edu];
+            slotFillByEdu[edu] += slotFill[edu];
+            overqualByEdu[edu] += Math.max(0, slotFill[edu] - exactUsed[edu]);
             if (wf) {
                 activeByEdu[edu] += totalActiveForEdu(wf, edu);
             }
@@ -732,6 +738,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         slotsFilledPrimary: slotsFilledByEdu.primary,
         slotsFilledSecondary: slotsFilledByEdu.secondary,
         slotsFilledTertiary: slotsFilledByEdu.tertiary,
+        slotFillNone: slotFillByEdu.none,
+        slotFillPrimary: slotFillByEdu.primary,
+        slotFillSecondary: slotFillByEdu.secondary,
+        slotFillTertiary: slotFillByEdu.tertiary,
+        overqualNone: overqualByEdu.none,
+        overqualPrimary: overqualByEdu.primary,
+        overqualSecondary: overqualByEdu.secondary,
+        overqualTertiary: overqualByEdu.tertiary,
         vacancyWageNone: laborMarket.reachableVacancyWage.none,
         vacancyWagePrimary: laborMarket.reachableVacancyWage.primary,
         vacancyWageSecondary: laborMarket.reachableVacancyWage.secondary,
@@ -748,6 +762,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         fillPrimary: capacityByEdu.primary > 0 ? slotsFilledByEdu.primary / capacityByEdu.primary : 1,
         fillSecondary: capacityByEdu.secondary > 0 ? slotsFilledByEdu.secondary / capacityByEdu.secondary : 1,
         fillTertiary: capacityByEdu.tertiary > 0 ? slotsFilledByEdu.tertiary / capacityByEdu.tertiary : 1,
+        fillSlotNone: capacityByEdu.none > 0 ? slotFillByEdu.none / capacityByEdu.none : 1,
+        fillSlotPrimary: capacityByEdu.primary > 0 ? slotFillByEdu.primary / capacityByEdu.primary : 1,
+        fillSlotSecondary: capacityByEdu.secondary > 0 ? slotFillByEdu.secondary / capacityByEdu.secondary : 1,
+        fillSlotTertiary: capacityByEdu.tertiary > 0 ? slotFillByEdu.tertiary / capacityByEdu.tertiary : 1,
         dependencyRatio: employable + employed > 0 ? (inEducation + unableToWork) / (employable + employed) : 0,
         avgGroceryStarvation: totalPopulation > 0 ? groceryStarvationWeighted / totalPopulation : 0,
         avgHealthcareStarvation: totalPopulation > 0 ? healthcareStarvationWeighted / totalPopulation : 0,
@@ -965,6 +983,14 @@ export const METRIC_KEYS: string[] = [
     'slotsFilledPrimary',
     'slotsFilledSecondary',
     'slotsFilledTertiary',
+    'slotFillNone',
+    'slotFillPrimary',
+    'slotFillSecondary',
+    'slotFillTertiary',
+    'overqualNone',
+    'overqualPrimary',
+    'overqualSecondary',
+    'overqualTertiary',
     'vacancyWageNone',
     'vacancyWagePrimary',
     'vacancyWageSecondary',
@@ -981,6 +1007,10 @@ export const METRIC_KEYS: string[] = [
     'fillPrimary',
     'fillSecondary',
     'fillTertiary',
+    'fillSlotNone',
+    'fillSlotPrimary',
+    'fillSlotSecondary',
+    'fillSlotTertiary',
     'dependencyRatio',
     'avgGroceryStarvation',
     'avgHealthcareStarvation',
