@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { PRICE_ADJUST_MAX_UP } from '../constants';
 import { SERVICE_DEFINITIONS } from './populationDemand';
+import { referenceMonthlyIncome } from './serviceDefinitions';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import {
     administrativeServiceResourceType,
@@ -463,7 +464,12 @@ describe('sequential settlement: food is settled before discretionary goods', ()
             forEachPopulationCohort(cohort, (cat) => {
                 total +=
                     cat.services.retail.buffer *
-                    retailDef.consumptionRatePerPersonPerTick(30, 'employed', cat.wealth) *
+                    retailDef.consumptionRatePerPersonPerTick(
+                        30,
+                        'employed',
+                        cat.wealth,
+                        referenceMonthlyIncome(planet),
+                    ) *
                     cat.total;
             }),
         );

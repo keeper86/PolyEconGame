@@ -1,9 +1,13 @@
 import {
-    EDUCATION_WEALTH_SATURATION,
-    GROCERY_WEALTH_SATURATION,
-    HEALTHCARE_WEALTH_SATURATION,
-    LOGISTICS_WEALTH_SATURATION,
-    RETAIL_WEALTH_SATURATION,
+    DEFAULT_REFERENCE_MONTHLY_INCOME,
+    EDUCATION_WEALTH_SATURATION_MONTHS,
+    GROCERY_WEALTH_SATURATION_MONTHS,
+    HEALTHCARE_WEALTH_SATURATION_MONTHS,
+    LOGISTICS_WEALTH_SATURATION_MONTHS,
+    MIN_WAGE,
+    RETAIL_WEALTH_SATURATION_MONTHS,
+    SERVICE_ENGEL_MAX_EXTRA,
+    SERVICE_WEALTH_SATURATION_MONTHS,
     TICKS_PER_MONTH,
     TICKS_PER_YEAR,
 } from '../constants';
@@ -15,21 +19,48 @@ import {
     healthcareServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
+    serviceResourceType,
 } from '../planet/services';
+import { educationLevelKeys } from '../population/education';
 import type { GaussianMoments, Occupation, ServiceName } from '../population/population';
 
 export type ServiceDefinition = {
     readonly resource: Resource;
     readonly bufferTargetTicks: number;
-    readonly consumptionRatePerPersonPerTick: (age: number, occ: Occupation, wealth: GaussianMoments) => number;
+    readonly consumptionRatePerPersonPerTick: (
+        age: number,
+        occ: Occupation,
+        wealth: GaussianMoments,
+        referenceMonthlyIncome: number,
+    ) => number;
 };
 
 export const serviceKeyOf = (def: ServiceDefinition): ServiceName => def.resource.name.toLowerCase() as ServiceName;
 
-const engelMultiplier = (wealth: GaussianMoments, saturation: number, maxExtra: number): number => {
+export const referenceMonthlyIncome = (planet: Planet): number => {
+    let sum = 0;
+    let count = 0;
+    for (const edu of educationLevelKeys) {
+        const wage = planet.wagePerEdu[edu];
+        if (wage > 0) {
+            sum += wage;
+            count += 1;
+        }
+    }
+    const avgWage = count > 0 ? sum / count : MIN_WAGE;
+    return Math.max(MIN_WAGE, avgWage) * TICKS_PER_MONTH;
+};
+
+const engelMultiplier = (
+    wealth: GaussianMoments,
+    saturationMonths: number,
+    maxExtra: number,
+    referenceMonthlyIncomeValue: number,
+): number => {
     if (wealth.mean <= 0) {
         return 1;
     }
+    const saturation = saturationMonths * Math.max(1, referenceMonthlyIncomeValue);
     return 1 + maxExtra * (1 - Math.exp(-wealth.mean / saturation));
 };
 
@@ -90,44 +121,65 @@ const educationAgeMultiplier = (age: number, occ: Occupation): number => {
 const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
     bufferTargetTicks: 2 * TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth) =>
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         (1 / TICKS_PER_MONTH) *
         groceryAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, GROCERY_WEALTH_SATURATION, 0.3),
+        engelMultiplier(wealth, GROCERY_WEALTH_SATURATION_MONTHS, 0.3, refIncome),
 } as const;
 
 const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
     bufferTargetTicks: 3 * TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth) =>
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         (1 / TICKS_PER_MONTH / 3) *
         healthcareAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION, 1.0),
+        engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION_MONTHS, 1.0, refIncome),
 } as const;
 
 const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth) =>
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         (1 / TICKS_PER_MONTH) *
         logisticsAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, LOGISTICS_WEALTH_SATURATION, 1.5),
+        engelMultiplier(wealth, LOGISTICS_WEALTH_SATURATION_MONTHS, 1.5, refIncome),
 } as const;
 
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     bufferTargetTicks: TICKS_PER_YEAR,
-    consumptionRatePerPersonPerTick: (age, occ, wealth) =>
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         (1 / TICKS_PER_YEAR) *
         educationAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, EDUCATION_WEALTH_SATURATION, 0.2),
+        engelMultiplier(wealth, EDUCATION_WEALTH_SATURATION_MONTHS, 0.2, refIncome),
 } as const;
 
 const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth) =>
-        (1 / TICKS_PER_MONTH) * retailAgeMultiplier(age, occ) * engelMultiplier(wealth, RETAIL_WEALTH_SATURATION, 2.0),
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
+        (1 / TICKS_PER_MONTH) *
+        retailAgeMultiplier(age, occ) *
+        engelMultiplier(wealth, RETAIL_WEALTH_SATURATION_MONTHS, 2.0, refIncome),
+} as const;
+
+const serviceAgeMultiplier = (_age: number, occ: Occupation): number => {
+    if (occ === 'education' || occ === 'unableToWork') {
+        return 0.5;
+    }
+    if (occ === 'employed') {
+        return 1.2;
+    }
+    return 1.0;
+};
+
+const serviceDefinition: ServiceDefinition = {
+    resource: serviceResourceType,
+    bufferTargetTicks: TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
+        (1 / TICKS_PER_MONTH) *
+        serviceAgeMultiplier(age, occ) *
+        engelMultiplier(wealth, SERVICE_WEALTH_SATURATION_MONTHS, SERVICE_ENGEL_MAX_EXTRA, refIncome),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
@@ -136,6 +188,7 @@ export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
     logistics: logisticsDefinition,
     education: educationDefinition,
     retail: retailDefinition,
+    service: serviceDefinition,
 } as const;
 
 export const getServiceDefinitionByResourceName = (resourceName: string): ServiceDefinition | undefined => {
@@ -187,11 +240,12 @@ export function computeTierCost(
     age: number = 30,
     occ: Occupation = 'employed',
     wealth: GaussianMoments = { mean: 0, variance: 0 },
+    referenceMonthlyIncomeValue: number = DEFAULT_REFERENCE_MONTHLY_INCOME,
 ): number {
     return tier.services.reduce((sum, key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = marketPrices[def.resource.name] ?? 0;
-        return sum + def.consumptionRatePerPersonPerTick(age, occ, wealth) * price;
+        return sum + def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) * price;
     }, 0);
 }
 
@@ -208,9 +262,10 @@ export function computeCostOfLiving(
         return planet._costOfLiving;
     }
 
+    const refIncome = referenceMonthlyIncome(planet);
     for (const tier of SERVICE_TIERS) {
         if (tier.mandatoryForOwnConsumption || whenRich) {
-            total += computeTierCost(planet.marketPrices, tier, 30, 'employed', wealth);
+            total += computeTierCost(planet.marketPrices, tier, 30, 'employed', wealth, refIncome);
         }
     }
     return total;

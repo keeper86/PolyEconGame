@@ -17,6 +17,7 @@ const SERVICE_LABELS: Record<ServiceName, string> = {
     logistics: 'Logistics Buffers',
     retail: 'Retail Buffers',
     education: 'Education Buffers',
+    service: 'Service Buffers',
 };
 
 type Props = {

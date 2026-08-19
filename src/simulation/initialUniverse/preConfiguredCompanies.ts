@@ -715,6 +715,18 @@ const WORD_POOLS: Record<FacilityType, { stems: string[] }> = {
             'Doping Co',
         ],
     },
+    servicesFacility: {
+        stems: [
+            'Service First',
+            'Community Care',
+            'ServiceHub',
+            'Concierge',
+            'Service Global',
+            'ServiceWorks',
+            'CarePoint',
+            'Service Network',
+        ],
+    },
 };
 
 function generateCompanyName(facilityType: FacilityType, index: number): string {
@@ -1211,5 +1223,13 @@ export const NAMES: Record<string, string[]> = {
         'Wafer Works Inc',
         'SiliconEdge Ltd',
         'ChipStart Corp',
+    ],
+    servicesFacility: [
+        'Service First Corp',
+        'Community Care Group',
+        'ServiceHub Ltd',
+        'ServiceWorks Inc',
+        'CarePoint Global',
+        'Service Network Corp',
     ],
 };

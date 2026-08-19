@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GENERATION_GAP, RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY, SUPPORT_WEIGHT_SIGMA } from '../constants';
+import {
+    DEFAULT_REFERENCE_MONTHLY_INCOME,
+    GENERATION_GAP,
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
+    SUPPORT_WEIGHT_SIGMA,
+} from '../constants';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { Planet } from '../planet/planet';
 
@@ -278,8 +283,19 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
         const groceryPrice = planet.marketPrices[groceryDef.resource.name] ?? 0;
         const healthcarePrice = planet.marketPrices[healthcareDef.resource.name] ?? 0;
         const survivalFloor =
-            (groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) * groceryPrice +
-                healthcareDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            (groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
+                groceryPrice +
+                healthcareDef.consumptionRatePerPersonPerTick(
+                    30,
+                    'employed',
+                    { mean: 0, variance: 0 },
+                    DEFAULT_REFERENCE_MONTHLY_INCOME,
+                ) *
                     healthcarePrice) *
             RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
         placePeople(planet, PARENT_AGE, 1000, {
@@ -384,7 +400,12 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
 
         const groceryPrice = planet.marketPrices[GROCERY_SERVICE] ?? 1.0;
         const floor =
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) * groceryPrice;
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) * groceryPrice;
 
         placePeople(planet, 30, 500, { wealthMean: floor, foodStock: foodTarget * 500 });
 

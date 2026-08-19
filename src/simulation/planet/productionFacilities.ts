@@ -743,7 +743,7 @@ export const logisticsHub = (planetId: string, id: string): ProductionFacility =
     },
     needs: [
         { resource: vehicleResourceType, quantity: 1 },
-        { resource: fuelResourceType, quantity: 100 },
+        { resource: fuelResourceType, quantity: 60 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -947,6 +947,7 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     educationCenter: entry(educationCenter),
     siliconWaferFactory: entry(siliconWaferFactory),
     maintenanceFacility: entry(maintenanceFacility),
+    servicesFacility: entry(servicesFacility),
 } as const;
 
 export type FacilityType = keyof typeof ALL_PRODUCTION_FACILITY_ENTRIES;

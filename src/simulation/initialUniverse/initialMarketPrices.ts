@@ -43,6 +43,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
     retailServiceResourceType,
+    serviceResourceType,
 } from '../planet/services';
 
 const baselineFactor = 1;
@@ -92,4 +93,5 @@ export const initialMarketPrices: Record<string, number> = {
     [constructionServiceResourceType.name]: 10.5 * baselineFactor,
     [educationServiceResourceType.name]: 3.0 * baselineFactor,
     [maintenanceServiceResourceType.name]: 3.0 * baselineFactor,
+    [serviceResourceType.name]: 1.5 * baselineFactor,
 };

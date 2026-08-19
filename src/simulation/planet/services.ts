@@ -84,4 +84,5 @@ export const ALL_SERVICE_RESOURCE_TYPE_NAMES = [
     healthcareServiceResourceType.name,
     educationServiceResourceType.name,
     maintenanceServiceResourceType.name,
+    serviceResourceType.name,
 ];

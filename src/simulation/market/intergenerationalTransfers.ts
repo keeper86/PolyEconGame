@@ -21,7 +21,14 @@ import type {
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
 import { nextRandom } from '../utils/stochasticRound';
 import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
-import { allServices, computeTierCost, SERVICE_DEFINITIONS, SERVICE_TIERS, serviceKeyOf } from './serviceDefinitions';
+import {
+    allServices,
+    computeTierCost,
+    referenceMonthlyIncome,
+    SERVICE_DEFINITIONS,
+    SERVICE_TIERS,
+    serviceKeyOf,
+} from './serviceDefinitions';
 import type { TickProfiler } from '../TickProfiler';
 
 interface DependentNeed {
@@ -39,7 +46,10 @@ interface CellAggregate {
 
 type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
 
-function buildAggregateCache(demography: Cohort<PopulationCategory>[]): AggregateCache {
+function buildAggregateCache(
+    demography: Cohort<PopulationCategory>[],
+    referenceMonthlyIncomeValue: number,
+): AggregateCache {
     const numAges = demography.length;
     const cache = new Array(numAges) as AggregateCache;
 
@@ -65,7 +75,9 @@ function buildAggregateCache(demography: Cohort<PopulationCategory>[]): Aggregat
                 const key = serviceKeyOf(svc);
                 cell.buffers[key] =
                     (cell.buffers[key] ?? 0) +
-                    cat.services[key].buffer * svc.consumptionRatePerPersonPerTick(age, occ, cell.wealth) * n;
+                    cat.services[key].buffer *
+                        svc.consumptionRatePerPersonPerTick(age, occ, cell.wealth, referenceMonthlyIncomeValue) *
+                        n;
             }
         });
 
@@ -138,6 +150,7 @@ function computeDependentNeedsForTier(
     marketPrices: Record<string, number>,
     coverageFraction: number,
     alreadyCommittedCost: number,
+    referenceMonthlyIncomeValue: number,
 ): DependentNeed[] {
     const numAges = cache.length;
     const needs: DependentNeed[] = new Array(numAges);
@@ -162,7 +175,7 @@ function computeDependentNeedsForTier(
                     const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                     const targetPerPerson =
                         def.bufferTargetTicks *
-                        def.consumptionRatePerPersonPerTick(age, occ, wealth) *
+                        def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
                         coverageFraction;
                     const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
 
@@ -213,6 +226,7 @@ export function sumTransferMatrix(matrix: PopulationTransferMatrix): number {
 export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: TickProfiler): void {
     const demography = planet.population.demography;
     const numAges = demography.length;
+    const refIncome = referenceMonthlyIncome(planet);
 
     const transferMatrix: PopulationTransferMatrix = createZeroTransferMatrix(numAges);
 
@@ -223,7 +237,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: T
     if (profiler?.isEnabled) {
         t_ig = profiler.mark();
     }
-    let activeCache = buildAggregateCache(demography);
+    let activeCache = buildAggregateCache(demography, refIncome);
     if (profiler?.isEnabled) {
         t_ig = profiler.markAndAccum('igCacheBuild', '  igCacheBuild', t_ig);
     }
@@ -240,7 +254,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: T
             if (profiler?.isEnabled) {
                 t_ig = profiler.mark();
             }
-            activeCache = buildAggregateCache(demography);
+            activeCache = buildAggregateCache(demography, refIncome);
             if (profiler?.isEnabled) {
                 t_ig = profiler.markAndAccum('igCacheBuild', '  igCacheBuild', t_ig);
             }
@@ -263,6 +277,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: T
             planet.marketPrices,
             tier.coverageFraction,
             cumulativeMandatoryCost,
+            refIncome,
         );
         if (profiler?.isEnabled) {
             t_ig = profiler.markAndAccum('igNeeds', '  igNeeds', t_ig);
@@ -347,6 +362,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: T
                 planet.marketPrices,
                 tier.coverageFraction,
                 cumulativeMandatoryCost,
+                refIncome,
                 transferMatrix,
             );
         }
@@ -439,6 +455,7 @@ function creditDependents(
     marketPrices: Record<string, number>,
     coverageFraction: number,
     alreadyCommittedCost: number,
+    referenceMonthlyIncomeValue: number,
     transferMatrix?: PopulationTransferMatrix,
 ): void {
     if (amount <= 0) {
@@ -472,7 +489,9 @@ function creditDependents(
             for (const { key, def, price } of serviceMeta) {
                 const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                 const targetPerPerson =
-                    def.bufferTargetTicks * def.consumptionRatePerPersonPerTick(age, occ, wealth) * coverageFraction;
+                    def.bufferTargetTicks *
+                    def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
+                    coverageFraction;
                 const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
                 const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;
                 totalCostGap += gap * price * (1 - fillFraction);

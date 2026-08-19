@@ -188,6 +188,12 @@ function emptyServiceBuffers(): AggRow['serviceBuffers'] {
             [0, 0],
             [0, 0],
         ],
+        service: [
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+        ],
     };
 }
 
@@ -279,6 +285,7 @@ const normalizedBuffersSchema = z.object({
     logisticsBuffer: z.number(),
     educationBuffer: z.number(),
     retailBuffer: z.number(),
+    serviceBuffer: z.number(),
 });
 
 const groupModeSchema = z.enum(['occupation', 'education']);
@@ -292,6 +299,7 @@ const serviceBuffersSchema = z.object({
     logistics: svcBands4,
     retail: svcBands4,
     education: svcBands4,
+    service: svcBands4,
 });
 
 export const getPlanetDemographicsFull = () =>
@@ -353,6 +361,7 @@ export const getPlanetDemographicsFull = () =>
                         logisticsBuffer: computeNormalizedBuffer(planet, 'logistics'),
                         educationBuffer: computeNormalizedBuffer(planet, 'education'),
                         retailBuffer: computeNormalizedBuffer(planet, 'retail'),
+                        serviceBuffer: computeNormalizedBuffer(planet, 'service'),
                     },
                 },
             };

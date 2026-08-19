@@ -44,6 +44,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
     retailServiceResourceType,
+    serviceResourceType,
 } from './services';
 
 export const TRADABLE_RESOURCES: Resource[] = [
@@ -89,6 +90,7 @@ export const TRADABLE_RESOURCES: Resource[] = [
     healthcareServiceResourceType,
     educationServiceResourceType,
     maintenanceServiceResourceType,
+    serviceResourceType,
 ] as const;
 
 export const RESOURCES_BY_NAME: ReadonlyMap<string, Resource> = new Map(

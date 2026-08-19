@@ -22,6 +22,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 0, starvationLevel: 0 },
             healthcare: { buffer: 0, starvationLevel: 0 },
             education: { buffer: 0, starvationLevel: 0 },
+            service: { buffer: 0, starvationLevel: 0 },
         },
     });
     const adultCohort = createEmptyPopulationCohort({
@@ -33,6 +34,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 1000, starvationLevel: 0 },
             healthcare: { buffer: 1000, starvationLevel: 0 },
             education: { buffer: 1000, starvationLevel: 0 },
+            service: { buffer: 1000, starvationLevel: 0 },
         },
     });
 

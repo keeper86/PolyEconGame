@@ -55,6 +55,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
     retailServiceResourceType,
+    serviceResourceType,
 } from '@/simulation/planet/services';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -147,6 +148,7 @@ export const RESOURCE_COLOR_MAP: Record<string, string> = {
     [healthcareServiceResourceType.name]: '#2dd4bf', // Medical teal
     [educationServiceResourceType.name]: '#818cf8', // Academic indigo
     [maintenanceServiceResourceType.name]: '#64748b', // Utility steel gray
+    [serviceResourceType.name]: '#a78bfa', // Labor-only service violet
 };
 function resourceColor(name: string): string {
     return RESOURCE_COLOR_MAP[name] ?? '#a0a0a0';
