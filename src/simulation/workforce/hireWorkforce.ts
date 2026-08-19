@@ -7,7 +7,7 @@ import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import { ACCEPTABLE_IDLE_FRACTION, acceptProbability, computeLaborMarket, outsideIncome } from './laborMarket';
+import { ACCEPTABLE_IDLE_FRACTION, acceptProbability, computeLaborMarket, outsideIncome, smoothedReachableVacancyWage } from './laborMarket';
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
@@ -69,7 +69,7 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                 const wage = assets.wagePerEdu[edu] ?? 0;
                 const outside = outsideIncome(
                     laborMarket.reachableTightness[edu],
-                    laborMarket.reachableVacancyWage[edu],
+                    smoothedReachableVacancyWage(planet, edu, laborMarket.reachableVacancyWage[edu]),
                 );
                 const threshold = Math.max(costOfLiving, outside);
 

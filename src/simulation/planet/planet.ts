@@ -139,6 +139,7 @@ export type Planet = {
     _costOfLivingRich?: number;
     _freeResources?: { name: string; freeCapacity: number }[];
     _gdp?: number;
+    _smoothedReachableVacancyWage?: PerEducation;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
@@ -349,6 +350,8 @@ export type AgentPlanetAssets = {
     } & MonthAccumulator;
 
     lastMonthAcc: MonthAccumulator;
+
+    _smoothedWageCeiling?: number;
 
     licenses: {
         commercial?: PlanetLicense;

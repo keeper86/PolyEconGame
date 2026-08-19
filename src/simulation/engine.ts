@@ -25,6 +25,7 @@ import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
 import { automaticWageAdjustment, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
+import { updateSmoothedVacancyWage } from './workforce/laborMarket';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { hrBufferTick } from './workforce/hrBuffer';
@@ -97,6 +98,8 @@ export function advanceTick(gameState: GameState) {
                     `${planet.name} before workforce tick`,
                 );
             }
+
+            updateSmoothedVacancyWage(gameState.agents, planet);
 
             const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
             if (profile.isEnabled) {

@@ -1,11 +1,9 @@
 import {
-    CHURN_WAGE_WEIGHT,
     MAX_WAGE,
-    MIN_EMPLOYABLE_AGE,
     MIN_WAGE,
-    PREMIUM_DAMPEN_GAIN,
-    PREMIUM_DAMPEN_THRESHOLD,
+    SPRING_K,
     WAGE_ADJUSTMENT_RATE,
+    WAGE_CEILING_SMOOTHING,
     WAGE_FEEDBACK_GAIN,
     WAGE_NEUTRAL_PRESSURE,
 } from '../constants';
@@ -13,33 +11,10 @@ import { creditWageIncome } from '../financial/wealthOps';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
-import { ACCEPTABLE_IDLE_FRACTION, computeLaborMarket, outsideIncome } from './laborMarket';
+import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
 import { sumTotalUsedByEdu, totalActiveForEdu } from './workforceAggregates';
 
-function unemployedByEdu(planet: Planet): Record<EducationLevelType, number> {
-    const unoccupied: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    const demography = planet.population.demography;
-    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        for (const edu of educationLevelKeys) {
-            unoccupied[edu] += demography[age].unoccupied[edu].total;
-        }
-    }
-    return unoccupied;
-}
-
-function dampenPremium(current: number, market: number): number {
-    if (market <= 0) {
-        return 1;
-    }
-    const premium = current / market;
-    if (premium <= PREMIUM_DAMPEN_THRESHOLD) {
-        return 1;
-    }
-    return 1 / (1 + (premium - PREMIUM_DAMPEN_THRESHOLD) * PREMIUM_DAMPEN_GAIN);
-}
-
 export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Planet): void {
-    const unoccupied = unemployedByEdu(planet);
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
             continue;
@@ -59,15 +34,12 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
         const totalUsed = sumTotalUsedByEdu(assets);
 
         const newTarget: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-        let shortfallToCascade = 0;
         for (const edu of educationLevelKeys) {
             const deficit = Math.max(0, totalSlotCapacity[edu] - totalUsed[edu]);
-            const needed = deficit + shortfallToCascade;
 
-            let target = totalUsed[edu] + needed;
+            let target = totalUsed[edu] + deficit;
             target = Math.ceil(target * (1 + ACCEPTABLE_IDLE_FRACTION));
             newTarget[edu] = target;
-            shortfallToCascade = Math.max(0, needed - unoccupied[edu]);
         }
 
         assets.allocatedWorkers = newTarget;
@@ -86,7 +58,6 @@ function computeReservationCapital(assets: AgentPlanetAssets): number {
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
-    const laborMarket = computeLaborMarket(agents, planet);
 
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
@@ -103,6 +74,23 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
 
         const slotsFilled = sumTotalUsedByEdu(assets);
 
+        const lastMonth = assets.lastMonthAcc;
+        const affordable = lastMonth.revenue - lastMonth.purchases - lastMonth.claimPayments;
+        const rawCeiling = lastMonth.totalWorkersTicks > 0 ? affordable / lastMonth.totalWorkersTicks : 0;
+        const prevCeiling = assets._smoothedWageCeiling ?? rawCeiling;
+        assets._smoothedWageCeiling = WAGE_CEILING_SMOOTHING * rawCeiling + (1 - WAGE_CEILING_SMOOTHING) * prevCeiling;
+        const ceiling = assets._smoothedWageCeiling;
+
+        let totalWageBill = 0;
+        let totalWorkers = 0;
+        for (const edu of educationLevelKeys) {
+            const active = totalActiveForEdu(workforce, edu);
+            totalWageBill += (assets.wagePerEdu[edu] ?? 0) * active;
+            totalWorkers += active;
+        }
+        const avgWage = totalWorkers > 0 ? totalWageBill / totalWorkers : 0;
+        const springPenalty = ceiling > 0 ? SPRING_K * Math.max(0, (avgWage - ceiling) / ceiling) : 0;
+
         for (const edu of educationLevelKeys) {
             const current = assets.wagePerEdu[edu] ?? MIN_WAGE;
 
@@ -110,10 +98,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
             const shortagePressure = shortage * shortage;
 
-            const outside = outsideIncome(laborMarket.reachableTightness[edu], laborMarket.reachableVacancyWage[edu]);
-            const incomeGain = current > 0 ? Math.max(0, outside - current) / current : 0;
-            const premiumDampener = dampenPremium(current, outside);
-            const pressure = premiumDampener * (shortagePressure + CHURN_WAGE_WEIGHT * incomeGain) - WAGE_NEUTRAL_PRESSURE;
+            const pressure = shortagePressure - WAGE_NEUTRAL_PRESSURE - springPenalty;
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
             const step = Math.max(-maxStep, Math.min(maxStep, WAGE_FEEDBACK_GAIN * current * pressure));

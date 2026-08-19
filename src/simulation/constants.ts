@@ -62,16 +62,16 @@ export const STARTER_LOAN_AMOUNT = 5_000_000;
 export const MIN_WAGE = 1.0;
 export const MAX_WAGE = 1000.0;
 
-export const WAGE_ADJUSTMENT_RATE = 0.02;
+export const WAGE_ADJUSTMENT_RATE = 0.005;
+
+export const VACANCY_WAGE_SMOOTHING = 0.1;
 
 export const WAGE_FEEDBACK_GAIN = 0.2;
 
-export const CHURN_WAGE_WEIGHT = 1.0;
-
 export const WAGE_NEUTRAL_PRESSURE = 0.03;
 
-export const PREMIUM_DAMPEN_THRESHOLD = 1.15;
-export const PREMIUM_DAMPEN_GAIN = 2.0;
+export const SPRING_K = 0.5;
+export const WAGE_CEILING_SMOOTHING = 0.1;
 
 export const SEARCH_HORIZON_TICKS = TICKS_PER_MONTH / 2;
 

@@ -64,7 +64,7 @@ describe('updateAllocatedWorkers', () => {
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
     });
 
-    it('allocates overqualified workers to their own tier and adds deficit for the unfilled tier', () => {
+    it('targets each tier from its own deficit, counting overqualified workers as supplied', () => {
         const { planet } = makePlanetWithPopulation({ none: 0, primary: 50000 });
         const agent = makeAgent();
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
@@ -77,10 +77,10 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
-        expect(agent.assets.p.allocatedWorkers.primary).toBe(2100);
+        expect(agent.assets.p.allocatedWorkers.primary).toBe(1050);
     });
 
-    it('cascades unfillable demand to the next higher education level', () => {
+    it('does not inflate higher-tier targets beyond their own deficit', () => {
         const { planet } = makePlanetWithPopulation({ none: 0, primary: 50000 });
         const agent = makeAgent();
         agent.assets.p.productionFacilities = [makeProductionFacility({ none: 100, primary: 50 }, { scale: 10 })];
@@ -89,7 +89,7 @@ describe('updateAllocatedWorkers', () => {
         automaticWorkerAllocation(agentMap(agent), planet);
 
         expect(agent.assets.p.allocatedWorkers.none).toBe(1050);
-        expect(agent.assets.p.allocatedWorkers.primary).toBe(1575);
+        expect(agent.assets.p.allocatedWorkers.primary).toBe(525);
     });
 
     it('never reduces allocation below zero', () => {
@@ -161,39 +161,25 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
     });
 
-    it('raises the wage when the outside option exceeds the current wage', () => {
-        const { planet } = makePlanetWithPopulation({ none: 1 });
+    it('springs the wage back down when the average wage exceeds the affordable ceiling', () => {
+        const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        agent.assets.p.allocatedWorkers.none = 100;
-        agent.assets.p.workforceDemography[30].none.active = 100;
-
-        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
-        competitor.assets.p.allocatedWorkers.none = 100;
-        competitor.assets.p.wagePerEdu.none = 200;
-
-        automaticWageAdjustment(agentMap(agent, competitor), planet);
-
-        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(100);
-    });
-
-    it('dampens the wage rise when already paying well above the market', () => {
-        const { planet } = makePlanetWithPopulation({ none: 1 });
-        const agent = makeAgent();
-        agent.assets.p.wagePerEdu = { none: 200, primary: 200, secondary: 200, tertiary: 200 };
+        agent.assets.p.wagePerEdu = { none: 2, primary: 2, secondary: 2, tertiary: 2 };
         agent.assets.p.totalSlotCapacity.none = 100;
+        agent.assets.p.workforceDemography[30].none.active = 1;
 
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
-        fac.lastTickResults.totalUsedByEdu = { none: 80, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.totalUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
 
-        const competitor = makeAgent('agent-2', planet.id, 'Agent 2');
-        competitor.assets.p.allocatedWorkers.none = 100;
-        competitor.assets.p.wagePerEdu.none = 100;
+        agent.assets.p.lastMonthAcc.revenue = 100;
+        agent.assets.p.lastMonthAcc.purchases = 0;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
 
-        automaticWageAdjustment(agentMap(agent, competitor), planet);
+        automaticWageAdjustment(agentMap(agent), planet);
 
-        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(200);
+        expect(agent.assets.p.wagePerEdu.none).toBeLessThan(2);
     });
 
     it('pushes higher education wages up instead of lowering the lower education wage', () => {

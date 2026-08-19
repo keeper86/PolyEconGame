@@ -79,18 +79,20 @@ For services output:
                 <h2 className='text-2xl font-bold mt-8 mb-3'>10. Wage Adjustment (every tick)</h2>
                 <p>
                     After production, automated agents run a <strong>feedback-controller wage adjustment</strong> per
-                    education level every tick. Two forces push wages up — unfilled required slots (computed
-                    overqualification-aware, so a tier backfilled by higher-educated workers does not read as a
-                    shortage) and the worker outside option — while a neutral pressure relaxes them down otherwise:
+                    education level every tick. Wages respond to the squared shortage of unfilled required slots
+                    (computed overqualification-aware, so a tier backfilled by higher-educated workers does not read
+                    as a shortage), minus a neutral pressure that relaxes wages when slots are full. A
+                    <strong>spring</strong> pulls the wage down proportionally whenever the average wage exceeds the
+                    smoothed break-even ceiling <code>(revenue − purchases − claim payments) / workers</code>:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`shortage[edu] = max(0, slotCapacity[edu] − slotsFilled[edu]) / slotCapacity[edu]
-incomeGain    = max(0, outsideOption − wage) / wage
-pressure      = shortage + CHURN_WAGE_WEIGHT × incomeGain − WAGE_NEUTRAL_PRESSURE
+pressure      = shortage² − WAGE_NEUTRAL_PRESSURE − springPenalty
+                springPenalty = SPRING_K × max(0, (avgWage − ceiling) / ceiling)
 
 wage × (1 + clamp(WAGE_FEEDBACK_GAIN × pressure, ±WAGE_ADJUSTMENT_RATE))
 
-WAGE_ADJUSTMENT_RATE = 0.02   (±2 % per tick)
+WAGE_ADJUSTMENT_RATE = 0.005   (±0.5 % per tick)
 MIN_WAGE = 1.0   MAX_WAGE = 1000.0`}
                 </pre>
                 <p className='mt-2'>

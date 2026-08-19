@@ -4,6 +4,7 @@ import {
     MIN_EMPLOYABLE_AGE,
     QUIT_SENSITIVITY,
     SEARCH_HORIZON_TICKS,
+    VACANCY_WAGE_SMOOTHING,
     WAGE_ACCEPT_SCALE,
 } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
@@ -104,3 +105,21 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
         reachableVacancyWage,
     };
 };
+
+export function updateSmoothedVacancyWage(agents: Map<string, Agent>, planet: Planet): void {
+    const raw = computeLaborMarket(agents, planet);
+    planet._smoothedReachableVacancyWage = emaPerEdu(raw.reachableVacancyWage, planet._smoothedReachableVacancyWage);
+}
+
+export function smoothedReachableVacancyWage(planet: Planet, edu: EducationLevelType, raw: number): number {
+    return planet._smoothedReachableVacancyWage?.[edu] ?? raw;
+}
+
+function emaPerEdu(raw: PerEducation, prev: Partial<PerEducation> | undefined): PerEducation {
+    const out: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    for (const edu of educationLevelKeys) {
+        const previous = prev?.[edu] ?? raw[edu] ?? 0;
+        out[edu] = VACANCY_WAGE_SMOOTHING * (raw[edu] ?? 0) + (1 - VACANCY_WAGE_SMOOTHING) * previous;
+    }
+    return out;
+}

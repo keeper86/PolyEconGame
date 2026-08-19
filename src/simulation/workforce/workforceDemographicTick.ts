@@ -11,7 +11,7 @@ import { MAX_AGE } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { TickProfiler } from '../TickProfiler';
-import { computeLaborMarket, quitPropensity } from './laborMarket';
+import { computeLaborMarket, quitPropensity, smoothedReachableVacancyWage } from './laborMarket';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
 import { subtractProportionalXP } from './workforce';
 
@@ -91,7 +91,7 @@ export function workforceDemographicTick(
                     const quitRate = quitPropensity(
                         assets.wagePerEdu[l] ?? 0,
                         laborMarket.reachableTightness[l],
-                        laborMarket.reachableVacancyWage[l],
+                        smoothedReachableVacancyWage(planet, l, laborMarket.reachableVacancyWage[l]),
                     );
                     const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {
