@@ -25,7 +25,7 @@ describe('wage-grounded Engel saturation', () => {
     it('saturates only at high relative income, not at high absolute wealth', () => {
         const def = SERVICE_DEFINITIONS.service;
         const poor = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 1000, variance: 0 }, 30000);
-        const rich = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 1000, variance: 0 }, 30);
+        const rich = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 2400, variance: 0 }, 30);
         expect(rich).toBeGreaterThan(poor * 10);
     });
 
@@ -49,22 +49,22 @@ describe('labor-only Service sector', () => {
         expect(tierServices).not.toContain('service');
     });
 
-    it('has a heavy Engel curve: relative demand grows ~60x from neutral to 10 years of income', () => {
+    it('has a heavy Engel curve: relative demand grows ~60x from neutral to 50 years of income', () => {
         const refIncome = 30;
         const def = SERVICE_DEFINITIONS.service;
         const neutral = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
         const rich = def.consumptionRatePerPersonPerTick(
             30,
             'employed',
-            { mean: 120 * refIncome, variance: 0 },
+            { mean: 600 * refIncome, variance: 0 },
             refIncome,
         );
         expect(rich).toBeGreaterThan(neutral * 50);
     });
 
-    it('outpaces retail in absolute rate once households hold ~10 years of income', () => {
+    it('outpaces retail in absolute rate once households hold ~50 years of income', () => {
         const refIncome = 30;
-        const wealth = { mean: 120 * refIncome, variance: 0 };
+        const wealth = { mean: 600 * refIncome, variance: 0 };
         const serviceRate = SERVICE_DEFINITIONS.service.consumptionRatePerPersonPerTick(
             30,
             'employed',

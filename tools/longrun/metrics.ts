@@ -176,6 +176,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     }
 
     let totalAgentDeposits = 0;
+    let profitShareBonuses = 0;
     let agentsInDistress = 0;
     let totalLoans = 0;
     let usedWorkers = 0;
@@ -330,6 +331,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             continue;
         }
         totalAgentDeposits += assets.deposits;
+        profitShareBonuses += assets.monthAcc.profitShareBonuses;
         maintAggregateBuffer += queryStorageFacility(assets.storageFacility, maintenanceServiceResourceType.name);
         if (assets.deposits < 0) {
             agentsInDistress += 1;
@@ -882,6 +884,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         loansOther,
         agentsInDistress,
         totalAgentDeposits,
+        profitShareBonuses,
         workerUtilization: totalSlots > 0 ? usedWorkers / totalSlots : 0,
         avgWage: wageCount > 0 ? wageSum / wageCount : 0,
         existentialAgentCount,
@@ -1155,6 +1158,7 @@ export const METRIC_KEYS: string[] = [
     'loansOther',
     'agentsInDistress',
     'totalAgentDeposits',
+    'profitShareBonuses',
     'workerUtilization',
     'avgWage',
     'existentialAgentCount',
