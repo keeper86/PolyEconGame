@@ -12,11 +12,13 @@ import {
     makeAllocatedWorkers,
     makePlanet,
     makePlanetWithPopulation,
+    makeProductionFacility,
     makeWorkforceDemography,
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
 import { hireWorkforce } from './hireWorkforce';
+import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
     acceptProbability,
     computeLaborMarket,
@@ -518,5 +520,91 @@ describe('voluntary quit rate', () => {
         workforceDemographicTick(agentMap(agent), planet);
 
         expect(wf[30].none.active).toBe(1);
+    });
+});
+
+describe('overqualified backfill substitution', () => {
+    it('does not re-hire native none workers into none slots already filled by overqualified workers', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 0, secondary: 1000, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 1000 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.wagePerEdu.secondary = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].secondary.active = 1000;
+        planet.population.demography[30].employed.secondary.total = 1000;
+        planet.population.demography[30].unoccupied.none.total = 500;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBe(unoccNoneBefore);
+        expect(totalOnboardingForEdu(wf, 'none')).toBe(0);
+        expect(totalActiveForEdu(wf, 'secondary')).toBe(1000);
+    });
+
+    it('hires native none workers first into none slots that are actually empty', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 0, secondary: 500, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 500 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].secondary.active = 500;
+        planet.population.demography[30].employed.secondary.total = 500;
+        planet.population.demography[30].unoccupied.none.total = 500;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThan(unoccNoneBefore);
+        expect(totalOnboardingForEdu(wf, 'none')).toBeGreaterThan(0);
+    });
+
+    it('only re-hires natives at the idle-buffer rate when slots are overqualified-filled but some natives remain', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 50, primary: 0, secondary: 950, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 950 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].none.active = 50;
+        wf[30].secondary.active = 950;
+        planet.population.demography[30].employed.none.total = 50;
+        planet.population.demography[30].employed.secondary.total = 950;
+        planet.population.demography[30].unoccupied.none.total = 100;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        // target[none] = used[none] * 1.05 (slots are full, so no slot gap) — only the 5% idle
+        // buffer creates demand. ~3 natives enter the buffer, but the 950 overqualified stay.
+        expect(unoccNoneBefore - sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThanOrEqual(5);
+        expect(totalActiveForEdu(wf, 'secondary')).toBe(950);
     });
 });

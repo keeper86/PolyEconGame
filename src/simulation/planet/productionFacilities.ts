@@ -58,6 +58,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
     retailServiceResourceType,
+    serviceResourceType,
 } from './services';
 
 export const zeroLastTicksProductionResults = {
@@ -847,19 +848,10 @@ export const educationCenter = (planetId: string, id: string): ProductionFacilit
 
 export const maintenanceFacility = (planetId: string, id: string): ProductionFacility => {
     return {
+        ...makeFacilityDefaults(),
         planetId,
         id,
-        type: 'production',
         name: 'Maintenance Facility',
-        maxScale: 1,
-        scale: 1,
-        construction: null,
-        lastConstructionCompletedTick: 0,
-        maintenanceStatus: 1,
-        maxMaintenance: 1,
-        cumulativeRepairAcc: 0,
-        lastTickMaintenanceConsumption: 0,
-        lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 2,
         workerRequirement: {
             none: 5,
@@ -867,15 +859,30 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
             secondary: 60,
             tertiary: 10,
         },
-        pollutionPerTick: { ...defaultPollutionPerTick },
         needs: [
             { resource: steelResourceType, quantity: 10 },
             { resource: electronicsResourceType, quantity: 5 },
             { resource: plasticResourceType, quantity: 10 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
-        lastTickResults: { ...zeroLastTicksProductionResults },
-        pidState: null,
+    };
+};
+
+export const servicesFacility = (planetId: string, id: string): ProductionFacility => {
+    return {
+        ...makeFacilityDefaults(),
+        planetId,
+        id,
+        name: 'Services Facility',
+        powerConsumptionPerTick: 2.0,
+        workerRequirement: {
+            none: 30,
+            primary: 30,
+            secondary: 25,
+            tertiary: 15,
+        },
+        needs: [],
+        produces: [{ resource: serviceResourceType, quantity: 100 }],
     };
 };
 

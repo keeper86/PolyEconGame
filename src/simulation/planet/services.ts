@@ -29,6 +29,12 @@ const serviceResourceDefault = {
     massPerQuantity: 0,
 };
 
+// OG Service: Labor-only - absorbs labor and is consumption of last resort
+export const serviceResourceType: Resource = {
+    ...serviceResourceDefault,
+    name: 'Service',
+};
+
 export const logisticsServiceResourceType: Resource = {
     ...serviceResourceDefault,
     name: 'Logistics',

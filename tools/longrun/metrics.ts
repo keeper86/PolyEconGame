@@ -29,7 +29,7 @@ import {
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
-import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
+import { sumExactUsedByEdu, sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 
 export type MetricMap = Record<string, number>;
