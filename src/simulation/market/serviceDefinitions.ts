@@ -6,6 +6,7 @@ import {
     LOGISTICS_WEALTH_SATURATION_MONTHS,
     MIN_WAGE,
     RETAIL_WEALTH_SATURATION_MONTHS,
+    SERVICE_BASE_RATE_PER_MONTH,
     SERVICE_ENGEL_MAX_EXTRA,
     SERVICE_WEALTH_SATURATION_MONTHS,
     TICKS_PER_MONTH,
@@ -177,7 +178,7 @@ const serviceDefinition: ServiceDefinition = {
     resource: serviceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_MONTH) *
+        (SERVICE_BASE_RATE_PER_MONTH / TICKS_PER_MONTH) *
         serviceAgeMultiplier(age, occ) *
         engelMultiplier(wealth, SERVICE_WEALTH_SATURATION_MONTHS, SERVICE_ENGEL_MAX_EXTRA, refIncome),
 } as const;

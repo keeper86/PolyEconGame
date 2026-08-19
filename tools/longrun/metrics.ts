@@ -1,6 +1,6 @@
 import { PRICE_CEIL, PRICE_FLOOR, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
-import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
+import { computeCostOfLiving, DEFAULT_REFERENCE_MONTHLY_INCOME, SERVICE_DEFINITIONS } from '../../src/simulation/market/serviceDefinitions';
 import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
@@ -25,6 +25,7 @@ import {
     groceryServiceResourceType,
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
+    serviceResourceType,
 } from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
@@ -67,6 +68,10 @@ function isMaintenanceFacility(name: string): boolean {
 
 function isConstructionFacility(name: string): boolean {
     return facilityNameToKey(name) === 'constructionFacility';
+}
+
+function isServiceFacility(name: string): boolean {
+    return facilityNameToKey(name) === 'servicesFacility';
 }
 
 function minValue(map: Record<string, number> | undefined): number {
@@ -246,6 +251,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let constructionFacilityConditionWeighted = 0;
     let constructionFacilitySmoothedSignal = 0;
     let constructionFacilityCount = 0;
+    let serviceFacilityCount = 0;
+    let serviceFacilityScale = 0;
+    let serviceFacilityMaxScale = 0;
+    let serviceFacilityConditionWeighted = 0;
+    let serviceFacilityOutput = 0;
+    let serviceFacilityRevenue = 0;
+    let serviceFacilityInputCosts = 0;
+    let serviceFacilityWageCosts = 0;
+    let serviceFacilitySmoothedSignal = 0;
+    let serviceFacilityExpansionIntegral = 0;
+    let serviceFacilityContractionIntegral = 0;
+    let serviceFacilityOverallEfficiency = 0;
+    let serviceFacilityWorkerEfficiency = 0;
+    let serviceFacilityWorkers = 0;
+    let serviceFacilitySlots = 0;
     let restorationAggregateConsumption = 0;
     let siliconWaferResourceEfficiency = 0;
     let siliconWaferWorkerEfficiency = 0;
@@ -335,6 +355,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             const slots = assets.totalSlotCapacity[edu] ?? 0;
             totalSlots += slots;
             agentSlots += slots;
+        }
+        const agentHasService = assets.productionFacilities.some((f) => isServiceFacility(f.name));
+        if (agentHasService) {
+            serviceFacilityWorkers += assets.usedWorkers;
+            serviceFacilitySlots += agentSlots;
         }
         const agentExistential = assets.productionFacilities.some((f) => isExistentialFacility(f.name));
         const agentFoodChain = assets.productionFacilities.some((f) => isFoodChainFacility(f.name));
@@ -474,6 +499,23 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 constructionFacilityCount += 1;
             }
 
+            if (isServiceFacility(facility.name)) {
+                serviceFacilityScale += facility.scale;
+                serviceFacilityMaxScale += facility.maxScale;
+                serviceFacilityConditionWeighted += (facility.maintenanceStatus ?? 1) * facility.scale;
+                serviceFacilityOutput += facility.lastTickResults?.lastProduced?.[serviceResourceType.name] ?? 0;
+                serviceFacilityRevenue += facility.lastTickResults?.revenue ?? 0;
+                serviceFacilityInputCosts += facility.lastTickResults?.inputCosts ?? 0;
+                serviceFacilityWageCosts += facility.lastTickResults?.wageCosts ?? 0;
+                const svcPid = facility.pidState;
+                serviceFacilitySmoothedSignal += svcPid?.smoothedSignal ?? 0;
+                serviceFacilityExpansionIntegral += svcPid?.expansionIntegral ?? 0;
+                serviceFacilityContractionIntegral += svcPid?.contractionIntegral ?? 0;
+                serviceFacilityOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                serviceFacilityWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
+                serviceFacilityCount += 1;
+            }
+
             const pid = facility.pidState;
             const profitEma = pid?.profitEMA ?? 0;
             const contractionIntegral = pid?.contractionIntegral ?? 0;
@@ -574,6 +616,40 @@ export function sampleMetrics(gameState: GameState): MetricMap {
 
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
+
+    const serviceResult = planet.lastMarketResult[serviceResourceType.name];
+    const serviceFillRate =
+        serviceResult && serviceResult.totalDemand > 0 ? serviceResult.totalVolume / serviceResult.totalDemand : 0;
+    const serviceBuffer = computeNormalizedBuffer(planet, 'service');
+    const serviceNeutralRate = SERVICE_DEFINITIONS.service.consumptionRatePerPersonPerTick(
+        30,
+        'employed',
+        { mean: 0, variance: 0 },
+        DEFAULT_REFERENCE_MONTHLY_INCOME,
+    );
+    const serviceDemandToNeutral =
+        totalPopulation > 0 && serviceNeutralRate > 0
+            ? (serviceResult?.totalDemand ?? 0) / (serviceNeutralRate * totalPopulation)
+            : 0;
+    const serviceVolumeToNeutral =
+        totalPopulation > 0 && serviceNeutralRate > 0
+            ? (serviceResult?.totalVolume ?? 0) / (serviceNeutralRate * totalPopulation)
+            : 0;
+    const serviceFacilityCondition = serviceFacilityScale > 0 ? serviceFacilityConditionWeighted / serviceFacilityScale : 1;
+    const serviceFacilityAvgScale = serviceFacilityCount > 0 ? serviceFacilityScale / serviceFacilityCount : 0;
+    const serviceFacilityAvgMaxScale = serviceFacilityCount > 0 ? serviceFacilityMaxScale / serviceFacilityCount : 0;
+    const serviceFacilityProfit = serviceFacilityRevenue - serviceFacilityInputCosts - serviceFacilityWageCosts;
+    const serviceFacilitySmoothedSignalAvg =
+        serviceFacilityCount > 0 ? serviceFacilitySmoothedSignal / serviceFacilityCount : 0;
+    const serviceFacilityExpansionIntegralAvg =
+        serviceFacilityCount > 0 ? serviceFacilityExpansionIntegral / serviceFacilityCount : 0;
+    const serviceFacilityContractionIntegralAvg =
+        serviceFacilityCount > 0 ? serviceFacilityContractionIntegral / serviceFacilityCount : 0;
+    const serviceFacilityWorkerEfficiencyAvg =
+        serviceFacilityCount > 0 ? serviceFacilityWorkerEfficiency / serviceFacilityCount : 0;
+    const serviceFacilityOverallEfficiencyAvg =
+        serviceFacilityCount > 0 ? serviceFacilityOverallEfficiency / serviceFacilityCount : 0;
+    const serviceFacilityFillRatio = serviceFacilitySlots > 0 ? serviceFacilityWorkers / serviceFacilitySlots : 0;
 
     const maintenanceResult = planet.lastMarketResult[maintenanceServiceResourceType.name];
     const adminResult = planet.lastMarketResult[administrativeServiceResourceType.name];
@@ -858,6 +934,35 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         adminServiceVolume: adminResult?.totalVolume ?? 0,
         logisticsServicePrice: priceOf(planet, logisticsServiceResourceType.name),
         logisticsServiceVolume: logisticsResult?.totalVolume ?? 0,
+        servicePrice: priceOf(planet, serviceResourceType.name),
+        serviceTotalDemand: serviceResult?.totalDemand ?? 0,
+        serviceTotalSupply: serviceResult?.totalSupply ?? 0,
+        serviceTotalVolume: serviceResult?.totalVolume ?? 0,
+        serviceUnfilledDemand: serviceResult?.unfilledDemand ?? 0,
+        serviceUnsoldSupply: serviceResult?.unsoldSupply ?? 0,
+        serviceFillRate,
+        serviceBuffer,
+        serviceCostFloor: planet.lastProductionCostFloors[serviceResourceType.name] ?? 0,
+        serviceDemandToNeutral,
+        serviceVolumeToNeutral,
+        serviceFacilityCount,
+        serviceFacilityScale: serviceFacilityAvgScale,
+        serviceFacilityMaxScale: serviceFacilityAvgMaxScale,
+        serviceFacilityCondition,
+        serviceFacilityOutput,
+        serviceFacilityRevenue,
+        serviceFacilityInputCosts,
+        serviceFacilityWageCosts,
+        serviceFacilityProfit,
+        serviceFacilitySmoothedSignal: serviceFacilitySmoothedSignalAvg,
+        serviceFacilityExpansionIntegral: serviceFacilityExpansionIntegralAvg,
+        serviceFacilityContractionIntegral: serviceFacilityContractionIntegralAvg,
+        serviceFacilityWorkerEfficiency: serviceFacilityWorkerEfficiencyAvg,
+        serviceFacilityOverallEfficiency: serviceFacilityOverallEfficiencyAvg,
+        serviceFacilityWorkers,
+        serviceFacilitySlots,
+        serviceFacilityFillRatio,
+        serviceEmploymentShare: usedWorkers > 0 ? serviceFacilityWorkers / usedWorkers : 0,
         maintFacilityScale,
         maintFacilityMaxScale,
         maintFacilityCondition,
@@ -1102,6 +1207,35 @@ export const METRIC_KEYS: string[] = [
     'adminServiceVolume',
     'logisticsServicePrice',
     'logisticsServiceVolume',
+    'servicePrice',
+    'serviceTotalDemand',
+    'serviceTotalSupply',
+    'serviceTotalVolume',
+    'serviceUnfilledDemand',
+    'serviceUnsoldSupply',
+    'serviceFillRate',
+    'serviceBuffer',
+    'serviceCostFloor',
+    'serviceDemandToNeutral',
+    'serviceVolumeToNeutral',
+    'serviceFacilityCount',
+    'serviceFacilityScale',
+    'serviceFacilityMaxScale',
+    'serviceFacilityCondition',
+    'serviceFacilityOutput',
+    'serviceFacilityRevenue',
+    'serviceFacilityInputCosts',
+    'serviceFacilityWageCosts',
+    'serviceFacilityProfit',
+    'serviceFacilitySmoothedSignal',
+    'serviceFacilityExpansionIntegral',
+    'serviceFacilityContractionIntegral',
+    'serviceFacilityWorkerEfficiency',
+    'serviceFacilityOverallEfficiency',
+    'serviceFacilityWorkers',
+    'serviceFacilitySlots',
+    'serviceFacilityFillRatio',
+    'serviceEmploymentShare',
     'maintFacilityScale',
     'maintFacilityMaxScale',
     'maintFacilityCondition',

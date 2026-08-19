@@ -49,9 +49,22 @@ describe('labor-only Service sector', () => {
         expect(tierServices).not.toContain('service');
     });
 
-    it('has a heavy Engel curve (much more elastic than retail)', () => {
-        const wealth = { mean: 100000, variance: 0 };
-        const refIncome = 30000;
+    it('has a heavy Engel curve: relative demand grows ~60x from neutral to 10 years of income', () => {
+        const refIncome = 30;
+        const def = SERVICE_DEFINITIONS.service;
+        const neutral = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
+        const rich = def.consumptionRatePerPersonPerTick(
+            30,
+            'employed',
+            { mean: 120 * refIncome, variance: 0 },
+            refIncome,
+        );
+        expect(rich).toBeGreaterThan(neutral * 50);
+    });
+
+    it('outpaces retail in absolute rate once households hold ~10 years of income', () => {
+        const refIncome = 30;
+        const wealth = { mean: 120 * refIncome, variance: 0 };
         const serviceRate = SERVICE_DEFINITIONS.service.consumptionRatePerPersonPerTick(
             30,
             'employed',
@@ -64,7 +77,7 @@ describe('labor-only Service sector', () => {
             wealth,
             refIncome,
         );
-        expect(serviceRate).toBeGreaterThan(retailRate * 5);
+        expect(serviceRate).toBeGreaterThan(retailRate * 2);
     });
 });
 
