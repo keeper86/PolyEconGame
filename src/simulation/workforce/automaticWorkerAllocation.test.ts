@@ -148,20 +148,48 @@ describe('automaticWageAdjustment', () => {
         expect(agent.assets.p.wagePerEdu.none).toBeLessThanOrEqual(100);
     });
 
-    it('relaxes the wage when slots are filled', () => {
+    it('relaxes the wage toward the floor when slots are filled and the firm cannot afford it', () => {
         const { planet } = makePlanetWithPopulation({});
         const agent = makeAgent();
         agent.assets.p.wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
         agent.assets.p.totalSlotCapacity.none = 100;
+        agent.assets.p.workforceDemography[30].none.active = 100;
 
         const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
         fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.productionFacilities = [fac];
 
+        agent.assets.p.lastMonthAcc.revenue = 50;
+        agent.assets.p.lastMonthAcc.purchases = 100;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+
         automaticWageAdjustment(agentMap(agent), planet);
 
         expect(agent.assets.p.wagePerEdu.none).toBeLessThan(100);
+    });
+
+    it('raises the wage toward the labor share of value added even when slots are filled', () => {
+        const { planet } = makePlanetWithPopulation({});
+        const agent = makeAgent();
+        agent.assets.p.wagePerEdu = { none: MIN_WAGE, primary: MIN_WAGE, secondary: MIN_WAGE, tertiary: MIN_WAGE };
+        agent.assets.p.totalSlotCapacity.none = 100;
+        agent.assets.p.workforceDemography[30].none.active = 100;
+
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        fac.lastTickResults.totalUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
+        agent.assets.p.productionFacilities = [fac];
+
+        agent.assets.p.lastMonthAcc.revenue = 1000;
+        agent.assets.p.lastMonthAcc.purchases = 0;
+        agent.assets.p.lastMonthAcc.claimPayments = 0;
+        agent.assets.p.lastMonthAcc.totalWorkersTicks = 100;
+
+        automaticWageAdjustment(agentMap(agent), planet);
+
+        expect(agent.assets.p.wagePerEdu.none).toBeGreaterThan(MIN_WAGE);
     });
 
     it('springs the wage back down when the average wage exceeds the affordable ceiling', () => {

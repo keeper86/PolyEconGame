@@ -4,9 +4,10 @@ import {
     PROFIT_SHARING_ENABLED,
     SPRING_K,
     WAGE_ADJUSTMENT_RATE,
+    WAGE_BARGAINING_GAIN,
     WAGE_CEILING_SMOOTHING,
     WAGE_FEEDBACK_GAIN,
-    WAGE_NEUTRAL_PRESSURE,
+    WAGE_SHARE,
 } from '../constants';
 import { creditWageIncome } from '../financial/wealthOps';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
@@ -91,6 +92,10 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             totalWorkers += active;
         }
         const avgWage = totalWorkers > 0 ? totalWageBill / totalWorkers : 0;
+        const targetWage = ceiling > 0 ? WAGE_SHARE * ceiling : MIN_WAGE;
+        const bargainingReference = ceiling > 0 ? ceiling : MIN_WAGE;
+        const bargainingPull =
+            totalWorkers > 0 ? (WAGE_BARGAINING_GAIN * (targetWage - avgWage)) / bargainingReference : 0;
         const springPenalty = ceiling > 0 ? SPRING_K * Math.max(0, (avgWage - ceiling) / ceiling) : 0;
 
         for (const edu of educationLevelKeys) {
@@ -100,7 +105,7 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const shortage = Math.max(0, capacity - slotsFilled[edu]) / Math.max(1, capacity);
             const shortagePressure = shortage * shortage;
 
-            const pressure = shortagePressure - WAGE_NEUTRAL_PRESSURE - springPenalty;
+            const pressure = shortagePressure + bargainingPull - springPenalty;
 
             const maxStep = WAGE_ADJUSTMENT_RATE * current;
             const step = Math.max(-maxStep, Math.min(maxStep, WAGE_FEEDBACK_GAIN * current * pressure));
