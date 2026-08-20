@@ -142,14 +142,17 @@ describe('resolveZones', () => {
         ]);
     });
 
-    it('collapses to the rest zone when demand is tiny', () => {
-        expect(resolvedZones(5, 1000)).toEqual([{ limit: 1000, color: 'blue' }]);
+    it('collapses zones thinner than the minimum arc and keeps the first surviving zone', () => {
+        expect(resolvedZones(5, 1000)).toEqual([
+            { limit: 20, color: 'green' },
+            { limit: 1000, color: 'blue' },
+        ]);
     });
 
-    it('drops a thin zone and fills the tail with the rest zone', () => {
+    it('keeps a moderately thin zone that clears the minimum arc', () => {
         expect(resolvedZones(985, 1000)).toEqual([
             { limit: 985, color: 'red' },
-            { limit: 1000, color: 'blue' },
+            { limit: 1000, color: 'amber' },
         ]);
     });
 
