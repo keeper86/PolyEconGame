@@ -12,13 +12,14 @@ export const TTL_FEEDBACK = 5_000;
 export type AutoConfigLocalState = {
     priceAdjustMaxUp: string;
     priceAdjustMaxDown: string;
-    costSpringStrength: string;
-    bidOfferMaxCostMultiplier: string;
     inventorySmoothingMaxExtra: string;
     targetSellThrough: string;
-    automatedCostFloorBuffer: string;
+    askVolumeFloorFraction: string;
+    askPriceSensitivity: string;
     inputBufferTargetTicks: string;
     targetFillRate: string;
+    bidVolumeFloorFraction: string;
+    bidPriceSensitivity: string;
     freeBuyQuantity: string;
     freeRetainment: string;
     freeBuyQuantitySmoothingMaxExtra: string;
@@ -29,13 +30,14 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
     return {
         priceAdjustMaxUp: config?.priceAdjustMaxUp?.toString() ?? '',
         priceAdjustMaxDown: config?.priceAdjustMaxDown?.toString() ?? '',
-        costSpringStrength: config?.costSpringStrength?.toString() ?? '',
-        bidOfferMaxCostMultiplier: config?.bidOfferMaxCostMultiplier?.toString() ?? '',
         inventorySmoothingMaxExtra: config?.inventorySmoothingMaxExtra?.toString() ?? '',
         targetSellThrough: config?.targetSellThrough?.toString() ?? '',
-        automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
+        askVolumeFloorFraction: config?.askVolumeFloorFraction?.toString() ?? '',
+        askPriceSensitivity: config?.askPriceSensitivity?.toString() ?? '',
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
         targetFillRate: config?.targetFillRate?.toString() ?? '',
+        bidVolumeFloorFraction: config?.bidVolumeFloorFraction?.toString() ?? '',
+        bidPriceSensitivity: config?.bidPriceSensitivity?.toString() ?? '',
         freeBuyQuantity: config?.freeBuyQuantity?.toString() ?? '',
         freeRetainment: config?.freeRetainment?.toString() ?? '',
         freeBuyQuantitySmoothingMaxExtra: config?.freeBuyQuantitySmoothingMaxExtra?.toString() ?? '',
@@ -48,13 +50,14 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
     const keys: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
-        'costSpringStrength',
-        'bidOfferMaxCostMultiplier',
         'inventorySmoothingMaxExtra',
         'targetSellThrough',
-        'automatedCostFloorBuffer',
+        'askVolumeFloorFraction',
+        'askPriceSensitivity',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'bidVolumeFloorFraction',
+        'bidPriceSensitivity',
         'freeBuyQuantity',
         'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',
@@ -76,13 +79,14 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
     const keys: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
-        'costSpringStrength',
-        'bidOfferMaxCostMultiplier',
         'inventorySmoothingMaxExtra',
         'targetSellThrough',
-        'automatedCostFloorBuffer',
+        'askVolumeFloorFraction',
+        'askPriceSensitivity',
         'inputBufferTargetTicks',
         'targetFillRate',
+        'bidVolumeFloorFraction',
+        'bidPriceSensitivity',
         'freeBuyQuantity',
         'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',

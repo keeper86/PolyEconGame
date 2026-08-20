@@ -110,6 +110,9 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });
+        planet.lastProductionCostFloors[steelResourceType.name] = STEEL_PRICE;
+        planet.lastProductionCostFloors[electronicsResourceType.name] = ELECTRONIC_COMPONENT_PRICE;
+        planet.lastProductionCostFloors[plasticResourceType.name] = PLASTIC_PRICE;
 
         const factory = makeMachineryAgent('machinery');
         const facility = factory.assets[PLANET_ID].productionFacilities[0]!;

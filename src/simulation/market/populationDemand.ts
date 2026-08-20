@@ -1,4 +1,4 @@
-import { BID_OFFER_MAX_COST_MULTIPLIER } from '../constants';
+import { SERVICE_PRICE_CEIL_MULTIPLE } from '../constants';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
@@ -135,8 +135,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 const referencePrice = Math.min(
                     (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) *
-                        BID_OFFER_MAX_COST_MULTIPLIER *
-                        0.33,
+                        SERVICE_PRICE_CEIL_MULTIPLE,
                     planet.marketPrices[service.resource.name] ?? 0,
                 );
 

@@ -65,7 +65,7 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                bidOfferMaxCostMultiplier: 2,
+                bidVolumeFloorFraction: 0.3,
                 targetFillRate: 0.8,
             };
 
@@ -136,7 +136,7 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                bidOfferMaxCostMultiplier: 2,
+                bidVolumeFloorFraction: 0.3,
                 targetFillRate: 0.8,
             };
 
@@ -189,7 +189,7 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 2,
                 targetSellThrough: 0.8,
             };
 
@@ -256,7 +256,7 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 2,
                 targetSellThrough: 0.8,
             };
 

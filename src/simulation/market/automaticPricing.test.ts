@@ -29,7 +29,7 @@ import {
 } from '../planet/resources';
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { adjustOfferPrice, automaticPricing } from './automaticPricing';
+import { adjustOfferPrice, automaticPricing, buyVolumeFraction, sellVolumeFraction } from './automaticPricing';
 import type { Resource } from '../planet/claims';
 import {
     administrativeServiceResourceType,
@@ -131,11 +131,10 @@ describe('resolveOfferConfig — config resolution', () => {
             autoConfig: {
                 priceAdjustMaxUp: 1.2,
                 priceAdjustMaxDown: 0.9,
-                costSpringStrength: 0.5,
-                bidOfferMaxCostMultiplier: 10,
                 inventorySmoothingMaxExtra: 5,
                 targetSellThrough: 0.8,
-                automatedCostFloorBuffer: 1.5,
+                askVolumeFloorFraction: 0.3,
+                askPriceSensitivity: 1.5,
                 freeRetainment: 0,
                 freeRetainmentSmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
@@ -145,6 +144,7 @@ describe('resolveOfferConfig — config resolution', () => {
         expect(offer.diagnostics!.targetSellThrough).toBe(0.8);
         // sellThrough = 100/100 = 1.0, target = 0.8 → above target → factor between 1 and 1.20
         // t = (1.0 - 0.8) / (1 - 0.8) = 1.0, baseFactor = 1 + 1.0 * (1.20 - 1) = 1.20
+        // price 10 ≥ costFloor 2 → no volume scaling (sellVolumeFraction = 1)
         expect(offer.offerPrice).toBe(10 * 1.2);
     });
 });
@@ -167,6 +167,7 @@ describe('resolveBidConfig — config resolution', () => {
 
     it('buy-side with undefined config picks goods defaults for solid resources', () => {
         const planet = makePlanetWithPrice({ [goodsResource.name]: 5 });
+        planet.lastProductionCostFloors[goodsResource.name] = 5;
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].deposits = 1_000_000;
         const facility = makeProductionFacility({ none: 1 }, { id: 'fac', scale: 1 });
@@ -185,6 +186,7 @@ describe('resolveBidConfig — config resolution', () => {
 
     it('buy-side with undefined config picks service defaults for services resources', () => {
         const planet = makePlanetWithPrice({ [serviceResource.name]: 5 });
+        planet.lastProductionCostFloors[serviceResource.name] = 5;
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].deposits = 1_000_000;
         const facility = makeProductionFacility({ none: 1 }, { id: 'fac', scale: 1 });
@@ -540,70 +542,21 @@ describe('automaticPricing — sell-side config overrides', () => {
         expect(offer!.diagnostics!.effectiveQuantity).toBe(0);
     });
 
-    it('custom costSpringStrength and automatedCostFloorBuffer affect cost-floor brake behavior', () => {
-        const INPUT_PRICE = 2.0;
-        const NEEDS_QTY = 10;
-        const PRODUCES_QTY = 5;
-        const inputCost = NEEDS_QTY * INPUT_PRICE;
-        const wageCost = DEFAULT_WAGE_PER_EDU;
-        const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
+    it('buyVolumeFraction throttles demand above the cost floor and respects the floor', () => {
+        expect(buyVolumeFraction(1, 1, 1, 0.2)).toBe(1);
+        expect(buyVolumeFraction(100, 1, 1, 0.2)).toBeCloseTo(0.2, 5);
+        expect(buyVolumeFraction(2, 1, 1, 0.2)).toBeGreaterThan(0.2);
+        expect(buyVolumeFraction(2, 1, 1, 0.2)).toBeLessThan(1);
+        expect(buyVolumeFraction(3, 1, 1, 0.2)).toBeLessThan(buyVolumeFraction(2, 1, 1, 0.2));
+        expect(buyVolumeFraction(3, 1, 2, 0.2)).toBeGreaterThan(buyVolumeFraction(3, 1, 1, 0.2));
+    });
 
-        // Set price slightly above costFloor but well within the brake zone
-        // brakeZoneTop = costFloor * automatedCostFloorBuffer = costFloor * 1.5
-        // With PRIOR_PRICE = costFloor * 1.2, we're inside the zone: deviation = sqrt(brakeZoneTop / price - 1) = sqrt(1.5/1.2 - 1) = sqrt(0.25) = 0.5
-        const PRIOR_PRICE = costPerUnit * 1.2;
-
-        const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
-        facility.needs = [{ resource: produceResourceType, quantity: NEEDS_QTY }];
-        facility.produces = [{ resource: clothingResourceType, quantity: PRODUCES_QTY }];
-        facility.lastTickResults.lastProduced = { [clothingResourceType.name]: PRODUCES_QTY };
-        facility.lastTickResults.lastConsumed = { [produceResourceType.name]: NEEDS_QTY };
-        facility.lastTickResults.costBalance = PRIOR_PRICE * PRODUCES_QTY - inputCost - wageCost;
-
-        const planet = makePlanetWithPrice({
-            [produceResourceType.name]: INPUT_PRICE,
-            [clothingResourceType.name]: PRIOR_PRICE,
-        });
-        planet.lastProductionCostFloors[clothingResourceType.name] = costPerUnit;
-
-        const agent = makeAgent('co', PLANET_ID);
-        agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
-            [clothingResourceType.name]: { resource: clothingResourceType, quantity: 1000 },
-        });
-        // With costSpringStrength=5.0 and deviation=0.5, the spring adds 2.5 to netFactor
-        // Since lastSold=0 → baseFactor = PRICE_ADJUST_MAX_DOWN (0.95)
-        // netFactor = 0.95 + 5.0*0.5 = 3.45 → price goes way up despite zero sell-through
-        // That's extreme, so let's use costSpringStrength=0.5 instead for a milder effect
-        agent.assets[PLANET_ID].market = {
-            sell: {
-                [clothingResourceType.name]: {
-                    resource: clothingResourceType,
-                    offerPrice: PRIOR_PRICE,
-                    lastSold: 0, // zero sell-through → downward pressure
-                    autoConfig: {
-                        costSpringStrength: 0.5,
-                        automatedCostFloorBuffer: 2.0, // brakeZoneTop = costFloor * 2.0
-                    } as AutomatedPricingConfig,
-                },
-            },
-            buy: {},
-        };
-
-        automaticPricing(new Map([['co', agent]]), planet);
-
-        const diagnostics = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.diagnostics;
-        expect(diagnostics).toBeDefined();
-        // deviation = sqrt(1.0 / 0.2) = sqrt(5) ≈ 2.236 – wait let me recalculate
-        // brakeZoneTop = 4.2 * 2.0 = 8.4, PRIOR_PRICE = 4.2 * 1.2 = 5.04 -- with cfg.automatedCostFloorBuffer = 2.0
-        // costSpringDeviation = sqrt(8.4/5.04 - 1) = sqrt(0.6667) ≈ 0.816
-        // costSpringStrength * deviation = 0.5 * 0.816 = 0.408
-        // netFactor without overDeviation = 0.95 + 0.408 = 1.358
-        // So newPrice = 5.04 * 1.358 ≈ 6.84, which is > 5.04
-        expect(diagnostics!.costSpringDeviation).toBeGreaterThan(0);
-        const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-        expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
-        expect(diagnostics!.netFactor).toBeGreaterThan(PRICE_ADJUST_MAX_DOWN);
+    it('sellVolumeFraction holds back volume below the cost floor and respects the floor', () => {
+        expect(sellVolumeFraction(1, 1, 1, 0.2)).toBe(1);
+        expect(sellVolumeFraction(0.01, 1, 1, 0.2)).toBeGreaterThan(0.2);
+        expect(sellVolumeFraction(0.5, 1, 1, 0.2)).toBeLessThan(1);
+        expect(sellVolumeFraction(0.25, 1, 1, 0.2)).toBeLessThan(sellVolumeFraction(0.5, 1, 1, 0.2));
+        expect(sellVolumeFraction(0.25, 1, 2, 0.2)).toBeGreaterThan(sellVolumeFraction(0.25, 1, 1, 0.2));
     });
 });
 
@@ -655,7 +608,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
 describe('automaticPricing — cost-floor brake zone', () => {
     beforeEach(() => seedRng(42));
 
-    it('attenuates the downward adjustment when the offer price is at the cost floor', () => {
+    it('lowers the ask price purely by sell-through feedback when undersold', () => {
         const INPUT_PRICE = 2.0;
         const NEEDS_QTY = 10;
         const PRODUCES_QTY = 5;
@@ -696,8 +649,10 @@ describe('automaticPricing — cost-floor brake zone', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-
+        // zero sell-through → downward adjustment, tempered by the global cost anchor
+        // (ask kept near costFloor × ASK_ANCHOR_MULTIPLE rather than spiraling down)
         expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
+        expect(newPrice).toBeLessThan(PRIOR_PRICE * 1.1);
     });
 
     it('does not activate the brake zone for facilities with negligible costs (costFloor = PRICE_FLOOR)', () => {
@@ -765,7 +720,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
 
-        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
 
         const agent = makeAgent('co', PLANET_ID);
@@ -795,7 +750,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             lastTickInvestedConstructionServices: 0,
         };
 
-        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
@@ -821,7 +776,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             lastTickInvestedConstructionServices: 0,
         };
 
-        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
 
         const agent = makeAgent('co', PLANET_ID);
@@ -847,7 +802,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         facility.maintenanceStatus = 0.5;
         facility.maxMaintenance = 1;
 
-        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
 
         const agent = makeAgent('co', PLANET_ID);
@@ -878,7 +833,7 @@ describe('automaticPricing — facility restoration demand', () => {
     }
 
     function makeConstructionPlanet() {
-        const planet = makePlanetWithPrice({ [constructionServiceResourceType.name]: 5 });
+        const planet = makePlanetWithPrice({ [constructionServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[constructionServiceResourceType.name] = 2;
         return planet;
     }

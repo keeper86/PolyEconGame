@@ -1,7 +1,9 @@
 import type { AutoConfigLocalState } from './marketTypes';
 import {
-    AUTOMATED_COST_FLOOR_BUFFER,
-    BID_OFFER_MAX_COST_MULTIPLIER,
+    ASK_PRICE_SENSITIVITY,
+    ASK_VOLUME_FLOOR_FRACTION,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -146,7 +148,7 @@ export function getVolumeSellPreset(preset: Exclude<SellVolumePresetType, 'custo
 
 export type PricingBuyValues = Pick<
     AutoConfigLocalState,
-    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'targetFillRate' | 'bidOfferMaxCostMultiplier'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'targetFillRate' | 'bidVolumeFloorFraction' | 'bidPriceSensitivity'
 >;
 
 // Helper: format to 2 decimal places as used in presets
@@ -157,19 +159,22 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
         targetFillRate: f2(TARGET_FILL_RATE * 0.78),
-        bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 0.5)),
+        bidVolumeFloorFraction: '0.10',
+        bidPriceSensitivity: '0.60',
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
         targetFillRate: f2(TARGET_FILL_RATE),
-        bidOfferMaxCostMultiplier: String(BID_OFFER_MAX_COST_MULTIPLIER),
+        bidVolumeFloorFraction: String(BID_VOLUME_FLOOR_FRACTION),
+        bidPriceSensitivity: String(BID_PRICE_SENSITIVITY),
     },
     'urgent': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE * 1.06)),
-        bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
+        bidVolumeFloorFraction: '0.35',
+        bidPriceSensitivity: '1.50',
     },
 };
 
@@ -179,19 +184,22 @@ export const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'cu
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.89),
         targetFillRate: f2(TARGET_FILL_RATE_SERVICES * 0.89),
-        bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 0.5)),
+        bidVolumeFloorFraction: '0.10',
+        bidPriceSensitivity: '0.60',
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
         targetFillRate: f2(TARGET_FILL_RATE_SERVICES),
-        bidOfferMaxCostMultiplier: String(BID_OFFER_MAX_COST_MULTIPLIER),
+        bidVolumeFloorFraction: String(BID_VOLUME_FLOOR_FRACTION),
+        bidPriceSensitivity: String(BID_PRICE_SENSITIVITY),
     },
     'urgent': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE_SERVICES * 1.04)),
-        bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
+        bidVolumeFloorFraction: '0.35',
+        bidPriceSensitivity: '1.50',
     },
 };
 
@@ -206,26 +214,29 @@ export function getPricingBuyPreset(
 
 export type PricingSellValues = Pick<
     AutoConfigLocalState,
-    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'automatedCostFloorBuffer' | 'targetSellThrough'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'askVolumeFloorFraction' | 'askPriceSensitivity' | 'targetSellThrough'
 >;
 
 export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
+        askVolumeFloorFraction: '0.40',
+        askPriceSensitivity: '1.50',
         targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH * 1.06)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER),
+        askVolumeFloorFraction: String(ASK_VOLUME_FLOOR_FRACTION),
+        askPriceSensitivity: String(ASK_PRICE_SENSITIVITY),
         targetSellThrough: f2(TARGET_SELL_THROUGH),
     },
     'premium': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
+        askVolumeFloorFraction: '0.10',
+        askPriceSensitivity: '0.60',
         targetSellThrough: f2(TARGET_SELL_THROUGH * 0.7),
     },
 };
@@ -235,19 +246,22 @@ export const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
+        askVolumeFloorFraction: '0.40',
+        askPriceSensitivity: '1.50',
         targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH_SERVICES * 1.04)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER),
+        askVolumeFloorFraction: String(ASK_VOLUME_FLOOR_FRACTION),
+        askPriceSensitivity: String(ASK_PRICE_SENSITIVITY),
         targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES),
     },
     'premium': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
-        automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
+        askVolumeFloorFraction: '0.10',
+        askPriceSensitivity: '0.60',
         targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES * 0.75),
     },
 };
@@ -274,13 +288,15 @@ const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
     'priceAdjustMaxUp',
     'priceAdjustMaxDown',
     'targetFillRate',
-    'bidOfferMaxCostMultiplier',
+    'bidVolumeFloorFraction',
+    'bidPriceSensitivity',
 ];
 
 const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
     'priceAdjustMaxUp',
     'priceAdjustMaxDown',
-    'automatedCostFloorBuffer',
+    'askVolumeFloorFraction',
+    'askPriceSensitivity',
     'targetSellThrough',
 ];
 

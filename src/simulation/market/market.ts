@@ -1,11 +1,4 @@
-import {
-    BID_OFFER_MAX_COST_MULTIPLIER,
-    EPSILON,
-    PRICE_CEIL,
-    PRICE_FLOOR,
-    PRICE_NO_TRADE_CONVERGENCE_RATE,
-    TICKS_PER_MONTH,
-} from '../constants';
+import { BID_ANCHOR_MULTIPLE, EPSILON, PRICE_CEIL, PRICE_FLOOR, PRICE_NO_TRADE_CONVERGENCE_RATE, TICKS_PER_MONTH } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';
@@ -82,7 +75,7 @@ function clearResourceMarket(
     }
 
     const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
-    const dynamicPriceCeil = costFloor * BID_OFFER_MAX_COST_MULTIPLIER;
+    const dynamicPriceCeil = costFloor * BID_ANCHOR_MULTIPLE;
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         for (const ask of askOrders) {

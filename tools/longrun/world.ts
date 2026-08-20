@@ -210,9 +210,7 @@ export function buildBenchmarkWorld(
             assets.market.buy[constructionServiceResourceType.name] = {
                 resource: constructionServiceResourceType,
                 automated: true,
-                autoConfig: {
-                    bidOfferMaxCostMultiplier: 2 + 5 * nextRandom(),
-                },
+                autoConfig: buildBuyAutoConfigForResource(personality.buyAutoConfig, constructionServiceResourceType),
             };
 
             for (const { resource } of fac.produces) {
@@ -223,7 +221,6 @@ export function buildBenchmarkWorld(
                     const groceryStrategy: AutomatedPricingConfig = {
                         priceAdjustMaxUp: 1.02,
                         priceAdjustMaxDown: 0.98,
-                        automatedCostFloorBuffer: 1.1,
                         targetSellThrough: 0.8,
                     };
                     assets.market.sell[resource.name] = { resource, automated: true, autoConfig: groceryStrategy };

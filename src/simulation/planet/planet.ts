@@ -159,8 +159,6 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 export interface AutomatedPricingConfig {
     priceAdjustMaxUp?: number;
     priceAdjustMaxDown?: number;
-    costSpringStrength?: number;
-    bidOfferMaxCostMultiplier?: number;
     inventorySmoothingMaxExtra?: number;
 
     freeBuyQuantity?: number;
@@ -169,10 +167,13 @@ export interface AutomatedPricingConfig {
     freeRetainmentSmoothingMaxExtra?: number;
 
     targetSellThrough?: number;
-    automatedCostFloorBuffer?: number;
+    askVolumeFloorFraction?: number;
+    askPriceSensitivity?: number;
 
     inputBufferTargetTicks?: number;
     targetFillRate?: number;
+    bidVolumeFloorFraction?: number;
+    bidPriceSensitivity?: number;
 }
 
 export type SellDiagnostics = {
@@ -180,8 +181,6 @@ export type SellDiagnostics = {
     smoothedSellThrough: number;
     targetSellThrough: number;
     baseFactor: number;
-    costSpringDeviation: number;
-    overDeviation: number;
     netFactor: number;
     oldPrice: number;
     newPrice: number;
@@ -189,6 +188,8 @@ export type SellDiagnostics = {
     marketPrice: number;
     effectiveQuantity: number;
     rawRetainment: number;
+    volumeFraction: number;
+    priceCostRatio: number;
 };
 
 export type BuyDiagnostics = {
@@ -196,8 +197,6 @@ export type BuyDiagnostics = {
     smoothedFillRate: number;
     targetFillRate: number;
     baseFactor: number;
-    ceilingPrice: number;
-    ceilingSpring: number;
     netFactor: number;
     oldBidPrice: number;
     newBidPrice: number;
@@ -205,6 +204,8 @@ export type BuyDiagnostics = {
     marketPrice: number;
     shortfall: number;
     storageTarget: number;
+    volumeFraction: number;
+    priceCostRatio: number;
 };
 
 export type AgentMarketOfferState = {

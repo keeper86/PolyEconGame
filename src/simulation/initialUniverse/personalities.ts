@@ -1,7 +1,9 @@
 import { nextRandom } from '../utils/stochasticRound';
 import {
-    AUTOMATED_COST_FLOOR_BUFFER,
-    BID_OFFER_MAX_COST_MULTIPLIER,
+    ASK_PRICE_SENSITIVITY,
+    ASK_VOLUME_FLOOR_FRACTION,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -25,10 +27,10 @@ const SELL_PRICING_PRESETS: SellPricingPreset[] = ['liquidation', 'market-rate',
 
 function weightedDraw<T>(center: T, extremeA: T, extremeB: T): T {
     const r = nextRandom();
-    if (r < 0) {
+    if (r < 0.25) {
         return extremeA;
     }
-    if (r < 1) {
+    if (r < 0.75) {
         return center;
     }
     return extremeB;
@@ -73,19 +75,22 @@ const PRICING_BUY_CONFIGS: Record<BuyPricingPreset, Partial<AutomatedPricingConf
         priceAdjustMaxUp: parseFloat(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96).toFixed(2)),
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
         targetFillRate: parseFloat((TARGET_FILL_RATE * 0.78).toFixed(2)),
-        bidOfferMaxCostMultiplier: Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 0.5),
+        bidVolumeFloorFraction: 0.1,
+        bidPriceSensitivity: 0.6,
     },
     'market-rate': {
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         targetFillRate: TARGET_FILL_RATE,
-        bidOfferMaxCostMultiplier: BID_OFFER_MAX_COST_MULTIPLIER,
+        bidVolumeFloorFraction: BID_VOLUME_FLOOR_FRACTION,
+        bidPriceSensitivity: BID_PRICE_SENSITIVITY,
     },
     'urgent': {
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         targetFillRate: parseFloat(Math.min(1, TARGET_FILL_RATE * 1.06).toFixed(2)),
-        bidOfferMaxCostMultiplier: Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67),
+        bidVolumeFloorFraction: 0.35,
+        bidPriceSensitivity: 1.5,
     },
 };
 
@@ -105,20 +110,23 @@ const PRICING_SELL_CONFIGS: Record<SellPricingPreset, Partial<AutomatedPricingCo
     'liquidation': {
         priceAdjustMaxUp: parseFloat(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96).toFixed(2)),
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
-        automatedCostFloorBuffer: parseFloat((AUTOMATED_COST_FLOOR_BUFFER * 0.67).toFixed(2)),
         targetSellThrough: parseFloat(Math.min(1, TARGET_SELL_THROUGH * 1.06).toFixed(2)),
+        askVolumeFloorFraction: 0.4,
+        askPriceSensitivity: 1.5,
     },
     'market-rate': {
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        automatedCostFloorBuffer: AUTOMATED_COST_FLOOR_BUFFER,
         targetSellThrough: TARGET_SELL_THROUGH,
+        askVolumeFloorFraction: ASK_VOLUME_FLOOR_FRACTION,
+        askPriceSensitivity: ASK_PRICE_SENSITIVITY,
     },
     'premium': {
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
-        automatedCostFloorBuffer: parseFloat((AUTOMATED_COST_FLOOR_BUFFER * 1.67).toFixed(2)),
         targetSellThrough: parseFloat((TARGET_SELL_THROUGH * 0.7).toFixed(2)),
+        askVolumeFloorFraction: 0.1,
+        askPriceSensitivity: 0.6,
     },
 };
 
@@ -127,35 +135,15 @@ export interface AgentPersonality {
     sellAutoConfig: AutomatedPricingConfig;
 }
 
-//Box-Muller
-const gauss = (mean: number, std: number) =>
-    Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
-
 export function generateAgentPersonality(): AgentPersonality {
-    const buyVolume = drawBuyVolume();
-    const buyPricing = drawBuyPricing();
-    const sellVolume = drawSellVolume();
-    const sellPricing = drawSellPricing();
-
-    const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
-    const priceAdjustmentAggressivenessDown = Math.max(0.001, 0.975 - 0.05 * gauss(0.5, 0.2));
-    const sellPriceAgressiveness = Math.max(0.1, 0.75 + 0.75 * gauss(0.5, 0.2));
-    const buyPriceAgressiveness = Math.max(1, 2 + 6 * gauss(0.5, 0.2));
-
     return {
         buyAutoConfig: {
-            ...VOLUME_BUY_CONFIGS[buyVolume],
-            ...PRICING_BUY_CONFIGS[buyPricing],
-            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
-            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
-            bidOfferMaxCostMultiplier: buyPriceAgressiveness,
+            ...VOLUME_BUY_CONFIGS['balanced'],
+            ...PRICING_BUY_CONFIGS['market-rate'],
         },
         sellAutoConfig: {
-            ...VOLUME_SELL_CONFIGS[sellVolume],
-            ...PRICING_SELL_CONFIGS[sellPricing],
-            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
-            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
-            automatedCostFloorBuffer: sellPriceAgressiveness,
+            ...VOLUME_SELL_CONFIGS['balanced'],
+            ...PRICING_SELL_CONFIGS['market-rate'],
         },
     };
 }

@@ -14,13 +14,14 @@ describe('autoConfigToLocal', () => {
         const config: AutomatedPricingConfig = {
             priceAdjustMaxUp: 1.05,
             priceAdjustMaxDown: 0.95,
-            costSpringStrength: 0.1,
-            bidOfferMaxCostMultiplier: 6,
             inventorySmoothingMaxExtra: 2,
             targetSellThrough: 0.9,
-            automatedCostFloorBuffer: 0.5,
+            askVolumeFloorFraction: 0.3,
+            askPriceSensitivity: 1.5,
             inputBufferTargetTicks: 30,
             targetFillRate: 0.9,
+            bidVolumeFloorFraction: 0.25,
+            bidPriceSensitivity: 1.2,
             freeBuyQuantity: 1000,
             freeRetainment: 2000,
             freeBuyQuantitySmoothingMaxExtra: 2,
@@ -29,13 +30,14 @@ describe('autoConfigToLocal', () => {
         const local = autoConfigToLocal(config);
         expect(local.priceAdjustMaxUp).toBe('1.05');
         expect(local.priceAdjustMaxDown).toBe('0.95');
-        expect(local.costSpringStrength).toBe('0.1');
-        expect(local.bidOfferMaxCostMultiplier).toBe('6');
         expect(local.inventorySmoothingMaxExtra).toBe('2');
         expect(local.targetSellThrough).toBe('0.9');
-        expect(local.automatedCostFloorBuffer).toBe('0.5');
+        expect(local.askVolumeFloorFraction).toBe('0.3');
+        expect(local.askPriceSensitivity).toBe('1.5');
         expect(local.inputBufferTargetTicks).toBe('30');
         expect(local.targetFillRate).toBe('0.9');
+        expect(local.bidVolumeFloorFraction).toBe('0.25');
+        expect(local.bidPriceSensitivity).toBe('1.2');
         expect(local.freeBuyQuantity).toBe('1000');
         expect(local.freeRetainment).toBe('2000');
         expect(local.freeBuyQuantitySmoothingMaxExtra).toBe('2');
@@ -47,7 +49,7 @@ describe('autoConfigToLocal', () => {
         const local = autoConfigToLocal(config);
         expect(local.priceAdjustMaxUp).toBe('1.1');
         expect(local.priceAdjustMaxDown).toBe('');
-        expect(local.costSpringStrength).toBe('');
+        expect(local.bidVolumeFloorFraction).toBe('');
     });
 });
 
@@ -56,13 +58,14 @@ describe('localToAutoConfig', () => {
         const local: AutoConfigLocalState = {
             priceAdjustMaxUp: '',
             priceAdjustMaxDown: '',
-            costSpringStrength: '',
-            bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
             targetSellThrough: '',
-            automatedCostFloorBuffer: '',
+            askVolumeFloorFraction: '',
+            askPriceSensitivity: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
+            bidVolumeFloorFraction: '',
+            bidPriceSensitivity: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
@@ -75,13 +78,14 @@ describe('localToAutoConfig', () => {
         const local: AutoConfigLocalState = {
             priceAdjustMaxUp: '1.05',
             priceAdjustMaxDown: '0.95',
-            costSpringStrength: '',
-            bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
             targetSellThrough: '',
-            automatedCostFloorBuffer: '',
+            askVolumeFloorFraction: '',
+            askPriceSensitivity: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
+            bidVolumeFloorFraction: '',
+            bidPriceSensitivity: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
@@ -91,20 +95,21 @@ describe('localToAutoConfig', () => {
         expect(config).toBeDefined();
         expect(config!.priceAdjustMaxUp).toBe(1.05);
         expect(config!.priceAdjustMaxDown).toBe(0.95);
-        expect(config!.costSpringStrength).toBeUndefined();
+        expect(config!.askPriceSensitivity).toBeUndefined();
     });
 
     it('skips fields with non-numeric values', () => {
         const local: AutoConfigLocalState = {
             priceAdjustMaxUp: 'abc',
             priceAdjustMaxDown: '',
-            costSpringStrength: '',
-            bidOfferMaxCostMultiplier: '',
             inventorySmoothingMaxExtra: '',
             targetSellThrough: '',
-            automatedCostFloorBuffer: '',
+            askVolumeFloorFraction: '',
+            askPriceSensitivity: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
+            bidVolumeFloorFraction: '',
+            bidPriceSensitivity: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
@@ -125,7 +130,7 @@ describe('localToAutoConfig', () => {
         expect(restored!.priceAdjustMaxUp).toBe(1.1);
         expect(restored!.priceAdjustMaxDown).toBe(0.9);
         expect(restored!.targetFillRate).toBe(0.85);
-        expect(restored!.costSpringStrength).toBeUndefined();
+        expect(restored!.bidPriceSensitivity).toBeUndefined();
     });
 });
 

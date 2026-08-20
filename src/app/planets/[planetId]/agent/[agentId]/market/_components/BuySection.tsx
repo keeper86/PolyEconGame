@@ -11,7 +11,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
-    BID_OFFER_MAX_COST_MULTIPLIER,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -282,7 +283,8 @@ export default function BuySection({
             local.buyAutoConfig.priceAdjustMaxUp,
             local.buyAutoConfig.priceAdjustMaxDown,
             local.buyAutoConfig.targetFillRate,
-            local.buyAutoConfig.bidOfferMaxCostMultiplier,
+            local.buyAutoConfig.bidVolumeFloorFraction,
+            local.buyAutoConfig.bidPriceSensitivity,
             isService,
         ],
     );
@@ -347,7 +349,8 @@ export default function BuySection({
     const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
-        'bidOfferMaxCostMultiplier',
+        'bidVolumeFloorFraction',
+        'bidPriceSensitivity',
         'targetFillRate',
     ];
     const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
@@ -518,18 +521,24 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Soft max bid (in est. cost)'
-                                            value={sliderVal(
-                                                'bidOfferMaxCostMultiplier',
-                                                BID_OFFER_MAX_COST_MULTIPLIER,
-                                            )}
-                                            committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
+                                            label='Min volume fraction'
+                                            value={sliderVal('bidVolumeFloorFraction', BID_VOLUME_FLOOR_FRACTION)}
+                                            committed={committedVal(committedConfig, 'bidVolumeFloorFraction')}
                                             min={0}
-                                            max={10}
-                                            step={0.25}
-                                            onChange={(v) =>
-                                                handleSliderChange({ bidOfferMaxCostMultiplier: String(v) })
-                                            }
+                                            max={1}
+                                            step={0.05}
+                                            isPercent
+                                            onChange={(v) => handleSliderChange({ bidVolumeFloorFraction: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Price sensitivity'
+                                            value={sliderVal('bidPriceSensitivity', BID_PRICE_SENSITIVITY)}
+                                            committed={committedVal(committedConfig, 'bidPriceSensitivity')}
+                                            min={0.1}
+                                            max={3}
+                                            step={0.1}
+                                            onChange={(v) => handleSliderChange({ bidPriceSensitivity: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
