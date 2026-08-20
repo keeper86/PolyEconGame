@@ -154,7 +154,7 @@ export function calculateProvisions(manifest: PassengerManifest, flightTicks: nu
 
         groceryRequired +=
             cat.total *
-            groceryDef.consumptionRatePerPersonPerTick(
+            groceryDef.fillRatePerPersonPerTick(
                 idx.age,
                 idx.occ,
                 { mean: 0, variance: 0 },
@@ -163,7 +163,7 @@ export function calculateProvisions(manifest: PassengerManifest, flightTicks: nu
             (flightTicks + groceryDef.bufferTargetTicks);
         healthcareRequired +=
             cat.total *
-            healthcareDef.consumptionRatePerPersonPerTick(
+            healthcareDef.fillRatePerPersonPerTick(
                 idx.age,
                 idx.occ,
                 { mean: 0, variance: 0 },
@@ -172,7 +172,7 @@ export function calculateProvisions(manifest: PassengerManifest, flightTicks: nu
             (flightTicks + healthcareDef.bufferTargetTicks);
         educationRequired +=
             cat.total *
-            educationDef.consumptionRatePerPersonPerTick(
+            educationDef.fillRatePerPersonPerTick(
                 idx.age,
                 idx.occ,
                 { mean: 0, variance: 0 },

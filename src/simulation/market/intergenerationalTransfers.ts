@@ -76,7 +76,7 @@ function buildAggregateCache(
                 cell.buffers[key] =
                     (cell.buffers[key] ?? 0) +
                     cat.services[key].buffer *
-                        svc.decayRatePerPersonPerTick(age, occ, cell.wealth, referenceMonthlyIncomeValue) *
+                        svc.consumptionRatePerPersonPerTick(age, occ, cell.wealth, referenceMonthlyIncomeValue) *
                         n;
             }
         });
@@ -175,7 +175,7 @@ function computeDependentNeedsForTier(
                     const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                     const targetPerPerson =
                         def.bufferTargetTicks *
-                        def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
+                        def.fillRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
                         coverageFraction;
                     const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
 
@@ -490,7 +490,7 @@ function creditDependents(
                 const perCapitaBuffer = (buffers[key] ?? 0) / pop;
                 const targetPerPerson =
                     def.bufferTargetTicks *
-                    def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
+                    def.fillRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) *
                     coverageFraction;
                 const gap = Math.max(0, targetPerPerson - perCapitaBuffer);
                 const fillFraction = targetPerPerson > 0 ? Math.min(1, perCapitaBuffer / targetPerPerson) : 1;

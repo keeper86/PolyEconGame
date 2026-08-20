@@ -34,7 +34,7 @@ export type ServiceDefinition = {
      *  (the stock lifetime) so a large capital asset like housing builds quickly but decays slowly. */
     readonly refillTicks: number;
     /** Flow rate used for household bids and buffer accounting. May be wealth-gated (e.g. housing). */
-    readonly consumptionRatePerPersonPerTick: (
+    readonly fillRatePerPersonPerTick: (
         age: number,
         occ: Occupation,
         wealth: GaussianMoments,
@@ -42,7 +42,7 @@ export type ServiceDefinition = {
     ) => number;
     /** Flow rate used for buffer decay (consumeServices) and buffer weighting. Independent of wealth
      *  for housing so a house always perishes over its lifetime, regardless of who owns it. */
-    readonly decayRatePerPersonPerTick: (
+    readonly consumptionRatePerPersonPerTick: (
         age: number,
         occ: Occupation,
         wealth: GaussianMoments,
@@ -142,8 +142,8 @@ const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
     bufferTargetTicks: 2 * TICKS_PER_MONTH,
     refillTicks: 2 * TICKS_PER_MONTH,
+    fillRatePerPersonPerTick: groceryRate,
     consumptionRatePerPersonPerTick: groceryRate,
-    decayRatePerPersonPerTick: groceryRate,
 } as const;
 
 const healthcareRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -155,8 +155,8 @@ const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
     bufferTargetTicks: 3 * TICKS_PER_MONTH,
     refillTicks: 3 * TICKS_PER_MONTH,
+    fillRatePerPersonPerTick: healthcareRate,
     consumptionRatePerPersonPerTick: healthcareRate,
-    decayRatePerPersonPerTick: healthcareRate,
 } as const;
 
 const logisticsRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -168,8 +168,8 @@ const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     refillTicks: TICKS_PER_MONTH,
+    fillRatePerPersonPerTick: logisticsRate,
     consumptionRatePerPersonPerTick: logisticsRate,
-    decayRatePerPersonPerTick: logisticsRate,
 } as const;
 
 const educationRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -181,8 +181,8 @@ const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     bufferTargetTicks: TICKS_PER_YEAR,
     refillTicks: TICKS_PER_YEAR,
+    fillRatePerPersonPerTick: educationRate,
     consumptionRatePerPersonPerTick: educationRate,
-    decayRatePerPersonPerTick: educationRate,
 } as const;
 
 const retailRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
@@ -194,8 +194,8 @@ const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
     refillTicks: TICKS_PER_MONTH,
+    fillRatePerPersonPerTick: retailRate,
     consumptionRatePerPersonPerTick: retailRate,
-    decayRatePerPersonPerTick: retailRate,
 } as const;
 
 const housingAgeMultiplier = (age: number, _occ: Occupation): number => {
@@ -220,9 +220,9 @@ const constructionDefinition: ServiceDefinition = {
     resource: constructionServiceResourceType,
     bufferTargetTicks: HOUSING_LIFETIME_MONTHS * TICKS_PER_MONTH,
     refillTicks: HOUSING_BUILD_MONTHS * TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
+    fillRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
         housingDecayRate(age, occ) * housingEngelMultiplier(wealth, refIncome),
-    decayRatePerPersonPerTick: (age, occ, _wealth, _refIncome) => housingDecayRate(age, occ),
+    consumptionRatePerPersonPerTick: (age, occ, _wealth, _refIncome) => housingDecayRate(age, occ),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
@@ -288,7 +288,7 @@ export function computeTierCost(
     return tier.services.reduce((sum, key) => {
         const def = SERVICE_DEFINITIONS[key];
         const price = marketPrices[def.resource.name] ?? 0;
-        return sum + def.consumptionRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) * price;
+        return sum + def.fillRatePerPersonPerTick(age, occ, wealth, referenceMonthlyIncomeValue) * price;
     }, 0);
 }
 
