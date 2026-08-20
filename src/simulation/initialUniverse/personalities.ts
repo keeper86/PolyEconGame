@@ -137,7 +137,8 @@ export function generateAgentPersonality(): AgentPersonality {
     const sellVolume = drawSellVolume();
     const sellPricing = drawSellPricing();
 
-    const priceAdjustmentAggressiveness = Math.max(0.001, 0.025 + 0.05 * gauss(0.5, 0.2));
+    const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
+    const priceAdjustmentAggressivenessDown = Math.max(0.001, 0.975 - 0.05 * gauss(0.5, 0.2));
     const sellPriceAgressiveness = Math.max(0.1, 0.75 + 0.75 * gauss(0.5, 0.2));
     const buyPriceAgressiveness = Math.max(1, 2 + 6 * gauss(0.5, 0.2));
 
@@ -145,15 +146,15 @@ export function generateAgentPersonality(): AgentPersonality {
         buyAutoConfig: {
             ...VOLUME_BUY_CONFIGS[buyVolume],
             ...PRICING_BUY_CONFIGS[buyPricing],
-            priceAdjustMaxDown: priceAdjustmentAggressiveness,
-            priceAdjustMaxUp: priceAdjustmentAggressiveness,
+            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
+            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
             bidOfferMaxCostMultiplier: buyPriceAgressiveness,
         },
         sellAutoConfig: {
             ...VOLUME_SELL_CONFIGS[sellVolume],
             ...PRICING_SELL_CONFIGS[sellPricing],
-            priceAdjustMaxDown: priceAdjustmentAggressiveness,
-            priceAdjustMaxUp: priceAdjustmentAggressiveness,
+            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
+            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
             automatedCostFloorBuffer: sellPriceAgressiveness,
         },
     };
