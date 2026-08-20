@@ -52,7 +52,7 @@ export function HRBufferGauge({
             },
             {
                 value: 0,
-                priority: 2,
+                priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(0, maxValue)}>
                         0 days
