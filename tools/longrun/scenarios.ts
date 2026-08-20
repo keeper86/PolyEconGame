@@ -198,7 +198,7 @@ export const SCENARIOS: Scenario[] = [
     {
         name: 'wealthTax',
         description:
-            'Wealth tax on companies (0.5%/yr on net worth above the inflation-indexed 1B allowance) with per-capita redistribution to non-employed cohorts. 1 agent per product, 50-year stability and growth.',
+            'Company wealth tax (0.5%/yr on net worth above the inflation-indexed 1B allowance), collected monthly. The budget is transferred daily to dependents as needs-based support (government as first supporter, inter-population transfers cover the rest). 1 agent per product, 50-year stability and growth.',
         seed: 1001,
         years: 50,
         world: { agentsPerProduct: 1 },

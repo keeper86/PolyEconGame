@@ -15,6 +15,7 @@ import {
     collectWealthTax,
     computeCompanyNetWorth,
     computeWealthTax,
+    governmentSupportTick,
     governmentTick,
     wealthTaxAllowance,
 } from './governmentAgent';
@@ -128,7 +129,7 @@ describe('collectWealthTax', () => {
 });
 
 describe('governmentTick', () => {
-    it('collects the tax into the budget and redistributes it per capita to households', () => {
+    it('collects the tax into the budget without redistributing', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const company = makeAgent('co-1', PLANET_ID);
         company.assets[PLANET_ID]!.deposits = 2_000_000_000;
@@ -142,8 +143,71 @@ describe('governmentTick', () => {
         governmentTick(gameState, planet, gov);
 
         const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
-        expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + expectedTax);
-        expect(gov.assets[PLANET_ID]!.deposits).toBe(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(expectedTax);
+        expect(planet.bank.householdDeposits).toBe(householdBefore);
         expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(2_000_000_000 - expectedTax);
+    });
+});
+
+describe('governmentSupportTick', () => {
+    function makeNeedyPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
+        const planet = makePlanet({ governmentId: gov.id });
+        const cat = planet.population.demography[70].unoccupied.none;
+        cat.total = 1000;
+        cat.wealth = { mean: 0, variance: 0 };
+        cat.services.grocery.buffer = 0;
+        return planet;
+    }
+
+    it('credits dependents with needs from the stash and draws it down', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeNeedyPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 10_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const householdBefore = planet.bank.householdDeposits;
+        const cat = planet.population.demography[70].unoccupied.none;
+        const wealthBefore = cat.total * cat.wealth.mean;
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(spent).toBeLessThanOrEqual(10_000_000);
+        expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(10_000_000 - spent);
+        expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
+        expect(cat.total * cat.wealth.mean).toBeCloseTo(wealthBefore + spent);
+        expect(planet.governmentSupportVolume).toBeCloseTo(spent);
+    });
+
+    it('keeps the excess in the stash when the budget exceeds the needs', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeNeedyPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBeGreaterThan(90_000_000_000);
+    });
+
+    it('does nothing without a stash', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeNeedyPlanet(gov);
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        expect(governmentSupportTick(gameState, planet)).toBe(0);
+        expect(planet.bank.householdDeposits).toBe(0);
+    });
+
+    it('does nothing when nobody has unmet needs', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makePlanet({ governmentId: gov.id });
+        gov.assets[PLANET_ID]!.deposits = 10_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBe(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBe(10_000_000);
     });
 });

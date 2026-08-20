@@ -16,6 +16,7 @@ import {
     makePlanet,
     makePopulationWithWorkers,
     makeProductionFacility,
+    makeStorageFacility,
     makeWorld,
     totalPopulation,
 } from './utils/testHelper';
@@ -23,6 +24,8 @@ import { createWorkforceEventAccumulator } from './workforce/workforceDemographi
 import { produceResourceType } from './planet/resources';
 import type { ProductionFacility } from './planet/facility';
 import { putIntoStorageFacility, queryStorageFacility } from './planet/facility';
+import { facilityRestorationCapacityPerTick } from './planet/facilityMaintenance';
+import { constructionServiceResourceType } from './planet/services';
 import type { Resource } from './planet/claims';
 
 function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Record<EducationLevelType, number>>) {
@@ -530,4 +533,45 @@ describe('population ↔ workforce consistency', () => {
         },
         { timeout: 10000 },
     );
+});
+
+describe('engine tick order — restoration outcompetes expansion for construction service', () => {
+    it('restores a degraded expanding facility before its expansion drains the construction buffer', () => {
+        const government = makeGovernmentAgent('gov-1', 'planet-1');
+        const planet = makePlanet({
+            id: 'planet-1',
+            governmentId: government.id,
+            marketPrices: { [constructionServiceResourceType.name]: 5 },
+        });
+
+        const agent = makeAgent('co-1', 'planet-1');
+        agent.assets['planet-1'].storageFacility = makeStorageFacility({ planetId: 'planet-1' });
+        agent.assets['planet-1'].storageFacility.department = null;
+
+        const facility = makeProductionFacility({ none: 1 }, { id: 'f-1', scale: 1 });
+        facility.needs = [];
+        facility.maxMaintenance = 0.5;
+        facility.maintenanceStatus = 0.5;
+        facility.construction = {
+            type: 'expansion',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+        };
+        agent.assets['planet-1'].productionFacilities = [facility];
+
+        const gameState = makeGameState([planet], [government, agent, planet.recycler]);
+        const storage = agent.assets['planet-1'].storageFacility;
+        const restorationNeed = facilityRestorationCapacityPerTick(facility);
+        expect(restorationNeed).toBeGreaterThan(0);
+        putIntoStorageFacility(storage, constructionServiceResourceType, restorationNeed);
+
+        gameState.tick = 1;
+        advanceTick(gameState);
+
+        expect(facility.maxMaintenance).toBeGreaterThan(0.5);
+        expect(queryStorageFacility(storage, constructionServiceResourceType.name)).toBeLessThan(restorationNeed);
+    });
 });

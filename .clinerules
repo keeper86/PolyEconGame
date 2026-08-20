@@ -145,3 +145,7 @@ This will format, lint, build and run all tests. The CI pipeline runs this comma
 2. Check invariants in `src/simulation/invariants.ts`
 3. Examine worker logs
 4. Use test helpers in `src/simulation/utils/testHelper.ts`
+
+## Memory
+
+You find something so important you wished knew earlier:

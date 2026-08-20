@@ -769,8 +769,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthP10 = weightedQuantile(wealthEntries, 0.1);
     const wealthP90 = weightedQuantile(wealthEntries, 0.9);
     const wealthTotal = wealthWeighted;
-    const redistributedTotal = wealthTaxCollected;
-    const redistributedPerCapita = totalPopulation > 0 ? wealthTaxCollected / totalPopulation : 0;
+    const redistributedTotal = planet.governmentSupportVolume;
+    const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
 
     const companyNetWorthMin = companyNetWorths.length > 0 ? Math.min(...companyNetWorths) : 0;

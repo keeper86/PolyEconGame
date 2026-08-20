@@ -2,27 +2,25 @@ import { MONTHS_PER_YEAR, WEALTH_TAX_ALLOWANCE, WEALTH_TAX_ANNUAL_RATE } from '.
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
 import { totalOutstandingLoans } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
-import { educationLevelKeys } from '../population/education';
-import { MAX_AGE, OCCUPATIONS, type Occupation } from '../population/population';
-import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
+import { governmentSupport } from '../market/intergenerationalTransfers';
+import type { Agent, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 let wealthTaxDisabled = false;
+let governmentSupportDisabled = false;
 let wealthTaxAnnualRateOverride: number | null = null;
-export type RedistributionTarget = 'all' | 'employed' | 'nonEmployed';
-let redistributionTarget: RedistributionTarget = 'nonEmployed';
 
 export function setWealthTaxDisabled(disabled: boolean): void {
     wealthTaxDisabled = disabled;
 }
 
-export function setWealthTaxAnnualRate(annualRate: number): void {
-    wealthTaxAnnualRateOverride = annualRate;
+export function setGovernmentSupportDisabled(disabled: boolean): void {
+    governmentSupportDisabled = disabled;
 }
 
-export function setRedistributionTarget(target: RedistributionTarget): void {
-    redistributionTarget = target;
+export function setWealthTaxAnnualRate(annualRate: number): void {
+    wealthTaxAnnualRateOverride = annualRate;
 }
 
 export const wealthTaxAllowance = (planet: Planet): number => {
@@ -80,65 +78,27 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
     return total;
 };
 
-function redistributePerCapita(planet: Planet, assets: AgentPlanetAssets): void {
-    const budget = assets.deposits;
-    if (budget <= 0) {
-        return;
-    }
-    const occupations: readonly Occupation[] =
-        redistributionTarget === 'employed'
-            ? (['employed'] as const)
-            : redistributionTarget === 'nonEmployed'
-              ? (['education', 'unoccupied', 'unableToWork'] as const)
-              : OCCUPATIONS;
-    let totalPopulation = 0;
-    for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCohort = planet.population.demography[age];
-        if (!ageCohort) {
-            continue;
-        }
-        for (const occ of occupations) {
-            for (const edu of educationLevelKeys) {
-                totalPopulation += ageCohort[occ][edu].total;
-            }
-        }
-    }
-    if (totalPopulation <= 0) {
-        return;
-    }
-    const perCapita = budget / totalPopulation;
-    let totalDistributed = 0;
-    for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCohort = planet.population.demography[age];
-        if (!ageCohort) {
-            continue;
-        }
-        for (const occ of occupations) {
-            for (const edu of educationLevelKeys) {
-                const cat = ageCohort[occ][edu];
-                if (cat.total > 0) {
-                    cat.wealth.mean += perCapita;
-                    totalDistributed += perCapita * cat.total;
-                }
-            }
-        }
-    }
-    planet.bank.householdDeposits += totalDistributed;
-    assets.deposits = Math.max(0, assets.deposits - totalDistributed);
-}
-
 export const governmentTick = (gameState: GameState, planet: Planet, agent: Agent) => {
     if (agent.id !== planet.governmentId) {
         throw new Error(`Tick called on non-government agent ${agent.id} of planet ${planet.id}`);
     }
-
-    const assets = agent.assets[planet.id];
-    if (!assets) {
-        return;
-    }
     collectWealthTax(gameState, planet);
-    if (assets.deposits <= 0) {
-        return;
+};
+
+export const governmentSupportTick = (gameState: GameState, planet: Planet): number => {
+    if (governmentSupportDisabled) {
+        return 0;
     }
-    redistributePerCapita(planet, assets);
+    const assets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+    if (!assets || assets.deposits <= 0) {
+        return 0;
+    }
+    const spent = governmentSupport(planet, assets.deposits);
+    if (spent <= 0) {
+        return 0;
+    }
+    assets.deposits -= spent;
+    planet.bank.householdDeposits += spent;
+    planet.governmentSupportVolume += spent;
+    return spent;
 };

@@ -402,6 +402,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         },
         transportPipeline: {},
         monthTransferVolume: 0,
+        governmentSupportVolume: 0,
         orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},

@@ -18,8 +18,8 @@ export function TickOrderSection() {
                     <code>environmentTick</code> — pollution decay, renewable resource regeneration
                 </li>
                 <li>
-                    <code>governmentTick</code> — company wealth tax collection + per-capita redistribution of the
-                    budget to all population cohorts
+                    <em>(start of month)</em> <code>governmentTick</code> — company wealth tax collection into the
+                    government budget (0.5%/yr on net worth above the inflation-indexed allowance)
                 </li>
                 <li>
                     <code>workforceDemographicTick</code> — voluntary quits, retirement, mortality & disability of
@@ -45,8 +45,12 @@ export function TickOrderSection() {
                     <code>preProductionFinancialTick</code> — working-capital loans & wage payment (firm → households)
                 </li>
                 <li>
+                    <code>governmentSupportTick</code> — daily needs-based support from the government budget (first
+                    supporter for dependents; leftover stays in the government)
+                </li>
+                <li>
                     <code>intergenerationalTransfersForPlanet</code> — 5-phase family wealth redistribution (grocery
-                    buffer gap driven)
+                    buffer gap driven); covers whatever need the government left unmet
                 </li>
                 <li>
                     <code>updateProductionCostFloors</code> — recompute per-facility cost floor for break-even pricing
@@ -64,12 +68,17 @@ export function TickOrderSection() {
                     <code>accumulatePlanetPrices</code> — EMA update of reference market prices
                 </li>
                 <li>
-                    <code>constructionTick</code> — advance facility scale-up progress using purchased construction
-                    service; unlock new <code>maxScale</code> when complete
-                </li>
-                <li>
                     <code>productionTick</code> — water-fill worker allocation, resource efficiency, output generation,
                     input consumption, pollution
+                </li>
+                <li>
+                    <code>facilityMaintenanceTick</code> — repair (maintenance service) and restoration (construction
+                    service) of degraded facilities; runs before <code>constructionTick</code> so restoration
+                    outcompetes expansion for scarce construction service
+                </li>
+                <li>
+                    <code>constructionTick</code> — advance facility scale-up progress using purchased construction
+                    service; unlock new <code>maxScale</code> when complete
                 </li>
                 <li>
                     <code>automaticWageAdjustment</code> — nudges each education-level wage up when its required slots

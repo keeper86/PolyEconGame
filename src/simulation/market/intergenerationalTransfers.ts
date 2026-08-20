@@ -31,22 +31,22 @@ import {
 } from './serviceDefinitions';
 import type { TickProfiler } from '../TickProfiler';
 
-interface DependentNeed {
+export interface DependentNeed {
     totalNeed: number;
 
     totalPop: number;
 }
 
-interface CellAggregate {
+export interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
 
     buffers: Partial<Record<ServiceName, number>>;
 }
 
-type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
+export type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
 
-function buildAggregateCache(
+export function buildAggregateCache(
     demography: Cohort<PopulationCategory>[],
     referenceMonthlyIncomeValue: number,
 ): AggregateCache {
@@ -144,7 +144,7 @@ function computeSurplusSnapshot(cache: AggregateCache, floor: number): number[] 
     return snapshot;
 }
 
-function computeDependentNeedsForTier(
+export function computeDependentNeedsForTier(
     cache: AggregateCache,
     tierServices: ServiceName[],
     marketPrices: Record<string, number>,
@@ -446,7 +446,7 @@ function debitSupporters(
     return actuallyDebited;
 }
 
-function creditDependents(
+export function creditDependents(
     cache: AggregateCache,
     demography: Cohort<PopulationCategory>[],
     age: number,
@@ -457,9 +457,9 @@ function creditDependents(
     alreadyCommittedCost: number,
     referenceMonthlyIncomeValue: number,
     transferMatrix?: PopulationTransferMatrix,
-): void {
+): number {
     if (amount <= 0) {
-        return;
+        return 0;
     }
 
     interface CellInfo {
@@ -506,13 +506,14 @@ function creditDependents(
     }
 
     if (totalPop <= 0) {
-        return;
+        return 0;
     }
 
     if (totalNeed <= 0) {
-        return;
+        return 0;
     }
 
+    let actualCredited = 0;
     for (const cell of cells) {
         if (cell.need <= 0) {
             continue;
@@ -521,8 +522,67 @@ function creditDependents(
         const perCapita = share / cell.pop;
 
         const actualAggregate = distributeWealthChangeTracked(demography, age, cell.occ, cell.edu, perCapita);
+        actualCredited += actualAggregate;
         if (transferMatrix) {
             transferMatrix[age][cell.edu][cell.occ] += actualAggregate;
         }
     }
+    return actualCredited;
+}
+
+export function governmentSupport(planet: Planet, budget: number): number {
+    const demography = planet.population.demography;
+    const numAges = demography.length;
+    if (budget <= 0) {
+        return 0;
+    }
+    const refIncome = referenceMonthlyIncome(planet);
+    let remainingBudget = budget;
+    let cumulativeMandatoryCost = 0;
+    let totalSpent = 0;
+
+    for (const tier of SERVICE_TIERS) {
+        const tierCostPerTick =
+            computeTierCost(planet.marketPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+        const cache = buildAggregateCache(demography, refIncome);
+        const tierNeeds = computeDependentNeedsForTier(
+            cache,
+            tier.services,
+            planet.marketPrices,
+            tier.coverageFraction,
+            cumulativeMandatoryCost,
+            refIncome,
+        );
+        const totalNeed = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
+        if (totalNeed > 0) {
+            const spend = Math.min(remainingBudget, totalNeed);
+            if (spend > 0) {
+                const scarcityFactor = spend / totalNeed;
+                let tierSpent = 0;
+                for (let age = 0; age < numAges; age++) {
+                    const need = tierNeeds[age].totalNeed * scarcityFactor;
+                    if (need <= 0) {
+                        continue;
+                    }
+                    tierSpent += creditDependents(
+                        cache,
+                        demography,
+                        age,
+                        need,
+                        tier.services,
+                        planet.marketPrices,
+                        tier.coverageFraction,
+                        cumulativeMandatoryCost,
+                        refIncome,
+                    );
+                }
+                remainingBudget -= tierSpent;
+                totalSpent += tierSpent;
+            }
+        }
+        if (tier.mandatoryForOwnConsumption) {
+            cumulativeMandatoryCost += tierCostPerTick;
+        }
+    }
+    return totalSpent;
 }

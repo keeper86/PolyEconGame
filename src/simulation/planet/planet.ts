@@ -114,6 +114,8 @@ export type Planet = {
 
     monthTransferVolume: number;
 
+    governmentSupportVolume: number;
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
