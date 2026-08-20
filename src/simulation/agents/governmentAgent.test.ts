@@ -63,18 +63,18 @@ describe('computeWealthTax', () => {
     });
 
     it('taxes WEALTH_TAX_MONTHLY_RATE on the net worth above the allowance', () => {
-        const { gameState, planet, company } = setupWorld(1_000_000_000);
+        const { gameState, planet, company } = setupWorld(2_000_000_000);
         const tax = computeWealthTax(company, planet, gameState.shipCapitalMarket);
-        expect(tax).toBeCloseTo((1_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE);
-        expect(tax).toBeCloseTo(412_500);
+        expect(tax).toBeCloseTo((2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE);
+        expect(tax).toBeCloseTo(416_666.67, 1);
     });
 
     it('never taxes the government, the recycler, or role agents', () => {
         const { gameState, planet, gov } = setupWorld();
-        gov.assets[PLANET_ID]!.deposits = 1_000_000_000;
-        planet.recycler.assets[PLANET_ID]!.deposits = 1_000_000_000;
+        gov.assets[PLANET_ID]!.deposits = 2_000_000_000;
+        planet.recycler.assets[PLANET_ID]!.deposits = 2_000_000_000;
         const trader = makeAgent('trader-1', PLANET_ID, 'Trader', { agentRole: 'arbitrage_trader' });
-        trader.assets[PLANET_ID]!.deposits = 1_000_000_000;
+        trader.assets[PLANET_ID]!.deposits = 2_000_000_000;
 
         expect(computeWealthTax(gov, planet, gameState.shipCapitalMarket)).toBe(0);
         expect(computeWealthTax(planet.recycler, planet, gameState.shipCapitalMarket)).toBe(0);
@@ -97,13 +97,13 @@ describe('computeWealthTax', () => {
 
 describe('collectWealthTax', () => {
     it('transfers the tax from company deposits without creating money', () => {
-        const { gameState, planet, gov, company } = setupWorld(1_000_000_000);
+        const { gameState, planet, gov, company } = setupWorld(2_000_000_000);
         const companyBefore = company.assets[PLANET_ID]!.deposits;
         const govBefore = gov.assets[PLANET_ID]!.deposits;
 
         const total = collectWealthTax(gameState, planet);
 
-        const expectedTax = (1_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
+        const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
         expect(total).toBeCloseTo(expectedTax);
         expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(companyBefore - total);
         expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(govBefore + total);
@@ -115,7 +115,7 @@ describe('collectWealthTax', () => {
     it('caps the payment at available deposits for illiquid companies', () => {
         const { gameState, planet, company } = setupWorld(0);
         company.assets[PLANET_ID]!.productionFacilities = [
-            makeProductionFacility(undefined, { maxScale: 1000, scale: 1000, construction: null }),
+            makeProductionFacility(undefined, { maxScale: 6000, scale: 6000, construction: null }),
         ];
         planet.marketPrices[constructionServiceResourceType.name] = 21;
         planet.lastProductionCostFloors[constructionServiceResourceType.name] = 10;
@@ -128,10 +128,10 @@ describe('collectWealthTax', () => {
 });
 
 describe('governmentTick', () => {
-    it('collects the tax into the budget and redistributes it to poor households', () => {
+    it('collects the tax into the budget and redistributes it per capita to households', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const company = makeAgent('co-1', PLANET_ID);
-        company.assets[PLANET_ID]!.deposits = 1_000_000_000;
+        company.assets[PLANET_ID]!.deposits = 2_000_000_000;
         const planet = makePlanet({
             governmentId: gov.id,
             population: makePopulationByEducation({ none: 1000 }),
@@ -141,9 +141,9 @@ describe('governmentTick', () => {
 
         governmentTick(gameState, planet, gov);
 
-        const expectedTax = (1_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
+        const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
         expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + expectedTax);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(0);
-        expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(1_000_000_000 - expectedTax);
+        expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(2_000_000_000 - expectedTax);
     });
 });

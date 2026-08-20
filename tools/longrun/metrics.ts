@@ -41,6 +41,23 @@ function median(values: number[]): number {
     return sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
 }
 
+function weightedQuantile(entries: Array<{ mean: number; count: number }>, q: number): number {
+    const sorted = [...entries].sort((a, b) => a.mean - b.mean);
+    const total = sorted.reduce((sum, e) => sum + e.count, 0);
+    if (total <= 0) {
+        return 0;
+    }
+    const target = q * total;
+    let cumulative = 0;
+    for (const e of sorted) {
+        cumulative += e.count;
+        if (cumulative >= target) {
+            return e.mean;
+        }
+    }
+    return sorted[sorted.length - 1]?.mean ?? 0;
+}
+
 const EXISTENTIAL_CHAIN_KEYS: ReadonlySet<string> = new Set([
     'waterFacility',
     'agriculturalFacility',
@@ -138,6 +155,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let starvationSevere = 0;
     let starvationFatal = 0;
     let wealthWeighted = 0;
+    const wealthEntries: Array<{ mean: number; count: number }> = [];
 
     for (const cohort of planet.population.demography) {
         for (const occ of OCCUPATIONS) {
@@ -153,6 +171,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 deathsLastMonth += cat.deaths.countLastMonth;
                 deathsThisMonth += cat.deaths.countThisMonth;
                 wealthWeighted += cat.total * cat.wealth.mean;
+                wealthEntries.push({ mean: cat.wealth.mean, count: cat.total });
                 if (starvation > maxGroceryStarvation) {
                     maxGroceryStarvation = starvation;
                 }
@@ -746,6 +765,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const ironSmelterSmoothedSignalAvg = ironSmelterCount > 0 ? ironSmelterSmoothedSignal / ironSmelterCount : 0;
 
     const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
+    const medianWealth = weightedQuantile(wealthEntries, 0.5);
+    const wealthP10 = weightedQuantile(wealthEntries, 0.1);
+    const wealthP90 = weightedQuantile(wealthEntries, 0.9);
+    const wealthTotal = wealthWeighted;
+    const redistributedTotal = wealthTaxCollected;
+    const redistributedPerCapita = totalPopulation > 0 ? wealthTaxCollected / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
 
     const companyNetWorthMin = companyNetWorths.length > 0 ? Math.min(...companyNetWorths) : 0;
@@ -825,6 +850,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         deathsThisMonth,
         birthsThisMonth: 0,
         meanWealth,
+        medianWealth,
+        wealthP10,
+        wealthP90,
+        wealthTotal,
+        redistributedTotal,
+        redistributedPerCapita,
         foodPrice,
         wealthToFoodPrice: foodPrice > 0 ? meanWealth / foodPrice : 0,
         waterPrice: priceOf(planet, waterResourceType.name),
@@ -1083,6 +1114,12 @@ export const METRIC_KEYS: string[] = [
     'deathsThisMonth',
     'birthsThisMonth',
     'meanWealth',
+    'medianWealth',
+    'wealthP10',
+    'wealthP90',
+    'wealthTotal',
+    'redistributedTotal',
+    'redistributedPerCapita',
     'foodPrice',
     'wealthToFoodPrice',
     'waterPrice',

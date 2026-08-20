@@ -3,14 +3,15 @@ import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice }
 import { totalOutstandingLoans } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { educationLevelKeys } from '../population/education';
-import type { PopulationCategory } from '../population/population';
-import { MAX_AGE } from '../population/population';
-import type { Agent, GameState, Planet } from '../planet/planet';
+import { MAX_AGE, OCCUPATIONS, type Occupation } from '../population/population';
+import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 let wealthTaxDisabled = false;
 let wealthTaxAnnualRateOverride: number | null = null;
+export type RedistributionTarget = 'all' | 'employed' | 'nonEmployed';
+let redistributionTarget: RedistributionTarget = 'nonEmployed';
 
 export function setWealthTaxDisabled(disabled: boolean): void {
     wealthTaxDisabled = disabled;
@@ -18,6 +19,10 @@ export function setWealthTaxDisabled(disabled: boolean): void {
 
 export function setWealthTaxAnnualRate(annualRate: number): void {
     wealthTaxAnnualRateOverride = annualRate;
+}
+
+export function setRedistributionTarget(target: RedistributionTarget): void {
+    redistributionTarget = target;
 }
 
 export const wealthTaxAllowance = (planet: Planet): number => {
@@ -75,6 +80,53 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
     return total;
 };
 
+function redistributePerCapita(planet: Planet, assets: AgentPlanetAssets): void {
+    const budget = assets.deposits;
+    if (budget <= 0) {
+        return;
+    }
+    const occupations: readonly Occupation[] =
+        redistributionTarget === 'employed'
+            ? (['employed'] as const)
+            : redistributionTarget === 'nonEmployed'
+              ? (['education', 'unoccupied', 'unableToWork'] as const)
+              : OCCUPATIONS;
+    let totalPopulation = 0;
+    for (let age = 0; age <= MAX_AGE; age++) {
+        const ageCohort = planet.population.demography[age];
+        if (!ageCohort) {
+            continue;
+        }
+        for (const occ of occupations) {
+            for (const edu of educationLevelKeys) {
+                totalPopulation += ageCohort[occ][edu].total;
+            }
+        }
+    }
+    if (totalPopulation <= 0) {
+        return;
+    }
+    const perCapita = budget / totalPopulation;
+    let totalDistributed = 0;
+    for (let age = 0; age <= MAX_AGE; age++) {
+        const ageCohort = planet.population.demography[age];
+        if (!ageCohort) {
+            continue;
+        }
+        for (const occ of occupations) {
+            for (const edu of educationLevelKeys) {
+                const cat = ageCohort[occ][edu];
+                if (cat.total > 0) {
+                    cat.wealth.mean += perCapita;
+                    totalDistributed += perCapita * cat.total;
+                }
+            }
+        }
+    }
+    planet.bank.householdDeposits += totalDistributed;
+    assets.deposits = Math.max(0, assets.deposits - totalDistributed);
+}
+
 export const governmentTick = (gameState: GameState, planet: Planet, agent: Agent) => {
     if (agent.id !== planet.governmentId) {
         throw new Error(`Tick called on non-government agent ${agent.id} of planet ${planet.id}`);
@@ -88,70 +140,5 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
     if (assets.deposits <= 0) {
         return;
     }
-
-    const cells: PopulationCategory[] = [];
-    for (let age = 0; age <= MAX_AGE; age++) {
-        const ageCohort = planet.population.demography[age];
-        if (!ageCohort) {
-            continue;
-        }
-        const unableToWork = ageCohort.unableToWork;
-        for (const edu of educationLevelKeys) {
-            const cat = unableToWork[edu];
-            if (cat.total > 0) {
-                cells.push(cat);
-            }
-            const eduCat = ageCohort.education[edu];
-            if (eduCat.total > 0) {
-                cells.push(eduCat);
-            }
-            const unemployedCat = ageCohort.unoccupied[edu];
-            if (unemployedCat.total > 0) {
-                cells.push(unemployedCat);
-            }
-        }
-    }
-
-    if (cells.length === 0) {
-        return;
-    }
-
-    cells.sort((a, b) => a.wealth.mean - b.wealth.mean);
-
-    let remainingBudget = assets.deposits;
-    let cumulativePop = 0;
-    let T = cells[cells.length - 1].wealth.mean;
-
-    for (let i = 0; i < cells.length; i++) {
-        cumulativePop += cells[i].total;
-        const currentLevel = cells[i].wealth.mean;
-        const nextLevel = i + 1 < cells.length ? cells[i + 1].wealth.mean : Infinity;
-
-        if (nextLevel === Infinity) {
-            T = currentLevel + remainingBudget / cumulativePop;
-            break;
-        }
-
-        const stepHeight = nextLevel - currentLevel;
-        const cost = stepHeight * cumulativePop;
-
-        if (remainingBudget <= cost) {
-            T = currentLevel + remainingBudget / cumulativePop;
-            break;
-        }
-
-        remainingBudget -= cost;
-    }
-
-    let totalDistributed = 0;
-    for (const cat of cells) {
-        if (cat.wealth.mean < T) {
-            const delta = (T - cat.wealth.mean) * cat.total;
-            totalDistributed += delta;
-            cat.wealth = { mean: T, variance: cat.wealth.variance };
-        }
-    }
-
-    planet.bank.householdDeposits += totalDistributed;
-    assets.deposits -= totalDistributed;
+    redistributePerCapita(planet, assets);
 };

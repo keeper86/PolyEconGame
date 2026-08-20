@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
-import { setWealthTaxAnnualRate, setWealthTaxDisabled } from '../../src/simulation/agents/governmentAgent';
+import { setRedistributionTarget, setWealthTaxAnnualRate, setWealthTaxDisabled } from '../../src/simulation/agents/governmentAgent';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
 import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
@@ -203,6 +203,10 @@ function main(): void {
     const wealthTaxRateArg = arg('wealthTaxRate');
     if (wealthTaxRateArg !== undefined) {
         setWealthTaxAnnualRate(Number(wealthTaxRateArg));
+    }
+    const redistributionArg = arg('redistribute');
+    if (redistributionArg === 'employed' || redistributionArg === 'nonEmployed' || redistributionArg === 'all') {
+        setRedistributionTarget(redistributionArg);
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

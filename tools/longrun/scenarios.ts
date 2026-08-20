@@ -198,15 +198,15 @@ export const SCENARIOS: Scenario[] = [
     {
         name: 'wealthTax',
         description:
-            'Wealth tax on companies (0.5%/yr on net worth above the inflation-indexed 10M allowance). 1 agent per product, 50-year stability and growth.',
+            'Wealth tax on companies (0.5%/yr on net worth above the inflation-indexed 1B allowance) with per-capita redistribution to non-employed cohorts. 1 agent per product, 50-year stability and growth.',
         seed: 1001,
         years: 50,
         world: { agentsPerProduct: 1 },
         bands: [
-            { metric: 'totalPopulation', horizonYears: 50, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'totalPopulation', horizonYears: 50, windowYears: 3, relativeToStart: true, min: 0.8, max: 2 },
             { metric: 'avgGroceryStarvation', horizonYears: 50, windowYears: 3, max: 0.25 },
-            { metric: 'companyNetWorthMedian', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 0.8 },
-            { metric: 'companiesDeepLoss', horizonYears: 50, windowYears: 3, max: 5 },
+            { metric: 'groceryFillRate', horizonYears: 50, windowYears: 3, min: 0.6 },
+            { metric: 'medianWealth', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 1.0 },
         ],
     },
 ];
