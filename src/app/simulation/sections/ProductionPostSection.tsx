@@ -80,8 +80,8 @@ For services output:
                 <p>
                     After production, automated agents run a <strong>feedback-controller wage adjustment</strong> per
                     education level every tick. Wages respond to the squared shortage of unfilled required slots
-                    (computed overqualification-aware, so a tier backfilled by higher-educated workers does not read
-                    as a shortage), plus a <strong>bargaining pull</strong> toward the labor share of the smoothed
+                    (computed overqualification-aware, so a tier backfilled by higher-educated workers does not read as
+                    a shortage), plus a <strong>bargaining pull</strong> toward the labor share of the smoothed
                     value-added ceiling <code>(revenue − purchases − claim payments) / workers</code>. A
                     <strong>spring</strong> pulls the wage down proportionally whenever the average wage exceeds that
                     ceiling:

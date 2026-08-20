@@ -7,7 +7,13 @@ import { transferPopulation } from '../population/population';
 import type { TickProfiler } from '../TickProfiler';
 import { distributeProportionally } from '../utils/distributeProportionally';
 import { assertPopulationWorkforceConsistency } from '../utils/testHelper';
-import { ACCEPTABLE_IDLE_FRACTION, acceptProbability, computeLaborMarket, outsideIncome, smoothedReachableVacancyWage } from './laborMarket';
+import {
+    ACCEPTABLE_IDLE_FRACTION,
+    acceptProbability,
+    computeLaborMarket,
+    outsideIncome,
+    smoothedReachableVacancyWage,
+} from './laborMarket';
 import { totalActiveForEdu } from './workforceAggregates';
 
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
