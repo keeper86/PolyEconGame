@@ -18,7 +18,8 @@ export function TickOrderSection() {
                     <code>environmentTick</code> — pollution decay, renewable resource regeneration
                 </li>
                 <li>
-                    <code>governmentTick</code> — water-fill wealth redistribution to the poorest population cohorts
+                    <code>governmentTick</code> — company wealth tax collection + water-fill redistribution to the
+                    poorest population cohorts
                 </li>
                 <li>
                     <code>workforceDemographicTick</code> — voluntary quits, retirement, mortality & disability of

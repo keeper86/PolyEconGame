@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
+import { setWealthTaxAnnualRate, setWealthTaxDisabled } from '../../src/simulation/agents/governmentAgent';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
 import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
@@ -110,6 +111,7 @@ function runScenario(
     setConditionEfficiencyDisabled(scenario.world.disableConditionEfficiency === true);
     setHrProductivityEffectDisabled(scenario.world.disableHrProductivityEffect === true);
     setStorageStarvationEffectDisabled(scenario.world.disableStorageStarvationEffect === true);
+    setWealthTaxDisabled(scenario.world.disableWealthTax === true);
     const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
     const population = scenario.world.population ?? 10_000_000;
 
@@ -194,6 +196,13 @@ function main(): void {
     const agentsPerProductArg = arg('agentsPerProduct');
     if (agentsPerProductArg !== undefined) {
         scenario.world = { ...scenario.world, agentsPerProduct: Number(agentsPerProductArg) };
+    }
+    if (process.argv.includes('--no-wealth-tax')) {
+        scenario.world = { ...scenario.world, disableWealthTax: true };
+    }
+    const wealthTaxRateArg = arg('wealthTaxRate');
+    if (wealthTaxRateArg !== undefined) {
+        setWealthTaxAnnualRate(Number(wealthTaxRateArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

@@ -65,6 +65,7 @@ export interface BenchmarkWorldConfig {
     disableConditionEfficiency?: boolean;
     disableHrProductivityEffect?: boolean;
     disableStorageStarvationEffect?: boolean;
+    disableWealthTax?: boolean;
 }
 
 interface FacilityTarget {

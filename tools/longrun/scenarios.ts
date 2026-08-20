@@ -195,6 +195,20 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
         ],
     },
+    {
+        name: 'wealthTax',
+        description:
+            'Wealth tax on companies (0.5%/yr on net worth above the inflation-indexed 10M allowance). 1 agent per product, 50-year stability and growth.',
+        seed: 1001,
+        years: 50,
+        world: { agentsPerProduct: 1 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 50, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 50, windowYears: 3, max: 0.25 },
+            { metric: 'companyNetWorthMedian', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 0.8 },
+            { metric: 'companiesDeepLoss', horizonYears: 50, windowYears: 3, max: 5 },
+        ],
+    },
 ];
 
 export function getScenario(name: string): Scenario | undefined {

@@ -604,15 +604,15 @@ export const machineryFactory = (planetId: string, id: string): ProductionFacili
     workerRequirement: {
         none: 5,
         primary: 30,
-        secondary: 30,
-        tertiary: 20,
+        secondary: 40,
+        tertiary: 30,
     },
     needs: [
         { resource: steelResourceType, quantity: 90 },
-        { resource: chemicalResourceType, quantity: 5 },
-        { resource: plasticResourceType, quantity: 20 },
+        { resource: chemicalResourceType, quantity: 10 },
+        { resource: plasticResourceType, quantity: 40 },
     ],
-    produces: [{ resource: machineryResourceType, quantity: 50 }],
+    produces: [{ resource: machineryResourceType, quantity: 40 }],
 });
 
 export const vehicleFactory = (planetId: string, id: string): ProductionFacility => ({
@@ -761,8 +761,8 @@ export const constructionFacility = (planetId: string, id: string): ProductionFa
     },
     needs: [
         { resource: concreteResourceType, quantity: 100 },
-        { resource: steelResourceType, quantity: 60 },
-        { resource: machineryResourceType, quantity: 3 },
+        { resource: steelResourceType, quantity: 80 },
+        { resource: machineryResourceType, quantity: 15 },
     ],
     produces: [{ resource: constructionServiceResourceType, quantity: 300 }],
 });

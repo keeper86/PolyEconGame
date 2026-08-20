@@ -70,7 +70,7 @@ export function advanceTick(gameState: GameState) {
 
                 const govAgent = gameState.agents.get(planet.governmentId);
                 assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
-                governmentTick(planet, govAgent);
+                governmentTick(gameState, planet, govAgent);
 
                 updateAgentClaims(gameState, planet);
                 if (profile.isEnabled) {

@@ -5,7 +5,7 @@ import { computeCostOfLiving } from '../../src/simulation/market/serviceDefiniti
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import { coalDepositResourceType, ironOreDepositResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
-import type { GameState, Planet } from '../../src/simulation/planet/planet';
+import { operatingProfit, type GameState, type Planet } from '../../src/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '../../src/simulation/planet/resourceCatalog';
 import {
     chemicalResourceType,
@@ -31,8 +31,15 @@ import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
 import { sumExactUsedByEdu, sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
+import { computeCompanyNetWorth, computeWealthTax } from '../../src/simulation/agents/governmentAgent';
 
 export type MetricMap = Record<string, number>;
+
+function median(values: number[]): number {
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 === 0 ? (sorted[mid - 1]! + sorted[mid]!) / 2 : sorted[mid]!;
+}
 
 const EXISTENTIAL_CHAIN_KEYS: ReadonlySet<string> = new Set([
     'waterFacility',
@@ -174,6 +181,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let profitShareBonuses = 0;
     let agentsInDistress = 0;
     let totalLoans = 0;
+    let companyCount = 0;
+    const companyNetWorths: number[] = [];
+    const companyProfits: number[] = [];
+    let companiesDeepLoss = 0;
+    let wealthTaxCollected = 0;
     let usedWorkers = 0;
     let totalSlots = 0;
     let productionEfficiencySum = 0;
@@ -331,6 +343,19 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 loansStarter += rp;
             } else {
                 loansOther += rp;
+            }
+        }
+        if (agent.id !== planet.governmentId && agent.id !== planet.recycler.id && agent.agentRole === undefined) {
+            companyCount += 1;
+            companyNetWorths.push(computeCompanyNetWorth(agent, planet, gameState.shipCapitalMarket));
+            const profit = operatingProfit(assets.monthAcc);
+            companyProfits.push(profit);
+            if (profit < 0) {
+                companiesDeepLoss += 1;
+            }
+            const tax = computeWealthTax(agent, planet, gameState.shipCapitalMarket);
+            if (tax > 0) {
+                wealthTaxCollected += Math.min(tax, Math.max(0, assets.deposits));
             }
         }
         usedWorkers += assets.usedWorkers;
@@ -723,6 +748,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const meanWealth = totalPopulation > 0 ? wealthWeighted / totalPopulation : 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
 
+    const companyNetWorthMin = companyNetWorths.length > 0 ? Math.min(...companyNetWorths) : 0;
+    const companyNetWorthMedian = companyNetWorths.length > 0 ? median(companyNetWorths) : 0;
+    const companyNetWorthMax = companyNetWorths.length > 0 ? Math.max(...companyNetWorths) : 0;
+    const companyProfitMin = companyProfits.length > 0 ? Math.min(...companyProfits) : 0;
+    const companyProfitMedian = companyProfits.length > 0 ? median(companyProfits) : 0;
+    const companyProfitMax = companyProfits.length > 0 ? Math.max(...companyProfits) : 0;
+
     return {
         tick: gameState.tick,
         totalPopulation,
@@ -823,6 +855,15 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         agentsInDistress,
         totalAgentDeposits,
         profitShareBonuses,
+        companyCount,
+        companyNetWorthMin,
+        companyNetWorthMedian,
+        companyNetWorthMax,
+        companyProfitMin,
+        companyProfitMedian,
+        companyProfitMax,
+        companiesDeepLoss,
+        wealthTaxCollected,
         workerUtilization: totalSlots > 0 ? usedWorkers / totalSlots : 0,
         avgWage: wageCount > 0 ? wageSum / wageCount : 0,
         existentialAgentCount,
@@ -1071,6 +1112,15 @@ export const METRIC_KEYS: string[] = [
     'agentsInDistress',
     'totalAgentDeposits',
     'profitShareBonuses',
+    'companyCount',
+    'companyNetWorthMin',
+    'companyNetWorthMedian',
+    'companyNetWorthMax',
+    'companyProfitMin',
+    'companyProfitMedian',
+    'companyProfitMax',
+    'companiesDeepLoss',
+    'wealthTaxCollected',
     'workerUtilization',
     'avgWage',
     'existentialAgentCount',

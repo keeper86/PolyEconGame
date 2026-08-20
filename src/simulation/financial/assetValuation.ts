@@ -1,7 +1,8 @@
-import { RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
+import { CONSTRUCTION_VALUATION_PRICE_CAP, RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
 import type { Facility } from '../planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
-import type { Agent, AgentPlanetAssets } from '../planet/planet';
+import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
+import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 function facilityConditionFactor(facility: Facility): number {
@@ -70,4 +71,13 @@ export function computeShipsValue(
     }
 
     return total;
+}
+
+export function constructionValuationPrice(planet: Planet): number {
+    const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name];
+    if (costFloor === undefined || costFloor <= 0) {
+        return csMarketPrice;
+    }
+    return Math.min(csMarketPrice, CONSTRUCTION_VALUATION_PRICE_CAP * costFloor);
 }
