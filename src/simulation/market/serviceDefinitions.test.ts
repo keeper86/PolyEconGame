@@ -44,10 +44,10 @@ describe('Construction-as-housing sector', () => {
     it('has a hard wealth threshold: zero demand below it, linear rise above it', () => {
         const def = SERVICE_DEFINITIONS.construction;
         const refIncome = 30;
-        const below = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 300, variance: 0 }, refIncome);
+        const below = def.fillRatePerPersonPerTick(30, 'employed', { mean: 300, variance: 0 }, refIncome);
         expect(below).toBe(0);
-        const modest = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 660, variance: 0 }, refIncome);
-        const wealthy = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 960, variance: 0 }, refIncome);
+        const modest = def.fillRatePerPersonPerTick(30, 'employed', { mean: 660, variance: 0 }, refIncome);
+        const wealthy = def.fillRatePerPersonPerTick(30, 'employed', { mean: 960, variance: 0 }, refIncome);
         expect(modest).toBeGreaterThan(0);
         expect(wealthy).toBeGreaterThan(modest);
         expect(wealthy).toBeCloseTo(modest * 2, 5);
@@ -56,8 +56,8 @@ describe('Construction-as-housing sector', () => {
     it('decays at the base rate regardless of wealth (houses perish over a lifetime)', () => {
         const def = SERVICE_DEFINITIONS.construction;
         const refIncome = 30;
-        const poor = def.decayRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
-        const rich = def.decayRatePerPersonPerTick(30, 'employed', { mean: 6000, variance: 0 }, refIncome);
+        const poor = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
+        const rich = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 6000, variance: 0 }, refIncome);
         expect(poor).toBe(rich);
         expect(poor).toBeGreaterThan(0);
     });

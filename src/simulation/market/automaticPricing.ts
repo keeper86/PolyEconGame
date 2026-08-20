@@ -232,10 +232,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
-    const aggregatedBuyTargets = new Map<
-        string,
-        { resource: Resource; storageTarget: number; freeTarget: number; protectedTarget: number }
-    >();
+    const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number; freeTarget: number }>();
 
     for (const facility of [
         ...assets.productionFacilities,
@@ -272,7 +269,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                         resource,
                         storageTarget: facilityTarget,
                         freeTarget: 0,
-                        protectedTarget: 0,
                     });
                 }
             }
@@ -289,7 +285,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     resource: constructionServiceResourceType,
                     storageTarget: facilityTarget,
                     freeTarget: 0,
-                    protectedTarget: 0,
                 });
             }
         }
@@ -300,13 +295,11 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
-                existing.protectedTarget += facilityTarget;
             } else {
                 aggregatedBuyTargets.set(maintenanceServiceResourceType.name, {
                     resource: maintenanceServiceResourceType,
                     storageTarget: facilityTarget,
                     freeTarget: 0,
-                    protectedTarget: facilityTarget,
                 });
             }
 
@@ -322,7 +315,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                         resource: constructionServiceResourceType,
                         storageTarget: restorationTarget,
                         freeTarget: 0,
-                        protectedTarget: restorationTarget,
                     });
                 }
             }
@@ -349,7 +341,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     resource: constructionServiceResourceType,
                     storageTarget: shipTarget,
                     freeTarget: 0,
-                    protectedTarget: 0,
                 });
             }
         }
@@ -372,7 +363,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                         resource,
                         storageTarget: remaining,
                         freeTarget: 0,
-                        protectedTarget: 0,
                     });
                 }
             }
@@ -398,7 +388,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                     resource: bid.resource,
                     storageTarget: 0,
                     freeTarget: freeBuyTarget,
-                    protectedTarget: 0,
                 });
             }
         } else if (!aggregatedBuyTargets.has(resourceName)) {
@@ -407,7 +396,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
     }
 
-    for (const [resourceName, { resource, storageTarget, freeTarget, protectedTarget }] of aggregatedBuyTargets) {
+    for (const [resourceName, { resource, storageTarget, freeTarget }] of aggregatedBuyTargets) {
         if (!agent.automated && assets.market.buy[resourceName]?.automated !== true) {
             continue;
         }
@@ -454,9 +443,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const volumeFraction = costKnown
             ? buyVolumeFraction(marketPrice, costFloor, bidCfg.bidPriceSensitivity, bidCfg.bidVolumeFloorFraction)
             : 1;
-        const protectedShortfall = Math.max(0, Math.min(totalShortfall, protectedTarget - currentInventory));
-        const priceScaledShortfall =
-            protectedShortfall + Math.max(0, totalShortfall - protectedShortfall) * volumeFraction;
+        const priceScaledShortfall = totalShortfall * volumeFraction;
         const smoothedTarget = priceScaledShortfall > EPSILON ? currentInventory + priceScaledShortfall : storageTarget;
 
         adjustBidPrice(bid, priceScaledShortfall, smoothedTarget, marketPrice, costFloor, volumeFraction);

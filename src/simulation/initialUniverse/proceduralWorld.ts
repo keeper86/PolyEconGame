@@ -31,7 +31,6 @@ import {
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
 import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
-import { nextRandom } from '../utils/stochasticRound';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';

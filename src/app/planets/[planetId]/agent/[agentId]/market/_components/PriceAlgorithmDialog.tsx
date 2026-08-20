@@ -487,8 +487,8 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
                         </div>
 
                         <div className='text-xs text-slate-500 italic'>
-                            High prices throttle volume down to the configured floor; a uniform cost anchor
-                            (applied to every agent alike) keeps the price discovery stable.
+                            High prices throttle volume down to the configured floor; a uniform cost anchor (applied to
+                            every agent alike) keeps the price discovery stable.
                         </div>
                     </div>
                 </div>

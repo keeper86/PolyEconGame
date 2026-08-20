@@ -159,7 +159,7 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
         targetFillRate: f2(TARGET_FILL_RATE * 0.78),
-        bidVolumeFloorFraction: '0.10',
+        bidVolumeFloorFraction: '0.05',
         bidPriceSensitivity: '0.60',
     },
     'market-rate': {
@@ -173,7 +173,7 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE * 1.06)),
-        bidVolumeFloorFraction: '0.35',
+        bidVolumeFloorFraction: '0.20',
         bidPriceSensitivity: '1.50',
     },
 };
@@ -184,7 +184,7 @@ export const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'cu
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.89),
         targetFillRate: f2(TARGET_FILL_RATE_SERVICES * 0.89),
-        bidVolumeFloorFraction: '0.10',
+        bidVolumeFloorFraction: '0.05',
         bidPriceSensitivity: '0.60',
     },
     'market-rate': {
@@ -198,7 +198,7 @@ export const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'cu
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE_SERVICES * 1.04)),
-        bidVolumeFloorFraction: '0.35',
+        bidVolumeFloorFraction: '0.20',
         bidPriceSensitivity: '1.50',
     },
 };

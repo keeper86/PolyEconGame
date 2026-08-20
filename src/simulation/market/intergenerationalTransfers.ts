@@ -530,7 +530,7 @@ export function creditDependents(
     return actualCredited;
 }
 
-// TODO: Can we just "shield" wealth of supporters in their loop? 
+// TODO: Can we just "shield" wealth of supporters in their loop?
 // Do we need to loop here again?
 export function governmentSupport(planet: Planet, budget: number): number {
     const demography = planet.population.demography;

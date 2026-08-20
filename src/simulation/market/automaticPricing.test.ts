@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    BID_VOLUME_FLOOR_FRACTION,
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
@@ -737,6 +738,31 @@ describe('automaticPricing — facility maintenance demand', () => {
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+    });
+    it('scales maintenance demand to the bid volume floor when price is far above cost', () => {
+        const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
+        facility.needs = [];
+        facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+
+        const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 100 });
+        planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [facility];
+        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+
+        automaticPricing(new Map([['co', agent]]), planet);
+
+        const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
+        expect(bid).toBeDefined();
+        const expectedRate =
+            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            TICKS_PER_YEAR;
+        const fullTarget = expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES;
+        expect(bid.bidStorageTarget).toBeLessThan(fullTarget);
+        expect(bid.bidStorageTarget).toBeCloseTo(fullTarget * BID_VOLUME_FLOOR_FRACTION, 5);
     });
 
     it('skips maintenance demand for facilities under construction', () => {

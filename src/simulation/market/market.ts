@@ -1,4 +1,11 @@
-import { BID_ANCHOR_MULTIPLE, EPSILON, PRICE_CEIL, PRICE_FLOOR, PRICE_NO_TRADE_CONVERGENCE_RATE, TICKS_PER_MONTH } from '../constants';
+import {
+    BID_ANCHOR_MULTIPLE,
+    EPSILON,
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    PRICE_NO_TRADE_CONVERGENCE_RATE,
+    TICKS_PER_MONTH,
+} from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';

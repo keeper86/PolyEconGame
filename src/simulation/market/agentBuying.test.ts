@@ -1,12 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    INPUT_BUFFER_TARGET_TICKS,
-    INVENTORY_SMOOTHING_MAX_EXTRA,
-    PRICE_CEIL,
-    PRICE_FLOOR,
-    TARGET_FILL_RATE,
-} from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, PRICE_CEIL, TARGET_FILL_RATE } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';

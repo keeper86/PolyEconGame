@@ -1,4 +1,3 @@
-import { nextRandom } from '../utils/stochasticRound';
 import {
     ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
@@ -25,33 +24,6 @@ const BUY_PRICING_PRESETS: BuyPricingPreset[] = ['patient', 'market-rate', 'urge
 const SELL_VOLUME_PRESETS: SellVolumePreset[] = ['dump', 'balanced', 'reserve'];
 const SELL_PRICING_PRESETS: SellPricingPreset[] = ['liquidation', 'market-rate', 'premium'];
 
-function weightedDraw<T>(center: T, extremeA: T, extremeB: T): T {
-    const r = nextRandom();
-    if (r < 0.25) {
-        return extremeA;
-    }
-    if (r < 0.75) {
-        return center;
-    }
-    return extremeB;
-}
-
-function drawBuyVolume(): BuyVolumePreset {
-    return weightedDraw('balanced', 'just-in-time', 'stockpile');
-}
-
-function drawBuyPricing(): BuyPricingPreset {
-    return weightedDraw('market-rate', 'patient', 'urgent');
-}
-
-function drawSellVolume(): SellVolumePreset {
-    return weightedDraw('balanced', 'dump', 'reserve');
-}
-
-function drawSellPricing(): SellPricingPreset {
-    return weightedDraw('market-rate', 'liquidation', 'premium');
-}
-
 const VOLUME_BUY_CONFIGS: Record<BuyVolumePreset, Partial<AutomatedPricingConfig>> = {
     'just-in-time': {
         inventorySmoothingMaxExtra: 0,
@@ -75,7 +47,7 @@ const PRICING_BUY_CONFIGS: Record<BuyPricingPreset, Partial<AutomatedPricingConf
         priceAdjustMaxUp: parseFloat(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96).toFixed(2)),
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
         targetFillRate: parseFloat((TARGET_FILL_RATE * 0.78).toFixed(2)),
-        bidVolumeFloorFraction: 0.1,
+        bidVolumeFloorFraction: 0.05,
         bidPriceSensitivity: 0.6,
     },
     'market-rate': {
@@ -89,7 +61,7 @@ const PRICING_BUY_CONFIGS: Record<BuyPricingPreset, Partial<AutomatedPricingConf
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         targetFillRate: parseFloat(Math.min(1, TARGET_FILL_RATE * 1.06).toFixed(2)),
-        bidVolumeFloorFraction: 0.35,
+        bidVolumeFloorFraction: 0.2,
         bidPriceSensitivity: 1.5,
     },
 };
@@ -138,11 +110,11 @@ export interface AgentPersonality {
 export function generateAgentPersonality(): AgentPersonality {
     return {
         buyAutoConfig: {
-            ...VOLUME_BUY_CONFIGS['balanced'],
+            ...VOLUME_BUY_CONFIGS.balanced,
             ...PRICING_BUY_CONFIGS['market-rate'],
         },
         sellAutoConfig: {
-            ...VOLUME_SELL_CONFIGS['balanced'],
+            ...VOLUME_SELL_CONFIGS.balanced,
             ...PRICING_SELL_CONFIGS['market-rate'],
         },
     };
