@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { TICKS_PER_MONTH } from '../constants';
-import { computeDynamicExpansionTarget } from '../planet/automaticProductionScale/expansionTarget';
-import { updateProductionCostFloors } from '../planet/production';
-import { servicesFacility } from '../planet/productionFacilities';
-import { serviceResourceType } from '../planet/services';
-import { makeAgentPlanetAssets, makePlanet } from '../utils/testHelper';
+import { HOUSING_BUILD_MONTHS, HOUSING_LIFETIME_MONTHS, TICKS_PER_MONTH } from '../constants';
+import { constructionServiceResourceType } from '../planet/services';
+import { makePlanet } from '../utils/testHelper';
 import {
     householdDemandPriority,
     referenceMonthlyIncome,
@@ -14,19 +11,12 @@ import {
 
 describe('wage-grounded Engel saturation', () => {
     it('is scale-invariant: rescaling wealth and reference income by the same factor leaves the rate unchanged', () => {
-        for (const key of ['grocery', 'retail', 'service'] as const) {
+        for (const key of ['grocery', 'retail', 'construction'] as const) {
             const def = SERVICE_DEFINITIONS[key];
             const low = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 100, variance: 0 }, 30);
             const high = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 100000, variance: 0 }, 30000);
             expect(low).toBeCloseTo(high, 10);
         }
-    });
-
-    it('saturates only at high relative income, not at high absolute wealth', () => {
-        const def = SERVICE_DEFINITIONS.service;
-        const poor = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 1000, variance: 0 }, 30000);
-        const rich = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 2400, variance: 0 }, 30);
-        expect(rich).toBeGreaterThan(poor * 10);
     });
 
     it('derives reference income from the live planet wage', () => {
@@ -36,68 +26,39 @@ describe('wage-grounded Engel saturation', () => {
     });
 });
 
-describe('labor-only Service sector', () => {
-    it('servicesFacility has no material inputs and produces Service', () => {
-        const facility = servicesFacility('p', 's1');
-        expect(facility.needs).toHaveLength(0);
-        expect(facility.produces[0].resource.name).toBe(serviceResourceType.name);
-    });
-
-    it('is the residual demand (last in household priority) and not a cost-of-living tier', () => {
-        expect(householdDemandPriority[householdDemandPriority.length - 1]).toBe(serviceResourceType.name);
+describe('Construction-as-housing sector', () => {
+    it('reuses the existing Construction resource and is the residual demand (last in priority, not a tier)', () => {
+        expect(SERVICE_DEFINITIONS.construction.resource).toBe(constructionServiceResourceType);
+        expect(householdDemandPriority[householdDemandPriority.length - 1]).toBe(constructionServiceResourceType.name);
         const tierServices = SERVICE_TIERS.flatMap((tier) => tier.services);
-        expect(tierServices).not.toContain('service');
+        expect(tierServices).not.toContain('construction');
     });
 
-    it('has a heavy Engel curve: relative demand grows ~60x from neutral to 50 years of income', () => {
+    it('has a lifetime-scale buffer but a short build time (decoupled refill)', () => {
+        const def = SERVICE_DEFINITIONS.construction;
+        expect(def.bufferTargetTicks).toBe(HOUSING_LIFETIME_MONTHS * TICKS_PER_MONTH);
+        expect(def.refillTicks).toBe(HOUSING_BUILD_MONTHS * TICKS_PER_MONTH);
+        expect(def.refillTicks).toBeLessThan(def.bufferTargetTicks);
+    });
+
+    it('has a hard wealth threshold: zero demand below it, linear rise above it', () => {
+        const def = SERVICE_DEFINITIONS.construction;
         const refIncome = 30;
-        const def = SERVICE_DEFINITIONS.service;
-        const neutral = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
-        const rich = def.consumptionRatePerPersonPerTick(
-            30,
-            'employed',
-            { mean: 600 * refIncome, variance: 0 },
-            refIncome,
-        );
-        expect(rich).toBeGreaterThan(neutral * 50);
+        const below = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 300, variance: 0 }, refIncome);
+        expect(below).toBe(0);
+        const modest = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 660, variance: 0 }, refIncome);
+        const wealthy = def.consumptionRatePerPersonPerTick(30, 'employed', { mean: 960, variance: 0 }, refIncome);
+        expect(modest).toBeGreaterThan(0);
+        expect(wealthy).toBeGreaterThan(modest);
+        expect(wealthy).toBeCloseTo(modest * 2, 5);
     });
 
-    it('outpaces retail in absolute rate once households hold ~50 years of income', () => {
+    it('decays at the base rate regardless of wealth (houses perish over a lifetime)', () => {
+        const def = SERVICE_DEFINITIONS.construction;
         const refIncome = 30;
-        const wealth = { mean: 600 * refIncome, variance: 0 };
-        const serviceRate = SERVICE_DEFINITIONS.service.consumptionRatePerPersonPerTick(
-            30,
-            'employed',
-            wealth,
-            refIncome,
-        );
-        const retailRate = SERVICE_DEFINITIONS.retail.consumptionRatePerPersonPerTick(
-            30,
-            'employed',
-            wealth,
-            refIncome,
-        );
-        expect(serviceRate).toBeGreaterThan(retailRate * 2);
-    });
-});
-
-describe('0-needs facility through production scale machinery', () => {
-    it('produces a finite, positive wage-driven cost floor', () => {
-        const planet = makePlanet();
-        updateProductionCostFloors(planet);
-        const floor = planet.lastProductionCostFloors[serviceResourceType.name];
-        expect(Number.isFinite(floor)).toBe(true);
-        expect(floor).toBeGreaterThan(0);
-    });
-
-    it('computes a finite expansion target despite having no needs', () => {
-        const planet = makePlanet();
-        const facility = servicesFacility('p', 's1');
-        facility.maxScale = 100;
-        facility.scale = 100;
-        const assets = makeAgentPlanetAssets('p');
-        const target = computeDynamicExpansionTarget(facility, assets, planet, new Map(), new Map(), true, 0);
-        expect(Number.isFinite(target)).toBe(true);
-        expect(target).toBeGreaterThanOrEqual(100);
+        const poor = def.decayRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }, refIncome);
+        const rich = def.decayRatePerPersonPerTick(30, 'employed', { mean: 6000, variance: 0 }, refIncome);
+        expect(poor).toBe(rich);
+        expect(poor).toBeGreaterThan(0);
     });
 });

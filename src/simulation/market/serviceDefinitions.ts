@@ -3,24 +3,26 @@ import {
     EDUCATION_WEALTH_SATURATION_MONTHS,
     GROCERY_WEALTH_SATURATION_MONTHS,
     HEALTHCARE_WEALTH_SATURATION_MONTHS,
+    HOUSING_BASE_RATE_PER_MONTH,
+    HOUSING_BUILD_MONTHS,
+    HOUSING_ENGEL_GAIN,
+    HOUSING_LIFETIME_MONTHS,
+    HOUSING_WEALTH_THRESHOLD_MONTHS,
     LOGISTICS_WEALTH_SATURATION_MONTHS,
     MIN_WAGE,
     RETAIL_WEALTH_SATURATION_MONTHS,
-    SERVICE_BASE_RATE_PER_MONTH,
-    SERVICE_ENGEL_MAX_EXTRA,
-    SERVICE_WEALTH_SATURATION_MONTHS,
     TICKS_PER_MONTH,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { Planet } from '../planet/planet';
 import {
+    constructionServiceResourceType,
     educationServiceResourceType,
     groceryServiceResourceType,
     healthcareServiceResourceType,
     logisticsServiceResourceType,
     retailServiceResourceType,
-    serviceResourceType,
 } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 import type { GaussianMoments, Occupation, ServiceName } from '../population/population';
@@ -28,7 +30,19 @@ import type { GaussianMoments, Occupation, ServiceName } from '../population/pop
 export type ServiceDefinition = {
     readonly resource: Resource;
     readonly bufferTargetTicks: number;
+    /** How fast the buffer is rebuilt: ticks to fill it from empty. Decoupled from bufferTargetTicks
+     *  (the stock lifetime) so a large capital asset like housing builds quickly but decays slowly. */
+    readonly refillTicks: number;
+    /** Flow rate used for household bids and buffer accounting. May be wealth-gated (e.g. housing). */
     readonly consumptionRatePerPersonPerTick: (
+        age: number,
+        occ: Occupation,
+        wealth: GaussianMoments,
+        referenceMonthlyIncome: number,
+    ) => number;
+    /** Flow rate used for buffer decay (consumeServices) and buffer weighting. Independent of wealth
+     *  for housing so a house always perishes over its lifetime, regardless of who owns it. */
+    readonly decayRatePerPersonPerTick: (
         age: number,
         occ: Occupation,
         wealth: GaussianMoments,
@@ -119,68 +133,96 @@ const educationAgeMultiplier = (age: number, occ: Occupation): number => {
 
 // ── Service definitions ───────────────────────────────────────────────────────
 
+const groceryRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
+    (1 / TICKS_PER_MONTH) *
+    groceryAgeMultiplier(age, occ) *
+    engelMultiplier(wealth, GROCERY_WEALTH_SATURATION_MONTHS, 0.3, refIncome);
+
 const groceryDefinition: ServiceDefinition = {
     resource: groceryServiceResourceType,
     bufferTargetTicks: 2 * TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_MONTH) *
-        groceryAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, GROCERY_WEALTH_SATURATION_MONTHS, 0.3, refIncome),
+    refillTicks: 2 * TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: groceryRate,
+    decayRatePerPersonPerTick: groceryRate,
 } as const;
+
+const healthcareRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
+    (1 / TICKS_PER_MONTH / 3) *
+    healthcareAgeMultiplier(age, occ) *
+    engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION_MONTHS, 1.0, refIncome);
 
 const healthcareDefinition: ServiceDefinition = {
     resource: healthcareServiceResourceType,
     bufferTargetTicks: 3 * TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_MONTH / 3) *
-        healthcareAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, HEALTHCARE_WEALTH_SATURATION_MONTHS, 1.0, refIncome),
+    refillTicks: 3 * TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: healthcareRate,
+    decayRatePerPersonPerTick: healthcareRate,
 } as const;
+
+const logisticsRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
+    (1 / TICKS_PER_MONTH) *
+    logisticsAgeMultiplier(age, occ) *
+    engelMultiplier(wealth, LOGISTICS_WEALTH_SATURATION_MONTHS, 1.5, refIncome);
 
 const logisticsDefinition: ServiceDefinition = {
     resource: logisticsServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_MONTH) *
-        logisticsAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, LOGISTICS_WEALTH_SATURATION_MONTHS, 1.5, refIncome),
+    refillTicks: TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: logisticsRate,
+    decayRatePerPersonPerTick: logisticsRate,
 } as const;
+
+const educationRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
+    (1 / TICKS_PER_YEAR) *
+    educationAgeMultiplier(age, occ) *
+    engelMultiplier(wealth, EDUCATION_WEALTH_SATURATION_MONTHS, 0.2, refIncome);
 
 const educationDefinition: ServiceDefinition = {
     resource: educationServiceResourceType,
     bufferTargetTicks: TICKS_PER_YEAR,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_YEAR) *
-        educationAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, EDUCATION_WEALTH_SATURATION_MONTHS, 0.2, refIncome),
+    refillTicks: TICKS_PER_YEAR,
+    consumptionRatePerPersonPerTick: educationRate,
+    decayRatePerPersonPerTick: educationRate,
 } as const;
+
+const retailRate = (age: number, occ: Occupation, wealth: GaussianMoments, refIncome: number): number =>
+    (1 / TICKS_PER_MONTH) *
+    retailAgeMultiplier(age, occ) *
+    engelMultiplier(wealth, RETAIL_WEALTH_SATURATION_MONTHS, 2.0, refIncome);
 
 const retailDefinition: ServiceDefinition = {
     resource: retailServiceResourceType,
     bufferTargetTicks: TICKS_PER_MONTH,
-    consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (1 / TICKS_PER_MONTH) *
-        retailAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, RETAIL_WEALTH_SATURATION_MONTHS, 2.0, refIncome),
+    refillTicks: TICKS_PER_MONTH,
+    consumptionRatePerPersonPerTick: retailRate,
+    decayRatePerPersonPerTick: retailRate,
 } as const;
 
-const serviceAgeMultiplier = (_age: number, occ: Occupation): number => {
-    if (occ === 'education' || occ === 'unableToWork') {
-        return 0.5;
+const housingAgeMultiplier = (age: number, _occ: Occupation): number => {
+    if (age < 18) {
+        return 0.2;
     }
-    if (occ === 'employed') {
-        return 1.2;
+    if (age < 30) {
+        return 0.2 + 0.8 * ((age - 18) / 12);
     }
     return 1.0;
 };
 
-const serviceDefinition: ServiceDefinition = {
-    resource: serviceResourceType,
-    bufferTargetTicks: TICKS_PER_MONTH,
+const housingEngelMultiplier = (wealth: GaussianMoments, referenceMonthlyIncomeValue: number): number => {
+    const monthsOfIncome = wealth.mean / Math.max(1, referenceMonthlyIncomeValue);
+    return Math.max(0, HOUSING_ENGEL_GAIN * (monthsOfIncome - HOUSING_WEALTH_THRESHOLD_MONTHS));
+};
+
+const housingDecayRate = (age: number, occ: Occupation): number =>
+    (HOUSING_BASE_RATE_PER_MONTH / TICKS_PER_MONTH) * housingAgeMultiplier(age, occ);
+
+const constructionDefinition: ServiceDefinition = {
+    resource: constructionServiceResourceType,
+    bufferTargetTicks: HOUSING_LIFETIME_MONTHS * TICKS_PER_MONTH,
+    refillTicks: HOUSING_BUILD_MONTHS * TICKS_PER_MONTH,
     consumptionRatePerPersonPerTick: (age, occ, wealth, refIncome) =>
-        (SERVICE_BASE_RATE_PER_MONTH / TICKS_PER_MONTH) *
-        serviceAgeMultiplier(age, occ) *
-        engelMultiplier(wealth, SERVICE_WEALTH_SATURATION_MONTHS, SERVICE_ENGEL_MAX_EXTRA, refIncome),
+        housingDecayRate(age, occ) * housingEngelMultiplier(wealth, refIncome),
+    decayRatePerPersonPerTick: (age, occ, _wealth, _refIncome) => housingDecayRate(age, occ),
 } as const;
 
 export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
@@ -189,7 +231,7 @@ export const SERVICE_DEFINITIONS: Record<ServiceName, ServiceDefinition> = {
     logistics: logisticsDefinition,
     education: educationDefinition,
     retail: retailDefinition,
-    service: serviceDefinition,
+    construction: constructionDefinition,
 } as const;
 
 export const getServiceDefinitionByResourceName = (resourceName: string): ServiceDefinition | undefined => {

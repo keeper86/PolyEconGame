@@ -151,18 +151,20 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
-
-                if (bufferFillDeficit <= 0) {
+                const bufferGapTicks = service.bufferTargetTicks - serviceBuffer;
+                if (bufferGapTicks <= 0) {
                     continue;
                 }
 
-                let willingPrice = referencePrice * (1 + bufferFillDeficit);
+                const fillFraction = bufferGapTicks / service.refillTicks;
+                const pricePremium = Math.min(1, fillFraction);
+
+                let willingPrice = referencePrice * (1 + pricePremium);
                 if (willingPrice <= 0) {
                     continue;
                 }
 
-                let quantityPerPerson = rate * (1 + bufferFillDeficit);
+                let quantityPerPerson = rate * (1 + fillFraction);
 
                 if (remainingWealth < 1.2 * rate * willingPrice) {
                     willingPrice = remainingWealth / rate / 1.2;

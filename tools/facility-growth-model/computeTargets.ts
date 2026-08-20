@@ -57,7 +57,6 @@ const CONFIG: SlackConfig = {
         logistics: 1.5,
         retail: 1.5,
         education: 1.5,
-        service: 1.5,
     },
     goods: {
         administration: 1.5,

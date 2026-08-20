@@ -317,7 +317,7 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                {(['grocery', 'healthcare', 'logistics', 'retail', 'education', 'service'] as const).map((key) => (
+                {(['grocery', 'healthcare', 'logistics', 'retail', 'education', 'construction'] as const).map((key) => (
                     <ServiceSection
                         key={key}
                         serviceKey={key}

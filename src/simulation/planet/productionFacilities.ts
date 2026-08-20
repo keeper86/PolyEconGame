@@ -58,7 +58,6 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
     retailServiceResourceType,
-    serviceResourceType,
 } from './services';
 
 export const zeroLastTicksProductionResults = {
@@ -868,24 +867,6 @@ export const maintenanceFacility = (planetId: string, id: string): ProductionFac
     };
 };
 
-export const servicesFacility = (planetId: string, id: string): ProductionFacility => {
-    return {
-        ...makeFacilityDefaults(),
-        planetId,
-        id,
-        name: 'Services Facility',
-        powerConsumptionPerTick: 2.0,
-        workerRequirement: {
-            none: 30,
-            primary: 30,
-            secondary: 25,
-            tertiary: 15,
-        },
-        needs: [],
-        produces: [{ resource: serviceResourceType, quantity: 100 }],
-    };
-};
-
 export type FacilityFactory = (planetId: string, id: string) => ProductionFacility;
 
 export type FacilityCatalogEntry = {
@@ -947,7 +928,6 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     educationCenter: entry(educationCenter),
     siliconWaferFactory: entry(siliconWaferFactory),
     maintenanceFacility: entry(maintenanceFacility),
-    servicesFacility: entry(servicesFacility),
 } as const;
 
 export type FacilityType = keyof typeof ALL_PRODUCTION_FACILITY_ENTRIES;

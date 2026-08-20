@@ -76,7 +76,7 @@ function buildAggregateCache(
                 cell.buffers[key] =
                     (cell.buffers[key] ?? 0) +
                     cat.services[key].buffer *
-                        svc.consumptionRatePerPersonPerTick(age, occ, cell.wealth, referenceMonthlyIncomeValue) *
+                        svc.decayRatePerPersonPerTick(age, occ, cell.wealth, referenceMonthlyIncomeValue) *
                         n;
             }
         });

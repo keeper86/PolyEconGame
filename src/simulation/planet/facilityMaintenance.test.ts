@@ -567,11 +567,11 @@ describe('collectAgentFacilities', () => {
                 const rawFacility = makeProductionFacility();
                 rawFacility.maxMaintenance = 0.5;
 
-                const servicesFacility = makeProductionFacility();
-                servicesFacility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
-                servicesFacility.maxMaintenance = 0.5;
+                const constructionFacility = makeProductionFacility();
+                constructionFacility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
+                constructionFacility.maxMaintenance = 0.5;
 
-                expect(facilityRestorationCapacityPerTick(servicesFacility)).toBeGreaterThan(
+                expect(facilityRestorationCapacityPerTick(constructionFacility)).toBeGreaterThan(
                     facilityRestorationCapacityPerTick(rawFacility),
                 );
             });

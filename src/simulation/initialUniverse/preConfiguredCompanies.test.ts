@@ -78,7 +78,6 @@ describe('getNamesFor', () => {
             retailChain: 32,
             hospital: 32,
             siliconWaferFactory: 32,
-            servicesFacility: 4,
         };
 
         for (const [facilityType, needed] of Object.entries(targets)) {

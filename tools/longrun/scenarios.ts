@@ -30,7 +30,7 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
             { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
             { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
-            { metric: 'serviceDemandToNeutral', horizonYears: 10, windowYears: 3, max: 8 },
+            { metric: 'constructionServicePrice', horizonYears: 10, windowYears: 3, relativeToStart: true, max: 3 },
         ],
     },
     {

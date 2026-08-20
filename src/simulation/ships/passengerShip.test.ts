@@ -66,7 +66,7 @@ function seedWorkforce(
         logistics: { buffer: 4, starvationLevel: 0 },
         healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
-        service: { buffer: 2, starvationLevel: 0 },
+        construction: { buffer: 2, starvationLevel: 0 },
     };
 }
 
@@ -696,7 +696,7 @@ describe('shipTick passenger transporting / arrival', () => {
                         logistics: { buffer: 0, starvationLevel: 0 },
                         healthcare: { buffer: 0, starvationLevel: 0 },
                         education: { buffer: 0, starvationLevel: 0 },
-                        service: { buffer: 0, starvationLevel: 0 },
+                        construction: { buffer: 0, starvationLevel: 0 },
                     },
                 },
             },
