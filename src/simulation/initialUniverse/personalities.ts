@@ -116,7 +116,7 @@ const gauss = (mean: number, std: number) =>
 export function generateAgentPersonality(): AgentPersonality {
     const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
     const priceAdjustmentAggressivenessDown = Math.min(0.999, 0.975 - 0.05 * gauss(0.5, 0.2));
-    const sellPriceAgressiveness = Math.max(0.1, 0.75 + 0.75 * gauss(0.5, 0.2));
+    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.75 * gauss(0.5, 0.2));
     const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 6 * gauss(0.5, 0.2)));
 
     return {
