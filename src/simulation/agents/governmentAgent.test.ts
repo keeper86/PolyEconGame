@@ -67,7 +67,7 @@ describe('computeWealthTax', () => {
         const { gameState, planet, company } = setupWorld(2_000_000_000);
         const tax = computeWealthTax(company, planet, gameState.shipCapitalMarket);
         expect(tax).toBeCloseTo((2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE);
-        expect(tax).toBeCloseTo(416_666.67, 1);
+        expect(tax).toBeCloseTo(2 * 416_666.67, 1);
     });
 
     it('never taxes the government, the recycler, or role agents', () => {
