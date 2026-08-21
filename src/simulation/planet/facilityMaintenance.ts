@@ -29,6 +29,15 @@ export function collectAgentFacilities(assets: AgentPlanetAssets): Facility[] {
     return facilities;
 }
 
+export function computeOtherConstructionCosts(assets: AgentPlanetAssets, constructionServicePrice: number): number {
+    return collectAgentFacilities(assets)
+        .filter((f) => f.construction !== null)
+        .reduce((sum, f) => {
+            const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
+            return sum + Math.max(0, remaining) * constructionServicePrice;
+        }, 0);
+}
+
 export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
     const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
     return (

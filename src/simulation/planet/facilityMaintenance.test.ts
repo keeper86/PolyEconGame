@@ -14,6 +14,7 @@ import {
     makePlanet,
     makeProductionFacility,
     makeShipConstructionFacility,
+    makeStorageFacility,
 } from '../utils/testHelper';
 import type { Resource } from './claims';
 import {
@@ -27,6 +28,7 @@ import {
 } from './facility';
 import {
     collectAgentFacilities,
+    computeOtherConstructionCosts,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
     facilityRestorationCostFactor,
@@ -578,5 +580,88 @@ describe('collectAgentFacilities', () => {
         });
 
         expect(facilities).toHaveLength(0);
+    });
+});
+
+describe('computeOtherConstructionCosts', () => {
+    it('sums remaining construction costs across production, management and ship construction facilities', () => {
+        const agent = makeAgent(AGENT_ID, PLANET_ID);
+        const assets = agent.assets[PLANET_ID]!;
+        const production = makeProductionFacility(undefined, {
+            construction: {
+                type: 'expansion',
+                constructionTargetMaxScale: 2,
+                totalConstructionServiceRequired: 100,
+                maximumConstructionServiceConsumption: 5,
+                progress: 30,
+                lastTickInvestedConstructionServices: 0,
+            },
+        });
+        const hr = makeHRFacility(undefined, {
+            construction: {
+                type: 'expansion',
+                constructionTargetMaxScale: 2,
+                totalConstructionServiceRequired: 50,
+                maximumConstructionServiceConsumption: 5,
+                progress: 20,
+                lastTickInvestedConstructionServices: 0,
+            },
+        });
+        const storageDepartment = makeStorageFacility().department!;
+        storageDepartment.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 40,
+            maximumConstructionServiceConsumption: 5,
+            progress: 10,
+            lastTickInvestedConstructionServices: 0,
+        };
+        const shipyard = makeShipConstructionFacility(undefined, {
+            construction: {
+                type: 'new',
+                constructionTargetMaxScale: 1,
+                totalConstructionServiceRequired: 60,
+                maximumConstructionServiceConsumption: 5,
+                progress: 0,
+                lastTickInvestedConstructionServices: 0,
+            },
+        });
+        assets.productionFacilities = [production];
+        assets.humanResourcesDepartment = hr;
+        assets.storageFacility.department = storageDepartment;
+        assets.shipConstructionFacilities = [shipyard];
+
+        const remainingConstructionServices = 70 + 30 + 30 + 60;
+        expect(computeOtherConstructionCosts(assets, CONSTRUCTION_PRICE)).toBe(
+            remainingConstructionServices * CONSTRUCTION_PRICE,
+        );
+    });
+
+    it('ignores facilities without active construction', () => {
+        const agent = makeAgent(AGENT_ID, PLANET_ID);
+        const assets = agent.assets[PLANET_ID]!;
+        assets.productionFacilities = [makeProductionFacility()];
+        assets.humanResourcesDepartment = makeHRFacility();
+
+        expect(computeOtherConstructionCosts(assets, CONSTRUCTION_PRICE)).toBe(0);
+    });
+
+    it('clamps over-progressed facilities to zero', () => {
+        const agent = makeAgent(AGENT_ID, PLANET_ID);
+        const assets = agent.assets[PLANET_ID]!;
+        assets.productionFacilities = [
+            makeProductionFacility(undefined, {
+                construction: {
+                    type: 'expansion',
+                    constructionTargetMaxScale: 2,
+                    totalConstructionServiceRequired: 100,
+                    maximumConstructionServiceConsumption: 5,
+                    progress: 120,
+                    lastTickInvestedConstructionServices: 0,
+                },
+            }),
+        ];
+
+        expect(computeOtherConstructionCosts(assets, CONSTRUCTION_PRICE)).toBe(0);
     });
 });

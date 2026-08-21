@@ -32,12 +32,7 @@ export default function ProductionPage() {
             >
                 {assets ? (
                     <div data-tour='production-facilities'>
-                        <ProductionFacilitiesPanel
-                            facilities={assets.productionFacilities}
-                            agentId={agentId}
-                            planetId={planetId}
-                            hrProductivityMultiplier={assets.hrProductivityMultiplier}
-                        />
+                        <ProductionFacilitiesPanel assets={assets} agentId={agentId} planetId={planetId} />
                     </div>
                 ) : null}
             </AgentAccessGuard>

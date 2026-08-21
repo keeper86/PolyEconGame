@@ -202,6 +202,7 @@ export type PlanetPopulationDecade = {
     avg_logistics_buffer: number | null;
     avg_education_buffer: number | null;
     avg_retail_buffer: number | null;
+    avg_construction_buffer: number | null;
 };
 
 export type PlanetPopulationHistory = {
@@ -214,6 +215,7 @@ export type PlanetPopulationHistory = {
     education_buffer: number;
     retail_buffer: number;
     created_at: Date;
+    construction_buffer: number;
 };
 
 export type PlanetPopulationMonthly = {
@@ -225,6 +227,7 @@ export type PlanetPopulationMonthly = {
     avg_logistics_buffer: number | null;
     avg_education_buffer: number | null;
     avg_retail_buffer: number | null;
+    avg_construction_buffer: number | null;
 };
 
 export type PlanetPopulationYearly = {
@@ -236,6 +239,7 @@ export type PlanetPopulationYearly = {
     avg_logistics_buffer: number | null;
     avg_education_buffer: number | null;
     avg_retail_buffer: number | null;
+    avg_construction_buffer: number | null;
 };
 
 export type ProductPriceDecade = {

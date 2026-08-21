@@ -21,6 +21,7 @@ import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { computeStorageThroughputMass, getFacilityType } from '@/simulation/planet/facility';
+import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { PRODUCED_STORAGE_QUANTITY, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
@@ -301,14 +302,10 @@ export default function StorageDepartment({
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
 
-    const otherConstructionCosts = useMemo(() => {
-        return assets.productionFacilities
-            .filter((f) => f.construction !== null)
-            .reduce((sum, f) => {
-                const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
-                return sum + Math.max(0, remaining) * constructionServicePrice;
-            }, 0);
-    }, [assets, constructionServicePrice]);
+    const otherConstructionCosts = useMemo(
+        () => computeOtherConstructionCosts(assets, constructionServicePrice),
+        [assets, constructionServicePrice],
+    );
 
     const pendingActions = usePendingActions(agentId, planetId);
     const pendingBuildKeys = useMemo(() => {
