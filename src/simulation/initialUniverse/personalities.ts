@@ -85,7 +85,7 @@ const PRICING_SELL_CONFIGS: Record<SellPricingPreset, Partial<AutomatedPricingCo
         priceAdjustMaxUp: parseFloat(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96).toFixed(2)),
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
         targetSellThrough: parseFloat(Math.min(1, TARGET_SELL_THROUGH * 1.06).toFixed(2)),
-        askVolumeFloorFraction: 0.4,
+        askVolumeFloorFraction: 0,
         askPriceSensitivity: 1.5,
     },
     'market-rate': {
@@ -99,7 +99,7 @@ const PRICING_SELL_CONFIGS: Record<SellPricingPreset, Partial<AutomatedPricingCo
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         targetSellThrough: parseFloat((TARGET_SELL_THROUGH * 0.7).toFixed(2)),
-        askVolumeFloorFraction: 0.1,
+        askVolumeFloorFraction: 0,
         askPriceSensitivity: 0.6,
     },
 };

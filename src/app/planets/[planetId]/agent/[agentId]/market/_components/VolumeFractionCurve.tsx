@@ -118,7 +118,7 @@ export function VolumeFractionCurve({
                         axisLine={false}
                         tickLine={false}
                         width={38}
-                        label={{ value: 'Volume', angle: -90, position: 'outside', fontSize: 10, fill: '#64748b' }}
+                        label={{ value: 'Volume', angle: -90, position: 'insideLeft', fontSize: 10, fill: '#64748b' }}
                     />
                     <Tooltip content={<CurveTooltip />} cursor={{ stroke: '#475569', strokeDasharray: '4 4' }} />
                     <Line

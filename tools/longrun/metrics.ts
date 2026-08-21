@@ -329,6 +329,13 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let ironSmelterExpansionIntegral = 0;
     let ironSmelterSmoothedSignal = 0;
     let ironSmelterCount = 0;
+    let ironSmelterOutput = 0;
+    let ironSmelterRevenue = 0;
+    let ironSmelterInputCosts = 0;
+    let ironSmelterWageCosts = 0;
+    let maintSteelBuffer = 0;
+    let maintElectronicsBuffer = 0;
+    let maintPlasticBuffer = 0;
 
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -489,6 +496,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironSmelterInputCoal += isEff[coalResourceType.name] ?? 1;
                 ironSmelterWorkerEfficiency += minValue(facility.lastTickResults?.workerEfficiency);
                 ironSmelterOverallEfficiency += facility.lastTickResults?.overallEfficiency ?? 0;
+                ironSmelterOutput += facility.lastTickResults?.lastProduced?.[steelResourceType.name] ?? 0;
+                ironSmelterRevenue += facility.lastTickResults?.revenue ?? 0;
+                ironSmelterInputCosts += facility.lastTickResults?.inputCosts ?? 0;
+                ironSmelterWageCosts += facility.lastTickResults?.wageCosts ?? 0;
                 const pid = facility.pidState;
                 ironSmelterContractionIntegral += pid?.contractionIntegral ?? 0;
                 ironSmelterExpansionIntegral += pid?.expansionIntegral ?? 0;
@@ -517,6 +528,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 maintInputEfficiencySteel += resEff[steelResourceType.name] ?? 1;
                 maintInputEfficiencyElectronics += resEff[electronicsResourceType.name] ?? 1;
                 maintInputEfficiencyPlastic += resEff[plasticResourceType.name] ?? 1;
+                maintSteelBuffer += queryStorageFacility(assets.storageFacility, steelResourceType.name);
+                maintElectronicsBuffer += queryStorageFacility(assets.storageFacility, electronicsResourceType.name);
+                maintPlasticBuffer += queryStorageFacility(assets.storageFacility, plasticResourceType.name);
             }
 
             if (isConstructionFacility(facility.name)) {
@@ -694,6 +708,23 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintFacilityCount > 0 ? maintInputEfficiencyElectronics / maintFacilityCount : 0;
     const maintInputEfficiencyPlasticAvg =
         maintFacilityCount > 0 ? maintInputEfficiencyPlastic / maintFacilityCount : 0;
+    const maintSteelBufferAvg = maintFacilityCount > 0 ? maintSteelBuffer / maintFacilityCount : 0;
+    const maintElectronicsBufferAvg = maintFacilityCount > 0 ? maintElectronicsBuffer / maintFacilityCount : 0;
+    const maintPlasticBufferAvg = maintFacilityCount > 0 ? maintPlasticBuffer / maintFacilityCount : 0;
+    const ironSmelterOutputAvg = ironSmelterCount > 0 ? ironSmelterOutput / ironSmelterCount : 0;
+    const ironSmelterRevenueAvg = ironSmelterCount > 0 ? ironSmelterRevenue / ironSmelterCount : 0;
+    const ironSmelterInputCostsAvg = ironSmelterCount > 0 ? ironSmelterInputCosts / ironSmelterCount : 0;
+    const ironSmelterWageCostsAvg = ironSmelterCount > 0 ? ironSmelterWageCosts / ironSmelterCount : 0;
+    const ironSmelterProfitAvg = ironSmelterRevenueAvg - ironSmelterInputCostsAvg - ironSmelterWageCostsAvg;
+    const ironSmelterCostFloor = planet.lastProductionCostFloors[steelResourceType.name] ?? 0;
+    const steelPrice = priceOf(planet, steelResourceType.name);
+    const steelResult = planet.lastMarketResult[steelResourceType.name];
+    const steelTotalDemand = steelResult?.totalDemand ?? 0;
+    const steelTotalSupply = steelResult?.totalSupply ?? 0;
+    const steelUnfilledDemand = steelResult?.unfilledDemand ?? 0;
+    const steelUnsoldSupply = steelResult?.unsoldSupply ?? 0;
+    const steelVolume = steelResult?.totalVolume ?? 0;
+    const steelFillRate = steelTotalDemand > 0 ? steelVolume / steelTotalDemand : 0;
     const siliconWaferResourceEfficiencyAvg =
         siliconWaferCount > 0 ? siliconWaferResourceEfficiency / siliconWaferCount : 0;
     const siliconWaferWorkerEfficiencyAvg =
@@ -969,6 +1000,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         maintInputEfficiencySteel: maintInputEfficiencySteelAvg,
         maintInputEfficiencyElectronics: maintInputEfficiencyElectronicsAvg,
         maintInputEfficiencyPlastic: maintInputEfficiencyPlasticAvg,
+        maintSteelBuffer: maintSteelBufferAvg,
+        maintElectronicsBuffer: maintElectronicsBufferAvg,
+        maintPlasticBuffer: maintPlasticBufferAvg,
         fillRateSteel,
         fillRateElectronics,
         fillRatePlastic,
@@ -1028,6 +1062,19 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         ironSmelterContractionIntegral: ironSmelterContractionIntegralAvg,
         ironSmelterExpansionIntegral: ironSmelterExpansionIntegralAvg,
         ironSmelterSmoothedSignal: ironSmelterSmoothedSignalAvg,
+        ironSmelterOutput: ironSmelterOutputAvg,
+        ironSmelterRevenue: ironSmelterRevenueAvg,
+        ironSmelterInputCosts: ironSmelterInputCostsAvg,
+        ironSmelterWageCosts: ironSmelterWageCostsAvg,
+        ironSmelterProfit: ironSmelterProfitAvg,
+        ironSmelterCostFloor,
+        steelPrice,
+        steelTotalDemand,
+        steelTotalSupply,
+        steelUnfilledDemand,
+        steelUnsoldSupply,
+        steelVolume,
+        steelFillRate,
         maintAggregateConsumption,
         maintSteadyStateDemand,
         maintCatchupBacklog,
@@ -1291,6 +1338,22 @@ export const METRIC_KEYS: string[] = [
     'ironSmelterContractionIntegral',
     'ironSmelterExpansionIntegral',
     'ironSmelterSmoothedSignal',
+    'ironSmelterOutput',
+    'ironSmelterRevenue',
+    'ironSmelterInputCosts',
+    'ironSmelterWageCosts',
+    'ironSmelterProfit',
+    'ironSmelterCostFloor',
+    'steelPrice',
+    'steelTotalDemand',
+    'steelTotalSupply',
+    'steelUnfilledDemand',
+    'steelUnsoldSupply',
+    'steelVolume',
+    'steelFillRate',
+    'maintSteelBuffer',
+    'maintElectronicsBuffer',
+    'maintPlasticBuffer',
     'maintAggregateConsumption',
     'maintSteadyStateDemand',
     'maintCatchupBacklog',
