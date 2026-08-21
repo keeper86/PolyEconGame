@@ -18,10 +18,12 @@ describe('autoConfigToLocal', () => {
             targetSellThrough: 0.9,
             askVolumeFloorFraction: 0.3,
             askPriceSensitivity: 1.5,
+            automatedCostFloorBuffer: 1.6,
             inputBufferTargetTicks: 30,
             targetFillRate: 0.9,
             bidVolumeFloorFraction: 0.25,
             bidPriceSensitivity: 1.2,
+            bidOfferMaxCostMultiplier: 4.0,
             freeBuyQuantity: 1000,
             freeRetainment: 2000,
             freeBuyQuantitySmoothingMaxExtra: 2,
@@ -34,10 +36,12 @@ describe('autoConfigToLocal', () => {
         expect(local.targetSellThrough).toBe('0.9');
         expect(local.askVolumeFloorFraction).toBe('0.3');
         expect(local.askPriceSensitivity).toBe('1.5');
+        expect(local.automatedCostFloorBuffer).toBe('1.6');
         expect(local.inputBufferTargetTicks).toBe('30');
         expect(local.targetFillRate).toBe('0.9');
         expect(local.bidVolumeFloorFraction).toBe('0.25');
         expect(local.bidPriceSensitivity).toBe('1.2');
+        expect(local.bidOfferMaxCostMultiplier).toBe('4');
         expect(local.freeBuyQuantity).toBe('1000');
         expect(local.freeRetainment).toBe('2000');
         expect(local.freeBuyQuantitySmoothingMaxExtra).toBe('2');
@@ -62,10 +66,12 @@ describe('localToAutoConfig', () => {
             targetSellThrough: '',
             askVolumeFloorFraction: '',
             askPriceSensitivity: '',
+            automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             bidVolumeFloorFraction: '',
             bidPriceSensitivity: '',
+            bidOfferMaxCostMultiplier: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
@@ -82,10 +88,12 @@ describe('localToAutoConfig', () => {
             targetSellThrough: '',
             askVolumeFloorFraction: '',
             askPriceSensitivity: '',
+            automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             bidVolumeFloorFraction: '',
             bidPriceSensitivity: '',
+            bidOfferMaxCostMultiplier: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',
@@ -106,10 +114,12 @@ describe('localToAutoConfig', () => {
             targetSellThrough: '',
             askVolumeFloorFraction: '',
             askPriceSensitivity: '',
+            automatedCostFloorBuffer: '',
             inputBufferTargetTicks: '',
             targetFillRate: '',
             bidVolumeFloorFraction: '',
             bidPriceSensitivity: '',
+            bidOfferMaxCostMultiplier: '',
             freeBuyQuantity: '',
             freeRetainment: '',
             freeBuyQuantitySmoothingMaxExtra: '',

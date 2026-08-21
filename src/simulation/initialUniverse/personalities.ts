@@ -1,6 +1,7 @@
 import {
     ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
+    BID_ANCHOR_MULTIPLE,
     BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -13,6 +14,7 @@ import {
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { AutomatedPricingConfig } from '../planet/planet';
+import { nextRandom } from '../utils/stochasticRound';
 
 type BuyVolumePreset = 'just-in-time' | 'balanced' | 'stockpile';
 type BuyPricingPreset = 'patient' | 'market-rate' | 'urgent';
@@ -107,15 +109,31 @@ export interface AgentPersonality {
     sellAutoConfig: AutomatedPricingConfig;
 }
 
+//Box-Muller
+const gauss = (mean: number, std: number) =>
+    Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
+
 export function generateAgentPersonality(): AgentPersonality {
+    const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
+    const priceAdjustmentAggressivenessDown = Math.min(0.999, 0.975 - 0.05 * gauss(0.5, 0.2));
+    const sellPriceAgressiveness = Math.max(0.1, 0.75 + 0.75 * gauss(0.5, 0.2));
+    const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 6 * gauss(0.5, 0.2)));
+
     return {
         buyAutoConfig: {
             ...VOLUME_BUY_CONFIGS.balanced,
             ...PRICING_BUY_CONFIGS['market-rate'],
+            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
+            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
+
+            bidOfferMaxCostMultiplier: buyPriceAgressiveness,
         },
         sellAutoConfig: {
             ...VOLUME_SELL_CONFIGS.balanced,
             ...PRICING_SELL_CONFIGS['market-rate'],
+            priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
+            priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
+            automatedCostFloorBuffer: sellPriceAgressiveness,
         },
     };
 }

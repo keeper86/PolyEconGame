@@ -1,9 +1,10 @@
 import assert from 'assert';
 import {
-    ASK_ANCHOR_MULTIPLE,
     ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
+    AUTOMATED_COST_FLOOR_BUFFER,
     BID_ANCHOR_MULTIPLE,
+    BID_OFFER_MAX_COST_MULTIPLIER,
     BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     COST_SPRING_STRENGTH,
@@ -55,6 +56,7 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
             c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
         askVolumeFloorFraction: c.askVolumeFloorFraction ?? ASK_VOLUME_FLOOR_FRACTION,
         askPriceSensitivity: c.askPriceSensitivity ?? ASK_PRICE_SENSITIVITY,
+        automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
         freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -73,6 +75,7 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
             c.targetFillRate ?? (resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE),
         bidVolumeFloorFraction: c.bidVolumeFloorFraction ?? BID_VOLUME_FLOOR_FRACTION,
         bidPriceSensitivity: c.bidPriceSensitivity ?? BID_PRICE_SENSITIVITY,
+        bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
         freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
@@ -83,13 +86,14 @@ export function buyVolumeFraction(
     costFloor: number,
     sensitivity: number,
     floorFraction: number,
+    maxCostMultiplier: number,
 ): number {
     const ratio = price / Math.max(PRICE_FLOOR, costFloor);
     if (ratio <= 1) {
         return 1;
     }
     const width = Math.max(0.001, sensitivity);
-    return floorFraction + (1 - floorFraction) / (1 + Math.exp((ratio - 1) / width));
+    return floorFraction + (1 - floorFraction) / (1 + Math.exp((ratio - maxCostMultiplier) / width));
 }
 
 export function sellVolumeFraction(
@@ -97,13 +101,11 @@ export function sellVolumeFraction(
     costFloor: number,
     sensitivity: number,
     floorFraction: number,
+    costFloorBuffer: number,
 ): number {
     const ratio = price / Math.max(PRICE_FLOOR, costFloor);
-    if (ratio >= 1) {
-        return 1;
-    }
     const width = Math.max(0.001, sensitivity);
-    return floorFraction + (1 - floorFraction) / (1 + Math.exp((1 - ratio) / width));
+    return floorFraction + (1 - floorFraction) / (1 + Math.exp((costFloorBuffer - ratio) / width));
 }
 
 /** Convenience: looks up the existing buy bid (if any) and resolves with that config + resource. */
@@ -441,7 +443,13 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
         const costKnown = costFloor > PRICE_FLOOR;
         const volumeFraction = costKnown
-            ? buyVolumeFraction(marketPrice, costFloor, bidCfg.bidPriceSensitivity, bidCfg.bidVolumeFloorFraction)
+            ? buyVolumeFraction(
+                  marketPrice,
+                  costFloor,
+                  bidCfg.bidPriceSensitivity,
+                  bidCfg.bidVolumeFloorFraction,
+                  bidCfg.bidOfferMaxCostMultiplier,
+              )
             : 1;
         const priceScaledShortfall = totalShortfall * volumeFraction;
         const smoothedTarget = priceScaledShortfall > EPSILON ? currentInventory + priceScaledShortfall : storageTarget;
@@ -507,7 +515,13 @@ export function adjustOfferPrice(
     // freeRetainment is always a floor on the final retainment
     const retainment = Math.max(offer.offerRetainment ?? 0, freeRetainment);
     const baseEffectiveQuantity = Math.max(0, inventoryQty - retainment);
-    const volumeFraction = sellVolumeFraction(price, costFloor, cfg.askPriceSensitivity, cfg.askVolumeFloorFraction);
+    const volumeFraction = sellVolumeFraction(
+        price,
+        costFloor,
+        cfg.askPriceSensitivity,
+        cfg.askVolumeFloorFraction,
+        cfg.automatedCostFloorBuffer,
+    );
     const effectiveQuantity = baseEffectiveQuantity * volumeFraction;
     const oldPrice = price;
 
@@ -563,10 +577,7 @@ export function adjustOfferPrice(
         cfg.priceAdjustMaxDown,
     );
 
-    const costKnown = costFloor > PRICE_FLOOR;
-    const netFactor = costKnown
-        ? factor + COST_SPRING_STRENGTH * Math.sqrt(Math.max(0, (costFloor * ASK_ANCHOR_MULTIPLE) / price - 1))
-        : factor;
+    const netFactor = factor;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {

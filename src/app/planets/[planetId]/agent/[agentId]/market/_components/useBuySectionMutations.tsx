@@ -17,6 +17,7 @@ const BUY_PRICING_KEYS = [
     'priceAdjustMaxDown',
     'bidVolumeFloorFraction',
     'bidPriceSensitivity',
+    'bidOfferMaxCostMultiplier',
     'targetFillRate',
 ] as const;
 const BUY_VOLUME_KEYS = [

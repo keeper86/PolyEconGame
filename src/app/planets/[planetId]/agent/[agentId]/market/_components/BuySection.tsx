@@ -11,6 +11,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
+    BID_ANCHOR_MULTIPLE,
+    BID_OFFER_MAX_COST_MULTIPLIER,
     BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -285,6 +287,7 @@ export default function BuySection({
             local.buyAutoConfig.targetFillRate,
             local.buyAutoConfig.bidVolumeFloorFraction,
             local.buyAutoConfig.bidPriceSensitivity,
+            local.buyAutoConfig.bidOfferMaxCostMultiplier,
             isService,
         ],
     );
@@ -351,6 +354,7 @@ export default function BuySection({
         'priceAdjustMaxDown',
         'bidVolumeFloorFraction',
         'bidPriceSensitivity',
+        'bidOfferMaxCostMultiplier',
         'targetFillRate',
     ];
     const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
@@ -539,6 +543,21 @@ export default function BuySection({
                                             max={3}
                                             step={0.1}
                                             onChange={(v) => handleSliderChange({ bidPriceSensitivity: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Max cost multiplier'
+                                            value={sliderVal(
+                                                'bidOfferMaxCostMultiplier',
+                                                BID_OFFER_MAX_COST_MULTIPLIER,
+                                            )}
+                                            committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
+                                            min={1}
+                                            max={BID_ANCHOR_MULTIPLE}
+                                            step={0.1}
+                                            onChange={(v) =>
+                                                handleSliderChange({ bidOfferMaxCostMultiplier: String(v) })
+                                            }
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider

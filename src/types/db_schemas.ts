@@ -214,8 +214,8 @@ export type PlanetPopulationHistory = {
     logistics_buffer: number;
     education_buffer: number;
     retail_buffer: number;
-    created_at: Date;
     construction_buffer: number;
+    created_at: Date;
 };
 
 export type PlanetPopulationMonthly = {

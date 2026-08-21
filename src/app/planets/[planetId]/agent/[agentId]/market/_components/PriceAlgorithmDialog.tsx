@@ -46,12 +46,12 @@ function sellSteps(d: SellDiagnostics): Step[] {
         },
         {
             label: 'Volume fraction',
-            formula: 'floor + (1-floor) · sigmoid((price/cost - 1)/sensitivity)',
+            formula: 'floor + (1-floor) · sigmoid((buffer - price/cost)/sensitivity)',
             value: fmt(d.volumeFraction),
         },
         {
             label: 'Net factor',
-            formula: 'baseFactor + global cost anchor',
+            formula: 'baseFactor',
             value: fmt(d.netFactor),
         },
         {
@@ -110,7 +110,7 @@ function buySteps(d: BuyDiagnostics): Step[] {
         },
         {
             label: 'Volume fraction',
-            formula: 'floor + (1-floor) · sigmoid((1 - price/cost)/sensitivity)',
+            formula: 'floor + (1-floor) · sigmoid((maxCostMultiplier - price/cost)/sensitivity)',
             value: fmt(d.volumeFraction),
         },
         {
@@ -487,8 +487,8 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
                         </div>
 
                         <div className='text-xs text-slate-500 italic'>
-                            High prices throttle volume down to the configured floor; a uniform cost anchor (applied to
-                            every agent alike) keeps the price discovery stable.
+                            Prices below the configured buffer throttle the offered volume down toward the floor,
+                            keeping the agent from dumping inventory at a loss.
                         </div>
                     </div>
                 </div>

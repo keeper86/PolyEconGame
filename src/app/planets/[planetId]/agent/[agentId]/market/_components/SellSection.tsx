@@ -11,6 +11,7 @@ import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
+    AUTOMATED_COST_FLOOR_BUFFER,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
@@ -264,6 +265,7 @@ export default function SellSection({
             local.sellAutoConfig.priceAdjustMaxDown,
             local.sellAutoConfig.askVolumeFloorFraction,
             local.sellAutoConfig.askPriceSensitivity,
+            local.sellAutoConfig.automatedCostFloorBuffer,
             local.sellAutoConfig.targetSellThrough,
             isService,
         ],
@@ -327,6 +329,7 @@ export default function SellSection({
         'priceAdjustMaxDown',
         'askVolumeFloorFraction',
         'askPriceSensitivity',
+        'automatedCostFloorBuffer',
         'targetSellThrough',
     ];
     const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
@@ -505,6 +508,18 @@ export default function SellSection({
                                             max={3}
                                             step={0.1}
                                             onChange={(v) => handleSliderChange({ askPriceSensitivity: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Cost floor buffer'
+                                            value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
+                                            committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
+                                            min={0.1}
+                                            max={5}
+                                            step={0.1}
+                                            onChange={(v) =>
+                                                handleSliderChange({ automatedCostFloorBuffer: String(v) })
+                                            }
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider

@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
+    AUTOMATED_COST_FLOOR_BUFFER,
+    BID_OFFER_MAX_COST_MULTIPLIER,
     BID_VOLUME_FLOOR_FRACTION,
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
@@ -145,7 +147,7 @@ describe('resolveOfferConfig — config resolution', () => {
         expect(offer.diagnostics!.targetSellThrough).toBe(0.8);
         // sellThrough = 100/100 = 1.0, target = 0.8 → above target → factor between 1 and 1.20
         // t = (1.0 - 0.8) / (1 - 0.8) = 1.0, baseFactor = 1 + 1.0 * (1.20 - 1) = 1.20
-        // price 10 ≥ costFloor 2 → no volume scaling (sellVolumeFraction = 1)
+        // volume fraction only scales quantity, not the price factor
         expect(offer.offerPrice).toBe(10 * 1.2);
     });
 });
@@ -381,6 +383,7 @@ describe('automaticPricing — EMA smoothing', () => {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 50,
+            autoConfig: { askVolumeFloorFraction: 1 },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.smoothedSellThrough).toBeCloseTo(0.5, 10);
@@ -393,6 +396,7 @@ describe('automaticPricing — EMA smoothing', () => {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 90,
+            autoConfig: { askVolumeFloorFraction: 1 },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.smoothedSellThrough).toBeCloseTo(0.9, 10);
@@ -543,21 +547,29 @@ describe('automaticPricing — sell-side config overrides', () => {
         expect(offer!.diagnostics!.effectiveQuantity).toBe(0);
     });
 
-    it('buyVolumeFraction throttles demand above the cost floor and respects the floor', () => {
-        expect(buyVolumeFraction(1, 1, 1, 0.2)).toBe(1);
-        expect(buyVolumeFraction(100, 1, 1, 0.2)).toBeCloseTo(0.2, 5);
-        expect(buyVolumeFraction(2, 1, 1, 0.2)).toBeGreaterThan(0.2);
-        expect(buyVolumeFraction(2, 1, 1, 0.2)).toBeLessThan(1);
-        expect(buyVolumeFraction(3, 1, 1, 0.2)).toBeLessThan(buyVolumeFraction(2, 1, 1, 0.2));
-        expect(buyVolumeFraction(3, 1, 2, 0.2)).toBeGreaterThan(buyVolumeFraction(3, 1, 1, 0.2));
+    it('buyVolumeFraction throttles demand around the configured multiplier', () => {
+        const multiplier = BID_OFFER_MAX_COST_MULTIPLIER;
+        expect(buyVolumeFraction(1, 1, 1, 0.2, multiplier)).toBe(1);
+        expect(buyVolumeFraction(0.5, 1, 1, 0.2, multiplier)).toBe(1);
+        expect(buyVolumeFraction(multiplier, 1, 1, 0.2, multiplier)).toBeCloseTo(0.6, 5);
+        expect(buyVolumeFraction(100, 1, 1, 0.2, multiplier)).toBeCloseTo(0.2, 5);
+        expect(buyVolumeFraction(2, 1, 1, 0.2, multiplier)).toBeGreaterThan(0.2);
+        expect(buyVolumeFraction(2, 1, 1, 0.2, multiplier)).toBeLessThan(1);
+        expect(buyVolumeFraction(3, 1, 1, 0.2, multiplier)).toBeLessThan(buyVolumeFraction(2, 1, 1, 0.2, multiplier));
+        expect(buyVolumeFraction(5, 1, 2, 0.2, multiplier)).toBeGreaterThan(
+            buyVolumeFraction(5, 1, 1, 0.2, multiplier),
+        );
     });
 
-    it('sellVolumeFraction holds back volume below the cost floor and respects the floor', () => {
-        expect(sellVolumeFraction(1, 1, 1, 0.2)).toBe(1);
-        expect(sellVolumeFraction(0.01, 1, 1, 0.2)).toBeGreaterThan(0.2);
-        expect(sellVolumeFraction(0.5, 1, 1, 0.2)).toBeLessThan(1);
-        expect(sellVolumeFraction(0.25, 1, 1, 0.2)).toBeLessThan(sellVolumeFraction(0.5, 1, 1, 0.2));
-        expect(sellVolumeFraction(0.25, 1, 2, 0.2)).toBeGreaterThan(sellVolumeFraction(0.25, 1, 1, 0.2));
+    it('sellVolumeFraction holds back volume below the buffer and respects the floor', () => {
+        const buffer = AUTOMATED_COST_FLOOR_BUFFER;
+        expect(sellVolumeFraction(100, 1, 1, 0.2, buffer)).toBeCloseTo(1, 5);
+        expect(sellVolumeFraction(buffer, 1, 1, 0.2, buffer)).toBeCloseTo(0.6, 5);
+        expect(sellVolumeFraction(0.5, 1, 1, 0.2, buffer)).toBeLessThan(1);
+        expect(sellVolumeFraction(0.25, 1, 1, 0.2, buffer)).toBeLessThan(sellVolumeFraction(0.5, 1, 1, 0.2, buffer));
+        expect(sellVolumeFraction(0.25, 1, 2, 0.2, buffer)).toBeGreaterThan(
+            sellVolumeFraction(0.25, 1, 1, 0.2, buffer),
+        );
     });
 });
 
@@ -606,7 +618,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
     });
 });
 
-describe('automaticPricing — cost-floor brake zone', () => {
+describe('automaticPricing — sell-side pricing feedback', () => {
     beforeEach(() => seedRng(42));
 
     it('lowers the ask price purely by sell-through feedback when undersold', () => {
@@ -650,13 +662,11 @@ describe('automaticPricing — cost-floor brake zone', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-        // zero sell-through → downward adjustment, tempered by the global cost anchor
-        // (ask kept near costFloor × ASK_ANCHOR_MULTIPLE rather than spiraling down)
-        expect(newPrice).toBeGreaterThan(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN);
-        expect(newPrice).toBeLessThan(PRIOR_PRICE * 1.1);
+        // zero sell-through → ask falls to the maximum downward adjustment (no cost spring)
+        expect(newPrice).toBeCloseTo(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN, 5);
     });
 
-    it('does not activate the brake zone for facilities with negligible costs (costFloor = PRICE_FLOOR)', () => {
+    it('sells at pure sell-through adjustment when the cost floor is negligible', () => {
         const STOCK = 1000;
         const { agent, planet } = makeWaterProducerWithPriorOffer(10, 0, STOCK);
 

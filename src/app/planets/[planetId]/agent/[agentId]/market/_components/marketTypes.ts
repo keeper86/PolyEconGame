@@ -16,10 +16,12 @@ export type AutoConfigLocalState = {
     targetSellThrough: string;
     askVolumeFloorFraction: string;
     askPriceSensitivity: string;
+    automatedCostFloorBuffer: string;
     inputBufferTargetTicks: string;
     targetFillRate: string;
     bidVolumeFloorFraction: string;
     bidPriceSensitivity: string;
+    bidOfferMaxCostMultiplier: string;
     freeBuyQuantity: string;
     freeRetainment: string;
     freeBuyQuantitySmoothingMaxExtra: string;
@@ -34,10 +36,12 @@ export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): A
         targetSellThrough: config?.targetSellThrough?.toString() ?? '',
         askVolumeFloorFraction: config?.askVolumeFloorFraction?.toString() ?? '',
         askPriceSensitivity: config?.askPriceSensitivity?.toString() ?? '',
+        automatedCostFloorBuffer: config?.automatedCostFloorBuffer?.toString() ?? '',
         inputBufferTargetTicks: config?.inputBufferTargetTicks?.toString() ?? '',
         targetFillRate: config?.targetFillRate?.toString() ?? '',
         bidVolumeFloorFraction: config?.bidVolumeFloorFraction?.toString() ?? '',
         bidPriceSensitivity: config?.bidPriceSensitivity?.toString() ?? '',
+        bidOfferMaxCostMultiplier: config?.bidOfferMaxCostMultiplier?.toString() ?? '',
         freeBuyQuantity: config?.freeBuyQuantity?.toString() ?? '',
         freeRetainment: config?.freeRetainment?.toString() ?? '',
         freeBuyQuantitySmoothingMaxExtra: config?.freeBuyQuantitySmoothingMaxExtra?.toString() ?? '',
@@ -54,10 +58,12 @@ export function localToAutoConfig(local: AutoConfigLocalState): AutomatedPricing
         'targetSellThrough',
         'askVolumeFloorFraction',
         'askPriceSensitivity',
+        'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
         'bidVolumeFloorFraction',
         'bidPriceSensitivity',
+        'bidOfferMaxCostMultiplier',
         'freeBuyQuantity',
         'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',
@@ -83,10 +89,12 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         'targetSellThrough',
         'askVolumeFloorFraction',
         'askPriceSensitivity',
+        'automatedCostFloorBuffer',
         'inputBufferTargetTicks',
         'targetFillRate',
         'bidVolumeFloorFraction',
         'bidPriceSensitivity',
+        'bidOfferMaxCostMultiplier',
         'freeBuyQuantity',
         'freeRetainment',
         'freeBuyQuantitySmoothingMaxExtra',

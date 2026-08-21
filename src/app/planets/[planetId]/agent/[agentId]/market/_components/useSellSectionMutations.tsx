@@ -17,6 +17,7 @@ const SELL_PRICING_KEYS = [
     'priceAdjustMaxDown',
     'askVolumeFloorFraction',
     'askPriceSensitivity',
+    'automatedCostFloorBuffer',
     'targetSellThrough',
 ] as const;
 const SELL_VOLUME_KEYS = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'] as const;

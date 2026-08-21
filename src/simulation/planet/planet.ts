@@ -169,11 +169,13 @@ export interface AutomatedPricingConfig {
     targetSellThrough?: number;
     askVolumeFloorFraction?: number;
     askPriceSensitivity?: number;
+    automatedCostFloorBuffer?: number;
 
     inputBufferTargetTicks?: number;
     targetFillRate?: number;
     bidVolumeFloorFraction?: number;
     bidPriceSensitivity?: number;
+    bidOfferMaxCostMultiplier?: number;
 }
 
 export type SellDiagnostics = {
