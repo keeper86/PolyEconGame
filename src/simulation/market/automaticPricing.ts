@@ -42,6 +42,9 @@ import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { computeAllConsumptionRates } from './consumptionSources';
 import { toConsumptionShipInfo } from './consumptionShipInfo';
+import { buyVolumeFraction, sellVolumeFraction } from './volumeFraction';
+
+export { buyVolumeFraction, sellVolumeFraction };
 
 // ── Config resolvers ──────────────────────────────────────────────────────────
 // Each takes an optional config + the resource (to pick service-appropriate defaults),
@@ -79,33 +82,6 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
         freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     };
-}
-
-export function buyVolumeFraction(
-    price: number,
-    costFloor: number,
-    sensitivity: number,
-    floorFraction: number,
-    maxCostMultiplier: number,
-): number {
-    const ratio = price / Math.max(PRICE_FLOOR, costFloor);
-    if (ratio <= 1) {
-        return 1;
-    }
-    const width = Math.max(0.001, sensitivity);
-    return floorFraction + (1 - floorFraction) / (1 + Math.exp((ratio - maxCostMultiplier) / width));
-}
-
-export function sellVolumeFraction(
-    price: number,
-    costFloor: number,
-    sensitivity: number,
-    floorFraction: number,
-    costFloorBuffer: number,
-): number {
-    const ratio = price / Math.max(PRICE_FLOOR, costFloor);
-    const width = Math.max(0.001, sensitivity);
-    return floorFraction + (1 - floorFraction) / (1 + Math.exp((costFloorBuffer - ratio) / width));
 }
 
 /** Convenience: looks up the existing buy bid (if any) and resolves with that config + resource. */

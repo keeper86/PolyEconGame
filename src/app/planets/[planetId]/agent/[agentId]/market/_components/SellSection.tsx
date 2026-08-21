@@ -25,6 +25,7 @@ import type { SellSectionProps } from './marketTypes';
 import type { AutoConfigLocalState } from './marketTypes';
 import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
 import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import { VolumeFractionCurve } from './VolumeFractionCurve';
 import { Label } from '@/components/ui/label';
 import {
     detectPricingSellPreset,
@@ -354,6 +355,24 @@ export default function SellSection({
         return localNum ?? committed ?? defaultVal;
     };
 
+    const curveGhost = useMemo(
+        () => ({
+            floorFraction: committedVal(committedConfig, 'askVolumeFloorFraction') ?? ASK_VOLUME_FLOOR_FRACTION,
+            sensitivity: committedVal(committedConfig, 'askPriceSensitivity') ?? ASK_PRICE_SENSITIVITY,
+            inflection: committedVal(committedConfig, 'automatedCostFloorBuffer') ?? AUTOMATED_COST_FLOOR_BUFFER,
+        }),
+        [committedConfig],
+    );
+    const curveActive = {
+        floorFraction: sliderVal('askVolumeFloorFraction', ASK_VOLUME_FLOOR_FRACTION),
+        sensitivity: sliderVal('askPriceSensitivity', ASK_PRICE_SENSITIVITY),
+        inflection: sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER),
+    };
+    const curveRatio =
+        overviewRow && overviewRow.priceCostRatio > 0 && Number.isFinite(overviewRow.priceCostRatio)
+            ? overviewRow.priceCostRatio
+            : undefined;
+
     // ── Manual pricing slot ───────────────────────────────────────────────────
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
     const costFloor =
@@ -442,7 +461,7 @@ export default function SellSection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {SELL_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -490,6 +509,29 @@ export default function SellSection({
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
+                                            label='Target sell-through'
+                                            value={sliderVal(
+                                                'targetSellThrough',
+                                                isService ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH,
+                                            )}
+                                            committed={committedVal(committedConfig, 'targetSellThrough')}
+                                            min={0.1}
+                                            max={0.99}
+                                            step={0.01}
+                                            isPercent
+                                            onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
+                                        {!isCurrency && (
+                                            <VolumeFractionCurve
+                                                mode='sell'
+                                                ghost={curveGhost}
+                                                active={curveActive}
+                                                currentRatio={curveRatio}
+                                            />
+                                        )}
+                                        <ConfigSlider
                                             label='Min volume fraction'
                                             value={sliderVal('askVolumeFloorFraction', ASK_VOLUME_FLOOR_FRACTION)}
                                             committed={committedVal(committedConfig, 'askVolumeFloorFraction')}
@@ -520,20 +562,6 @@ export default function SellSection({
                                             onChange={(v) =>
                                                 handleSliderChange({ automatedCostFloorBuffer: String(v) })
                                             }
-                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Target sell-through'
-                                            value={sliderVal(
-                                                'targetSellThrough',
-                                                isService ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH,
-                                            )}
-                                            committed={committedVal(committedConfig, 'targetSellThrough')}
-                                            min={0.1}
-                                            max={0.99}
-                                            step={0.01}
-                                            isPercent
-                                            onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                     </div>

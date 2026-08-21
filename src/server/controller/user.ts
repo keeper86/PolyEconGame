@@ -680,6 +680,8 @@ const autoConfigSchema = z
         targetFillRate: z.number().min(0).max(1).optional(),
         bidVolumeFloorFraction: z.number().min(0).max(1).optional(),
         bidPriceSensitivity: z.number().positive().optional(),
+        bidOfferMaxCostMultiplier: z.number().min(0).optional(),
+        automatedCostFloorBuffer: z.number().min(0).optional(),
         freeBuyQuantity: z.number().min(0).optional(),
         freeRetainment: z.number().min(0).optional(),
         freeBuyQuantitySmoothingMaxExtra: z.number().min(0).optional(),

@@ -110,7 +110,7 @@ function buySteps(d: BuyDiagnostics): Step[] {
         },
         {
             label: 'Volume fraction',
-            formula: 'floor + (1-floor) · sigmoid((maxCostMultiplier - price/cost)/sensitivity)',
+            formula: 'floor + (1-floor) · sigmoid((price/cost - maxCostMultiplier)/sensitivity)',
             value: fmt(d.volumeFraction),
         },
         {

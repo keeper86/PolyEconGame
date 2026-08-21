@@ -44,6 +44,7 @@ import type { AutoConfigLocalState } from './marketTypes';
 import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
 import { LogSlider } from '@/components/ui/log-slider';
 import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import { VolumeFractionCurve } from './VolumeFractionCurve';
 import {
     detectPricingBuyPreset,
     detectVolumeBuyPreset,
@@ -385,6 +386,24 @@ export default function BuySection({
         return localNum ?? committed ?? defaultVal;
     };
 
+    const curveGhost = useMemo(
+        () => ({
+            floorFraction: committedVal(committedConfig, 'bidVolumeFloorFraction') ?? BID_VOLUME_FLOOR_FRACTION,
+            sensitivity: committedVal(committedConfig, 'bidPriceSensitivity') ?? BID_PRICE_SENSITIVITY,
+            inflection: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
+        }),
+        [committedConfig],
+    );
+    const curveActive = {
+        floorFraction: sliderVal('bidVolumeFloorFraction', BID_VOLUME_FLOOR_FRACTION),
+        sensitivity: sliderVal('bidPriceSensitivity', BID_PRICE_SENSITIVITY),
+        inflection: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
+    };
+    const curveRatio =
+        overviewRow && overviewRow.priceCostRatio > 0 && Number.isFinite(overviewRow.priceCostRatio)
+            ? overviewRow.priceCostRatio
+            : undefined;
+
     // ── Log slider tiers for free buy quantity ──────────────────────────────
     const FREE_BUY_QUANTITY_TIERS = [0, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000];
 
@@ -477,7 +496,7 @@ export default function BuySection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -525,6 +544,30 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
+                                            label='Target fill rate'
+                                            value={sliderVal(
+                                                'targetFillRate',
+                                                isService ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE,
+                                            )}
+                                            committed={committedVal(committedConfig, 'targetFillRate')}
+                                            min={0.1}
+                                            max={1.0}
+                                            step={0.05}
+                                            isPercent
+                                            onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
+
+                                        {!isCurrency && (
+                                            <VolumeFractionCurve
+                                                mode='buy'
+                                                ghost={curveGhost}
+                                                active={curveActive}
+                                                currentRatio={curveRatio}
+                                            />
+                                        )}
+                                        <ConfigSlider
                                             label='Min volume fraction'
                                             value={sliderVal('bidVolumeFloorFraction', BID_VOLUME_FLOOR_FRACTION)}
                                             committed={committedVal(committedConfig, 'bidVolumeFloorFraction')}
@@ -552,26 +595,12 @@ export default function BuySection({
                                                 BID_OFFER_MAX_COST_MULTIPLIER,
                                             )}
                                             committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
-                                            min={1}
+                                            min={0}
                                             max={BID_ANCHOR_MULTIPLE}
                                             step={0.1}
                                             onChange={(v) =>
                                                 handleSliderChange({ bidOfferMaxCostMultiplier: String(v) })
                                             }
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Target fill rate'
-                                            value={sliderVal(
-                                                'targetFillRate',
-                                                isService ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE,
-                                            )}
-                                            committed={committedVal(committedConfig, 'targetFillRate')}
-                                            min={0.1}
-                                            max={1.0}
-                                            step={0.05}
-                                            isPercent
-                                            onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                     </div>

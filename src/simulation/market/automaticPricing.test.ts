@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
+    BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
@@ -44,6 +45,14 @@ import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
+
+const BUY_VOLUME_FRACTION_AT_COST = buyVolumeFraction(
+    1,
+    1,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
+    BID_OFFER_MAX_COST_MULTIPLIER,
+);
 
 function makePlanetWithPrice(prices: Record<string, number> = {}) {
     return makePlanet({ marketPrices: prices });
@@ -549,8 +558,8 @@ describe('automaticPricing — sell-side config overrides', () => {
 
     it('buyVolumeFraction throttles demand around the configured multiplier', () => {
         const multiplier = BID_OFFER_MAX_COST_MULTIPLIER;
-        expect(buyVolumeFraction(1, 1, 1, 0.2, multiplier)).toBe(1);
-        expect(buyVolumeFraction(0.5, 1, 1, 0.2, multiplier)).toBe(1);
+        expect(buyVolumeFraction(0, 1, 1, 0.2, multiplier)).toBeCloseTo(0.977, 3);
+        expect(buyVolumeFraction(0.5, 1, 1, 0.2, multiplier)).toBeCloseTo(0.962, 3);
         expect(buyVolumeFraction(multiplier, 1, 1, 0.2, multiplier)).toBeCloseTo(0.6, 5);
         expect(buyVolumeFraction(100, 1, 1, 0.2, multiplier)).toBeCloseTo(0.2, 5);
         expect(buyVolumeFraction(2, 1, 1, 0.2, multiplier)).toBeGreaterThan(0.2);
@@ -559,6 +568,19 @@ describe('automaticPricing — sell-side config overrides', () => {
         expect(buyVolumeFraction(5, 1, 2, 0.2, multiplier)).toBeGreaterThan(
             buyVolumeFraction(5, 1, 1, 0.2, multiplier),
         );
+    });
+
+    it('buyVolumeFraction is smooth across price/cost = 1 and anchored near full volume at 0', () => {
+        const width = 0.5;
+        for (const multiplier of [0, 0.5, 1, 3.5, 7]) {
+            const justBelow = buyVolumeFraction(0.9999, 1, width, 0.2, multiplier);
+            const justAbove = buyVolumeFraction(1.0001, 1, width, 0.2, multiplier);
+            expect(Math.abs(justAbove - justBelow)).toBeLessThan(0.0001);
+            expect(justAbove).toBeGreaterThan(0.2);
+            expect(justAbove).toBeLessThanOrEqual(1);
+        }
+        expect(buyVolumeFraction(0, 1, width, 0.2, 3.5)).toBeGreaterThan(0.99);
+        expect(buyVolumeFraction(1, 1, width, 0.2, 3.5)).toBeLessThan(1);
     });
 
     it('sellVolumeFraction holds back volume below the buffer and respects the floor', () => {
@@ -747,7 +769,10 @@ describe('automaticPricing — facility maintenance demand', () => {
         const expectedRate =
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
+            10,
+        );
     });
     it('scales maintenance demand to the bid volume floor when price is far above cost', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
@@ -828,7 +853,10 @@ describe('automaticPricing — facility maintenance demand', () => {
         const expectedRate =
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
+            10,
+        );
     });
 
     it('bids above steady-state for a facility below full maintenance', () => {
@@ -894,7 +922,10 @@ describe('automaticPricing — facility restoration demand', () => {
         expect(bid).toBeDefined();
         const expectedRate = facilityRestorationCapacityPerTick(facility);
         expect(expectedRate).toBeGreaterThan(0);
-        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
+            10,
+        );
     });
 
     it('skips restoration demand when maxMaintenance is already full', () => {
@@ -929,7 +960,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const buildingOnly = 20 * INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(buildingOnly, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(buildingOnly * BUY_VOLUME_FRACTION_AT_COST, 10);
     });
 
     it('sums restoration demand with active expansion construction demand', () => {
@@ -951,7 +982,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expected = (20 + facilityRestorationCapacityPerTick(facility)) * INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(expected * BUY_VOLUME_FRACTION_AT_COST, 10);
     });
 
     it('sums restoration demand across multiple degraded facilities', () => {
@@ -968,7 +999,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const expected =
             (facilityRestorationCapacityPerTick(facilityA) + facilityRestorationCapacityPerTick(facilityB)) *
             INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(expected * BUY_VOLUME_FRACTION_AT_COST, 10);
     });
 
     it('respects a custom autoConfig inputBufferTargetTicks override', () => {
@@ -991,7 +1022,10 @@ describe('automaticPricing — facility restoration demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        expect(bid.bidStorageTarget).toBeCloseTo(facilityRestorationCapacityPerTick(facility) * 7, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            facilityRestorationCapacityPerTick(facility) * 7 * BUY_VOLUME_FRACTION_AT_COST,
+            10,
+        );
     });
 
     it('does not create a restoration bid for a non-automated agent without an automated Construction buy', () => {
