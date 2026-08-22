@@ -21,6 +21,8 @@ import {
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
+    setProfitSignalWeight,
+    setContractionLowerBoundGuard,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
@@ -781,6 +783,199 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.maxScale).toBeLessThan(100);
+    });
+
+    it('contracts a loss-making facility in a tight market when profit signal is enabled', () => {
+        setProfitSignalWeight(1);
+        try {
+            const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100 }));
+            const { agents, facility } = makeSetup(planet, {
+                scale: 100,
+                maxScale: 100,
+                pidState: {
+                    contractionIntegral: 30,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: 0,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+            });
+            facility.lastTickResults.revenue = 50;
+            facility.lastTickResults.wageCosts = 100;
+            facility.lastTickResults.inputCosts = 100;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.maxScale).toBeLessThan(100);
+        } finally {
+            setProfitSignalWeight(0);
+        }
+    });
+
+    it('does not contract a starved loss-maker (no revenue) even with profit signal enabled', () => {
+        setProfitSignalWeight(1);
+        try {
+            const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100 }));
+            const { agents, facility } = makeSetup(planet, {
+                scale: 100,
+                maxScale: 100,
+                pidState: {
+                    contractionIntegral: 30,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: 0,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+            });
+            facility.lastTickResults.revenue = 0;
+            facility.lastTickResults.wageCosts = 100;
+            facility.lastTickResults.inputCosts = 100;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.maxScale).toBe(100);
+        } finally {
+            setProfitSignalWeight(0);
+        }
+    });
+
+    it('does not contract a loss-maker in a tight market when profit signal is disabled (default)', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 100,
+            maxScale: 100,
+            pidState: {
+                contractionIntegral: 30,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        facility.lastTickResults.revenue = 50;
+        facility.lastTickResults.wageCosts = 100;
+        facility.lastTickResults.inputCosts = 100;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.maxScale).toBe(100);
+    });
+
+    it('with lower-bound guard: contracts at the floor on sustained oversupply', () => {
+        setProfitSignalWeight(1);
+        setContractionLowerBoundGuard(true);
+        try {
+            const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 90, totalSupply: 100, unfilledDemand: 0 }));
+            const { agents, facility } = makeSetup(planet, {
+                scale: 10,
+                maxScale: 100,
+                pidState: {
+                    contractionIntegral: 30,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: 0,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+            });
+            facility.lastTickResults.revenue = 50;
+            facility.lastTickResults.wageCosts = 100;
+            facility.lastTickResults.inputCosts = 100;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.maxScale).toBeLessThan(100);
+        } finally {
+            setProfitSignalWeight(0);
+            setContractionLowerBoundGuard(false);
+        }
+    });
+
+    it('with lower-bound guard: does not contract a loss-maker at the floor in a tight market (PID lifts scale off floor)', () => {
+        setProfitSignalWeight(1);
+        setContractionLowerBoundGuard(true);
+        try {
+            const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100 }));
+            const { agents, facility } = makeSetup(planet, {
+                scale: 10,
+                maxScale: 100,
+                pidState: {
+                    contractionIntegral: 30,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: 0,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+            });
+            facility.lastTickResults.revenue = 50;
+            facility.lastTickResults.wageCosts = 100;
+            facility.lastTickResults.inputCosts = 100;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.maxScale).toBe(100);
+        } finally {
+            setProfitSignalWeight(0);
+            setContractionLowerBoundGuard(false);
+        }
+    });
+
+    it('with lower-bound guard: does not contract a loss-maker above the floor even with a profit signal', () => {
+        setProfitSignalWeight(1);
+        setContractionLowerBoundGuard(true);
+        try {
+            const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100 }));
+            const { agents, facility } = makeSetup(planet, {
+                scale: 50,
+                maxScale: 100,
+                pidState: {
+                    contractionIntegral: 30,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: 0,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+            });
+            facility.lastTickResults.revenue = 50;
+            facility.lastTickResults.wageCosts = 100;
+            facility.lastTickResults.inputCosts = 100;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.maxScale).toBe(100);
+        } finally {
+            setProfitSignalWeight(0);
+            setContractionLowerBoundGuard(false);
+        }
     });
 
     it('scales up when profitable and demand is short', () => {

@@ -6,6 +6,7 @@ import { setGovernmentSupportDisabled, setWealthTaxAnnualRate, setWealthTaxDisab
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
 import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
+import { setProfitSignalWeight, setContractionLowerBoundGuard } from '../../src/simulation/planet/automaticProductionScale';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -207,6 +208,14 @@ function main(): void {
     const supportArg = arg('support');
     if (supportArg === 'hold') {
         setGovernmentSupportDisabled(true);
+    }
+    const profitSignalArg = arg('profitSignal');
+    if (profitSignalArg !== undefined) {
+        setProfitSignalWeight(Number(profitSignalArg));
+    }
+    const contractionFloorArg = arg('contractionFloor');
+    if (contractionFloorArg !== undefined) {
+        setContractionLowerBoundGuard(contractionFloorArg === '1' || contractionFloorArg === 'true');
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

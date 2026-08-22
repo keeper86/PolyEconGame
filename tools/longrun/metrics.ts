@@ -1,4 +1,10 @@
-import { PRICE_CEIL, PRICE_FLOOR, TICKS_PER_YEAR } from '../../src/simulation/constants';
+import {
+    PRICE_CEIL,
+    PRICE_FLOOR,
+    RECYCLER_BASE_RECOVERY_EFFICIENCY,
+    RECYCLER_PAYMENT_RATIO,
+    TICKS_PER_YEAR,
+} from '../../src/simulation/constants';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
@@ -32,6 +38,9 @@ import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
 import { sumExactUsedByEdu, sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 import { computeCompanyNetWorth, computeWealthTax } from '../../src/simulation/agents/governmentAgent';
+import { computeLoanConditions } from '../../src/simulation/financial/loanConditions';
+import { calculateCostsForConstruction, getFacilityType } from '../../src/simulation/planet/facility';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
 
 export type MetricMap = Record<string, number>;
 
@@ -91,6 +100,50 @@ function isMaintenanceFacility(name: string): boolean {
 
 function isConstructionFacility(name: string): boolean {
     return facilityNameToKey(name) === 'constructionFacility';
+}
+
+const FACILITY_TYPE_KEYS = Object.keys(ALL_PRODUCTION_FACILITY_ENTRIES);
+
+type FacilityStat = {
+    count: number;
+    scale: number;
+    maxScale: number;
+    profit: number;
+    revenue: number;
+    priceOverCost: number;
+    signalActual: number;
+    signalCandidate: number;
+    contractionIntegral: number;
+    lossCount: number;
+    lossCaughtActual: number;
+    lossCaughtBlend: number;
+    falsePositiveActual: number;
+    essentialLossCount: number;
+    essentialLossCaughtBlend: number;
+    recyclableCS: number;
+    landInputCosts: number;
+};
+
+function emptyFacilityStat(): FacilityStat {
+    return {
+        count: 0,
+        scale: 0,
+        maxScale: 0,
+        profit: 0,
+        revenue: 0,
+        priceOverCost: 0,
+        signalActual: 0,
+        signalCandidate: 0,
+        contractionIntegral: 0,
+        lossCount: 0,
+        lossCaughtActual: 0,
+        lossCaughtBlend: 0,
+        falsePositiveActual: 0,
+        essentialLossCount: 0,
+        essentialLossCaughtBlend: 0,
+        recyclableCS: 0,
+        landInputCosts: 0,
+    };
 }
 
 function minValue(map: Record<string, number> | undefined): number {
@@ -204,7 +257,33 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const companyNetWorths: number[] = [];
     const companyProfits: number[] = [];
     let companiesDeepLoss = 0;
+    let companiesProfitable = 0;
+    let companiesContracting = 0;
+    let companiesNearInsolvent = 0;
+    let companyNetWorthNegativeCount = 0;
+    const companyRunways: number[] = [];
     let wealthTaxCollected = 0;
+    let wealthTaxPayers = 0;
+    let lossMakingWealthTaxPayers = 0;
+    let wealthTaxPaidByLossMaking = 0;
+    let wealthTaxPaidByProfitable = 0;
+    let companiesUnderwater = 0;
+    let companiesUnderwaterEssential = 0;
+    let companiesWithRolloverLoans = 0;
+    let rolloverLoanPrincipal = 0;
+    const debtEquitys: number[] = [];
+    const debtRevenues: number[] = [];
+    const facilityStats = new Map<string, FacilityStat>();
+    let facilityLossCount = 0;
+    let facilityLossCaughtActual = 0;
+    let facilityLossCaughtBlend = 0;
+    let facilityFalsePositiveActual = 0;
+    let facilityEssentialLossCount = 0;
+    let facilityEssentialLossCaughtBlend = 0;
+    let facilityLossSum = 0;
+    let facilityProfitSum = 0;
+    let facilityLandInputCostSum = 0;
+    let recyclableCSInLosers = 0;
     let usedWorkers = 0;
     let totalSlots = 0;
     let productionEfficiencySum = 0;
@@ -373,15 +452,67 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         }
         if (agent.id !== planet.governmentId && agent.id !== planet.recycler.id && agent.agentRole === undefined) {
             companyCount += 1;
-            companyNetWorths.push(computeCompanyNetWorth(agent, planet, gameState.shipCapitalMarket));
+            const netWorth = computeCompanyNetWorth(agent, planet, gameState.shipCapitalMarket);
+            companyNetWorths.push(netWorth);
+            if (netWorth < 0) {
+                companyNetWorthNegativeCount += 1;
+            }
             const profit = operatingProfit(assets.monthAcc);
             companyProfits.push(profit);
             if (profit < 0) {
                 companiesDeepLoss += 1;
+                const burn = -profit;
+                if (burn > 0) {
+                    companyRunways.push(assets.deposits / burn);
+                }
+            } else {
+                companiesProfitable += 1;
+            }
+            if (assets.deposits < assets.monthAcc.wages) {
+                companiesNearInsolvent += 1;
+            }
+            let contracting = false;
+            for (const facility of assets.productionFacilities) {
+                const pid = facility.pidState;
+                if (pid && (pid.smoothedSignal ?? 0) < -0.005) {
+                    contracting = true;
+                }
+            }
+            if (contracting) {
+                companiesContracting += 1;
             }
             const tax = computeWealthTax(agent, planet, gameState.shipCapitalMarket);
             if (tax > 0) {
-                wealthTaxCollected += Math.min(tax, Math.max(0, assets.deposits));
+                const paid = Math.min(tax, Math.max(0, assets.deposits));
+                wealthTaxCollected += paid;
+                wealthTaxPayers += 1;
+                if (profit <= 0) {
+                    lossMakingWealthTaxPayers += 1;
+                    wealthTaxPaidByLossMaking += paid;
+                } else {
+                    wealthTaxPaidByProfitable += paid;
+                }
+            }
+            const conditions = computeLoanConditions(agent, planet, gameState.shipCapitalMarket);
+            if (conditions.existingLoans > conditions.facilitiesCollateral + conditions.shipsCollateral) {
+                companiesUnderwater += 1;
+                const agentEssential = assets.productionFacilities.some(
+                    (f) => isMaintenanceFacility(f.name) || isExistentialFacility(f.name),
+                );
+                if (agentEssential) {
+                    companiesUnderwaterEssential += 1;
+                }
+            }
+            if (conditions.existingLoans > 0 && netWorth > 0) {
+                debtEquitys.push(conditions.existingLoans / netWorth);
+                if (conditions.lastMonthlyRevenue > 0) {
+                    debtRevenues.push(conditions.existingLoans / conditions.lastMonthlyRevenue);
+                }
+            }
+            const agentRollovers = assets.activeLoans.filter((loan) => loan.type === 'rollover');
+            if (agentRollovers.length > 0) {
+                companiesWithRolloverLoans += 1;
+                rolloverLoanPrincipal += agentRollovers.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
             }
         }
         usedWorkers += assets.usedWorkers;
@@ -542,14 +673,29 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             }
 
             const pid = facility.pidState;
-            const profitEma = pid?.profitEMA ?? 0;
+            const facilityResults = facility.lastTickResults;
+            const facilityRevenue = facilityResults?.revenue ?? 0;
+            const facilityWageCosts = facilityResults?.wageCosts ?? 0;
+            const facilityInputCosts = facilityResults?.inputCosts ?? 0;
+            let nonLandInputCosts = 0;
+            const lastConsumed = facilityResults?.lastConsumed ?? {};
+            for (const need of facility.needs) {
+                if (need.resource.form === 'landBoundResource') {
+                    continue;
+                }
+                const qty = lastConsumed[need.resource.name] ?? 0;
+                nonLandInputCosts += qty * (planet.marketPrices[need.resource.name] ?? 0);
+            }
+            const landInputCosts = Math.max(0, facilityInputCosts - nonLandInputCosts);
+            const facilityProfit = facilityRevenue - facilityWageCosts - facilityInputCosts;
+            const facilityLoss = facilityProfit < 0;
             const contractionIntegral = pid?.contractionIntegral ?? 0;
             const atLowerBound = facility.scale <= facility.maxScale * 0.1 + 1e-9;
             if (isExistentialFacility(facility.name)) {
                 existentialMaxScale += facility.maxScale;
                 existentialOperatingScale += facility.scale;
                 existentialContractionIntegral += contractionIntegral;
-                if (profitEma < 0) {
+                if (facilityLoss) {
                     existentialNegativeProfitFacilities += 1;
                 }
                 if (atLowerBound) {
@@ -559,11 +705,76 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 nonExistentialMaxScale += facility.maxScale;
                 nonExistentialOperatingScale += facility.scale;
                 nonExistentialContractionIntegral += contractionIntegral;
-                if (profitEma < 0) {
+                if (facilityLoss) {
                     nonExistentialNegativeProfitFacilities += 1;
                 }
                 if (atLowerBound) {
                     nonExistentialAtLowerBoundFacilities += 1;
+                }
+            }
+            {
+                const key = facilityNameToKey(facility.name);
+                if (key) {
+                    const signalActual = pid?.smoothedSignal ?? 0;
+                    const profitSignal =
+                        facilityRevenue > 0 && facilityLoss ? Math.max(-1, facilityProfit / facilityRevenue) : 0;
+                    const signalCandidate = Math.min(signalActual, profitSignal);
+                    const primaryOutput = facility.produces[0];
+                    const costFloor = primaryOutput
+                        ? (planet.lastProductionCostFloors[primaryOutput.resource.name] ?? 0)
+                        : 0;
+                    const outputPrice = primaryOutput ? priceOf(planet, primaryOutput.resource.name) : 0;
+                    const priceOverCost = costFloor > 0 ? outputPrice / costFloor : 0;
+                    const essential = isMaintenanceFacility(facility.name) || isExistentialFacility(facility.name);
+
+                    let stat = facilityStats.get(key);
+                    if (!stat) {
+                        stat = emptyFacilityStat();
+                        facilityStats.set(key, stat);
+                    }
+                    stat.count += 1;
+                    stat.scale += facility.scale;
+                    stat.maxScale += facility.maxScale;
+                    stat.profit += facilityProfit;
+                    stat.revenue += facilityRevenue;
+                    stat.priceOverCost += priceOverCost;
+                    stat.signalActual += signalActual;
+                    stat.signalCandidate += signalCandidate;
+                    stat.contractionIntegral += contractionIntegral;
+                    stat.landInputCosts += landInputCosts;
+                    facilityProfitSum += facilityProfit;
+                    facilityLandInputCostSum += landInputCosts;
+                    if (facilityLoss) {
+                        facilityLossCount += 1;
+                        facilityLossSum += facilityProfit;
+                        stat.lossCount += 1;
+                        if (signalActual < 0) {
+                            facilityLossCaughtActual += 1;
+                            stat.lossCaughtActual += 1;
+                        }
+                        if (signalCandidate < 0) {
+                            facilityLossCaughtBlend += 1;
+                            stat.lossCaughtBlend += 1;
+                        }
+                        if (essential) {
+                            stat.essentialLossCount += 1;
+                            facilityEssentialLossCount += 1;
+                            if (signalCandidate < 0) {
+                                stat.essentialLossCaughtBlend += 1;
+                                facilityEssentialLossCaughtBlend += 1;
+                            }
+                        }
+                        const recyclable = calculateCostsForConstruction(
+                            getFacilityType(facility),
+                            0,
+                            facility.maxScale,
+                        ).cost;
+                        stat.recyclableCS += recyclable;
+                        recyclableCSInLosers += recyclable;
+                    } else if (signalActual < 0) {
+                        facilityFalsePositiveActual += 1;
+                        stat.falsePositiveActual += 1;
+                    }
                 }
             }
         }
@@ -810,6 +1021,39 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const companyProfitMin = companyProfits.length > 0 ? Math.min(...companyProfits) : 0;
     const companyProfitMedian = companyProfits.length > 0 ? median(companyProfits) : 0;
     const companyProfitMax = companyProfits.length > 0 ? Math.max(...companyProfits) : 0;
+    const companyProfitP10 = weightedQuantile(
+        companyProfits.map((p) => ({ mean: p, count: 1 })),
+        0.1,
+    );
+    const companyRunwayMedian = median(companyRunways);
+    const companyRunwayMin = companyRunways.length > 0 ? Math.min(...companyRunways) : 0;
+    const companyDebtEquityMedian = debtEquitys.length > 0 ? median(debtEquitys) : 0;
+    const companyDebtRevenueMedian = debtRevenues.length > 0 ? median(debtRevenues) : 0;
+
+    const facilityTypeMetrics: MetricMap = {};
+    for (const key of FACILITY_TYPE_KEYS) {
+        const s = facilityStats.get(key);
+        if (!s || s.count === 0) {
+            continue;
+        }
+        facilityTypeMetrics[`facilityCount_${key}`] = s.count;
+        facilityTypeMetrics[`facilityProfit_${key}`] = s.profit / s.count;
+        facilityTypeMetrics[`facilityMargin_${key}`] = s.revenue > 0 ? s.profit / s.revenue : 0;
+        facilityTypeMetrics[`facilityPriceOverCost_${key}`] = s.priceOverCost / s.count;
+        facilityTypeMetrics[`facilitySignal_${key}`] = s.signalActual / s.count;
+        facilityTypeMetrics[`facilityCandidateSignal_${key}`] = s.signalCandidate / s.count;
+        facilityTypeMetrics[`facilityScale_${key}`] = s.scale;
+        facilityTypeMetrics[`facilityLandInputCosts_${key}`] = s.landInputCosts / s.count;
+        facilityTypeMetrics[`facilityLossCaughtActual_${key}`] =
+            s.lossCount > 0 ? s.lossCaughtActual / s.lossCount : 0;
+        facilityTypeMetrics[`facilityLossCaughtBlend_${key}`] =
+            s.lossCount > 0 ? s.lossCaughtBlend / s.lossCount : 0;
+    }
+    const recyclableValueInLosers =
+        recyclableCSInLosers *
+        (planet.marketPrices[constructionServiceResourceType.name] ?? 0) *
+        RECYCLER_BASE_RECOVERY_EFFICIENCY *
+        RECYCLER_PAYMENT_RATIO;
 
     return {
         tick: gameState.tick,
@@ -924,7 +1168,37 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         companyProfitMin,
         companyProfitMedian,
         companyProfitMax,
+        companyProfitP10,
         companiesDeepLoss,
+        companiesProfitable,
+        companiesContracting,
+        companiesNearInsolvent,
+        companyNetWorthNegativeCount,
+        companyRunwayMin,
+        companyRunwayMedian,
+        companyDebtEquityMedian,
+        companyDebtRevenueMedian,
+        wealthTaxPayers,
+        lossMakingWealthTaxPayers,
+        wealthTaxPaidByLossMaking,
+        wealthTaxPaidByProfitable,
+        companiesUnderwater,
+        companiesUnderwaterEssential,
+        companiesWithRolloverLoans,
+        rolloverLoanPrincipal,
+        facilityLossCount,
+        facilityLossCaughtActual: facilityLossCount > 0 ? facilityLossCaughtActual / facilityLossCount : 0,
+        facilityLossCaughtBlend: facilityLossCount > 0 ? facilityLossCaughtBlend / facilityLossCount : 0,
+        facilityFalsePositiveActual,
+        facilityEssentialLossCount,
+        facilityEssentialLossCaughtBlend:
+            facilityEssentialLossCount > 0 ? facilityEssentialLossCaughtBlend / facilityEssentialLossCount : 0,
+        facilityLossSum,
+        facilityProfitSum,
+        facilityLandInputCostSum,
+        recyclableCSInLosers,
+        recyclableValueInLosers,
+        ...facilityTypeMetrics,
         wealthTaxCollected,
         workerUtilization: totalSlots > 0 ? usedWorkers / totalSlots : 0,
         avgWage: wageCount > 0 ? wageSum / wageCount : 0,
@@ -1203,7 +1477,47 @@ export const METRIC_KEYS: string[] = [
     'companyProfitMin',
     'companyProfitMedian',
     'companyProfitMax',
+    'companyProfitP10',
     'companiesDeepLoss',
+    'companiesProfitable',
+    'companiesContracting',
+    'companiesNearInsolvent',
+    'companyNetWorthNegativeCount',
+    'companyRunwayMin',
+    'companyRunwayMedian',
+    'companyDebtEquityMedian',
+    'companyDebtRevenueMedian',
+    'wealthTaxPayers',
+    'lossMakingWealthTaxPayers',
+    'wealthTaxPaidByLossMaking',
+    'wealthTaxPaidByProfitable',
+    'companiesUnderwater',
+    'companiesUnderwaterEssential',
+    'companiesWithRolloverLoans',
+    'rolloverLoanPrincipal',
+    'facilityLossCount',
+    'facilityLossCaughtActual',
+    'facilityLossCaughtBlend',
+    'facilityFalsePositiveActual',
+    'facilityEssentialLossCount',
+    'facilityEssentialLossCaughtBlend',
+    'facilityLossSum',
+    'facilityProfitSum',
+    'facilityLandInputCostSum',
+    'recyclableCSInLosers',
+    'recyclableValueInLosers',
+    ...FACILITY_TYPE_KEYS.flatMap((key) => [
+        `facilityCount_${key}`,
+        `facilityProfit_${key}`,
+        `facilityMargin_${key}`,
+        `facilityPriceOverCost_${key}`,
+        `facilitySignal_${key}`,
+        `facilityCandidateSignal_${key}`,
+        `facilityScale_${key}`,
+        `facilityLandInputCosts_${key}`,
+        `facilityLossCaughtActual_${key}`,
+        `facilityLossCaughtBlend_${key}`,
+    ]),
     'wealthTaxCollected',
     'workerUtilization',
     'avgWage',

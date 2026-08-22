@@ -103,7 +103,7 @@ export function getLandBoundCostPerUnit(planet: Planet, agentId: string, resourc
         }
         if (claim.regenerationRate > 0) {
             totalCost += claim.costPerTick;
-            totalUnits += claim.quantity;
+            totalUnits += claim.maximumCapacity;
         } else {
             totalCost += claim.tenantCostInCoins;
             totalUnits += claim.maximumCapacity;

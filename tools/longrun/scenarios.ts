@@ -34,6 +34,15 @@ export const SCENARIOS: Scenario[] = [
         ],
     },
     {
+        name: 'baselineProfit',
+        description:
+            'Baseline with profit-aware contraction enabled via --profitSignal: loss-making facilities contract regardless of market signal.',
+        seed: 1001,
+        years: 30,
+        world: {},
+        bands: [],
+    },
+    {
         name: 'waterCapped',
         description: 'Water source is capped and cannot be extended; population must shrink to carrying capacity.',
         seed: 1002,
