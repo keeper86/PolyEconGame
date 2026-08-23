@@ -6,7 +6,10 @@ import { setGovernmentSupportDisabled, setWealthTaxAnnualRate, setWealthTaxDisab
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
 import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
-import { setProfitSignalWeight, setContractionLowerBoundGuard } from '../../src/simulation/planet/automaticProductionScale';
+import { setProfitSignalWeight, setContractionLowerBoundGuard, setExpansionProfitGateEnabled } from '../../src/simulation/planet/automaticProductionScale';
+import { setStorageExpansionProfitBypass } from '../../src/simulation/planet/automaticProductionScale/storageAutoscale';
+import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
+import { setServiceDepreciationRate } from '../../src/simulation/planet/storageLogistics';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -216,6 +219,26 @@ function main(): void {
     const contractionFloorArg = arg('contractionFloor');
     if (contractionFloorArg !== undefined) {
         setContractionLowerBoundGuard(contractionFloorArg === '1' || contractionFloorArg === 'true');
+    }
+    const expansionGateArg = arg('expansionGate');
+    if (expansionGateArg !== undefined) {
+        setExpansionProfitGateEnabled(expansionGateArg === '1' || expansionGateArg === 'true');
+    }
+    const loanDisciplineArg = arg('loanDiscipline');
+    if (loanDisciplineArg !== undefined) {
+        setLoanDisciplineEnabled(loanDisciplineArg === '1' || loanDisciplineArg === 'true');
+    }
+    const loanRecyclingArg = arg('loanRecycling');
+    if (loanRecyclingArg !== undefined) {
+        setLoanRecyclingEnabled(loanRecyclingArg === '1' || loanRecyclingArg === 'true');
+    }
+    const serviceDepreciationArg = arg('serviceDepreciation');
+    if (serviceDepreciationArg !== undefined) {
+        setServiceDepreciationRate(Number(serviceDepreciationArg));
+    }
+    const storageBypassArg = arg('storageBypass');
+    if (storageBypassArg !== undefined) {
+        setStorageExpansionProfitBypass(storageBypassArg === '1' || storageBypassArg === 'true');
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

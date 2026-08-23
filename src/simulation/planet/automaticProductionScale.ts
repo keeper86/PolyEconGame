@@ -77,6 +77,7 @@ const HR_EXPANSION_FACTOR = 1.4;
 
 let profitSignalWeight = PROFIT_SIGNAL_WEIGHT;
 let contractionLowerBoundGuard = false;
+let expansionProfitGateEnabled = false;
 
 export function setProfitSignalWeight(weight: number): void {
     profitSignalWeight = weight;
@@ -84,6 +85,10 @@ export function setProfitSignalWeight(weight: number): void {
 
 export function setContractionLowerBoundGuard(enabled: boolean): void {
     contractionLowerBoundGuard = enabled;
+}
+
+export function setExpansionProfitGateEnabled(enabled: boolean): void {
+    expansionProfitGateEnabled = enabled;
 }
 
 function computeHrSignal(hrDepartment: HRFacility): number {
@@ -427,8 +432,14 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
             const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
             const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
+            const profitGatePassed = !expansionProfitGateEnabled || revenueThisTick <= 0 || profitThisTick >= 0;
             const expansionConditionsMet =
-                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
+                atMaxScale &&
+                hasNoActiveConstruction &&
+                integralAboveThreshold &&
+                efficiencyAbove85 &&
+                inputHealthy &&
+                profitGatePassed;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;

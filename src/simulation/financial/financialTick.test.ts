@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financialTick';
+import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick, setLoanDisciplineEnabled } from './financialTick';
 
 import { coalDepositResourceType } from '../planet/landBoundResources';
 import { ironOreResourceType } from '../planet/resources';
@@ -540,6 +540,50 @@ describe('enforceLoanMaturities', () => {
         const firmDeposits = agent.assets[planet.id]!.deposits;
         const residual = planet.bank!.householdDeposits + firmDeposits - planet.bank!.loans;
         expect(Math.abs(residual)).toBeLessThan(1e-6);
+    });
+
+    it('with loan discipline: writes off uncovered matured debt and marks bankrupt', () => {
+        setLoanDisciplineEnabled(true);
+        try {
+            agent.starterLoanTaken = true;
+            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+
+            maturesLoans(agentMap(agent), planet, 100);
+
+            expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
+            expect(agent.assets[planet.id]!.deposits).toBe(0);
+            expect(planet.bank!.loans).toBe(0);
+            expect(planet.rolloverDenials).toBe(1);
+            expect(planet.debtWriteOffs).toBe(70);
+            expect(planet.bankruptcies).toBe(1);
+        } finally {
+            setLoanDisciplineEnabled(false);
+        }
+    });
+
+    it('with loan discipline: essential suppliers keep the rollover', () => {
+        setLoanDisciplineEnabled(true);
+        try {
+            agent.starterLoanTaken = true;
+            agent.assets[planet.id]!.productionFacilities.push(
+                makeProductionFacility(planet.id, { name: 'Maintenance Facility' }),
+            );
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+
+            maturesLoans(agentMap(agent), planet, 100);
+
+            expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
+            expect(planet.rolloverDenials).toBe(0);
+        } finally {
+            setLoanDisciplineEnabled(false);
+        }
     });
 
     it('handles multiple matured loans at once', () => {

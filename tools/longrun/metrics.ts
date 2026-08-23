@@ -3,6 +3,7 @@ import {
     PRICE_FLOOR,
     RECYCLER_BASE_RECOVERY_EFFICIENCY,
     RECYCLER_PAYMENT_RATIO,
+    TICKS_PER_MONTH,
     TICKS_PER_YEAR,
 } from '../../src/simulation/constants';
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
@@ -31,6 +32,7 @@ import {
     groceryServiceResourceType,
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
+    ALL_SERVICE_RESOURCE_TYPE_NAMES,
 } from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
@@ -283,7 +285,24 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let facilityLossSum = 0;
     let facilityProfitSum = 0;
     let facilityLandInputCostSum = 0;
+    let facilityWagesTickTotal = 0;
+    let facilityInputsTickTotal = 0;
+    let facilityRevenueTickTotal = 0;
+    let expansionBlockedByProfit = 0;
     let recyclableCSInLosers = 0;
+    let companyRevenueTotal = 0;
+    let companyWagesTotal = 0;
+    let companyPurchasesTotal = 0;
+    let companyClaimsTotal = 0;
+    let depreciatedValue = 0;
+    let depreciatedServiceValue = 0;
+    let depreciatedGoodsValue = 0;
+    let depreciatedNaturalValue = 0;
+    let maxStorageStarvation = 0;
+    let highStarvationCompanies = 0;
+    let storageDeptScaleTotal = 0;
+    let storageDeptMaxScaleTotal = 0;
+    let storageDeptCount = 0;
     let usedWorkers = 0;
     let totalSlots = 0;
     let productionEfficiencySum = 0;
@@ -431,6 +450,31 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         }
         totalAgentDeposits += assets.deposits;
         profitShareBonuses += assets.monthAcc.profitShareBonuses;
+        companyRevenueTotal += assets.lastMonthAcc?.revenue ?? 0;
+        companyWagesTotal += assets.lastMonthAcc?.wages ?? 0;
+        companyPurchasesTotal += assets.lastMonthAcc?.purchases ?? 0;
+        companyClaimsTotal += assets.lastMonthAcc?.claimPayments ?? 0;
+        for (const [name, entry] of Object.entries(assets.monthAcc.depreciatedServices ?? {})) {
+            depreciatedValue += entry.value;
+            if (ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name)) {
+                depreciatedServiceValue += entry.value;
+            } else {
+                depreciatedGoodsValue += entry.value;
+            }
+        }
+        depreciatedNaturalValue += assets.monthAcc.naturalDepreciationValue ?? 0;
+        const ss = assets.storageFacility.department?.storageStarvation ?? 0;
+        if (ss > maxStorageStarvation) {
+            maxStorageStarvation = ss;
+        }
+        if (ss > 0.5) {
+            highStarvationCompanies += 1;
+        }
+        if (assets.storageFacility.department) {
+            storageDeptScaleTotal += assets.storageFacility.department.scale;
+            storageDeptMaxScaleTotal += assets.storageFacility.department.maxScale;
+            storageDeptCount += 1;
+        }
         maintAggregateBuffer += queryStorageFacility(assets.storageFacility, maintenanceServiceResourceType.name);
         if (assets.deposits < 0) {
             agentsInDistress += 1;
@@ -744,6 +788,17 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     stat.landInputCosts += landInputCosts;
                     facilityProfitSum += facilityProfit;
                     facilityLandInputCostSum += landInputCosts;
+                    facilityWagesTickTotal += facilityWageCosts;
+                    facilityInputsTickTotal += facilityInputCosts;
+                    facilityRevenueTickTotal += facilityRevenue;
+                    if (
+                        facility.scale >= facility.maxScale - 1e-9 &&
+                        signalActual > 0 &&
+                        facilityLoss &&
+                        facilityRevenue > 0
+                    ) {
+                        expansionBlockedByProfit += 1;
+                    }
                     if (facilityLoss) {
                         facilityLossCount += 1;
                         facilityLossSum += facilityProfit;
@@ -1152,6 +1207,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         bankDeposits: planet.bank.deposits,
         bankLoans: planet.bank.loans,
         householdDeposits: planet.bank.householdDeposits,
+        rolloverDenials: planet.rolloverDenials,
+        debtWriteOffs: planet.debtWriteOffs,
+        bankruptcies: planet.bankruptcies,
         totalLoans,
         loansWageCoverage,
         loansBufferCoverage,
@@ -1196,6 +1254,25 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         facilityLossSum,
         facilityProfitSum,
         facilityLandInputCostSum,
+        expansionBlockedByProfit,
+        companyAggregateProfit:
+            companyRevenueTotal - companyWagesTotal - companyPurchasesTotal - companyClaimsTotal,
+        facilityAggregateProfitMonth:
+            (facilityRevenueTickTotal - facilityWagesTickTotal - facilityInputsTickTotal) * TICKS_PER_MONTH,
+        overheadWages: companyWagesTotal - facilityWagesTickTotal * TICKS_PER_MONTH,
+        depreciatedValue,
+        depreciatedServiceValue,
+        depreciatedGoodsValue,
+        depreciatedNaturalValue,
+        depreciatedExcessValue: depreciatedValue - depreciatedNaturalValue,
+        maxStorageStarvation,
+        highStarvationCompanies,
+        storageDeptScale: storageDeptCount > 0 ? storageDeptScaleTotal / storageDeptCount : 0,
+        storageDeptMaxScale: storageDeptCount > 0 ? storageDeptMaxScaleTotal / storageDeptCount : 0,
+        companyWagesTotal,
+        companyPurchasesTotal,
+        companyClaimsTotal,
+        companyRevenueTotal,
         recyclableCSInLosers,
         recyclableValueInLosers,
         ...facilityTypeMetrics,
@@ -1461,6 +1538,9 @@ export const METRIC_KEYS: string[] = [
     'bankDeposits',
     'bankLoans',
     'householdDeposits',
+    'rolloverDenials',
+    'debtWriteOffs',
+    'bankruptcies',
     'totalLoans',
     'loansWageCoverage',
     'loansBufferCoverage',
@@ -1504,6 +1584,23 @@ export const METRIC_KEYS: string[] = [
     'facilityLossSum',
     'facilityProfitSum',
     'facilityLandInputCostSum',
+    'expansionBlockedByProfit',
+    'companyAggregateProfit',
+    'facilityAggregateProfitMonth',
+    'overheadWages',
+    'depreciatedValue',
+    'depreciatedServiceValue',
+    'depreciatedGoodsValue',
+    'depreciatedNaturalValue',
+    'depreciatedExcessValue',
+    'maxStorageStarvation',
+    'highStarvationCompanies',
+    'storageDeptScale',
+    'storageDeptMaxScale',
+    'companyWagesTotal',
+    'companyPurchasesTotal',
+    'companyClaimsTotal',
+    'companyRevenueTotal',
     'recyclableCSInLosers',
     'recyclableValueInLosers',
     ...FACILITY_TYPE_KEYS.flatMap((key) => [

@@ -116,6 +116,12 @@ export type Planet = {
 
     governmentSupportVolume: number;
 
+    rolloverDenials: number;
+
+    debtWriteOffs: number;
+
+    bankruptcies: number;
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -299,6 +305,7 @@ export type MonthAccumulator = {
     boughtResources: Record<string, ResourceAccumulator>;
     soldResources: Record<string, ResourceAccumulator>;
     depreciatedServices: Record<string, ResourceAccumulator>;
+    naturalDepreciationValue: number;
 };
 
 export const operatingProfit = (acc: MonthAccumulator): number =>
@@ -421,6 +428,7 @@ export function createEmptyAccumulator(): MonthAccumulator {
         boughtResources: {},
         soldResources: {},
         depreciatedServices: {},
+        naturalDepreciationValue: 0,
     };
 }
 
@@ -446,6 +454,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             boughtResources: { ...assets.monthAcc.boughtResources },
             soldResources: { ...assets.monthAcc.soldResources },
             depreciatedServices: { ...assets.monthAcc.depreciatedServices },
+            naturalDepreciationValue: assets.monthAcc.naturalDepreciationValue,
         };
         assets.monthAcc = {
             depositsAtMonthStart: assets.deposits,

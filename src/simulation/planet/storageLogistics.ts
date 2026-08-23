@@ -16,6 +16,12 @@ import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
+let serviceDepreciationRateOverride: number | null = null;
+
+export function setServiceDepreciationRate(rate: number): void {
+    serviceDepreciationRateOverride = rate;
+}
+
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
@@ -90,7 +96,10 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         const isService = ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name);
         let decayFactor: number;
         if (isService) {
-            decayFactor = SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
+            const baseRate = serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK;
+            decayFactor = baseRate * (1 + ss);
+            const naturalQty = entry.quantity * baseRate;
+            assets.monthAcc.naturalDepreciationValue += naturalQty * (planet.marketPrices[name] ?? 0);
         } else if (entry.resource.massPerQuantity > 0) {
             decayFactor = 1 - preservation;
         } else {

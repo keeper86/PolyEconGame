@@ -23,6 +23,7 @@ import {
     findMaxScaleForLandboundResources,
     setProfitSignalWeight,
     setContractionLowerBoundGuard,
+    setExpansionProfitGateEnabled,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
@@ -359,6 +360,102 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).not.toBeNull();
         expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(10);
         expect(facility.construction!.totalConstructionServiceRequired).toBeGreaterThan(0);
+    });
+
+    it('with expansion profit gate: does not expand a loss-making facility even with strong demand', () => {
+        setExpansionProfitGateEnabled(true);
+        try {
+            const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+            planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+            const { agents, facility } = makeSetup(planet, {
+                scale: 10,
+                maxScale: 10,
+                pidState: {
+                    contractionIntegral: 0,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+                workerRequirement: { none: 1 },
+                lastTickResults: {
+                    overallEfficiency: 1,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
+                    revenue: 50,
+                    wageCosts: 100,
+                    inputCosts: 100,
+                    costBalance: 0,
+                },
+            });
+            const agent = agents.values().next().value as Agent;
+            agent.assets[planet.id].deposits = 1_000_000;
+            agent.assets[planet.id].lastMonthAcc.revenue = 50;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.construction).toBeNull();
+        } finally {
+            setExpansionProfitGateEnabled(false);
+        }
+    });
+
+    it('with expansion profit gate: still expands a profitable facility with strong demand', () => {
+        setExpansionProfitGateEnabled(true);
+        try {
+            const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+            planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+            const { agents, facility } = makeSetup(planet, {
+                scale: 10,
+                maxScale: 10,
+                pidState: {
+                    contractionIntegral: 0,
+                    integral: 0,
+                    prevError: 0,
+                    filteredError: 0,
+                    expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                    smoothedSignal: 0,
+                    profitEMA: 0,
+                    revenueEMA: 0,
+                    profitAtExpansionScale: 0,
+                    profitAtContractionScale: 0,
+                },
+                workerRequirement: { none: 1 },
+                lastTickResults: {
+                    overallEfficiency: 1,
+                    workerEfficiency: {},
+                    resourceEfficiency: {},
+                    overqualifiedWorkers: {},
+                    exactUsedByEdu: {},
+                    totalUsedByEdu: {},
+                    lastProduced: {},
+                    lastConsumed: {},
+                    revenue: 500,
+                    wageCosts: 100,
+                    inputCosts: 100,
+                    costBalance: 0,
+                },
+            });
+            const agent = agents.values().next().value as Agent;
+            agent.assets[planet.id].deposits = 1_000_000;
+            agent.assets[planet.id].lastMonthAcc.revenue = 500;
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+
+            expect(facility.construction).not.toBeNull();
+        } finally {
+            setExpansionProfitGateEnabled(false);
+        }
     });
 
     it('does NOT initiate capacity expansion when integral < threshold (not enough sustained pressure)', () => {

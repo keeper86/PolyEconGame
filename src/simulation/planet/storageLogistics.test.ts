@@ -74,6 +74,7 @@ function makeAssetsWithStorage(overrides?: {
             boughtResources: {},
             soldResources: {},
             depreciatedServices: {},
+            naturalDepreciationValue: 0,
         },
         lastMonthAcc: {
             productionValue: 0,
@@ -91,6 +92,7 @@ function makeAssetsWithStorage(overrides?: {
             boughtResources: {},
             soldResources: {},
             depreciatedServices: {},
+            naturalDepreciationValue: 0,
         },
         licenses: overrides?.hasCommercialLicense !== false ? { commercial: { acquiredTick: 0, frozen: false } } : {},
     };
