@@ -6,12 +6,21 @@ import {
     maturesLoans,
     preProductionFinancialTick,
     setLoanDisciplineEnabled,
+    setLoanRecyclingEnabled,
 } from './financialTick';
 
 import { coalDepositResourceType } from '../planet/landBoundResources';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { ironOreResourceType } from '../planet/resources';
+import { constructionServiceResourceType } from '../planet/services';
 import type { EducationLevelType } from '../population/education';
-import { agentMap, makeAgent, makePlanetWithPopulation, makeProductionFacility } from '../utils/testHelper';
+import {
+    agentMap,
+    makeAgent,
+    makeGameState,
+    makePlanetWithPopulation,
+    makeProductionFacility,
+} from '../utils/testHelper';
 import { makeLoan, totalOutstandingLoans } from './loanTypes';
 
 function addWorker(assets: AgentPlanetAssets, age: number, edu: EducationLevelType, count: number): void {
@@ -575,7 +584,7 @@ describe('enforceLoanMaturities', () => {
         try {
             agent.starterLoanTaken = true;
             agent.assets[planet.id]!.productionFacilities.push(
-                makeProductionFacility({}, { name: 'Maintenance Facility' }),
+                ALL_PRODUCTION_FACILITY_ENTRIES.maintenanceFacility.factory('p', 'maint-1'),
             );
             agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
             agent.assets[planet.id]!.deposits = 30;
@@ -588,6 +597,43 @@ describe('enforceLoanMaturities', () => {
             expect(planet.rolloverDenials).toBe(0);
         } finally {
             setLoanDisciplineEnabled(false);
+        }
+    });
+
+    it('with loan recycling: contracts facilities to raise funds and shrink the write-off', () => {
+        setLoanDisciplineEnabled(true);
+        setLoanRecyclingEnabled(true);
+        try {
+            agent.starterLoanTaken = true;
+            agent.assets[planet.id]!.lastMonthAcc.revenue = 0;
+            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
+            const facility = makeProductionFacility({}, { maxScale: 100, scale: 100 });
+            agent.assets[planet.id]!.productionFacilities = [facility];
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+            planet.marketPrices[constructionServiceResourceType.name] = 0.00001;
+            planet.avgMarketResult[constructionServiceResourceType.name] = {
+                resourceName: constructionServiceResourceType.name,
+                clearingPrice: 10,
+                totalVolume: 100,
+                totalSupply: 100,
+                totalDemand: 100,
+                unsoldSupply: 0,
+                unfilledDemand: 35,
+            };
+            const gameState = makeGameState([planet], [agent]);
+
+            maturesLoans(agentMap(agent), planet, 100, gameState);
+
+            expect(facility.maxScale).toBe(10);
+            expect(planet.rolloverDenials).toBe(1);
+            expect(planet.debtWriteOffs).toBeLessThan(70);
+            expect(gameState.tickerEvents.some((e) => e.category === 'facilityScrapped')).toBe(true);
+        } finally {
+            setLoanDisciplineEnabled(false);
+            setLoanRecyclingEnabled(false);
         }
     });
 

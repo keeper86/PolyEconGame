@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { BASE_QUIT_RATE, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
@@ -17,7 +17,7 @@ import {
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { hireWorkforce } from './hireWorkforce';
+import { assertBackfillProgress, hireWorkforce } from './hireWorkforce';
 import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
     acceptProbability,
@@ -606,5 +606,71 @@ describe('overqualified backfill substitution', () => {
         // buffer creates demand. ~3 natives enter the buffer, but the 950 overqualified stay.
         expect(unoccNoneBefore - sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThanOrEqual(5);
         expect(totalActiveForEdu(wf, 'secondary')).toBe(950);
+    });
+});
+
+describe('cross-tier backfill double-deduction', () => {
+    it('keeps hiring native secondary workers after a lower-tier backfill consumed part of the pool', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 2000, tertiary: 10000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, secondary: 100 });
+        agent.assets.p.wagePerEdu.secondary = 1e9;
+        agent.assets.p.wagePerEdu.tertiary = 1e9;
+
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        // The none-tier backfill hires ~100 secondary, so the secondary tier must still hire the
+        // remaining ~95 natives instead of skipping them and jumping straight to tertiary.
+        expect(totalOnboardingForEdu(wf, 'secondary')).toBeGreaterThan(190);
+        expect(totalOnboardingForEdu(wf, 'tertiary')).toBeLessThan(10);
+        expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBeLessThan(1810);
+    });
+
+    it('does not trigger the debug backfill-stall invariant under SIM_DEBUG', () => {
+        process.env.SIM_DEBUG = '1';
+        try {
+            const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 2000, tertiary: 10000 });
+            const agent = makeAgent();
+            agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, secondary: 100 });
+            agent.assets.p.wagePerEdu.secondary = 1e9;
+            agent.assets.p.wagePerEdu.tertiary = 1e9;
+
+            expect(() => hireWorkforce(agentMap(agent), planet)).not.toThrow();
+        } finally {
+            delete process.env.SIM_DEBUG;
+        }
+    });
+});
+
+describe('assertBackfillProgress debug invariant', () => {
+    const saved = process.env.SIM_DEBUG;
+
+    afterEach(() => {
+        if (saved === undefined) {
+            delete process.env.SIM_DEBUG;
+        } else {
+            process.env.SIM_DEBUG = saved;
+        }
+    });
+
+    it('fires when the loop stalls with willing workers remaining', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 10, 0)).toThrow(/backfill stall/);
+    });
+
+    it('stays silent while hires still make progress', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 10, 10)).not.toThrow();
+    });
+
+    it('stays silent for fractional willing pools below one worker', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 0.5, 0)).not.toThrow();
+    });
+
+    it('stays silent when no gap remains', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 0, 10, 0)).not.toThrow();
     });
 });

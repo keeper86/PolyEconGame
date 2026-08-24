@@ -46,21 +46,21 @@ describe('computeFacilitiesValue', () => {
             maxScale: 1,
             scale: 1,
             construction: null,
-            maintenanceStatus: 1,
+            maintenanceStatus: 0.5,
             maxMaintenance: 0.5,
         });
         expect(computeFacilitiesValue(assets, CS_PRICE)).toBeCloseTo(fullValue(1) * 0.5);
     });
 
-    it('multiplies maintenance and restoration states when both are degraded', () => {
+    it('does not double-discount when maintenance and restoration are both degraded', () => {
         const assets = makeAssets({
             maxScale: 1,
             scale: 1,
             construction: null,
-            maintenanceStatus: 0.5,
+            maintenanceStatus: 0.3,
             maxMaintenance: 0.5,
         });
-        expect(computeFacilitiesValue(assets, CS_PRICE)).toBeCloseTo(fullValue(1) * 0.25);
+        expect(computeFacilitiesValue(assets, CS_PRICE)).toBeCloseTo(fullValue(1) * 0.3);
     });
 
     it('clamps out-of-range condition to zero', () => {
@@ -101,7 +101,7 @@ describe('computeFacilitiesValue', () => {
             },
         });
 
-        const completedValue = fullValue(1) * 0.25;
+        const completedValue = fullValue(1) * 0.5;
         const incrCost = calculateCostsForConstruction('raw', 1, 2).cost;
         const partialValue = incrCost * RECYCLER_BASE_RECOVERY_EFFICIENCY * CS_PRICE * 0.5;
 

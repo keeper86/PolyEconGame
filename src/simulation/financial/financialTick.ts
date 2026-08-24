@@ -3,6 +3,11 @@ import { processFacilityContraction } from '../agents/recycler';
 import { computeLoanConditions } from './loanConditions';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
+import {
+    ALL_PRODUCTION_FACILITY_ENTRIES,
+    facilityByName,
+    type FacilityCatalogEntry,
+} from '../planet/productionFacilities';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
@@ -168,19 +173,22 @@ export function setLoanRecyclingEnabled(enabled: boolean): void {
     loanRecyclingEnabled = enabled;
 }
 
-const ESSENTIAL_FACILITY_NAMES: ReadonlySet<string> = new Set([
-    'Maintenance Facility',
-    'Water Facility',
-    'Agricultural Facility',
-    'Food Processor',
-    'Beverage Plant',
-    'Grocery Chain',
-    'Hospital',
-    'Pharma Plant',
+const ESSENTIAL_FACILITY_ENTRIES: ReadonlySet<FacilityCatalogEntry> = new Set([
+    ALL_PRODUCTION_FACILITY_ENTRIES.maintenanceFacility,
+    ALL_PRODUCTION_FACILITY_ENTRIES.waterFacility,
+    ALL_PRODUCTION_FACILITY_ENTRIES.agriculturalFacility,
+    ALL_PRODUCTION_FACILITY_ENTRIES.foodProcessor,
+    ALL_PRODUCTION_FACILITY_ENTRIES.beveragePlant,
+    ALL_PRODUCTION_FACILITY_ENTRIES.groceryChain,
+    ALL_PRODUCTION_FACILITY_ENTRIES.hospital,
+    ALL_PRODUCTION_FACILITY_ENTRIES.pharmaPlant,
 ]);
 
 function isEssentialSupplier(assets: AgentPlanetAssets): boolean {
-    return assets.productionFacilities.some((facility) => ESSENTIAL_FACILITY_NAMES.has(facility.name));
+    return assets.productionFacilities.some((facility) => {
+        const entry = facilityByName.get(facility.name);
+        return entry !== undefined && ESSENTIAL_FACILITY_ENTRIES.has(entry);
+    });
 }
 
 function recycleFacilitiesForDebt(

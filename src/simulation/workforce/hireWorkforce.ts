@@ -16,6 +16,22 @@ import {
 } from './laborMarket';
 import { totalActiveForEdu } from './workforceAggregates';
 
+export function assertBackfillProgress(
+    slotEdu: EducationLevelType,
+    workerEdu: EducationLevelType,
+    remainingGap: number,
+    totalWilling: number,
+    toHire: number,
+): void {
+    if (process.env.SIM_DEBUG === '1' && toHire === 0 && remainingGap > 0 && totalWilling >= 1) {
+        throw new Error(
+            `[hireWorkforce] backfill stall: slot edu=${slotEdu} worker edu=${workerEdu} ` +
+                `remainingGap=${remainingGap} willing=${totalWilling} — willing workers skipped while slots remain ` +
+                `(cross-tier double-deduction regression)`,
+        );
+    }
+}
+
 export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profiler?: TickProfiler): void {
     let t: number = 0;
 
@@ -63,9 +79,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
             t = profiler.markAndAccum('hirePreCount', '  hire_preCount', t);
         }
 
-        // Track how many workers of each education we have already hired this tick so the same pool
-        // is never double-hired by two different slot tiers (e.g. secondary backfilling none slots).
-        const hiredByEdu: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
         const eduIndex = new Map(educationLevelKeys.map((edu, i) => [edu, i]));
 
         for (const edu of educationLevelKeys) {
@@ -104,9 +117,8 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                         totalWilling += avail * probToAccept;
                     }
 
-                    const toHire = Math.floor(
-                        Math.min(remainingGap, totalWilling, Math.max(0, totalWilling - hiredByEdu[workerEdu])),
-                    );
+                    const toHire = Math.floor(Math.min(remainingGap, totalWilling));
+                    assertBackfillProgress(edu, workerEdu, remainingGap, totalWilling, toHire);
                     if (toHire > 0) {
                         const allocatedBuckets = distributeProportionally(
                             toHire,
@@ -127,7 +139,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                                 workforce[age][workerEdu].onboarding[NOTICE_PERIOD_MONTHS - 1] += actual;
                             }
                         }
-                        hiredByEdu[workerEdu] += toHire;
                         remainingGap -= toHire;
                     }
                 }
