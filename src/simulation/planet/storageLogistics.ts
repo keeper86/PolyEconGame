@@ -1,6 +1,5 @@
 import {
     SERVICE_DEPRECIATION_RATE_PER_TICK,
-    SERVICE_SHIELD_FRACTION,
     SR_HOLDING_COST_PER_TON,
     SS_RELAXATION_RATE,
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
@@ -18,30 +17,26 @@ import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './s
 import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 let serviceDepreciationRateOverride: number | null = null;
-let serviceBufferShieldTicks = 0;
+let serviceOutputShieldFactor = 0;
 
 export function setServiceDepreciationRate(rate: number): void {
     serviceDepreciationRateOverride = rate;
 }
 
-export function resetServiceDepreciationRate(): void {
-    serviceDepreciationRateOverride = null;
-}
-
 export function getServiceDepreciationRate(): number {
-    return serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK * (1 - SERVICE_SHIELD_FRACTION);
+    return serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK;
 }
 
-export function setServiceBufferShieldTicks(ticks: number): void {
-    serviceBufferShieldTicks = ticks;
+export function setServiceOutputShieldFactor(factor: number): void {
+    serviceOutputShieldFactor = factor;
 }
 
-export function resetServiceBufferShieldTicks(): void {
-    serviceBufferShieldTicks = 0;
+export function resetServiceOutputShieldFactor(): void {
+    serviceOutputShieldFactor = 0;
 }
 
-export function getServiceBufferShieldTicks(): number {
-    return serviceBufferShieldTicks;
+export function getServiceOutputShieldFactor(): number {
+    return serviceOutputShieldFactor;
 }
 
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
@@ -105,21 +100,17 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
-function serviceFlowPerTick(assets: AgentPlanetAssets, name: string): number {
+function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
     let total = 0;
     for (const facility of assets.productionFacilities) {
-        total +=
-            (facility.lastTickResults?.lastProduced?.[name] ?? 0) +
-            (facility.lastTickResults?.lastConsumed?.[name] ?? 0);
+        total += facility.lastTickResults?.lastProduced?.[name] ?? 0;
     }
     if (assets.humanResourcesDepartment) {
-        total +=
-            (assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0) +
-            (assets.humanResourcesDepartment.lastTickResults?.lastConsumed?.[name] ?? 0);
+        total += assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0;
     }
     const dept = assets.storageFacility.department;
     if (dept) {
-        total += (dept.lastTickResults?.lastProduced?.[name] ?? 0) + (dept.lastTickResults?.lastConsumed?.[name] ?? 0);
+        total += dept.lastTickResults?.lastProduced?.[name] ?? 0;
     }
     return total;
 }
@@ -139,8 +130,8 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         if (isService) {
             const baseRate = getServiceDepreciationRate();
             const price = planet.marketPrices[name] ?? 0;
-            if (serviceBufferShieldTicks > 0) {
-                const shieldedQty = serviceBufferShieldTicks * serviceFlowPerTick(assets, name);
+            if (serviceOutputShieldFactor > 0) {
+                const shieldedQty = serviceOutputShieldFactor * serviceOutputPerTick(assets, name);
                 const excessQty = Math.max(0, entry.quantity - shieldedQty);
                 decayQty = excessQty * baseRate * (1 + ss);
                 assets.monthAcc.naturalDepreciationValue += excessQty * baseRate * price;

@@ -575,7 +575,7 @@ describe('enforceLoanMaturities', () => {
         try {
             agent.starterLoanTaken = true;
             agent.assets[planet.id]!.productionFacilities.push(
-                makeProductionFacility(planet.id, { name: 'Maintenance Facility' }),
+                makeProductionFacility({}, { name: 'Maintenance Facility' }),
             );
             agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
             agent.assets[planet.id]!.deposits = 30;
