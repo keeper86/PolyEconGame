@@ -3,9 +3,9 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
-import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
+import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
+import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
     buildScaleComparison,
@@ -41,47 +41,6 @@ function arg(name: string): string | undefined {
     const prefix = `--${name}=`;
     const found = process.argv.find((a) => a.startsWith(prefix));
     return found ? found.slice(prefix.length) : undefined;
-}
-
-function toCsv(rows: MetricMap[]): string {
-    const header = METRIC_KEYS.join(',');
-    const lines = rows.map((row) => METRIC_KEYS.map((k) => row[k] ?? '').join(','));
-    return [header, ...lines].join('\n');
-}
-
-function yearlySeries(monthly: MetricMap[]): Map<number, MetricMap> {
-    const years = new Map<number, MetricMap>();
-    const sums = new Map<number, Record<string, number>>();
-    const counts = new Map<number, number>();
-
-    for (const sample of monthly) {
-        const year = Math.floor((sample.tick - 1) / TICKS_PER_YEAR) + 1;
-        if (!sums.has(year)) {
-            sums.set(year, {});
-            counts.set(year, 0);
-        }
-        const acc = sums.get(year)!;
-        for (const key of METRIC_KEYS) {
-            if (key === 'tick') {
-                continue;
-            }
-            acc[key] = (acc[key] ?? 0) + (sample[key] ?? 0);
-        }
-        counts.set(year, counts.get(year)! + 1);
-    }
-
-    for (const [year, acc] of sums) {
-        const n = counts.get(year)!;
-        const mean: MetricMap = { tick: year };
-        for (const key of METRIC_KEYS) {
-            if (key === 'tick') {
-                continue;
-            }
-            mean[key] = (acc[key] ?? 0) / n;
-        }
-        years.set(year, mean);
-    }
-    return years;
 }
 
 interface BandResult {
@@ -141,29 +100,12 @@ function evaluateBands(yearly: Map<number, MetricMap>, bands: MetricBand[]): Ban
     });
 }
 
-function formatDuration(ms: number): string {
-    const totalSeconds = Math.round(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-    if (hours > 0) {
-        return `${hours}h${minutes}m${seconds}s`;
-    }
-    if (minutes > 0) {
-        return `${minutes}m${seconds}s`;
-    }
-    return `${seconds}s`;
-}
-
 function runScenario(
     scenario: Scenario,
     years: number,
     sampleEvery: number,
 ): { monthly: MetricMap[]; msPerTick: number; seedGap: string; scaleGaps: Array<Record<string, number>> } {
     seedRng(scenario.seed);
-    setConditionEfficiencyDisabled(scenario.world.disableConditionEfficiency === true);
-    setHrProductivityEffectDisabled(scenario.world.disableHrProductivityEffect === true);
-    setStorageStarvationEffectDisabled(scenario.world.disableStorageStarvationEffect === true);
     const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
     const population = scenario.world.population ?? 10_000_000;
 
@@ -225,22 +167,6 @@ function runScenario(
     return { monthly, msPerTick, seedGap, scaleGaps };
 }
 
-function printYearly(yearly: Map<number, MetricMap>, keys: string[]): void {
-    const years = [1, 5, 10, 15, 20, 25, 30].filter((y) => yearly.has(y));
-    const header = ['metric', ...years.map((y) => `y${y}`)].join('\t');
-    console.log(header);
-    for (const key of keys) {
-        if (key === 'tick') {
-            continue;
-        }
-        const cells = years.map((y) => {
-            const v = yearly.get(y)?.[key] ?? 0;
-            return Number.isFinite(v) ? v.toFixed(3) : 'n/a';
-        });
-        console.log([key, ...cells].join('\t'));
-    }
-}
-
 function main(): void {
     const debug = process.argv.includes('--debug');
     if (debug) {
@@ -265,6 +191,18 @@ function main(): void {
     if (agentsPerProductArg !== undefined) {
         scenario.world = { ...scenario.world, agentsPerProduct: Number(agentsPerProductArg) };
     }
+    const slackArg = arg('slack');
+    if (slackArg !== undefined) {
+        scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
+    }
+    const loanDisciplineArg = arg('loanDiscipline');
+    if (loanDisciplineArg !== undefined) {
+        setLoanDisciplineEnabled(loanDisciplineArg === '1' || loanDisciplineArg === 'true');
+    }
+    const loanRecyclingArg = arg('loanRecycling');
+    if (loanRecyclingArg !== undefined) {
+        setLoanRecyclingEnabled(loanRecyclingArg === '1' || loanRecyclingArg === 'true');
+    }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;
 
@@ -275,7 +213,7 @@ function main(): void {
     const yearly = yearlySeries(monthly);
     const bandResults = bandsMode === 'off' ? [] : evaluateBands(yearly, scenario.bands);
 
-    const outDir = path.join(OUT_ROOT, scenario.name);
+    const outDir = path.join(OUT_ROOT, arg('out') ?? scenario.name);
     fs.mkdirSync(outDir, { recursive: true });
 
     const csvPath = path.join(outDir, 'series.csv');

@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { ArrowDownRight, ArrowRight, Equal, Plus, Sigma, X } from 'lucide-react';
+import { ArrowDownRight, ArrowRight, Equal, Sigma, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
@@ -45,13 +45,13 @@ function sellSteps(d: SellDiagnostics): Step[] {
             value: fmt(d.baseFactor),
         },
         {
-            label: 'Cost spring deviation',
-            formula: '√(max(0, brakeZoneTop / price - 1))',
-            value: fmt(d.costSpringDeviation),
+            label: 'Volume fraction',
+            formula: 'floor + (1-floor) · sigmoid((buffer - price/cost)/sensitivity)',
+            value: fmt(d.volumeFraction),
         },
         {
             label: 'Net factor',
-            formula: 'base + strength × deviation',
+            formula: 'baseFactor',
             value: fmt(d.netFactor),
         },
         {
@@ -109,18 +109,18 @@ function buySteps(d: BuyDiagnostics): Step[] {
             value: fmt(d.baseFactor),
         },
         {
-            label: 'Ceiling price',
-            formula: 'costFloor × bidOfferMaxCostMultiplier (clamped)',
-            value: fmtCurr(d.ceilingPrice),
+            label: 'Volume fraction',
+            formula: 'floor + (1-floor) · sigmoid((price/cost - maxCostMultiplier)/sensitivity)',
+            value: fmt(d.volumeFraction),
         },
         {
-            label: 'Ceiling spring',
-            formula: 'strength × √(max(0, bidPrice / ceiling - 1))',
-            value: fmt(d.ceilingSpring),
+            label: 'Price/cost ratio',
+            formula: 'marketPrice / costFloor',
+            value: fmt(d.priceCostRatio),
         },
         {
             label: 'Net factor',
-            formula: 'baseFactor - ceilingSpring',
+            formula: 'baseFactor - global cost anchor',
             value: fmt(d.netFactor),
         },
         {
@@ -257,9 +257,8 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
     const isPriceUp = netFactor > 1;
     const priceChangeText = isPriceUp ? 'Increasing' : netFactor < 1 ? 'Decreasing' : 'Stable';
 
-    // Spring logic
-    const isFloorSpringActive = isSell && sellDiag!.costSpringDeviation > 0;
-    const isCeilingSpringActive = isSell ? sellDiag!.overDeviation > 0 : buyDiag!.ceilingSpring > 0;
+    const volumeFraction = diagnostics.volumeFraction;
+    const priceCostRatio = diagnostics.priceCostRatio;
 
     return (
         <div className='w-full max-w-md bg-slate-900 text-slate-100 rounded-lg shadow-2xl border border-slate-700 overflow-hidden font-sans'>
@@ -321,40 +320,21 @@ export function PricingPopup({ type, diagnostics }: PricingDiagnosticsProps) {
                     </div>
                 </div>
 
-                {/* Pillar 2: Safety Springs (Brake Zones) */}
+                {/* Pillar 2: Volume Response */}
                 <div className='space-y-3 p-3 bg-slate-800/50 rounded border border-slate-700/50'>
                     <div className='flex items-center gap-2 text-sm font-medium text-slate-300'>
                         <ShieldAlert size={16} className='text-amber-400' />
-                        Safety Constraints
+                        Volume Response
                     </div>
 
                     <div className='grid grid-cols-2 gap-4'>
-                        {/* Floor Spring */}
-                        <div
-                            className={`p-2 rounded flex flex-col gap-1 text-xs border ${isFloorSpringActive ? 'bg-amber-900/20 border-amber-500/50 text-amber-200' : 'border-transparent text-slate-500'}`}
-                        >
-                            <span className='uppercase font-bold tracking-wider'>Cost Floor</span>
-                            <span className='font-mono'>${diagnostics.costFloor.toFixed(2)}</span>
-                            {isFloorSpringActive && (
-                                <span className='text-[10px] bg-amber-500/20 px-1 py-0.5 rounded mt-1 text-center'>
-                                    Brake Active
-                                </span>
-                            )}
+                        <div className='p-2 rounded flex flex-col gap-1 text-xs border border-slate-600/50 text-slate-300'>
+                            <span className='uppercase font-bold tracking-wider'>Volume Fraction</span>
+                            <span className='font-mono'>{volumeFraction.toFixed(3)}</span>
                         </div>
-
-                        {/* Ceiling Spring */}
-                        <div
-                            className={`p-2 rounded flex flex-col gap-1 text-xs border ${isCeilingSpringActive ? 'bg-amber-900/20 border-amber-500/50 text-amber-200' : 'border-transparent text-slate-500'}`}
-                        >
-                            <span className='uppercase font-bold tracking-wider'>Price Ceiling</span>
-                            <span className='font-mono'>
-                                {isSell ? 'Max Margin Limit' : `$${buyDiag?.ceilingPrice?.toFixed(2) || 'N/A'}`}
-                            </span>
-                            {isCeilingSpringActive && (
-                                <span className='text-[10px] bg-amber-500/20 px-1 py-0.5 rounded mt-1 text-center'>
-                                    Brake Active
-                                </span>
-                            )}
+                        <div className='p-2 rounded flex flex-col gap-1 text-xs border border-slate-600/50 text-slate-300'>
+                            <span className='uppercase font-bold tracking-wider'>Price/Cost Ratio</span>
+                            <span className='font-mono'>{priceCostRatio.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
@@ -429,13 +409,11 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
     const baseFactor = diagnostics.baseFactor;
     const netFactor = diagnostics.netFactor;
 
-    // Calculate total spring effect (Net Factor = Base Factor + Springs)
-    const springAdjustment = netFactor - baseFactor;
-    const hasSpring = Math.abs(springAdjustment) > 0.0001;
+    const volumeFraction = diagnostics.volumeFraction;
+    const priceCostRatio = diagnostics.priceCostRatio;
 
     // Formatting helpers
     const formatMultiplier = (val: number) => `x${val.toFixed(4)}`;
-    const formatAdjustment = (val: number) => `${val > 0 ? '+' : ''}${val.toFixed(4)}`;
 
     return (
         <div className='w-full max-w-lg bg-slate-950 text-slate-300 rounded-xl shadow-2xl border border-slate-800 font-mono text-sm overflow-hidden'>
@@ -487,53 +465,31 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
                     </div>
                 </div>
 
-                {/* Step 2: Safety Springs */}
+                {/* Step 2: Volume Response */}
                 <div className='relative'>
-                    <div
-                        className={`absolute -left-2.5 top-2 w-1.5 h-1.5 rounded-full ${hasSpring ? 'bg-amber-500' : 'bg-slate-700'}`}
-                    />
+                    <div className='absolute -left-2.5 top-2 w-1.5 h-1.5 rounded-full bg-amber-500' />
                     <div className='pl-4 border-l border-slate-800 space-y-2'>
-                        <div className='font-sans font-bold text-slate-100 flex items-center gap-2'>
-                            2. Apply Safety Springs
-                            {!hasSpring && (
-                                <span className='text-[10px] bg-slate-800 px-2 py-0.5 rounded text-slate-500 uppercase'>
-                                    Inactive
-                                </span>
-                            )}
+                        <div className='font-sans font-bold text-slate-100'>2. Scale Volume by Price</div>
+
+                        <div className='grid grid-cols-2 gap-2 text-xs bg-slate-900/50 p-3 rounded border border-slate-800/50'>
+                            <div className='space-y-1'>
+                                <div className='text-slate-500'>Volume Fraction</div>
+                                <div className='text-lg text-slate-200'>{(volumeFraction * 100).toFixed(1)}%</div>
+                                <div className='text-[10px] text-slate-500'>
+                                    demanded/offered quantity is scaled by this factor
+                                </div>
+                            </div>
+                            <div className='space-y-1'>
+                                <div className='text-slate-500'>Price/Cost Ratio</div>
+                                <div className='text-lg text-slate-200'>{priceCostRatio.toFixed(2)}</div>
+                                <div className='text-[10px] text-slate-500'>market price vs production cost floor</div>
+                            </div>
                         </div>
 
-                        {hasSpring ? (
-                            <>
-                                <div className='text-xs text-slate-400 leading-relaxed bg-amber-950/20 p-3 rounded border border-amber-900/30'>
-                                    {isSell ? (
-                                        <>
-                                            Price is approaching Cost Floor{' '}
-                                            <strong>(${diagnostics.costFloor.toFixed(2)})</strong>. Spring deviations
-                                            [Floor: {sellDiag?.costSpringDeviation.toFixed(3)}, Ceiling:{' '}
-                                            {sellDiag?.overDeviation.toFixed(3)}] apply resistance.
-                                        </>
-                                    ) : (
-                                        <>
-                                            Price is approaching Margin Ceiling. Spring deviations apply resistance to
-                                            prevent overspending.
-                                        </>
-                                    )}
-                                </div>
-                                <div className='flex items-center gap-2 pt-1'>
-                                    <ArrowDownRight size={16} className='text-slate-600' />
-                                    <span className='text-slate-400'>Spring Adjustment:</span>
-                                    <span
-                                        className={`${springAdjustment > 0 ? 'text-emerald-400 bg-emerald-400/10' : 'text-rose-400 bg-rose-400/10'} px-2 py-0.5 rounded font-bold`}
-                                    >
-                                        {formatAdjustment(springAdjustment)}
-                                    </span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className='text-xs text-slate-500 italic'>
-                                Price is well within safe margins. No spring resistance applied.
-                            </div>
-                        )}
+                        <div className='text-xs text-slate-500 italic'>
+                            Prices below the configured buffer throttle the offered volume down toward the floor,
+                            keeping the agent from dumping inventory at a loss.
+                        </div>
                     </div>
                 </div>
 
@@ -550,10 +506,8 @@ export function PricingMathPipeline({ type, resourceName, diagnostics }: Pricing
                                 <span>{baseFactor.toFixed(4)}</span>
                             </div>
                             <div className='flex justify-between items-center text-slate-400'>
-                                <span className='flex items-center gap-2'>
-                                    <Plus size={14} /> Spring Adjust
-                                </span>
-                                <span>{formatAdjustment(springAdjustment)}</span>
+                                <span>Volume Fraction</span>
+                                <span>{(volumeFraction * 100).toFixed(1)}%</span>
                             </div>
 
                             <div className='border-t border-slate-700 my-2 pt-2 flex justify-between items-center font-bold text-slate-200'>

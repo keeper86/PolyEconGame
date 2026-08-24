@@ -9,15 +9,20 @@ export function FacilityCardShell({
     children,
     className,
     contentClassName,
+    dataTour,
 }: {
     icon: React.ReactNode;
     headerContent: React.ReactNode;
     children: React.ReactNode;
     className?: string;
     contentClassName?: string;
+    dataTour?: string;
 }): React.ReactElement {
     return (
-        <Card className={cn('overflow-hidden flex flex-col min-w-[300px] sm:min-w-[485px]', className)}>
+        <Card
+            className={cn('overflow-hidden flex flex-col min-w-[300px] sm:min-w-[485px]', className)}
+            data-tour={dataTour}
+        >
             <CardHeader className='p-3 pb-2'>
                 <div className='flex items-center gap-3 flex-wrap-reverse'>
                     <div className='flex-1 min-w-[150px]' style={{ minHeight: `${defaultHeight}px` }}>

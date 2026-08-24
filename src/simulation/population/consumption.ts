@@ -1,4 +1,4 @@
-import { allServices, serviceKeyOf } from '../market/serviceDefinitions';
+import { allServices, referenceMonthlyIncome, serviceKeyOf } from '../market/serviceDefinitions';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from './population';
 
@@ -15,7 +15,12 @@ export function consumeServices(planet: Planet) {
             const pop = category.total;
 
             for (const def of allServices) {
-                const rate = def.consumptionRatePerPersonPerTick(age, occ, category.wealth);
+                const rate = def.consumptionRatePerPersonPerTick(
+                    age,
+                    occ,
+                    category.wealth,
+                    referenceMonthlyIncome(planet),
+                );
 
                 if (rate <= 0) {
                     continue;

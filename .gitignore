@@ -18,6 +18,10 @@ node-ramp-*.json
 **/results/**/*
 /tools/longrun/results/**/*
 
+# snapshot / compressed artifacts
+*.snapshot
+*.gz
+
 
 # playwright
 /test-results/
@@ -35,6 +39,9 @@ playwright/.auth
 # misc
 .DS_Store
 *.pem
+
+# scratch notes / misc text
+*.txt
 
 # debug
 npm-debug.log*

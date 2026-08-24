@@ -46,6 +46,7 @@ type LiveData = {
     logisticsBuffer: number;
     educationBuffer: number;
     retailBuffer: number;
+    constructionBuffer: number;
 };
 
 function yDomainFor(points: { value: number }[]): [number, number] | ['auto', 'auto'] {
@@ -193,6 +194,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                     logisticsBuffer: 0,
                     educationBuffer: 0,
                     retailBuffer: 0,
+                    constructionBuffer: 0,
                 },
             ),
         [monthlyPoints, live],

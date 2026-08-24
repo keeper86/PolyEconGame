@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
+import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
+    INPUT_BUFFER_TARGET_TICKS,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+} from '../constants';
 import { machineryFactory } from '../planet/productionFacilities';
 import {
     electronicsResourceType,
@@ -8,9 +14,17 @@ import {
     steelResourceType,
 } from '../planet/resources';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { automaticPricing } from './automaticPricing';
+import { automaticPricing, buyVolumeFraction } from './automaticPricing';
 
 const PLANET_ID = 'p';
+
+const BUY_VOLUME_FRACTION_AT_COST = buyVolumeFraction(
+    1,
+    1,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
+    BID_OFFER_MAX_COST_MULTIPLIER,
+);
 
 const IRON_ORE_PRICE = 1.0;
 const STEEL_PRICE = 3.0;
@@ -110,6 +124,9 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
                 [plasticResourceType.name]: PLASTIC_PRICE,
             },
         });
+        planet.lastProductionCostFloors[steelResourceType.name] = STEEL_PRICE;
+        planet.lastProductionCostFloors[electronicsResourceType.name] = ELECTRONIC_COMPONENT_PRICE;
+        planet.lastProductionCostFloors[plasticResourceType.name] = PLASTIC_PRICE;
 
         const factory = makeMachineryAgent('machinery');
         const facility = factory.assets[PLANET_ID].productionFacilities[0]!;
@@ -123,7 +140,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
         // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
-        expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
+        expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget * BUY_VOLUME_FRACTION_AT_COST, 0);
     });
 
     it('two-tier chain: iron smelter produces steel that machinery factory bids for', () => {

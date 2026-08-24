@@ -31,7 +31,6 @@ import {
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
 import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
-import { nextRandom } from '../utils/stochasticRound';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -160,9 +159,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             assets.market.buy[constructionServiceResourceType.name] = {
                 resource: constructionServiceResourceType,
                 automated: true,
-                autoConfig: {
-                    bidOfferMaxCostMultiplier: 2 + 5 * nextRandom(),
-                },
+                autoConfig: buildBuyAutoConfigForResource(personality.buyAutoConfig, constructionServiceResourceType),
             };
 
             for (const { resource } of fac.produces) {
@@ -171,7 +168,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                         const groceryStrategy: AutomatedPricingConfig = {
                             priceAdjustMaxUp: 1.02,
                             priceAdjustMaxDown: 0.98,
-                            automatedCostFloorBuffer: 1.1,
                             targetSellThrough: 0.8,
                         };
                         assets.market.sell[resource.name] = {
@@ -234,6 +230,10 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
+        governmentSupportVolume: 0,
+        rolloverDenials: 0,
+        debtWriteOffs: 0,
+        bankruptcies: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},

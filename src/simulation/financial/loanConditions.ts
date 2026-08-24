@@ -2,8 +2,7 @@ import { LOAN_CASH_FLOW_MONTHS, LOAN_COLLATERAL_FACTOR, STARTER_LOAN_AMOUNT } fr
 import type { Agent, Planet } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
 import type { LoanConditions } from '../../server/controller/simulation';
-import { computeFacilitiesValue, computeShipsValue } from './assetValuation';
-import { constructionServiceResourceType } from '../planet/services';
+import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from './assetValuation';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 export function computeLoanConditions(
@@ -39,9 +38,7 @@ export function computeLoanConditions(
         }
     }
 
-    const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
-    const csProductionCost = planet.productionCosts[constructionServiceResourceType.name];
-    const csPrice = csProductionCost > 0 ? Math.min(csMarketPrice, 2 * csProductionCost) : csMarketPrice;
+    const csPrice = constructionValuationPrice(planet);
     const facilitiesCollateral = assets ? computeFacilitiesValue(assets, csPrice) * LOAN_COLLATERAL_FACTOR : 0;
     const shipsCollateral = shipCapitalMarket
         ? computeShipsValue(agent, shipCapitalMarket, planet.marketPrices) * LOAN_COLLATERAL_FACTOR

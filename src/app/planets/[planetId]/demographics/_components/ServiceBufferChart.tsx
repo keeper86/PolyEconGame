@@ -2,6 +2,7 @@
 
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { DEFAULT_REFERENCE_MONTHLY_INCOME } from '@/simulation/constants';
 import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { ServiceName } from '@/simulation/population/population';
@@ -148,7 +149,7 @@ function computeEffectiveMultiplier(
     const rateFn = SERVICE_DEFINITIONS[serviceKey].consumptionRatePerPersonPerTick;
     if (groupMode === 'occupation') {
         const occ = OCCUPATIONS[groupIndex];
-        return rateFn(age, occ, wealth);
+        return rateFn(age, occ, wealth, DEFAULT_REFERENCE_MONTHLY_INCOME);
     } else {
         // education mode: weighted average over occupations
         let weightedRate = 0;
@@ -156,7 +157,7 @@ function computeEffectiveMultiplier(
         for (let oi = 0; oi < OCCUPATIONS.length; oi++) {
             const occPop = occCounts[oi];
             if (occPop > 0) {
-                weightedRate += occPop * rateFn(age, OCCUPATIONS[oi], wealth);
+                weightedRate += occPop * rateFn(age, OCCUPATIONS[oi], wealth, DEFAULT_REFERENCE_MONTHLY_INCOME);
                 totalOccPop += occPop;
             }
         }

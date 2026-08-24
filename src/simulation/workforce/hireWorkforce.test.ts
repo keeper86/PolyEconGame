@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { BASE_QUIT_RATE, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
@@ -12,16 +12,17 @@ import {
     makeAllocatedWorkers,
     makePlanet,
     makePlanetWithPopulation,
+    makeProductionFacility,
     makeWorkforceDemography,
     sumPopOcc,
     totalPopulation,
 } from '../utils/testHelper';
-import { hireWorkforce } from './hireWorkforce';
+import { assertBackfillProgress, hireWorkforce } from './hireWorkforce';
+import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
     acceptProbability,
     computeLaborMarket,
     jobFindingProbability,
-    moraleDeficit,
     outsideIncome,
     quitPropensity,
 } from './laborMarket';
@@ -62,15 +63,9 @@ describe('labor market helpers', () => {
         expect(acceptProbability(1_000_000, 100)).toBeCloseTo(0.05, 4);
     });
 
-    it('moraleDeficit is zero when unprofitable and grows as profit share grows', () => {
-        expect(moraleDeficit(100, 0)).toBe(0);
-        expect(moraleDeficit(100, 100)).toBe(0);
-        expect(moraleDeficit(100, 300)).toBeGreaterThan(0);
-    });
-
     it('quitPropensity starts at the base rate and rises with a better outside option', () => {
-        expect(quitPropensity(100, 0, 0, 0)).toBe(BASE_QUIT_RATE);
-        expect(quitPropensity(100, 0, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0, 0));
+        expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
+        expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
     });
 });
 
@@ -78,7 +73,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('accumulates vacancies from all suitable job levels for each worker education', () => {
         const { planet } = makePlanetWithPopulation({ none: 1000, primary: 2000, secondary: 3000, tertiary: 4000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, primary: 50, secondary: 0, tertiary: 0 });
+        agent.assets.p.totalSlotCapacity = { none: 100, primary: 50, secondary: 0, tertiary: 0 };
         agent.assets.p.wagePerEdu = { none: 10, primary: 20, secondary: 30, tertiary: 40 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
@@ -92,7 +87,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('values reachable vacancies at the worker own education wage, not the job wage', () => {
         const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 0, tertiary: 1000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100 });
+        agent.assets.p.totalSlotCapacity = { none: 100, primary: 0, secondary: 0, tertiary: 0 };
         agent.assets.p.wagePerEdu = { none: 100, primary: 90, secondary: 80, tertiary: 10 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
@@ -105,7 +100,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('divides reachable vacancies by unemployed workers for tightness', () => {
         const { planet } = makePlanetWithPopulation({ none: 2000, tertiary: 4000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 200 });
+        agent.assets.p.totalSlotCapacity = { none: 200, primary: 0, secondary: 0, tertiary: 0 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
 
@@ -116,7 +111,7 @@ describe('computeLaborMarket — reachable outside options', () => {
     it('does not broaden the lowest education level', () => {
         const { planet } = makePlanetWithPopulation({ none: 1000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 10, primary: 20 });
+        agent.assets.p.totalSlotCapacity = { none: 10, primary: 20, secondary: 0, tertiary: 0 };
 
         const market = computeLaborMarket(agentMap(agent), planet);
 
@@ -439,18 +434,19 @@ describe('preProductionLaborMarketTick — population conservation', () => {
 });
 
 describe('per-education level isolation', () => {
-    it('hiring one education level does not affect another', () => {
-        const { planet } = makePlanetWithPopulation({ none: 5000, primary: 3000, secondary: 2000 });
+    it('backfills a shortfall from a higher tier when the native pool is depleted', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, primary: 100_000 });
         const agent = makeAgent();
-        agent.assets.p.allocatedWorkers.primary = 500;
-
-        const noneBefore = sumPopOcc(planet, 'none', 'unoccupied');
-        const secBefore = sumPopOcc(planet, 'secondary', 'unoccupied');
+        agent.assets.p.allocatedWorkers.none = 500;
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.wagePerEdu.primary = 1e9;
 
         hireWorkforce(agentMap(agent), planet);
 
-        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBe(noneBefore);
-        expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBe(secBefore);
+        const wf = agent.assets.p.workforceDemography!;
+        // No native none workers exist, so the none slot shortfall is filled by primary workers.
+        expect(sumPopOcc(planet, 'none', 'employed')).toBe(0);
+        expect(totalOnboardingForEdu(wf, 'primary')).toBe(500);
     });
 
     it('firing one education level does not affect another', () => {
@@ -524,5 +520,157 @@ describe('voluntary quit rate', () => {
         workforceDemographicTick(agentMap(agent), planet);
 
         expect(wf[30].none.active).toBe(1);
+    });
+});
+
+describe('overqualified backfill substitution', () => {
+    it('does not re-hire native none workers into none slots already filled by overqualified workers', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 0, secondary: 1000, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 1000 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        agent.assets.p.wagePerEdu.secondary = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].secondary.active = 1000;
+        planet.population.demography[30].employed.secondary.total = 1000;
+        planet.population.demography[30].unoccupied.none.total = 500;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBe(unoccNoneBefore);
+        expect(totalOnboardingForEdu(wf, 'none')).toBe(0);
+        expect(totalActiveForEdu(wf, 'secondary')).toBe(1000);
+    });
+
+    it('hires native none workers first into none slots that are actually empty', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 0, primary: 0, secondary: 500, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 500 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].secondary.active = 500;
+        planet.population.demography[30].employed.secondary.total = 500;
+        planet.population.demography[30].unoccupied.none.total = 500;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        expect(sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThan(unoccNoneBefore);
+        expect(totalOnboardingForEdu(wf, 'none')).toBeGreaterThan(0);
+    });
+
+    it('only re-hires natives at the idle-buffer rate when slots are overqualified-filled but some natives remain', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, secondary: 2000 });
+        const agent = makeAgent();
+        const fac = makeProductionFacility({ none: 100 }, { scale: 10 });
+        agent.assets.p.productionFacilities = [fac];
+        agent.assets.p.totalSlotCapacity = { none: 1000, primary: 0, secondary: 0, tertiary: 0 };
+
+        fac.lastTickResults.totalUsedByEdu = { none: 50, primary: 0, secondary: 950, tertiary: 0 };
+        fac.lastTickResults.exactUsedByEdu = { none: 50, primary: 0, secondary: 0, tertiary: 0 };
+        fac.lastTickResults.overqualifiedWorkers = { none: { secondary: 950 } };
+
+        agent.assets.p.wagePerEdu.none = 1e9;
+        const wf = agent.assets.p.workforceDemography!;
+        wf[30].none.active = 50;
+        wf[30].secondary.active = 950;
+        planet.population.demography[30].employed.none.total = 50;
+        planet.population.demography[30].employed.secondary.total = 950;
+        planet.population.demography[30].unoccupied.none.total = 100;
+
+        const unoccNoneBefore = sumPopOcc(planet, 'none', 'unoccupied');
+
+        automaticWorkerAllocation(agentMap(agent), planet);
+        hireWorkforce(agentMap(agent), planet);
+
+        // target[none] = used[none] * 1.05 (slots are full, so no slot gap) — only the 5% idle
+        // buffer creates demand. ~3 natives enter the buffer, but the 950 overqualified stay.
+        expect(unoccNoneBefore - sumPopOcc(planet, 'none', 'unoccupied')).toBeLessThanOrEqual(5);
+        expect(totalActiveForEdu(wf, 'secondary')).toBe(950);
+    });
+});
+
+describe('cross-tier backfill double-deduction', () => {
+    it('keeps hiring native secondary workers after a lower-tier backfill consumed part of the pool', () => {
+        const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 2000, tertiary: 10000 });
+        const agent = makeAgent();
+        agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, secondary: 100 });
+        agent.assets.p.wagePerEdu.secondary = 1e9;
+        agent.assets.p.wagePerEdu.tertiary = 1e9;
+
+        hireWorkforce(agentMap(agent), planet);
+
+        const wf = agent.assets.p.workforceDemography!;
+        // The none-tier backfill hires ~100 secondary, so the secondary tier must still hire the
+        // remaining ~95 natives instead of skipping them and jumping straight to tertiary.
+        expect(totalOnboardingForEdu(wf, 'secondary')).toBeGreaterThan(190);
+        expect(totalOnboardingForEdu(wf, 'tertiary')).toBeLessThan(10);
+        expect(sumPopOcc(planet, 'secondary', 'unoccupied')).toBeLessThan(1810);
+    });
+
+    it('does not trigger the debug backfill-stall invariant under SIM_DEBUG', () => {
+        process.env.SIM_DEBUG = '1';
+        try {
+            const { planet } = makePlanetWithPopulation({ none: 0, primary: 0, secondary: 2000, tertiary: 10000 });
+            const agent = makeAgent();
+            agent.assets.p.allocatedWorkers = makeAllocatedWorkers({ none: 100, secondary: 100 });
+            agent.assets.p.wagePerEdu.secondary = 1e9;
+            agent.assets.p.wagePerEdu.tertiary = 1e9;
+
+            expect(() => hireWorkforce(agentMap(agent), planet)).not.toThrow();
+        } finally {
+            delete process.env.SIM_DEBUG;
+        }
+    });
+});
+
+describe('assertBackfillProgress debug invariant', () => {
+    const saved = process.env.SIM_DEBUG;
+
+    afterEach(() => {
+        if (saved === undefined) {
+            delete process.env.SIM_DEBUG;
+        } else {
+            process.env.SIM_DEBUG = saved;
+        }
+    });
+
+    it('fires when the loop stalls with willing workers remaining', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 10, 0)).toThrow(/backfill stall/);
+    });
+
+    it('stays silent while hires still make progress', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 10, 10)).not.toThrow();
+    });
+
+    it('stays silent for fractional willing pools below one worker', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 20, 0.5, 0)).not.toThrow();
+    });
+
+    it('stays silent when no gap remains', () => {
+        process.env.SIM_DEBUG = '1';
+        expect(() => assertBackfillProgress('secondary', 'secondary', 0, 10, 0)).not.toThrow();
     });
 });

@@ -11,7 +11,7 @@ import { MAX_AGE } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { TickProfiler } from '../TickProfiler';
-import { computeLaborMarket, profitPerWorkerPerTick, quitPropensity } from './laborMarket';
+import { computeLaborMarket, quitPropensity, smoothedReachableVacancyWage } from './laborMarket';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
 import { subtractProportionalXP } from './workforce';
 
@@ -40,7 +40,6 @@ export function workforceDemographicTick(
     agents: Map<string, Agent>,
     planet: Planet,
     profiler?: TickProfiler,
-    tick = 1,
 ): WorkforceEventAccumulator {
     const accumulator = createWorkforceEventAccumulator(planet.population.demography.length);
     const laborMarket = computeLaborMarket(agents, planet);
@@ -61,7 +60,6 @@ export function workforceDemographicTick(
         }
 
         const workforce = assets.workforceDemography;
-        const profitPerWorker = profitPerWorkerPerTick(assets, workforce, tick);
 
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
@@ -92,9 +90,8 @@ export function workforceDemographicTick(
                 if (category.active > 0) {
                     const quitRate = quitPropensity(
                         assets.wagePerEdu[l] ?? 0,
-                        profitPerWorker,
                         laborMarket.reachableTightness[l],
-                        laborMarket.reachableVacancyWage[l],
+                        smoothedReachableVacancyWage(planet, l, laborMarket.reachableVacancyWage[l]),
                     );
                     const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {

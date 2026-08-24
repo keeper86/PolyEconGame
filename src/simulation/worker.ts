@@ -121,6 +121,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 logistics_buffer: 0,
                 education_buffer: 0,
                 retail_buffer: 0,
+                construction_buffer: 0,
             }));
             void insertPlanetPopulationHistory(db, seedRows)
                 .then(() => refreshContinuousAggregates(db, TICKS_PER_MONTH, 'monthly'))
@@ -346,6 +347,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             logistics_buffer: computeNormalizedBuffer(planet, 'logistics'),
             education_buffer: computeNormalizedBuffer(planet, 'education'),
             retail_buffer: computeNormalizedBuffer(planet, 'retail'),
+            construction_buffer: computeNormalizedBuffer(planet, 'construction'),
         }));
         if (rows.length === 0) {
             return Promise.resolve();

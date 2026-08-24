@@ -33,7 +33,10 @@ export function StorageStarvationBar({ ss }: { ss: number }): React.ReactElement
     return (
         <Tooltip>
             <TooltipTrigger asChild>
-                <div className='flex flex-row items-center gap-4 py-2 px-2 text-xs text-muted-foreground'>
+                <div
+                    className='flex flex-row items-center gap-4 py-2 px-2 text-xs text-muted-foreground'
+                    data-tour='storage-starvation'
+                >
                     <span className='flex flex-1 flex-col gap-1 items-start'>
                         <span className='flex w-full flex-row justify-between'>
                             <span className='flex items-center gap-1'>

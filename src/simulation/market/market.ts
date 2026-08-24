@@ -1,5 +1,5 @@
 import {
-    BID_OFFER_MAX_COST_MULTIPLIER,
+    BID_ANCHOR_MULTIPLE,
     EPSILON,
     PRICE_CEIL,
     PRICE_FLOOR,
@@ -82,7 +82,7 @@ function clearResourceMarket(
     }
 
     const costFloor = planet.lastProductionCostFloors[resourceName] ?? PRICE_FLOOR;
-    const dynamicPriceCeil = costFloor * BID_OFFER_MAX_COST_MULTIPLIER;
+    const dynamicPriceCeil = costFloor * BID_ANCHOR_MULTIPLE;
 
     if (askOrders.length === 0 || (householdBids.length === 0 && agentBids.length === 0)) {
         for (const ask of askOrders) {

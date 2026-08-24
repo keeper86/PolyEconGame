@@ -176,36 +176,41 @@ birthsPerTick = stochasticRound(birthsPerYear / 360)`}
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.1 Allocation Target</h3>
                 <p>
                     Automated agents recompute <code>allocatedWorkers</code> by inspecting the last production
-                    tick&apos;s results:
+                    tick&apos;s results. <code>slotFill[edu]</code> counts slots filled by <em>any</em> worker
+                    (including overqualified higher-tier backfill), and <code>used[edu]</code> counts workers of each
+                    education tier currently assigned:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`deficit     = max(0, totalRequirement[edu] − exactUsed[edu])
-target[edu] = ceil((totalUsed[edu] + deficit) × (1 + ACCEPTABLE_IDLE_FRACTION))
+                    {`deficit     = max(0, totalSlotCapacity[edu] − slotFill[edu])
+target[edu] = ceil((used[edu] + deficit) × (1 + ACCEPTABLE_IDLE_FRACTION))
 
-ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above exact demand)`}
+ACCEPTABLE_IDLE_FRACTION = 0.05   (5 % idle buffer above demand)`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.2 Hiring</h3>
                 <p>
                     If active headcount falls below the target, workers are hired from the planet&apos;s{' '}
                     <code>unoccupied</code> pool. New workers are placed at their exact population age (not aggregated
-                    as moments):
+                    as moments). When a tier&apos;s native pool is depleted, higher-tier workers backfill the remaining
+                    slots at their <em>own</em> tier&apos;s wage:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`gap = target[edu] − currentActive[edu]
 if gap > 0:
-    hire min(gap, unoccupied[edu]) workers
-    workforce[exact age][edu].active += count`}
+    for workerEdu in [edu, …, tertiary]:          # cheapest qualified first
+        hire min(remainingGap, willing(workerEdu)) workers at wagePerEdu[workerEdu]
+        workforce[exact age][workerEdu].onboarding += count`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>4.3 Firing</h3>
                 <p>
                     When overstaffed beyond the 5 % buffer, workers are fired youngest-age-first (lowest tenure proxy)
-                    and enter the 3-month <code>departingFired</code> pipeline:
+                    and enter the 3-month <code>departingFired</code> pipeline. Firing uses only <em>active</em>
+                    workers (never in-training), so overqualified backfill workers are retained:
                 </p>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
-                    {`surplus = currentActive − target
-if surplus > currentActive × 0.05:
+                    {`surplus = target − active[edu]
+if surplus < −active[edu] × 0.05:
     fire age 0 upward until surplus removed
     → departingFired[NOTICE_PERIOD_MONTHS − 1]   (NOTICE_PERIOD_MONTHS = 3)`}
                 </pre>

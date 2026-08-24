@@ -243,6 +243,23 @@ describe('transferPopulation', () => {
         expect(planet.population.demography[25].employed.primary.services.grocery.buffer).toBeCloseTo(10, 5);
     });
 
+    it('carries a construction (housing) buffer across a transition (house follows its owner)', () => {
+        const planet = makePlanet();
+        const src = planet.population.demography[50].unoccupied.none;
+        src.total = 200;
+        src.services.construction.buffer = 9000;
+
+        transferPopulation(
+            planet,
+            { age: 50, occ: 'unoccupied', edu: 'none' },
+            { age: 50, occ: 'employed', edu: 'none' },
+            100,
+        );
+
+        expect(src.services.construction.buffer).toBeCloseTo(9000, 5);
+        expect(planet.population.demography[50].employed.none.services.construction.buffer).toBeCloseTo(9000, 5);
+    });
+
     it('conserves total across transfer', () => {
         const planet = makePlanet();
         planet.population.demography[40].unoccupied.tertiary.total = 500;

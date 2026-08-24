@@ -1,7 +1,7 @@
 import type { Planet } from '../planet/planet';
 import { educationLevelKeys } from '../population/education';
 import { OCCUPATIONS, type ServiceName } from '../population/population';
-import { SERVICE_DEFINITIONS } from './serviceDefinitions';
+import { referenceMonthlyIncome, SERVICE_DEFINITIONS } from './serviceDefinitions';
 
 export function computeNormalizedBuffer(planet: Planet, serviceName: ServiceName): number {
     let bufferSum = 0;
@@ -17,7 +17,12 @@ export function computeNormalizedBuffer(planet: Planet, serviceName: ServiceName
                 if (cat.total <= 0) {
                     continue;
                 }
-                const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(age, occ, cat.wealth);
+                const rate = SERVICE_DEFINITIONS[serviceName].consumptionRatePerPersonPerTick(
+                    age,
+                    occ,
+                    cat.wealth,
+                    referenceMonthlyIncome(planet),
+                );
                 if (rate > 0) {
                     bufferSum += cat.services[serviceName].buffer * cat.total;
                     consumerPop += cat.total;

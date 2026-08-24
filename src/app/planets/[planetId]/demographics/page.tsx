@@ -76,6 +76,7 @@ export default function PlanetDemographicsPage() {
     const avgLogisticsBuffer = nb.logisticsBuffer;
     const avgEducationBuffer = nb.educationBuffer;
     const avgRetailBuffer = nb.retailBuffer;
+    const avgConstructionBuffer = nb.constructionBuffer;
     const groupMeanAge = groupPop.map((pop, i) => (pop > 0 ? groupAgeWeightedSum[i] / pop : 0));
     const totalWealth = wealthWeightedSum.reduce((s, v) => s + v, 0);
     const wealthMean = groupPop.map((pop, i) => (pop > 0 ? wealthWeightedSum[i] / pop : 0));
@@ -279,6 +280,7 @@ export default function PlanetDemographicsPage() {
                     logisticsBuffer: avgLogisticsBuffer,
                     educationBuffer: avgEducationBuffer,
                     retailBuffer: avgRetailBuffer,
+                    constructionBuffer: avgConstructionBuffer,
                 }}
             />
 
@@ -317,7 +319,7 @@ export default function PlanetDemographicsPage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                {(['grocery', 'healthcare', 'logistics', 'retail', 'education'] as const).map((key) => (
+                {(['grocery', 'healthcare', 'logistics', 'retail', 'education', 'construction'] as const).map((key) => (
                     <ServiceSection
                         key={key}
                         serviceKey={key}

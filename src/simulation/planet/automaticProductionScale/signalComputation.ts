@@ -9,13 +9,6 @@ import { fillRateFactor } from '../../market/automaticPricing';
 import type { ProductionFacility } from '../facility';
 import type { Planet } from '../planet';
 
-export function computeFacilityProfitThisTick(facility: ProductionFacility): number {
-    const revenue = facility.lastTickResults.revenue ?? 0;
-    const wages = facility.lastTickResults.wageCosts ?? 0;
-    const inputCosts = facility.lastTickResults.inputCosts ?? 0;
-    return revenue - wages - inputCosts;
-}
-
 export function computeProfitMargin(profitEMA: number, revenueEMA: number): number {
     if (profitEMA >= 0) {
         return 0;

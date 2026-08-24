@@ -280,22 +280,6 @@ export const packagingResourceType: Resource = {
     massPerQuantity: 1,
 };
 
-export const goldResourceType: Resource = {
-    name: 'Gold',
-    form: 'solid',
-    level: 'refined',
-    volumePerQuantity: 0.1,
-    massPerQuantity: 1,
-};
-
-export const luxuryResourceType: Resource = {
-    name: 'Luxury Goods',
-    form: 'pieces',
-    level: 'manufactured',
-    volumePerQuantity: 1,
-    massPerQuantity: 1,
-};
-
 export const defaultBuildingCost: ResourceQuantity[] = [
     { resource: steelResourceType, quantity: 100 },
     { resource: electronicsResourceType, quantity: 50 },

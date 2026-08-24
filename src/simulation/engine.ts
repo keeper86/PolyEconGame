@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks';
 import { arbitrageTraderTick } from './agents/arbitrageTraderTick';
 import { forexMarketMakerPricing } from './agents/forexMarketMakerPricing';
 import { forexMMRepaymentTick } from './agents/forexMarketMakerTick';
-import { governmentTick } from './agents/governmentAgent';
+import { governmentSupportTick, governmentTick } from './agents/governmentAgent';
 import { shipbuilderTick } from './agents/shipbuilderTick';
 import { isFirstTickInMonth, isMonthBoundary, isYearBoundary } from './constants';
 import { maturesLoans, preProductionFinancialTick } from './financial/financialTick';
@@ -25,6 +25,7 @@ import { seedRng } from './utils/stochasticRound';
 import { assertPerCellWorkforcePopulationConsistency } from './utils/testHelper';
 import { automaticWageAdjustment, automaticWorkerAllocation } from './workforce/automaticWorkerAllocation';
 import { hireWorkforce } from './workforce/hireWorkforce';
+import { updateSmoothedVacancyWage } from './workforce/laborMarket';
 import { postProductionLaborMarketTick } from './workforce/laborMarketMonthTick';
 import { workforceAdvanceYearTick } from './workforce/workforceAdvanceYearTick';
 import { hrBufferTick } from './workforce/hrBuffer';
@@ -66,10 +67,11 @@ export function advanceTick(gameState: GameState) {
                 resetPopulationMonthCounters(planet);
                 planet.monthPriceAcc = {};
                 planet.monthTransferVolume = 0;
+                planet.governmentSupportVolume = 0;
 
                 const govAgent = gameState.agents.get(planet.governmentId);
                 assert(govAgent, `Government agent with id ${planet.governmentId} not found for planet ${planet.name}`);
-                governmentTick(planet, govAgent);
+                governmentTick(gameState, planet, govAgent);
 
                 updateAgentClaims(gameState, planet);
                 if (profile.isEnabled) {
@@ -98,7 +100,9 @@ export function advanceTick(gameState: GameState) {
                 );
             }
 
-            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile, gameState.tick);
+            updateSmoothedVacancyWage(gameState.agents, planet);
+
+            const workforceEvents = workforceDemographicTick(gameState.agents, planet, profile);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('workforceDemographicTick', 'workforceDemographicTick', t);
             }
@@ -128,13 +132,17 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.mark();
             }
-            maturesLoans(gameState.agents, planet, gameState.tick);
+            maturesLoans(gameState.agents, planet, gameState.tick, gameState);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
             }
             preProductionFinancialTick(gameState.agents, planet, gameState.tick);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
+            }
+            governmentSupportTick(gameState, planet);
+            if (profile.isEnabled) {
+                t = profile.markAndAccum('govSupport', '  governmentSupportTick', t);
             }
             intergenerationalTransfersForPlanet(planet, profile);
             if (profile.isEnabled) {
@@ -157,10 +165,10 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.mark();
             }
-            constructionTick(gameState, planet);
             productionTick(gameState, planet);
             hrBufferTick(gameState.agents, planet);
             facilityMaintenanceTick(gameState, planet);
+            constructionTick(gameState, planet);
             storageLogisticsTick(gameState.agents, planet);
             automaticWageAdjustment(gameState.agents, planet);
             updateAgentProductionScale(gameState, planet);

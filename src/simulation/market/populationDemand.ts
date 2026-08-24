@@ -1,8 +1,8 @@
-import { BID_OFFER_MAX_COST_MULTIPLIER } from '../constants';
+import { SERVICE_PRICE_CEIL_MULTIPLE } from '../constants';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
-import { allServices, householdDemandPriority, serviceKeyOf } from './serviceDefinitions';
+import { allServices, householdDemandPriority, referenceMonthlyIncome, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
 export type { ServiceDefinition } from './serviceDefinitions';
 
@@ -135,8 +135,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
 
                 const referencePrice = Math.min(
                     (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) *
-                        BID_OFFER_MAX_COST_MULTIPLIER *
-                        0.33,
+                        SERVICE_PRICE_CEIL_MULTIPLE,
                     planet.marketPrices[service.resource.name] ?? 0,
                 );
 
@@ -145,24 +144,26 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 }
 
                 const serviceBuffer = category.services[serviceKeyOf(service)]?.buffer ?? 0;
-                const rate = service.consumptionRatePerPersonPerTick(age, occ, wm);
+                const rate = service.fillRatePerPersonPerTick(age, occ, wm, referenceMonthlyIncome(planet));
 
                 if (rate <= 0) {
                     continue;
                 }
 
-                const bufferFillDeficit = (service.bufferTargetTicks - serviceBuffer) / service.bufferTargetTicks;
-
-                if (bufferFillDeficit <= 0) {
+                const bufferGapTicks = service.bufferTargetTicks - serviceBuffer;
+                if (bufferGapTicks <= 0) {
                     continue;
                 }
 
-                let willingPrice = referencePrice * (1 + bufferFillDeficit);
+                const fillFraction = bufferGapTicks / service.refillTicks;
+                const pricePremium = Math.min(1, fillFraction);
+
+                let willingPrice = referencePrice * (1 + pricePremium);
                 if (willingPrice <= 0) {
                     continue;
                 }
 
-                let quantityPerPerson = rate * (1 + bufferFillDeficit);
+                let quantityPerPerson = rate * (1 + fillFraction);
 
                 if (remainingWealth < 1.2 * rate * willingPrice) {
                     willingPrice = remainingWealth / rate / 1.2;

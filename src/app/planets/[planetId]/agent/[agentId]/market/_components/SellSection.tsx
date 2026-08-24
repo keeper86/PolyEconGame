@@ -9,6 +9,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
+    ASK_PRICE_SENSITIVITY,
+    ASK_VOLUME_FLOOR_FRACTION,
     AUTOMATED_COST_FLOOR_BUFFER,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
@@ -23,6 +25,7 @@ import type { SellSectionProps } from './marketTypes';
 import type { AutoConfigLocalState } from './marketTypes';
 import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
 import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import { VolumeFractionCurve } from './VolumeFractionCurve';
 import { Label } from '@/components/ui/label';
 import {
     detectPricingSellPreset,
@@ -261,6 +264,8 @@ export default function SellSection({
         [
             local.sellAutoConfig.priceAdjustMaxUp,
             local.sellAutoConfig.priceAdjustMaxDown,
+            local.sellAutoConfig.askVolumeFloorFraction,
+            local.sellAutoConfig.askPriceSensitivity,
             local.sellAutoConfig.automatedCostFloorBuffer,
             local.sellAutoConfig.targetSellThrough,
             isService,
@@ -323,6 +328,8 @@ export default function SellSection({
     const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
+        'askVolumeFloorFraction',
+        'askPriceSensitivity',
         'automatedCostFloorBuffer',
         'targetSellThrough',
     ];
@@ -347,6 +354,24 @@ export default function SellSection({
         const committed = committedVal(committedConfig, key);
         return localNum ?? committed ?? defaultVal;
     };
+
+    const curveGhost = useMemo(
+        () => ({
+            floorFraction: committedVal(committedConfig, 'askVolumeFloorFraction') ?? ASK_VOLUME_FLOOR_FRACTION,
+            sensitivity: committedVal(committedConfig, 'askPriceSensitivity') ?? ASK_PRICE_SENSITIVITY,
+            inflection: committedVal(committedConfig, 'automatedCostFloorBuffer') ?? AUTOMATED_COST_FLOOR_BUFFER,
+        }),
+        [committedConfig],
+    );
+    const curveActive = {
+        floorFraction: sliderVal('askVolumeFloorFraction', ASK_VOLUME_FLOOR_FRACTION),
+        sensitivity: sliderVal('askPriceSensitivity', ASK_PRICE_SENSITIVITY),
+        inflection: sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER),
+    };
+    const curveRatio =
+        overviewRow && overviewRow.priceCostRatio > 0 && Number.isFinite(overviewRow.priceCostRatio)
+            ? overviewRow.priceCostRatio
+            : undefined;
 
     // ── Manual pricing slot ───────────────────────────────────────────────────
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
@@ -436,7 +461,7 @@ export default function SellSection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {SELL_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -484,19 +509,6 @@ export default function SellSection({
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Soft min ask (in est. cost)'
-                                            value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
-                                            committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
-                                            min={0}
-                                            max={10}
-                                            step={0.25}
-                                            inverted
-                                            onChange={(v) =>
-                                                handleSliderChange({ automatedCostFloorBuffer: String(v) })
-                                            }
-                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
                                             label='Target sell-through'
                                             value={sliderVal(
                                                 'targetSellThrough',
@@ -508,6 +520,48 @@ export default function SellSection({
                                             step={0.01}
                                             isPercent
                                             onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
+                                        {!isCurrency && (
+                                            <VolumeFractionCurve
+                                                mode='sell'
+                                                ghost={curveGhost}
+                                                active={curveActive}
+                                                currentRatio={curveRatio}
+                                            />
+                                        )}
+                                        <ConfigSlider
+                                            label='Min volume fraction'
+                                            value={sliderVal('askVolumeFloorFraction', ASK_VOLUME_FLOOR_FRACTION)}
+                                            committed={committedVal(committedConfig, 'askVolumeFloorFraction')}
+                                            min={0}
+                                            max={1}
+                                            step={0.05}
+                                            isPercent
+                                            onChange={(v) => handleSliderChange({ askVolumeFloorFraction: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Price sensitivity'
+                                            value={sliderVal('askPriceSensitivity', ASK_PRICE_SENSITIVITY)}
+                                            committed={committedVal(committedConfig, 'askPriceSensitivity')}
+                                            min={0.1}
+                                            max={3}
+                                            step={0.1}
+                                            onChange={(v) => handleSliderChange({ askPriceSensitivity: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
+                                            label='Cost floor buffer'
+                                            value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
+                                            committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
+                                            min={0.1}
+                                            max={5}
+                                            step={0.1}
+                                            onChange={(v) =>
+                                                handleSliderChange({ automatedCostFloorBuffer: String(v) })
+                                            }
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                     </div>

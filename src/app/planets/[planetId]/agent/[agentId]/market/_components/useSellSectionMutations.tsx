@@ -15,6 +15,8 @@ import { localToAutoConfig } from './marketTypes';
 const SELL_PRICING_KEYS = [
     'priceAdjustMaxUp',
     'priceAdjustMaxDown',
+    'askVolumeFloorFraction',
+    'askPriceSensitivity',
     'automatedCostFloorBuffer',
     'targetSellThrough',
 ] as const;

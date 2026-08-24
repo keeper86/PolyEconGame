@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
-import { TICKS_PER_YEAR } from '../constants';
+import { DEFAULT_REFERENCE_MONTHLY_INCOME, TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 const groceryDef = SERVICE_DEFINITIONS.grocery;
@@ -66,6 +66,7 @@ function seedWorkforce(
         logistics: { buffer: 4, starvationLevel: 0 },
         healthcare: { buffer: healthcareDef.bufferTargetTicks, starvationLevel: 0 },
         education: { buffer: 2, starvationLevel: 0 },
+        construction: { buffer: 2, starvationLevel: 0 },
     };
 }
 
@@ -290,7 +291,12 @@ describe('shipTick passenger boarding', () => {
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const provisions =
             500 *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + groceryDef.bufferTargetTicks);
         putProvisions(agent, 'p1', provisions * 2, provisions * 2);
 
@@ -332,7 +338,12 @@ describe('shipTick passenger boarding', () => {
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const prov =
             300 *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + groceryDef.bufferTargetTicks) *
             2;
         putProvisions(agent, 'p1', prov, prov);
@@ -484,7 +495,12 @@ describe('shipTick passenger boarding', () => {
         const flightTicks = Math.ceil(1000 / passengerLiner.speed);
         const prov =
             count *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + groceryDef.bufferTargetTicks) *
             2;
         putProvisions(agent, 'p1', prov, prov);
@@ -537,11 +553,21 @@ describe('shipTick passenger boarding', () => {
         const maxFlightTicks = Math.ceil((1.1 * 1000) / passengerLiner.speed);
         const groceryProvided =
             count *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (maxFlightTicks + groceryDef.bufferTargetTicks);
         const healthcareProvided =
             count *
-            healthcareDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            healthcareDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (maxFlightTicks + healthcareDef.bufferTargetTicks);
 
         putProvisions(agent, 'p1', groceryProvided, healthcareProvided);
@@ -570,12 +596,22 @@ describe('shipTick passenger boarding', () => {
         const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
         expect(groceryLeft).toBeLessThanOrEqual(
             count *
-                groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+                groceryDef.consumptionRatePerPersonPerTick(
+                    30,
+                    'employed',
+                    { mean: 0, variance: 0 },
+                    DEFAULT_REFERENCE_MONTHLY_INCOME,
+                ) *
                 (maxJitterTicks + 1),
         );
         expect(healthcareLeft).toBeLessThanOrEqual(
             count *
-                healthcareDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+                healthcareDef.consumptionRatePerPersonPerTick(
+                    30,
+                    'employed',
+                    { mean: 0, variance: 0 },
+                    DEFAULT_REFERENCE_MONTHLY_INCOME,
+                ) *
                 (maxJitterTicks + 1),
         );
         expect(groceryLeft).toBeGreaterThanOrEqual(0);
@@ -660,6 +696,7 @@ describe('shipTick passenger transporting / arrival', () => {
                         logistics: { buffer: 0, starvationLevel: 0 },
                         healthcare: { buffer: 0, starvationLevel: 0 },
                         education: { buffer: 0, starvationLevel: 0 },
+                        construction: { buffer: 0, starvationLevel: 0 },
                     },
                 },
             },
@@ -755,11 +792,21 @@ describe('calculateProvisions', () => {
 
         const expectedGrocery =
             100 *
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + groceryDef.bufferTargetTicks);
         const expectedHealthcare =
             100 *
-            healthcareDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            healthcareDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + healthcareDef.bufferTargetTicks);
 
         expect(provisions.groceryProvisioned.goal).toBeCloseTo(expectedGrocery, 5);
@@ -777,7 +824,12 @@ describe('calculateProvisions', () => {
 
         const expectedEducation =
             50 *
-            educationDef.consumptionRatePerPersonPerTick(25, 'education', { mean: 0, variance: 0 }) *
+            educationDef.consumptionRatePerPersonPerTick(
+                25,
+                'education',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + educationDef.bufferTargetTicks);
         expect(provisions.educationProvisioned.goal).toBeCloseTo(expectedEducation, 5);
     });

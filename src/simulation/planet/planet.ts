@@ -114,6 +114,14 @@ export type Planet = {
 
     monthTransferVolume: number;
 
+    governmentSupportVolume: number;
+
+    rolloverDenials: number;
+
+    debtWriteOffs: number;
+
+    bankruptcies: number;
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -139,6 +147,7 @@ export type Planet = {
     _costOfLivingRich?: number;
     _freeResources?: { name: string; freeCapacity: number }[];
     _gdp?: number;
+    _smoothedReachableVacancyWage?: PerEducation;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
@@ -156,8 +165,6 @@ export const createEmptyDemographicEventCounters = (): DemographicEventCounters 
 export interface AutomatedPricingConfig {
     priceAdjustMaxUp?: number;
     priceAdjustMaxDown?: number;
-    costSpringStrength?: number;
-    bidOfferMaxCostMultiplier?: number;
     inventorySmoothingMaxExtra?: number;
 
     freeBuyQuantity?: number;
@@ -166,10 +173,15 @@ export interface AutomatedPricingConfig {
     freeRetainmentSmoothingMaxExtra?: number;
 
     targetSellThrough?: number;
+    askVolumeFloorFraction?: number;
+    askPriceSensitivity?: number;
     automatedCostFloorBuffer?: number;
 
     inputBufferTargetTicks?: number;
     targetFillRate?: number;
+    bidVolumeFloorFraction?: number;
+    bidPriceSensitivity?: number;
+    bidOfferMaxCostMultiplier?: number;
 }
 
 export type SellDiagnostics = {
@@ -177,8 +189,6 @@ export type SellDiagnostics = {
     smoothedSellThrough: number;
     targetSellThrough: number;
     baseFactor: number;
-    costSpringDeviation: number;
-    overDeviation: number;
     netFactor: number;
     oldPrice: number;
     newPrice: number;
@@ -186,6 +196,8 @@ export type SellDiagnostics = {
     marketPrice: number;
     effectiveQuantity: number;
     rawRetainment: number;
+    volumeFraction: number;
+    priceCostRatio: number;
 };
 
 export type BuyDiagnostics = {
@@ -193,8 +205,6 @@ export type BuyDiagnostics = {
     smoothedFillRate: number;
     targetFillRate: number;
     baseFactor: number;
-    ceilingPrice: number;
-    ceilingSpring: number;
     netFactor: number;
     oldBidPrice: number;
     newBidPrice: number;
@@ -202,6 +212,8 @@ export type BuyDiagnostics = {
     marketPrice: number;
     shortfall: number;
     storageTarget: number;
+    volumeFraction: number;
+    priceCostRatio: number;
 };
 
 export type AgentMarketOfferState = {
@@ -293,6 +305,7 @@ export type MonthAccumulator = {
     boughtResources: Record<string, ResourceAccumulator>;
     soldResources: Record<string, ResourceAccumulator>;
     depreciatedServices: Record<string, ResourceAccumulator>;
+    naturalDepreciationValue: number;
 };
 
 export const operatingProfit = (acc: MonthAccumulator): number =>
@@ -349,6 +362,8 @@ export type AgentPlanetAssets = {
     } & MonthAccumulator;
 
     lastMonthAcc: MonthAccumulator;
+
+    _smoothedWageCeiling?: number;
 
     licenses: {
         commercial?: PlanetLicense;
@@ -413,6 +428,7 @@ export function createEmptyAccumulator(): MonthAccumulator {
         boughtResources: {},
         soldResources: {},
         depreciatedServices: {},
+        naturalDepreciationValue: 0,
     };
 }
 
@@ -438,6 +454,7 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             boughtResources: { ...assets.monthAcc.boughtResources },
             soldResources: { ...assets.monthAcc.soldResources },
             depreciatedServices: { ...assets.monthAcc.depreciatedServices },
+            naturalDepreciationValue: assets.monthAcc.naturalDepreciationValue,
         };
         assets.monthAcc = {
             depositsAtMonthStart: assets.deposits,

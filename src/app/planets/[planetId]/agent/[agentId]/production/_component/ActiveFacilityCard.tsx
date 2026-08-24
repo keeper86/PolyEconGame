@@ -39,6 +39,7 @@ export function ActiveFacilityCard({
     hrProductivityMultiplier,
     children,
     headerBadge,
+    dataTour,
 }: {
     facility: ProductionFacility | ManagementFacility;
     agentId: string;
@@ -49,6 +50,7 @@ export function ActiveFacilityCard({
     hrProductivityMultiplier: number;
     children?: React.ReactNode;
     headerBadge?: React.ReactElement;
+    dataTour?: string;
 }): React.ReactElement {
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
@@ -328,7 +330,7 @@ export function ActiveFacilityCard({
     );
     return (
         <FacilityCardShell
-            data-tour='production-active'
+            dataTour={dataTour ?? 'production-active'}
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} badge={badge} />}
             headerContent={

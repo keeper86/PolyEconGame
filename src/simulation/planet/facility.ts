@@ -33,16 +33,7 @@ export const getFacilityType = (facility: Facility): FacilityType => {
     return facility.type;
 };
 
-let conditionEfficiencyDisabled = false;
-
-export function setConditionEfficiencyDisabled(disabled: boolean): void {
-    conditionEfficiencyDisabled = disabled;
-}
-
 export function computeFacilityConditionEfficiency(maintenanceStatus: number): number {
-    if (conditionEfficiencyDisabled) {
-        return 1;
-    }
     const condition = Math.max(0, Math.min(1, maintenanceStatus));
     return 1 - Math.pow(1 - condition, FACILITY_CONDITION_EFFICIENCY_EXPONENT);
 }
@@ -223,28 +214,12 @@ export function getStorageStarvation(storage: StorageFacility): number {
     return storage.department?.storageStarvation ?? 1.0;
 }
 
-let storageStarvationEffectDisabled = false;
-
-export function setStorageStarvationEffectDisabled(disabled: boolean): void {
-    storageStarvationEffectDisabled = disabled;
-}
-
-export function isStorageStarvationEffectDisabled(): boolean {
-    return storageStarvationEffectDisabled;
-}
-
 export function inflowPreservation(ss: number): number {
-    if (storageStarvationEffectDisabled) {
-        return 1;
-    }
     const base = 0.5;
     return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
 }
 
 export function storagePreservationFactor(ss: number): number {
-    if (storageStarvationEffectDisabled) {
-        return 1;
-    }
     return 1 - 0.05 * Math.pow(ss, 6);
 }
 

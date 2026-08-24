@@ -27,7 +27,6 @@ export {
 } from './automaticProductionScale/expansionUtils';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 export {
-    computeFacilityProfitThisTick,
     computeFacilitySignal,
     computeProfitMargin,
     estimateProfitAtScale,
@@ -370,10 +369,11 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            if (facility.scale < facility.maxScale && signal < 0) {
+            const contractionStrength = facility.scale < facility.maxScale && signal < 0 ? Math.abs(signal) : 0;
+            if (contractionStrength > 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
-                    state.contractionIntegral + Math.abs(signal),
+                    state.contractionIntegral + contractionStrength,
                 );
             } else {
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
@@ -516,9 +516,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             if (
-                facility.scale < facility.maxScale &&
                 facility.construction === null &&
-                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
+                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
+                facility.scale < facility.maxScale
             ) {
                 const contracted = processFacilityContraction(
                     planet,

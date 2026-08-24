@@ -5,6 +5,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTRPC } from '@/lib/trpc';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import type { ProductionFacility } from '@/simulation/planet/facility';
+import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
+import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useQuery } from '@tanstack/react-query';
@@ -20,17 +22,17 @@ const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
 
 export default function ProductionFacilitiesPanel({
-    facilities,
+    assets,
     agentId,
     planetId,
-    hrProductivityMultiplier,
 }: {
-    facilities: ProductionFacility[];
+    assets: AgentPlanetAssets;
     agentId: string;
     planetId: string;
-    hrProductivityMultiplier: number;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const facilities = assets.productionFacilities;
+    const hrProductivityMultiplier = assets.hrProductivityMultiplier;
 
     // TODO: Use light endpoint for this
     const { data: constructionMarket } = useQuery(
@@ -41,14 +43,10 @@ export default function ProductionFacilitiesPanel({
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
 
-    const otherConstructionCosts = useMemo(() => {
-        return facilities
-            .filter((f) => f.construction !== null)
-            .reduce((sum, f) => {
-                const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
-                return sum + Math.max(0, remaining) * constructionServicePrice;
-            }, 0);
-    }, [facilities, constructionServicePrice]);
+    const otherConstructionCosts = useMemo(
+        () => computeOtherConstructionCosts(assets, constructionServicePrice),
+        [assets, constructionServicePrice],
+    );
 
     const ownedByName = useMemo(() => {
         const m = new Map<string, ProductionFacility>();

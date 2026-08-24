@@ -1,7 +1,5 @@
 import { TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
-import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
 import { getScenario, SCENARIOS } from './scenarios';
 import { buildBenchmarkWorld } from './world';
 import {
@@ -32,9 +30,6 @@ function main(): void {
     const years = Number(arg('years') ?? 0);
 
     seedRng(scenario.seed);
-    setConditionEfficiencyDisabled(scenario.world.disableConditionEfficiency === true);
-    setHrProductivityEffectDisabled(scenario.world.disableHrProductivityEffect === true);
-    setStorageStarvationEffectDisabled(scenario.world.disableStorageStarvationEffect === true);
     const { gameState } = buildBenchmarkWorld(scenario.world);
 
     const population = scenario.world.population ?? 10_000_000;

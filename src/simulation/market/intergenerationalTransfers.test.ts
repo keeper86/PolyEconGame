@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { GENERATION_GAP, RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY, SUPPORT_WEIGHT_SIGMA } from '../constants';
+import {
+    DEFAULT_REFERENCE_MONTHLY_INCOME,
+    GENERATION_GAP,
+    RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
+    SUPPORT_WEIGHT_SIGMA,
+} from '../constants';
 import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { Planet } from '../planet/planet';
 
@@ -12,6 +17,7 @@ import { makePlanet } from '../utils/testHelper';
 import {
     createZeroTransferMatrix,
     effectiveSurplus,
+    governmentSupport,
     intergenerationalTransfersForPlanet,
     sumTransferMatrix,
     supportWeight,
@@ -278,8 +284,19 @@ describe('intergenerationalTransfersForPlanet – parent to infant', () => {
         const groceryPrice = planet.marketPrices[groceryDef.resource.name] ?? 0;
         const healthcarePrice = planet.marketPrices[healthcareDef.resource.name] ?? 0;
         const survivalFloor =
-            (groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) * groceryPrice +
-                healthcareDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) *
+            (groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
+                groceryPrice +
+                healthcareDef.consumptionRatePerPersonPerTick(
+                    30,
+                    'employed',
+                    { mean: 0, variance: 0 },
+                    DEFAULT_REFERENCE_MONTHLY_INCOME,
+                ) *
                     healthcarePrice) *
             RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
         placePeople(planet, PARENT_AGE, 1000, {
@@ -384,7 +401,12 @@ describe('intergenerationalTransfersForPlanet – insufficient surplus', () => {
 
         const groceryPrice = planet.marketPrices[GROCERY_SERVICE] ?? 1.0;
         const floor =
-            groceryDef.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) * groceryPrice;
+            groceryDef.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) * groceryPrice;
 
         placePeople(planet, 30, 500, { wealthMean: floor, foodStock: foodTarget * 500 });
 
@@ -528,5 +550,42 @@ describe('intergenerationalTransfersForPlanet – lastTransferMatrix', () => {
             }
         }
         expect(infantRowPositive).toBe(true);
+    });
+});
+
+describe('governmentSupport – needs-based first supporter', () => {
+    it('credits dependents with empty buffers up to their need and returns the spent amount', () => {
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
+        const wealthBefore = totalHouseholdWealth(planet);
+
+        const spent = governmentSupport(planet, 1_000_000);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(spent).toBeLessThanOrEqual(1_000_000);
+        expect(totalHouseholdWealth(planet)).toBeCloseTo(wealthBefore + spent, 4);
+    });
+
+    it('keeps the excess of the budget when need is fully covered', () => {
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
+
+        const spent = governmentSupport(planet, 100_000_000_000);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(spent).toBeLessThan(100_000_000_000);
+    });
+
+    it('returns zero without a budget', () => {
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
+
+        expect(governmentSupport(planet, 0)).toBe(0);
+    });
+
+    it('returns zero when nobody has unmet needs', () => {
+        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
+
+        expect(governmentSupport(planet, 1_000_000)).toBe(0);
     });
 });

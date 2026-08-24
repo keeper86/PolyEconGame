@@ -40,6 +40,7 @@ describe('resetAgentMetrics', () => {
             boughtResources: { machinery: { quantity: 1, value: 2000 } },
             soldResources: { steel: { quantity: 8, value: 1600 } },
             depreciatedServices: { maintenance: { quantity: 1, value: 300 } },
+            naturalDepreciationValue: 42,
         };
 
         resetAgentMetrics(agents, planet);

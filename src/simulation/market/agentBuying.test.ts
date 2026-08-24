@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
     INPUT_BUFFER_TARGET_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_CEIL,
-    PRICE_FLOOR,
     TARGET_FILL_RATE,
 } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
@@ -12,12 +14,20 @@ import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
-import { automaticPricing } from './automaticPricing';
+import { automaticPricing, buyVolumeFraction } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
 
 const COAL = coalResourceType.name;
 const FOOD = produceResourceType.name;
+
+const BUY_VOLUME_FRACTION_AT_COST = buyVolumeFraction(
+    1,
+    1,
+    BID_PRICE_SENSITIVITY,
+    BID_VOLUME_FLOOR_FRACTION,
+    BID_OFFER_MAX_COST_MULTIPLIER,
+);
 
 function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
@@ -94,6 +104,7 @@ describe('automaticPricing — buy side', () => {
         const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
         const rawTarget = coalNeed.quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
 
+        planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
@@ -102,7 +113,7 @@ describe('automaticPricing — buy side', () => {
         // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
-        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget * BUY_VOLUME_FRACTION_AT_COST, 0);
     });
 
     it('keeps bidStorageTarget proportional when storage has some inventory', () => {
@@ -413,55 +424,57 @@ describe('automaticPricing — buy side', () => {
         const rawTarget = coalNeed.quantity * facility.scale * 60; // using custom 60 ticks
         const baseRate = rawTarget / 60;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
-        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
+        planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
+        automaticPricing(agentMap(buyer), planet);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget * BUY_VOLUME_FRACTION_AT_COST, 0);
     });
 
-    it('custom costSpringStrength strengthens the ceiling spring', () => {
-        const buyer = makeSteelProducer();
-        automaticPricing(agentMap(buyer), planet);
-
-        // Set bid price near the ceiling to trigger ceiling spring
-        buyer.assets.p.market!.buy[COAL]!.autoConfig = {
-            costSpringStrength: 2.0,
-            bidOfferMaxCostMultiplier: 1.5,
-        } as AutomatedPricingConfig;
-        buyer.assets.p.market!.buy[COAL]!.lastBought = 0; // unfilled → bid up
-
-        automaticPricing(agentMap(buyer), planet);
-
-        const diagnostics = buyer.assets.p.market!.buy[COAL]!.diagnostics;
-        expect(diagnostics).toBeDefined();
-        // costFloor = 1.0, bidOfferMaxCostMultiplier=1.5 → ceilingPrice = 1.5
-        // bidPrice > ceilingPrice → overDeviation > 0 → ceilingSpring > 0
-        expect(diagnostics!.ceilingSpring).toBeGreaterThan(0);
-    });
-
-    it('custom bidOfferMaxCostMultiplier changes the bid ceiling', () => {
+    it('underfilled bid keeps rising above where the old per-agent ceiling would have pinned it', () => {
         planet.lastProductionCostFloors[COAL] = 1.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
-        // With multiplier=3 and costFloor=1.0, ceilingPrice=3.0
-        // current bidPrice may already be above that
-        buyer.assets.p.market!.buy[COAL]!.autoConfig = {
-            bidOfferMaxCostMultiplier: 3,
-        } as AutomatedPricingConfig;
-
-        // Set price well above ceiling to see the spring effect
-        buyer.assets.p.market!.buy[COAL]!.bidPrice = 10;
-        buyer.assets.p.market!.buy[COAL]!.lastBought = 10; // filled → downward pressure
-        buyer.assets.p.market!.buy[COAL]!.lastEffectiveQty = 10;
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        bid.autoConfig = { bidPriceSensitivity: 1.0, bidVolumeFloorFraction: 0.2 } as AutomatedPricingConfig;
+        bid.bidPrice = 5;
+        bid.lastBought = 0; // completely unfilled → upward pressure
+        bid.lastEffectiveQty = 10;
+        bid.smoothedFillRate = 0;
 
         automaticPricing(agentMap(buyer), planet);
 
-        const newPrice = buyer.assets.p.market!.buy[COAL]!.bidPrice!;
-        // With ceilingPrice=3.0 and bidPrice=10: overDeviation = sqrt(10/3 - 1) = sqrt(2.33) ≈ 1.527
-        // ceilingSpring = COST_SPRING_STRENGTH * 1.527 ≈ 0.153
-        // fillRate=1.0 ≥ targetFillRate → baseFactor = PRICE_ADJUST_MAX_DOWN = 0.95
-        // netFactor = 0.95 - 0.153 = 0.797
-        // newPrice ≈ 10 * 0.797 = 7.97, which is > PRICE_FLOOR
-        expect(newPrice).toBeLessThan(10);
-        expect(newPrice).toBeGreaterThan(PRICE_FLOOR);
+        const diagnostics = bid.diagnostics;
+        expect(diagnostics).toBeDefined();
+        // no ceiling spring: netFactor = baseFactor and the bid keeps rising
+        expect(diagnostics!.netFactor).toBe(diagnostics!.baseFactor);
+        expect(bid.bidPrice!).toBeGreaterThan(5);
+        expect(bid.bidPrice!).toBeLessThanOrEqual(PRICE_CEIL);
+    });
+
+    it('high market price scales down the demanded quantity but respects the volume floor', () => {
+        planet.lastProductionCostFloors[COAL] = 1.0;
+        const buyer = makeSteelProducer();
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        bid.autoConfig = { bidPriceSensitivity: 1.0, bidVolumeFloorFraction: 0.2 } as AutomatedPricingConfig;
+        const costFloor = planet.lastProductionCostFloors[COAL]!;
+
+        planet.marketPrices[COAL] = 10 * costFloor;
+        automaticPricing(agentMap(buyer), planet);
+        const highPriceShortfall = bid.diagnostics!.shortfall;
+
+        planet.marketPrices[COAL] = 1 * costFloor;
+        automaticPricing(agentMap(buyer), planet);
+        const costPriceShortfall = bid.diagnostics!.shortfall;
+
+        // at cost the sigmoid sits near full volume; at 10× cost it reaches the volume floor
+        expect(highPriceShortfall).toBeLessThan(costPriceShortfall);
+        const fraction = highPriceShortfall / costPriceShortfall;
+        const vfAtCost = buyVolumeFraction(costFloor, costFloor, 1.0, 0.2, BID_OFFER_MAX_COST_MULTIPLIER);
+        const vfHigh = buyVolumeFraction(10 * costFloor, costFloor, 1.0, 0.2, BID_OFFER_MAX_COST_MULTIPLIER);
+        expect(fraction).toBeCloseTo(vfHigh / vfAtCost, 2);
+        expect(fraction).toBeGreaterThan(0.2);
     });
 
     it('freeBuyQuantity smoothing is stable across multiple ticks when no production/consumption exists', () => {
@@ -575,8 +588,8 @@ describe('automaticPricing — buy side', () => {
         // When close to target, should buy less than the full per-tick rate
         expect(effectiveQty).toBeGreaterThan(0);
         expect(effectiveQty).toBeLessThan(PER_TICK);
-        // freeRemaining = 10,000 - 9,500 = 500, should be exactly that
-        expect(effectiveQty).toBeCloseTo(500, 0);
+        // freeRemaining = 10,000 - 9,500 = 500, scaled by the volume fraction at cost
+        expect(effectiveQty).toBeCloseTo(500 * BUY_VOLUME_FRACTION_AT_COST, 0);
     });
 
     it('freeBuyQuantity with services skips smoothing', () => {

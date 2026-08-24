@@ -1,4 +1,5 @@
 import { getServiceDefinitionByResourceName } from '@/simulation/market/serviceDefinitions';
+import { DEFAULT_REFERENCE_MONTHLY_INCOME } from '@/simulation/constants';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import {
     administrativeServiceResourceType,
@@ -54,7 +55,13 @@ export function computeBottlenecks(
     for (const svc of DEMANDED_SERVICES) {
         const svcDef = getServiceDefinitionByResourceName(svc.name);
         const demandPerTick =
-            population * (svcDef?.consumptionRatePerPersonPerTick(30, 'employed', { mean: 0, variance: 0 }) ?? 0);
+            population *
+            (svcDef?.consumptionRatePerPersonPerTick(
+                30,
+                'employed',
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) ?? 0);
 
         type ServiceProducer = { facilityName: string; outputQuantity: number; scale: number };
         const producers: ServiceProducer[] = [];

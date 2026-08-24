@@ -434,6 +434,41 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(100);
     });
 
+    it('staffs expansion with overqualified workers when the required education tier is scarce', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.population = makePopulationByEducation({ secondary: 100 });
+        planet.lastMarketResult[RESOURCE_NAME].totalDemand = 1000;
+        planet.lastMarketResult[RESOURCE_NAME].unfilledDemand = 800;
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 100,
+            maxScale: 100,
+            workerRequirement: { primary: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].deposits = 1_000_000;
+        agent.assets[planet.id].lastMonthAcc.revenue = 1_000_000;
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.constructionTargetMaxScale).toBeGreaterThan(100);
+    });
+
     it('initiates capacity expansion for agents with own construction facility even without sufficient funds', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
 

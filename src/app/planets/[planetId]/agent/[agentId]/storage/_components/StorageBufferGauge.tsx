@@ -51,7 +51,7 @@ export function StorageBufferGauge({
             },
             {
                 value: 0,
-                priority: 2,
+                priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(0, maxValue)}>
                         {formatNumberWithUnit(0, 'tonnes')}

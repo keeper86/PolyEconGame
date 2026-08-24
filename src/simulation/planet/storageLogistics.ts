@@ -1,16 +1,12 @@
 import {
-    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
-    SS_RELAXATION_RATE,
-    SR_HOLDING_COST_PER_TON,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
+    SERVICE_OUTPUT_SHIELD_FACTOR,
+    SR_HOLDING_COST_PER_TON,
+    SS_RELAXATION_RATE,
+    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
 import type { StorageFacility } from './facility';
-import {
-    isStorageStarvationEffectDisabled,
-    queryStorageFacility,
-    removeFromStorageFacility,
-    storagePreservationFactor,
-} from './facility';
+import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
@@ -77,9 +73,24 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
+function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
+    let total = 0;
+    for (const facility of assets.productionFacilities) {
+        total += facility.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    if (assets.humanResourcesDepartment) {
+        total += assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    const dept = assets.storageFacility.department;
+    if (dept) {
+        total += dept.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    return total;
+}
+
 function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
-    const ss = isStorageStarvationEffectDisabled() ? 0 : (storage.department?.storageStarvation ?? 1);
+    const ss = storage.department?.storageStarvation ?? 1;
     const preservation = storagePreservationFactor(ss);
 
     for (const [name, entry] of Object.entries(storage.currentInStorage)) {
@@ -88,16 +99,19 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         }
 
         const isService = ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name);
-        let decayFactor: number;
+        let decayQty: number;
         if (isService) {
-            decayFactor = SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
+            const price = planet.marketPrices[name] ?? 0;
+            const shieldedQty = SERVICE_OUTPUT_SHIELD_FACTOR * serviceOutputPerTick(assets, name);
+            const excessQty = Math.max(0, entry.quantity - shieldedQty);
+            decayQty = excessQty * SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
+            assets.monthAcc.naturalDepreciationValue += excessQty * SERVICE_DEPRECIATION_RATE_PER_TICK * price;
         } else if (entry.resource.massPerQuantity > 0) {
-            decayFactor = 1 - preservation;
+            decayQty = entry.quantity * (1 - preservation);
         } else {
             continue;
         }
 
-        const decayQty = entry.quantity * decayFactor;
         if (decayQty < 1e-10) {
             continue;
         }

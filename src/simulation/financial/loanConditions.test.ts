@@ -165,9 +165,9 @@ describe('computeLoanConditions', () => {
         expect(result.existingLoans).toBe(12345);
     });
 
-    it('uses market price for construction services when productionCosts is not yet populated', () => {
+    it('uses market price for construction services when the cost floor is not yet populated', () => {
         const planet = makePlanet();
-        planet.productionCosts = {};
+        planet.lastProductionCostFloors = {};
         planet.marketPrices[constructionServiceResourceType.name] = 100;
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
         agent.assets[planet.id]!.productionFacilities = [
@@ -181,10 +181,10 @@ describe('computeLoanConditions', () => {
         expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
     });
 
-    it('caps construction service price at 2× production cost once productionCosts is populated', () => {
+    it('caps construction service price at 2× the cost floor', () => {
         const planet = makePlanet();
         planet.marketPrices[constructionServiceResourceType.name] = 1000;
-        planet.productionCosts[constructionServiceResourceType.name] = 1;
+        planet.lastProductionCostFloors[constructionServiceResourceType.name] = 1;
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
         agent.assets[planet.id]!.productionFacilities = [
             makeProductionFacility(undefined, { maxScale: 1, scale: 1, construction: null }),
@@ -192,7 +192,7 @@ describe('computeLoanConditions', () => {
 
         const result = computeLoanConditions(agent, planet);
 
-        const csPrice = 2 * planet.productionCosts[constructionServiceResourceType.name];
+        const csPrice = 2 * planet.lastProductionCostFloors[constructionServiceResourceType.name];
         const completedCS = calculateCostsForConstruction('raw', 0, 1).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
         expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
     });

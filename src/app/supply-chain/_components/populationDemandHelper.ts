@@ -1,4 +1,5 @@
 import { allServices } from '@/simulation/market/serviceDefinitions';
+import { DEFAULT_REFERENCE_MONTHLY_INCOME } from '@/simulation/constants';
 import { MAX_AGE } from '@/simulation/population/population';
 
 const POPULATION_AGE_DISTRIBUTION_CACHE = new Map<number, Record<string, number>>();
@@ -103,7 +104,12 @@ export function computePopulationServiceDemand(totalPopulation: number): Record<
         }
 
         for (const service of allServices) {
-            const rate = service.consumptionRatePerPersonPerTick(age, occ, { mean: 0, variance: 0 });
+            const rate = service.consumptionRatePerPersonPerTick(
+                age,
+                occ,
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            );
             if (rate <= 0) {
                 continue;
             }

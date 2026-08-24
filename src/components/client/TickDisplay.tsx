@@ -1,6 +1,6 @@
 'use client';
 
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { useIsSmallScreen } from '@/hooks/useMobile';
@@ -20,6 +20,9 @@ export const mapTickToDate = (tick: number, short = false): string => {
     const { year, monthIndex, day } = tickToDate(tick);
 
     const date = new Date(year, monthIndex, day);
+    if (!isValid(date)) {
+        return '—';
+    }
     return format(date, short ? 'dd. MMM yyyy' : 'dd. MMMM yyyy');
 };
 

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTour } from '@/components/tour/TourContext';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -21,6 +22,7 @@ import { PRICE_FLOOR } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import type { ManagementFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
+import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
@@ -83,6 +85,7 @@ function HRBuildCard({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
+    const { isTourActive, markActionCompleted } = useTour();
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
@@ -99,6 +102,9 @@ function HRBuildCard({
                     triggerTick: data.processedAtTick,
                 });
                 toast.success('Construction ordered. Changes take effect on the next tick.');
+                if (isTourActive) {
+                    markActionCompleted('build-hr');
+                }
                 onBuilt();
             },
             onError: (err) => {
@@ -161,7 +167,7 @@ function HRBuildCard({
                 </div>
             </div>
             <HRBuildRow scale={previewScale} />
-            <div className='relative mt-auto space-y-2'>
+            <div className='relative mt-auto space-y-2' data-tour='build-hr'>
                 <FacilityConstructionPanel
                     facilityType={facilityType}
                     fromScale={0}
@@ -291,14 +297,10 @@ export default function HRDepartment({
         initialMarketPrices[constructionServiceResourceType.name] ??
         PRICE_FLOOR;
 
-    const otherConstructionCosts = useMemo(() => {
-        return assets.productionFacilities
-            .filter((f) => f.construction !== null)
-            .reduce((sum, f) => {
-                const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
-                return sum + Math.max(0, remaining) * constructionServicePrice;
-            }, 0);
-    }, [assets, constructionServicePrice]);
+    const otherConstructionCosts = useMemo(
+        () => computeOtherConstructionCosts(assets, constructionServicePrice),
+        [assets, constructionServicePrice],
+    );
 
     const pendingActions = usePendingActions(agentId, planetId);
     const pendingBuildKeys = useMemo(() => {

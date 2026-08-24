@@ -1,4 +1,4 @@
-import { TICKS_PER_YEAR } from '../constants';
+import { DEFAULT_REFERENCE_MONTHLY_INCOME, TICKS_PER_YEAR } from '../constants';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 import type { Agent, Planet } from '../planet/planet';
 import { ageDependentBaseDisabilityProb } from '../population/disability';
@@ -53,6 +53,7 @@ function mergeIntoManifest(
                 logistics: { ...sourceCategory.services.logistics },
                 healthcare: { ...sourceCategory.services.healthcare },
                 education: { ...sourceCategory.services.education },
+                construction: { ...sourceCategory.services.construction },
             },
         };
         return;
@@ -153,15 +154,30 @@ export function calculateProvisions(manifest: PassengerManifest, flightTicks: nu
 
         groceryRequired +=
             cat.total *
-            groceryDef.consumptionRatePerPersonPerTick(idx.age, idx.occ, { mean: 0, variance: 0 }) *
+            groceryDef.fillRatePerPersonPerTick(
+                idx.age,
+                idx.occ,
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + groceryDef.bufferTargetTicks);
         healthcareRequired +=
             cat.total *
-            healthcareDef.consumptionRatePerPersonPerTick(idx.age, idx.occ, { mean: 0, variance: 0 }) *
+            healthcareDef.fillRatePerPersonPerTick(
+                idx.age,
+                idx.occ,
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + healthcareDef.bufferTargetTicks);
         educationRequired +=
             cat.total *
-            educationDef.consumptionRatePerPersonPerTick(idx.age, idx.occ, { mean: 0, variance: 0 }) *
+            educationDef.fillRatePerPersonPerTick(
+                idx.age,
+                idx.occ,
+                { mean: 0, variance: 0 },
+                DEFAULT_REFERENCE_MONTHLY_INCOME,
+            ) *
             (flightTicks + educationDef.bufferTargetTicks);
     }
     return {
@@ -248,6 +264,7 @@ export function advanceManifestAge(
                 logistics: { ...category.services.logistics },
                 healthcare: { ...category.services.healthcare },
                 education: { ...category.services.education },
+                construction: { ...category.services.construction },
             },
         };
     }

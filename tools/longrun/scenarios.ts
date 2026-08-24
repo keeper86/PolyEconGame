@@ -30,6 +30,7 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
             { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
             { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+            { metric: 'constructionServicePrice', horizonYears: 10, windowYears: 3, relativeToStart: true, max: 3 },
         ],
     },
     {
@@ -135,54 +136,6 @@ export const SCENARIOS: Scenario[] = [
         ],
     },
     {
-        name: 'maintenanceNoConditionMalus',
-        description:
-            'Isolation C: disable the condition→production-efficiency link (facilities keep full output regardless of condition). If the economy still collapses, the failure is not (only) physical condition.',
-        seed: 1001,
-        years: 10,
-        world: { disableConditionEfficiency: true },
-        bands: [
-            { metric: 'totalPopulation', horizonYears: 10, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
-            { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
-        ],
-    },
-    {
-        name: 'hrNoEffect',
-        description:
-            'Isolation D1: neutralize the HR coverage→productivity effect (hrProductivityMultiplier pinned to 1), keeping HR demand intact. If the economy survives, HR shortage is a causal link.',
-        seed: 1001,
-        years: 10,
-        world: { disableHrProductivityEffect: true },
-        bands: [
-            { metric: 'totalPopulation', horizonYears: 10, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
-            { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
-        ],
-    },
-    {
-        name: 'storageNoEffect',
-        description:
-            'Isolation D2: neutralize the storage-starvation effects (inflow loss + goods/service decay), keeping storage demand intact. If the economy survives, storage shortage is a causal link.',
-        seed: 1001,
-        years: 10,
-        world: { disableStorageStarvationEffect: true },
-        bands: [
-            { metric: 'totalPopulation', horizonYears: 10, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
-            { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
-        ],
-    },
-    {
-        name: 'allInternalNoEffect',
-        description:
-            'Isolation E: neutralize condition→production, HR→productivity and storage-starvation effects together. If this still collapses, the cause is the internal-service market/price instability, not their physical effects.',
-        seed: 1001,
-        years: 10,
-        world: { disableConditionEfficiency: true, disableHrProductivityEffect: true, disableStorageStarvationEffect: true },
-        bands: [
-            { metric: 'totalPopulation', horizonYears: 10, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
-            { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
-        ],
-    },
-    {
         name: 'singleAgent',
         description:
             'Isolation F: 1 agent per product (monopoly). Removes intra-product competition and split-scale rounding; ~3x fewer agents, faster ticks.',
@@ -192,6 +145,20 @@ export const SCENARIOS: Scenario[] = [
         bands: [
             { metric: 'totalPopulation', horizonYears: 10, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
             { metric: 'groceryFillRate', horizonYears: 10, windowYears: 3, min: 0.6 },
+        ],
+    },
+    {
+        name: 'wealthTax',
+        description:
+            'Company wealth tax (0.5%/yr on net worth above the inflation-indexed 1B allowance), collected monthly. The budget is transferred daily to dependents as needs-based support (government as first supporter, inter-population transfers cover the rest). 1 agent per product, 50-year stability and growth.',
+        seed: 1001,
+        years: 50,
+        world: { agentsPerProduct: 1 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 50, windowYears: 3, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 50, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 50, windowYears: 3, min: 0.6 },
+            { metric: 'medianWealth', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 1.0 },
         ],
     },
 ];

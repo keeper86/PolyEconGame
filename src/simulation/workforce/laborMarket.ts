@@ -1,19 +1,16 @@
 import {
     ACCEPT_BASE,
     BASE_QUIT_RATE,
-    LABOR_SHARE,
     MIN_EMPLOYABLE_AGE,
-    MORALE_SENSITIVITY,
     QUIT_SENSITIVITY,
     SEARCH_HORIZON_TICKS,
-    TICKS_PER_MONTH,
+    VACANCY_WAGE_SMOOTHING,
     WAGE_ACCEPT_SCALE,
 } from '../constants';
-import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { hasActiveLicense, operatingProfit } from '../planet/planet';
+import type { Agent, Planet } from '../planet/planet';
+import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
-import type { WorkforceDemography } from './workforce';
-import { totalActiveForEdu, totalOnboardingForEdu } from './workforceAggregates';
+import { sumSlotFillByEdu } from './workforceAggregates';
 
 export const ACCEPTABLE_IDLE_FRACTION = 0.05;
 
@@ -39,23 +36,10 @@ export const outsideIncome = (tightness: number, vacancyWage: number): number =>
 export const acceptProbability = (wage: number, threshold: number): number =>
     ACCEPT_BASE / (1 + Math.exp(-(wage - threshold) / WAGE_ACCEPT_SCALE));
 
-export const moraleDeficit = (wage: number, profitPerWorker: number): number => {
-    if (profitPerWorker <= 0) {
-        return 0;
-    }
-    const laborShare = wage / (wage + profitPerWorker);
-    return Math.max(0, LABOR_SHARE - laborShare);
-};
-
-export const quitPropensity = (
-    wage: number,
-    profitPerWorker: number,
-    tightness: number,
-    vacancyWage: number,
-): number => {
+export const quitPropensity = (wage: number, tightness: number, vacancyWage: number): number => {
     const outside = outsideIncome(tightness, vacancyWage);
     const incomeGain = wage > 0 ? Math.max(0, outside - wage) / wage : 0;
-    return BASE_QUIT_RATE + MORALE_SENSITIVITY * moraleDeficit(wage, profitPerWorker) + QUIT_SENSITIVITY * incomeGain;
+    return BASE_QUIT_RATE + QUIT_SENSITIVITY * incomeGain;
 };
 
 export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): LaborMarket => {
@@ -82,10 +66,10 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
             continue;
         }
         const agentVacancies: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+        const slotFill = sumSlotFillByEdu(assets);
+        const capacity = assets.totalSlotCapacity;
         for (const edu of educationLevelKeys) {
-            const target = assets.allocatedWorkers[edu] ?? 0;
-            const current = totalActiveForEdu(workforce, edu) + totalOnboardingForEdu(workforce, edu);
-            const vacancy = Math.max(0, target - current);
+            const vacancy = Math.max(0, (capacity[edu] ?? 0) - slotFill[edu]);
             agentVacancies[edu] = vacancy;
             vacancies[edu] += vacancy;
             vacancyWageSum[edu] += vacancy * (assets.wagePerEdu[edu] ?? 0);
@@ -122,19 +106,20 @@ export const computeLaborMarket = (agents: Map<string, Agent>, planet: Planet): 
     };
 };
 
-export const profitPerWorkerPerTick = (
-    assets: AgentPlanetAssets,
-    workforce: WorkforceDemography,
-    tick: number,
-): number => {
-    const profitSignal = operatingProfit(assets.lastMonthAcc) + operatingProfit(assets.monthAcc);
-    if (profitSignal <= 0) {
-        return 0;
-    }
-    const windowTicks = TICKS_PER_MONTH + ((tick - 1) % TICKS_PER_MONTH);
-    let activeHeadcount = 0;
+export function updateSmoothedVacancyWage(agents: Map<string, Agent>, planet: Planet): void {
+    const raw = computeLaborMarket(agents, planet);
+    planet._smoothedReachableVacancyWage = emaPerEdu(raw.reachableVacancyWage, planet._smoothedReachableVacancyWage);
+}
+
+export function smoothedReachableVacancyWage(planet: Planet, edu: EducationLevelType, raw: number): number {
+    return planet._smoothedReachableVacancyWage?.[edu] ?? raw;
+}
+
+function emaPerEdu(raw: PerEducation, prev: Partial<PerEducation> | undefined): PerEducation {
+    const out: PerEducation = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     for (const edu of educationLevelKeys) {
-        activeHeadcount += totalActiveForEdu(workforce, edu);
+        const previous = prev?.[edu] ?? raw[edu] ?? 0;
+        out[edu] = VACANCY_WAGE_SMOOTHING * (raw[edu] ?? 0) + (1 - VACANCY_WAGE_SMOOTHING) * previous;
     }
-    return profitSignal / windowTicks / Math.max(1, activeHeadcount);
-};
+    return out;
+}

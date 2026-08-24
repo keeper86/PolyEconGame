@@ -1,7 +1,11 @@
 import { test, expect, describe, it } from 'vitest';
 import { binHouseholdBids, buildPopulationDemand, SERVICE_DEFINITIONS } from './populationDemand';
 import { createEmptyPopulationCohort, forEachPopulationCohort } from '../population/population';
-import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
+import {
+    constructionServiceResourceType,
+    groceryServiceResourceType,
+    healthcareServiceResourceType,
+} from '../planet/services';
 import type { Planet } from '../planet/planet';
 
 const groceryDef = SERVICE_DEFINITIONS.grocery;
@@ -22,6 +26,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 0, starvationLevel: 0 },
             healthcare: { buffer: 0, starvationLevel: 0 },
             education: { buffer: 0, starvationLevel: 0 },
+            construction: { buffer: 0, starvationLevel: 0 },
         },
     });
     const adultCohort = createEmptyPopulationCohort({
@@ -33,6 +38,7 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
             logistics: { buffer: 1000, starvationLevel: 0 },
             healthcare: { buffer: 1000, starvationLevel: 0 },
             education: { buffer: 1000, starvationLevel: 0 },
+            construction: { buffer: 1000, starvationLevel: 0 },
         },
     });
 
@@ -47,6 +53,37 @@ test('buildPopulationDemand produces finite reservation prices for empty buffers
         expect(Number.isFinite(b.bidPrice)).toBe(true);
         expect(b.bidPrice).toBeGreaterThanOrEqual(0);
     }
+});
+
+test('construction bid quantity is driven by refillTicks (fast build) while the bid price stays bounded', () => {
+    const planet: Planet = makePlanet();
+    planet.wagePerEdu = { none: 1, primary: 1, secondary: 1, tertiary: 1 };
+
+    const adultCohort = createEmptyPopulationCohort({
+        total: 1000,
+        wealth: { mean: 3000, variance: 1 },
+        services: {
+            grocery: { buffer: 1000, starvationLevel: 0 },
+            retail: { buffer: 1000, starvationLevel: 0 },
+            logistics: { buffer: 1000, starvationLevel: 0 },
+            healthcare: { buffer: 1000, starvationLevel: 0 },
+            education: { buffer: 1000, starvationLevel: 0 },
+            construction: { buffer: 0, starvationLevel: 0 },
+        },
+    });
+    planet.population.demography[30] = adultCohort;
+
+    const def = SERVICE_DEFINITIONS.construction;
+    const rate = def.consumptionRatePerPersonPerTick(30, 'unoccupied', { mean: 3000, variance: 1 }, 30);
+    const bidsMap = buildPopulationDemand(planet);
+    const bids = bidsMap.get(constructionServiceResourceType.name) ?? [];
+    expect(bids.length).toBeGreaterThan(0);
+
+    const bid = bids[0];
+    const perPerson = bid.quantity / bid.population;
+    expect(perPerson).toBeGreaterThan(rate * 10);
+    const refPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 1;
+    expect(bid.bidPrice).toBeLessThanOrEqual(refPrice * 2.001);
 });
 
 function makeBid(bidPrice: number, quantity: number): BidOrder {
