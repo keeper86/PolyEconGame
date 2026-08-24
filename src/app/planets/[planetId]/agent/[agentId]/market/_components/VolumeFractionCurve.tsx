@@ -89,6 +89,10 @@ export function VolumeFractionCurve({
                         <span className='inline-block w-2.5 h-0.5 bg-sky-400' />
                         Draft
                     </span>
+                    <span className='flex items-center gap-1'>
+                        <span className='inline-block w-2.5 h-2.5 rounded-full bg-amber-400' />
+                        Market price
+                    </span>
                 </div>
             </div>
             <ResponsiveContainer width='100%' height={170}>
@@ -139,35 +143,32 @@ export function VolumeFractionCurve({
                         isAnimationActive={false}
                     />
                     {currentRatio !== undefined && currentY !== undefined && (
-                        <>
-                            <ReferenceLine
-                                x={currentRatio}
-                                stroke={CURRENT_COLOR}
-                                strokeDasharray='3 3'
-                                strokeOpacity={0.7}
-                            />
-                            <ReferenceLine
-                                y={currentY}
-                                stroke={CURRENT_COLOR}
-                                strokeDasharray='3 3'
-                                strokeOpacity={0.7}
-                            />
-                            <ReferenceDot
-                                x={currentRatio}
-                                y={currentY}
-                                r={4.5}
-                                fill={CURRENT_COLOR}
-                                stroke='#0f172a'
-                                strokeWidth={1.5}
-                                isFront
-                                label={{
-                                    value: `${currentRatio.toFixed(2)} → ${percent(currentY)}`,
-                                    position: 'top',
-                                    fontSize: 9,
-                                    fill: CURRENT_COLOR,
-                                }}
-                            />
-                        </>
+                        <ReferenceLine
+                            x={currentRatio}
+                            stroke={CURRENT_COLOR}
+                            strokeDasharray='3 3'
+                            strokeOpacity={0.7}
+                        />
+                    )}
+                    {currentRatio !== undefined && currentY !== undefined && (
+                        <ReferenceDot
+                            x={currentRatio}
+                            y={currentY}
+                            r={6}
+                            fill={CURRENT_COLOR}
+                            fillOpacity={0.15}
+                            stroke='none'
+                        />
+                    )}
+                    {currentRatio !== undefined && currentY !== undefined && (
+                        <ReferenceDot
+                            x={currentRatio}
+                            y={currentY}
+                            r={4}
+                            fill={CURRENT_COLOR}
+                            stroke='#0f172a'
+                            strokeWidth={2}
+                        />
                     )}
                 </LineChart>
             </ResponsiveContainer>

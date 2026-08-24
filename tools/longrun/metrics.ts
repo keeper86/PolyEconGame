@@ -438,6 +438,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const wageByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const wageByEduCount = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const capacityByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const slotsFilledByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const slotFillByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -872,7 +873,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         const exactUsed = sumExactUsedByEdu(assets);
         for (const edu of educationLevelKeys) {
             allocByEdu[edu] += assets.allocatedWorkers?.[edu] ?? 0;
-            wageByEdu[edu] += assets.wagePerEdu?.[edu] ?? 0;
+            if (typeof assets.wagePerEdu?.[edu] === 'number') {
+                wageByEdu[edu] += assets.wagePerEdu[edu];
+                wageByEduCount[edu] += 1;
+            }
             capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
             slotsFilledByEdu[edu] += slotsFilled[edu];
             slotFillByEdu[edu] += slotFill[edu];
@@ -1129,10 +1133,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         activePrimary: activeByEdu.primary,
         activeSecondary: activeByEdu.secondary,
         activeTertiary: activeByEdu.tertiary,
-        wageNone: wageByEdu.none,
-        wagePrimary: wageByEdu.primary,
-        wageSecondary: wageByEdu.secondary,
-        wageTertiary: wageByEdu.tertiary,
+        wageNone: wageByEduCount.none > 0 ? wageByEdu.none / wageByEduCount.none : 0,
+        wagePrimary: wageByEduCount.primary > 0 ? wageByEdu.primary / wageByEduCount.primary : 0,
+        wageSecondary: wageByEduCount.secondary > 0 ? wageByEdu.secondary / wageByEduCount.secondary : 0,
+        wageTertiary: wageByEduCount.tertiary > 0 ? wageByEdu.tertiary / wageByEduCount.tertiary : 0,
         capacityNone: capacityByEdu.none,
         capacityPrimary: capacityByEdu.primary,
         capacitySecondary: capacityByEdu.secondary,

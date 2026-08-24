@@ -87,7 +87,7 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
 }
 
 function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets, planet: Planet): void {
-    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
+    const usageFactor = 0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale);
     facility.maintenanceStatus = Math.max(
         0,
         facility.maintenanceStatus - (usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR,
