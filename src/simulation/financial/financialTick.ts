@@ -183,7 +183,12 @@ function isEssentialSupplier(assets: AgentPlanetAssets): boolean {
     return assets.productionFacilities.some((facility) => ESSENTIAL_FACILITY_NAMES.has(facility.name));
 }
 
-function recycleFacilitiesForDebt(planet: Planet, agent: Agent, assets: AgentPlanetAssets, gameState: GameState): number {
+function recycleFacilitiesForDebt(
+    planet: Planet,
+    agent: Agent,
+    assets: AgentPlanetAssets,
+    gameState: GameState,
+): number {
     const facilities = assets.productionFacilities
         .filter((facility) => facility.construction === null || facility.construction.type !== 'new')
         .sort((a, b) => b.maxScale - a.maxScale);
@@ -200,12 +205,7 @@ function recycleFacilitiesForDebt(planet: Planet, agent: Agent, assets: AgentPla
     return raised;
 }
 
-export function maturesLoans(
-    agents: Map<string, Agent>,
-    planet: Planet,
-    tick: number,
-    gameState?: GameState,
-): void {
+export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number, gameState?: GameState): void {
     const bank = planet.bank;
 
     agents.forEach((agent) => {

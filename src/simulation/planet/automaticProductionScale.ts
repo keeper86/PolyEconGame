@@ -402,7 +402,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     ? Math.abs(signal)
                     : 0;
             const profitContraction =
-                (!contractionLowerBoundGuard || facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9) &&
+                (!contractionLowerBoundGuard ||
+                    facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9) &&
                 profitSignal < 0
                     ? Math.abs(profitSignal)
                     : 0;
@@ -558,8 +559,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 logAutoscaleFacility(debugEntry);
             }
 
-            const lowerBoundReached =
-                facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9;
+            const lowerBoundReached = facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9;
             if (
                 facility.construction === null &&
                 state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&

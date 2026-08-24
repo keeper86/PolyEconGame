@@ -1,8 +1,9 @@
 import {
-    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
-    SS_RELAXATION_RATE,
-    SR_HOLDING_COST_PER_TON,
     SERVICE_DEPRECIATION_RATE_PER_TICK,
+    SERVICE_SHIELD_FRACTION,
+    SR_HOLDING_COST_PER_TON,
+    SS_RELAXATION_RATE,
+    STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
 import type { StorageFacility } from './facility';
 import {
@@ -17,9 +18,30 @@ import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './s
 import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 let serviceDepreciationRateOverride: number | null = null;
+let serviceBufferShieldTicks = 0;
 
 export function setServiceDepreciationRate(rate: number): void {
     serviceDepreciationRateOverride = rate;
+}
+
+export function resetServiceDepreciationRate(): void {
+    serviceDepreciationRateOverride = null;
+}
+
+export function getServiceDepreciationRate(): number {
+    return serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK * (1 - SERVICE_SHIELD_FRACTION);
+}
+
+export function setServiceBufferShieldTicks(ticks: number): void {
+    serviceBufferShieldTicks = ticks;
+}
+
+export function resetServiceBufferShieldTicks(): void {
+    serviceBufferShieldTicks = 0;
+}
+
+export function getServiceBufferShieldTicks(): number {
+    return serviceBufferShieldTicks;
 }
 
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
@@ -83,6 +105,25 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
+function serviceFlowPerTick(assets: AgentPlanetAssets, name: string): number {
+    let total = 0;
+    for (const facility of assets.productionFacilities) {
+        total +=
+            (facility.lastTickResults?.lastProduced?.[name] ?? 0) +
+            (facility.lastTickResults?.lastConsumed?.[name] ?? 0);
+    }
+    if (assets.humanResourcesDepartment) {
+        total +=
+            (assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0) +
+            (assets.humanResourcesDepartment.lastTickResults?.lastConsumed?.[name] ?? 0);
+    }
+    const dept = assets.storageFacility.department;
+    if (dept) {
+        total += (dept.lastTickResults?.lastProduced?.[name] ?? 0) + (dept.lastTickResults?.lastConsumed?.[name] ?? 0);
+    }
+    return total;
+}
+
 function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
     const ss = isStorageStarvationEffectDisabled() ? 0 : (storage.department?.storageStarvation ?? 1);
@@ -94,19 +135,25 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         }
 
         const isService = ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name);
-        let decayFactor: number;
+        let decayQty: number;
         if (isService) {
-            const baseRate = serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK;
-            decayFactor = baseRate * (1 + ss);
-            const naturalQty = entry.quantity * baseRate;
-            assets.monthAcc.naturalDepreciationValue += naturalQty * (planet.marketPrices[name] ?? 0);
+            const baseRate = getServiceDepreciationRate();
+            const price = planet.marketPrices[name] ?? 0;
+            if (serviceBufferShieldTicks > 0) {
+                const shieldedQty = serviceBufferShieldTicks * serviceFlowPerTick(assets, name);
+                const excessQty = Math.max(0, entry.quantity - shieldedQty);
+                decayQty = excessQty * baseRate * (1 + ss);
+                assets.monthAcc.naturalDepreciationValue += excessQty * baseRate * price;
+            } else {
+                decayQty = entry.quantity * baseRate * (1 + ss);
+                assets.monthAcc.naturalDepreciationValue += entry.quantity * baseRate * price;
+            }
         } else if (entry.resource.massPerQuantity > 0) {
-            decayFactor = 1 - preservation;
+            decayQty = entry.quantity * (1 - preservation);
         } else {
             continue;
         }
 
-        const decayQty = entry.quantity * decayFactor;
         if (decayQty < 1e-10) {
             continue;
         }

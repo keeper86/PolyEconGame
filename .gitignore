@@ -36,6 +36,9 @@ playwright/.auth
 .DS_Store
 *.pem
 
+# scratch notes / misc text
+*.txt
+
 # debug
 npm-debug.log*
 yarn-debug.log*

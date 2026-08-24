@@ -977,7 +977,9 @@ describe('updateAgentProductionScale', () => {
         setProfitSignalWeight(1);
         setContractionLowerBoundGuard(true);
         try {
-            const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 90, totalSupply: 100, unfilledDemand: 0 }));
+            const planet = makePlanetWithAvg(
+                makeMarketResult({ unsoldSupply: 90, totalSupply: 100, unfilledDemand: 0 }),
+            );
             const { agents, facility } = makeSetup(planet, {
                 scale: 10,
                 maxScale: 100,

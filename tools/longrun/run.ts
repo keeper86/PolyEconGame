@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
+import { TICKS_PER_MONTH, SERVICE_DEPRECIATION_RATE_PER_TICK, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { setGovernmentSupportDisabled, setWealthTaxAnnualRate, setWealthTaxDisabled } from '../../src/simulation/agents/governmentAgent';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
@@ -9,7 +9,7 @@ import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/
 import { setProfitSignalWeight, setContractionLowerBoundGuard, setExpansionProfitGateEnabled } from '../../src/simulation/planet/automaticProductionScale';
 import { setStorageExpansionProfitBypass } from '../../src/simulation/planet/automaticProductionScale/storageAutoscale';
 import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
-import { setServiceDepreciationRate } from '../../src/simulation/planet/storageLogistics';
+import { setServiceDepreciationRate, setServiceBufferShieldTicks } from '../../src/simulation/planet/storageLogistics';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -201,6 +201,10 @@ function main(): void {
     if (agentsPerProductArg !== undefined) {
         scenario.world = { ...scenario.world, agentsPerProduct: Number(agentsPerProductArg) };
     }
+    const slackArg = arg('slack');
+    if (slackArg !== undefined) {
+        scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
+    }
     if (process.argv.includes('--no-wealth-tax')) {
         scenario.world = { ...scenario.world, disableWealthTax: true };
     }
@@ -235,6 +239,14 @@ function main(): void {
     const serviceDepreciationArg = arg('serviceDepreciation');
     if (serviceDepreciationArg !== undefined) {
         setServiceDepreciationRate(Number(serviceDepreciationArg));
+    }
+    const serviceShieldArg = arg('serviceShield');
+    if (serviceShieldArg !== undefined) {
+        setServiceDepreciationRate(SERVICE_DEPRECIATION_RATE_PER_TICK * (1 - Number(serviceShieldArg)));
+    }
+    const bufferShieldArg = arg('bufferShield');
+    if (bufferShieldArg !== undefined) {
+        setServiceBufferShieldTicks(Number(bufferShieldArg));
     }
     const storageBypassArg = arg('storageBypass');
     if (storageBypassArg !== undefined) {

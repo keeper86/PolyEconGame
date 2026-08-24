@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
-import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick, setLoanDisciplineEnabled } from './financialTick';
+import {
+    automaticLoanRepayment,
+    maturesLoans,
+    preProductionFinancialTick,
+    setLoanDisciplineEnabled,
+} from './financialTick';
 
 import { coalDepositResourceType } from '../planet/landBoundResources';
 import { ironOreResourceType } from '../planet/resources';
