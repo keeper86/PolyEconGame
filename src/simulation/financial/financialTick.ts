@@ -1,13 +1,14 @@
-import { INPUT_BUFFER_TARGET_TICKS, MIN_WAGE, TICKS_PER_MONTH } from '../constants';
+import {
+    INPUT_BUFFER_TARGET_TICKS,
+    LOAN_MIN_ROLLOVER_PAYMENT_FRACTION,
+    LOAN_SEIZURE_MAX_CONTRACT_FRACTION,
+    MIN_WAGE,
+    TICKS_PER_MONTH,
+} from '../constants';
 import { processFacilityContraction } from '../agents/recycler';
 import { computeLoanConditions } from './loanConditions';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
-import {
-    ALL_PRODUCTION_FACILITY_ENTRIES,
-    facilityByName,
-    type FacilityCatalogEntry,
-} from '../planet/productionFacilities';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
@@ -173,41 +174,28 @@ export function setLoanRecyclingEnabled(enabled: boolean): void {
     loanRecyclingEnabled = enabled;
 }
 
-const ESSENTIAL_FACILITY_ENTRIES: ReadonlySet<FacilityCatalogEntry> = new Set([
-    ALL_PRODUCTION_FACILITY_ENTRIES.maintenanceFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.waterFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.agriculturalFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.foodProcessor,
-    ALL_PRODUCTION_FACILITY_ENTRIES.beveragePlant,
-    ALL_PRODUCTION_FACILITY_ENTRIES.groceryChain,
-    ALL_PRODUCTION_FACILITY_ENTRIES.hospital,
-    ALL_PRODUCTION_FACILITY_ENTRIES.pharmaPlant,
-]);
-
-function isEssentialSupplier(assets: AgentPlanetAssets): boolean {
-    return assets.productionFacilities.some((facility) => {
-        const entry = facilityByName.get(facility.name);
-        return entry !== undefined && ESSENTIAL_FACILITY_ENTRIES.has(entry);
-    });
-}
-
-function recycleFacilitiesForDebt(
+function seizeCapacityForDebt(
     planet: Planet,
     agent: Agent,
     assets: AgentPlanetAssets,
     gameState: GameState,
+    targetAmount: number,
 ): number {
     const facilities = assets.productionFacilities
         .filter((facility) => facility.construction === null || facility.construction.type !== 'new')
-        .sort((a, b) => b.maxScale - a.maxScale);
+        .filter((facility) => (facility.lastTickResults?.costBalance ?? 0) < 0)
+        .sort((a, b) => (a.lastTickResults?.costBalance ?? 0) - (b.lastTickResults?.costBalance ?? 0));
     let raised = 0;
     for (const facility of facilities) {
-        const targetMax = Math.max(1, Math.floor(facility.maxScale * 0.1));
+        if (raised >= targetAmount) {
+            break;
+        }
+        const targetMax = Math.max(1, Math.floor(facility.maxScale * (1 - LOAN_SEIZURE_MAX_CONTRACT_FRACTION)));
         if (targetMax >= facility.maxScale) {
             continue;
         }
         const before = assets.deposits;
-        processFacilityContraction(planet, facility, agent, targetMax, gameState);
+        processFacilityContraction(planet, facility, agent, targetMax, gameState, 0, 1);
         raised += assets.deposits - before;
     }
     return raised;
@@ -243,27 +231,36 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
         const shortfall = totalDue - assets.deposits;
         let writeOff = 0;
         if (shortfall > 0) {
-            if (loanDisciplineEnabled && !isEssentialSupplier(assets)) {
+            if (loanDisciplineEnabled) {
                 const conditions = computeLoanConditions(agent, planet);
                 if (shortfall > conditions.maxLoanAmount && conditions.monthlyNetCashFlow < 0) {
-                    planet.rolloverDenials += 1;
-                    if (gameState && loanRecyclingEnabled) {
-                        recycleFacilitiesForDebt(planet, agent, assets, gameState);
-                    }
-                    const repay = Math.min(totalDue, assets.deposits);
-                    writeOff = totalDue - repay;
-                    if (writeOff > 0) {
-                        planet.debtWriteOffs += writeOff;
-                        planet.bankruptcies += 1;
-                        if (gameState) {
-                            pushTickerEvent(gameState, {
-                                category: 'agentBankrupt',
-                                planetId: planet.id,
-                                agentId: agent.id,
-                                agentName: agent.name,
-                                message: `${agent.name} defaulted on ${Math.round(writeOff).toLocaleString()} of debt`,
-                                tick,
-                            });
+                    const minPayment = totalDue * LOAN_MIN_ROLLOVER_PAYMENT_FRACTION;
+                    const raised =
+                        gameState && loanRecyclingEnabled
+                            ? seizeCapacityForDebt(planet, agent, assets, gameState, minPayment)
+                            : 0;
+                    const remainingShortfall = totalDue - assets.deposits;
+                    if (raised >= minPayment && remainingShortfall > 0) {
+                        remainingLoans.push(grantLoan(assets, bank, remainingShortfall, 'rollover', tick));
+                    } else if (raised >= minPayment) {
+                        // collateral covered the matured loan in full
+                    } else {
+                        planet.rolloverDenials += 1;
+                        const repay = Math.min(totalDue, assets.deposits);
+                        writeOff = totalDue - repay;
+                        if (writeOff > 0) {
+                            planet.debtWriteOffs += writeOff;
+                            planet.bankruptcies += 1;
+                            if (gameState) {
+                                pushTickerEvent(gameState, {
+                                    category: 'agentBankrupt',
+                                    planetId: planet.id,
+                                    agentId: agent.id,
+                                    agentName: agent.name,
+                                    message: `${agent.name} defaulted on ${Math.round(writeOff).toLocaleString()} of debt`,
+                                    tick,
+                                });
+                            }
                         }
                     }
                 } else {

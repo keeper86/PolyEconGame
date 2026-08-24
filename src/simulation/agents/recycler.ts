@@ -90,6 +90,7 @@ export function processFacilityContraction(
     targetMax: number,
     gameState: GameState,
     ratioLimit: number = 0,
+    forcedRatio?: number,
 ): boolean {
     if (targetMax >= facility.maxScale) {
         return false;
@@ -125,8 +126,8 @@ export function processFacilityContraction(
         return false;
     }
 
-    const ratio = getRecyclerPaymentRatio(planet, recoveredCS);
-    if (ratio < ratioLimit) {
+    const ratio = forcedRatio ?? getRecyclerPaymentRatio(planet, recoveredCS);
+    if (forcedRatio === undefined && ratio < ratioLimit) {
         return false;
     }
     const payment = marketValue * ratio * RECYCLER_PAYMENT_RATIO;

@@ -10,6 +10,8 @@ import {
 } from './financialTick';
 
 import { coalDepositResourceType } from '../planet/landBoundResources';
+import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../constants';
+import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { ironOreResourceType } from '../planet/resources';
 import { constructionServiceResourceType } from '../planet/services';
@@ -600,7 +602,7 @@ describe('enforceLoanMaturities', () => {
         }
     });
 
-    it('with loan recycling: contracts facilities to raise funds and shrink the write-off', () => {
+    it('with loan recycling: contracts loss-making capacity and rolls over the remainder without a write-off', () => {
         setLoanDisciplineEnabled(true);
         setLoanRecyclingEnabled(true);
         try {
@@ -608,6 +610,56 @@ describe('enforceLoanMaturities', () => {
             agent.assets[planet.id]!.lastMonthAcc.revenue = 0;
             agent.assets[planet.id]!.lastMonthAcc.wages = 100;
             const facility = makeProductionFacility({}, { maxScale: 100, scale: 100 });
+            facility.lastTickResults.costBalance = -10;
+            agent.assets[planet.id]!.productionFacilities = [facility];
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+            const csPrice = 0.00005;
+            planet.marketPrices[constructionServiceResourceType.name] = csPrice;
+            planet.avgMarketResult[constructionServiceResourceType.name] = {
+                resourceName: constructionServiceResourceType.name,
+                clearingPrice: 10,
+                totalVolume: 100,
+                totalSupply: 100,
+                totalDemand: 100,
+                unsoldSupply: 0,
+                unfilledDemand: 35,
+            };
+            const recoveredCS =
+                calculateCostsForConstruction(getFacilityType(facility), 50, 100).cost *
+                RECYCLER_BASE_RECOVERY_EFFICIENCY;
+            const expectedRaised = recoveredCS * csPrice * RECYCLER_PAYMENT_RATIO;
+            const gameState = makeGameState([planet], [agent]);
+
+            maturesLoans(agentMap(agent), planet, 100, gameState);
+
+            expect(facility.maxScale).toBe(50);
+            expect(planet.debtWriteOffs).toBe(0);
+            expect(planet.rolloverDenials).toBe(0);
+            expect(planet.bankruptcies).toBe(0);
+            expect(gameState.tickerEvents.some((e) => e.category === 'facilityScrapped')).toBe(true);
+            if (expectedRaised >= 70) {
+                expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
+            } else {
+                expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBeCloseTo(70 - expectedRaised, 3);
+            }
+        } finally {
+            setLoanDisciplineEnabled(false);
+            setLoanRecyclingEnabled(false);
+        }
+    });
+
+    it('with loan recycling: preserves profitable facilities and writes off the full shortfall', () => {
+        setLoanDisciplineEnabled(true);
+        setLoanRecyclingEnabled(true);
+        try {
+            agent.starterLoanTaken = true;
+            agent.assets[planet.id]!.lastMonthAcc.revenue = 0;
+            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
+            const facility = makeProductionFacility({}, { maxScale: 100, scale: 100 });
+            facility.lastTickResults.costBalance = 10;
             agent.assets[planet.id]!.productionFacilities = [facility];
             agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
             agent.assets[planet.id]!.deposits = 30;
@@ -627,10 +679,49 @@ describe('enforceLoanMaturities', () => {
 
             maturesLoans(agentMap(agent), planet, 100, gameState);
 
-            expect(facility.maxScale).toBe(10);
+            expect(facility.maxScale).toBe(100);
             expect(planet.rolloverDenials).toBe(1);
+            expect(planet.debtWriteOffs).toBeCloseTo(70);
+            expect(gameState.tickerEvents.some((e) => e.category === 'facilityScrapped')).toBe(false);
+        } finally {
+            setLoanDisciplineEnabled(false);
+            setLoanRecyclingEnabled(false);
+        }
+    });
+
+    it('with loan recycling: denies and writes off when the minimum cannot be raised', () => {
+        setLoanDisciplineEnabled(true);
+        setLoanRecyclingEnabled(true);
+        try {
+            agent.starterLoanTaken = true;
+            agent.assets[planet.id]!.lastMonthAcc.revenue = 0;
+            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
+            const facility = makeProductionFacility({}, { maxScale: 100, scale: 100 });
+            facility.lastTickResults.costBalance = -10;
+            agent.assets[planet.id]!.productionFacilities = [facility];
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+            planet.marketPrices[constructionServiceResourceType.name] = 0.0000001;
+            planet.avgMarketResult[constructionServiceResourceType.name] = {
+                resourceName: constructionServiceResourceType.name,
+                clearingPrice: 10,
+                totalVolume: 100,
+                totalSupply: 100,
+                totalDemand: 100,
+                unsoldSupply: 0,
+                unfilledDemand: 35,
+            };
+            const gameState = makeGameState([planet], [agent]);
+
+            maturesLoans(agentMap(agent), planet, 100, gameState);
+
+            expect(planet.rolloverDenials).toBe(1);
+            expect(planet.bankruptcies).toBe(1);
+            expect(planet.debtWriteOffs).toBeGreaterThan(0);
             expect(planet.debtWriteOffs).toBeLessThan(70);
-            expect(gameState.tickerEvents.some((e) => e.category === 'facilityScrapped')).toBe(true);
+            expect(gameState.tickerEvents.some((e) => e.category === 'agentBankrupt')).toBe(true);
         } finally {
             setLoanDisciplineEnabled(false);
             setLoanRecyclingEnabled(false);

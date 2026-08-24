@@ -41,7 +41,7 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     starter: TICKS_PER_YEAR * 10,
     discretionary: TICKS_PER_YEAR,
     wageCoverage: TICKS_PER_YEAR,
-    rollover: TICKS_PER_YEAR,
+    rollover: TICKS_PER_YEAR * 5,
     bufferCoverage: TICKS_PER_YEAR,
     claimCoverage: TICKS_PER_YEAR,
     shipPenaltyCoverage: TICKS_PER_YEAR,
