@@ -1,6 +1,4 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { putIntoStorageFacility } from './facility';
-import { logisticsServiceResourceType } from './services';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -8,11 +6,13 @@ import {
     makeProductionFacility,
     makeStorageFacility,
 } from '../utils/testHelper';
-import { resetServiceOutputShieldFactor, setServiceOutputShieldFactor, storageLogisticsTick } from './storageLogistics';
+import { putIntoStorageFacility } from './facility';
+import { logisticsServiceResourceType } from './services';
+import { setServiceOutputShieldFactor, storageLogisticsTick } from './storageLogistics';
 
 describe('service output shield', () => {
     afterEach(() => {
-        resetServiceOutputShieldFactor();
+        setServiceOutputShieldFactor(0);
     });
 
     function makeAssetsWithOutput(outputPerTick: number) {

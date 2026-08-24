@@ -31,14 +31,6 @@ export function setServiceOutputShieldFactor(factor: number): void {
     serviceOutputShieldFactor = factor;
 }
 
-export function resetServiceOutputShieldFactor(): void {
-    serviceOutputShieldFactor = 0;
-}
-
-export function getServiceOutputShieldFactor(): number {
-    return serviceOutputShieldFactor;
-}
-
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
         const assets = agent.assets[planet.id];
