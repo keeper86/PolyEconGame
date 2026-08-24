@@ -131,6 +131,7 @@ function StorageBuildCard({
         <FacilityCardShell
             className='max-w-[600px]'
             contentClassName='flex flex-col flex-1 gap-2'
+            dataTour='storage-department'
             icon={<FacilityOrShipIcon facilityOrShipName={entry.name} />}
             headerContent={
                 <FacilityHeader
@@ -231,6 +232,7 @@ function StorageConstructionCard({
         <FacilityCardShell
             className='max-w-[600px]'
             contentClassName='flex flex-col flex-1 gap-2'
+            dataTour='storage-department'
             icon={<FacilityOrShipIcon facilityOrShipName={facility.name} buildProgress={pct / 100} />}
             headerContent={
                 <FacilityHeader
@@ -368,6 +370,7 @@ export default function StorageDepartment({
                     otherConstructionCosts={otherConstructionCosts}
                     hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     headerBadge={statusBadge}
+                    dataTour='storage-department'
                 >
                     <div className='grid w-full items-center gap-x-2' style={{ gridTemplateColumns }}>
                         <div className='flex flex-wrap gap-1.5 justify-center'>

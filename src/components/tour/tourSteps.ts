@@ -274,6 +274,52 @@ export function getStepsForPage(
                 zIndex: 10000,
             });
 
+            if (!completed.has('build-hr')) {
+                steps.push({
+                    target: '[data-tour="build-hr"]',
+                    content:
+                        'Your company needs an HR Department to manage its workforce. ' +
+                        'The HR Department consumes Administration services and produces Human Resources. ' +
+                        'Without it, your workers\u2019 productivity drops dramatically. ' +
+                        'Click "Build" to order construction \u2014 this is required before you can continue.',
+                    title: '\uD83C\uDFE2 Build the HR Department',
+                    placement: 'top',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'build-hr' },
+                });
+            }
+
+            steps.push({
+                target: 'body',
+                content:
+                    'Your HR Department construction is now queued! It will appear as "Under Construction" ' +
+                    'after the next day and take a few days to complete. The Administration services it needs ' +
+                    'will be bought on the Market automatically once we set that up.',
+                title: '\u2705 HR build queued!',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: 'body',
+                content:
+                    'Once active, the HR Department produces Human Resources from Administration services. ' +
+                    'The gauge shows your HR buffer and the balance row shows production \u2212 demand \u2192 buffer. ' +
+                    'As long as the buffer covers your workers, productivity runs at 100% \u2014 if it runs dry, ' +
+                    'worker productivity drops and your whole company suffers.',
+                title: '\uD83C\uDFE2 How the HR Department works',
+                placement: 'center',
+                hideOverlay: false,
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
             steps.push({
                 target: 'body',
                 content:
@@ -373,6 +419,116 @@ export function getStepsForPage(
                 skipBeacon: true,
                 zIndex: 10000,
             });
+
+            if (!completed.has('expand-administration-accordion')) {
+                steps.push({
+                    target: '[data-tour="market-accordion-administration"]',
+                    content:
+                        'Administration is the bureaucratic overhead of running your company: ' +
+                        'both the HR Department and the Storage Department consume it every day. ' +
+                        'Click the Administration row to expand it.',
+                    title: '\uD83D\uDD0D Expand Administration',
+                    placement: 'top',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'expand-administration-accordion' },
+                });
+            }
+
+            if (!completed.has('enable-buy-administration')) {
+                steps.push({
+                    target: '[data-tour="market-buy-switch"]',
+                    content:
+                        'Toggle this switch to automate buying of Administration services. ' +
+                        'Your departments need it every day \u2014 if it runs out, HR and Storage slow down. ' +
+                        'When your company gets really large, it may become beneficial to produce a base level ' +
+                        'of Administration yourself via an Administrative Center.',
+                    title: '\uD83D\uDED2 Enable Buy for Administration',
+                    placement: 'auto',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'enable-buy-administration' },
+                });
+            }
+
+            if (!completed.has('expand-logistics-accordion')) {
+                steps.push({
+                    target: '[data-tour="market-accordion-logistics"]',
+                    content:
+                        'Logistics is the transport capacity that moves goods into and out of your warehouse. ' +
+                        'The Storage Department consumes it every day. Click the Logistics row to expand it.',
+                    title: '\uD83D\uDD0D Expand Logistics',
+                    placement: 'top',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'expand-logistics-accordion' },
+                });
+            }
+
+            if (!completed.has('enable-buy-logistics')) {
+                steps.push({
+                    target: '[data-tour="market-buy-switch"]',
+                    content:
+                        'Toggle this switch to automate buying of Logistics services. ' +
+                        'Without enough logistics, your storage throughput starves and goods get lost. ' +
+                        'When your company gets really large, it may become beneficial to produce a base level ' +
+                        'of Logistics yourself via a Logistics Hub.',
+                    title: '\uD83D\uDED2 Enable Buy for Logistics',
+                    placement: 'auto',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'enable-buy-logistics' },
+                });
+            }
+
+            if (!completed.has('expand-maintenance-accordion')) {
+                steps.push({
+                    target: '[data-tour="market-accordion-maintenance"]',
+                    content:
+                        'Maintenance keeps your facilities in good condition. Every facility consumes ' +
+                        'Maintenance services each day \u2014 without it, Condition degrades and output falls. ' +
+                        'Click the Maintenance row to expand it.',
+                    title: '\uD83D\uDD0D Expand Maintenance',
+                    placement: 'top',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'expand-maintenance-accordion' },
+                });
+            }
+
+            if (!completed.has('enable-buy-maintenance')) {
+                steps.push({
+                    target: '[data-tour="market-buy-switch"]',
+                    content:
+                        'Toggle this switch to automate buying of Maintenance services. ' +
+                        'Your facilities need it every day to stay healthy. ' +
+                        'When your company gets really large, it may become beneficial to produce a base level ' +
+                        'of Maintenance yourself via a Maintenance Facility.',
+                    title: '\uD83D\uDED2 Enable Buy for Maintenance',
+                    placement: 'auto',
+                    hideOverlay: false,
+                    blockTargetInteraction: false,
+                    spotlightPadding: 8,
+                    skipBeacon: true,
+                    zIndex: 10000,
+                    data: { blocking: true, actionKey: 'enable-buy-maintenance' },
+                });
+            }
 
             steps.push({
                 target: '[data-tour="market-sell-switch"]',
@@ -636,10 +792,11 @@ export function getStepsForPage(
 
         case 'storage': {
             steps.push({
-                target: '[data-tour="storage-inventory"]',
+                target: '[data-tour="storage-overview"]',
                 content:
                     'This is your storage facility \u2014 the warehouse that holds all your goods. ' +
-                    'Raw materials, intermediate goods, and finished products all live here.',
+                    'Raw materials, intermediate goods, and finished products all live here. ' +
+                    'The grid shows what you hold, what flows in and out each tick, and what is bought or sold.',
                 title: '\uD83D\uDCE6 Storage Overview',
                 placement: 'top',
                 skipBeacon: true,
@@ -648,21 +805,11 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="storage-inventory"]',
-                content:
-                    'The inventory shows quantities and values of everything you hold. ' +
-                    'Keep an eye on what is accumulating and what is running low.',
-                title: '\uD83D\uDCC6 Inventory',
-                placement: 'top',
-                skipBeacon: true,
-                zIndex: 10000,
-            });
-
-            steps.push({
                 target: '[data-tour="storage-capacity"]',
                 content:
-                    'Storage has limited capacity. If full, your facilities stop producing! ' +
-                    'Sell excess goods on the market or expand your storage to free up space.',
+                    'Storage has limited capacity in both volume (m\u00B3) and mass (tonnes). ' +
+                    'If you fill it, your facilities stop producing! ' +
+                    'Sell excess goods on the market or expand storage to free up space.',
                 title: '\uD83D\uDCC1 Capacity',
                 placement: 'bottom',
                 skipBeacon: true,
@@ -670,12 +817,39 @@ export function getStepsForPage(
             });
 
             steps.push({
-                target: '[data-tour="storage-inventory"]',
+                target: '[data-tour="storage-department"] h3',
                 content:
-                    'Your stored goods count as collateral for loans. The more valuable your ' +
-                    'inventory, the more credit you can access.',
-                title: '\uD83D\uDCB0 Storage as Collateral',
+                    'The Storage Department is your logistics backbone. It consumes Administration and ' +
+                    'Logistics services and produces the Storage throughput that moves goods into and out of ' +
+                    'your warehouse. The gauge shows your storage buffer, and the balance row shows ' +
+                    'production \u2212 demand \u2192 buffer.',
+                title: '\uD83C\uDFE2 Storage Department',
+                placement: 'auto',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="facility-maintenance-row"]',
+                content:
+                    'Every active facility has a maintenance row: it consumes Maintenance services to keep ' +
+                    'its Condition high. If maintenance runs short, Condition degrades and the facility ' +
+                    'produces less. That\u2019s why we buy Maintenance on the Market!',
+                title: '\uD83D\uDD27 Maintenance Row',
                 placement: 'top',
+                skipBeacon: true,
+                zIndex: 10000,
+            });
+
+            steps.push({
+                target: '[data-tour="storage-starvation"]',
+                content:
+                    'When your Storage Department can\u2019t keep up (logistics starvation), you pay a real price: ' +
+                    'Transport efficiency drops \u2014 goods get lost before they even reach your warehouse \u2014 ' +
+                    'and Storage health degrades. At full starvation, transport efficiency can fall to ~50%. ' +
+                    'Expand the Storage Department or feed it more Logistics and Administration to avoid losses!',
+                title: '\u26A0\uFE0F Logistics Starvation Malus',
+                placement: 'bottom',
                 skipBeacon: true,
                 zIndex: 10000,
             });
@@ -683,9 +857,9 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'Now let\u2019s revisit the Market to see how things are going. ' +
-                    'We now navigate to the Market page. This may take a few seconds.',
-                title: '\u27A1\uFE0F Next: Market',
+                    'Now let\u2019s check out your fleet. ' +
+                    'We now navigate to the Ships page. This may take a few seconds.',
+                title: '\u27A1\uFE0F Next: Ships',
                 placement: 'center',
                 hideOverlay: false,
                 skipBeacon: true,

@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTour } from '@/components/tour/TourContext';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -84,6 +85,7 @@ function HRBuildCard({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
+    const { isTourActive, markActionCompleted } = useTour();
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
@@ -100,6 +102,9 @@ function HRBuildCard({
                     triggerTick: data.processedAtTick,
                 });
                 toast.success('Construction ordered. Changes take effect on the next tick.');
+                if (isTourActive) {
+                    markActionCompleted('build-hr');
+                }
                 onBuilt();
             },
             onError: (err) => {
@@ -162,7 +167,7 @@ function HRBuildCard({
                 </div>
             </div>
             <HRBuildRow scale={previewScale} />
-            <div className='relative mt-auto space-y-2'>
+            <div className='relative mt-auto space-y-2' data-tour='build-hr'>
                 <FacilityConstructionPanel
                     facilityType={facilityType}
                     fromScale={0}

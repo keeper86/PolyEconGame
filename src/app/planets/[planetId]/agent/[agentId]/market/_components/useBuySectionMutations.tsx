@@ -8,7 +8,7 @@ import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/pla
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { getResourceByName } from './marketHelpers';
+import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketBidEntry } from './marketTypes';
 import { localToAutoConfig } from './marketTypes';
 
@@ -215,8 +215,11 @@ export function useBuySectionMutations({
     const handleBuyAutomationChange = (automated: boolean) => {
         onLocalChange(resourceName, { bidAutomated: automated, savedBidAutomated: automated });
 
-        if (automated && resourceName === 'Construction' && marketIsTourActive) {
-            marketMarkActionCompleted('enable-buy-construction');
+        if (automated && marketIsTourActive) {
+            const slug = resourceNameToSlug(resourceName);
+            if (['construction', 'administration', 'logistics', 'maintenance'].includes(slug)) {
+                marketMarkActionCompleted(`enable-buy-${slug}`);
+            }
         }
 
         setBuyAutomationSaving(true);

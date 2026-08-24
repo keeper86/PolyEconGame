@@ -20,6 +20,8 @@ import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
 
+const TOUR_BUY_RESOURCES = new Set(['Construction', 'Administration', 'Logistics', 'Maintenance']);
+
 export default function ResourceAccordionItem({
     resourceName,
     agentId,
@@ -126,19 +128,22 @@ export default function ResourceAccordionItem({
 
     const { isTourActive: marketIsTourActive, markActionCompleted: marketMarkActionCompleted } = useTour();
 
+    const resourceSlug = resourceNameToSlug(resourceName);
+    const isTourBuyResource = TOUR_BUY_RESOURCES.has(resourceName);
+
     const prevOpenRef = React.useRef(isOpen);
     React.useEffect(() => {
-        if (isOpen && !prevOpenRef.current && resourceName === 'Construction' && marketIsTourActive) {
-            marketMarkActionCompleted('expand-construction-accordion');
+        if (isOpen && !prevOpenRef.current && isTourBuyResource && marketIsTourActive) {
+            marketMarkActionCompleted(`expand-${resourceSlug}-accordion`);
         }
         prevOpenRef.current = isOpen;
-    }, [isOpen, resourceName, marketIsTourActive, marketMarkActionCompleted]);
+    }, [isOpen, isTourBuyResource, resourceSlug, marketIsTourActive, marketMarkActionCompleted]);
 
     return (
         <AccordionItem value={resourceName} id={resourceNameToSlug(resourceName)}>
             <AccordionTrigger
                 className='hover:no-underline px-1'
-                {...(resourceName === 'Construction' ? { 'data-tour': 'market-accordion-construction' } : {})}
+                {...(isTourBuyResource ? { 'data-tour': `market-accordion-${resourceSlug}` } : {})}
             >
                 <ResourceTrigger
                     name={resourceName}
