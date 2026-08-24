@@ -1,5 +1,6 @@
 import {
     SERVICE_DEPRECIATION_RATE_PER_TICK,
+    SERVICE_OUTPUT_SHIELD_FACTOR,
     SR_HOLDING_COST_PER_TON,
     SS_RELAXATION_RATE,
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
@@ -72,6 +73,21 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
+function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
+    let total = 0;
+    for (const facility of assets.productionFacilities) {
+        total += facility.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    if (assets.humanResourcesDepartment) {
+        total += assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    const dept = assets.storageFacility.department;
+    if (dept) {
+        total += dept.lastTickResults?.lastProduced?.[name] ?? 0;
+    }
+    return total;
+}
+
 function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
     const ss = storage.department?.storageStarvation ?? 1;
@@ -86,8 +102,10 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         let decayQty: number;
         if (isService) {
             const price = planet.marketPrices[name] ?? 0;
-            decayQty = entry.quantity * SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
-            assets.monthAcc.naturalDepreciationValue += entry.quantity * SERVICE_DEPRECIATION_RATE_PER_TICK * price;
+            const shieldedQty = SERVICE_OUTPUT_SHIELD_FACTOR * serviceOutputPerTick(assets, name);
+            const excessQty = Math.max(0, entry.quantity - shieldedQty);
+            decayQty = excessQty * SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
+            assets.monthAcc.naturalDepreciationValue += excessQty * SERVICE_DEPRECIATION_RATE_PER_TICK * price;
         } else if (entry.resource.massPerQuantity > 0) {
             decayQty = entry.quantity * (1 - preservation);
         } else {
