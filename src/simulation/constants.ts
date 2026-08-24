@@ -83,8 +83,6 @@ export const MAX_WAGE = 1000.0;
 
 export const DEFAULT_REFERENCE_MONTHLY_INCOME = MIN_WAGE * TICKS_PER_MONTH;
 
-export const PROFIT_SHARING_ENABLED = false;
-
 export const WAGE_ADJUSTMENT_RATE = 0.005;
 
 export const VACANCY_WAGE_SMOOTHING = 0.1;

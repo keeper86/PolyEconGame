@@ -20,7 +20,6 @@ import type {
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
 import { nextRandom } from '../utils/stochasticRound';
-import type { ServiceTierSupportWeightOverride } from './serviceDefinitions';
 import {
     allServices,
     computeTierCost,
@@ -87,10 +86,10 @@ export function buildAggregateCache(
     return cache;
 }
 
-export function supportWeight(ageDifference: number, override?: ServiceTierSupportWeightOverride): number {
-    const sigma = override?.sigma ?? SUPPORT_WEIGHT_SIGMA;
-    const generationGap = override?.generationGap ?? GENERATION_GAP;
-    const kernelN = override?.kernelN ?? GENERATION_KERNEL_N;
+export function supportWeight(ageDifference: number): number {
+    const sigma = SUPPORT_WEIGHT_SIGMA;
+    const generationGap = GENERATION_GAP;
+    const kernelN = GENERATION_KERNEL_N;
     let best = 0;
 
     const amplitude = (n: number): number => {
@@ -312,7 +311,7 @@ export function intergenerationalTransfersForPlanet(planet: Planet, profiler?: T
                 }
 
                 const ageDiff = supAge - age;
-                const w = supportWeight(ageDiff, tier.supportWeightOverride);
+                const w = supportWeight(ageDiff);
                 if (w < 1e-10) {
                     continue;
                 }

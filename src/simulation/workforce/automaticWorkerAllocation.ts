@@ -1,7 +1,6 @@
 import {
     MAX_WAGE,
     MIN_WAGE,
-    PROFIT_SHARING_ENABLED,
     SPRING_K,
     WAGE_ADJUSTMENT_RATE,
     WAGE_BARGAINING_GAIN,
@@ -9,8 +8,7 @@ import {
     WAGE_FEEDBACK_GAIN,
     WAGE_SHARE,
 } from '../constants';
-import { creditWageIncome } from '../financial/wealthOps';
-import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
+import type { Agent, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import { ACCEPTABLE_IDLE_FRACTION } from './laborMarket';
@@ -49,19 +47,7 @@ export function automaticWorkerAllocation(agents: Map<string, Agent>, planet: Pl
     }
 }
 
-function computeReservationCapital(assets: AgentPlanetAssets): number {
-    const lastMonthWages = assets.lastMonthAcc.wages ?? 0;
-    const lastMonthPurchases = assets.lastMonthAcc.purchases ?? 0;
-    const lastClaims = assets.lastMonthAcc.claimPayments ?? 0;
-    const monthlyRunRate = lastMonthWages + lastMonthPurchases + lastClaims;
-    const effectiveMonthlyRunRate = monthlyRunRate > 0 ? monthlyRunRate : Number.MAX_SAFE_INTEGER;
-    return effectiveMonthlyRunRate * 12;
-}
-
 export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Planet): void {
-    const bank = planet.bank;
-    const demography = planet.population.demography;
-
     for (const agent of agents.values()) {
         if (!agent.automated && !agent.automateWorkerAllocation) {
             continue;
@@ -117,58 +103,6 @@ export function automaticWageAdjustment(agents: Map<string, Agent>, planet: Plan
             const nextEdu = educationLevelKeys[i + 1];
             if (assets.wagePerEdu[currentEdu] > assets.wagePerEdu[nextEdu]) {
                 assets.wagePerEdu[nextEdu] = assets.wagePerEdu[currentEdu];
-            }
-        }
-
-        if (PROFIT_SHARING_ENABLED && agent.automated && agent.id !== planet.governmentId) {
-            const netBalance =
-                assets.deposits - assets.activeLoans.reduce((sum, loan) => sum + loan.remainingPrincipal, 0);
-            const reservationCapital = computeReservationCapital(assets);
-            const excessCash = netBalance - reservationCapital;
-
-            if (excessCash > 0) {
-                let totalWorkers = 0;
-                for (const edu of educationLevelKeys) {
-                    totalWorkers += totalActiveForEdu(workforce, edu);
-                }
-
-                let totalCredit = 0;
-                if (totalWorkers > 0) {
-                    const perWorkerBonus = excessCash / totalWorkers;
-                    for (let age = 0; age < workforce.length; age++) {
-                        const ageCohort = workforce[age];
-                        if (!ageCohort) {
-                            continue;
-                        }
-                        for (const edu of educationLevelKeys) {
-                            const agentWorkers = ageCohort[edu];
-                            if (!agentWorkers) {
-                                continue;
-                            }
-                            const activeWorkers = agentWorkers.active;
-                            if (activeWorkers <= 0) {
-                                continue;
-                            }
-                            const cat = demography[age].employed[edu];
-                            if (cat.total <= 0) {
-                                continue;
-                            }
-                            totalCredit += creditWageIncome(bank, cat, perWorkerBonus, activeWorkers);
-                        }
-                    }
-
-                    if (Math.abs(totalCredit - excessCash) / excessCash > 1e-6) {
-                        console.error(
-                            `[automaticWageAdjustment] profit-sharing accounting mismatch: ` +
-                                `excessCash=${excessCash.toFixed(4)}, ` +
-                                `totalCredit=${totalCredit.toFixed(4)}, ` +
-                                `diff=${(totalCredit - excessCash).toFixed(6)}`,
-                        );
-                    }
-                }
-
-                assets.monthAcc.profitShareBonuses += totalCredit;
-                assets.deposits -= totalCredit;
             }
         }
     }

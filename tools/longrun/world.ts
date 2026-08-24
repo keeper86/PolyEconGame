@@ -62,10 +62,6 @@ export interface BenchmarkWorldConfig {
     solverSeedSlack?: number;
     maintenanceScaleFactor?: number;
     maintenanceBufferTicks?: number;
-    disableConditionEfficiency?: boolean;
-    disableHrProductivityEffect?: boolean;
-    disableStorageStarvationEffect?: boolean;
-    disableWealthTax?: boolean;
 }
 
 interface FacilityTarget {

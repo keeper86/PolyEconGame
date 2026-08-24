@@ -5,31 +5,11 @@ import {
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
 import type { StorageFacility } from './facility';
-import {
-    isStorageStarvationEffectDisabled,
-    queryStorageFacility,
-    removeFromStorageFacility,
-    storagePreservationFactor,
-} from './facility';
+import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
 import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
-
-let serviceDepreciationRateOverride: number | null = null;
-let serviceOutputShieldFactor = 0;
-
-export function setServiceDepreciationRate(rate: number): void {
-    serviceDepreciationRateOverride = rate;
-}
-
-export function getServiceDepreciationRate(): number {
-    return serviceDepreciationRateOverride ?? SERVICE_DEPRECIATION_RATE_PER_TICK;
-}
-
-export function setServiceOutputShieldFactor(factor: number): void {
-    serviceOutputShieldFactor = factor;
-}
 
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
     for (const agent of agents.values()) {
@@ -92,24 +72,9 @@ function pullStorageServiceFromStorage(storage: StorageFacility): number {
     return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
 }
 
-function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
-    let total = 0;
-    for (const facility of assets.productionFacilities) {
-        total += facility.lastTickResults?.lastProduced?.[name] ?? 0;
-    }
-    if (assets.humanResourcesDepartment) {
-        total += assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0;
-    }
-    const dept = assets.storageFacility.department;
-    if (dept) {
-        total += dept.lastTickResults?.lastProduced?.[name] ?? 0;
-    }
-    return total;
-}
-
 function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
-    const ss = isStorageStarvationEffectDisabled() ? 0 : (storage.department?.storageStarvation ?? 1);
+    const ss = storage.department?.storageStarvation ?? 1;
     const preservation = storagePreservationFactor(ss);
 
     for (const [name, entry] of Object.entries(storage.currentInStorage)) {
@@ -120,17 +85,9 @@ function applyStorageDegradation(storage: StorageFacility, planet: Planet, asset
         const isService = ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(name);
         let decayQty: number;
         if (isService) {
-            const baseRate = getServiceDepreciationRate();
             const price = planet.marketPrices[name] ?? 0;
-            if (serviceOutputShieldFactor > 0) {
-                const shieldedQty = serviceOutputShieldFactor * serviceOutputPerTick(assets, name);
-                const excessQty = Math.max(0, entry.quantity - shieldedQty);
-                decayQty = excessQty * baseRate * (1 + ss);
-                assets.monthAcc.naturalDepreciationValue += excessQty * baseRate * price;
-            } else {
-                decayQty = entry.quantity * baseRate * (1 + ss);
-                assets.monthAcc.naturalDepreciationValue += entry.quantity * baseRate * price;
-            }
+            decayQty = entry.quantity * SERVICE_DEPRECIATION_RATE_PER_TICK * (1 + ss);
+            assets.monthAcc.naturalDepreciationValue += entry.quantity * SERVICE_DEPRECIATION_RATE_PER_TICK * price;
         } else if (entry.resource.massPerQuantity > 0) {
             decayQty = entry.quantity * (1 - preservation);
         } else {

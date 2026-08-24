@@ -6,7 +6,6 @@ import {
     getStorageStarvation,
     inflowPreservation,
     putIntoStorageFacility,
-    setStorageStarvationEffectDisabled,
     storagePreservationFactor,
 } from './facility';
 import type { AgentPlanetAssets } from './planet';
@@ -104,15 +103,6 @@ describe('inflowPreservation', () => {
     });
     it('returns 0.5 at SS=1', () => {
         expect(inflowPreservation(1)).toBeCloseTo(0.5);
-    });
-    it('returns 1.0 regardless of starvation when the effect is disabled', () => {
-        setStorageStarvationEffectDisabled(true);
-        try {
-            expect(inflowPreservation(1)).toBeCloseTo(1.0);
-            expect(storagePreservationFactor(1)).toBeCloseTo(1.0);
-        } finally {
-            setStorageStarvationEffectDisabled(false);
-        }
     });
 });
 

@@ -7,12 +7,6 @@ import { findMaxAffordableScale, findMaxScaleForCSBudget } from './expansionTarg
 
 export const STORAGE_TARGET_FILL_RATE = 0.85;
 
-let storageExpansionProfitBypass = false;
-
-export function setStorageExpansionProfitBypass(enabled: boolean): void {
-    storageExpansionProfitBypass = enabled;
-}
-
 export function computeStorageSignal(storageDepartment: StorageDepartment): number {
     const maxBuffer = storageDepartment.scale * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
     const fillRate = maxBuffer > 0 ? storageDepartment.storageBuffer / maxBuffer : 0;
@@ -44,9 +38,7 @@ export function computeStorageExpansionTarget(
     let targetMax = Math.min(desiredTarget, absoluteCap);
 
     if (!hasOwnConstruction) {
-        if (!storageExpansionProfitBypass) {
-            targetMax = findMaxAffordableScale(storageDepartment, assets, planet, currentMax, targetMax);
-        }
+        targetMax = findMaxAffordableScale(storageDepartment, assets, planet, currentMax, targetMax);
         targetMax = findMaxScaleForCSBudget(storageDepartment, currentMax, targetMax, constructionBudget);
     }
 

@@ -2,14 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
-import { setGovernmentSupportDisabled, setWealthTaxAnnualRate, setWealthTaxDisabled } from '../../src/simulation/agents/governmentAgent';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setConditionEfficiencyDisabled, setStorageStarvationEffectDisabled } from '../../src/simulation/planet/facility';
-import { setHrProductivityEffectDisabled } from '../../src/simulation/workforce/hrBuffer';
-import { setProfitSignalWeight, setContractionLowerBoundGuard, setExpansionProfitGateEnabled } from '../../src/simulation/planet/automaticProductionScale';
-import { setStorageExpansionProfitBypass } from '../../src/simulation/planet/automaticProductionScale/storageAutoscale';
 import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
-import { setServiceDepreciationRate, setServiceOutputShieldFactor } from '../../src/simulation/planet/storageLogistics';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -112,10 +106,6 @@ function runScenario(
     sampleEvery: number,
 ): { monthly: MetricMap[]; msPerTick: number; seedGap: string; scaleGaps: Array<Record<string, number>> } {
     seedRng(scenario.seed);
-    setConditionEfficiencyDisabled(scenario.world.disableConditionEfficiency === true);
-    setHrProductivityEffectDisabled(scenario.world.disableHrProductivityEffect === true);
-    setStorageStarvationEffectDisabled(scenario.world.disableStorageStarvationEffect === true);
-    setWealthTaxDisabled(scenario.world.disableWealthTax === true);
     const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
     const population = scenario.world.population ?? 10_000_000;
 
@@ -205,29 +195,6 @@ function main(): void {
     if (slackArg !== undefined) {
         scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
     }
-    if (process.argv.includes('--no-wealth-tax')) {
-        scenario.world = { ...scenario.world, disableWealthTax: true };
-    }
-    const wealthTaxRateArg = arg('wealthTaxRate');
-    if (wealthTaxRateArg !== undefined) {
-        setWealthTaxAnnualRate(Number(wealthTaxRateArg));
-    }
-    const supportArg = arg('support');
-    if (supportArg === 'hold') {
-        setGovernmentSupportDisabled(true);
-    }
-    const profitSignalArg = arg('profitSignal');
-    if (profitSignalArg !== undefined) {
-        setProfitSignalWeight(Number(profitSignalArg));
-    }
-    const contractionFloorArg = arg('contractionFloor');
-    if (contractionFloorArg !== undefined) {
-        setContractionLowerBoundGuard(contractionFloorArg === '1' || contractionFloorArg === 'true');
-    }
-    const expansionGateArg = arg('expansionGate');
-    if (expansionGateArg !== undefined) {
-        setExpansionProfitGateEnabled(expansionGateArg === '1' || expansionGateArg === 'true');
-    }
     const loanDisciplineArg = arg('loanDiscipline');
     if (loanDisciplineArg !== undefined) {
         setLoanDisciplineEnabled(loanDisciplineArg === '1' || loanDisciplineArg === 'true');
@@ -235,18 +202,6 @@ function main(): void {
     const loanRecyclingArg = arg('loanRecycling');
     if (loanRecyclingArg !== undefined) {
         setLoanRecyclingEnabled(loanRecyclingArg === '1' || loanRecyclingArg === 'true');
-    }
-    const serviceDepreciationArg = arg('serviceDepreciation');
-    if (serviceDepreciationArg !== undefined) {
-        setServiceDepreciationRate(Number(serviceDepreciationArg));
-    }
-    const outputShieldArg = arg('outputShield');
-    if (outputShieldArg !== undefined) {
-        setServiceOutputShieldFactor(Number(outputShieldArg));
-    }
-    const storageBypassArg = arg('storageBypass');
-    if (storageBypassArg !== undefined) {
-        setStorageExpansionProfitBypass(storageBypassArg === '1' || storageBypassArg === 'true');
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

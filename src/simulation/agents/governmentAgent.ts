@@ -1,4 +1,4 @@
-import { MONTHS_PER_YEAR, WEALTH_TAX_ALLOWANCE, WEALTH_TAX_ANNUAL_RATE } from '../constants';
+import { WEALTH_TAX_ALLOWANCE, WEALTH_TAX_MONTHLY_RATE } from '../constants';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
 import { totalOutstandingLoans } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
@@ -6,22 +6,6 @@ import { governmentSupport } from '../market/intergenerationalTransfers';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
-
-let wealthTaxDisabled = false;
-let governmentSupportDisabled = false;
-let wealthTaxAnnualRateOverride: number | null = null;
-
-export function setWealthTaxDisabled(disabled: boolean): void {
-    wealthTaxDisabled = disabled;
-}
-
-export function setGovernmentSupportDisabled(disabled: boolean): void {
-    governmentSupportDisabled = disabled;
-}
-
-export function setWealthTaxAnnualRate(annualRate: number): void {
-    wealthTaxAnnualRateOverride = annualRate;
-}
 
 export const wealthTaxAllowance = (planet: Planet): number => {
     const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
@@ -41,15 +25,11 @@ export const computeCompanyNetWorth = (agent: Agent, planet: Planet, shipCapital
 };
 
 export const computeWealthTax = (agent: Agent, planet: Planet, shipCapitalMarket: ShipCapitalMarket): number => {
-    if (wealthTaxDisabled) {
-        return 0;
-    }
     if (agent.id === planet.governmentId || agent.id === planet.recycler.id || agent.agentRole !== undefined) {
         return 0;
     }
     const netWorth = computeCompanyNetWorth(agent, planet, shipCapitalMarket);
-    const annualRate = wealthTaxAnnualRateOverride ?? WEALTH_TAX_ANNUAL_RATE;
-    return Math.max(0, netWorth - wealthTaxAllowance(planet)) * (annualRate / MONTHS_PER_YEAR);
+    return Math.max(0, netWorth - wealthTaxAllowance(planet)) * WEALTH_TAX_MONTHLY_RATE;
 };
 
 export const collectWealthTax = (gameState: GameState, planet: Planet): number => {
@@ -86,9 +66,6 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
 };
 
 export const governmentSupportTick = (gameState: GameState, planet: Planet): number => {
-    if (governmentSupportDisabled) {
-        return 0;
-    }
     const assets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
     if (!assets || assets.deposits <= 0) {
         return 0;

@@ -27,7 +27,6 @@ export {
 } from './automaticProductionScale/expansionUtils';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 export {
-    computeFacilityProfitThisTick,
     computeFacilitySignal,
     computeProfitMargin,
     estimateProfitAtScale,
@@ -42,7 +41,6 @@ import {
     CONTRACTION_INTEGRAL_DECAY,
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
-    CONTRACTION_LOWER_BOUND_FRACTION,
     DYNAMIC_EXPANSION_CAP_FRACTION,
     EXPANSION_INPUT_EFFICIENCY_MIN,
     EXPANSION_INTEGRAL_DECAY,
@@ -51,7 +49,6 @@ import {
     EXPANSION_PRICE_INFLATION_THRESHOLD,
     EXPANSION_WORKING_CAPITAL_TICKS,
     MAX_SCALE_CONTRACT_FRACTION,
-    PROFIT_SIGNAL_WEIGHT,
     SIGNAL_EMA_ALPHA,
 } from './automaticProductionScale/constants';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
@@ -69,27 +66,11 @@ import {
     type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-import { computeFacilityProfitThisTick, computeFacilitySignal } from './automaticProductionScale/signalComputation';
+import { computeFacilitySignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
-
-let profitSignalWeight = PROFIT_SIGNAL_WEIGHT;
-let contractionLowerBoundGuard = false;
-let expansionProfitGateEnabled = false;
-
-export function setProfitSignalWeight(weight: number): void {
-    profitSignalWeight = weight;
-}
-
-export function setContractionLowerBoundGuard(enabled: boolean): void {
-    contractionLowerBoundGuard = enabled;
-}
-
-export function setExpansionProfitGateEnabled(enabled: boolean): void {
-    expansionProfitGateEnabled = enabled;
-}
 
 function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
@@ -378,13 +359,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;
 
-            const profitThisTick = computeFacilityProfitThisTick(facility);
-            const revenueThisTick = facility.lastTickResults?.revenue ?? 0;
-            let profitSignal = 0;
-            if (profitSignalWeight > 0 && revenueThisTick > 0 && profitThisTick < 0) {
-                profitSignal = Math.max(-1, Math.min(0, profitSignalWeight * (profitThisTick / revenueThisTick)));
-            }
-
             const delta = computePidDelta(signal, state, facility.maxScale);
             const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
@@ -395,19 +369,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const marketContraction =
-                (contractionLowerBoundGuard
-                    ? facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9
-                    : facility.scale < facility.maxScale) && signal < 0
-                    ? Math.abs(signal)
-                    : 0;
-            const profitContraction =
-                (!contractionLowerBoundGuard ||
-                    facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9) &&
-                profitSignal < 0
-                    ? Math.abs(profitSignal)
-                    : 0;
-            const contractionStrength = Math.max(marketContraction, profitContraction);
+            const contractionStrength = facility.scale < facility.maxScale && signal < 0 ? Math.abs(signal) : 0;
             if (contractionStrength > 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
@@ -433,14 +395,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
             const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
             const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
-            const profitGatePassed = !expansionProfitGateEnabled || revenueThisTick <= 0 || profitThisTick >= 0;
             const expansionConditionsMet =
-                atMaxScale &&
-                hasNoActiveConstruction &&
-                integralAboveThreshold &&
-                efficiencyAbove85 &&
-                inputHealthy &&
-                profitGatePassed;
+                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
             let workersAvailable = false;
@@ -559,13 +515,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 logAutoscaleFacility(debugEntry);
             }
 
-            const lowerBoundReached = facility.scale <= facility.maxScale * CONTRACTION_LOWER_BOUND_FRACTION + 1e-9;
             if (
                 facility.construction === null &&
                 state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
-                (contractionLowerBoundGuard
-                    ? lowerBoundReached
-                    : facility.scale < facility.maxScale || profitSignal < 0)
+                facility.scale < facility.maxScale
             ) {
                 const contracted = processFacilityContraction(
                     planet,
