@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildVolumeFractionPoints, computeVolumeFractionDomain, volumeFractionAt } from './volumeFractionCurve';
+import {
+    buildPriceRatioTicks,
+    buildVolumeFractionPoints,
+    computeVolumeFractionDomain,
+    volumeFractionAt,
+} from './volumeFractionCurve';
 import type { VolumeFractionParams } from './volumeFractionCurve';
 
 const sellParams: VolumeFractionParams = {
@@ -94,5 +99,26 @@ describe('volumeFractionAt', () => {
     it('hits the midpoint at the inflection point', () => {
         const mid = (1 + sellParams.floorFraction) / 2;
         expect(volumeFractionAt('sell', sellParams, sellParams.inflection)).toBeCloseTo(mid, 3);
+    });
+});
+
+describe('buildPriceRatioTicks', () => {
+    it('reproduces the recharts fixed-domain ticks', () => {
+        expect(buildPriceRatioTicks(10)).toEqual([0, 3, 6, 10]);
+        expect(buildPriceRatioTicks(2)).toEqual([0, 0.5, 1, 1.5, 2]);
+    });
+
+    it('inserts the current ratio as an extra tick', () => {
+        expect(buildPriceRatioTicks(10, 6.25)).toEqual([0, 3, 6, 6.25, 10]);
+    });
+
+    it('does not duplicate a tick the current ratio already matches', () => {
+        expect(buildPriceRatioTicks(10, 3)).toEqual([0, 3, 6, 10]);
+    });
+
+    it('ignores current ratios outside the domain', () => {
+        expect(buildPriceRatioTicks(10, 0)).toEqual([0, 3, 6, 10]);
+        expect(buildPriceRatioTicks(10, 10)).toEqual([0, 3, 6, 10]);
+        expect(buildPriceRatioTicks(10, 12)).toEqual([0, 3, 6, 10]);
     });
 });

@@ -22,14 +22,17 @@ describe('VolumeFractionCurve', () => {
             <VolumeFractionCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
         );
         expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(2);
-        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(2);
-        expect(screen.getByText(/6.25 → 97%/)).toBeInTheDocument();
+        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(1);
+        const priceTick = screen.getByText('6.25');
+        expect(priceTick).toBeInTheDocument();
+        expect(priceTick.closest('text')?.getAttribute('fill')).toBe('#fbbf24');
     });
 
     it('renders no market price marker without currentRatio', () => {
         const { container } = render(<VolumeFractionCurve mode='sell' ghost={params} active={params} />);
         expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(0);
         expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(0);
+        expect(screen.queryByText('6.25')).not.toBeInTheDocument();
     });
 
     it('places the market price dot inside the plot area at the ratio position', () => {

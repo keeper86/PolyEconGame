@@ -9,16 +9,23 @@ import {
     ReferenceDot,
     ReferenceLine,
     ResponsiveContainer,
+    Text,
     Tooltip,
     XAxis,
     YAxis,
 } from 'recharts';
-import { buildVolumeFractionPoints, computeVolumeFractionDomain, volumeFractionAt } from './volumeFractionCurve';
+import {
+    buildPriceRatioTicks,
+    buildVolumeFractionPoints,
+    computeVolumeFractionDomain,
+    volumeFractionAt,
+} from './volumeFractionCurve';
 import type { VolumeFractionParams } from './volumeFractionCurve';
 
 const GHOST_COLOR = '#94a3b8';
 const ACTIVE_COLOR = '#38bdf8';
 const CURRENT_COLOR = '#fbbf24';
+const TICK_COLOR = '#94a3b8';
 const SAMPLE_COUNT = 100;
 
 function percent(v: number): string {
@@ -51,6 +58,48 @@ function CurveTooltip({ active, payload }: TooltipProps<number, string>) {
     );
 }
 
+function PriceAxisTick({
+    x,
+    y,
+    payload,
+    index,
+    tickFormatter,
+    textAnchor,
+    verticalAnchor,
+    currentRatio,
+}: {
+    x?: number;
+    y?: number;
+    payload?: { value: number };
+    index?: number;
+    tickFormatter?: (value: number, index: number) => string;
+    textAnchor?: 'start' | 'middle' | 'end';
+    verticalAnchor?: 'start' | 'middle' | 'end';
+    currentRatio?: number;
+}): React.ReactElement | null {
+    if (x === undefined || y === undefined || payload === undefined) {
+        return null;
+    }
+    const isMarketPrice = currentRatio !== undefined && Math.abs(payload.value - currentRatio) < 1e-6;
+    const text = isMarketPrice
+        ? currentRatio.toFixed(2)
+        : tickFormatter
+          ? tickFormatter(payload.value, index ?? 0)
+          : String(payload.value);
+    return (
+        <Text
+            x={x}
+            y={y}
+            textAnchor={textAnchor ?? 'middle'}
+            verticalAnchor={verticalAnchor ?? 'start'}
+            fontSize={10}
+            fill={isMarketPrice ? CURRENT_COLOR : TICK_COLOR}
+        >
+            {text}
+        </Text>
+    );
+}
+
 export function VolumeFractionCurve({
     mode,
     ghost,
@@ -73,6 +122,8 @@ export function VolumeFractionCurve({
     );
 
     const currentY = currentRatio !== undefined ? volumeFractionAt(mode, ghost, currentRatio) : undefined;
+
+    const xTicks = useMemo(() => buildPriceRatioTicks(domainMax, currentRatio), [domainMax, currentRatio]);
 
     return (
         <div className='py-1'>
@@ -97,12 +148,28 @@ export function VolumeFractionCurve({
             </div>
             <ResponsiveContainer width='100%' height={170}>
                 <LineChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-                    <CartesianGrid strokeDasharray='3 3' stroke='#334155' />
+                    <CartesianGrid
+                        strokeDasharray='3 3'
+                        stroke='#334155'
+                        verticalCoordinatesGenerator={({ xAxis }) => {
+                            if (!xAxis) {
+                                return [];
+                            }
+                            const priceCoord = currentRatio !== undefined ? xAxis.scale(currentRatio) : undefined;
+                            return xAxis.ticks
+                                .map((value: number) => xAxis.scale(value))
+                                .filter(
+                                    (coord: number) => priceCoord === undefined || Math.abs(coord - priceCoord) > 0.5,
+                                );
+                        }}
+                    />
                     <XAxis
                         dataKey='ratio'
                         type='number'
                         domain={[0, domainMax]}
-                        tick={{ fontSize: 10, fill: '#94a3b8' }}
+                        ticks={xTicks}
+                        interval={0}
+                        tick={<PriceAxisTick currentRatio={currentRatio} />}
                         tickFormatter={(v) => v.toFixed(1)}
                         axisLine={false}
                         tickLine={false}
