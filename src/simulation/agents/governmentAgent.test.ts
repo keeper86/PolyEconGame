@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { RECYCLER_BASE_RECOVERY_EFFICIENCY, WEALTH_TAX_ALLOWANCE, WEALTH_TAX_MONTHLY_RATE } from '../constants';
+import { GOVERNMENT_OPERATING_BUFFER, RECYCLER_BASE_RECOVERY_EFFICIENCY, TICKS_PER_MONTH, WEALTH_TAX_ALLOWANCE, WEALTH_TAX_MONTHLY_RATE } from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
 import {
@@ -164,56 +164,66 @@ describe('governmentTick', () => {
 });
 
 describe('governmentSupportTick', () => {
-    function makeNeedyPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
+    function makeUnemployedPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
         const planet = makePlanet({ governmentId: gov.id });
         const cat = planet.population.demography[70].unoccupied.none;
         cat.total = 1000;
         cat.wealth = { mean: 0, variance: 0 };
-        cat.services.grocery.buffer = 0;
         return planet;
     }
 
-    it('credits dependents with needs from the stash and draws it down', () => {
+    it('credits the unemployed with the insurance and funds it via the credit line', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeNeedyPlanet(gov);
-        gov.assets[PLANET_ID]!.deposits = 10_000_000;
+        const planet = makeUnemployedPlanet(gov);
         const gameState = makeGameState([planet], [gov, planet.recycler]);
         const householdBefore = planet.bank.householdDeposits;
+        const depositsBefore = planet.bank.deposits;
+        const loansBefore = planet.bank.loans;
         const cat = planet.population.demography[70].unoccupied.none;
         const wealthBefore = cat.total * cat.wealth.mean;
+        const govDepositsBefore = gov.assets[PLANET_ID]!.deposits;
 
         const spent = governmentSupportTick(gameState, planet);
 
         expect(spent).toBeGreaterThan(0);
-        expect(spent).toBeLessThanOrEqual(10_000_000);
-        expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(10_000_000 - spent);
+        expect(spent).toBeCloseTo(1000 * 0.85 * (planet.wagePerEdu.none ?? 1) / TICKS_PER_MONTH);
+        expect(gov.assets[PLANET_ID]!.deposits).toBe(govDepositsBefore);
+        expect(planet.governmentDebt).toBeCloseTo(spent);
+        expect(planet.bank.loans).toBeCloseTo(loansBefore + spent);
+        expect(planet.bank.deposits).toBeCloseTo(depositsBefore + spent);
         expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
         expect(cat.total * cat.wealth.mean).toBeCloseTo(wealthBefore + spent);
         expect(planet.governmentSupportVolume).toBeCloseTo(spent);
     });
 
-    it('keeps the excess in the stash when the budget exceeds the needs', () => {
+    it('keeps the government operating cash untouched', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeNeedyPlanet(gov);
+        const planet = makeUnemployedPlanet(gov);
         gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
         const spent = governmentSupportTick(gameState, planet);
 
         expect(spent).toBeGreaterThan(0);
-        expect(gov.assets[PLANET_ID]!.deposits).toBeGreaterThan(90_000_000_000);
+        expect(gov.assets[PLANET_ID]!.deposits).toBe(100_000_000_000);
+        expect(planet.governmentDebt).toBeCloseTo(spent);
     });
 
-    it('does nothing without a stash', () => {
+    it('repays the debt from the operating surplus above the buffer', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
-        const planet = makeNeedyPlanet(gov);
+        const planet = makeUnemployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = GOVERNMENT_OPERATING_BUFFER + 20_000_000;
+        planet.governmentDebt = 50_000_000;
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
-        expect(governmentSupportTick(gameState, planet)).toBe(0);
-        expect(planet.bank.householdDeposits).toBe(0);
+        governmentTick(gameState, planet, gov);
+
+        expect(planet.governmentDebt).toBeLessThan(50_000_000);
+        expect(planet.governmentDebt).toBeGreaterThan(0);
+        expect(gov.assets[PLANET_ID]!.deposits).toBe(GOVERNMENT_OPERATING_BUFFER);
     });
 
-    it('does nothing when nobody has unmet needs', () => {
+    it('does nothing when nobody is unemployed', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const planet = makePlanet({ governmentId: gov.id });
         gov.assets[PLANET_ID]!.deposits = 10_000_000;

@@ -89,6 +89,18 @@ export const BANKRUPTCY_ASSET_FRACTION = 0.975;
 export const WEALTH_TAX_ANNUAL_RATE = 0.01;
 export const WEALTH_TAX_MONTHLY_RATE = WEALTH_TAX_ANNUAL_RATE / MONTHS_PER_YEAR;
 export const WEALTH_TAX_ALLOWANCE = 1_000_000_000;
+export const GOVERNMENT_OPERATING_BUFFER = 1_000_000_000;
+export const UNEMPLOYMENT_INSURANCE_RATE_EDUCATION = 0.66;
+export const UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED = 0.85;
+export const UNEMPLOYMENT_INSURANCE_RATE_UNABLE = 0.75;
+export const GOVERNMENT_SUPPORT_EMA_MONTHS = 12;
+
+let governmentSupportEmaMonthsOverride: number | undefined = undefined;
+export const setGovernmentSupportEmaMonths = (months: number): void => {
+    governmentSupportEmaMonthsOverride = months;
+};
+export const governmentSupportEmaMonths = (): number =>
+    governmentSupportEmaMonthsOverride ?? GOVERNMENT_SUPPORT_EMA_MONTHS;
 export const CONSTRUCTION_VALUATION_PRICE_CAP = 2;
 
 export const MIN_WAGE = 1.0;
@@ -135,7 +147,7 @@ export const MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE = 0.01;
 export const FACILITY_MAINTENANCE_DECREASE_PER_YEAR = 0.5;
 export const FACILITY_MAINTENANCE_REPAIR_PER_TICK = 0.05;
 export const FACILITY_CONDITION_EFFICIENCY_EXPONENT = 3;
-export const FACILITY_RESTORATION_PER_TICK = MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 10;
+export const FACILITY_RESTORATION_PER_TICK = MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE;
 
 export const RESTORATION_COST_FACTOR_SIGMOID_STEEPNESS = 12;
 

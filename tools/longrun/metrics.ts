@@ -1105,6 +1105,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthTotal = wealthWeighted;
     const redistributedTotal = planet.governmentSupportVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
+    const governmentDebt = planet.governmentDebt;
+    const governmentDeposits =
+        gameState.agents.get(planet.governmentId)?.assets[planet.id]?.deposits ?? 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
 
     const companyNetWorthMin = companyNetWorths.length > 0 ? Math.min(...companyNetWorths) : 0;
@@ -1223,6 +1226,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTotal,
         redistributedTotal,
         redistributedPerCapita,
+        governmentDebt,
+        governmentDeposits,
         foodPrice,
         wealthToFoodPrice: foodPrice > 0 ? meanWealth / foodPrice : 0,
         waterPrice: priceOf(planet, waterResourceType.name),
@@ -1573,6 +1578,8 @@ export const METRIC_KEYS: string[] = [
     'wealthTotal',
     'redistributedTotal',
     'redistributedPerCapita',
+    'governmentDebt',
+    'governmentDeposits',
     'foodPrice',
     'wealthToFoodPrice',
     'waterPrice',

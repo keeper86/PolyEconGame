@@ -248,6 +248,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
+        governmentDebt: 0,
         resources: {
             [arableLandResourceType.name]: {
                 pool: makePool({

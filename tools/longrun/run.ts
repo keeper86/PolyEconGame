@@ -4,7 +4,8 @@ import path from 'node:path';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setBankruptcyEnabled, setLoanInterestRatePerYear } from '../../src/simulation/financial/financialTick';
-import { setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentOperatingBuffer, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentSupportEmaMonths } from '../../src/simulation/constants';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
@@ -198,14 +199,6 @@ function main(): void {
     if (slackArg !== undefined) {
         scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
     }
-    const govLoanArg = arg('govStarterLoan');
-    if (govLoanArg !== undefined) {
-        scenario.world = { ...scenario.world, govStarterLoanBillions: Number(govLoanArg) };
-    }
-    const govLoanYearsArg = arg('govLoanYears');
-    if (govLoanYearsArg !== undefined) {
-        scenario.world = { ...scenario.world, govLoanYears: Number(govLoanYearsArg) };
-    }
     const constructionScaleArg = arg('constructionScaleFactor');
     if (constructionScaleArg !== undefined) {
         scenario.world = { ...scenario.world, constructionScaleFactor: Number(constructionScaleArg) };
@@ -233,6 +226,14 @@ function main(): void {
     const wealthTaxAllowanceArg = arg('wealthTaxAllowance');
     if (wealthTaxAllowanceArg !== undefined) {
         setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
+    }
+    const govBufferArg = arg('govBuffer');
+    if (govBufferArg !== undefined) {
+        setGovernmentOperatingBuffer(Number(govBufferArg));
+    }
+    const govEmaArg = arg('govEmaMonths');
+    if (govEmaArg !== undefined) {
+        setGovernmentSupportEmaMonths(Number(govEmaArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

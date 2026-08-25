@@ -226,23 +226,6 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
     planet.loanInterestCollected += collected;
 }
 
-export function govStarterLoanDisbursementTick(gameState: GameState, planet: Planet): void {
-    const remaining = planet.govStarterLoanRemaining ?? 0;
-    const rate = planet.govStarterLoanPerTick ?? 0;
-    if (remaining <= 0 || rate <= 0) {
-        return;
-    }
-    const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
-    if (!govAssets) {
-        return;
-    }
-    const disbursement = Math.min(rate, remaining);
-    govAssets.deposits += disbursement;
-    planet.bank.deposits += disbursement;
-    planet.bank.loans += disbursement;
-    planet.govStarterLoanRemaining = remaining - disbursement;
-}
-
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     const bank = planet.bank;
 

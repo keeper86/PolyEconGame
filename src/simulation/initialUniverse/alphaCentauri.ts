@@ -67,6 +67,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
+        governmentDebt: 0,
         resources: {
             [arableLandResourceType.name]: {
                 pool: makePool({ type: arableLandResourceType, quantity: TOTAL_ARABLE, renewable: true }),

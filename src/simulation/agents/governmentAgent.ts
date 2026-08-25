@@ -1,17 +1,41 @@
-import { WEALTH_TAX_ALLOWANCE, WEALTH_TAX_MONTHLY_RATE } from '../constants';
+import {
+    GOVERNMENT_OPERATING_BUFFER,
+    MIN_WAGE,
+    TICKS_PER_MONTH,
+    UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
+    UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
+    UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED,
+    WEALTH_TAX_ALLOWANCE,
+    WEALTH_TAX_MONTHLY_RATE,
+} from '../constants';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
 import { totalOutstandingLoans } from '../financial/loanTypes';
+import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
-import { governmentSupport } from '../market/intergenerationalTransfers';
+import { forEachPopulationCohort, type Occupation } from '../population/population';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
+const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
+    education: UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
+    unoccupied: UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED,
+    unableToWork: UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
+};
+
 let wealthTaxAllowanceOverride: number | undefined = undefined;
+let governmentOperatingBufferOverride: number | undefined = undefined;
 
 export function setWealthTaxAllowance(allowance: number): void {
     wealthTaxAllowanceOverride = allowance;
 }
+
+export function setGovernmentOperatingBuffer(buffer: number): void {
+    governmentOperatingBufferOverride = buffer;
+}
+
+export const governmentOperatingBuffer = (): number =>
+    governmentOperatingBufferOverride ?? GOVERNMENT_OPERATING_BUFFER;
 
 export const wealthTaxAllowance = (planet: Planet): number => {
     const base = wealthTaxAllowanceOverride ?? WEALTH_TAX_ALLOWANCE;
@@ -70,19 +94,58 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
         throw new Error(`Tick called on non-government agent ${agent.id} of planet ${planet.id}`);
     }
     collectWealthTax(gameState, planet);
+    const assets = agent.assets[planet.id];
+    if (!assets) {
+        return;
+    }
+    if (planet.governmentDebt > 0 && assets.deposits > governmentOperatingBuffer()) {
+        const repayment = Math.min(planet.governmentDebt, assets.deposits - governmentOperatingBuffer());
+        planet.governmentDebt -= repayment;
+        planet.bank.loans -= repayment;
+        planet.bank.deposits -= repayment;
+        assets.deposits -= repayment;
+    }
 };
 
 export const governmentSupportTick = (gameState: GameState, planet: Planet): number => {
     const assets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
-    if (!assets || assets.deposits <= 0) {
+    if (!assets) {
         return 0;
     }
-    const spent = governmentSupport(planet, assets.deposits);
-    if (spent <= 0) {
+    const base = Math.max(planet.wagePerEdu.none ?? 0, MIN_WAGE);
+    if (base <= 0) {
         return 0;
     }
-    assets.deposits -= spent;
-    planet.bank.householdDeposits += spent;
-    planet.governmentSupportVolume += spent;
-    return spent;
+    let total = 0;
+    for (let age = 0; age < planet.population.demography.length; age++) {
+        forEachPopulationCohort(planet.population.demography[age], (category, occ, edu) => {
+            if (category.total <= 0) {
+                return;
+            }
+            const rate = INSURANCE_RATES[occ];
+            if (!rate) {
+                return;
+            }
+            const monthlyInsurance = rate * base;
+            if (category.wealth.mean >= monthlyInsurance) {
+                return;
+            }
+            total += distributeWealthChangeTracked(
+                planet.population.demography,
+                age,
+                occ,
+                edu,
+                monthlyInsurance / TICKS_PER_MONTH,
+            );
+        });
+    }
+    if (total <= 0) {
+        return 0;
+    }
+    planet.bank.householdDeposits += total;
+    planet.bank.deposits += total;
+    planet.bank.loans += total;
+    planet.governmentSupportVolume += total;
+    planet.governmentDebt += total;
+    return total;
 };

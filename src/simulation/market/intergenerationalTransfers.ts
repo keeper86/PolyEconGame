@@ -1,9 +1,11 @@
 import {
     GENERATION_GAP,
     GENERATION_KERNEL_N,
+    governmentSupportEmaMonths,
     MIN_EMPLOYABLE_AGE,
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     SUPPORT_WEIGHT_SIGMA,
+    TICKS_PER_MONTH,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';
@@ -538,18 +540,29 @@ export function governmentSupport(planet: Planet, budget: number): number {
         return 0;
     }
     const refIncome = referenceMonthlyIncome(planet);
+    const anchoredPrices: Record<string, number> =
+        planet._govSupportAnchoredPrices ?? (planet._govSupportAnchoredPrices = {});
+    const alpha = 1 / (governmentSupportEmaMonths() * TICKS_PER_MONTH);
+    for (const key of Object.keys(planet.marketPrices)) {
+        const current = planet.marketPrices[key] ?? 0;
+        if (current <= 0) {
+            continue;
+        }
+        const prior = anchoredPrices[key] ?? current;
+        anchoredPrices[key] = prior + alpha * (current - prior);
+    }
     let remainingBudget = budget;
     let cumulativeMandatoryCost = 0;
     let totalSpent = 0;
 
     for (const tier of SERVICE_TIERS) {
         const tierCostPerTick =
-            computeTierCost(planet.marketPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
+            computeTierCost(anchoredPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
         const cache = buildAggregateCache(demography, refIncome);
         const tierNeeds = computeDependentNeedsForTier(
             cache,
             tier.services,
-            planet.marketPrices,
+            anchoredPrices,
             tier.coverageFraction,
             cumulativeMandatoryCost,
             refIncome,
@@ -571,7 +584,7 @@ export function governmentSupport(planet: Planet, budget: number): number {
                         age,
                         need,
                         tier.services,
-                        planet.marketPrices,
+                        anchoredPrices,
                         tier.coverageFraction,
                         cumulativeMandatoryCost,
                         refIncome,

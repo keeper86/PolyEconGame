@@ -65,8 +65,6 @@ export interface BenchmarkWorldConfig {
     maintenanceBufferTicks?: number;
     constructionScaleFactor?: number;
     buildChainScaleFactor?: number;
-    govStarterLoanBillions?: number;
-    govLoanYears?: number;
 }
 
 interface FacilityTarget {
@@ -324,6 +322,7 @@ export function buildBenchmarkWorld(
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
         governmentSupportVolume: 0,
+        governmentDebt: 0,
         rolloverDenials: 0,
         debtWriteOffs: 0,
         bankruptcies: 0,
@@ -365,14 +364,6 @@ export function buildBenchmarkWorld(
 
     const recycler = createRecyclerAgent(planetBase.id, planetBase.name);
     const planet: Planet = { ...planetBase, recycler };
-
-    const govStarterLoanBillions = config.govStarterLoanBillions ?? 0;
-    const govLoanYears = config.govLoanYears ?? 10;
-    if (govStarterLoanBillions > 0) {
-        const amount = govStarterLoanBillions * 1e9;
-        planet.govStarterLoanRemaining = amount;
-        planet.govStarterLoanPerTick = amount / (govLoanYears * TICKS_PER_YEAR);
-    }
 
     const allAgents = [...agents, recycler];
 

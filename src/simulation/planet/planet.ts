@@ -155,8 +155,9 @@ export type Planet = {
     _gdp?: number;
     _smoothedReachableVacancyWage?: PerEducation;
 
-    govStarterLoanRemaining?: number;
-    govStarterLoanPerTick?: number;
+    _govSupportAnchoredPrices?: Record<string, number>;
+
+    governmentDebt: number;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
