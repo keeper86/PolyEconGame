@@ -203,6 +203,9 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
     const ratePerTick = loanInterestRatePerYear / TICKS_PER_YEAR;
     let collected = 0;
     agents.forEach((agent) => {
+        if (agent.id === planet.governmentId) {
+            return;
+        }
         const assets = agent.assets[planet.id];
         if (!assets) {
             return;
@@ -221,6 +224,23 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
         collected += debit;
     });
     planet.loanInterestCollected += collected;
+}
+
+export function govStarterLoanDisbursementTick(gameState: GameState, planet: Planet): void {
+    const remaining = planet.govStarterLoanRemaining ?? 0;
+    const rate = planet.govStarterLoanPerTick ?? 0;
+    if (remaining <= 0 || rate <= 0) {
+        return;
+    }
+    const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+    if (!govAssets) {
+        return;
+    }
+    const disbursement = Math.min(rate, remaining);
+    govAssets.deposits += disbursement;
+    planet.bank.deposits += disbursement;
+    planet.bank.loans += disbursement;
+    planet.govStarterLoanRemaining = remaining - disbursement;
 }
 
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {

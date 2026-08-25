@@ -154,6 +154,9 @@ export type Planet = {
     _freeResources?: { name: string; freeCapacity: number }[];
     _gdp?: number;
     _smoothedReachableVacancyWage?: PerEducation;
+
+    govStarterLoanRemaining?: number;
+    govStarterLoanPerTick?: number;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
@@ -182,6 +185,7 @@ export interface AutomatedPricingConfig {
     askVolumeFloorFraction?: number;
     askPriceSensitivity?: number;
     automatedCostFloorBuffer?: number;
+    costSpringStrength?: number;
 
     inputBufferTargetTicks?: number;
     targetFillRate?: number;
@@ -194,8 +198,9 @@ export type SellDiagnostics = {
     sellThroughRate: number;
     smoothedSellThrough: number;
     targetSellThrough: number;
-    effectiveTargetSellThrough: number;
     baseFactor: number;
+    costSpringDeviation: number;
+    overDeviation: number;
     netFactor: number;
     oldPrice: number;
     newPrice: number;
@@ -203,8 +208,6 @@ export type SellDiagnostics = {
     marketPrice: number;
     effectiveQuantity: number;
     rawRetainment: number;
-    volumeFraction: number;
-    priceCostRatio: number;
 };
 
 export type BuyDiagnostics = {
@@ -212,6 +215,8 @@ export type BuyDiagnostics = {
     smoothedFillRate: number;
     targetFillRate: number;
     baseFactor: number;
+    ceilingPrice: number;
+    ceilingSpring: number;
     netFactor: number;
     oldBidPrice: number;
     newBidPrice: number;
@@ -219,8 +224,6 @@ export type BuyDiagnostics = {
     marketPrice: number;
     shortfall: number;
     storageTarget: number;
-    volumeFraction: number;
-    priceCostRatio: number;
 };
 
 export type AgentMarketOfferState = {

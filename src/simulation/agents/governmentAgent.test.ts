@@ -17,6 +17,7 @@ import {
     computeWealthTax,
     governmentSupportTick,
     governmentTick,
+    setWealthTaxAllowance,
     wealthTaxAllowance,
 } from './governmentAgent';
 
@@ -54,6 +55,19 @@ describe('wealthTaxAllowance', () => {
 
         planet.marketPrices[constructionServiceResourceType.name] = 0.5;
         expect(wealthTaxAllowance(planet)).toBe(WEALTH_TAX_ALLOWANCE);
+    });
+
+    it('respects an override allowance, still scaling with construction inflation', () => {
+        setWealthTaxAllowance(100_000_000);
+        try {
+            const { planet } = setupWorld();
+            expect(wealthTaxAllowance(planet)).toBe(100_000_000);
+
+            planet.marketPrices[constructionServiceResourceType.name] = 21;
+            expect(wealthTaxAllowance(planet)).toBe(200_000_000);
+        } finally {
+            setWealthTaxAllowance(WEALTH_TAX_ALLOWANCE);
+        }
     });
 });
 

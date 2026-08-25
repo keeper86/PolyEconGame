@@ -33,6 +33,7 @@ import {
     waterSourceResourceType,
 } from '../../src/simulation/planet/landBoundResources';
 import type { Agent, AutomatedPricingConfig, GameState, Planet } from '../../src/simulation/planet/planet';
+import { TICKS_PER_YEAR } from '../../src/simulation/constants';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
@@ -62,6 +63,7 @@ export interface BenchmarkWorldConfig {
     solverSeedSlack?: number;
     maintenanceScaleFactor?: number;
     maintenanceBufferTicks?: number;
+    govStarterLoanBillions?: number;
 }
 
 interface FacilityTarget {
@@ -333,6 +335,13 @@ export function buildBenchmarkWorld(
 
     const recycler = createRecyclerAgent(planetBase.id, planetBase.name);
     const planet: Planet = { ...planetBase, recycler };
+
+    const govStarterLoanBillions = config.govStarterLoanBillions ?? 0;
+    if (govStarterLoanBillions > 0) {
+        const amount = govStarterLoanBillions * 1e9;
+        planet.govStarterLoanRemaining = amount;
+        planet.govStarterLoanPerTick = amount / (10 * TICKS_PER_YEAR);
+    }
 
     const allAgents = [...agents, recycler];
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { Resource, ResourceEntry } from './claims';
-import { queryClaimedResource, extractFromClaimedResource } from './claims';
+import { computeLeaseClaimUpfrontCost, queryClaimedResource, extractFromClaimedResource, setNonRenewableClaimCostMultiplier } from './claims';
 import type { Planet, Agent } from './planet';
 import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { makeAgent } from '../utils/testHelper';
@@ -93,6 +93,25 @@ describe('claimed resource helpers', () => {
         planet = makePlanetWithResources();
         tenantA = { id: 'tenant-a' } as Agent;
         tenantB = { id: 'tenant-b' } as Agent;
+        setNonRenewableClaimCostMultiplier(1);
+    });
+
+    it('computeLeaseClaimUpfrontCost charges renewables a month upfront and non-renewables a one-time cost', () => {
+        const renewablePool = makePool({ type: waterSourceResourceType, quantity: 1000, renewable: true });
+        const nonRenewablePool = makePool({ type: arableLandResourceType, quantity: 1000, renewable: false });
+
+        expect(computeLeaseClaimUpfrontCost(renewablePool, 100)).toBe(100 * 30);
+        expect(computeLeaseClaimUpfrontCost(nonRenewablePool, 100)).toBe(100);
+    });
+
+    it('computeLeaseClaimUpfrontCost scales non-renewable cost by the configured multiplier', () => {
+        const nonRenewablePool = makePool({ type: arableLandResourceType, quantity: 1000, renewable: false });
+
+        setNonRenewableClaimCostMultiplier(10);
+        expect(computeLeaseClaimUpfrontCost(nonRenewablePool, 100)).toBe(1000);
+        // renewables are unaffected by the multiplier
+        const renewablePool = makePool({ type: waterSourceResourceType, quantity: 1000, renewable: true });
+        expect(computeLeaseClaimUpfrontCost(renewablePool, 100)).toBe(100 * 30);
     });
 
     it('queryClaimedResource returns sum of quantities for agent tenant', () => {

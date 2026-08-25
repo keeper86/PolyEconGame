@@ -2,8 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    BID_PRICE_SENSITIVITY,
-    BID_VOLUME_FLOOR_FRACTION,
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
@@ -45,14 +43,6 @@ import { storageDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
-
-const BUY_VOLUME_FRACTION_AT_COST = buyVolumeFraction(
-    1,
-    1,
-    BID_PRICE_SENSITIVITY,
-    BID_VOLUME_FLOOR_FRACTION,
-    BID_OFFER_MAX_COST_MULTIPLIER,
-);
 
 function makePlanetWithPrice(prices: Record<string, number> = {}) {
     return makePlanet({ marketPrices: prices });
@@ -378,101 +368,92 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
 // ── Sell-side config override tests ──────────────────────────────────────────
 
-describe('adjustOfferPrice — adaptive target sell-through', () => {
+describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
     const goodsResource: Resource = {
-        name: 'TestGoodsAdaptive',
+        name: 'TestGoodsSpring',
         form: 'solid',
         level: 'refined',
         volumePerQuantity: 1,
         massPerQuantity: 1,
     };
 
-    it('measures sell-through against the volume-adjusted (withheld) quantity', () => {
+    it('measures sell-through against the full surplus (no quantity restriction)', () => {
         const offer = {
             resource: goodsResource,
             offerPrice: 10,
-            lastSold: 4,
+            lastSold: 30,
             autoConfig: {
                 automatedCostFloorBuffer: 2,
-                askPriceSensitivity: 1,
-                askVolumeFloorFraction: 0,
+                costSpringStrength: 0.05,
                 targetSellThrough: 0.6,
             },
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 20);
+        // price 10 at costFloor 2 is above the buffer → spring inactive
+        adjustOfferPrice(offer, 100, 10, 2);
 
-        // ratio 0.5, buffer 2, width 1 → volumeFraction = 1/(1+e^1.5) ≈ 0.1824
-        const volumeFraction = offer.diagnostics!.volumeFraction;
-        expect(volumeFraction).toBeCloseTo(0.1824, 3);
-        // effectiveQuantity = 100 × volumeFraction; sell-through measured against it, not the raw inventory
-        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(4 / (100 * volumeFraction), 10);
-        expect(offer.diagnostics!.sellThroughRate).toBeGreaterThan(4 / 100);
+        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(0.3, 10);
+        expect(offer.diagnostics!.effectiveQuantity).toBeCloseTo(100, 10);
+        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
     });
 
-    it('scales the target sell-through by the volume factor (price pressure while withholding)', () => {
+    it('pushes the price up below the buffer (soft minAsk), even at a full sell-through', () => {
         const offer = {
             resource: goodsResource,
             offerPrice: 10,
-            lastSold: 4,
+            lastSold: 60,
             autoConfig: {
                 automatedCostFloorBuffer: 2,
-                askPriceSensitivity: 1,
-                askVolumeFloorFraction: 0,
+                costSpringStrength: 0.05,
                 targetSellThrough: 0.6,
             },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 20);
 
-        const volumeFraction = offer.diagnostics!.volumeFraction;
-        const adaptiveTarget = offer.diagnostics!.effectiveTargetSellThrough;
-        expect(adaptiveTarget).toBeCloseTo(0.6 * volumeFraction, 10);
-        // raw sell-through (≈0.22) is below the base target 0.6 but above the adaptive target → price rises
-        expect(offer.diagnostics!.sellThroughRate).toBeLessThan(0.6);
-        expect(offer.diagnostics!.sellThroughRate).toBeGreaterThan(adaptiveTarget);
-        expect(offer.diagnostics!.targetSellThrough).toBe(0.6);
+        // price/cost = 0.5, brakeZoneTop = 40 → deviation = sqrt(40/10 - 1) = sqrt(3)
+        const deviation = Math.sqrt(3);
+        expect(offer.diagnostics!.costSpringDeviation).toBeCloseTo(deviation, 10);
+        // sell-through 0.6 equals the target → factor = 1, spring alone pushes the price up
+        expect(offer.diagnostics!.baseFactor).toBeCloseTo(1, 10);
+        expect(offer.offerPrice).toBeCloseTo(10 * (1 + 0.05 * deviation), 10);
         expect(offer.offerPrice).toBeGreaterThan(10);
     });
 
-    it('keeps the base target when offering the full surplus (no withholding)', () => {
+    it('is inactive at or above the buffer, so sell-through feedback governs', () => {
         const offer = {
             resource: goodsResource,
             offerPrice: 10,
-            lastSold: 100,
+            lastSold: 40,
             autoConfig: {
                 automatedCostFloorBuffer: 2,
-                askPriceSensitivity: 1,
-                askVolumeFloorFraction: 1,
+                costSpringStrength: 0.05,
                 targetSellThrough: 0.6,
             },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
 
-        // ratio 5 above the buffer → volumeFraction = 1 → effective target equals the base target
-        expect(offer.diagnostics!.volumeFraction).toBe(1);
-        expect(offer.diagnostics!.effectiveTargetSellThrough).toBeCloseTo(0.6, 10);
-        // full sell-through → price adjusts up by the full maxUp
-        expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_UP, 5);
+        // price/cost = 5 ≥ buffer → deviation = 0 → netFactor is exactly the sell-through factor
+        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
+        expect(offer.diagnostics!.netFactor).toBeCloseTo(offer.diagnostics!.baseFactor, 10);
+        // sell-through 0.4 < target 0.6 → price falls
+        expect(offer.offerPrice).toBeLessThan(10);
     });
 
-    it('still lowers the price when even the withheld offering does not clear', () => {
+    it('still lowers the price when the surplus does not clear and no spring applies', () => {
         const offer = {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 0,
             autoConfig: {
                 automatedCostFloorBuffer: 2,
-                askPriceSensitivity: 1,
-                askVolumeFloorFraction: 0,
+                costSpringStrength: 0.05,
                 targetSellThrough: 0.6,
             },
         } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 20);
+        adjustOfferPrice(offer, 100, 10, 2);
 
-        const adaptiveTarget = offer.diagnostics!.effectiveTargetSellThrough;
-        expect(adaptiveTarget).toBeCloseTo(0.6 * offer.diagnostics!.volumeFraction, 10);
-        expect(adaptiveTarget).toBeGreaterThan(0);
         expect(offer.diagnostics!.sellThroughRate).toBe(0);
-        // sold 0 < adaptive target → factor = maxDown → price falls
+        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
+        // sold 0 < target → factor = maxDown → price falls
         expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
     });
 });
@@ -751,7 +732,8 @@ describe('automaticPricing — sell-side pricing feedback', () => {
         const inputCost = NEEDS_QTY * INPUT_PRICE;
         const wageCost = DEFAULT_WAGE_PER_EDU;
         const costPerUnit = (inputCost + wageCost) / PRODUCES_QTY;
-        const PRIOR_PRICE = Math.max(PRICE_FLOOR, costPerUnit);
+        // well above the personality's cost floor buffer (~2.0) → cost spring inactive
+        const PRIOR_PRICE = 4 * Math.max(PRICE_FLOOR, costPerUnit);
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 1 });
         facility.needs = [{ resource: produceResourceType, quantity: NEEDS_QTY }];
@@ -785,7 +767,7 @@ describe('automaticPricing — sell-side pricing feedback', () => {
         automaticPricing(new Map([['co', agent]]), planet);
 
         const newPrice = agent.assets[PLANET_ID].market!.sell[clothingResourceType.name]!.offerPrice!;
-        // zero sell-through → ask falls to the maximum downward adjustment (no cost spring)
+        // zero sell-through above the buffer → ask falls to the maximum downward adjustment
         expect(newPrice).toBeCloseTo(PRIOR_PRICE * PRICE_ADJUST_MAX_DOWN, 5);
     });
 
@@ -870,12 +852,9 @@ describe('automaticPricing — facility maintenance demand', () => {
         const expectedRate =
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(
-            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
-            10,
-        );
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
-    it('scales maintenance demand to the bid volume floor when price is far above cost', () => {
+    it('keeps the full bid quantity even when price is far above cost, anchored by the ceiling spring', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -888,6 +867,17 @@ describe('automaticPricing — facility maintenance demand', () => {
         agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].storageFacility.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
+        // prior bid at the high market price → the ceiling spring has room to pull it down
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [maintenanceServiceResourceType.name]: {
+                    resource: maintenanceServiceResourceType,
+                    automated: true,
+                    bidPrice: 100,
+                },
+            },
+        };
 
         automaticPricing(new Map([['co', agent]]), planet);
 
@@ -896,9 +886,13 @@ describe('automaticPricing — facility maintenance demand', () => {
         const expectedRate =
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
-        const fullTarget = expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeLessThan(fullTarget);
-        expect(bid.bidStorageTarget).toBeCloseTo(fullTarget * BID_VOLUME_FLOOR_FRACTION, 5);
+        // no quantity throttle: the full storage target is bid regardless of the market price
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        // the bid price itself is pulled down by the ceiling spring (bid far above the ceiling)
+        expect(bid.diagnostics?.ceilingSpring ?? 0).toBeGreaterThan(0);
+        if (bid.bidPrice !== undefined) {
+            expect(bid.bidPrice).toBeLessThan(100);
+        }
     });
 
     it('skips maintenance demand for facilities under construction', () => {
@@ -954,10 +948,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const expectedRate =
             (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(
-            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
-            10,
-        );
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 
     it('bids above steady-state for a facility below full maintenance', () => {
@@ -1023,10 +1014,7 @@ describe('automaticPricing — facility restoration demand', () => {
         expect(bid).toBeDefined();
         const expectedRate = facilityRestorationCapacityPerTick(facility);
         expect(expectedRate).toBeGreaterThan(0);
-        expect(bid.bidStorageTarget).toBeCloseTo(
-            expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES * BUY_VOLUME_FRACTION_AT_COST,
-            10,
-        );
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 
     it('skips restoration demand when maxMaintenance is already full', () => {
@@ -1061,7 +1049,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const buildingOnly = 20 * INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(buildingOnly * BUY_VOLUME_FRACTION_AT_COST, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(buildingOnly, 10);
     });
 
     it('sums restoration demand with active expansion construction demand', () => {
@@ -1083,7 +1071,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expected = (20 + facilityRestorationCapacityPerTick(facility)) * INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(expected * BUY_VOLUME_FRACTION_AT_COST, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
     });
 
     it('sums restoration demand across multiple degraded facilities', () => {
@@ -1100,7 +1088,7 @@ describe('automaticPricing — facility restoration demand', () => {
         const expected =
             (facilityRestorationCapacityPerTick(facilityA) + facilityRestorationCapacityPerTick(facilityB)) *
             INPUT_BUFFER_TARGET_TICKS_SERVICES;
-        expect(bid.bidStorageTarget).toBeCloseTo(expected * BUY_VOLUME_FRACTION_AT_COST, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(expected, 10);
     });
 
     it('respects a custom autoConfig inputBufferTargetTicks override', () => {
@@ -1123,10 +1111,7 @@ describe('automaticPricing — facility restoration demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[constructionServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        expect(bid.bidStorageTarget).toBeCloseTo(
-            facilityRestorationCapacityPerTick(facility) * 7 * BUY_VOLUME_FRACTION_AT_COST,
-            10,
-        );
+        expect(bid.bidStorageTarget).toBeCloseTo(facilityRestorationCapacityPerTick(facility) * 7, 10);
     });
 
     it('does not create a restoration bid for a non-automated agent without an automated Construction buy', () => {

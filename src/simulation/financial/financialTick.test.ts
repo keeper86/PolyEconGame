@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import {
     automaticLoanRepayment,
+    govStarterLoanDisbursementTick,
     maturesLoans,
     preProductionFinancialTick,
     setBankruptcyEnabled,
@@ -666,6 +667,52 @@ describe('bankruptcy mode', () => {
         } finally {
             setBankruptcyEnabled(false);
         }
+    });
+
+    it('does not collect loan interest from the government (0% starter loan)', () => {
+        setBankruptcyEnabled(true);
+        try {
+            const gov = makeAgent('gov');
+            const govPlanet = makePlanetWithPopulation({ none: 1000 }).planet;
+            govPlanet.governmentId = gov.id;
+            gov.assets[govPlanet.id]!.activeLoans = [makeLoan('starter', 5_000_000_000, 0, 1, 1000, true)];
+            gov.assets[govPlanet.id]!.deposits = 5_000_000_000;
+            govPlanet.bank!.loans = 5_000_000_000;
+            govPlanet.bank!.deposits = 5_000_000_000;
+
+            maturesLoans(agentMap(gov), govPlanet, 1);
+
+            expect(gov.assets[govPlanet.id]!.deposits).toBe(5_000_000_000);
+            expect(govPlanet.bank!.deposits).toBe(5_000_000_000);
+            expect(govPlanet.loanInterestCollected).toBe(0);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('disburses the government starter loan gradually, capping at the remaining amount', () => {
+        const gov = makeAgent('gov');
+        const govPlanet = makePlanetWithPopulation({ none: 1000 }).planet;
+        govPlanet.governmentId = gov.id;
+        govPlanet.govStarterLoanRemaining = 1000;
+        govPlanet.govStarterLoanPerTick = 30;
+        const gameState = makeGameState([govPlanet], [gov, govPlanet.recycler]);
+
+        govStarterLoanDisbursementTick(gameState, govPlanet);
+        expect(gov.assets[govPlanet.id]!.deposits).toBe(30);
+        expect(govPlanet.bank!.deposits).toBe(30);
+        expect(govPlanet.bank!.loans).toBe(30);
+        expect(govPlanet.govStarterLoanRemaining).toBe(970);
+
+        // last disbursement is capped at the remaining amount
+        govPlanet.govStarterLoanRemaining = 10;
+        govStarterLoanDisbursementTick(gameState, govPlanet);
+        expect(gov.assets[govPlanet.id]!.deposits).toBe(40);
+        expect(govPlanet.govStarterLoanRemaining).toBe(0);
+
+        // nothing more once exhausted
+        govStarterLoanDisbursementTick(gameState, govPlanet);
+        expect(gov.assets[govPlanet.id]!.deposits).toBe(40);
     });
 
     it('grants an emergency loan and records the warning when wages cannot be covered', () => {

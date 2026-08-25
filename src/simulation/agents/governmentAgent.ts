@@ -7,11 +7,18 @@ import type { Agent, GameState, Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
+let wealthTaxAllowanceOverride: number | undefined = undefined;
+
+export function setWealthTaxAllowance(allowance: number): void {
+    wealthTaxAllowanceOverride = allowance;
+}
+
 export const wealthTaxAllowance = (planet: Planet): number => {
+    const base = wealthTaxAllowanceOverride ?? WEALTH_TAX_ALLOWANCE;
     const csMarketPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
     const initialCsPrice = initialMarketPrices[constructionServiceResourceType.name] ?? 1;
     const inflationFactor = csMarketPrice > 0 ? Math.max(1, csMarketPrice / initialCsPrice) : 1;
-    return WEALTH_TAX_ALLOWANCE * inflationFactor;
+    return base * inflationFactor;
 };
 
 export const computeCompanyNetWorth = (agent: Agent, planet: Planet, shipCapitalMarket: ShipCapitalMarket): number => {

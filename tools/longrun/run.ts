@@ -4,6 +4,8 @@ import path from 'node:path';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setBankruptcyEnabled, setLoanInterestRatePerYear } from '../../src/simulation/financial/financialTick';
+import { setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
@@ -196,6 +198,10 @@ function main(): void {
     if (slackArg !== undefined) {
         scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
     }
+    const govLoanArg = arg('govStarterLoan');
+    if (govLoanArg !== undefined) {
+        scenario.world = { ...scenario.world, govStarterLoanBillions: Number(govLoanArg) };
+    }
     const bankruptcyArg = arg('bankruptcy');
     if (bankruptcyArg !== undefined) {
         setBankruptcyEnabled(bankruptcyArg === '1' || bankruptcyArg === 'true');
@@ -207,6 +213,14 @@ function main(): void {
     const askFloorArg = arg('sellAggressiveness');
     if (askFloorArg !== undefined) {
         setSellPriceAggressivenessMean(Number(askFloorArg));
+    }
+    const claimCostArg = arg('claimCostMultiplier');
+    if (claimCostArg !== undefined) {
+        setNonRenewableClaimCostMultiplier(Number(claimCostArg));
+    }
+    const wealthTaxAllowanceArg = arg('wealthTaxAllowance');
+    if (wealthTaxAllowanceArg !== undefined) {
+        setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

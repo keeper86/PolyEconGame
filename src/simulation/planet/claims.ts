@@ -118,14 +118,20 @@ export function mergeClaimBackIntoPool(pool: ResourcePool, claim: ResourceClaim)
     pool.maximumCapacity += claim.maximumCapacity;
 }
 
+let nonRenewableClaimCostMultiplier = 1;
+
+export function setNonRenewableClaimCostMultiplier(multiplier: number): void {
+    nonRenewableClaimCostMultiplier = multiplier;
+}
+
 export function computeLeaseClaimUpfrontCost(pool: ResourcePool, quantity: number): number {
     const costAmount = Math.floor(quantity);
     if (pool.regenerationRate > 0) {
         // Renewable: pay a month's worth upfront (costPerTick = units × 1)
         return costAmount * TICKS_PER_MONTH * 1;
     }
-    // Non-renewable: pay one-time cost
-    return costAmount * 1;
+    // Non-renewable: pay a one-time cost for the fixed deposit
+    return costAmount * nonRenewableClaimCostMultiplier;
 }
 
 export type LeaseClaimResult = { ok: true; claimId: string } | { ok: false; reason: string };
@@ -196,7 +202,7 @@ export function leaseClaim(
         if (isRenewable) {
             existingClaim.costPerTick = Math.floor(existingClaim.maximumCapacity * 1);
         } else {
-            existingClaim.tenantCostInCoins += costAmount * 1;
+            existingClaim.tenantCostInCoins += costAmount * nonRenewableClaimCostMultiplier;
         }
 
         // Update pool
@@ -217,7 +223,7 @@ export function leaseClaim(
             regenerationRate: isRenewable ? pool.regenerationRate * ratio : 0,
             maximumCapacity: quantity,
             tenantAgentId: agentId,
-            tenantCostInCoins: isRenewable ? 0 : costAmount,
+            tenantCostInCoins: isRenewable ? 0 : costAmount * nonRenewableClaimCostMultiplier,
             costPerTick: isRenewable ? costAmount : 0,
             claimStatus: 'active',
             noticePeriodEndsAtTick: null,

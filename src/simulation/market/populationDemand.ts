@@ -133,10 +133,10 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const referencePrice =
-                    planet.lastProductionCostFloors[service.resource.name] ??
-                    planet.marketPrices[service.resource.name] ??
-                    PRICE_FLOOR;
+                const referencePrice = Math.min(
+                    (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) * 2,
+                    planet.marketPrices[service.resource.name] ?? PRICE_FLOOR,
+                );
 
                 if (referencePrice <= 0) {
                     continue;
