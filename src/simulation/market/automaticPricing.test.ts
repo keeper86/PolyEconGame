@@ -378,6 +378,107 @@ describe('automaticPricing — offer price tâtonnement', () => {
 
 // ── Sell-side config override tests ──────────────────────────────────────────
 
+describe('adjustOfferPrice — adaptive target sell-through', () => {
+    const goodsResource: Resource = {
+        name: 'TestGoodsAdaptive',
+        form: 'solid',
+        level: 'refined',
+        volumePerQuantity: 1,
+        massPerQuantity: 1,
+    };
+
+    it('measures sell-through against the volume-adjusted (withheld) quantity', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 4,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 1,
+                askVolumeFloorFraction: 0,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 20);
+
+        // ratio 0.5, buffer 2, width 1 → volumeFraction = 1/(1+e^1.5) ≈ 0.1824
+        const volumeFraction = offer.diagnostics!.volumeFraction;
+        expect(volumeFraction).toBeCloseTo(0.1824, 3);
+        // effectiveQuantity = 100 × volumeFraction; sell-through measured against it, not the raw inventory
+        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(4 / (100 * volumeFraction), 10);
+        expect(offer.diagnostics!.sellThroughRate).toBeGreaterThan(4 / 100);
+    });
+
+    it('scales the target sell-through by the volume factor (price pressure while withholding)', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 4,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 1,
+                askVolumeFloorFraction: 0,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 20);
+
+        const volumeFraction = offer.diagnostics!.volumeFraction;
+        const adaptiveTarget = offer.diagnostics!.effectiveTargetSellThrough;
+        expect(adaptiveTarget).toBeCloseTo(0.6 * volumeFraction, 10);
+        // raw sell-through (≈0.22) is below the base target 0.6 but above the adaptive target → price rises
+        expect(offer.diagnostics!.sellThroughRate).toBeLessThan(0.6);
+        expect(offer.diagnostics!.sellThroughRate).toBeGreaterThan(adaptiveTarget);
+        expect(offer.diagnostics!.targetSellThrough).toBe(0.6);
+        expect(offer.offerPrice).toBeGreaterThan(10);
+    });
+
+    it('keeps the base target when offering the full surplus (no withholding)', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 100,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 1,
+                askVolumeFloorFraction: 1,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 2);
+
+        // ratio 5 above the buffer → volumeFraction = 1 → effective target equals the base target
+        expect(offer.diagnostics!.volumeFraction).toBe(1);
+        expect(offer.diagnostics!.effectiveTargetSellThrough).toBeCloseTo(0.6, 10);
+        // full sell-through → price adjusts up by the full maxUp
+        expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_UP, 5);
+    });
+
+    it('still lowers the price when even the withheld offering does not clear', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 0,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                askPriceSensitivity: 1,
+                askVolumeFloorFraction: 0,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 20);
+
+        const adaptiveTarget = offer.diagnostics!.effectiveTargetSellThrough;
+        expect(adaptiveTarget).toBeCloseTo(0.6 * offer.diagnostics!.volumeFraction, 10);
+        expect(adaptiveTarget).toBeGreaterThan(0);
+        expect(offer.diagnostics!.sellThroughRate).toBe(0);
+        // sold 0 < adaptive target → factor = maxDown → price falls
+        expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
+    });
+});
+
+// ── Sell-side config override tests ──────────────────────────────────────────
+
 describe('automaticPricing — EMA smoothing', () => {
     const goodsResource: Resource = {
         name: 'TestGoodsEMA',

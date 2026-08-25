@@ -500,6 +500,8 @@ export function adjustOfferPrice(
     );
     const effectiveQuantity = baseEffectiveQuantity * volumeFraction;
     const oldPrice = price;
+    const targetSellThrough = cfg.targetSellThrough ?? TARGET_SELL_THROUGH;
+    const effectiveTargetSellThrough = targetSellThrough * volumeFraction;
 
     if (effectiveQuantity < EPSILON) {
         if (sold > 0 && price > 0) {
@@ -509,7 +511,7 @@ export function adjustOfferPrice(
             offer.smoothedSellThrough = rawSellThrough;
             const factor = sellThroughFactor(
                 rawSellThrough,
-                cfg.targetSellThrough,
+                effectiveTargetSellThrough,
                 cfg.priceAdjustMaxUp,
                 cfg.priceAdjustMaxDown,
             );
@@ -519,7 +521,8 @@ export function adjustOfferPrice(
             offer.diagnostics = {
                 sellThroughRate: rawSellThrough,
                 smoothedSellThrough: rawSellThrough,
-                targetSellThrough: cfg.targetSellThrough ?? TARGET_SELL_THROUGH,
+                targetSellThrough,
+                effectiveTargetSellThrough,
                 baseFactor: factor,
                 netFactor: factor,
                 oldPrice,
@@ -548,7 +551,7 @@ export function adjustOfferPrice(
     offer.smoothedSellThrough = smoothedSellThrough;
     const factor = sellThroughFactor(
         smoothedSellThrough,
-        cfg.targetSellThrough,
+        effectiveTargetSellThrough,
         cfg.priceAdjustMaxUp,
         cfg.priceAdjustMaxDown,
     );
@@ -565,7 +568,8 @@ export function adjustOfferPrice(
     offer.diagnostics = {
         sellThroughRate: rawSellThrough,
         smoothedSellThrough,
-        targetSellThrough: cfg.targetSellThrough ?? TARGET_SELL_THROUGH,
+        targetSellThrough,
+        effectiveTargetSellThrough,
         baseFactor: factor,
         netFactor,
         oldPrice,

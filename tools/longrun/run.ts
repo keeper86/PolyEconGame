@@ -3,7 +3,8 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
+import { setBankruptcyEnabled, setLoanInterestRatePerYear } from '../../src/simulation/financial/financialTick';
+import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -195,13 +196,17 @@ function main(): void {
     if (slackArg !== undefined) {
         scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
     }
-    const loanDisciplineArg = arg('loanDiscipline');
-    if (loanDisciplineArg !== undefined) {
-        setLoanDisciplineEnabled(loanDisciplineArg === '1' || loanDisciplineArg === 'true');
+    const bankruptcyArg = arg('bankruptcy');
+    if (bankruptcyArg !== undefined) {
+        setBankruptcyEnabled(bankruptcyArg === '1' || bankruptcyArg === 'true');
     }
-    const loanRecyclingArg = arg('loanRecycling');
-    if (loanRecyclingArg !== undefined) {
-        setLoanRecyclingEnabled(loanRecyclingArg === '1' || loanRecyclingArg === 'true');
+    const interestRateArg = arg('interestRate');
+    if (interestRateArg !== undefined) {
+        setLoanInterestRatePerYear(Number(interestRateArg));
+    }
+    const askFloorArg = arg('sellAggressiveness');
+    if (askFloorArg !== undefined) {
+        setSellPriceAggressivenessMean(Number(askFloorArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

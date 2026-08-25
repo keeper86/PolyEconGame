@@ -272,6 +272,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let wealthTaxPaidByProfitable = 0;
     let companiesUnderwater = 0;
     let companiesUnderwaterEssential = 0;
+    let companiesOverCreditLimit = 0;
+    let overLimitLoanAmount = 0;
+    let totalFacilitiesCollateral = 0;
+    let totalMaxLoanAmount = 0;
     let companiesWithRolloverLoans = 0;
     let rolloverLoanPrincipal = 0;
     const debtEquitys: number[] = [];
@@ -552,6 +556,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     companiesUnderwaterEssential += 1;
                 }
             }
+            if (conditions.existingLoans > conditions.maxLoanAmount) {
+                companiesOverCreditLimit += 1;
+                overLimitLoanAmount += conditions.existingLoans - conditions.maxLoanAmount;
+            }
+            totalFacilitiesCollateral += conditions.facilitiesCollateral;
+            totalMaxLoanAmount += conditions.maxLoanAmount;
             if (conditions.existingLoans > 0 && netWorth > 0) {
                 debtEquitys.push(conditions.existingLoans / netWorth);
                 if (conditions.lastMonthlyRevenue > 0) {
@@ -1237,6 +1247,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         rolloverDenials: planet.rolloverDenials,
         debtWriteOffs: planet.debtWriteOffs,
         bankruptcies: planet.bankruptcies,
+        refoundCount: planet.refoundCount,
+        loanInterestCollected: planet.loanInterestCollected,
+        emergencyLoansGranted: planet.emergencyLoansGranted,
         totalLoans,
         loansWageCoverage,
         loansBufferCoverage,
@@ -1269,6 +1282,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTaxPaidByProfitable,
         companiesUnderwater,
         companiesUnderwaterEssential,
+        companiesOverCreditLimit,
+        overLimitLoanAmount,
+        totalFacilitiesCollateral,
+        totalMaxLoanAmount,
         companiesWithRolloverLoans,
         rolloverLoanPrincipal,
         facilityLossCount,
@@ -1579,6 +1596,9 @@ export const METRIC_KEYS: string[] = [
     'rolloverDenials',
     'debtWriteOffs',
     'bankruptcies',
+    'refoundCount',
+    'loanInterestCollected',
+    'emergencyLoansGranted',
     'totalLoans',
     'loansWageCoverage',
     'loansBufferCoverage',
@@ -1611,6 +1631,10 @@ export const METRIC_KEYS: string[] = [
     'wealthTaxPaidByProfitable',
     'companiesUnderwater',
     'companiesUnderwaterEssential',
+    'companiesOverCreditLimit',
+    'overLimitLoanAmount',
+    'totalFacilitiesCollateral',
+    'totalMaxLoanAmount',
     'companiesWithRolloverLoans',
     'rolloverLoanPrincipal',
     'facilityLossCount',

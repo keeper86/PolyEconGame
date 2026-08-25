@@ -39,9 +39,16 @@ function sellSteps(d: SellDiagnostics): Step[] {
             value: fmtPct(d.targetSellThrough),
         },
         {
+            label: 'Effective target (× volume fraction)',
+            formula: 'targetSellThrough × volumeFraction',
+            value: fmtPct(d.effectiveTargetSellThrough),
+        },
+        {
             label: 'Base factor',
             formula:
-                d.smoothedSellThrough >= d.targetSellThrough ? '1 + t × (maxUp - 1)' : 'maxDown + t × (1 - maxDown)',
+                d.smoothedSellThrough >= d.effectiveTargetSellThrough
+                    ? '1 + t × (maxUp - 1)'
+                    : 'maxDown + t × (1 - maxDown)',
             value: fmt(d.baseFactor),
         },
         {

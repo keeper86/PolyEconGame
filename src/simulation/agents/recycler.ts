@@ -91,6 +91,7 @@ export function processFacilityContraction(
     gameState: GameState,
     ratioLimit: number = 0,
     forcedRatio?: number,
+    paymentTo: 'agent' | 'bank' = 'agent',
 ): boolean {
     if (targetMax >= facility.maxScale) {
         return false;
@@ -138,9 +139,13 @@ export function processFacilityContraction(
         grantLoan(recyclerAssets, planet.bank, deficit, 'bufferCoverage', gameState.tick);
     }
 
-    // Transfer payment from recycler to agent
+    // Transfer payment from recycler to agent (or the bank, for bankruptcy proceedings)
     recyclerAssets.deposits -= payment;
-    agentAssets.deposits += payment;
+    if (paymentTo === 'bank') {
+        planet.bank.deposits -= payment;
+    } else {
+        agentAssets.deposits += payment;
+    }
 
     // If recycler has a lot of money, give it to the government
     if (

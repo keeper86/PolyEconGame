@@ -27,6 +27,7 @@ const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
     starter: 'Starter',
     discretionary: 'Discretionary',
     wageCoverage: 'Wage coverage',
+    emergency: 'Emergency',
     rollover: 'Rollover',
     bufferCoverage: 'Buffer coverage',
     claimCoverage: 'Claim coverage',

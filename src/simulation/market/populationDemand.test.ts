@@ -75,6 +75,7 @@ test('construction bid quantity is driven by refillTicks (fast build) while the 
 
     const def = SERVICE_DEFINITIONS.construction;
     const rate = def.consumptionRatePerPersonPerTick(30, 'unoccupied', { mean: 3000, variance: 1 }, 30);
+    planet.lastProductionCostFloors[constructionServiceResourceType.name] = 1;
     const bidsMap = buildPopulationDemand(planet);
     const bids = bidsMap.get(constructionServiceResourceType.name) ?? [];
     expect(bids.length).toBeGreaterThan(0);
@@ -82,8 +83,8 @@ test('construction bid quantity is driven by refillTicks (fast build) while the 
     const bid = bids[0];
     const perPerson = bid.quantity / bid.population;
     expect(perPerson).toBeGreaterThan(rate * 10);
-    const refPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 1;
-    expect(bid.bidPrice).toBeLessThanOrEqual(refPrice * 2.001);
+    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name] ?? 1;
+    expect(bid.bidPrice).toBeLessThanOrEqual(costFloor * 4.001);
 });
 
 function makeBid(bidPrice: number, quantity: number): BidOrder {

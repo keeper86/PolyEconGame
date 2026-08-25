@@ -1,4 +1,4 @@
-import { SERVICE_PRICE_CEIL_MULTIPLE } from '../constants';
+import { PRICE_FLOOR } from '../constants';
 import type { Planet } from '../planet/planet';
 import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
@@ -133,11 +133,10 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                     continue;
                 }
 
-                const referencePrice = Math.min(
-                    (planet.lastProductionCostFloors[service.resource.name] ?? Number.MAX_SAFE_INTEGER) *
-                        SERVICE_PRICE_CEIL_MULTIPLE,
-                    planet.marketPrices[service.resource.name] ?? 0,
-                );
+                const referencePrice =
+                    planet.lastProductionCostFloors[service.resource.name] ??
+                    planet.marketPrices[service.resource.name] ??
+                    PRICE_FLOOR;
 
                 if (referencePrice <= 0) {
                     continue;
@@ -158,7 +157,7 @@ export function buildPopulationDemand(planet: Planet): Map<string, BidOrder[]> {
                 const fillFraction = bufferGapTicks / service.refillTicks;
                 const pricePremium = Math.min(1, fillFraction);
 
-                let willingPrice = referencePrice * (1 + pricePremium);
+                let willingPrice = referencePrice * (1 + 3 * pricePremium);
                 if (willingPrice <= 0) {
                     continue;
                 }

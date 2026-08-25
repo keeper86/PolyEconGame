@@ -122,6 +122,12 @@ export type Planet = {
 
     bankruptcies: number;
 
+    refoundCount: number;
+
+    loanInterestCollected: number;
+
+    emergencyLoansGranted: number;
+
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -188,6 +194,7 @@ export type SellDiagnostics = {
     sellThroughRate: number;
     smoothedSellThrough: number;
     targetSellThrough: number;
+    effectiveTargetSellThrough: number;
     baseFactor: number;
     netFactor: number;
     oldPrice: number;

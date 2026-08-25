@@ -4,7 +4,14 @@ import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 
 import { automaticLoanRepayment } from './financialTick';
-import { consolidateLoans, grantLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
+import {
+    consolidateLoans,
+    grantLoan,
+    hasOutstandingEmergencyLoan,
+    makeLoan,
+    repayLoansEmergencyFirst,
+    totalOutstandingLoans,
+} from './loanTypes';
 
 describe('loan consolidation', () => {
     let agent: Agent;
@@ -132,5 +139,46 @@ describe('per-agent loan bookkeeping', () => {
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
         expect(planet.bank!.loans).toBe(0);
         expect(agent.assets[planet.id]?.deposits ?? 0).toBe(10_000);
+    });
+});
+
+describe('emergency loans', () => {
+    it('tracks the warning while an emergency loan is outstanding', () => {
+        const loans = [
+            makeLoan('wageCoverage', 50, 0.05, 1, 361, false),
+            makeLoan('emergency', 100, 0.05, 2, 362, true),
+        ];
+        expect(hasOutstandingEmergencyLoan(loans)).toBe(true);
+
+        loans[1]!.remainingPrincipal = 0;
+        expect(hasOutstandingEmergencyLoan(loans)).toBe(false);
+    });
+
+    it('repays emergency loans before all other loans', () => {
+        const loans = [
+            makeLoan('wageCoverage', 50, 0.05, 1, 361, false),
+            makeLoan('emergency', 100, 0.05, 2, 362, true),
+            makeLoan('rollover', 30, 0.05, 3, 1000, false),
+        ];
+
+        const repaid = repayLoansEmergencyFirst(loans, 120);
+
+        expect(repaid).toBe(120);
+        expect(totalOutstandingLoans(loans)).toBe(60);
+        expect(loans.some((l) => l.type === 'emergency' && l.remainingPrincipal > 0)).toBe(false);
+        expect(loans.some((l) => l.type === 'wageCoverage' && l.remainingPrincipal > 0)).toBe(true);
+    });
+
+    it('repays oldest first within the same priority class', () => {
+        const loans = [
+            makeLoan('emergency', 100, 0.05, 2, 362, true),
+            makeLoan('emergency', 50, 0.05, 1, 361, true),
+        ];
+
+        const repaid = repayLoansEmergencyFirst(loans, 60);
+
+        expect(repaid).toBe(60);
+        expect(loans.some((l) => l.remainingPrincipal > 0 && l.takenAtTick === 2)).toBe(true);
+        expect(loans.some((l) => l.remainingPrincipal > 0 && l.takenAtTick === 1)).toBe(false);
     });
 });
