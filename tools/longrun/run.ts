@@ -202,6 +202,18 @@ function main(): void {
     if (govLoanArg !== undefined) {
         scenario.world = { ...scenario.world, govStarterLoanBillions: Number(govLoanArg) };
     }
+    const govLoanYearsArg = arg('govLoanYears');
+    if (govLoanYearsArg !== undefined) {
+        scenario.world = { ...scenario.world, govLoanYears: Number(govLoanYearsArg) };
+    }
+    const constructionScaleArg = arg('constructionScaleFactor');
+    if (constructionScaleArg !== undefined) {
+        scenario.world = { ...scenario.world, constructionScaleFactor: Number(constructionScaleArg) };
+    }
+    const buildChainScaleArg = arg('buildChainScaleFactor');
+    if (buildChainScaleArg !== undefined) {
+        scenario.world = { ...scenario.world, buildChainScaleFactor: Number(buildChainScaleArg) };
+    }
     const bankruptcyArg = arg('bankruptcy');
     if (bankruptcyArg !== undefined) {
         setBankruptcyEnabled(bankruptcyArg === '1' || bankruptcyArg === 'true');

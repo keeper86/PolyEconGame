@@ -199,14 +199,15 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeLessThan(initial);
     });
 
-    it('contracts when unsold supply exceeds unfilled demand', () => {
+    it('does not contract when the market is under-served despite unsold inventory', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeOversupplySetup(planet, undefined, { produced: 100, sold: 20 });
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeLessThan(initial);
+        // the producer's unsold inventory is capped by the unfilled demand → neutral signal
+        expect(facility.scale).toBe(initial);
     });
 
     it('scales up when demand excess is strong and conditions are met', () => {
@@ -732,10 +733,10 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).toEqual(existingConstruction);
     });
 
-    it('accumulates contraction integral with negative signal regardless of operating capacity', () => {
+    it('accumulates contraction integral with negative signal only once the operating capacity is low', () => {
         const planet = makePlanetWithAvg(makeMarketResult({}));
         const { agents, facility } = makeOversupplySetup(planet, {
-            scale: 50,
+            scale: 20,
             maxScale: 100,
             pidState: {
                 contractionIntegral: 10,
@@ -761,7 +762,7 @@ describe('updateAgentProductionScale', () => {
     it('contracts (reduces maxScale) with sustained negative signal', () => {
         const planet = makePlanetWithAvg(makeMarketResult({}));
         const { agents, facility } = makeOversupplySetup(planet, {
-            scale: 50,
+            scale: 20,
             maxScale: 100,
             pidState: {
                 contractionIntegral: 30,

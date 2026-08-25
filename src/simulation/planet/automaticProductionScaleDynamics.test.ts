@@ -208,6 +208,18 @@ describe('computeFacilitySignal (demand-based)', () => {
         expect(computeFacilitySignal(facility, planet, { [RESOURCE_NAME]: 1 })).toBe(0);
     });
 
+    it('does not contract a surplus producer while the market is under-served', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.4 });
+        // the producer sold only 20% of its output (flowDeviation −0.8) while 40% of the
+        // demand went unfilled: the scarcity caps the negative deviation → neutral signal
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBe(0);
+    });
+
+    it('still contracts oversupply when the market is fully served', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBeCloseTo(-0.8, 5);
+    });
+
     it('treats a missing sell-through as fully sold', () => {
         const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.3 });
         expect(computeFacilitySignal(fixture.facility, fixture.planet)).toBeCloseTo(0.3, 5);
