@@ -8,7 +8,12 @@ function fmt(v: number, isPercent: boolean, dt?: (v: number) => number): string 
     if (isPercent) {
         return `${Math.round(display * 100)}%`;
     }
-    return display.toFixed(display % 1 === 0 ? 0 : 2);
+    if (display % 1 === 0) {
+        return String(display);
+    }
+    const rounded2 = Number(display.toFixed(2));
+    const rounded3 = Number(display.toFixed(3));
+    return display.toFixed(rounded2 === rounded3 ? 2 : 3);
 }
 
 export function ConfigSlider({

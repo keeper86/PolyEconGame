@@ -3,14 +3,30 @@ import {
     buildSpringCurvePoints,
     buildSpringRatioTicks,
     computeSpringDomain,
+    fullPush,
     ratioAtFullPush,
     springFraction,
     springPush,
 } from './costSpringCurve';
 import type { CostSpringParams } from './costSpringCurve';
 
-const buyParams: CostSpringParams = { strength: 0.1, reference: 3.5 };
-const sellParams: CostSpringParams = { strength: 0.1, reference: 1.5 };
+const buyParams: CostSpringParams = { strength: 0.1, reference: 3.5, maxUp: 1.05, maxDown: 0.95 };
+const sellParams: CostSpringParams = { strength: 0.1, reference: 1.5, maxUp: 1.05, maxDown: 0.95 };
+const aggressiveParams: CostSpringParams = { strength: 0.1, reference: 3.5, maxUp: 1.1, maxDown: 0.9 };
+
+describe('fullPush', () => {
+    it('uses the up rate for buyers and the down rate for sellers', () => {
+        expect(fullPush('buy', buyParams)).toBeCloseTo(0.05, 10);
+        expect(fullPush('sell', sellParams)).toBeCloseTo(0.05, 10);
+        expect(fullPush('buy', aggressiveParams)).toBeCloseTo(0.1, 10);
+        expect(fullPush('sell', aggressiveParams)).toBeCloseTo(0.1, 10);
+    });
+
+    it('is 0 when there is no movement to equalize', () => {
+        expect(fullPush('buy', { ...buyParams, maxUp: 1 })).toBe(0);
+        expect(fullPush('sell', { ...sellParams, maxDown: 1 })).toBe(0);
+    });
+});
 
 describe('springPush', () => {
     it('is inactive on the safe side of the reference', () => {
@@ -24,8 +40,8 @@ describe('springPush', () => {
     });
 
     it('returns 0 for a zero strength', () => {
-        expect(springPush('buy', { strength: 0, reference: 3.5 }, 10)).toBe(0);
-        expect(springPush('sell', { strength: 0, reference: 1.5 }, 0.5)).toBe(0);
+        expect(springPush('buy', { strength: 0, reference: 3.5, maxUp: 1.05, maxDown: 0.95 }, 10)).toBe(0);
+        expect(springPush('sell', { strength: 0, reference: 1.5, maxUp: 1.05, maxDown: 0.95 }, 0.5)).toBe(0);
     });
 
     it('blows up toward P/C=0 for sell (infinite deviation, clamped by springFraction)', () => {
@@ -42,7 +58,12 @@ describe('ratioAtFullPush', () => {
     });
 
     it('is NaN for a zero strength', () => {
-        expect(ratioAtFullPush('buy', { strength: 0, reference: 3.5 })).toBeNaN();
+        expect(ratioAtFullPush('buy', { strength: 0, reference: 3.5, maxUp: 1.05, maxDown: 0.95 })).toBeNaN();
+    });
+
+    it('marks the 100% point farther out when the adjustment speed rises', () => {
+        expect(ratioAtFullPush('buy', aggressiveParams)).toBeCloseTo(3.5 * 2, 10);
+        expect(ratioAtFullPush('sell', { ...sellParams, maxDown: 0.9 })).toBeCloseTo(1.5 / 2, 10);
     });
 });
 
@@ -64,9 +85,16 @@ describe('springFraction', () => {
 
     it('is always 100% at P/C=0 for the sell spring unless strength or reference is 0', () => {
         expect(springFraction('sell', sellParams, 0)).toBe(1);
-        expect(springFraction('sell', { strength: 0.3, reference: 2 }, 0)).toBe(1);
-        expect(springFraction('sell', { strength: 0, reference: 1.5 }, 0)).toBe(0);
-        expect(springFraction('sell', { strength: 0.1, reference: 0 }, 0)).toBe(0);
+        expect(springFraction('sell', { strength: 0.3, reference: 2, maxUp: 1.05, maxDown: 0.95 }, 0)).toBe(1);
+        expect(springFraction('sell', { strength: 0, reference: 1.5, maxUp: 1.05, maxDown: 0.95 }, 0)).toBe(0);
+        expect(springFraction('sell', { strength: 0.1, reference: 0, maxUp: 1.05, maxDown: 0.95 }, 0)).toBe(0);
+    });
+
+    it('scales 100% with the adjustment speed (buy uses maxUp, sell uses maxDown)', () => {
+        expect(springFraction('buy', buyParams, 5.5)).toBe(1);
+        expect(springFraction('buy', aggressiveParams, 5.5)).toBeLessThan(1);
+        expect(springFraction('sell', sellParams, 1)).toBe(1);
+        expect(springFraction('sell', { ...sellParams, maxDown: 0.9 }, 1)).toBeLessThan(1);
     });
 });
 
@@ -77,7 +105,7 @@ describe('computeSpringDomain', () => {
     });
 
     it('caps the buy domain at twice the max soft bid', () => {
-        const weakBuy: CostSpringParams = { strength: 0.01, reference: 3.5 };
+        const weakBuy: CostSpringParams = { strength: 0.01, reference: 3.5, maxUp: 1.05, maxDown: 0.95 };
         const domain = computeSpringDomain('buy', weakBuy, weakBuy);
         expect(domain).toBeLessThanOrEqual(20);
         expect(domain).toBe(20);
@@ -116,15 +144,16 @@ describe('buildSpringCurvePoints', () => {
 
 describe('buildSpringRatioTicks', () => {
     it('reproduces the recharts fixed-domain ticks', () => {
-        expect(buildSpringRatioTicks(10)).toEqual([0, 3, 6, 10]);
-        expect(buildSpringRatioTicks(2)).toEqual([0, 0.5, 1, 1.5, 2]);
+        expect(buildSpringRatioTicks(10, [])).toEqual([0, 3, 6, 10]);
+        expect(buildSpringRatioTicks(2, [])).toEqual([0, 0.5, 1, 1.5, 2]);
     });
 
-    it('inserts the current ratio as an extra tick', () => {
-        expect(buildSpringRatioTicks(10, 6.25)).toEqual([0, 3, 6, 6.25, 10]);
+    it('inserts highlight ratios as extra ticks', () => {
+        expect(buildSpringRatioTicks(10, [6.25])).toEqual([0, 3, 6, 6.25, 10]);
+        expect(buildSpringRatioTicks(10, [6.25, 1.2])).toEqual([0, 1.2, 3, 6, 6.25, 10]);
     });
 
-    it('ignores current ratios outside the domain', () => {
-        expect(buildSpringRatioTicks(10, 12)).toEqual([0, 3, 6, 10]);
+    it('ignores highlight ratios outside the domain', () => {
+        expect(buildSpringRatioTicks(10, [12])).toEqual([0, 3, 6, 10]);
     });
 });

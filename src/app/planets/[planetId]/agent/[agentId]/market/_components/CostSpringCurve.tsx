@@ -69,6 +69,7 @@ function PriceAxisTick({
     textAnchor,
     verticalAnchor,
     currentRatio,
+    fullRatio,
 }: {
     x?: number;
     y?: number;
@@ -78,16 +79,20 @@ function PriceAxisTick({
     textAnchor?: 'start' | 'middle' | 'end';
     verticalAnchor?: 'start' | 'middle' | 'end';
     currentRatio?: number;
+    fullRatio?: number;
 }): React.ReactElement | null {
     if (x === undefined || y === undefined || payload === undefined) {
         return null;
     }
     const isMarketPrice = currentRatio !== undefined && Math.abs(payload.value - currentRatio) < 1e-6;
+    const isFullPush = !isMarketPrice && fullRatio !== undefined && Math.abs(payload.value - fullRatio) < 1e-6;
     const text = isMarketPrice
         ? currentRatio.toFixed(2)
-        : tickFormatter
-          ? tickFormatter(payload.value, index ?? 0)
-          : String(payload.value);
+        : isFullPush
+          ? fullRatio.toFixed(2)
+          : tickFormatter
+            ? tickFormatter(payload.value, index ?? 0)
+            : String(payload.value);
     return (
         <Text
             x={x}
@@ -95,7 +100,7 @@ function PriceAxisTick({
             textAnchor={textAnchor ?? 'middle'}
             verticalAnchor={verticalAnchor ?? 'start'}
             fontSize={10}
-            fill={isMarketPrice ? CURRENT_COLOR : TICK_COLOR}
+            fill={isMarketPrice ? CURRENT_COLOR : isFullPush ? FULL_PUSH_COLOR : TICK_COLOR}
         >
             {text}
         </Text>
@@ -131,7 +136,11 @@ export function CostSpringCurve({
     const showFullPush = Number.isFinite(activeFullRatio) && activeFullRatio > 0 && activeFullRatio <= domainMax;
     const fullRatio = showFullPush ? Number(activeFullRatio.toFixed(4)) : undefined;
 
-    const xTicks = useMemo(() => buildSpringRatioTicks(domainMax, currentRatio), [domainMax, currentRatio]);
+    const highlightRatios = useMemo(
+        () => [currentRatio, fullRatio].filter((r): r is number => r !== undefined),
+        [currentRatio, fullRatio],
+    );
+    const xTicks = useMemo(() => buildSpringRatioTicks(domainMax, highlightRatios), [domainMax, highlightRatios]);
 
     const title = mode === 'buy' ? 'Ceiling spring curve' : 'Cost spring curve';
 
@@ -165,11 +174,11 @@ export function CostSpringCurve({
                             if (!xAxis) {
                                 return [];
                             }
-                            const priceCoord = currentRatio !== undefined ? xAxis.scale(currentRatio) : undefined;
+                            const excluded = highlightRatios.map((ratio) => xAxis.scale(ratio));
                             return xAxis.ticks
                                 .map((value: number) => xAxis.scale(value))
-                                .filter(
-                                    (coord: number) => priceCoord === undefined || Math.abs(coord - priceCoord) > 0.5,
+                                .filter((coord: number) =>
+                                    excluded.every((excludedCoord) => Math.abs(coord - excludedCoord) > 0.5),
                                 );
                         }}
                     />
@@ -179,7 +188,7 @@ export function CostSpringCurve({
                         domain={[0, domainMax]}
                         ticks={xTicks}
                         interval={0}
-                        tick={<PriceAxisTick currentRatio={currentRatio} />}
+                        tick={<PriceAxisTick currentRatio={currentRatio} fullRatio={fullRatio} />}
                         tickFormatter={(v) => v.toFixed(1)}
                         axisLine={false}
                         tickLine={false}

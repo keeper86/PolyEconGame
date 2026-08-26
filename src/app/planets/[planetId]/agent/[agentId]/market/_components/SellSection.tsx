@@ -356,12 +356,16 @@ export default function SellSection({
         () => ({
             strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
             reference: committedVal(committedConfig, 'automatedCostFloorBuffer') ?? AUTOMATED_COST_FLOOR_BUFFER,
+            maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
+            maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
         }),
         [committedConfig],
     );
     const springActive = {
         strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
         reference: sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER),
+        maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
+        maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
     };
     const springRatio =
         overviewRow && overviewRow.priceCostRatio > 0 && Number.isFinite(overviewRow.priceCostRatio)
@@ -535,8 +539,8 @@ export default function SellSection({
                                             value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
-                                            max={1}
-                                            step={0.01}
+                                            max={0.2}
+                                            step={0.002}
                                             onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />

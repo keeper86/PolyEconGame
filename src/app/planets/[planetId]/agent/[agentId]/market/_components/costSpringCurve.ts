@@ -1,8 +1,8 @@
-import { PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '@/simulation/constants';
-
 export type CostSpringParams = {
     strength: number;
     reference: number;
+    maxUp: number;
+    maxDown: number;
 };
 
 export type SpringCurvePoint = {
@@ -23,12 +23,12 @@ export function springPush(mode: 'buy' | 'sell', params: CostSpringParams, ratio
     return ratio < params.reference ? params.strength * Math.sqrt(params.reference / ratio - 1) : 0;
 }
 
-export function fullPush(mode: 'buy' | 'sell'): number {
-    return mode === 'buy' ? PRICE_ADJUST_MAX_UP - 1 : 1 - PRICE_ADJUST_MAX_DOWN;
+export function fullPush(mode: 'buy' | 'sell', params: CostSpringParams): number {
+    return mode === 'buy' ? params.maxUp - 1 : 1 - params.maxDown;
 }
 
 export function springFraction(mode: 'buy' | 'sell', params: CostSpringParams, ratio: number): number {
-    const full = fullPush(mode);
+    const full = fullPush(mode, params);
     if (full <= 0) {
         return 0;
     }
@@ -36,7 +36,7 @@ export function springFraction(mode: 'buy' | 'sell', params: CostSpringParams, r
 }
 
 export function ratioAtFullPush(mode: 'buy' | 'sell', params: CostSpringParams): number {
-    const full = fullPush(mode);
+    const full = fullPush(mode, params);
     if (full <= 0 || params.strength <= 0 || params.reference <= 0) {
         return NaN;
     }
@@ -69,7 +69,7 @@ export function computeSpringDomain(
     return Math.min(MAX_BUY_SPRING_RATIO, Math.max(2.0, raw * 1.15));
 }
 
-export function buildSpringRatioTicks(domainMax: number, currentRatio?: number, tickCount = 5): number[] {
+export function buildSpringRatioTicks(domainMax: number, highlightRatios: number[], tickCount = 5): number[] {
     const count = Math.max(tickCount, 2);
     const step = niceTickStep(domainMax / (count - 1));
     if (step <= 0) {
@@ -80,8 +80,10 @@ export function buildSpringRatioTicks(domainMax: number, currentRatio?: number, 
         values.push(roundTickValue(v));
     }
     values.push(domainMax);
-    if (currentRatio !== undefined && currentRatio > 0 && currentRatio < domainMax) {
-        values.push(roundTickValue(currentRatio));
+    for (const ratio of highlightRatios) {
+        if (ratio > 0 && ratio < domainMax) {
+            values.push(roundTickValue(ratio));
+        }
     }
     return [...new Set(values)].sort((a, b) => a - b);
 }

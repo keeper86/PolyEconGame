@@ -14,7 +14,7 @@ vi.mock('recharts', async (importOriginal) => {
     };
 });
 
-const params = { strength: 0.1, reference: 1.5 };
+const params = { strength: 0.1, reference: 1.5, maxUp: 1.05, maxDown: 0.95 };
 
 describe('CostSpringCurve', () => {
     it('renders the current market price marker when currentRatio is given', () => {
@@ -26,6 +26,9 @@ describe('CostSpringCurve', () => {
         const priceTick = screen.getByText('6.25');
         expect(priceTick).toBeInTheDocument();
         expect(priceTick.closest('text')?.getAttribute('fill')).toBe('#fbbf24');
+        const fullPushTick = screen.getByText('1.20');
+        expect(fullPushTick).toBeInTheDocument();
+        expect(fullPushTick.closest('text')?.getAttribute('fill')).toBe('#f87171');
     });
 
     it('renders no market price marker without currentRatio', () => {
