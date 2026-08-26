@@ -1,11 +1,9 @@
 import {
     GENERATION_GAP,
     GENERATION_KERNEL_N,
-    governmentSupportEmaMonths,
     MIN_EMPLOYABLE_AGE,
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
-    SUPPORT_WEIGHT_SIGMA,
-    TICKS_PER_MONTH,
+    SUPPORT_WEIGHT_SIGMA
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';
@@ -21,6 +19,7 @@ import type {
     ServiceName,
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
+import type { TickProfiler } from '../TickProfiler';
 import { nextRandom } from '../utils/stochasticRound';
 import {
     allServices,
@@ -30,7 +29,6 @@ import {
     SERVICE_TIERS,
     serviceKeyOf,
 } from './serviceDefinitions';
-import type { TickProfiler } from '../TickProfiler';
 
 export interface DependentNeed {
     totalNeed: number;
@@ -529,74 +527,4 @@ export function creditDependents(
         }
     }
     return actualCredited;
-}
-
-// TODO: Can we just "shield" wealth of supporters in their loop?
-// Do we need to loop here again?
-export function governmentSupport(planet: Planet, budget: number): number {
-    const demography = planet.population.demography;
-    const numAges = demography.length;
-    if (budget <= 0) {
-        return 0;
-    }
-    const refIncome = referenceMonthlyIncome(planet);
-    const anchoredPrices: Record<string, number> =
-        planet._govSupportAnchoredPrices ?? (planet._govSupportAnchoredPrices = {});
-    const alpha = 1 / (governmentSupportEmaMonths() * TICKS_PER_MONTH);
-    for (const key of Object.keys(planet.marketPrices)) {
-        const current = planet.marketPrices[key] ?? 0;
-        if (current <= 0) {
-            continue;
-        }
-        const prior = anchoredPrices[key] ?? current;
-        anchoredPrices[key] = prior + alpha * (current - prior);
-    }
-    let remainingBudget = budget;
-    let cumulativeMandatoryCost = 0;
-    let totalSpent = 0;
-
-    for (const tier of SERVICE_TIERS) {
-        const tierCostPerTick =
-            computeTierCost(anchoredPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-        const cache = buildAggregateCache(demography, refIncome);
-        const tierNeeds = computeDependentNeedsForTier(
-            cache,
-            tier.services,
-            anchoredPrices,
-            tier.coverageFraction,
-            cumulativeMandatoryCost,
-            refIncome,
-        );
-        const totalNeed = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
-        if (totalNeed > 0) {
-            const spend = Math.min(remainingBudget, totalNeed);
-            if (spend > 0) {
-                const scarcityFactor = spend / totalNeed;
-                let tierSpent = 0;
-                for (let age = 0; age < numAges; age++) {
-                    const need = tierNeeds[age].totalNeed * scarcityFactor;
-                    if (need <= 0) {
-                        continue;
-                    }
-                    tierSpent += creditDependents(
-                        cache,
-                        demography,
-                        age,
-                        need,
-                        tier.services,
-                        anchoredPrices,
-                        tier.coverageFraction,
-                        cumulativeMandatoryCost,
-                        refIncome,
-                    );
-                }
-                remainingBudget -= tierSpent;
-                totalSpent += tierSpent;
-            }
-        }
-        if (tier.mandatoryForOwnConsumption) {
-            cumulativeMandatoryCost += tierCostPerTick;
-        }
-    }
-    return totalSpent;
 }

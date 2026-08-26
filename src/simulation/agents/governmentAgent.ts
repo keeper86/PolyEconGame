@@ -34,8 +34,7 @@ export function setGovernmentOperatingBuffer(buffer: number): void {
     governmentOperatingBufferOverride = buffer;
 }
 
-export const governmentOperatingBuffer = (): number =>
-    governmentOperatingBufferOverride ?? GOVERNMENT_OPERATING_BUFFER;
+export const governmentOperatingBuffer = (): number => governmentOperatingBufferOverride ?? GOVERNMENT_OPERATING_BUFFER;
 
 export const wealthTaxAllowance = (planet: Planet): number => {
     const base = wealthTaxAllowanceOverride ?? WEALTH_TAX_ALLOWANCE;
