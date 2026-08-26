@@ -3,7 +3,7 @@ import {
     GENERATION_KERNEL_N,
     MIN_EMPLOYABLE_AGE,
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
-    SUPPORT_WEIGHT_SIGMA
+    SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import type { Planet } from '../planet/planet';

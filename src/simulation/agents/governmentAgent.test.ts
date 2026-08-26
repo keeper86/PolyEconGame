@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { GOVERNMENT_OPERATING_BUFFER, RECYCLER_BASE_RECOVERY_EFFICIENCY, TICKS_PER_MONTH, WEALTH_TAX_ALLOWANCE, WEALTH_TAX_MONTHLY_RATE } from '../constants';
+import {
+    GOVERNMENT_OPERATING_BUFFER,
+    RECYCLER_BASE_RECOVERY_EFFICIENCY,
+    TICKS_PER_MONTH,
+    WEALTH_TAX_ALLOWANCE,
+    WEALTH_TAX_MONTHLY_RATE,
+} from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
 import {
@@ -186,7 +192,7 @@ describe('governmentSupportTick', () => {
         const spent = governmentSupportTick(gameState, planet);
 
         expect(spent).toBeGreaterThan(0);
-        expect(spent).toBeCloseTo(1000 * 0.85 * (planet.wagePerEdu.none ?? 1) / TICKS_PER_MONTH);
+        expect(spent).toBeCloseTo((1000 * 0.85 * (planet.wagePerEdu.none ?? 1)) / TICKS_PER_MONTH);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(govDepositsBefore);
         expect(planet.governmentDebt).toBeCloseTo(spent);
         expect(planet.bank.loans).toBeCloseTo(loansBefore + spent);

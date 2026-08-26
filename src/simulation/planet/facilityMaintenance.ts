@@ -44,7 +44,10 @@ export function facilityUsageFactor(facility: Facility): number {
 
 export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
     return (
-        (facility.scale * facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+        (facility.scale *
+            facilityUsageFactor(facility) *
+            FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
+            MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
         TICKS_PER_YEAR
     );
 }

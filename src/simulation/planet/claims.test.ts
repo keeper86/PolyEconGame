@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 
 import type { Resource, ResourceEntry } from './claims';
-import { computeLeaseClaimUpfrontCost, queryClaimedResource, extractFromClaimedResource, setNonRenewableClaimCostMultiplier } from './claims';
+import {
+    computeLeaseClaimUpfrontCost,
+    queryClaimedResource,
+    extractFromClaimedResource,
+    setNonRenewableClaimCostMultiplier,
+} from './claims';
 import type { Planet, Agent } from './planet';
 import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { makeAgent } from '../utils/testHelper';

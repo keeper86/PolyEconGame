@@ -11,7 +11,13 @@ import {
 import { coalDepositResourceType } from '../planet/landBoundResources';
 import { ironOreResourceType } from '../planet/resources';
 import type { EducationLevelType } from '../population/education';
-import { agentMap, makeAgent, makeGameState, makePlanetWithPopulation, makeProductionFacility } from '../utils/testHelper';
+import {
+    agentMap,
+    makeAgent,
+    makeGameState,
+    makePlanetWithPopulation,
+    makeProductionFacility,
+} from '../utils/testHelper';
 import { hasOutstandingEmergencyLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
 
 function addWorker(assets: AgentPlanetAssets, age: number, edu: EducationLevelType, count: number): void {
@@ -795,7 +801,9 @@ describe('bankruptcy mode', () => {
             const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id);
             const claim = planet.resources[ironOreResourceType.name]!.claims[0]!;
             expect(claim.tenantAgentId).toBe(refound!.id);
-            expect(planet.resources[ironOreResourceType.name]!.claims.some((c) => c.tenantAgentId === agent.id)).toBe(false);
+            expect(planet.resources[ironOreResourceType.name]!.claims.some((c) => c.tenantAgentId === agent.id)).toBe(
+                false,
+            );
         } finally {
             setBankruptcyEnabled(false);
         }

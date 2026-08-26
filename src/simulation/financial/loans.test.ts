@@ -170,10 +170,7 @@ describe('emergency loans', () => {
     });
 
     it('repays oldest first within the same priority class', () => {
-        const loans = [
-            makeLoan('emergency', 100, 0.05, 2, 362, true),
-            makeLoan('emergency', 50, 0.05, 1, 361, true),
-        ];
+        const loans = [makeLoan('emergency', 100, 0.05, 2, 362, true), makeLoan('emergency', 50, 0.05, 1, 361, true)];
 
         const repaid = repayLoansEmergencyFirst(loans, 60);
 
