@@ -1,10 +1,22 @@
 'use client';
 
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
+import { useGranularityPreference } from '@/hooks/uiPreferences';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useState } from 'react';
+import React from 'react';
 
 export type Granularity = 'monthly' | 'yearly' | 'decade';
+
+export function availableGranularity(stored: Granularity, currentTick: number): Granularity {
+    const yearsElapsed = currentTick / TICKS_PER_YEAR;
+    if (yearsElapsed < 10 && stored === 'decade') {
+        return availableGranularity('yearly', currentTick);
+    }
+    if (yearsElapsed < 2 && stored === 'yearly') {
+        return 'monthly';
+    }
+    return stored;
+}
 
 function GranularityButton({
     active,
@@ -72,12 +84,12 @@ export function GranularityButtonGroup({ granularity, onChange, currentTick }: G
 /** Hook that encapsulates the common granularity state + currentTick. */
 export function useGranularity(): {
     granularity: Granularity;
-    setGranularity: React.Dispatch<React.SetStateAction<Granularity>>;
+    setGranularity: (g: Granularity) => void;
     currentTick: number;
 } {
-    const [granularity, setGranularity] = useState<Granularity>('monthly');
+    const [storedGranularity, setGranularity] = useGranularityPreference();
     const currentTick = useSimulationTick();
-    return { granularity, setGranularity, currentTick };
+    return { granularity: availableGranularity(storedGranularity, currentTick), setGranularity, currentTick };
 }
 
 type GranularityHeaderProps = {

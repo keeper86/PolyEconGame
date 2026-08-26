@@ -5,6 +5,7 @@ import { ProductIcon } from '@/components/client/ProductIcon';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR } from '@/simulation/constants';
@@ -448,7 +449,7 @@ export default function MultiProductPriceChart({
         }
     };
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-    const [rescaleMode, setRescaleMode] = useState<'absolute' | 'relative'>('absolute');
+    const [rescaleMode, setRescaleMode] = usePriceScaleModePreference();
     const { results: resultsMap, onResult, clear } = useQueryResults();
 
     // Clear results when granularity changes (different data shape)
@@ -606,7 +607,7 @@ export default function MultiProductPriceChart({
                                         <div className='flex items-center gap-2'>
                                             <Tabs
                                                 value={rescaleMode}
-                                                onValueChange={(v) => setRescaleMode(v as 'absolute' | 'relative')}
+                                                onValueChange={(v) => setRescaleMode(v as PriceScaleMode)}
                                             >
                                                 <TabsList className='h-6 p-0'>
                                                     <TabsTrigger
