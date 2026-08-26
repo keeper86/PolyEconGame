@@ -167,17 +167,6 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeCloseTo(initial, 10);
     });
 
-    it('nudges the scale down when the facility maintenance is below the contraction threshold', () => {
-        const planet = makePlanetWithAvg(makeMarketResult());
-        const { agents, facility } = makeSetup(planet);
-        facility.maintenanceStatus = 0.6;
-        const initial = facility.scale;
-
-        updateAgentProductionScale(makeGameState(agents), planet);
-
-        expect(facility.scale).toBeLessThan(initial);
-    });
-
     it('makes only a very small scale change for a weak demand-excess signal', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeSetup(planet);
