@@ -1058,6 +1058,88 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(minExpected);
     });
 
+    it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            maintenanceStatus: 1,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].hrProductivityMultiplier = 0.5;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.pidState!.expansionIntegral).toBe(0);
+    });
+
+    it('does NOT accumulate expansion integral while storage is starved', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            maintenanceStatus: 1,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        agent.assets[planet.id].storageFacility.department!.storageStarvation = 0.5;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.pidState!.expansionIntegral).toBe(0);
+    });
+
+    it('accumulates expansion integral when HR and storage are healthy', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+            maintenanceStatus: 1,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
+    });
+
     it('derivative term produces braking when smoothed signal suddenly drops', () => {
         const planetBalanced = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });

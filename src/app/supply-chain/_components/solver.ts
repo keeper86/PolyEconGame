@@ -1,7 +1,8 @@
+import { FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK } from '@/simulation/constants';
 import { allServices } from '@/simulation/market/serviceDefinitions';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
 import { humanResourcesOfficeFacilityType, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
-import { constructionServiceResourceType } from '@/simulation/planet/services';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from '@/simulation/planet/services';
 import type { Model, SolveResult } from 'javascript-lp-solver';
 import solver from 'javascript-lp-solver';
 import { computePopulationServiceDemand } from './populationDemandHelper';
@@ -117,6 +118,12 @@ function buildLPModel(config: SolverConfig): Model {
             }
         }
 
+        const maintenanceKey = resourceConstraintKey(maintenanceServiceResourceType.name);
+        varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+        if (!constraints[maintenanceKey]) {
+            constraints[maintenanceKey] = { min: 0 };
+        }
+
         variables[f.name] = varCoeffs;
     }
 
@@ -161,6 +168,12 @@ function buildLPModel(config: SolverConfig): Model {
             if (!constraints[key]) {
                 constraints[key] = { min: 0 };
             }
+        }
+
+        const maintenanceKey = resourceConstraintKey(maintenanceServiceResourceType.name);
+        varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+        if (!constraints[maintenanceKey]) {
+            constraints[maintenanceKey] = { min: 0 };
         }
 
         variables[sf.name] = varCoeffs;

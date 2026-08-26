@@ -72,10 +72,7 @@ interface FacilityTarget {
     agentCount: number;
 }
 
-const SOLVER_SEED_BASELINE_FLOOR_KEYS: ReadonlySet<string> = new Set([
-    'maintenanceFacility',
-    'administrativeCenter',
-]);
+const SOLVER_SEED_BASELINE_FLOOR_KEYS: ReadonlySet<string> = new Set(['administrativeCenter']);
 
 function computeTargets(
     population: number,
@@ -107,7 +104,7 @@ function computeTargets(
             : Math.max(1, Math.round(FACILITY_SCALE_PER_BILLION[key] * popB));
         const totalScale =
             key === 'maintenanceFacility'
-                ? Math.max(1, Math.round(baseScale * (maintenanceScaleFactor ?? 1)))
+                ? Math.max(1, Math.round(baseScale * (maintenanceScaleFactor ?? 1) * (buildChainScaleFactor ?? 1)))
                 : key === 'constructionFacility'
                   ? Math.max(1, Math.round(baseScale * (constructionScaleFactor ?? 1)))
                   : buildChainScaleFactor !== undefined && buildChainKeys.has(key)

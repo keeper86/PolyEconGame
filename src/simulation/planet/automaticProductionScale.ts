@@ -2,7 +2,7 @@ import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { HRFacility, PidState, ProductionFacility } from './facility';
-import { calculateCostsForConstruction } from './facility';
+import { calculateCostsForConstruction, getStorageStarvation } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -50,9 +50,11 @@ import {
     EXPANSION_STORAGE_FREE_FRACTION,
     EXPANSION_WORKING_CAPITAL_TICKS,
     FACILITY_EXPANSION_MIN_MAINTENANCE,
+    HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    STORAGE_STARVATION_EXPANSION_MAX,
 } from './automaticProductionScale/constants';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -393,10 +395,14 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             );
             facility.scale = newScale;
 
+            const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
+            const storageHealthy = getStorageStarvation(assets.storageFacility) <= STORAGE_STARVATION_EXPANSION_MAX;
             if (
                 facility.scale === facility.maxScale &&
                 signal > 0 &&
-                facility.maintenanceStatus > FACILITY_EXPANSION_MIN_MAINTENANCE
+                facility.maintenanceStatus > FACILITY_EXPANSION_MIN_MAINTENANCE &&
+                hrHealthy &&
+                storageHealthy
             ) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
             } else {

@@ -56,11 +56,11 @@ export function preProductionFinancialTick(
     for (const agent of [...agents.values()]) {
         const assets = agent.assets[planet.id];
         if (!assets) {
-            return;
+            continue;
         }
 
         if (!assets.workforceDemography) {
-            return;
+            continue;
         }
 
         const workforce = assets.workforceDemography;
@@ -104,7 +104,7 @@ export function preProductionFinancialTick(
         }
 
         if (wageBill <= 0) {
-            return;
+            continue;
         }
 
         if (

@@ -41,6 +41,26 @@ describe('preProductionFinancialTick', () => {
         expect(planet.bank!.loans).toBe(0);
     });
 
+    it('continues past a workerless first agent and still pays wages + updates the planet wage', () => {
+        const workerless = makeAgent('workerless', 'p', 'Workerless');
+        const workerAgent = makeAgent('workerful', 'p', 'Workerful');
+        const result = makePlanetWithPopulation({ none: 1000 });
+        const planet = result.planet;
+        planet.wagePerEdu = { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 };
+        workerless.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+
+        const assets = workerAgent.assets[planet.id]!;
+        assets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        assets.deposits = 10_000;
+        addWorker(assets, 25, 'none', 100);
+        addEmployed(planet, 25, 'none', 100);
+
+        preProductionFinancialTick(agentMap(workerless, workerAgent), planet);
+
+        expect(assets.deposits).toBe(9_900);
+        expect(planet.wagePerEdu.none).toBeCloseTo(1.0, 6);
+    });
+
     it('deducts wages from deposits when agent has sufficient funds', () => {
         const assets = agent.assets[planet.id]!;
         assets.deposits = 10_000;
