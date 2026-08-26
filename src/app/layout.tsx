@@ -1,5 +1,6 @@
 import Footer from '@/app/Footer';
 import TickDisplay from '@/components/client/TickDisplay';
+import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import { TourJoyride } from '@/components/tour/TourJoyride';
 import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
@@ -53,6 +54,7 @@ export default async function RootLayout({
                                     <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
                                         <div className='flex items-center gap-2 '>
                                             <SidebarTrigger className='-ml-1' />
+                                            <AgentConditionIndicators />
                                         </div>
                                         <div className='flex items-center gap-2'>
                                             <KeyStatDisplay />

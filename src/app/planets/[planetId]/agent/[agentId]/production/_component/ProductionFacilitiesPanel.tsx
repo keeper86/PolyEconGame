@@ -32,7 +32,6 @@ export default function ProductionFacilitiesPanel({
 }): React.ReactElement {
     const trpc = useTRPC();
     const facilities = assets.productionFacilities;
-    const hrProductivityMultiplier = assets.hrProductivityMultiplier;
 
     // TODO: Use light endpoint for this
     const { data: constructionMarket } = useQuery(
@@ -156,7 +155,6 @@ export default function ProductionFacilitiesPanel({
                                                 constructionServicePrice={constructionServicePrice}
                                                 otherConstructionCosts={otherConstructionCosts}
                                                 onExpanded={() => {}}
-                                                hrProductivityMultiplier={hrProductivityMultiplier}
                                             />
                                         );
                                     }

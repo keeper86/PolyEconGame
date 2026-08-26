@@ -31,6 +31,7 @@ import {
     postTransportContract,
 } from './controller/ship';
 import {
+    getAgentConditions,
     getAgentDetail,
     getAgentFinancialHistory,
     getAgentFinancials,
@@ -91,6 +92,7 @@ const simulationRouter = trpcRoot.router({
     getAgentDetail: getAgentDetail(),
     getAgentOverview: getAgentOverview(),
     getAgentPlanetDetail: getAgentPlanetDetail(),
+    getAgentConditions: getAgentConditions(),
     getPlanetDetail: getPlanetDetail(),
     getPlanetEconomyHistory: getPlanetEconomyHistory(),
     getPlanetBufferHistory: getPlanetBufferHistory(),

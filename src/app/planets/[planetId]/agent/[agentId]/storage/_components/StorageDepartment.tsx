@@ -368,7 +368,6 @@ export default function StorageDepartment({
                     planetId={planetId}
                     constructionServicePrice={constructionServicePrice}
                     otherConstructionCosts={otherConstructionCosts}
-                    hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     headerBadge={statusBadge}
                     dataTour='storage-department'
                 >

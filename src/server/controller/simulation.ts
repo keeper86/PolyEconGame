@@ -8,6 +8,7 @@ import {
 import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
+import { getStorageStarvation } from '@/simulation/planet/facility';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
@@ -816,6 +817,24 @@ export const getAgentFinancials = () =>
             const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
             const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
             return { deposits, monthlyNetCashFlow };
+        });
+
+export const getAgentConditions = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(
+            z.object({
+                hrProductivityMultiplier: z.number(),
+                storageStarvation: z.number(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const { agent } = getAgentSync(input.agentId);
+            const assets = agent?.assets?.[input.planetId];
+            return {
+                hrProductivityMultiplier: assets?.hrProductivityMultiplier ?? 1,
+                storageStarvation: assets?.storageFacility ? getStorageStarvation(assets.storageFacility) : 1,
+            };
         });
 
 export const getLoanConditions = () =>

@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import type { TooltipProps } from 'recharts';
 import {
+    Area,
     CartesianGrid,
     Line,
     LineChart,
@@ -251,12 +252,13 @@ export function CostSpringCurve({
                         dot={false}
                         isAnimationActive={false}
                     />
-                    <Line
+                    <Area
                         type='monotone'
                         dataKey='active'
                         stroke={ACTIVE_COLOR}
                         strokeWidth={2}
                         dot={false}
+                        fill={'red'}
                         isAnimationActive={false}
                     />
                     {fullRatio !== undefined && (

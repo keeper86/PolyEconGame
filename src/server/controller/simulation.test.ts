@@ -21,4 +21,14 @@ describe('simulation tRPC controller', () => {
         expect(typeof result.tick).toBe('number');
         expect(Array.isArray(result.agents)).toBe(true);
     });
+
+    it('getAgentConditions returns fallback values when the agent is unknown', async () => {
+        const caller = getCaller();
+        const result = await caller.simulation.getAgentConditions({
+            agentId: 'unknown-agent',
+            planetId: 'unknown-planet',
+        });
+
+        expect(result).toEqual({ hrProductivityMultiplier: 1, storageStarvation: 1 });
+    });
 });
