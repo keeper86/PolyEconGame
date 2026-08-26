@@ -15,16 +15,13 @@ function emptyLocal(): AutoConfigLocalState {
     return {
         priceAdjustMaxUp: '',
         priceAdjustMaxDown: '',
+        costSpringStrength: '',
+        bidOfferMaxCostMultiplier: '',
         inventorySmoothingMaxExtra: '',
         targetSellThrough: '',
-        askVolumeFloorFraction: '',
-        askPriceSensitivity: '',
         automatedCostFloorBuffer: '',
         inputBufferTargetTicks: '',
         targetFillRate: '',
-        bidVolumeFloorFraction: '',
-        bidPriceSensitivity: '',
-        bidOfferMaxCostMultiplier: '',
         freeBuyQuantity: '',
         freeRetainment: '',
         freeBuyQuantitySmoothingMaxExtra: '',
@@ -130,7 +127,7 @@ describe('detectPricingBuyPreset', () => {
             priceAdjustMaxUp: '1.10',
             priceAdjustMaxDown: '0.90',
             targetFillRate: '0.80',
-            bidVolumeFloorFraction: '0.80',
+            bidOfferMaxCostMultiplier: '8',
         });
         expect(detectPricingBuyPreset(local, false)).toBe('custom');
     });
@@ -170,7 +167,7 @@ describe('detectPricingSellPreset', () => {
         const local = localWith({
             priceAdjustMaxUp: '1.05',
             priceAdjustMaxDown: '0.93',
-            askVolumeFloorFraction: '0.50',
+            automatedCostFloorBuffer: '0.5',
             targetSellThrough: '0.85',
         });
         expect(detectPricingSellPreset(local, false)).toBe('custom');

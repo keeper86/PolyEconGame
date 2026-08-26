@@ -1,0 +1,120 @@
+import { PRICE_ADJUST_MAX_DOWN, PRICE_ADJUST_MAX_UP } from '@/simulation/constants';
+
+export type CostSpringParams = {
+    strength: number;
+    reference: number;
+};
+
+export type SpringCurvePoint = {
+    ratio: number;
+    ghost: number;
+    active: number;
+};
+
+export function springPush(mode: 'buy' | 'sell', params: CostSpringParams, ratio: number): number {
+    if (params.strength <= 0 || params.reference <= 0 || ratio <= 0) {
+        return 0;
+    }
+    if (mode === 'buy') {
+        return ratio > params.reference ? params.strength * Math.sqrt(ratio / params.reference - 1) : 0;
+    }
+    return ratio < params.reference ? params.strength * Math.sqrt(params.reference / ratio - 1) : 0;
+}
+
+export function fullPush(mode: 'buy' | 'sell'): number {
+    return mode === 'buy' ? PRICE_ADJUST_MAX_UP - 1 : 1 - PRICE_ADJUST_MAX_DOWN;
+}
+
+export function springFraction(mode: 'buy' | 'sell', params: CostSpringParams, ratio: number): number {
+    const full = fullPush(mode);
+    if (full <= 0) {
+        return 0;
+    }
+    return Math.min(1, springPush(mode, params, ratio) / full);
+}
+
+export function ratioAtFullPush(mode: 'buy' | 'sell', params: CostSpringParams): number {
+    const full = fullPush(mode);
+    if (full <= 0 || params.strength <= 0 || params.reference <= 0) {
+        return NaN;
+    }
+    const offset = (full / params.strength) ** 2;
+    if (mode === 'buy') {
+        return params.reference * (1 + offset);
+    }
+    return params.reference / (1 + offset);
+}
+
+export function computeSpringDomain(
+    mode: 'buy' | 'sell',
+    ghost: CostSpringParams,
+    active: CostSpringParams,
+    currentRatio?: number,
+): number {
+    if (mode === 'sell') {
+        const buffer = Math.max(ghost.reference, active.reference);
+        return Math.max(buffer, currentRatio ?? 0, 1) * 1.15;
+    }
+    const refs = Math.max(ghost.reference, active.reference);
+    const fullGhost = ratioAtFullPush('buy', ghost);
+    const fullActive = ratioAtFullPush('buy', active);
+    const raw = Math.max(
+        Number.isFinite(fullGhost) ? fullGhost : 0,
+        Number.isFinite(fullActive) ? fullActive : 0,
+        refs,
+        currentRatio ?? 0,
+    );
+    return Math.max(1.5, raw * 1.15);
+}
+
+export function buildSpringRatioTicks(domainMax: number, currentRatio?: number, tickCount = 5): number[] {
+    const count = Math.max(tickCount, 2);
+    const step = niceTickStep(domainMax / (count - 1));
+    if (step <= 0) {
+        return [0, domainMax];
+    }
+    const values: number[] = [];
+    for (let v = 0; v <= domainMax - 0.99 * step; v += step) {
+        values.push(roundTickValue(v));
+    }
+    values.push(domainMax);
+    if (currentRatio !== undefined && currentRatio > 0 && currentRatio < domainMax) {
+        values.push(roundTickValue(currentRatio));
+    }
+    return [...new Set(values)].sort((a, b) => a - b);
+}
+
+function niceTickStep(roughStep: number): number {
+    if (roughStep <= 0) {
+        return 0;
+    }
+    const digitCount = Math.floor(Math.log10(roughStep)) + 1;
+    const digitCountValue = 10 ** digitCount;
+    const stepRatio = roughStep / digitCountValue;
+    const stepRatioScale = digitCount !== 1 ? 0.05 : 0.1;
+    const amendStepRatio = Math.ceil(stepRatio / stepRatioScale) * stepRatioScale;
+    return amendStepRatio * digitCountValue;
+}
+
+function roundTickValue(value: number): number {
+    return Number(value.toFixed(6));
+}
+
+export function buildSpringCurvePoints(
+    mode: 'buy' | 'sell',
+    ghost: CostSpringParams,
+    active: CostSpringParams,
+    domainMax: number,
+    sampleCount = 100,
+): SpringCurvePoint[] {
+    const points: SpringCurvePoint[] = [];
+    for (let i = 0; i <= sampleCount; i++) {
+        const ratio = (domainMax / sampleCount) * i;
+        points.push({
+            ratio: Number(ratio.toFixed(4)),
+            ghost: Number(springFraction(mode, ghost, ratio).toFixed(4)),
+            active: Number(springFraction(mode, active, ratio).toFixed(4)),
+        });
+    }
+    return points;
+}

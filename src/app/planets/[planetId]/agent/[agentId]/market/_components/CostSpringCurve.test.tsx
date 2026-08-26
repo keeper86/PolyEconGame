@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { VolumeFractionCurve } from './VolumeFractionCurve';
+import { CostSpringCurve } from './CostSpringCurve';
 
 vi.mock('recharts', async (importOriginal) => {
     const actual = await importOriginal<typeof import('recharts')>();
@@ -14,30 +14,30 @@ vi.mock('recharts', async (importOriginal) => {
     };
 });
 
-const params = { floorFraction: 0.1, sensitivity: 1.5, inflection: 1.2 };
+const params = { strength: 0.1, reference: 1.5 };
 
-describe('VolumeFractionCurve', () => {
+describe('CostSpringCurve', () => {
     it('renders the current market price marker when currentRatio is given', () => {
         const { container } = render(
-            <VolumeFractionCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
+            <CostSpringCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
         );
-        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(2);
-        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(1);
+        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(3);
+        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(2);
         const priceTick = screen.getByText('6.25');
         expect(priceTick).toBeInTheDocument();
         expect(priceTick.closest('text')?.getAttribute('fill')).toBe('#fbbf24');
     });
 
     it('renders no market price marker without currentRatio', () => {
-        const { container } = render(<VolumeFractionCurve mode='sell' ghost={params} active={params} />);
-        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(0);
-        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(0);
+        const { container } = render(<CostSpringCurve mode='sell' ghost={params} active={params} />);
+        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(1);
+        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(1);
         expect(screen.queryByText('6.25')).not.toBeInTheDocument();
     });
 
     it('places the market price dot inside the plot area at the ratio position', () => {
         const { container } = render(
-            <VolumeFractionCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
+            <CostSpringCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
         );
         const svg = container.querySelector('svg');
         const circles = container.querySelectorAll('.recharts-reference-dot circle');

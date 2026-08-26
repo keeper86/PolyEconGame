@@ -15,8 +15,7 @@ import { localToAutoConfig } from './marketTypes';
 const BUY_PRICING_KEYS = [
     'priceAdjustMaxUp',
     'priceAdjustMaxDown',
-    'bidVolumeFloorFraction',
-    'bidPriceSensitivity',
+    'costSpringStrength',
     'bidOfferMaxCostMultiplier',
     'targetFillRate',
 ] as const;
