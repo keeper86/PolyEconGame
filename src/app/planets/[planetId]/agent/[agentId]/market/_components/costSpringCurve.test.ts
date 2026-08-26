@@ -101,41 +101,56 @@ describe('springFraction', () => {
 describe('computeSpringDomain', () => {
     it('covers the full-push ratio for buy with margin', () => {
         const domain = computeSpringDomain('buy', buyParams, buyParams);
-        expect(domain).toBeGreaterThanOrEqual(ratioAtFullPush('buy', buyParams) * 1.15);
+        expect(domain.max).toBeGreaterThanOrEqual(ratioAtFullPush('buy', buyParams) * 1.15);
+        expect(domain.min).toBe(0);
     });
 
     it('caps the buy domain at twice the max soft bid', () => {
         const weakBuy: CostSpringParams = { strength: 0.01, reference: 3.5, maxUp: 1.05, maxDown: 0.95 };
         const domain = computeSpringDomain('buy', weakBuy, weakBuy);
-        expect(domain).toBeLessThanOrEqual(20);
-        expect(domain).toBe(20);
+        expect(domain.max).toBeLessThanOrEqual(20);
+        expect(domain.max).toBe(20);
     });
 
-    it('covers the buffer for sell with margin', () => {
+    it('covers the buffer for sell with margin and starts at 0.75', () => {
         const domain = computeSpringDomain('sell', sellParams, sellParams);
-        expect(domain).toBeGreaterThanOrEqual(1.5 * 1.15);
+        expect(domain.max).toBeGreaterThanOrEqual(1.5 * 1.15);
+        expect(domain.min).toBe(0.75);
     });
 
     it('extends to include the current ratio', () => {
-        expect(computeSpringDomain('sell', sellParams, sellParams, 4)).toBeGreaterThanOrEqual(4 * 1.15);
+        expect(computeSpringDomain('sell', sellParams, sellParams, 4).max).toBeGreaterThanOrEqual(4 * 1.15);
     });
 
     it('caps the buy domain even when the current ratio is far out', () => {
-        expect(computeSpringDomain('buy', buyParams, buyParams, 50)).toBe(20);
+        expect(computeSpringDomain('buy', buyParams, buyParams, 50).max).toBe(20);
+    });
+
+    it('starts the sell axis at 0 when the data goes below 0.75', () => {
+        const strongSpring: CostSpringParams = { strength: 0.03, reference: 1.5, maxUp: 1.05, maxDown: 0.95 };
+        expect(computeSpringDomain('sell', strongSpring, strongSpring).min).toBe(0);
+        expect(computeSpringDomain('sell', sellParams, sellParams, 0.4).min).toBe(0);
     });
 });
 
 describe('buildSpringCurvePoints', () => {
-    it('samples from 0 to the domain inclusive', () => {
+    it('samples from the domain min to the domain max inclusive', () => {
         const domain = computeSpringDomain('buy', buyParams, buyParams);
-        const points = buildSpringCurvePoints('buy', buyParams, buyParams, domain, 50);
+        const points = buildSpringCurvePoints('buy', buyParams, buyParams, domain.min, domain.max, 50);
         expect(points).toHaveLength(51);
         expect(points[0].ratio).toBe(0);
-        expect(points[points.length - 1].ratio).toBeCloseTo(domain, 3);
+        expect(points[points.length - 1].ratio).toBeCloseTo(domain.max, 3);
+    });
+
+    it('samples the sell curve from 0.75 upward', () => {
+        const domain = computeSpringDomain('sell', sellParams, sellParams);
+        const points = buildSpringCurvePoints('sell', sellParams, sellParams, domain.min, domain.max, 50);
+        expect(points[0].ratio).toBe(0.75);
+        expect(points[points.length - 1].ratio).toBeCloseTo(domain.max, 3);
     });
 
     it('stays flat at 0 below the buy reference', () => {
-        const points = buildSpringCurvePoints('buy', buyParams, buyParams, 4.375, 100);
+        const points = buildSpringCurvePoints('buy', buyParams, buyParams, 0, 4.375, 100);
         for (const p of points.filter((point) => point.ratio <= 3.5)) {
             expect(p.ghost).toBe(0);
         }
@@ -144,16 +159,21 @@ describe('buildSpringCurvePoints', () => {
 
 describe('buildSpringRatioTicks', () => {
     it('reproduces the recharts fixed-domain ticks', () => {
-        expect(buildSpringRatioTicks(10, [])).toEqual([0, 3, 6, 10]);
-        expect(buildSpringRatioTicks(2, [])).toEqual([0, 0.5, 1, 1.5, 2]);
+        expect(buildSpringRatioTicks(0, 10, [])).toEqual([0, 3, 6, 10]);
+        expect(buildSpringRatioTicks(0, 2, [])).toEqual([0, 0.5, 1, 1.5, 2]);
     });
 
     it('inserts highlight ratios as extra ticks', () => {
-        expect(buildSpringRatioTicks(10, [6.25])).toEqual([0, 3, 6, 6.25, 10]);
-        expect(buildSpringRatioTicks(10, [6.25, 1.2])).toEqual([0, 1.2, 3, 6, 6.25, 10]);
+        expect(buildSpringRatioTicks(0, 10, [6.25])).toEqual([0, 3, 6, 6.25, 10]);
+        expect(buildSpringRatioTicks(0, 10, [6.25, 1.2])).toEqual([0, 1.2, 3, 6, 6.25, 10]);
     });
 
     it('ignores highlight ratios outside the domain', () => {
-        expect(buildSpringRatioTicks(10, [12])).toEqual([0, 3, 6, 10]);
+        expect(buildSpringRatioTicks(0, 10, [12])).toEqual([0, 3, 6, 10]);
+        expect(buildSpringRatioTicks(0, 10, [0])).toEqual([0, 3, 6, 10]);
+    });
+
+    it('starts at the domain min for non-zero domains', () => {
+        expect(buildSpringRatioTicks(0.75, 1.725, [1.2, 1.5])).toEqual([0.75, 1, 1.2, 1.25, 1.5, 1.725]);
     });
 });

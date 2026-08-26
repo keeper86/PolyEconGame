@@ -12,6 +12,7 @@ export type SpringCurvePoint = {
 };
 
 const MAX_BUY_SPRING_RATIO = 20;
+const SELL_DOMAIN_MIN = 0.75;
 
 export function springPush(mode: 'buy' | 'sell', params: CostSpringParams, ratio: number): number {
     if (params.strength <= 0 || params.reference <= 0 || ratio < 0) {
@@ -52,10 +53,18 @@ export function computeSpringDomain(
     ghost: CostSpringParams,
     active: CostSpringParams,
     currentRatio?: number,
-): number {
+): { min: number; max: number } {
     if (mode === 'sell') {
         const buffer = Math.max(ghost.reference, active.reference);
-        return Math.max(buffer, currentRatio ?? 0, 1) * 1.15;
+        const max = Math.max(buffer, currentRatio ?? 0, 1) * 1.15;
+        const fullGhost = ratioAtFullPush('sell', ghost);
+        const fullActive = ratioAtFullPush('sell', active);
+        const lowest = Math.min(
+            Number.isFinite(fullGhost) ? fullGhost : Infinity,
+            Number.isFinite(fullActive) ? fullActive : Infinity,
+            currentRatio ?? Infinity,
+        );
+        return { min: lowest < SELL_DOMAIN_MIN ? 0 : SELL_DOMAIN_MIN, max };
     }
     const refs = Math.max(ghost.reference, active.reference);
     const fullGhost = ratioAtFullPush('buy', ghost);
@@ -66,22 +75,28 @@ export function computeSpringDomain(
         refs,
         currentRatio ?? 0,
     );
-    return Math.min(MAX_BUY_SPRING_RATIO, Math.max(2.0, raw * 1.15));
+    return { min: 0, max: Math.min(MAX_BUY_SPRING_RATIO, Math.max(2.0, raw * 1.15)) };
 }
 
-export function buildSpringRatioTicks(domainMax: number, highlightRatios: number[], tickCount = 5): number[] {
+export function buildSpringRatioTicks(
+    domainMin: number,
+    domainMax: number,
+    highlightRatios: number[],
+    tickCount = 5,
+): number[] {
     const count = Math.max(tickCount, 2);
-    const step = niceTickStep(domainMax / (count - 1));
+    const span = domainMax - domainMin;
+    const step = niceTickStep(span / (count - 1));
     if (step <= 0) {
-        return [0, domainMax];
+        return [domainMin, domainMax];
     }
     const values: number[] = [];
-    for (let v = 0; v <= domainMax - 0.99 * step; v += step) {
+    for (let v = domainMin; v <= domainMax - 0.99 * step; v += step) {
         values.push(roundTickValue(v));
     }
     values.push(domainMax);
     for (const ratio of highlightRatios) {
-        if (ratio > 0 && ratio < domainMax) {
+        if (ratio > domainMin && ratio < domainMax) {
             values.push(roundTickValue(ratio));
         }
     }
@@ -108,12 +123,14 @@ export function buildSpringCurvePoints(
     mode: 'buy' | 'sell',
     ghost: CostSpringParams,
     active: CostSpringParams,
+    domainMin: number,
     domainMax: number,
     sampleCount = 100,
 ): SpringCurvePoint[] {
     const points: SpringCurvePoint[] = [];
+    const span = domainMax - domainMin;
     for (let i = 0; i <= sampleCount; i++) {
-        const ratio = (domainMax / sampleCount) * i;
+        const ratio = domainMin + (span / sampleCount) * i;
         points.push({
             ratio: Number(ratio.toFixed(4)),
             ghost: Number(springFraction(mode, ghost, ratio).toFixed(4)),

@@ -128,32 +128,38 @@ export function CostSpringCurve({
     active: CostSpringParams;
     currentRatio?: number;
 }): React.ReactElement {
-    const domainMax = useMemo(
+    const { min: domainMin, max: domainMax } = useMemo(
         () => computeSpringDomain(mode, ghost, active, currentRatio),
         [mode, ghost, active, currentRatio],
     );
 
     const data = useMemo(
-        () => buildSpringCurvePoints(mode, ghost, active, domainMax, SAMPLE_COUNT),
-        [mode, ghost, active, domainMax],
+        () => buildSpringCurvePoints(mode, ghost, active, domainMin, domainMax, SAMPLE_COUNT),
+        [mode, ghost, active, domainMin, domainMax],
     );
 
     const currentY = currentRatio !== undefined ? springFraction(mode, active, currentRatio) : undefined;
     const showCurrent =
-        currentRatio !== undefined && currentY !== undefined && currentRatio >= 0 && currentRatio <= domainMax;
+        currentRatio !== undefined && currentY !== undefined && currentRatio >= domainMin && currentRatio <= domainMax;
 
     const activeFullRatio = ratioAtFullPush(mode, active);
-    const showFullPush = Number.isFinite(activeFullRatio) && activeFullRatio > 0 && activeFullRatio <= domainMax;
+    const showFullPush =
+        Number.isFinite(activeFullRatio) && activeFullRatio >= domainMin && activeFullRatio <= domainMax;
     const fullRatio = showFullPush ? Number(activeFullRatio.toFixed(4)) : undefined;
 
     const referenceRatio =
-        active.reference > 0 && active.reference <= domainMax ? Number(active.reference.toFixed(4)) : undefined;
+        active.reference >= domainMin && active.reference <= domainMax
+            ? Number(active.reference.toFixed(4))
+            : undefined;
 
     const highlightRatios = useMemo(
         () => [currentRatio, fullRatio, referenceRatio].filter((r): r is number => r !== undefined),
         [currentRatio, fullRatio, referenceRatio],
     );
-    const xTicks = useMemo(() => buildSpringRatioTicks(domainMax, highlightRatios), [domainMax, highlightRatios]);
+    const xTicks = useMemo(
+        () => buildSpringRatioTicks(domainMin, domainMax, highlightRatios),
+        [domainMin, domainMax, highlightRatios],
+    );
 
     const title = mode === 'buy' ? 'Ceiling spring curve' : 'Cost spring curve';
 
@@ -198,7 +204,7 @@ export function CostSpringCurve({
                     <XAxis
                         dataKey='ratio'
                         type='number'
-                        domain={[0, domainMax]}
+                        domain={[domainMin, domainMax]}
                         ticks={xTicks}
                         interval={0}
                         tick={
