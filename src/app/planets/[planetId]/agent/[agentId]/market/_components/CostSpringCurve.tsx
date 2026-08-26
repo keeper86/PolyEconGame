@@ -70,6 +70,7 @@ function PriceAxisTick({
     verticalAnchor,
     currentRatio,
     fullRatio,
+    referenceRatio,
 }: {
     x?: number;
     y?: number;
@@ -80,19 +81,28 @@ function PriceAxisTick({
     verticalAnchor?: 'start' | 'middle' | 'end';
     currentRatio?: number;
     fullRatio?: number;
+    referenceRatio?: number;
 }): React.ReactElement | null {
     if (x === undefined || y === undefined || payload === undefined) {
         return null;
     }
     const isMarketPrice = currentRatio !== undefined && Math.abs(payload.value - currentRatio) < 1e-6;
     const isFullPush = !isMarketPrice && fullRatio !== undefined && Math.abs(payload.value - fullRatio) < 1e-6;
+    const isReference =
+        !isMarketPrice &&
+        !isFullPush &&
+        referenceRatio !== undefined &&
+        Math.abs(payload.value - referenceRatio) < 1e-6;
     const text = isMarketPrice
-        ? currentRatio.toFixed(2)
+        ? currentRatio.toFixed(1)
         : isFullPush
-          ? fullRatio.toFixed(2)
-          : tickFormatter
-            ? tickFormatter(payload.value, index ?? 0)
-            : String(payload.value);
+          ? fullRatio.toFixed(1)
+          : isReference
+            ? referenceRatio.toFixed(1)
+            : tickFormatter
+              ? tickFormatter(payload.value, index ?? 0)
+              : String(payload.value);
+    const fill = isMarketPrice ? CURRENT_COLOR : isFullPush ? FULL_PUSH_COLOR : isReference ? ACTIVE_COLOR : TICK_COLOR;
     return (
         <Text
             x={x}
@@ -100,7 +110,7 @@ function PriceAxisTick({
             textAnchor={textAnchor ?? 'middle'}
             verticalAnchor={verticalAnchor ?? 'start'}
             fontSize={10}
-            fill={isMarketPrice ? CURRENT_COLOR : isFullPush ? FULL_PUSH_COLOR : TICK_COLOR}
+            fill={fill}
         >
             {text}
         </Text>
@@ -136,9 +146,12 @@ export function CostSpringCurve({
     const showFullPush = Number.isFinite(activeFullRatio) && activeFullRatio > 0 && activeFullRatio <= domainMax;
     const fullRatio = showFullPush ? Number(activeFullRatio.toFixed(4)) : undefined;
 
+    const referenceRatio =
+        active.reference > 0 && active.reference <= domainMax ? Number(active.reference.toFixed(4)) : undefined;
+
     const highlightRatios = useMemo(
-        () => [currentRatio, fullRatio].filter((r): r is number => r !== undefined),
-        [currentRatio, fullRatio],
+        () => [currentRatio, fullRatio, referenceRatio].filter((r): r is number => r !== undefined),
+        [currentRatio, fullRatio, referenceRatio],
     );
     const xTicks = useMemo(() => buildSpringRatioTicks(domainMax, highlightRatios), [domainMax, highlightRatios]);
 
@@ -188,7 +201,13 @@ export function CostSpringCurve({
                         domain={[0, domainMax]}
                         ticks={xTicks}
                         interval={0}
-                        tick={<PriceAxisTick currentRatio={currentRatio} fullRatio={fullRatio} />}
+                        tick={
+                            <PriceAxisTick
+                                currentRatio={currentRatio}
+                                fullRatio={fullRatio}
+                                referenceRatio={referenceRatio}
+                            />
+                        }
                         tickFormatter={(v) => v.toFixed(1)}
                         axisLine={false}
                         tickLine={false}
@@ -248,6 +267,24 @@ export function CostSpringCurve({
                             y={1}
                             r={4}
                             fill={FULL_PUSH_COLOR}
+                            stroke='#0f172a'
+                            strokeWidth={2}
+                        />
+                    )}
+                    {referenceRatio !== undefined && (
+                        <ReferenceLine
+                            x={referenceRatio}
+                            stroke={ACTIVE_COLOR}
+                            strokeDasharray='3 3'
+                            strokeOpacity={0.7}
+                        />
+                    )}
+                    {referenceRatio !== undefined && (
+                        <ReferenceDot
+                            x={referenceRatio}
+                            y={0}
+                            r={4}
+                            fill={ACTIVE_COLOR}
                             stroke='#0f172a'
                             strokeWidth={2}
                         />

@@ -21,20 +21,23 @@ describe('CostSpringCurve', () => {
         const { container } = render(
             <CostSpringCurve mode='sell' ghost={params} active={params} currentRatio={6.25} />,
         );
-        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(3);
-        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(2);
-        const priceTick = screen.getByText('6.25');
+        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(4);
+        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(3);
+        const priceTick = screen.getByText('6.3');
         expect(priceTick).toBeInTheDocument();
         expect(priceTick.closest('text')?.getAttribute('fill')).toBe('#fbbf24');
-        const fullPushTick = screen.getByText('1.20');
+        const fullPushTick = screen.getByText('1.2');
         expect(fullPushTick).toBeInTheDocument();
         expect(fullPushTick.closest('text')?.getAttribute('fill')).toBe('#f87171');
+        const referenceTick = screen.getByText('1.5');
+        expect(referenceTick).toBeInTheDocument();
+        expect(referenceTick.closest('text')?.getAttribute('fill')).toBe('#38bdf8');
     });
 
     it('renders no market price marker without currentRatio', () => {
         const { container } = render(<CostSpringCurve mode='sell' ghost={params} active={params} />);
-        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(1);
-        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(1);
+        expect(container.querySelectorAll('.recharts-reference-dot')).toHaveLength(2);
+        expect(container.querySelectorAll('.recharts-reference-line')).toHaveLength(2);
         expect(screen.queryByText('6.25')).not.toBeInTheDocument();
     });
 
