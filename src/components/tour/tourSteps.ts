@@ -483,7 +483,7 @@ export function getStepsForPage(
                         'When your company gets really large, it may become beneficial to produce a base level ' +
                         'of Logistics yourself via a Logistics Hub.',
                     title: '\uD83D\uDED2 Enable Buy for Logistics',
-                    placement: 'auto',
+                    placement: 'bottom',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,

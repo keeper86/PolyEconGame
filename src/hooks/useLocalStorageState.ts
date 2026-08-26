@@ -85,7 +85,7 @@ export function useLocalStorageState<T>(
     key: string,
     fallback: T,
     isValid: (raw: unknown) => raw is T,
-): [T, (value: T) => void] {
+): [T, (next: T | ((prev: T) => T)) => void] {
     const store = getStore(key, fallback, isValid);
 
     const getSnapshot = useCallback(() => store.value, [store]);
@@ -112,11 +112,15 @@ export function useLocalStorageState<T>(
     }, [store]);
 
     const setValue = useCallback(
-        (next: T) => {
-            store.value = next;
+        (next: T | ((prev: T) => T)) => {
+            const resolved = typeof next === 'function' ? (next as (prev: T) => T)(store.value) : next;
+            if (resolved === store.value) {
+                return;
+            }
+            store.value = resolved;
             notifyListeners(store);
             try {
-                localStorage.setItem(store.key, JSON.stringify(next));
+                localStorage.setItem(store.key, JSON.stringify(resolved));
             } catch {
                 // Silently ignore storage errors
             }

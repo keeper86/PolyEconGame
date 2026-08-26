@@ -63,6 +63,24 @@ describe('useLocalStorageState', () => {
         expect(result.current[0]).toBe(false);
     });
 
+    it('applies an updater function against the current value', () => {
+        const { result } = renderBooleanState();
+        act(() => result.current[1](true));
+        act(() => result.current[1]((prev) => !prev));
+        expect(result.current[0]).toBe(false);
+        expect(JSON.parse(localStorage.getItem(TEST_KEY) ?? 'null')).toBe(false);
+    });
+
+    it('applies two sequential updater calls without dropping an update', () => {
+        const { result } = renderBooleanState();
+        act(() => result.current[1](true));
+        act(() => {
+            result.current[1]((prev) => !prev);
+            result.current[1]((prev) => !prev);
+        });
+        expect(result.current[0]).toBe(true);
+    });
+
     it('keeps the in-memory value when localStorage.setItem throws', () => {
         const setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
             throw new Error('quota exceeded');

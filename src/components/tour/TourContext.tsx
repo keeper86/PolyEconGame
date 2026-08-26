@@ -1,17 +1,34 @@
 'use client';
 
 import type { PageRoute } from '@/components/tour/tourSteps';
+import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 import { useRouter } from 'next/navigation';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, type ReactNode } from 'react';
 
 const STORAGE_KEY = 'polyecongame-tour';
 
 type TourStorage = {
     active: boolean;
-    currentPageIndex: number;
+    currentStepIndex: number;
     completed: boolean;
     completedActions: string[];
 };
+
+export function isTourStorage(raw: unknown): raw is TourStorage {
+    if (typeof raw !== 'object' || raw === null) {
+        return false;
+    }
+    const candidate = raw as Record<string, unknown>;
+    return (
+        typeof candidate.active === 'boolean' &&
+        typeof candidate.currentStepIndex === 'number' &&
+        Number.isInteger(candidate.currentStepIndex) &&
+        candidate.currentStepIndex >= 0 &&
+        typeof candidate.completed === 'boolean' &&
+        Array.isArray(candidate.completedActions) &&
+        candidate.completedActions.every((action) => typeof action === 'string')
+    );
+}
 
 type TourContextValue = {
     isTourActive: boolean;
@@ -32,110 +49,71 @@ const PAGE_ORDER: PageRoute[] = ['financial', 'workforce', 'market', 'production
 
 const defaultStorage: TourStorage = {
     active: false,
-    currentPageIndex: 0,
+    currentStepIndex: 0,
     completed: false,
     completedActions: [],
 };
 
-function loadStorage(): TourStorage {
-    if (typeof window === 'undefined') {
-        return defaultStorage;
-    }
-    try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-            const parsed = JSON.parse(raw) as TourStorage;
-            const merged = { ...defaultStorage, ...parsed, completedActions: parsed.completedActions ?? [] };
-            if (merged.currentPageIndex >= PAGE_ORDER.length) {
-                merged.currentPageIndex = 0;
-            }
-            return merged;
-        }
-    } catch {
-        console.warn('[tour] Failed to load tour storage from localStorage');
-    }
-    return defaultStorage;
-}
-
-function saveStorage(storage: TourStorage): void {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(storage));
-    } catch {
-        console.warn('[tour] Failed to save tour storage to localStorage');
-    }
-}
-
 const TourContext = createContext<TourContextValue | null>(null);
 
 export function TourProvider({ children }: { children: ReactNode }) {
-    const [storage, setStorage] = useState<TourStorage>(defaultStorage);
+    const [storage, setStorage] = useLocalStorageState<TourStorage>(STORAGE_KEY, defaultStorage, isTourStorage);
     const router = useRouter();
     const isTourActiveRef = useRef<boolean>(false);
-
-    useEffect(() => {
-        setStorage(loadStorage());
-    }, []);
 
     useEffect(() => {
         isTourActiveRef.current = storage.active;
     }, [storage.active]);
 
-    const persist = useCallback((update: Partial<TourStorage>) => {
-        setStorage((prev) => {
-            const next = { ...prev, ...update };
-            saveStorage(next);
-            return next;
-        });
-    }, []);
+    const persist = useCallback(
+        (update: Partial<TourStorage>) => {
+            setStorage((prev) => ({ ...prev, ...update }));
+        },
+        [setStorage],
+    );
 
     const isTourActive = storage.active;
-    const currentStepIndex = storage.currentPageIndex;
+    const currentStepIndex = storage.currentStepIndex;
     const isCompleted = storage.completed;
     const completedActions = storage.completedActions;
 
     const setTourActive = useCallback(
         (active: boolean) => {
-            persist({ active, currentPageIndex: 0, completed: false, completedActions: [] });
+            persist({ active, currentStepIndex: 0, completed: false, completedActions: [] });
         },
         [persist],
     );
 
     const setCurrentStepIndex = useCallback(
         (index: number) => {
-            persist({ currentPageIndex: index });
+            persist({ currentStepIndex: index });
         },
         [persist],
     );
 
     const advanceToNextStep = useCallback(() => {
-        setStorage((prev) => {
-            const next = { ...prev, currentPageIndex: prev.currentPageIndex + 1 };
-            saveStorage(next);
-            return next;
-        });
-    }, []);
+        setStorage((prev) => ({ ...prev, currentStepIndex: prev.currentStepIndex + 1 }));
+    }, [setStorage]);
 
     const completeTour = useCallback(() => {
         persist({ active: false, completed: true });
     }, [persist]);
 
     const resetTour = useCallback(() => {
-        persist({ active: true, currentPageIndex: 0, completed: false });
+        persist({ active: true, currentStepIndex: 0, completed: false });
     }, [persist]);
 
-    const markActionCompleted = useCallback((action: string) => {
-        setStorage((prev) => {
-            if (prev.completedActions.includes(action)) {
-                return prev;
-            }
-            const next = {
-                ...prev,
-                completedActions: [...prev.completedActions, action],
-            };
-            saveStorage(next);
-            return next;
-        });
-    }, []);
+    const markActionCompleted = useCallback(
+        (action: string) => {
+            setStorage((prev) => {
+                if (prev.completedActions.includes(action)) {
+                    return prev;
+                }
+                return { ...prev, completedActions: [...prev.completedActions, action] };
+            });
+        },
+        [setStorage],
+    );
 
     const goToNextPage = useCallback(
         (currentPage: PageRoute, planetId: string, agentId: string) => {
