@@ -132,11 +132,11 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.mark();
             }
-            maturesLoans(gameState.agents, planet, gameState.tick, gameState);
+            maturesLoans(gameState.agents, planet, gameState.tick);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
             }
-            preProductionFinancialTick(gameState.agents, planet, gameState.tick);
+            preProductionFinancialTick(gameState.agents, planet, gameState.tick, gameState);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('preProdFinance', '  preProductionFinancialTick', t);
             }

@@ -16,7 +16,7 @@ export function getDefaultPidState(): PidState {
     };
 }
 
-export function computePidDelta(signal: number, state: PidState, maxScale: number): number {
+export function computePidDelta(signal: number, state: PidState): number {
     state.filteredError = PID_D_ALPHA * signal + (1 - PID_D_ALPHA) * state.filteredError;
 
     const P = PID_KP * signal;
@@ -36,5 +36,5 @@ export function computePidDelta(signal: number, state: PidState, maxScale: numbe
     }
 
     const output = Math.max(-PID_OUT_MAX_DOWN, Math.min(PID_OUT_MAX_UP, P + state.integral + D));
-    return output * maxScale;
+    return output;
 }

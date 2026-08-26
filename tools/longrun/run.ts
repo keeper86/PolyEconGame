@@ -3,7 +3,11 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setLoanDisciplineEnabled, setLoanRecyclingEnabled } from '../../src/simulation/financial/financialTick';
+import { setBankruptcyEnabled, setLoanInterestRatePerYear } from '../../src/simulation/financial/financialTick';
+import { setGovernmentOperatingBuffer, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setGovernmentSupportEmaMonths } from '../../src/simulation/constants';
+import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
+import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -195,13 +199,41 @@ function main(): void {
     if (slackArg !== undefined) {
         scenario.world = { ...scenario.world, solverSeedSlack: Number(slackArg) };
     }
-    const loanDisciplineArg = arg('loanDiscipline');
-    if (loanDisciplineArg !== undefined) {
-        setLoanDisciplineEnabled(loanDisciplineArg === '1' || loanDisciplineArg === 'true');
+    const constructionScaleArg = arg('constructionScaleFactor');
+    if (constructionScaleArg !== undefined) {
+        scenario.world = { ...scenario.world, constructionScaleFactor: Number(constructionScaleArg) };
     }
-    const loanRecyclingArg = arg('loanRecycling');
-    if (loanRecyclingArg !== undefined) {
-        setLoanRecyclingEnabled(loanRecyclingArg === '1' || loanRecyclingArg === 'true');
+    const buildChainScaleArg = arg('buildChainScaleFactor');
+    if (buildChainScaleArg !== undefined) {
+        scenario.world = { ...scenario.world, buildChainScaleFactor: Number(buildChainScaleArg) };
+    }
+    const bankruptcyArg = arg('bankruptcy');
+    if (bankruptcyArg !== undefined) {
+        setBankruptcyEnabled(bankruptcyArg === '1' || bankruptcyArg === 'true');
+    }
+    const interestRateArg = arg('interestRate');
+    if (interestRateArg !== undefined) {
+        setLoanInterestRatePerYear(Number(interestRateArg));
+    }
+    const askFloorArg = arg('sellAggressiveness');
+    if (askFloorArg !== undefined) {
+        setSellPriceAggressivenessMean(Number(askFloorArg));
+    }
+    const claimCostArg = arg('claimCostMultiplier');
+    if (claimCostArg !== undefined) {
+        setNonRenewableClaimCostMultiplier(Number(claimCostArg));
+    }
+    const wealthTaxAllowanceArg = arg('wealthTaxAllowance');
+    if (wealthTaxAllowanceArg !== undefined) {
+        setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
+    }
+    const govBufferArg = arg('govBuffer');
+    if (govBufferArg !== undefined) {
+        setGovernmentOperatingBuffer(Number(govBufferArg));
+    }
+    const govEmaArg = arg('govEmaMonths');
+    if (govEmaArg !== undefined) {
+        setGovernmentSupportEmaMonths(Number(govEmaArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

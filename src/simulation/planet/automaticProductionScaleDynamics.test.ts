@@ -208,6 +208,18 @@ describe('computeFacilitySignal (demand-based)', () => {
         expect(computeFacilitySignal(facility, planet, { [RESOURCE_NAME]: 1 })).toBe(0);
     });
 
+    it('does not contract a surplus producer while the market is under-served', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.4 });
+        // the producer sold only 20% of its output (flowDeviation −0.8) while 40% of the
+        // demand went unfilled: the scarcity caps the negative deviation → neutral signal
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBe(0);
+    });
+
+    it('still contracts oversupply when the market is fully served', () => {
+        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
+        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBeCloseTo(-0.8, 5);
+    });
+
     it('treats a missing sell-through as fully sold', () => {
         const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.3 });
         expect(computeFacilitySignal(fixture.facility, fixture.planet)).toBeCloseTo(0.3, 5);
@@ -221,7 +233,7 @@ describe('PID utilization response', () => {
         let ticks = 0;
         while (facility.scale < facility.maxScale - 1e-9 && ticks < 10_000) {
             const signal = computeFacilitySignal(facility, planet);
-            const delta = computePidDelta(signal, state, facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             ticks++;
         }
@@ -234,7 +246,7 @@ describe('PID utilization response', () => {
         const state = getDefaultPidState();
         for (let tick = 0; tick < 10_000; tick++) {
             const signal = computeFacilitySignal(facility, planet);
-            const delta = computePidDelta(signal, state, facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             expect(Number.isFinite(facility.scale)).toBe(true);
             expect(Number.isFinite(state.integral)).toBe(true);

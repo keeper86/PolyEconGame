@@ -5,14 +5,11 @@ import {
     automaticLoanRepayment,
     maturesLoans,
     preProductionFinancialTick,
-    setLoanDisciplineEnabled,
-    setLoanRecyclingEnabled,
+    setBankruptcyEnabled,
 } from './financialTick';
 
 import { coalDepositResourceType } from '../planet/landBoundResources';
-import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { ironOreResourceType } from '../planet/resources';
-import { constructionServiceResourceType } from '../planet/services';
 import type { EducationLevelType } from '../population/education';
 import {
     agentMap,
@@ -21,7 +18,7 @@ import {
     makePlanetWithPopulation,
     makeProductionFacility,
 } from '../utils/testHelper';
-import { makeLoan, totalOutstandingLoans } from './loanTypes';
+import { hasOutstandingEmergencyLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
 
 function addWorker(assets: AgentPlanetAssets, age: number, edu: EducationLevelType, count: number): void {
     const wf = assets.workforceDemography!;
@@ -48,6 +45,26 @@ describe('preProductionFinancialTick', () => {
         preProductionFinancialTick(agentMap(agent), planet);
         expect(agent.assets[planet.id]?.deposits ?? 0).toBe(0);
         expect(planet.bank!.loans).toBe(0);
+    });
+
+    it('continues past a workerless first agent and still pays wages + updates the planet wage', () => {
+        const workerless = makeAgent('workerless', 'p', 'Workerless');
+        const workerAgent = makeAgent('workerful', 'p', 'Workerful');
+        const result = makePlanetWithPopulation({ none: 1000 });
+        const planet = result.planet;
+        planet.wagePerEdu = { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 };
+        workerless.assets[planet.id]!.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+
+        const assets = workerAgent.assets[planet.id]!;
+        assets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+        assets.deposits = 10_000;
+        addWorker(assets, 25, 'none', 100);
+        addEmployed(planet, 25, 'none', 100);
+
+        preProductionFinancialTick(agentMap(workerless, workerAgent), planet);
+
+        expect(assets.deposits).toBe(9_900);
+        expect(planet.wagePerEdu.none).toBeCloseTo(1.0, 6);
     });
 
     it('deducts wages from deposits when agent has sufficient funds', () => {
@@ -175,7 +192,7 @@ describe('preProductionFinancialTick', () => {
 
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
         expect(bufferLoan).toBeDefined();
-        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(89_010, -1);
+        expect(bufferLoan!.remainingPrincipal).toBeCloseTo(2_010, -1);
     });
 
     it('does not grant buffer loan when agent is not automated', () => {
@@ -556,87 +573,6 @@ describe('enforceLoanMaturities', () => {
         expect(Math.abs(residual)).toBeLessThan(1e-6);
     });
 
-    it('with loan discipline: writes off uncovered matured debt and marks bankrupt', () => {
-        setLoanDisciplineEnabled(true);
-        try {
-            agent.starterLoanTaken = true;
-            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
-            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
-            agent.assets[planet.id]!.deposits = 30;
-            planet.bank!.loans = 100;
-            planet.bank!.deposits = 30;
-
-            maturesLoans(agentMap(agent), planet, 100);
-
-            expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
-            expect(agent.assets[planet.id]!.deposits).toBe(0);
-            expect(planet.bank!.loans).toBe(0);
-            expect(planet.rolloverDenials).toBe(1);
-            expect(planet.debtWriteOffs).toBe(70);
-            expect(planet.bankruptcies).toBe(1);
-        } finally {
-            setLoanDisciplineEnabled(false);
-        }
-    });
-
-    it('with loan discipline: essential suppliers keep the rollover', () => {
-        setLoanDisciplineEnabled(true);
-        try {
-            agent.starterLoanTaken = true;
-            agent.assets[planet.id]!.productionFacilities.push(
-                ALL_PRODUCTION_FACILITY_ENTRIES.maintenanceFacility.factory('p', 'maint-1'),
-            );
-            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
-            agent.assets[planet.id]!.deposits = 30;
-            planet.bank!.loans = 100;
-            planet.bank!.deposits = 30;
-
-            maturesLoans(agentMap(agent), planet, 100);
-
-            expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
-            expect(planet.rolloverDenials).toBe(0);
-        } finally {
-            setLoanDisciplineEnabled(false);
-        }
-    });
-
-    it('with loan recycling: contracts facilities to raise funds and shrink the write-off', () => {
-        setLoanDisciplineEnabled(true);
-        setLoanRecyclingEnabled(true);
-        try {
-            agent.starterLoanTaken = true;
-            agent.assets[planet.id]!.lastMonthAcc.revenue = 0;
-            agent.assets[planet.id]!.lastMonthAcc.wages = 100;
-            const facility = makeProductionFacility({}, { maxScale: 100, scale: 100 });
-            agent.assets[planet.id]!.productionFacilities = [facility];
-            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 100, 0.05, 1, 50, true)];
-            agent.assets[planet.id]!.deposits = 30;
-            planet.bank!.loans = 100;
-            planet.bank!.deposits = 30;
-            planet.marketPrices[constructionServiceResourceType.name] = 0.00001;
-            planet.avgMarketResult[constructionServiceResourceType.name] = {
-                resourceName: constructionServiceResourceType.name,
-                clearingPrice: 10,
-                totalVolume: 100,
-                totalSupply: 100,
-                totalDemand: 100,
-                unsoldSupply: 0,
-                unfilledDemand: 35,
-            };
-            const gameState = makeGameState([planet], [agent]);
-
-            maturesLoans(agentMap(agent), planet, 100, gameState);
-
-            expect(facility.maxScale).toBe(10);
-            expect(planet.rolloverDenials).toBe(1);
-            expect(planet.debtWriteOffs).toBeLessThan(70);
-            expect(gameState.tickerEvents.some((e) => e.category === 'facilityScrapped')).toBe(true);
-        } finally {
-            setLoanDisciplineEnabled(false);
-            setLoanRecyclingEnabled(false);
-        }
-    });
-
     it('handles multiple matured loans at once', () => {
         agent.assets[planet.id]!.activeLoans = [
             makeLoan('wageCoverage', 50, 0.05, 1, 50, true),
@@ -724,6 +660,220 @@ describe('enforceLoanMaturities', () => {
         maturesLoans(agentMap(agent), planet, 100);
 
         expect(planet.bank!.equity).toBe(planet.bank!.deposits - planet.bank!.loans);
+    });
+});
+
+describe('bankruptcy mode', () => {
+    let agent: Agent;
+    let planet: Planet;
+
+    beforeEach(() => {
+        agent = makeAgent();
+        const result = makePlanetWithPopulation({ none: 1000 });
+        planet = result.planet;
+        planet.bank!.loanRate = 0.05 / 360;
+    });
+
+    it('collects loan interest and drains bank equity', () => {
+        setBankruptcyEnabled(true);
+        try {
+            agent.assets[planet.id]!.activeLoans = [makeLoan('wageCoverage', 3600, 0.05, 1, 1000, true)];
+            agent.assets[planet.id]!.deposits = 1000;
+            planet.bank!.loans = 3600;
+            planet.bank!.deposits = 1000;
+            planet.bank!.equity = 0;
+
+            maturesLoans(agentMap(agent), planet, 1);
+
+            expect(agent.assets[planet.id]!.deposits).toBe(999.5);
+            expect(planet.bank!.deposits).toBe(999.5);
+            expect(planet.bank!.equity).toBe(planet.bank!.deposits - planet.bank!.loans);
+            expect(planet.loanInterestCollected).toBeCloseTo(0.5, 6);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('does not collect loan interest from the government (0% starter loan)', () => {
+        setBankruptcyEnabled(true);
+        try {
+            const gov = makeAgent('gov');
+            const govPlanet = makePlanetWithPopulation({ none: 1000 }).planet;
+            govPlanet.governmentId = gov.id;
+            gov.assets[govPlanet.id]!.activeLoans = [makeLoan('starter', 5_000_000_000, 0, 1, 1000, true)];
+            gov.assets[govPlanet.id]!.deposits = 5_000_000_000;
+            govPlanet.bank!.loans = 5_000_000_000;
+            govPlanet.bank!.deposits = 5_000_000_000;
+
+            maturesLoans(agentMap(gov), govPlanet, 1);
+
+            expect(gov.assets[govPlanet.id]!.deposits).toBe(5_000_000_000);
+            expect(govPlanet.bank!.deposits).toBe(5_000_000_000);
+            expect(govPlanet.loanInterestCollected).toBe(0);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('grants an emergency loan and records the warning when wages cannot be covered', () => {
+        setBankruptcyEnabled(true);
+        try {
+            addWorker(agent.assets[planet.id]!, 25, 'none', 10);
+            addEmployed(planet, 25, 'none', 10);
+            agent.assets[planet.id]!.wagePerEdu.none = 1;
+            agent.assets[planet.id]!.deposits = 1;
+            planet.wagePerEdu.none = 1;
+
+            preProductionFinancialTick(agentMap(agent), planet, 1);
+
+            expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
+            expect(planet.emergencyLoansGranted).toBe(1);
+            expect(planet.bankruptcies).toBe(0);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('terminates and refounds the company on the second wage failure', () => {
+        setBankruptcyEnabled(true);
+        try {
+            addWorker(agent.assets[planet.id]!, 25, 'none', 10);
+            addEmployed(planet, 25, 'none', 10);
+            agent.assets[planet.id]!.wagePerEdu.none = 1;
+            agent.assets[planet.id]!.deposits = 1;
+            planet.wagePerEdu.none = 1;
+            planet.bank!.deposits = 1000;
+            const gameState = makeGameState([planet], [agent]);
+
+            preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+            expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
+
+            agent.assets[planet.id]!.deposits = 1;
+            preProductionFinancialTick(gameState.agents, planet, 2, gameState);
+
+            expect(planet.bankruptcies).toBe(1);
+            expect(planet.refoundCount).toBe(1);
+            expect(planet.debtWriteOffs).toBeGreaterThan(0);
+            const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id);
+            expect(refound).toBeDefined();
+            expect(refound!.id).toBe(`${agent.id}-refound-2`);
+            expect(totalOutstandingLoans(refound!.assets[planet.id]!.activeLoans)).toBe(0);
+            expect(refound!.assets[planet.id]!.deposits).toBeCloseTo(1 * 0.975, 6);
+            expect(refound!.assets[planet.id]!.workforceDemography[25].none.active).toBe(10);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('continues processing remaining agents after a bankruptcy refound', () => {
+        setBankruptcyEnabled(true);
+        try {
+            const bankrupt = makeAgent('bankrupt', planet.id, 'Bankrupt');
+            const healthy = makeAgent('healthy', planet.id, 'Healthy');
+            const bankruptAssets = bankrupt.assets[planet.id]!;
+            const healthyAssets = healthy.assets[planet.id]!;
+            bankruptAssets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+            healthyAssets.wagePerEdu = { none: 2.0, primary: 2.0, secondary: 2.0, tertiary: 2.0 };
+            bankruptAssets.deposits = 1;
+            bankruptAssets.activeLoans = [makeLoan('emergency', 100, 0.05, 1, 361, true)];
+            healthyAssets.deposits = 10_000;
+            addWorker(bankruptAssets, 25, 'none', 10);
+            addWorker(healthyAssets, 25, 'none', 100);
+            addEmployed(planet, 25, 'none', 110);
+            planet.bank!.deposits = 1000;
+            planet.bank!.loans = 100;
+            const gameState = makeGameState([planet], [bankrupt, healthy], 1);
+
+            preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+
+            expect(gameState.agents.has('bankrupt')).toBe(false);
+            expect(gameState.agents.has('bankrupt-refound-1')).toBe(true);
+            expect(planet.bankruptcies).toBe(1);
+            expect(healthyAssets.deposits).toBe(9_800);
+            expect(planet.wagePerEdu.none).toBeCloseTo(210 / 110, 6);
+            expect(planet.bank!.equity).toBe(planet.bank!.deposits - planet.bank!.loans);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('re-points resource claims to the re-founded company', () => {
+        setBankruptcyEnabled(true);
+        try {
+            addWorker(agent.assets[planet.id]!, 25, 'none', 10);
+            addEmployed(planet, 25, 'none', 10);
+            agent.assets[planet.id]!.wagePerEdu.none = 1;
+            agent.assets[planet.id]!.deposits = 1;
+            planet.wagePerEdu.none = 1;
+            planet.bank!.deposits = 1000;
+            planet.resources[ironOreResourceType.name] = {
+                pool: { resource: ironOreResourceType, quantity: 100, regenerationRate: 1, maximumCapacity: 100 },
+                claims: [
+                    {
+                        resource: ironOreResourceType,
+                        quantity: 100,
+                        regenerationRate: 1,
+                        maximumCapacity: 100,
+                        id: 'claim-1',
+                        tenantAgentId: agent.id,
+                        tenantCostInCoins: 0,
+                        costPerTick: 1,
+                        claimStatus: 'active',
+                        noticePeriodEndsAtTick: null,
+                        pausedTicksThisYear: 0,
+                    },
+                ],
+            };
+            const gameState = makeGameState([planet], [agent]);
+
+            preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+            agent.assets[planet.id]!.deposits = 1;
+            preProductionFinancialTick(gameState.agents, planet, 2, gameState);
+
+            const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id);
+            const claim = planet.resources[ironOreResourceType.name]!.claims[0]!;
+            expect(claim.tenantAgentId).toBe(refound!.id);
+            expect(planet.resources[ironOreResourceType.name]!.claims.some((c) => c.tenantAgentId === agent.id)).toBe(
+                false,
+            );
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('repaying the emergency loan clears the warning', () => {
+        setBankruptcyEnabled(true);
+        try {
+            agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 100, 0.05, 1, 361, true)];
+            agent.assets[planet.id]!.deposits = 10_050;
+            agent.assets[planet.id]!.lastMonthAcc.wages = 1;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 10_050;
+
+            automaticLoanRepayment(agentMap(agent), planet);
+
+            expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
+            expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(false);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
+    it('rolls a matured emergency loan over as an emergency loan so the warning persists', () => {
+        setBankruptcyEnabled(true);
+        try {
+            agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 100, 0.05, 1, 50, true)];
+            agent.assets[planet.id]!.deposits = 30;
+            planet.bank!.loans = 100;
+            planet.bank!.deposits = 30;
+
+            maturesLoans(agentMap(agent), planet, 100);
+
+            expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
+            expect(planet.bankruptcies).toBe(0);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
     });
 });
 

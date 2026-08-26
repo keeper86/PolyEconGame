@@ -2,7 +2,7 @@ import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { HRFacility, PidState, ProductionFacility } from './facility';
-import { calculateCostsForConstruction } from './facility';
+import { calculateCostsForConstruction, getStorageStarvation } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -47,9 +47,14 @@ import {
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
+    EXPANSION_STORAGE_FREE_FRACTION,
     EXPANSION_WORKING_CAPITAL_TICKS,
+    FACILITY_EXPANSION_MIN_MAINTENANCE,
+    HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
+    MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    STORAGE_STARVATION_EXPANSION_MAX,
 } from './automaticProductionScale/constants';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -253,6 +258,30 @@ function collectExpansionDebugContext(
     };
 }
 
+function hasStorageRoom(assets: AgentPlanetAssets): boolean {
+    const storage = assets.storageFacility;
+    if (!storage) {
+        return false;
+    }
+    const department = storage.department;
+    if (!department) {
+        return false;
+    }
+    const storageStarvation = department.storageStarvation > 0.05;
+    if (storageStarvation) {
+        return false;
+    }
+
+    const scale = department.scale ?? 1;
+    const volumeCapacity = storage.capacity.volume * scale;
+    const massCapacity = storage.capacity.mass * scale;
+
+    return (
+        storage.current.volume < volumeCapacity * EXPANSION_STORAGE_FREE_FRACTION &&
+        storage.current.mass < massCapacity * EXPANSION_STORAGE_FREE_FRACTION
+    );
+}
+
 export function updateAgentProductionScale(gameState: GameState, planet: Planet): void {
     const debugAggregates = {
         facilitiesAtMaxScale: 0,
@@ -359,17 +388,28 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
             state.smoothedSignal = signal;
 
-            const delta = computePidDelta(signal, state, facility.maxScale);
-            const newScale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+            const delta = computePidDelta(signal, state) * facility.maxScale;
+            const newScale = Math.max(
+                facility.maxScale * MIN_SCALE_FRACTION,
+                Math.min(facility.maxScale, facility.scale + delta),
+            );
             facility.scale = newScale;
 
-            if (facility.scale === facility.maxScale && signal > 0) {
+            const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
+            const storageHealthy = getStorageStarvation(assets.storageFacility) <= STORAGE_STARVATION_EXPANSION_MAX;
+            if (
+                facility.scale === facility.maxScale &&
+                signal > 0 &&
+                facility.maintenanceStatus > FACILITY_EXPANSION_MIN_MAINTENANCE &&
+                hrHealthy &&
+                storageHealthy
+            ) {
                 state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
             } else {
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const contractionStrength = facility.scale < facility.maxScale && signal < 0 ? Math.abs(signal) : 0;
+            const contractionStrength = facility.scale <= 0.2 * facility.maxScale && signal < 0 ? Math.abs(signal) : 0;
             if (contractionStrength > 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
@@ -395,7 +435,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
             const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
             const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
-            const expansionConditionsMet =
+            const baseConditionsMet =
                 atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
@@ -412,7 +452,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             const needWorkerFundsCheck =
-                expansionConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
+                baseConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
             let workforceStats: ExpansionWorkforceStats | null = null;
             if (needWorkerFundsCheck) {
                 workforceStats = computeExpansionWorkforceStats(facility, planet);
@@ -476,7 +516,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            if (expansionConditionsMet) {
+            if (baseConditionsMet && workersAvailable && hasStorageRoom(assets)) {
                 const dynamicTarget = computeDynamicExpansionTarget(
                     facility,
                     assets,
@@ -543,9 +583,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const hrSignal = SIGNAL_EMA_ALPHA * hrRawSignal + (1 - SIGNAL_EMA_ALPHA) * hrState.smoothedSignal;
             hrState.smoothedSignal = hrSignal;
 
-            const hrDelta = computePidDelta(hrSignal, hrState, hrDepartment.maxScale);
+            const hrDelta = computePidDelta(hrSignal, hrState) * hrDepartment.maxScale;
+
             hrDepartment.scale = Math.max(
-                hrDepartment.maxScale * 0.1,
+                hrDepartment.maxScale * MIN_SCALE_FRACTION,
                 Math.min(hrDepartment.maxScale, hrDepartment.scale + hrDelta),
             );
 
@@ -646,9 +687,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const stoSignal = SIGNAL_EMA_ALPHA * stoRawSignal + (1 - SIGNAL_EMA_ALPHA) * stoState.smoothedSignal;
             stoState.smoothedSignal = stoSignal;
 
-            const stoDelta = computePidDelta(stoSignal, stoState, storageDepartment.maxScale);
+            const stoDelta = computePidDelta(stoSignal, stoState) * storageDepartment.maxScale;
+
             storageDepartment.scale = Math.max(
-                storageDepartment.maxScale * 0.1,
+                storageDepartment.maxScale * MIN_SCALE_FRACTION,
                 Math.min(storageDepartment.maxScale, storageDepartment.scale + stoDelta),
             );
 

@@ -19,6 +19,7 @@ import {
     coalResourceType,
     copperResourceType,
     electronicsResourceType,
+    fuelResourceType,
     ironOreResourceType,
     plasticResourceType,
     sandResourceType,
@@ -271,6 +272,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let wealthTaxPaidByProfitable = 0;
     let companiesUnderwater = 0;
     let companiesUnderwaterEssential = 0;
+    let companiesOverCreditLimit = 0;
+    let overLimitLoanAmount = 0;
+    let totalFacilitiesCollateral = 0;
+    let totalMaxLoanAmount = 0;
     let companiesWithRolloverLoans = 0;
     let rolloverLoanPrincipal = 0;
     const debtEquitys: number[] = [];
@@ -434,10 +439,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maintSteelBuffer = 0;
     let maintElectronicsBuffer = 0;
     let maintPlasticBuffer = 0;
+    let oilRefineryCount = 0;
+    let oilRefineryScale = 0;
+    let oilRefineryRevenue = 0;
 
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const wageByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    const wageByEduCount = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const capacityByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const slotsFilledByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const slotFillByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -547,6 +556,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                     companiesUnderwaterEssential += 1;
                 }
             }
+            if (conditions.existingLoans > conditions.maxLoanAmount) {
+                companiesOverCreditLimit += 1;
+                overLimitLoanAmount += conditions.existingLoans - conditions.maxLoanAmount;
+            }
+            totalFacilitiesCollateral += conditions.facilitiesCollateral;
+            totalMaxLoanAmount += conditions.maxLoanAmount;
             if (conditions.existingLoans > 0 && netWorth > 0) {
                 debtEquitys.push(conditions.existingLoans / netWorth);
                 if (conditions.lastMonthlyRevenue > 0) {
@@ -680,6 +695,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironSmelterExpansionIntegral += pid?.expansionIntegral ?? 0;
                 ironSmelterSmoothedSignal += pid?.smoothedSignal ?? 0;
                 ironSmelterCount += 1;
+            }
+
+            if (facility.name === 'Oil Refinery') {
+                oilRefineryScale += facility.scale;
+                oilRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                oilRefineryCount += 1;
             }
 
             if (isMaintenanceFacility(facility.name)) {
@@ -872,7 +893,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         const exactUsed = sumExactUsedByEdu(assets);
         for (const edu of educationLevelKeys) {
             allocByEdu[edu] += assets.allocatedWorkers?.[edu] ?? 0;
-            wageByEdu[edu] += assets.wagePerEdu?.[edu] ?? 0;
+            if (typeof assets.wagePerEdu?.[edu] === 'number') {
+                wageByEdu[edu] += assets.wagePerEdu[edu];
+                wageByEduCount[edu] += 1;
+            }
             capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
             slotsFilledByEdu[edu] += slotsFilled[edu];
             slotFillByEdu[edu] += slotFill[edu];
@@ -991,6 +1015,19 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const steelUnsoldSupply = steelResult?.unsoldSupply ?? 0;
     const steelVolume = steelResult?.totalVolume ?? 0;
     const steelFillRate = steelTotalDemand > 0 ? steelVolume / steelTotalDemand : 0;
+    const oilRefineryScaleAvg = oilRefineryCount > 0 ? oilRefineryScale / oilRefineryCount : 0;
+    const oilRefineryRevenueAvg = oilRefineryCount > 0 ? oilRefineryRevenue / oilRefineryCount : 0;
+    const fuelPrice = priceOf(planet, fuelResourceType.name);
+    const plasticPrice = priceOf(planet, plasticResourceType.name);
+    const chemicalPrice = priceOf(planet, chemicalResourceType.name);
+    const fuelCostFloor = planet.lastProductionCostFloors[fuelResourceType.name] ?? 0;
+    const plasticCostFloor = planet.lastProductionCostFloors[plasticResourceType.name] ?? 0;
+    const chemicalCostFloor = planet.lastProductionCostFloors[chemicalResourceType.name] ?? 0;
+    const fuelFillRate = fillRateOf(planet, fuelResourceType.name);
+    const chemicalOverFuelPriceRatio = fuelPrice > 0 ? chemicalPrice / fuelPrice : 0;
+    const jointBundleCost = 80 * fuelCostFloor + 60 * plasticCostFloor + 60 * chemicalCostFloor;
+    const jointBundleRevenue = 80 * fuelPrice + 60 * plasticPrice + 60 * chemicalPrice;
+    const jointBundleCoverage = jointBundleCost > 0 ? jointBundleRevenue / jointBundleCost : 0;
     const siliconWaferResourceEfficiencyAvg =
         siliconWaferCount > 0 ? siliconWaferResourceEfficiency / siliconWaferCount : 0;
     const siliconWaferWorkerEfficiencyAvg =
@@ -1068,6 +1105,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthTotal = wealthWeighted;
     const redistributedTotal = planet.governmentSupportVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
+    const governmentDebt = planet.governmentDebt;
+    const governmentDeposits =
+        gameState.agents.get(planet.governmentId)?.assets[planet.id]?.deposits ?? 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
 
     const companyNetWorthMin = companyNetWorths.length > 0 ? Math.min(...companyNetWorths) : 0;
@@ -1129,10 +1169,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         activePrimary: activeByEdu.primary,
         activeSecondary: activeByEdu.secondary,
         activeTertiary: activeByEdu.tertiary,
-        wageNone: wageByEdu.none,
-        wagePrimary: wageByEdu.primary,
-        wageSecondary: wageByEdu.secondary,
-        wageTertiary: wageByEdu.tertiary,
+        wageNone: wageByEduCount.none > 0 ? wageByEdu.none / wageByEduCount.none : 0,
+        wagePrimary: wageByEduCount.primary > 0 ? wageByEdu.primary / wageByEduCount.primary : 0,
+        wageSecondary: wageByEduCount.secondary > 0 ? wageByEdu.secondary / wageByEduCount.secondary : 0,
+        wageTertiary: wageByEduCount.tertiary > 0 ? wageByEdu.tertiary / wageByEduCount.tertiary : 0,
         capacityNone: capacityByEdu.none,
         capacityPrimary: capacityByEdu.primary,
         capacitySecondary: capacityByEdu.secondary,
@@ -1186,6 +1226,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTotal,
         redistributedTotal,
         redistributedPerCapita,
+        governmentDebt,
+        governmentDeposits,
         foodPrice,
         wealthToFoodPrice: foodPrice > 0 ? meanWealth / foodPrice : 0,
         waterPrice: priceOf(planet, waterResourceType.name),
@@ -1210,6 +1252,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         rolloverDenials: planet.rolloverDenials,
         debtWriteOffs: planet.debtWriteOffs,
         bankruptcies: planet.bankruptcies,
+        refoundCount: planet.refoundCount,
+        loanInterestCollected: planet.loanInterestCollected,
+        emergencyLoansGranted: planet.emergencyLoansGranted,
         totalLoans,
         loansWageCoverage,
         loansBufferCoverage,
@@ -1242,6 +1287,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         wealthTaxPaidByProfitable,
         companiesUnderwater,
         companiesUnderwaterEssential,
+        companiesOverCreditLimit,
+        overLimitLoanAmount,
+        totalFacilitiesCollateral,
+        totalMaxLoanAmount,
         companiesWithRolloverLoans,
         rolloverLoanPrincipal,
         facilityLossCount,
@@ -1426,6 +1475,17 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         steelUnsoldSupply,
         steelVolume,
         steelFillRate,
+        oilRefineryScale: oilRefineryScaleAvg,
+        oilRefineryRevenue: oilRefineryRevenueAvg,
+        fuelPrice,
+        plasticPrice,
+        chemicalPrice,
+        fuelCostFloor,
+        plasticCostFloor,
+        chemicalCostFloor,
+        fuelFillRate,
+        chemicalOverFuelPriceRatio,
+        jointBundleCoverage,
         maintAggregateConsumption,
         maintSteadyStateDemand,
         maintCatchupBacklog,
@@ -1518,6 +1578,8 @@ export const METRIC_KEYS: string[] = [
     'wealthTotal',
     'redistributedTotal',
     'redistributedPerCapita',
+    'governmentDebt',
+    'governmentDeposits',
     'foodPrice',
     'wealthToFoodPrice',
     'waterPrice',
@@ -1541,6 +1603,9 @@ export const METRIC_KEYS: string[] = [
     'rolloverDenials',
     'debtWriteOffs',
     'bankruptcies',
+    'refoundCount',
+    'loanInterestCollected',
+    'emergencyLoansGranted',
     'totalLoans',
     'loansWageCoverage',
     'loansBufferCoverage',
@@ -1573,6 +1638,10 @@ export const METRIC_KEYS: string[] = [
     'wealthTaxPaidByProfitable',
     'companiesUnderwater',
     'companiesUnderwaterEssential',
+    'companiesOverCreditLimit',
+    'overLimitLoanAmount',
+    'totalFacilitiesCollateral',
+    'totalMaxLoanAmount',
     'companiesWithRolloverLoans',
     'rolloverLoanPrincipal',
     'facilityLossCount',
@@ -1762,6 +1831,17 @@ export const METRIC_KEYS: string[] = [
     'steelUnsoldSupply',
     'steelVolume',
     'steelFillRate',
+    'oilRefineryScale',
+    'oilRefineryRevenue',
+    'fuelPrice',
+    'plasticPrice',
+    'chemicalPrice',
+    'fuelCostFloor',
+    'plasticCostFloor',
+    'chemicalCostFloor',
+    'fuelFillRate',
+    'chemicalOverFuelPriceRatio',
+    'jointBundleCoverage',
     'maintSteelBuffer',
     'maintElectronicsBuffer',
     'maintPlasticBuffer',

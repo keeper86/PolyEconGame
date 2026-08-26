@@ -14,6 +14,7 @@ export const LOAN_TYPES = [
     'starter',
     'discretionary',
     'wageCoverage',
+    'emergency',
     'rollover',
     'bufferCoverage',
     'claimCoverage',
@@ -41,7 +42,8 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     starter: TICKS_PER_YEAR * 10,
     discretionary: TICKS_PER_YEAR,
     wageCoverage: TICKS_PER_YEAR,
-    rollover: TICKS_PER_YEAR,
+    emergency: TICKS_PER_YEAR,
+    rollover: TICKS_PER_YEAR * 5,
     bufferCoverage: TICKS_PER_YEAR,
     claimCoverage: TICKS_PER_YEAR,
     shipPenaltyCoverage: TICKS_PER_YEAR,
@@ -56,6 +58,7 @@ const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     discretionary: true,
     rollover: false,
     wageCoverage: false,
+    emergency: true,
     bufferCoverage: false,
     claimCoverage: false,
     shipPenaltyCoverage: false,
@@ -145,11 +148,15 @@ export function totalOutstandingLoans(loans: Loan[]): number {
     return loans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 }
 
-export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number): number {
+export function hasOutstandingEmergencyLoan(loans: Loan[]): boolean {
+    return loans.some((l) => l.type === 'emergency' && l.remainingPrincipal > 0);
+}
+
+function repayInOrder(activeLoans: Loan[], maxRepayment: number, sortFn: (a: Loan, b: Loan) => number): number {
     let remaining = maxRepayment;
     let totalRepaid = 0;
 
-    activeLoans.sort((a, b) => a.takenAtTick - b.takenAtTick);
+    activeLoans.sort(sortFn);
 
     let i = 0;
     while (i < activeLoans.length && remaining > 0) {
@@ -166,4 +173,21 @@ export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number)
     }
 
     return totalRepaid;
+}
+
+const byTakenAtTick = (a: Loan, b: Loan) => a.takenAtTick - b.takenAtTick;
+
+export function repayLoansOldestFirst(activeLoans: Loan[], maxRepayment: number): number {
+    return repayInOrder(activeLoans, maxRepayment, byTakenAtTick);
+}
+
+export function repayLoansEmergencyFirst(activeLoans: Loan[], maxRepayment: number): number {
+    return repayInOrder(activeLoans, maxRepayment, (a, b) => {
+        const aEmergency = a.type === 'emergency' ? 0 : 1;
+        const bEmergency = b.type === 'emergency' ? 0 : 1;
+        if (aEmergency !== bEmergency) {
+            return aEmergency - bEmergency;
+        }
+        return byTakenAtTick(a, b);
+    });
 }

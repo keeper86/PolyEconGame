@@ -38,17 +38,22 @@ export function computeOtherConstructionCosts(assets: AgentPlanetAssets, constru
         }, 0);
 }
 
+export function facilityUsageFactor(facility: Facility): number {
+    return 0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale);
+}
+
 export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
-    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
     return (
-        (facility.scale * usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+        (facility.scale *
+            facilityUsageFactor(facility) *
+            FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
+            MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
         TICKS_PER_YEAR
     );
 }
 
 export function facilityMaintenanceRepairNeedPerTick(facility: Facility): number {
-    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
-    const degradation = (usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+    const degradation = (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
     const degradedStatus = Math.max(0, facility.maintenanceStatus - degradation);
     const repairCap = Math.max(0, facility.maxMaintenance - degradedStatus);
     const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
@@ -87,7 +92,7 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
 }
 
 function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets, planet: Planet): void {
-    const usageFactor = 1 + facility.lastTickResults.overallEfficiency;
+    const usageFactor = facilityUsageFactor(facility);
     facility.maintenanceStatus = Math.max(
         0,
         facility.maintenanceStatus - (usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR,

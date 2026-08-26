@@ -44,8 +44,13 @@ export function computeFacilitySignal(
 
         const flowSellThrough = flowSellThroughByResource[output.resource.name];
         const flowDeviation = flowSellThrough !== undefined ? flowSellThrough - 1 : 0;
+        // Unsold inventory while the market is under-served is a demand-suppression
+        // artifact, not overproduction: cap the negative contribution by the scarcity
+        // so surplus producers keep capacity while demand goes unfilled. A fully served
+        // market still contracts oversupplying producers.
+        const marketAdjustedDeviation = unfilledFrac > 0 ? Math.max(flowDeviation, -unfilledFrac) : flowDeviation;
 
-        weightedSignalSum += price * (unfilledFrac + flowDeviation);
+        weightedSignalSum += price * (unfilledFrac + marketAdjustedDeviation);
         totalWeight += price;
     }
 

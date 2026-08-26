@@ -1,18 +1,24 @@
-import { INPUT_BUFFER_TARGET_TICKS, MIN_WAGE, TICKS_PER_MONTH } from '../constants';
-import { processFacilityContraction } from '../agents/recycler';
-import { computeLoanConditions } from './loanConditions';
-import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
-import { pushTickerEvent } from '../planet/planet';
 import {
-    ALL_PRODUCTION_FACILITY_ENTRIES,
-    facilityByName,
-    type FacilityCatalogEntry,
-} from '../planet/productionFacilities';
+    EMERGENCY_LOAN_WAGE_MONTHS,
+    INPUT_BUFFER_TARGET_TICKS,
+    LOAN_INTEREST_RATE_PER_YEAR,
+    MIN_WAGE,
+    TICKS_PER_MONTH,
+    TICKS_PER_YEAR,
+} from '../constants';
+import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
-import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from './loanTypes';
+import {
+    grantLoan,
+    hasOutstandingEmergencyLoan,
+    repayLoansEmergencyFirst,
+    repayLoansOldestFirst,
+    totalOutstandingLoans,
+} from './loanTypes';
 import { creditWageIncome } from './wealthOps';
+import { terminateAndRefound } from './bankruptcy';
 
 export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
@@ -30,7 +36,12 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
     return cost;
 }
 
-export function preProductionFinancialTick(agents: Map<string, Agent>, planet: Planet, tick = 1): void {
+export function preProductionFinancialTick(
+    agents: Map<string, Agent>,
+    planet: Planet,
+    tick = 1,
+    gameState?: GameState,
+): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
 
@@ -42,14 +53,14 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         tertiary: 0,
     };
 
-    agents.forEach((agent) => {
+    for (const agent of [...agents.values()]) {
         const assets = agent.assets[planet.id];
         if (!assets) {
-            return;
+            continue;
         }
 
         if (!assets.workforceDemography) {
-            return;
+            continue;
         }
 
         const workforce = assets.workforceDemography;
@@ -93,7 +104,18 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         }
 
         if (wageBill <= 0) {
-            return;
+            continue;
+        }
+
+        if (
+            bankruptcyEnabled &&
+            agent.id !== planet.governmentId &&
+            assets.deposits < wageBill &&
+            hasOutstandingEmergencyLoan(assets.activeLoans) &&
+            gameState
+        ) {
+            terminateAndRefound(gameState, planet, agent, tick);
+            continue;
         }
 
         assets.monthAcc.wages += wageBill;
@@ -105,8 +127,11 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         assets.monthAcc.totalWorkersTicks += totalAgentWorkerCount;
 
         if (assets.deposits < wageBill) {
-            const shortfall = 6 * TICKS_PER_MONTH * wageBill - assets.deposits;
-            grantLoan(assets, bank, shortfall, 'wageCoverage', tick);
+            const shortfall = EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits;
+            grantLoan(assets, bank, shortfall, bankruptcyEnabled ? 'emergency' : 'wageCoverage', tick);
+            if (bankruptcyEnabled) {
+                planet.emergencyLoansGranted += 1;
+            }
         }
 
         assets.deposits -= wageBill;
@@ -114,7 +139,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
-                const shortfall = TICKS_PER_MONTH * bufferCost - assets.deposits;
+                const shortfall = bufferCost - assets.deposits;
                 grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
             }
         }
@@ -149,7 +174,7 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
                 creditWageIncome(bank, popCat, perCapitaWage, agentWorkersHere);
             }
         }
-    });
+    }
 
     for (const edu of educationLevelKeys) {
         if (totalPlanetWorkersForEdu[edu] > 0) {
@@ -162,59 +187,51 @@ export function preProductionFinancialTick(agents: Map<string, Agent>, planet: P
 
 export const ROLLOVER_FEE_RATE = 0.05;
 
-let loanDisciplineEnabled = false;
-let loanRecyclingEnabled = false;
+let bankruptcyEnabled = false;
+let loanInterestRatePerYear = LOAN_INTEREST_RATE_PER_YEAR;
 
-export function setLoanDisciplineEnabled(enabled: boolean): void {
-    loanDisciplineEnabled = enabled;
+export function setBankruptcyEnabled(enabled: boolean): void {
+    bankruptcyEnabled = enabled;
 }
 
-export function setLoanRecyclingEnabled(enabled: boolean): void {
-    loanRecyclingEnabled = enabled;
+export function setLoanInterestRatePerYear(rate: number): void {
+    loanInterestRatePerYear = rate;
 }
 
-const ESSENTIAL_FACILITY_ENTRIES: ReadonlySet<FacilityCatalogEntry> = new Set([
-    ALL_PRODUCTION_FACILITY_ENTRIES.maintenanceFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.waterFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.agriculturalFacility,
-    ALL_PRODUCTION_FACILITY_ENTRIES.foodProcessor,
-    ALL_PRODUCTION_FACILITY_ENTRIES.beveragePlant,
-    ALL_PRODUCTION_FACILITY_ENTRIES.groceryChain,
-    ALL_PRODUCTION_FACILITY_ENTRIES.hospital,
-    ALL_PRODUCTION_FACILITY_ENTRIES.pharmaPlant,
-]);
-
-function isEssentialSupplier(assets: AgentPlanetAssets): boolean {
-    return assets.productionFacilities.some((facility) => {
-        const entry = facilityByName.get(facility.name);
-        return entry !== undefined && ESSENTIAL_FACILITY_ENTRIES.has(entry);
-    });
-}
-
-function recycleFacilitiesForDebt(
-    planet: Planet,
-    agent: Agent,
-    assets: AgentPlanetAssets,
-    gameState: GameState,
-): number {
-    const facilities = assets.productionFacilities
-        .filter((facility) => facility.construction === null || facility.construction.type !== 'new')
-        .sort((a, b) => b.maxScale - a.maxScale);
-    let raised = 0;
-    for (const facility of facilities) {
-        const targetMax = Math.max(1, Math.floor(facility.maxScale * 0.1));
-        if (targetMax >= facility.maxScale) {
-            continue;
-        }
-        const before = assets.deposits;
-        processFacilityContraction(planet, facility, agent, targetMax, gameState);
-        raised += assets.deposits - before;
-    }
-    return raised;
-}
-
-export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number, gameState?: GameState): void {
+function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
     const bank = planet.bank;
+    const ratePerTick = loanInterestRatePerYear / TICKS_PER_YEAR;
+    let collected = 0;
+    agents.forEach((agent) => {
+        if (agent.id === planet.governmentId) {
+            return;
+        }
+        const assets = agent.assets[planet.id];
+        if (!assets) {
+            return;
+        }
+        const outstanding = totalOutstandingLoans(assets.activeLoans);
+        if (outstanding <= 0) {
+            return;
+        }
+        const interest = outstanding * ratePerTick;
+        const debit = Math.min(interest, assets.deposits);
+        if (debit <= 0) {
+            return;
+        }
+        assets.deposits -= debit;
+        bank.deposits -= debit;
+        collected += debit;
+    });
+    planet.loanInterestCollected += collected;
+}
+
+export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+    const bank = planet.bank;
+
+    if (bankruptcyEnabled) {
+        collectLoanInterest(agents, planet);
+    }
 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -239,45 +256,17 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
 
         const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 
-        // If deposits are insufficient, borrow the shortfall so the agent can repay
+        // If deposits are insufficient, borrow the shortfall so the agent can repay.
+        // An emergency loan rolls over as an emergency loan so the warning persists.
         const shortfall = totalDue - assets.deposits;
-        let writeOff = 0;
         if (shortfall > 0) {
-            if (loanDisciplineEnabled && !isEssentialSupplier(assets)) {
-                const conditions = computeLoanConditions(agent, planet);
-                if (shortfall > conditions.maxLoanAmount && conditions.monthlyNetCashFlow < 0) {
-                    planet.rolloverDenials += 1;
-                    if (gameState && loanRecyclingEnabled) {
-                        recycleFacilitiesForDebt(planet, agent, assets, gameState);
-                    }
-                    const repay = Math.min(totalDue, assets.deposits);
-                    writeOff = totalDue - repay;
-                    if (writeOff > 0) {
-                        planet.debtWriteOffs += writeOff;
-                        planet.bankruptcies += 1;
-                        if (gameState) {
-                            pushTickerEvent(gameState, {
-                                category: 'agentBankrupt',
-                                planetId: planet.id,
-                                agentId: agent.id,
-                                agentName: agent.name,
-                                message: `${agent.name} defaulted on ${Math.round(writeOff).toLocaleString()} of debt`,
-                                tick,
-                            });
-                        }
-                    }
-                } else {
-                    remainingLoans.push(grantLoan(assets, bank, shortfall, 'rollover', tick));
-                }
-            } else {
-                remainingLoans.push(grantLoan(assets, bank, shortfall, 'rollover', tick));
-            }
+            const rolloverType = hasOutstandingEmergencyLoan(maturedLoans) ? 'emergency' : 'rollover';
+            remainingLoans.push(grantLoan(assets, bank, shortfall, rolloverType, tick));
         }
 
-        // Repay all matured loans in full; the written-off portion is absorbed by the bank
-        assets.deposits -= totalDue - writeOff;
+        assets.deposits -= totalDue;
         bank.loans -= totalDue;
-        bank.deposits -= totalDue - writeOff;
+        bank.deposits -= totalDue;
 
         assets.activeLoans = remainingLoans;
     });
@@ -329,7 +318,9 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         }
 
         const maxRepayment = Math.min(agentLoanTotal, excessDeposits);
-        const actualRepayment = repayLoansOldestFirst(assets.activeLoans, maxRepayment);
+        const actualRepayment = bankruptcyEnabled
+            ? repayLoansEmergencyFirst(assets.activeLoans, maxRepayment)
+            : repayLoansOldestFirst(assets.activeLoans, maxRepayment);
 
         assets.deposits -= actualRepayment;
         bank.loans -= actualRepayment;

@@ -11,10 +11,8 @@ import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
-    BID_ANCHOR_MULTIPLE,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    BID_PRICE_SENSITIVITY,
-    BID_VOLUME_FLOOR_FRACTION,
+    COST_SPRING_STRENGTH,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -44,7 +42,7 @@ import type { AutoConfigLocalState } from './marketTypes';
 import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
 import { LogSlider } from '@/components/ui/log-slider';
 import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
-import { VolumeFractionCurve } from './VolumeFractionCurve';
+import { CostSpringCurve } from './CostSpringCurve';
 import {
     detectPricingBuyPreset,
     detectVolumeBuyPreset,
@@ -285,9 +283,8 @@ export default function BuySection({
         [
             local.buyAutoConfig.priceAdjustMaxUp,
             local.buyAutoConfig.priceAdjustMaxDown,
+            local.buyAutoConfig.costSpringStrength,
             local.buyAutoConfig.targetFillRate,
-            local.buyAutoConfig.bidVolumeFloorFraction,
-            local.buyAutoConfig.bidPriceSensitivity,
             local.buyAutoConfig.bidOfferMaxCostMultiplier,
             isService,
         ],
@@ -353,8 +350,7 @@ export default function BuySection({
     const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
         'priceAdjustMaxUp',
         'priceAdjustMaxDown',
-        'bidVolumeFloorFraction',
-        'bidPriceSensitivity',
+        'costSpringStrength',
         'bidOfferMaxCostMultiplier',
         'targetFillRate',
     ];
@@ -386,20 +382,22 @@ export default function BuySection({
         return localNum ?? committed ?? defaultVal;
     };
 
-    const curveGhost = useMemo(
+    const springGhost = useMemo(
         () => ({
-            floorFraction: committedVal(committedConfig, 'bidVolumeFloorFraction') ?? BID_VOLUME_FLOOR_FRACTION,
-            sensitivity: committedVal(committedConfig, 'bidPriceSensitivity') ?? BID_PRICE_SENSITIVITY,
-            inflection: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
+            strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
+            reference: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
+            maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
+            maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
         }),
         [committedConfig],
     );
-    const curveActive = {
-        floorFraction: sliderVal('bidVolumeFloorFraction', BID_VOLUME_FLOOR_FRACTION),
-        sensitivity: sliderVal('bidPriceSensitivity', BID_PRICE_SENSITIVITY),
-        inflection: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
+    const springActive = {
+        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
+        reference: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
+        maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
+        maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
     };
-    const curveRatio =
+    const springRatio =
         overviewRow && overviewRow.priceCostRatio > 0 && Number.isFinite(overviewRow.priceCostRatio)
             ? overviewRow.priceCostRatio
             : undefined;
@@ -496,7 +494,7 @@ export default function BuySection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1 pb-2'>
+                                    <div className='space-y-1'>
                                         <div className='flex flex-wrap gap-1'>
                                             {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -544,6 +542,21 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
+                                            label='Soft max bid (in est. cost)'
+                                            value={sliderVal(
+                                                'bidOfferMaxCostMultiplier',
+                                                BID_OFFER_MAX_COST_MULTIPLIER,
+                                            )}
+                                            committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
+                                            min={0}
+                                            max={10}
+                                            step={0.25}
+                                            onChange={(v) =>
+                                                handleSliderChange({ bidOfferMaxCostMultiplier: String(v) })
+                                            }
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <ConfigSlider
                                             label='Target fill rate'
                                             value={sliderVal(
                                                 'targetFillRate',
@@ -557,52 +570,26 @@ export default function BuySection({
                                             onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
+                                        <ConfigSlider
+                                            label='Ceiling spring strength'
+                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
+                                            committed={committedVal(committedConfig, 'costSpringStrength')}
+                                            min={0}
+                                            max={0.2}
+                                            step={0.002}
+                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
                                         <Separator />
 
                                         {!isCurrency && (
-                                            <VolumeFractionCurve
+                                            <CostSpringCurve
                                                 mode='buy'
-                                                ghost={curveGhost}
-                                                active={curveActive}
-                                                currentRatio={curveRatio}
+                                                ghost={springGhost}
+                                                active={springActive}
+                                                currentRatio={springRatio}
                                             />
                                         )}
-                                        <ConfigSlider
-                                            label='Min volume fraction'
-                                            value={sliderVal('bidVolumeFloorFraction', BID_VOLUME_FLOOR_FRACTION)}
-                                            committed={committedVal(committedConfig, 'bidVolumeFloorFraction')}
-                                            min={0}
-                                            max={1}
-                                            step={0.05}
-                                            isPercent
-                                            onChange={(v) => handleSliderChange({ bidVolumeFloorFraction: String(v) })}
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Price sensitivity'
-                                            value={sliderVal('bidPriceSensitivity', BID_PRICE_SENSITIVITY)}
-                                            committed={committedVal(committedConfig, 'bidPriceSensitivity')}
-                                            min={0.1}
-                                            max={3}
-                                            step={0.1}
-                                            onChange={(v) => handleSliderChange({ bidPriceSensitivity: String(v) })}
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <ConfigSlider
-                                            label='Max cost multiplier'
-                                            value={sliderVal(
-                                                'bidOfferMaxCostMultiplier',
-                                                BID_OFFER_MAX_COST_MULTIPLIER,
-                                            )}
-                                            committed={committedVal(committedConfig, 'bidOfferMaxCostMultiplier')}
-                                            min={0}
-                                            max={BID_ANCHOR_MULTIPLE}
-                                            step={0.1}
-                                            onChange={(v) =>
-                                                handleSliderChange({ bidOfferMaxCostMultiplier: String(v) })
-                                            }
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
                                     </div>
 
                                     <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>

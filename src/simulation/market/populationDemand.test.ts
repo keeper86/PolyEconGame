@@ -75,6 +75,7 @@ test('construction bid quantity is driven by refillTicks (fast build) while the 
 
     const def = SERVICE_DEFINITIONS.construction;
     const rate = def.consumptionRatePerPersonPerTick(30, 'unoccupied', { mean: 3000, variance: 1 }, 30);
+    planet.lastProductionCostFloors[constructionServiceResourceType.name] = 1;
     const bidsMap = buildPopulationDemand(planet);
     const bids = bidsMap.get(constructionServiceResourceType.name) ?? [];
     expect(bids.length).toBeGreaterThan(0);
@@ -82,8 +83,10 @@ test('construction bid quantity is driven by refillTicks (fast build) while the 
     const bid = bids[0];
     const perPerson = bid.quantity / bid.population;
     expect(perPerson).toBeGreaterThan(rate * 10);
-    const refPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 1;
-    expect(bid.bidPrice).toBeLessThanOrEqual(refPrice * 2.001);
+    const costFloor = planet.lastProductionCostFloors[constructionServiceResourceType.name] ?? 1;
+    // market-anchored reference = min(2 × cost, marketPrice); with the construction
+    // market price above 2×cost the cap is 2×cost and the urgency premium adds ×(1+3)
+    expect(bid.bidPrice).toBeLessThanOrEqual(costFloor * 8.001);
 });
 
 function makeBid(bidPrice: number, quantity: number): BidOrder {
@@ -323,6 +326,30 @@ describe('buildPopulationDemand', () => {
         // Grocery (survival tier) is consumed first in demand priority, so it must
         // take the bulk of the budget before healthcare sees any of it.
         expect(healthcareDemand).toBeLessThan(groceryDemand);
+    });
+
+    it('anchors the reference price to the market price below the 2×cost cap (adapts to company prices)', () => {
+        const { planet } = makePlanetWithPopulation({ none: 1_000 });
+
+        planet.population.demography.forEach((cohort) =>
+            forEachPopulationCohort(cohort, (cat) => {
+                if (cat.total > 0) {
+                    cat.wealth = { mean: 1000, variance: 0 };
+                    cat.services.grocery.buffer = 0;
+                }
+            }),
+        );
+
+        planet.lastProductionCostFloors[GROCERY_SERVICE] = 10;
+        // market price below the 2×cost cap → reference = market price (4× with empty buffer)
+        planet.marketPrices[GROCERY_SERVICE] = 8;
+        const lowMarketBid = (buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [])[0];
+        expect(lowMarketBid.bidPrice).toBeCloseTo(8 * 4, 5);
+
+        // market price above the 2×cost cap → reference = 2×cost
+        planet.marketPrices[GROCERY_SERVICE] = 30;
+        const highMarketBid = (buildPopulationDemand(planet).get(GROCERY_SERVICE) ?? [])[0];
+        expect(highMarketBid.bidPrice).toBeCloseTo(20 * 4, 5);
     });
 
     it('healthcare gets budget when grocery is fully stocked', () => {

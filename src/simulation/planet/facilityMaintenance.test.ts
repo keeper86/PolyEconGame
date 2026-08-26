@@ -31,6 +31,7 @@ import {
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
     facilityRestorationCostFactor,
+    facilityUsageFactor,
 } from './facilityMaintenance';
 import type { Agent, GameState, Planet } from './planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
@@ -55,6 +56,7 @@ function setup(overrides?: Partial<ProductionFacility>): Setup {
     const assets = agent.assets[PLANET_ID]!;
     assets.storageFacility.department = null;
     const facility = makeProductionFacility({}, overrides);
+    facility.lastTickResults.overallEfficiency = 1;
     assets.productionFacilities = [facility];
     const planet = makePlanet({ marketPrices: { [constructionServiceResourceType.name]: CONSTRUCTION_PRICE } });
     const gameState = makeGameState([planet], [agent]);
@@ -89,6 +91,10 @@ function markExpanding(facility: ProductionFacility): void {
 
 function fullRestoreCost(facility: ProductionFacility): number {
     return calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
+}
+
+function wearPerTick(facility: ProductionFacility): number {
+    return (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
 }
 
 describe('computeFacilityConditionEfficiency', () => {
@@ -153,7 +159,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maintenanceStatus).toBeCloseTo(1 - FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR, 10);
+        expect(facility.maintenanceStatus).toBeCloseTo(1 - wearPerTick(facility), 10);
     });
 
     it('repairs an expanding facility from Maintenance service', () => {
@@ -169,10 +175,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        const expected =
-            HALF_CONDITION -
-            FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR +
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK;
+        const expected = HALF_CONDITION - wearPerTick(facility) + FACILITY_MAINTENANCE_REPAIR_PER_TICK;
         expect(facility.maintenanceStatus).toBeCloseTo(expected, 10);
     });
 
@@ -195,7 +198,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maintenanceStatus).toBeCloseTo(1 - FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR, 10);
+        expect(facility.maintenanceStatus).toBeCloseTo(1 - wearPerTick(facility), 10);
     });
 
     it('repairs maintenanceStatus from Maintenance service up to the per-tick cap', () => {
@@ -210,10 +213,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        const expected =
-            HALF_CONDITION -
-            FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR +
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK;
+        const expected = HALF_CONDITION - wearPerTick(facility) + FACILITY_MAINTENANCE_REPAIR_PER_TICK;
         expect(facility.maintenanceStatus).toBeCloseTo(expected, 10);
         expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(
             FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT,
@@ -288,9 +288,7 @@ describe('facilityMaintenanceTick', () => {
         facilityMaintenanceTick(gameState, planet);
 
         expect(facility.maintenanceStatus).toBeCloseTo(
-            HALF_CONDITION +
-                FACILITY_MAINTENANCE_REPAIR_PER_TICK -
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR / TICKS_PER_YEAR,
+            HALF_CONDITION + FACILITY_MAINTENANCE_REPAIR_PER_TICK - wearPerTick(facility),
             10,
         );
         expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(

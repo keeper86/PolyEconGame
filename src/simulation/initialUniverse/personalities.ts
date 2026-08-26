@@ -113,10 +113,16 @@ export interface AgentPersonality {
 const gauss = (mean: number, std: number) =>
     Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
 
+let sellPriceAggressivenessGaussMean = 1;
+
+export function setSellPriceAggressivenessMean(targetBufferMean: number): void {
+    sellPriceAggressivenessGaussMean = (targetBufferMean - 1.0) / 0.5;
+}
+
 export function generateAgentPersonality(): AgentPersonality {
     const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
     const priceAdjustmentAggressivenessDown = Math.min(0.999, 0.975 - 0.05 * gauss(0.5, 0.2));
-    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.75 * gauss(0.5, 0.2));
+    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.5 * gauss(sellPriceAggressivenessGaussMean, 0.5));
     const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 6 * gauss(0.5, 0.2)));
 
     return {

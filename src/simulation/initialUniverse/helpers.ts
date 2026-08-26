@@ -206,6 +206,17 @@ export function prefillAgentStorageFromFacilities(gameState: { agents: Map<strin
                     const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
                     putIntoStorageFacility(storage, resource, targetQty);
                 }
+                for (const { resource, quantity } of facility.produces) {
+                    if (
+                        resource.form === 'services' ||
+                        resource.form === 'landBoundResource' ||
+                        resource.form === 'currency'
+                    ) {
+                        continue;
+                    }
+                    const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
+                    putIntoStorageFacility(storage, resource, targetQty);
+                }
             }
         }
     }

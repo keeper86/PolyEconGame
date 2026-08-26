@@ -62,7 +62,7 @@ const CONFIG: SlackConfig = {
         administration: 1.5,
         logistics: 1.5,
         construction: 1.4,
-        maintenance: 1.4,
+        maintenance: 3,
     },
 };
 
@@ -96,6 +96,39 @@ const STO_ADMIN_PER_SCALE = stoTemplate.needs.find(
 )!.quantity;
 
 const HR_SCALE_PER_WORKER = 1 / ((2 / 3) * PRODUCED_HR_QUANTITY);
+
+function storageScalePerProductionScale(f: ProductionFacility): number {
+    const producedMass = f.produces.reduce(
+        (sum, p) => (p.resource.massPerQuantity > 0 ? sum + p.quantity * p.resource.massPerQuantity : sum),
+        0,
+    );
+    const consumedMass = f.needs.reduce(
+        (sum, n) =>
+            n.resource.form !== 'landBoundResource' && n.resource.massPerQuantity > 0
+                ? sum + n.quantity * n.resource.massPerQuantity
+                : sum,
+        0,
+    );
+    const throughputMass = producedMass + consumedMass;
+    const movement = STORAGE_MOVEMENT_FACTOR * throughputMass;
+    const holding = throughputMass * TICKS_PER_MONTH * SR_HOLDING_COST_PER_TON;
+    return (movement + holding) / PRODUCED_STORAGE_QUANTITY;
+}
+
+function maintenanceDemandPerProductionScale(f: ProductionFacility, slackFactor: number): number {
+    const workersPerScale =
+        (f.workerRequirement.none ?? 0) +
+        (f.workerRequirement.primary ?? 0) +
+        (f.workerRequirement.secondary ?? 0) +
+        (f.workerRequirement.tertiary ?? 0);
+    const storageScalePerProdScale = storageScalePerProductionScale(f);
+    const storageWorkersPerScale = storageScalePerProdScale * STO_WORKERS_PER_SCALE;
+    return (
+        FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK *
+        slackFactor *
+        (1 + storageScalePerProdScale + (workersPerScale + storageWorkersPerScale) * HR_SCALE_PER_WORKER)
+    );
+}
 
 function constructionDemandPerScaleFor(facility: ProductionFacility): number {
     const perScaleCost = calculateCostsForConstruction(getFacilityType(facility), 0, 1).cost;
@@ -143,21 +176,7 @@ function buildModel(
             (f.workerRequirement.secondary ?? 0) +
             (f.workerRequirement.tertiary ?? 0);
 
-        const producedMass = f.produces.reduce(
-            (sum, p) => (p.resource.massPerQuantity > 0 ? sum + p.quantity * p.resource.massPerQuantity : sum),
-            0,
-        );
-        const consumedMass = f.needs.reduce(
-            (sum, n) =>
-                n.resource.form !== 'landBoundResource' && n.resource.massPerQuantity > 0
-                    ? sum + n.quantity * n.resource.massPerQuantity
-                    : sum,
-            0,
-        );
-        const throughputMass = producedMass + consumedMass;
-        const movement = STORAGE_MOVEMENT_FACTOR * throughputMass;
-        const holding = throughputMass * TICKS_PER_MONTH * SR_HOLDING_COST_PER_TON;
-        const storageScalePerProdScale = (movement + holding) / PRODUCED_STORAGE_QUANTITY;
+        const storageScalePerProdScale = storageScalePerProductionScale(f);
 
         const storageLogisticsPerScale = storageScalePerProdScale * STO_LOGISTICS_PER_SCALE;
         const storageAdminPerScale = storageScalePerProdScale * STO_ADMIN_PER_SCALE;
@@ -180,21 +199,11 @@ function buildModel(
 
         if (FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK > 0) {
             const maintenanceKey = resourceConstraintKey(maintenanceServiceResourceType.name);
-            varCoeffs[maintenanceKey] =
-                (varCoeffs[maintenanceKey] ?? 0) - FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
-            if (!constraints[maintenanceKey]) constraints[maintenanceKey] = { min: 0 };
-
-            const storageMaintenance = storageScalePerProdScale * FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
-            if (storageMaintenance > 0) {
-                varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - storageMaintenance;
-            }
-
-            const hrMaintenance =
-                (workersPerScale + storageWorkersPerScale) *
-                HR_SCALE_PER_WORKER *
-                FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
-            if (hrMaintenance > 0) {
-                varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - hrMaintenance;
+            const maintenanceSlack = slack.goods[maintenanceServiceResourceType.name.toLowerCase()] ?? slack.defaultSlack;
+            const maintenancePerScale = maintenanceDemandPerProductionScale(f, maintenanceSlack);
+            if (maintenancePerScale > 0) {
+                varCoeffs[maintenanceKey] = (varCoeffs[maintenanceKey] ?? 0) - maintenancePerScale;
+                if (!constraints[maintenanceKey]) constraints[maintenanceKey] = { min: 0 };
             }
         }
 
@@ -482,8 +491,14 @@ function main(): void {
         prod: 0,
         cons: 0,
     };
+    const maintenanceSlack = CONFIG.goods.maintenance ?? CONFIG.defaultSlack;
     for (const r of results) {
-        balances[maintenanceServiceResourceType.name].cons += r.scale * FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK;
+        const entry = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).find(
+            (e) => e.factory(TOOL_PLANET, TOOL_ID).name === r.name,
+        )!;
+        const f = entry.factory(TOOL_PLANET, TOOL_ID);
+        balances[maintenanceServiceResourceType.name].cons +=
+            r.scale * maintenanceDemandPerProductionScale(f, maintenanceSlack);
     }
 
     console.log('Resource              Production        Consumption         Balance          Ratio');

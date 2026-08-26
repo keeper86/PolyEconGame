@@ -406,6 +406,9 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         rolloverDenials: 0,
         debtWriteOffs: 0,
         bankruptcies: 0,
+        refoundCount: 0,
+        loanInterestCollected: 0,
+        emergencyLoansGranted: 0,
         orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},
@@ -416,6 +419,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
+        governmentDebt: 0,
         ...restOverrides,
     };
 

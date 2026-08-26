@@ -6,23 +6,22 @@ import {
     RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY,
     SUPPORT_WEIGHT_SIGMA,
 } from '../constants';
-import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 import type { Planet } from '../planet/planet';
+import { SERVICE_DEFINITIONS } from './serviceDefinitions';
 
 const groceryDef = SERVICE_DEFINITIONS.grocery;
 
+import { groceryServiceResourceType } from '../planet/services';
 import { educationLevelKeys } from '../population/education';
 import { OCCUPATIONS } from '../population/population';
 import { makePlanet } from '../utils/testHelper';
 import {
     createZeroTransferMatrix,
     effectiveSurplus,
-    governmentSupport,
     intergenerationalTransfersForPlanet,
     sumTransferMatrix,
     supportWeight,
 } from './intergenerationalTransfers';
-import { groceryServiceResourceType } from '../planet/services';
 
 const GROCERY_SERVICE = groceryServiceResourceType.name;
 
@@ -550,42 +549,5 @@ describe('intergenerationalTransfersForPlanet – lastTransferMatrix', () => {
             }
         }
         expect(infantRowPositive).toBe(true);
-    });
-});
-
-describe('governmentSupport – needs-based first supporter', () => {
-    it('credits dependents with empty buffers up to their need and returns the spent amount', () => {
-        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
-        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
-        const wealthBefore = totalHouseholdWealth(planet);
-
-        const spent = governmentSupport(planet, 1_000_000);
-
-        expect(spent).toBeGreaterThan(0);
-        expect(spent).toBeLessThanOrEqual(1_000_000);
-        expect(totalHouseholdWealth(planet)).toBeCloseTo(wealthBefore + spent, 4);
-    });
-
-    it('keeps the excess of the budget when need is fully covered', () => {
-        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
-        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
-
-        const spent = governmentSupport(planet, 100_000_000_000);
-
-        expect(spent).toBeGreaterThan(0);
-        expect(spent).toBeLessThan(100_000_000_000);
-    });
-
-    it('returns zero without a budget', () => {
-        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
-        placePeople(planet, 70, 200, { wealthMean: 0, foodStock: 0 });
-
-        expect(governmentSupport(planet, 0)).toBe(0);
-    });
-
-    it('returns zero when nobody has unmet needs', () => {
-        const planet = makePlanet({ marketPrices: { [GROCERY_SERVICE]: 1.0 } });
-
-        expect(governmentSupport(planet, 1_000_000)).toBe(0);
     });
 });

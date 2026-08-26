@@ -1,33 +1,17 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import {
-    BID_OFFER_MAX_COST_MULTIPLIER,
-    BID_PRICE_SENSITIVITY,
-    BID_VOLUME_FLOOR_FRACTION,
-    INPUT_BUFFER_TARGET_TICKS,
-    INVENTORY_SMOOTHING_MAX_EXTRA,
-    PRICE_CEIL,
-    TARGET_FILL_RATE,
-} from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, PRICE_CEIL, TARGET_FILL_RATE } from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
-import { automaticPricing, buyVolumeFraction } from './automaticPricing';
+import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
 import { settleAgentBuyers } from './settlement';
 
 const COAL = coalResourceType.name;
 const FOOD = produceResourceType.name;
-
-const BUY_VOLUME_FRACTION_AT_COST = buyVolumeFraction(
-    1,
-    1,
-    BID_PRICE_SENSITIVITY,
-    BID_VOLUME_FLOOR_FRACTION,
-    BID_OFFER_MAX_COST_MULTIPLIER,
-);
 
 function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
@@ -113,7 +97,7 @@ describe('automaticPricing — buy side', () => {
         // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
-        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget * BUY_VOLUME_FRACTION_AT_COST, 0);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
     it('keeps bidStorageTarget proportional when storage has some inventory', () => {
@@ -426,18 +410,18 @@ describe('automaticPricing — buy side', () => {
         const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
         planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
         automaticPricing(agentMap(buyer), planet);
-        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget * BUY_VOLUME_FRACTION_AT_COST, 0);
+        expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
-    it('underfilled bid keeps rising above where the old per-agent ceiling would have pinned it', () => {
+    it('pulls an underfilled bid above the per-agent ceiling back down via the ceiling spring', () => {
         planet.lastProductionCostFloors[COAL] = 1.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        bid.autoConfig = { bidPriceSensitivity: 1.0, bidVolumeFloorFraction: 0.2 } as AutomatedPricingConfig;
-        bid.bidPrice = 5;
-        bid.lastBought = 0; // completely unfilled → upward pressure
+        bid.autoConfig = {} as AutomatedPricingConfig;
+        bid.bidPrice = 5; // above costFloor × bidOfferMaxCostMultiplier (per-agent ceiling)
+        bid.lastBought = 0; // completely unfilled → base factor pushes up
         bid.lastEffectiveQty = 10;
         bid.smoothedFillRate = 0;
 
@@ -445,19 +429,21 @@ describe('automaticPricing — buy side', () => {
 
         const diagnostics = bid.diagnostics;
         expect(diagnostics).toBeDefined();
-        // no ceiling spring: netFactor = baseFactor and the bid keeps rising
-        expect(diagnostics!.netFactor).toBe(diagnostics!.baseFactor);
-        expect(bid.bidPrice!).toBeGreaterThan(5);
-        expect(bid.bidPrice!).toBeLessThanOrEqual(PRICE_CEIL);
+        // unfilled → the fill-rate factor wants to raise the bid, but the ceiling spring caps it
+        expect(diagnostics!.baseFactor).toBeGreaterThan(1);
+        expect(diagnostics!.ceilingSpring).toBeGreaterThan(0);
+        expect(diagnostics!.netFactor).toBeLessThan(diagnostics!.baseFactor);
+        expect(bid.bidPrice!).toBeLessThanOrEqual(5);
     });
 
-    it('high market price scales down the demanded quantity but respects the volume floor', () => {
+    it('bids the full quantity regardless of market price and anchors the price via the ceiling spring', () => {
         planet.lastProductionCostFloors[COAL] = 1.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        bid.autoConfig = { bidPriceSensitivity: 1.0, bidVolumeFloorFraction: 0.2 } as AutomatedPricingConfig;
+        bid.autoConfig = {} as AutomatedPricingConfig;
+        bid.bidPrice = 50;
         const costFloor = planet.lastProductionCostFloors[COAL]!;
 
         planet.marketPrices[COAL] = 10 * costFloor;
@@ -468,13 +454,11 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
         const costPriceShortfall = bid.diagnostics!.shortfall;
 
-        // at cost the sigmoid sits near full volume; at 10× cost it reaches the volume floor
-        expect(highPriceShortfall).toBeLessThan(costPriceShortfall);
-        const fraction = highPriceShortfall / costPriceShortfall;
-        const vfAtCost = buyVolumeFraction(costFloor, costFloor, 1.0, 0.2, BID_OFFER_MAX_COST_MULTIPLIER);
-        const vfHigh = buyVolumeFraction(10 * costFloor, costFloor, 1.0, 0.2, BID_OFFER_MAX_COST_MULTIPLIER);
-        expect(fraction).toBeCloseTo(vfHigh / vfAtCost, 2);
-        expect(fraction).toBeGreaterThan(0.2);
+        // no quantity throttle: the demanded quantity is identical at 10× cost and at cost
+        expect(highPriceShortfall).toBeCloseTo(costPriceShortfall, 10);
+        // the price anchoring happens on the bid price, not the quantity
+        expect(bid.diagnostics!.ceilingSpring).toBeGreaterThan(0);
+        expect(bid.bidPrice!).toBeLessThan(50);
     });
 
     it('freeBuyQuantity smoothing is stable across multiple ticks when no production/consumption exists', () => {
@@ -588,8 +572,8 @@ describe('automaticPricing — buy side', () => {
         // When close to target, should buy less than the full per-tick rate
         expect(effectiveQty).toBeGreaterThan(0);
         expect(effectiveQty).toBeLessThan(PER_TICK);
-        // freeRemaining = 10,000 - 9,500 = 500, scaled by the volume fraction at cost
-        expect(effectiveQty).toBeCloseTo(500 * BUY_VOLUME_FRACTION_AT_COST, 0);
+        // freeRemaining = 10,000 - 9,500 = 500
+        expect(effectiveQty).toBeCloseTo(500, 0);
     });
 
     it('freeBuyQuantity with services skips smoothing', () => {

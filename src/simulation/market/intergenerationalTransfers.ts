@@ -19,6 +19,7 @@ import type {
     ServiceName,
 } from '../population/population';
 import { forEachPopulationCohort, mergeGaussianMoments, OCCUPATIONS } from '../population/population';
+import type { TickProfiler } from '../TickProfiler';
 import { nextRandom } from '../utils/stochasticRound';
 import {
     allServices,
@@ -28,7 +29,6 @@ import {
     SERVICE_TIERS,
     serviceKeyOf,
 } from './serviceDefinitions';
-import type { TickProfiler } from '../TickProfiler';
 
 export interface DependentNeed {
     totalNeed: number;
@@ -527,63 +527,4 @@ export function creditDependents(
         }
     }
     return actualCredited;
-}
-
-// TODO: Can we just "shield" wealth of supporters in their loop?
-// Do we need to loop here again?
-export function governmentSupport(planet: Planet, budget: number): number {
-    const demography = planet.population.demography;
-    const numAges = demography.length;
-    if (budget <= 0) {
-        return 0;
-    }
-    const refIncome = referenceMonthlyIncome(planet);
-    let remainingBudget = budget;
-    let cumulativeMandatoryCost = 0;
-    let totalSpent = 0;
-
-    for (const tier of SERVICE_TIERS) {
-        const tierCostPerTick =
-            computeTierCost(planet.marketPrices, tier) * RELATIVE_PRICE_WILLING_TO_PAY_WHEN_BUFFER_EMPTY;
-        const cache = buildAggregateCache(demography, refIncome);
-        const tierNeeds = computeDependentNeedsForTier(
-            cache,
-            tier.services,
-            planet.marketPrices,
-            tier.coverageFraction,
-            cumulativeMandatoryCost,
-            refIncome,
-        );
-        const totalNeed = tierNeeds.reduce((sum, n) => sum + n.totalNeed, 0);
-        if (totalNeed > 0) {
-            const spend = Math.min(remainingBudget, totalNeed);
-            if (spend > 0) {
-                const scarcityFactor = spend / totalNeed;
-                let tierSpent = 0;
-                for (let age = 0; age < numAges; age++) {
-                    const need = tierNeeds[age].totalNeed * scarcityFactor;
-                    if (need <= 0) {
-                        continue;
-                    }
-                    tierSpent += creditDependents(
-                        cache,
-                        demography,
-                        age,
-                        need,
-                        tier.services,
-                        planet.marketPrices,
-                        tier.coverageFraction,
-                        cumulativeMandatoryCost,
-                        refIncome,
-                    );
-                }
-                remainingBudget -= tierSpent;
-                totalSpent += tierSpent;
-            }
-        }
-        if (tier.mandatoryForOwnConsumption) {
-            cumulativeMandatoryCost += tierCostPerTick;
-        }
-    }
-    return totalSpent;
 }

@@ -1,10 +1,9 @@
 import assert from 'assert';
 import {
-    INPUT_BUFFER_TARGET_TICKS_SERVICES,
     NOTICE_PERIOD_MONTHS,
     PRICE_CEIL,
     PRICE_FLOOR,
-    SERVICE_DEPRECIATION_RATE_PER_TICK,
+    SERVICE_DEPRECIATION_COST_MULTIPLIER,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { EducationLevelType } from '../population/education';
@@ -16,6 +15,14 @@ import { totalActiveForEdu, totalDepartingForEdu, totalOnboardingForEdu } from '
 import { ONBOARDING_EFFICIENCY, productivityFromXP, totalWorkersInCategory } from '../workforce/workforce';
 import type { ResourceQuantity } from './claims';
 import { extractFromClaimedResource, getLandBoundCostPerUnit, queryClaimedResource } from './claims';
+import {
+    auxiliaryCostPerTick,
+    auxiliaryCostRates,
+    facilityInputCostPerTick,
+    facilityWageCostPerTick,
+    jointOutputCostShares,
+    type AuxiliaryCostRates,
+} from './auxiliaryCosts';
 import type {
     Facility,
     ManagementFacility,
@@ -37,6 +44,7 @@ import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
+import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -52,9 +60,6 @@ function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], 
 }
 
 const RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE = 1e-4;
-
-const SERVICE_DEPRECIATION_COST_MULTIPLIER =
-    1 / Math.pow(1 - SERVICE_DEPRECIATION_RATE_PER_TICK, INPUT_BUFFER_TARGET_TICKS_SERVICES);
 
 type EnrichedFacility = {
     facility: Facility;
@@ -112,7 +117,7 @@ export function consumeConstructionForFacility(
             facility.cumulativeRepairAcc = (oldMaxScale * facility.cumulativeRepairAcc) / newMaxScale;
         }
         facility.maxScale = newMaxScale;
-        facility.scale = facility.maxScale * Math.max(0.1, scaleFraction);
+        facility.scale = facility.maxScale * Math.max(MIN_SCALE_FRACTION, scaleFraction);
         facility.construction = null;
         facility.lastConstructionCompletedTick = tracking.gameStateTick;
     }
@@ -344,36 +349,18 @@ type ShipConstructionParameters = IntermediateResults & {
 };
 
 function accumulateTheoreticalCostFloor(
-    facility: ProductionFacility | ManagementFacility,
+    facility: ProductionFacility,
     planet: Planet,
-    costAccum: Map<string, number>,
+    rates: AuxiliaryCostRates,
     outputAccum: Map<string, number>,
+    costAccum: Map<string, number>,
 ): void {
-    let inputCostPerUnit = 0;
-    for (const need of facility.needs) {
-        const pricePerUnit =
-            need.resource.form === 'landBoundResource'
-                ? (planet.landBoundCostPerUnit[need.resource.name] ?? 0)
-                : need.resource.form === 'services'
-                  ? (planet.marketPrices[need.resource.name] ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER
-                  : (planet.marketPrices[need.resource.name] ?? 0);
-        inputCostPerUnit += need.quantity * pricePerUnit;
-    }
+    const totalCostPerUnit =
+        facilityInputCostPerTick(facility, planet) +
+        facilityWageCostPerTick(facility, planet) +
+        auxiliaryCostPerTick(facility, rates);
 
-    let wageCostPerUnit = 0;
-    for (const edu of educationLevelKeys) {
-        const req = facility.workerRequirement[edu] ?? 0;
-        if (req > 0) {
-            wageCostPerUnit += req * planet.wagePerEdu[edu];
-        }
-    }
-    const totalCostPerUnit = inputCostPerUnit + wageCostPerUnit;
-
-    let totalOutputValue = 0;
-    for (const output of facility.produces) {
-        totalOutputValue += output.quantity;
-    }
-    const totalOutputQty = totalOutputValue;
+    const shares = jointOutputCostShares(facility, planet, outputAccum);
 
     for (const output of facility.produces) {
         const qty = output.quantity;
@@ -381,7 +368,8 @@ function accumulateTheoreticalCostFloor(
             continue;
         }
 
-        const costForOutput = totalCostPerUnit * (qty / totalOutputQty);
+        const share = shares.get(output.resource.name) ?? 0;
+        const costForOutput = totalCostPerUnit * share;
         const outputDepreciationMultiplier =
             output.resource.form === 'services' ? SERVICE_DEPRECIATION_COST_MULTIPLIER : 1.0;
 
@@ -389,17 +377,25 @@ function accumulateTheoreticalCostFloor(
             output.resource.name,
             (costAccum.get(output.resource.name) ?? 0) + costForOutput * outputDepreciationMultiplier,
         );
-        outputAccum.set(output.resource.name, (outputAccum.get(output.resource.name) ?? 0) + qty);
     }
 }
 
 export function updateProductionCostFloors(planet: Planet): void {
     const costAccum = new Map<string, number>();
     const outputAccum = new Map<string, number>();
+    const rates = auxiliaryCostRates(planet);
+
+    for (const { template } of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
+        for (const output of template.produces) {
+            if (output.quantity > 0) {
+                outputAccum.set(output.resource.name, (outputAccum.get(output.resource.name) ?? 0) + output.quantity);
+            }
+        }
+    }
 
     for (const { template } of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         if (template.produces.length > 0) {
-            accumulateTheoreticalCostFloor(template, planet, costAccum, outputAccum);
+            accumulateTheoreticalCostFloor(template, planet, rates, outputAccum, costAccum);
         }
     }
 

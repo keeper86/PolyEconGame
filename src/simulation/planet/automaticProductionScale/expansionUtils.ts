@@ -55,7 +55,7 @@ export function computeExpansionWorkforceStats(facility: FacilityBase, planet: P
             totalAvailableUnemployed,
             totalRequiredNewWorkers,
             requiredWithReserve: 0,
-            hasSufficientWorkers: false,
+            hasSufficientWorkers: true,
         };
     }
 
