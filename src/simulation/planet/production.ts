@@ -44,6 +44,7 @@ import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
+import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -116,7 +117,7 @@ export function consumeConstructionForFacility(
             facility.cumulativeRepairAcc = (oldMaxScale * facility.cumulativeRepairAcc) / newMaxScale;
         }
         facility.maxScale = newMaxScale;
-        facility.scale = facility.maxScale * Math.max(0.1, scaleFraction);
+        facility.scale = facility.maxScale * Math.max(MIN_SCALE_FRACTION, scaleFraction);
         facility.construction = null;
         facility.lastConstructionCompletedTick = tracking.gameStateTick;
     }

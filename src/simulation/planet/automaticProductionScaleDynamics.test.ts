@@ -233,7 +233,7 @@ describe('PID utilization response', () => {
         let ticks = 0;
         while (facility.scale < facility.maxScale - 1e-9 && ticks < 10_000) {
             const signal = computeFacilitySignal(facility, planet);
-            const delta = computePidDelta(signal, state, facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             ticks++;
         }
@@ -246,7 +246,7 @@ describe('PID utilization response', () => {
         const state = getDefaultPidState();
         for (let tick = 0; tick < 10_000; tick++) {
             const signal = computeFacilitySignal(facility, planet);
-            const delta = computePidDelta(signal, state, facility.maxScale);
+            const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             expect(Number.isFinite(facility.scale)).toBe(true);
             expect(Number.isFinite(state.integral)).toBe(true);

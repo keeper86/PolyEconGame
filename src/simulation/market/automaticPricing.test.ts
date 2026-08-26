@@ -19,7 +19,7 @@ import {
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import type { StorageFacility } from '../planet/facility';
-import { facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
+import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
     clothingResourceType,
@@ -850,7 +850,10 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            (facility.scale *
+                facilityUsageFactor(facility) *
+                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
+                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
@@ -884,7 +887,10 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            (facility.scale *
+                facilityUsageFactor(facility) *
+                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
+                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
         // no quantity throttle: the full storage target is bid regardless of the market price
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
@@ -946,7 +952,10 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
+            (facility.scale *
+                facilityUsageFactor(facility) *
+                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
+                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
             TICKS_PER_YEAR;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });

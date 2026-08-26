@@ -167,6 +167,17 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeCloseTo(initial, 10);
     });
 
+    it('nudges the scale down when the facility maintenance is below the contraction threshold', () => {
+        const planet = makePlanetWithAvg(makeMarketResult());
+        const { agents, facility } = makeSetup(planet);
+        facility.maintenanceStatus = 0.6;
+        const initial = facility.scale;
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale).toBeLessThan(initial);
+    });
+
     it('makes only a very small scale change for a weak demand-excess signal', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeSetup(planet);
@@ -224,6 +235,55 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.scale).toBeGreaterThan(initial);
+    });
+
+    it('does not initiate capacity expansion when the facility maintenance is below the expansion threshold', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 10,
+            maxScale: 10,
+
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+            workerRequirement: { none: 1 },
+            lastTickResults: {
+                overallEfficiency: 1,
+                workerEfficiency: {},
+                resourceEfficiency: {},
+                overqualifiedWorkers: {},
+                exactUsedByEdu: {},
+                totalUsedByEdu: {},
+                lastProduced: {},
+                lastConsumed: {},
+                revenue: 1_000_000,
+                wageCosts: 0,
+                inputCosts: 0,
+                costBalance: 0,
+            },
+        });
+        facility.maintenanceStatus = 0.8;
+
+        const agent = agents.values().next().value as Agent;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 1_000_000;
+        assets.lastMonthAcc.revenue = 1_000_000;
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).toBeNull();
     });
 
     it('clamps scale to the minimum floor when already at very low scale and oversupplied', () => {
