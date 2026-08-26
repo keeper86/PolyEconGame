@@ -277,7 +277,7 @@ function hasStorageRoom(assets: AgentPlanetAssets): boolean {
     const massCapacity = storage.capacity.mass * scale;
 
     return (
-        storage.current.volume < volumeCapacity * EXPANSION_STORAGE_FREE_FRACTION ||
+        storage.current.volume < volumeCapacity * EXPANSION_STORAGE_FREE_FRACTION &&
         storage.current.mass < massCapacity * EXPANSION_STORAGE_FREE_FRACTION
     );
 }

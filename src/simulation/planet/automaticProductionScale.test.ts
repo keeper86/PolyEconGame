@@ -1103,6 +1103,78 @@ describe('updateAgentProductionScale', () => {
         expect(facility.pidState!.expansionIntegral).toBe(0);
     });
 
+    it('does not initiate expansion when volume has room but mass is near capacity', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.population = makePopulationByEducation({ none: 10 });
+        planet.lastMarketResult[RESOURCE_NAME].totalDemand = 1000;
+        planet.lastMarketResult[RESOURCE_NAME].unfilledDemand = 800;
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 100,
+            maxScale: 100,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 1_000_000;
+        assets.lastMonthAcc.revenue = 1_000_000;
+        assets.storageFacility.current = { volume: 0, mass: assets.storageFacility.capacity.mass * 0.95 };
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).toBeNull();
+    });
+
+    it('does not initiate expansion when mass has room but volume is near capacity', () => {
+        const planet = makePlanetWithWorkersAndCostFloor(12, 10);
+        planet.population = makePopulationByEducation({ none: 10 });
+        planet.lastMarketResult[RESOURCE_NAME].totalDemand = 1000;
+        planet.lastMarketResult[RESOURCE_NAME].unfilledDemand = 800;
+
+        const { agents, facility } = makeSetup(planet, {
+            scale: 100,
+            maxScale: 100,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
+                smoothedSignal: 0,
+                profitEMA: 0,
+                revenueEMA: 0,
+                profitAtExpansionScale: 0,
+                profitAtContractionScale: 0,
+            },
+        });
+        const agent = agents.values().next().value as Agent;
+        const assets = agent.assets[planet.id];
+        assets.deposits = 1_000_000;
+        assets.lastMonthAcc.revenue = 1_000_000;
+        assets.storageFacility.current = { volume: assets.storageFacility.capacity.volume * 0.95, mass: 0 };
+
+        expect(facility.construction).toBeNull();
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.construction).toBeNull();
+    });
+
     it('accumulates expansion integral when HR and storage are healthy', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, {

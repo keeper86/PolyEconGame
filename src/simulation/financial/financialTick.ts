@@ -115,7 +115,7 @@ export function preProductionFinancialTick(
             gameState
         ) {
             terminateAndRefound(gameState, planet, agent, tick);
-            return;
+            continue;
         }
 
         assets.monthAcc.wages += wageBill;

@@ -765,6 +765,38 @@ describe('bankruptcy mode', () => {
         }
     });
 
+    it('continues processing remaining agents after a bankruptcy refound', () => {
+        setBankruptcyEnabled(true);
+        try {
+            const bankrupt = makeAgent('bankrupt', planet.id, 'Bankrupt');
+            const healthy = makeAgent('healthy', planet.id, 'Healthy');
+            const bankruptAssets = bankrupt.assets[planet.id]!;
+            const healthyAssets = healthy.assets[planet.id]!;
+            bankruptAssets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
+            healthyAssets.wagePerEdu = { none: 2.0, primary: 2.0, secondary: 2.0, tertiary: 2.0 };
+            bankruptAssets.deposits = 1;
+            bankruptAssets.activeLoans = [makeLoan('emergency', 100, 0.05, 1, 361, true)];
+            healthyAssets.deposits = 10_000;
+            addWorker(bankruptAssets, 25, 'none', 10);
+            addWorker(healthyAssets, 25, 'none', 100);
+            addEmployed(planet, 25, 'none', 110);
+            planet.bank!.deposits = 1000;
+            planet.bank!.loans = 100;
+            const gameState = makeGameState([planet], [bankrupt, healthy], 1);
+
+            preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+
+            expect(gameState.agents.has('bankrupt')).toBe(false);
+            expect(gameState.agents.has('bankrupt-refound-1')).toBe(true);
+            expect(planet.bankruptcies).toBe(1);
+            expect(healthyAssets.deposits).toBe(9_800);
+            expect(planet.wagePerEdu.none).toBeCloseTo(210 / 110, 6);
+            expect(planet.bank!.equity).toBe(planet.bank!.deposits - planet.bank!.loans);
+        } finally {
+            setBankruptcyEnabled(false);
+        }
+    });
+
     it('re-points resource claims to the re-founded company', () => {
         setBankruptcyEnabled(true);
         try {
