@@ -13,7 +13,7 @@ export function computeLoanConditions(
     const assets = agent.assets[planet.id];
     const bank = planet.bank;
 
-    const annualInterestRate = bank.loanRate * 360;
+    const annualInterestRate = bank.loanRatePerYear * 360;
 
     const existingLoans = totalOutstandingLoans(assets?.activeLoans ?? []);
 

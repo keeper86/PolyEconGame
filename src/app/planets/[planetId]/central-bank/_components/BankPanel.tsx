@@ -85,7 +85,7 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
-                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
+                    <Stat label='Loan rate' value={pct(bank.loanRatePerYear)} icon={<Percent className='h-3 w-3' />} />
                     <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
                 </div>
             </div>

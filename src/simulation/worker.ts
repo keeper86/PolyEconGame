@@ -376,7 +376,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const wageEdu2 = planet.wagePerEdu.secondary ?? 0;
             const wageEdu3 = planet.wagePerEdu.tertiary ?? 0;
 
-            const policyRate = bank.loanRate;
+            const policyRate = bank.loanRatePerYear;
             const bankEquity = bank.equity;
             const moneySupply = bank.deposits;
 

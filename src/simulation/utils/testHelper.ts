@@ -141,7 +141,7 @@ export function makeBank(overrides?: Partial<Bank>): Bank {
         deposits: 0,
         householdDeposits: 0,
         equity: 0,
-        loanRate: 0,
+        loanRatePerYear: 0,
         depositRate: 0,
         ...overrides,
     };
@@ -617,5 +617,5 @@ export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount
     assets.deposits += amount;
     issuingPlanet.bank.deposits += amount;
     issuingPlanet.bank.loans += amount;
-    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false));
+    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRatePerYear, 0, 0, false));
 }

@@ -516,7 +516,7 @@ describe('enforceLoanMaturities', () => {
         agent = makeAgent();
         const result = makePlanetWithPopulation({ none: 1000 });
         planet = result.planet;
-        planet.bank!.loanRate = 0.05 / 360;
+        planet.bank!.loanRatePerYear = 0.05 / 360;
     });
 
     it('does nothing when there are no matured loans', () => {
@@ -671,7 +671,7 @@ describe('bankruptcy mode', () => {
         agent = makeAgent();
         const result = makePlanetWithPopulation({ none: 1000 });
         planet = result.planet;
-        planet.bank!.loanRate = 0.05 / 360;
+        planet.bank!.loanRatePerYear = 0.05 / 360;
     });
 
     it('collects loan interest and drains bank equity', () => {

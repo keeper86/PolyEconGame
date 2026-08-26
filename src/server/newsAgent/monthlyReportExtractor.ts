@@ -513,7 +513,7 @@ export function extractMonthlyReport(): MonthlyReport {
                 edu2: planet.wagePerEdu.secondary ?? 0,
                 edu3: planet.wagePerEdu.tertiary ?? 0,
             },
-            policyRate: planet.bank.loanRate,
+            policyRate: planet.bank.loanRatePerYear,
             moneySupply: planet.bank.deposits,
             bankEquity: planet.bank.equity,
             foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,

@@ -133,7 +133,14 @@ export function grantLoan(
     const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
     const earlyRepaymentAllowed = LOAN_EARLY_REPAYMENT[purpose];
 
-    const loan = makeLoan(purpose, amount, bank.loanRate * TICKS_PER_YEAR, tick, maturityTick, earlyRepaymentAllowed);
+    const loan = makeLoan(
+        purpose,
+        amount,
+        bank.loanRatePerYear * TICKS_PER_YEAR,
+        tick,
+        maturityTick,
+        earlyRepaymentAllowed,
+    );
 
     assets.deposits += amount;
     assets.activeLoans.push(loan);

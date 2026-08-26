@@ -152,7 +152,7 @@ describe('computeLoanConditions', () => {
 
     it('reports annualInterestRate as bank.loanRate × 360', () => {
         const planet = makePlanet();
-        planet.bank.loanRate = 0.001;
+        planet.bank.loanRatePerYear = 0.001;
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
         const result = computeLoanConditions(agent, planet);
         expect(result.annualInterestRate).toBeCloseTo(0.36);

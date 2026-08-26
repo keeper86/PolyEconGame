@@ -18,7 +18,7 @@ export interface Bank {
     deposits: number;
     householdDeposits: number;
     equity: number;
-    loanRate: number;
+    loanRatePerYear: number;
     depositRate: number;
 }
 

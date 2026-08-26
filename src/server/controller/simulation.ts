@@ -171,7 +171,7 @@ export const getLatestPlanetSummaries = () =>
                             TICKS_PER_YEAR +
                             (planet.monthTransferVolume * 1) / 3,
                     moneySupply: planet.bank.deposits,
-                    policyRate: planet.bank.loanRate,
+                    policyRate: planet.bank.loanRatePerYear,
                     costOfLiving: computeCostOfLiving(planet, false),
                     costOfLivingRich: computeCostOfLiving(planet, true),
                     wageEdu0: planet.wagePerEdu.none ?? 0,

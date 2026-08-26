@@ -26,7 +26,7 @@ function makeSeededState(loanRate = 0.001) {
         id: 'p1',
         name: 'Planet 1',
         governmentId: 'gov-p1',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate, depositRate: 0 },
+        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRatePerYear: loanRate, depositRate: 0 },
     });
     const state = makeGameState([planet], [gov]);
     seedForexMarketMakers(state);
@@ -40,13 +40,13 @@ function makeSeededStateMultiPlanet(rate1 = 0.001, rate2 = 0.002) {
         id: 'p1',
         name: 'Planet 1',
         governmentId: 'gov-p1',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: rate1, depositRate: 0 },
+        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRatePerYear: rate1, depositRate: 0 },
     });
     const planet2 = makePlanet({
         id: 'p2',
         name: 'Planet 2',
         governmentId: 'gov-p2',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: rate2, depositRate: 0 },
+        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRatePerYear: rate2, depositRate: 0 },
     });
     const state = makeGameState([planet1, planet2], [gov1, gov2]);
     seedForexMarketMakers(state);
@@ -60,7 +60,7 @@ function makeThreePlanetState() {
             id,
             name: `Planet ${i + 1}`,
             governmentId: `gov-${id}`,
-            bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0.001, depositRate: 0 },
+            bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRatePerYear: 0.001, depositRate: 0 },
         }),
     );
     const state = makeGameState(planets, govs);
