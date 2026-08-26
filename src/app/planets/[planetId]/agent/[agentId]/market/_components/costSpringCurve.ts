@@ -11,8 +11,10 @@ export type SpringCurvePoint = {
     active: number;
 };
 
+const MAX_BUY_SPRING_RATIO = 20;
+
 export function springPush(mode: 'buy' | 'sell', params: CostSpringParams, ratio: number): number {
-    if (params.strength <= 0 || params.reference <= 0 || ratio <= 0) {
+    if (params.strength <= 0 || params.reference <= 0 || ratio < 0) {
         return 0;
     }
     if (mode === 'buy') {
@@ -64,7 +66,7 @@ export function computeSpringDomain(
         refs,
         currentRatio ?? 0,
     );
-    return Math.max(1.5, raw * 1.15);
+    return Math.min(MAX_BUY_SPRING_RATIO, Math.max(2.0, raw * 1.15));
 }
 
 export function buildSpringRatioTicks(domainMax: number, currentRatio?: number, tickCount = 5): number[] {

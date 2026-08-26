@@ -124,6 +124,8 @@ export function CostSpringCurve({
     );
 
     const currentY = currentRatio !== undefined ? springFraction(mode, active, currentRatio) : undefined;
+    const showCurrent =
+        currentRatio !== undefined && currentY !== undefined && currentRatio >= 0 && currentRatio <= domainMax;
 
     const activeFullRatio = ratioAtFullPush(mode, active);
     const showFullPush = Number.isFinite(activeFullRatio) && activeFullRatio > 0 && activeFullRatio <= domainMax;
@@ -241,7 +243,7 @@ export function CostSpringCurve({
                             strokeWidth={2}
                         />
                     )}
-                    {currentRatio !== undefined && currentY !== undefined && (
+                    {showCurrent && (
                         <ReferenceLine
                             x={currentRatio}
                             stroke={CURRENT_COLOR}
@@ -249,7 +251,7 @@ export function CostSpringCurve({
                             strokeOpacity={0.7}
                         />
                     )}
-                    {currentRatio !== undefined && currentY !== undefined && (
+                    {showCurrent && (
                         <ReferenceDot
                             x={currentRatio}
                             y={currentY}
@@ -259,7 +261,7 @@ export function CostSpringCurve({
                             stroke='none'
                         />
                     )}
-                    {currentRatio !== undefined && currentY !== undefined && (
+                    {showCurrent && (
                         <ReferenceDot
                             x={currentRatio}
                             y={currentY}

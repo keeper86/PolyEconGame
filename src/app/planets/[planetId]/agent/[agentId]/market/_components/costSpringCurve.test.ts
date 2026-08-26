@@ -27,6 +27,12 @@ describe('springPush', () => {
         expect(springPush('buy', { strength: 0, reference: 3.5 }, 10)).toBe(0);
         expect(springPush('sell', { strength: 0, reference: 1.5 }, 0.5)).toBe(0);
     });
+
+    it('blows up toward P/C=0 for sell (infinite deviation, clamped by springFraction)', () => {
+        expect(springPush('sell', sellParams, 0)).toBe(Infinity);
+        expect(springPush('sell', sellParams, 0.0001)).toBeGreaterThan(1);
+        expect(springFraction('sell', sellParams, 0)).toBe(1);
+    });
 });
 
 describe('ratioAtFullPush', () => {
@@ -55,12 +61,26 @@ describe('springFraction', () => {
         expect(springFraction('buy', buyParams, 2)).toBe(0);
         expect(springFraction('sell', sellParams, 5)).toBe(0);
     });
+
+    it('is always 100% at P/C=0 for the sell spring unless strength or reference is 0', () => {
+        expect(springFraction('sell', sellParams, 0)).toBe(1);
+        expect(springFraction('sell', { strength: 0.3, reference: 2 }, 0)).toBe(1);
+        expect(springFraction('sell', { strength: 0, reference: 1.5 }, 0)).toBe(0);
+        expect(springFraction('sell', { strength: 0.1, reference: 0 }, 0)).toBe(0);
+    });
 });
 
 describe('computeSpringDomain', () => {
     it('covers the full-push ratio for buy with margin', () => {
         const domain = computeSpringDomain('buy', buyParams, buyParams);
         expect(domain).toBeGreaterThanOrEqual(ratioAtFullPush('buy', buyParams) * 1.15);
+    });
+
+    it('caps the buy domain at twice the max soft bid', () => {
+        const weakBuy: CostSpringParams = { strength: 0.01, reference: 3.5 };
+        const domain = computeSpringDomain('buy', weakBuy, weakBuy);
+        expect(domain).toBeLessThanOrEqual(20);
+        expect(domain).toBe(20);
     });
 
     it('covers the buffer for sell with margin', () => {
@@ -70,6 +90,10 @@ describe('computeSpringDomain', () => {
 
     it('extends to include the current ratio', () => {
         expect(computeSpringDomain('sell', sellParams, sellParams, 4)).toBeGreaterThanOrEqual(4 * 1.15);
+    });
+
+    it('caps the buy domain even when the current ratio is far out', () => {
+        expect(computeSpringDomain('buy', buyParams, buyParams, 50)).toBe(20);
     });
 });
 
