@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { automaticLoanRepayment, maturesLoans, preProductionFinancialTick } from './financialTick';
 
+import { checkMonetaryConservation } from '../invariants';
 import { coalDepositResourceType } from '../planet/landBoundResources';
 import { ironOreResourceType } from '../planet/resources';
 import type { EducationLevelType } from '../population/education';
@@ -10,9 +11,11 @@ import {
     agentMap,
     makeAgent,
     makeGameState,
+    makePlanet,
     makePlanetWithPopulation,
     makeProductionFacility,
 } from '../utils/testHelper';
+import { terminateAndRefound } from './bankruptcy';
 import { hasOutstandingEmergencyLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
 
 function addWorker(assets: AgentPlanetAssets, age: number, edu: EducationLevelType, count: number): void {
@@ -918,5 +921,85 @@ describe('money conservation', () => {
 
         const after = totalMoney(agents, planet);
         expect(after).toBeCloseTo(before, -6);
+    });
+
+    function assertConserved(gameState: ReturnType<typeof makeGameState>, planet: Planet, tolerance = 1e-9): void {
+        const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]), tolerance);
+        expect(issues).toEqual([]);
+    }
+
+    it('conserves money across bankruptcy (debt write-off and retained deposits)', () => {
+        const planet = makePlanet();
+        const gov = makeAgent('gov', planet.id, 'Gov');
+        const agent = makeAgent('a1', planet.id, 'A1');
+        const assets = agent.assets[planet.id]!;
+        assets.deposits = 1000;
+        assets.activeLoans = [makeLoan('emergency', 1000, 0.05, 1, 361, true)];
+        planet.governmentId = gov.id;
+        planet.bank.deposits = 1000;
+        planet.bank.loans = 1000;
+        const gameState = makeGameState([planet], [gov, agent, planet.recycler], 2);
+
+        assertConserved(gameState, planet);
+
+        terminateAndRefound(gameState, planet, agent, 2);
+
+        expect(planet.bankruptcies).toBe(1);
+        expect(planet.debtWriteOffs).toBe(1000);
+        expect(planet.bankProfit).toBeCloseTo(1000 * (1 - 0.975), 6);
+        assertConserved(gameState, planet);
+    });
+
+    it('conserves money across bankruptcy including a facility sale to the recycler', () => {
+        const planet = makePlanet();
+        const gov = makeAgent('gov', planet.id, 'Gov');
+        const agent = makeAgent('a1', planet.id, 'A1');
+        const assets = agent.assets[planet.id]!;
+        assets.deposits = 5000;
+        assets.activeLoans = [makeLoan('emergency', 5000, 0.05, 1, 361, true)];
+        assets.productionFacilities = [
+            makeProductionFacility(
+                { none: 0, primary: 0, secondary: 0, tertiary: 0 },
+                { planetId: planet.id, id: 'fac-1', name: 'Fac 1', scale: 100, maxScale: 100 },
+            ),
+        ];
+        planet.governmentId = gov.id;
+        planet.bank.deposits = 5000;
+        planet.bank.loans = 5000;
+        const gameState = makeGameState([planet], [gov, agent, planet.recycler], 2);
+
+        assertConserved(gameState, planet);
+
+        terminateAndRefound(gameState, planet, agent, 2);
+
+        expect(planet.bankruptcies).toBe(1);
+        expect(planet.debtWriteOffs).toBe(5000);
+        assertConserved(gameState, planet);
+    });
+
+    it('conserves money through interest collection and a subsequent bankruptcy', () => {
+        const planet = makePlanet();
+        const gov = makeAgent('gov', planet.id, 'Gov');
+        const agent = makeAgent('a1', planet.id, 'A1');
+        const assets = agent.assets[planet.id]!;
+        assets.deposits = 3600;
+        assets.activeLoans = [makeLoan('wageCoverage', 3600, 0.05, 1, 50, true)];
+        planet.governmentId = gov.id;
+        planet.bank.deposits = 3600;
+        planet.bank.loans = 3600;
+        const gameState = makeGameState([planet], [gov, agent, planet.recycler], 2);
+
+        assertConserved(gameState, planet);
+
+        maturesLoans(agentMap(agent), planet, 50);
+
+        expect(planet.loanInterestCollected).toBeGreaterThan(0);
+        assertConserved(gameState, planet);
+
+        terminateAndRefound(gameState, planet, agent, 51);
+
+        expect(planet.bankruptcies).toBe(1);
+        expect(planet.debtWriteOffs).toBeGreaterThan(0);
+        assertConserved(gameState, planet);
     });
 });

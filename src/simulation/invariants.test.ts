@@ -70,6 +70,32 @@ describe('checkMonetaryConservation', () => {
         const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
         expect(discrepancies).toEqual([]);
     });
+
+    it('holds across bankruptcies (write-offs and bankruptcy recoveries stay in balance)', () => {
+        seedRng(42);
+
+        const { gameState, planet, agents } = makeWorld({
+            populationByEdu: { none: 2000, primary: 1000, secondary: 500, tertiary: 200 },
+            companyIds: ['company-1'],
+        });
+
+        const company = agents.find((a) => a.id === 'company-1')!;
+        company.assets[planet.id].productionFacilities.push(
+            makeProductionFacility({ none: 500, primary: 200, secondary: 50, tertiary: 20 }, { planetId: planet.id }),
+        );
+        company.assets[planet.id].wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
+        company.assets[planet.id].deposits = 0;
+
+        for (let t = 1; t <= 60; t++) {
+            gameState.tick = t;
+            advanceTick(gameState);
+            const discrepancies = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]), 0.01);
+            expect(discrepancies, `tick ${t}`).toEqual([]);
+        }
+
+        expect(planet.bankruptcies).toBeGreaterThan(0);
+        expect(planet.debtWriteOffs).toBeGreaterThan(0);
+    });
 });
 
 describe(

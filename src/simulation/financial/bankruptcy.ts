@@ -62,6 +62,7 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     const retained = assets.deposits * (1 - BANKRUPTCY_ASSET_FRACTION);
     assets.deposits *= BANKRUPTCY_ASSET_FRACTION;
     bank.deposits -= retained;
+    planet.bankProfit += retained;
     assets.activeLoans = [];
 
     const oldId = agent.id;
