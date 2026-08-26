@@ -27,7 +27,7 @@ describe('loan consolidation', () => {
             householdDeposits: 0,
             equity: 100_000,
             loanRatePerYear: 0.05,
-            depositRate: 0.02,
+            depositRatePerYear: 0.02,
         };
     });
 

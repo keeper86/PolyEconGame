@@ -89,7 +89,7 @@ export function checkMonetaryConservation(
             );
         }
 
-        const residual = bank.householdDeposits + effectiveFirmDeposits - bank.loans;
+        const residual = bank.householdDeposits + effectiveFirmDeposits - bank.loans + planet.bankProfit;
         const residualRel =
             bank.loans === 0 && residual === 0
                 ? 0
@@ -100,7 +100,7 @@ export function checkMonetaryConservation(
         if (residualRel > tolerance) {
             discrepancies.push(
                 `planet=${planetId}: monetary conservation violated: ` +
-                    `householdDeposits + firmDeposits - loans = ${residual.toFixed(4)}, ` +
+                    `householdDeposits + firmDeposits - loans + bankProfit = ${residual.toFixed(4)}, ` +
                     `loans=${bank.loans.toFixed(4)}, relResidual=${residualRel.toFixed(6)}`,
             );
         }

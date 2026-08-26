@@ -37,10 +37,7 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             }
 
             if (shortfall > 0) {
-                const fee = 0;
-                const rolloverPrincipal = shortfall + fee;
-
-                grantLoan(assets, planet.bank, rolloverPrincipal, 'forexWorkingCapital', gameState.tick);
+                grantLoan(assets, planet.bank, shortfall, 'forexWorkingCapital', gameState.tick);
 
                 assets.deposits -= shortfall;
                 planet.bank.loans -= shortfall;

@@ -19,7 +19,7 @@ export interface Bank {
     householdDeposits: number;
     equity: number;
     loanRatePerYear: number;
-    depositRate: number;
+    depositRatePerYear: number;
 }
 
 export type PlanetaryId = {
@@ -125,6 +125,8 @@ export type Planet = {
     refoundCount: number;
 
     loanInterestCollected: number;
+
+    bankProfit: number;
 
     emergencyLoansGranted: number;
 

@@ -82,7 +82,7 @@ export const HOUSING_ENGEL_GAIN = 0.05;
 
 export const STARTER_LOAN_AMOUNT = 1_000_000;
 
-export const LOAN_INTEREST_RATE_PER_YEAR = 0.05;
+export const LOAN_INTEREST_RATE_PER_YEAR = 0.01;
 export const EMERGENCY_LOAN_WAGE_MONTHS = 6;
 export const BANKRUPTCY_ASSET_FRACTION = 0.975;
 

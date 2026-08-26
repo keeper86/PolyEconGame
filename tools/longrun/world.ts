@@ -33,7 +33,7 @@ import {
     waterSourceResourceType,
 } from '../../src/simulation/planet/landBoundResources';
 import type { Agent, AutomatedPricingConfig, GameState, Planet } from '../../src/simulation/planet/planet';
-import { TICKS_PER_YEAR } from '../../src/simulation/constants';
+import { LOAN_INTEREST_RATE_PER_YEAR, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
@@ -312,8 +312,8 @@ export function buildBenchmarkWorld(
             deposits: 0,
             householdDeposits: 0,
             equity: 0,
-            loanRate: 0,
-            depositRate: 0,
+            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            depositRatePerYear: 0,
         },
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 } as Record<EducationLevelType, number>,
         marketPrices: { ...initialMarketPrices },
@@ -325,6 +325,7 @@ export function buildBenchmarkWorld(
         bankruptcies: 0,
         refoundCount: 0,
         loanInterestCollected: 0,
+        bankProfit: 0,
         emergencyLoansGranted: 0,
         transportPipeline: {},
         orderBooks: {},

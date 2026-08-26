@@ -150,12 +150,12 @@ describe('computeLoanConditions', () => {
         expect(result.storageCollateral).toBe(0);
     });
 
-    it('reports annualInterestRate as bank.loanRate × 360', () => {
+    it('reports annualInterestRate as bank.loanRatePerYear', () => {
         const planet = makePlanet();
         planet.bank.loanRatePerYear = 0.001;
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
         const result = computeLoanConditions(agent, planet);
-        expect(result.annualInterestRate).toBeCloseTo(0.36);
+        expect(result.annualInterestRate).toBeCloseTo(0.001);
     });
 
     it('reports existingLoans from activeLoans', () => {

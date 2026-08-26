@@ -17,9 +17,10 @@ const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 type Props = {
     bank: Bank;
     planetId: string;
+    loanInterestCollected: number;
 };
 
-export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
+export default function BankPanel({ bank, planetId, loanInterestCollected }: Props): React.ReactElement | null {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -85,8 +86,21 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
-                    <Stat label='Loan rate' value={pct(bank.loanRatePerYear)} icon={<Percent className='h-3 w-3' />} />
-                    <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
+                    <Stat
+                        label='Loan rate (new loans, p.a.)'
+                        value={pct(bank.loanRatePerYear)}
+                        icon={<Percent className='h-3 w-3' />}
+                    />
+                    <Stat
+                        label='Deposit rate (p.a.)'
+                        value={pct(bank.depositRatePerYear)}
+                        icon={<Percent className='h-3 w-3' />}
+                    />
+                    <Stat
+                        label='Interest collected'
+                        value={formatNumberWithUnit(loanInterestCollected, 'currency', planetId)}
+                        icon={<Percent className='h-3 w-3' />}
+                    />
                 </div>
             </div>
 

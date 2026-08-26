@@ -6,6 +6,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Planet } from '../planet/planet';
+import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { makePool } from './resourceClaimFactory';
@@ -43,8 +44,8 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
             deposits: 0,
             householdDeposits: 0,
             equity: 0,
-            loanRate: 0,
-            depositRate: 0,
+            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            depositRatePerYear: 0,
         },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
@@ -55,6 +56,7 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         bankruptcies: 0,
         refoundCount: 0,
         loanInterestCollected: 0,
+        bankProfit: 0,
         emergencyLoansGranted: 0,
         transportPipeline: {},
         orderBooks: {},

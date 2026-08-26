@@ -1,5 +1,5 @@
 import { createRecyclerAgent } from '../agents/recycler';
-import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { LOAN_INTEREST_RATE_PER_YEAR, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
@@ -141,8 +141,8 @@ export function makeBank(overrides?: Partial<Bank>): Bank {
         deposits: 0,
         householdDeposits: 0,
         equity: 0,
-        loanRatePerYear: 0,
-        depositRate: 0,
+        loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+        depositRatePerYear: 0,
         ...overrides,
     };
 }
@@ -408,6 +408,7 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         bankruptcies: 0,
         refoundCount: 0,
         loanInterestCollected: 0,
+        bankProfit: 0,
         emergencyLoansGranted: 0,
         orderBooks: {},
         lastMarketResult: {},

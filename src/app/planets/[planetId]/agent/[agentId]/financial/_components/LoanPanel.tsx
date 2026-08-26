@@ -110,6 +110,7 @@ function LoanRow({
     );
 
     const pct = loan.annualInterestRate * 100;
+    const monthlyInterest = (loan.remainingPrincipal * loan.annualInterestRate) / 12;
 
     const isSending = repayMutation.isPending;
     const isAwaitingTick = hasPendingRepay && !isSending;
@@ -122,7 +123,10 @@ function LoanRow({
                     <span className='flex items-center'>
                         <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
                     </span>
-                    <span>Loan Rate {pct.toFixed(1)} %</span>
+                    <span>
+                        Loan Rate {pct.toFixed(1)} % p.a. ·{' '}
+                        {formatNumberWithUnit(monthlyInterest, 'currency', planetId)}/month
+                    </span>
                     {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
                     {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
                 </div>
@@ -228,6 +232,11 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                 <HandCoins className='h-4 w-4 text-muted-foreground' />
                 Request a loan
             </p>
+            {conditions && (
+                <p className='text-xs text-muted-foreground'>
+                    Interest on new loans: {(conditions.annualInterestRate * 100).toFixed(1)} % p.a.
+                </p>
+            )}
             {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (
                 <div className='space-y-2 relative'>
                     {conditions.isNewAgent ? (

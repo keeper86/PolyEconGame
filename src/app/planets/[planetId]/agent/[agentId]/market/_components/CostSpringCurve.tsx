@@ -5,8 +5,8 @@ import type { TooltipProps } from 'recharts';
 import {
     Area,
     CartesianGrid,
+    ComposedChart,
     Line,
-    LineChart,
     ReferenceDot,
     ReferenceLine,
     ResponsiveContainer,
@@ -15,6 +15,7 @@ import {
     XAxis,
     YAxis,
 } from 'recharts';
+import type { CostSpringParams } from './costSpringCurve';
 import {
     buildSpringCurvePoints,
     buildSpringRatioTicks,
@@ -22,7 +23,6 @@ import {
     ratioAtFullPush,
     springFraction,
 } from './costSpringCurve';
-import type { CostSpringParams } from './costSpringCurve';
 
 const GHOST_COLOR = '#94a3b8';
 const ACTIVE_COLOR = '#38bdf8';
@@ -186,7 +186,7 @@ export function CostSpringCurve({
                 </div>
             </div>
             <ResponsiveContainer width='100%' height={170}>
-                <LineChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                     <CartesianGrid
                         strokeDasharray='3 3'
                         stroke='#334155'
@@ -258,7 +258,7 @@ export function CostSpringCurve({
                         stroke={ACTIVE_COLOR}
                         strokeWidth={2}
                         dot={false}
-                        fill={'red'}
+                        fill={'#ef444421'}
                         isAnimationActive={false}
                     />
                     {fullRatio !== undefined && (
@@ -325,7 +325,7 @@ export function CostSpringCurve({
                             strokeWidth={2}
                         />
                     )}
-                </LineChart>
+                </ComposedChart>
             </ResponsiveContainer>
         </div>
     );
