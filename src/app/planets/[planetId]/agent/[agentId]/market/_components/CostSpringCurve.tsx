@@ -170,6 +170,15 @@ export function CostSpringCurve({
         [domainMin, domainMax, highlightRatios],
     );
 
+    const topTicks = useMemo(
+        () => [fullRatio, referenceRatio].filter((r): r is number => r !== undefined).sort((a, b) => a - b),
+        [fullRatio, referenceRatio],
+    );
+    const bottomTicks = useMemo(
+        () => xTicks.filter((v) => !topTicks.some((r) => Math.abs(v - r) < 1e-6)),
+        [xTicks, topTicks],
+    );
+
     const title = mode === 'buy' ? 'Ceiling spring curve' : 'Cost spring curve';
 
     return (
@@ -199,7 +208,7 @@ export function CostSpringCurve({
                                 return [];
                             }
                             const excluded = highlightRatios.map((ratio) => xAxis.scale(ratio));
-                            return xAxis.ticks
+                            return xTicks
                                 .map((value: number) => xAxis.scale(value))
                                 .filter((coord: number) =>
                                     excluded.every((excludedCoord) => Math.abs(coord - excludedCoord) > 0.5),
@@ -207,10 +216,12 @@ export function CostSpringCurve({
                         }}
                     />
                     <XAxis
+                        xAxisId={0}
+                        className='cost-spring-bottom-axis'
                         dataKey='ratio'
                         type='number'
                         domain={[domainMin, domainMax]}
-                        ticks={xTicks}
+                        ticks={bottomTicks}
                         interval={0}
                         tick={
                             <PriceAxisTick
@@ -231,6 +242,30 @@ export function CostSpringCurve({
                             fill: '#64748b',
                         }}
                     />
+                    {topTicks.length > 0 && (
+                        <XAxis
+                            xAxisId={1}
+                            className='cost-spring-top-axis'
+                            orientation='top'
+                            dataKey='ratio'
+                            type='number'
+                            domain={[domainMin, domainMax]}
+                            ticks={topTicks}
+                            interval={0}
+                            height={18}
+                            tick={
+                                <PriceAxisTick
+                                    currentRatio={currentRatio}
+                                    ownRatio={ownRatio}
+                                    fullRatio={fullRatio}
+                                    referenceRatio={referenceRatio}
+                                />
+                            }
+                            tickFormatter={(v) => v.toFixed(1)}
+                            axisLine={false}
+                            tickLine={false}
+                        />
+                    )}
                     <YAxis
                         type='number'
                         domain={[0, 1]}
@@ -314,20 +349,10 @@ export function CostSpringCurve({
                         <ReferenceDot
                             x={ownRatio}
                             y={ownY}
-                            r={6}
-                            fill={OWN_PRICE_COLOR}
-                            fillOpacity={0.15}
-                            stroke='none'
-                        />
-                    )}
-                    {showOwn && (
-                        <ReferenceDot
-                            x={ownRatio}
-                            y={ownY}
-                            r={4}
+                            r={5}
                             fill={OWN_PRICE_COLOR}
                             stroke='#0f172a'
-                            strokeWidth={2}
+                            strokeWidth={1}
                         />
                     )}
                     {showCurrent && (
@@ -342,32 +367,22 @@ export function CostSpringCurve({
                         <ReferenceDot
                             x={currentRatio}
                             y={currentY}
-                            r={6}
-                            fill={MARKET_COLOR}
-                            fillOpacity={0.15}
-                            stroke='none'
-                        />
-                    )}
-                    {showCurrent && (
-                        <ReferenceDot
-                            x={currentRatio}
-                            y={currentY}
-                            r={4}
+                            r={3}
                             fill={MARKET_COLOR}
                             stroke='#0f172a'
-                            strokeWidth={2}
+                            strokeWidth={1}
                         />
                     )}
                 </ComposedChart>
             </ResponsiveContainer>
-            <div className='flex items-center justify-end gap-2 text-[10px] text-slate-400 pt-1'>
+            <div className='flex items-center justify-end gap-3 text-[10px] text-slate-400 pt-1'>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-slate-400' />
                     Market
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-amber-400' />
-                    Own price
+                    Own
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-sky-400' />
