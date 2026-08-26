@@ -7,6 +7,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
+import { bankEquity } from '@/simulation/planet/planet';
 import { Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
@@ -17,10 +18,9 @@ const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 type Props = {
     bank: Bank;
     planetId: string;
-    loanInterestCollected: number;
 };
 
-export default function BankPanel({ bank, planetId, loanInterestCollected }: Props): React.ReactElement | null {
+export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -56,7 +56,8 @@ export default function BankPanel({ bank, planetId, loanInterestCollected }: Pro
         [economyData],
     );
 
-    const equityColor = bank.equity < 0 ? 'text-red-500' : bank.equity > 0 ? 'text-green-600' : '';
+    const equity = bankEquity(bank);
+    const equityColor = equity < 0 ? 'text-red-500' : equity > 0 ? 'text-green-600' : '';
 
     return (
         <>
@@ -82,7 +83,7 @@ export default function BankPanel({ bank, planetId, loanInterestCollected }: Pro
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Bank equity'
-                        value={formatNumberWithUnit(bank.equity, 'currency', planetId)}
+                        value={formatNumberWithUnit(equity, 'currency', planetId)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
@@ -98,7 +99,7 @@ export default function BankPanel({ bank, planetId, loanInterestCollected }: Pro
                     />
                     <Stat
                         label='Interest collected'
-                        value={formatNumberWithUnit(loanInterestCollected, 'currency', planetId)}
+                        value={formatNumberWithUnit(bank.interestCollected, 'currency', planetId)}
                         icon={<Percent className='h-3 w-3' />}
                     />
                 </div>

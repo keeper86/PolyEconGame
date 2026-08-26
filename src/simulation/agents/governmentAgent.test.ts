@@ -9,6 +9,7 @@ import {
 } from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
+import { totalOutstandingLoans } from '../financial/loanTypes';
 import {
     makeAgent,
     makeGameState,
@@ -194,7 +195,7 @@ describe('governmentSupportTick', () => {
         expect(spent).toBeGreaterThan(0);
         expect(spent).toBeCloseTo((1000 * 0.85 * (planet.wagePerEdu.none ?? 1)) / TICKS_PER_MONTH);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(govDepositsBefore);
-        expect(planet.governmentDebt).toBeCloseTo(spent);
+        expect(planet.bank.governmentDebt).toBeCloseTo(spent);
         expect(planet.bank.loans).toBeCloseTo(loansBefore + spent);
         expect(planet.bank.deposits).toBeCloseTo(depositsBefore + spent);
         expect(planet.bank.householdDeposits).toBeCloseTo(householdBefore + spent);
@@ -212,21 +213,41 @@ describe('governmentSupportTick', () => {
 
         expect(spent).toBeGreaterThan(0);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(100_000_000_000);
-        expect(planet.governmentDebt).toBeCloseTo(spent);
+        expect(planet.bank.governmentDebt).toBeCloseTo(spent);
     });
 
     it('repays the debt from the operating surplus above the buffer', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const planet = makeUnemployedPlanet(gov);
         gov.assets[PLANET_ID]!.deposits = GOVERNMENT_OPERATING_BUFFER + 20_000_000;
-        planet.governmentDebt = 50_000_000;
+        planet.bank.governmentDebt = 50_000_000;
+        planet.bank.loans = 50_000_000;
         const gameState = makeGameState([planet], [gov, planet.recycler]);
 
         governmentTick(gameState, planet, gov);
 
-        expect(planet.governmentDebt).toBeLessThan(50_000_000);
-        expect(planet.governmentDebt).toBeGreaterThan(0);
+        expect(planet.bank.governmentDebt).toBeLessThan(50_000_000);
+        expect(planet.bank.governmentDebt).toBeGreaterThan(0);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(GOVERNMENT_OPERATING_BUFFER);
+    });
+
+    it('keeps the loans decomposition invariant across support and repayment', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeUnemployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = GOVERNMENT_OPERATING_BUFFER + 100_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(planet.bank.governmentDebt).toBeCloseTo(spent);
+        expect(planet.bank.loans).toBeCloseTo(planet.bank.governmentDebt);
+
+        governmentTick(gameState, planet, gov);
+
+        const expectedLoans = totalOutstandingLoans(gov.assets[PLANET_ID]!.activeLoans) + planet.bank.governmentDebt;
+        expect(planet.bank.governmentDebt).toBeLessThan(spent);
+        expect(expectedLoans).toBeCloseTo(planet.bank.loans);
     });
 
     it('does nothing when nobody is unemployed', () => {

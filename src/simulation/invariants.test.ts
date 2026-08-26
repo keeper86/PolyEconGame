@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkTransportPipeline, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
+import { createInitialGameState } from './initialUniverse';
 import { putIntoStorageFacility } from './planet/facility';
 import {
     makeAgent,
@@ -93,8 +94,23 @@ describe('checkMonetaryConservation', () => {
             expect(discrepancies, `tick ${t}`).toEqual([]);
         }
 
-        expect(planet.bankruptcies).toBeGreaterThan(0);
-        expect(planet.debtWriteOffs).toBeGreaterThan(0);
+        expect(planet.bank.bankruptcies).toBeGreaterThan(0);
+        expect(planet.bank.writeOffs).toBeGreaterThan(0);
+    });
+
+    it('does not double-count loans of agents present in both gameState.agents and the dedicated maps', () => {
+        const gameState = createInitialGameState();
+
+        const discrepancies = checkMonetaryConservation(
+            gameState.agents,
+            gameState.planets,
+            0.001,
+            gameState.forexMarketMakers,
+            gameState.shipbuilderAgents,
+            gameState.arbitrageTraders,
+        );
+
+        expect(discrepancies).toEqual([]);
     });
 });
 

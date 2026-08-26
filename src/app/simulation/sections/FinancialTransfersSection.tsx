@@ -27,7 +27,8 @@ export function FinancialTransfersSection() {
                 <h3 className='text-xl font-semibold mt-6 mb-2'>5.2 Balance Sheet Invariant</h3>
                 <pre className='bg-muted p-4 rounded-md text-sm overflow-x-auto'>
                     {`bank.deposits = Σ agent.deposits + bank.householdDeposits
-bank.equity   = bank.deposits − bank.loans`}
+bank.loans   = Σ agent activeLoans + bank.governmentDebt
+bank.equity  = bank.loans − bank.deposits  =  bank.profit − bank.writeOffs`}
                 </pre>
 
                 <h3 className='text-xl font-semibold mt-6 mb-2'>5.3 Wage Payment</h3>

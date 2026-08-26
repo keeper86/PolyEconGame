@@ -139,7 +139,6 @@ export function grantLoan(
     assets.activeLoans.push(loan);
     bank.loans += amount;
     bank.deposits += amount;
-    bank.equity = bank.deposits - bank.loans;
 
     return loan;
 }

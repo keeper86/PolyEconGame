@@ -17,10 +17,19 @@ export interface Bank {
     loans: number;
     deposits: number;
     householdDeposits: number;
-    equity: number;
+    governmentDebt: number;
     loanRatePerYear: number;
     depositRatePerYear: number;
+    profit: number;
+    interestCollected: number;
+    writeOffs: number;
+    bankruptcies: number;
+    emergencyLoansGranted: number;
 }
+
+export type BankEquityView = Pick<Bank, 'loans' | 'deposits'>;
+
+export const bankEquity = (bank: BankEquityView): number => bank.loans - bank.deposits;
 
 export type PlanetaryId = {
     planetId: string;
@@ -116,20 +125,6 @@ export type Planet = {
 
     governmentSupportVolume: number;
 
-    rolloverDenials: number;
-
-    debtWriteOffs: number;
-
-    bankruptcies: number;
-
-    refoundCount: number;
-
-    loanInterestCollected: number;
-
-    bankProfit: number;
-
-    emergencyLoansGranted: number;
-
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -158,8 +153,6 @@ export type Planet = {
     _smoothedReachableVacancyWage?: PerEducation;
 
     _govSupportAnchoredPrices?: Record<string, number>;
-
-    governmentDebt: number;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };

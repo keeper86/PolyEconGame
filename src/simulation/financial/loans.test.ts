@@ -25,9 +25,14 @@ describe('loan consolidation', () => {
             loans: 0,
             deposits: 100_000,
             householdDeposits: 0,
-            equity: 100_000,
+            governmentDebt: 0,
             loanRatePerYear: 0.05,
             depositRatePerYear: 0.02,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
         };
     });
 

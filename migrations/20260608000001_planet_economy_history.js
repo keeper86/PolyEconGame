@@ -97,6 +97,13 @@ exports.up = async function (knex) {
         SELECT add_retention_policy('planet_economy_history',
             drop_after => 390, if_not_exists => true)
     `);
+
+    await knex.raw('TRUNCATE game_snapshots');
+    await knex.raw('TRUNCATE planet_economy_history');
+
+    await knex.raw(`CALL refresh_continuous_aggregate('planet_economy_monthly', NULL, NULL)`);
+    await knex.raw(`CALL refresh_continuous_aggregate('planet_economy_yearly', NULL, NULL)`);
+    await knex.raw(`CALL refresh_continuous_aggregate('planet_economy_decade', NULL, NULL)`);
 };
 
 exports.config = { transaction: false };

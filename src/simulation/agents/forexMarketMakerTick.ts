@@ -48,7 +48,6 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             }
 
             assets.activeLoans = remainingLoans;
-            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }
@@ -76,7 +75,6 @@ export function forexMMRepaymentTick(gameState: GameState): void {
             assets.deposits -= actualRepayment;
             planet.bank.loans -= actualRepayment;
             planet.bank.deposits -= actualRepayment;
-            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }

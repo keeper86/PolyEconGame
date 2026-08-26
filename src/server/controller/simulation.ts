@@ -121,7 +121,7 @@ const planetSummarySchema = z.object({
     name: z.string(),
     populationTotal: z.number(),
     bank: z.object({
-        equity: z.number(),
+        loans: z.number(),
         deposits: z.number(),
     }),
     foodPrice: z.number(),
@@ -157,7 +157,7 @@ export const getLatestPlanetSummaries = () =>
                     planetId: planet.id,
                     populationTotal: computePopulationTotal(planet),
                     bank: {
-                        equity: planet.bank.equity,
+                        loans: planet.bank.loans,
                         deposits: planet.bank.deposits,
                     },
                     foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,

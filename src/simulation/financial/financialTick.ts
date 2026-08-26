@@ -121,7 +121,7 @@ export function preProductionFinancialTick(
         if (assets.deposits < wageBill) {
             const shortfall = EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits;
             grantLoan(assets, bank, shortfall, 'emergency', tick);
-            planet.emergencyLoansGranted += 1;
+            bank.emergencyLoansGranted += 1;
         }
 
         assets.deposits -= wageBill;
@@ -171,8 +171,6 @@ export function preProductionFinancialTick(
             planet.wagePerEdu[edu] = weightedWageSum[edu] / totalPlanetWorkersForEdu[edu];
         }
     }
-
-    bank.equity = bank.deposits - bank.loans;
 }
 
 function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: number): void {
@@ -206,8 +204,8 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
         bank.deposits -= interestDue;
         collected += interestDue;
     });
-    planet.loanInterestCollected += collected;
-    planet.bankProfit += collected;
+    bank.interestCollected += collected;
+    bank.profit += collected;
 }
 
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
@@ -252,8 +250,6 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
 
         assets.activeLoans = remainingLoans;
     });
-
-    bank.equity = bank.deposits - bank.loans;
 }
 
 export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
@@ -306,5 +302,4 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         bank.loans -= actualRepayment;
         bank.deposits -= actualRepayment;
     });
-    bank.equity = bank.deposits - bank.loans;
 }

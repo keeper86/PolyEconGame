@@ -143,7 +143,7 @@ export function processFacilityContraction(
     recyclerAssets.deposits -= payment;
     if (paymentTo === 'bank') {
         planet.bank.deposits -= payment;
-        planet.bankProfit += payment;
+        planet.bank.profit += payment;
     } else {
         agentAssets.deposits += payment;
     }

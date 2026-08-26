@@ -116,8 +116,6 @@ export const getPlanetEconomy = () =>
                     .object({
                         planetName: z.string(),
                         bank: z.any(),
-                        bankProfit: z.number(),
-                        loanInterestCollected: z.number(),
                         wagePerEdu: z.record(z.string(), z.number()).nullable(),
                         priceLevel: z.number().nullable(),
                     })
@@ -135,8 +133,6 @@ export const getPlanetEconomy = () =>
                 economy: {
                     planetName: planet.name,
                     bank: planet.bank,
-                    bankProfit: planet.bankProfit,
-                    loanInterestCollected: planet.loanInterestCollected,
                     wagePerEdu: planet.wagePerEdu as Record<string, number>,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
                 },

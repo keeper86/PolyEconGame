@@ -45,10 +45,10 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     // Write off all outstanding loans; the bank absorbs them.
     const debt = totalOutstandingLoans(assets.activeLoans);
     if (debt > 0) {
-        planet.debtWriteOffs += debt;
+        bank.writeOffs += debt;
         bank.loans -= debt;
     }
-    planet.bankruptcies += 1;
+    bank.bankruptcies += 1;
 
     // Sell the removed 2.5% of every facility's scale to the recycler at full value; the bank gets the price.
     for (const facility of assets.productionFacilities) {
@@ -62,7 +62,7 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     const retained = assets.deposits * (1 - BANKRUPTCY_ASSET_FRACTION);
     assets.deposits *= BANKRUPTCY_ASSET_FRACTION;
     bank.deposits -= retained;
-    planet.bankProfit += retained;
+    bank.profit += retained;
     assets.activeLoans = [];
 
     const oldId = agent.id;
@@ -82,7 +82,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     gameState.agents.delete(oldId);
     gameState.agents.set(refound.id, refound);
 
-    planet.refoundCount += 1;
     pushTickerEvent(gameState, {
         category: 'agentBankrupt',
         planetId: planet.id,

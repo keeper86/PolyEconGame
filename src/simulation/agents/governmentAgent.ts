@@ -97,9 +97,9 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
     if (!assets) {
         return;
     }
-    if (planet.governmentDebt > 0 && assets.deposits > governmentOperatingBuffer()) {
-        const repayment = Math.min(planet.governmentDebt, assets.deposits - governmentOperatingBuffer());
-        planet.governmentDebt -= repayment;
+    if (planet.bank.governmentDebt > 0 && assets.deposits > governmentOperatingBuffer()) {
+        const repayment = Math.min(planet.bank.governmentDebt, assets.deposits - governmentOperatingBuffer());
+        planet.bank.governmentDebt -= repayment;
         planet.bank.loans -= repayment;
         planet.bank.deposits -= repayment;
         assets.deposits -= repayment;
@@ -145,6 +145,6 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     planet.bank.deposits += total;
     planet.bank.loans += total;
     planet.governmentSupportVolume += total;
-    planet.governmentDebt += total;
+    planet.bank.governmentDebt += total;
     return total;
 };

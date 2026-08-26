@@ -51,11 +51,7 @@ export default function CentralBankPage() {
             <span className='flex flex-col gap-3'>
                 <Card>
                     <CardContent className='px-3 py-3 space-y-3'>
-                        <BankPanel
-                            bank={economy.bank}
-                            planetId={planetId}
-                            loanInterestCollected={economy.loanInterestCollected}
-                        />
+                        <BankPanel bank={economy.bank} planetId={planetId} />
                     </CardContent>
                 </Card>
                 <LicensePanel agentId={agentId} planetId={planetId} isOwnAgent={true} licenses={licenses} />
