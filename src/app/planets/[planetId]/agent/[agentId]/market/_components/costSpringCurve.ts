@@ -53,16 +53,18 @@ export function computeSpringDomain(
     ghost: CostSpringParams,
     active: CostSpringParams,
     currentRatio?: number,
+    ownRatio?: number,
 ): { min: number; max: number } {
     if (mode === 'sell') {
         const buffer = Math.max(ghost.reference, active.reference);
-        const max = Math.max(buffer, currentRatio ?? 0, 1) * 1.15;
+        const max = Math.max(buffer, currentRatio ?? 0, ownRatio ?? 0, 1) * 1.15;
         const fullGhost = ratioAtFullPush('sell', ghost);
         const fullActive = ratioAtFullPush('sell', active);
         const lowest = Math.min(
             Number.isFinite(fullGhost) ? fullGhost : Infinity,
             Number.isFinite(fullActive) ? fullActive : Infinity,
             currentRatio ?? Infinity,
+            ownRatio ?? Infinity,
         );
         return { min: lowest < SELL_DOMAIN_MIN ? 0 : SELL_DOMAIN_MIN, max };
     }
@@ -74,6 +76,7 @@ export function computeSpringDomain(
         Number.isFinite(fullActive) ? fullActive : 0,
         refs,
         currentRatio ?? 0,
+        ownRatio ?? 0,
     );
     return { min: 0, max: Math.min(MAX_BUY_SPRING_RATIO, Math.max(2.0, raw * 1.15)) };
 }

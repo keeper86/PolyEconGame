@@ -234,7 +234,8 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
             </p>
             {conditions && (
                 <p className='text-xs text-muted-foreground'>
-                    Interest on new loans: {(conditions.annualInterestRate * 100).toFixed(1)} % p.a.
+                    Interest on new loans:{' '}
+                    <span className='text-foreground'>{(conditions.annualInterestRate * 100).toFixed(1)} % p.a. </span>
                 </p>
             )}
             {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (

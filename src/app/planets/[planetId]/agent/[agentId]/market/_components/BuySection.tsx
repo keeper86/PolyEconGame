@@ -421,6 +421,8 @@ export default function BuySection({
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
     const costFloor =
         overviewRow && overviewRow.priceCostRatio > 0 ? overviewRow.clearingPrice / overviewRow.priceCostRatio : 0;
+    const ownRatio =
+        bid?.bidPrice !== undefined && costFloor > 0 ? Number((bid.bidPrice / costFloor).toFixed(4)) : undefined;
     const quickPrices =
         overviewRow && costFloor > 0
             ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
@@ -595,6 +597,7 @@ export default function BuySection({
                                                 ghost={springGhost}
                                                 active={springActive}
                                                 currentRatio={springRatio}
+                                                ownRatio={ownRatio}
                                             />
                                         )}
                                     </div>

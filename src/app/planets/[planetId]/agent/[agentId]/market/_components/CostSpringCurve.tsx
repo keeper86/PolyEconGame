@@ -26,8 +26,9 @@ import {
 
 const GHOST_COLOR = '#94a3b8';
 const ACTIVE_COLOR = '#38bdf8';
-const CURRENT_COLOR = '#fbbf24';
-const FULL_PUSH_COLOR = '#f87171';
+const MARKET_COLOR = '#94a3b8';
+const OWN_PRICE_COLOR = '#fbbf24';
+const HARD_CAP_COLOR = '#f87171';
 const TICK_COLOR = '#94a3b8';
 const SAMPLE_COUNT = 100;
 
@@ -70,6 +71,7 @@ function PriceAxisTick({
     textAnchor,
     verticalAnchor,
     currentRatio,
+    ownRatio,
     fullRatio,
     referenceRatio,
 }: {
@@ -81,29 +83,30 @@ function PriceAxisTick({
     textAnchor?: 'start' | 'middle' | 'end';
     verticalAnchor?: 'start' | 'middle' | 'end';
     currentRatio?: number;
+    ownRatio?: number;
     fullRatio?: number;
     referenceRatio?: number;
 }): React.ReactElement | null {
     if (x === undefined || y === undefined || payload === undefined) {
         return null;
     }
-    const isMarketPrice = currentRatio !== undefined && Math.abs(payload.value - currentRatio) < 1e-6;
-    const isFullPush = !isMarketPrice && fullRatio !== undefined && Math.abs(payload.value - fullRatio) < 1e-6;
-    const isReference =
-        !isMarketPrice &&
-        !isFullPush &&
-        referenceRatio !== undefined &&
-        Math.abs(payload.value - referenceRatio) < 1e-6;
-    const text = isMarketPrice
-        ? currentRatio.toFixed(1)
-        : isFullPush
+    if (currentRatio !== undefined && Math.abs(payload.value - currentRatio) < 1e-6) {
+        return null;
+    }
+    const isOwnPrice = ownRatio !== undefined && Math.abs(payload.value - ownRatio) < 1e-6;
+    const isHardCap = !isOwnPrice && fullRatio !== undefined && Math.abs(payload.value - fullRatio) < 1e-6;
+    const isSoftMax =
+        !isOwnPrice && !isHardCap && referenceRatio !== undefined && Math.abs(payload.value - referenceRatio) < 1e-6;
+    const text = isOwnPrice
+        ? ownRatio.toFixed(1)
+        : isHardCap
           ? fullRatio.toFixed(1)
-          : isReference
+          : isSoftMax
             ? referenceRatio.toFixed(1)
             : tickFormatter
               ? tickFormatter(payload.value, index ?? 0)
               : String(payload.value);
-    const fill = isMarketPrice ? CURRENT_COLOR : isFullPush ? FULL_PUSH_COLOR : isReference ? ACTIVE_COLOR : TICK_COLOR;
+    const fill = isOwnPrice ? OWN_PRICE_COLOR : isHardCap ? HARD_CAP_COLOR : isSoftMax ? ACTIVE_COLOR : TICK_COLOR;
     return (
         <Text
             x={x}
@@ -123,15 +126,17 @@ export function CostSpringCurve({
     ghost,
     active,
     currentRatio,
+    ownRatio,
 }: {
     mode: 'buy' | 'sell';
     ghost: CostSpringParams;
     active: CostSpringParams;
     currentRatio?: number;
+    ownRatio?: number;
 }): React.ReactElement {
     const { min: domainMin, max: domainMax } = useMemo(
-        () => computeSpringDomain(mode, ghost, active, currentRatio),
-        [mode, ghost, active, currentRatio],
+        () => computeSpringDomain(mode, ghost, active, currentRatio, ownRatio),
+        [mode, ghost, active, currentRatio, ownRatio],
     );
 
     const data = useMemo(
@@ -142,6 +147,9 @@ export function CostSpringCurve({
     const currentY = currentRatio !== undefined ? springFraction(mode, active, currentRatio) : undefined;
     const showCurrent =
         currentRatio !== undefined && currentY !== undefined && currentRatio >= domainMin && currentRatio <= domainMax;
+
+    const ownY = ownRatio !== undefined ? springFraction(mode, active, ownRatio) : undefined;
+    const showOwn = ownRatio !== undefined && ownY !== undefined && ownRatio >= domainMin && ownRatio <= domainMax;
 
     const activeFullRatio = ratioAtFullPush(mode, active);
     const showFullPush =
@@ -154,8 +162,8 @@ export function CostSpringCurve({
             : undefined;
 
     const highlightRatios = useMemo(
-        () => [currentRatio, fullRatio, referenceRatio].filter((r): r is number => r !== undefined),
-        [currentRatio, fullRatio, referenceRatio],
+        () => [ownRatio, currentRatio, fullRatio, referenceRatio].filter((r): r is number => r !== undefined),
+        [ownRatio, currentRatio, fullRatio, referenceRatio],
     );
     const xTicks = useMemo(
         () => buildSpringRatioTicks(domainMin, domainMax, highlightRatios),
@@ -178,10 +186,6 @@ export function CostSpringCurve({
                     <span className='flex items-center gap-1'>
                         <span className='inline-block w-2.5 h-0.5 bg-sky-400' />
                         Draft
-                    </span>
-                    <span className='flex items-center gap-1'>
-                        <span className='inline-block w-2.5 h-2.5 rounded-full bg-amber-400' />
-                        Market price
                     </span>
                 </div>
             </div>
@@ -211,6 +215,7 @@ export function CostSpringCurve({
                         tick={
                             <PriceAxisTick
                                 currentRatio={currentRatio}
+                                ownRatio={ownRatio}
                                 fullRatio={fullRatio}
                                 referenceRatio={referenceRatio}
                             />
@@ -264,7 +269,7 @@ export function CostSpringCurve({
                     {fullRatio !== undefined && (
                         <ReferenceLine
                             x={fullRatio}
-                            stroke={FULL_PUSH_COLOR}
+                            stroke={HARD_CAP_COLOR}
                             strokeDasharray='3 3'
                             strokeOpacity={0.7}
                         />
@@ -274,7 +279,7 @@ export function CostSpringCurve({
                             x={fullRatio}
                             y={1}
                             r={4}
-                            fill={FULL_PUSH_COLOR}
+                            fill={HARD_CAP_COLOR}
                             stroke='#0f172a'
                             strokeWidth={2}
                         />
@@ -297,10 +302,38 @@ export function CostSpringCurve({
                             strokeWidth={2}
                         />
                     )}
+                    {showOwn && (
+                        <ReferenceLine
+                            x={ownRatio}
+                            stroke={OWN_PRICE_COLOR}
+                            strokeDasharray='3 3'
+                            strokeOpacity={0.7}
+                        />
+                    )}
+                    {showOwn && (
+                        <ReferenceDot
+                            x={ownRatio}
+                            y={ownY}
+                            r={6}
+                            fill={OWN_PRICE_COLOR}
+                            fillOpacity={0.15}
+                            stroke='none'
+                        />
+                    )}
+                    {showOwn && (
+                        <ReferenceDot
+                            x={ownRatio}
+                            y={ownY}
+                            r={4}
+                            fill={OWN_PRICE_COLOR}
+                            stroke='#0f172a'
+                            strokeWidth={2}
+                        />
+                    )}
                     {showCurrent && (
                         <ReferenceLine
                             x={currentRatio}
-                            stroke={CURRENT_COLOR}
+                            stroke={MARKET_COLOR}
                             strokeDasharray='3 3'
                             strokeOpacity={0.7}
                         />
@@ -310,7 +343,7 @@ export function CostSpringCurve({
                             x={currentRatio}
                             y={currentY}
                             r={6}
-                            fill={CURRENT_COLOR}
+                            fill={MARKET_COLOR}
                             fillOpacity={0.15}
                             stroke='none'
                         />
@@ -320,13 +353,31 @@ export function CostSpringCurve({
                             x={currentRatio}
                             y={currentY}
                             r={4}
-                            fill={CURRENT_COLOR}
+                            fill={MARKET_COLOR}
                             stroke='#0f172a'
                             strokeWidth={2}
                         />
                     )}
                 </ComposedChart>
             </ResponsiveContainer>
+            <div className='flex items-center justify-end gap-2 text-[10px] text-slate-400 pt-1'>
+                <span className='flex items-center gap-1'>
+                    <span className='inline-block w-2.5 h-2.5 rounded-full bg-slate-400' />
+                    Market
+                </span>
+                <span className='flex items-center gap-1'>
+                    <span className='inline-block w-2.5 h-2.5 rounded-full bg-amber-400' />
+                    Own price
+                </span>
+                <span className='flex items-center gap-1'>
+                    <span className='inline-block w-2.5 h-2.5 rounded-full bg-sky-400' />
+                    Soft max
+                </span>
+                <span className='flex items-center gap-1'>
+                    <span className='inline-block w-2.5 h-2.5 rounded-full bg-red-400' />
+                    Hard cap
+                </span>
+            </div>
         </div>
     );
 }
