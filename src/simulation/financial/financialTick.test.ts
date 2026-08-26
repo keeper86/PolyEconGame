@@ -766,7 +766,8 @@ describe('loan interest and bankruptcy', () => {
         expect(planet.debtWriteOffs).toBeGreaterThan(0);
         const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id);
         expect(refound).toBeDefined();
-        expect(refound!.id).toBe(`${agent.id}-refound-2`);
+        expect(refound!.id).toBe('agent-1_lastRefounded_2200');
+        expect(refound!.name).toBe('Agent 1 ♻1');
         expect(totalOutstandingLoans(refound!.assets[planet.id]!.activeLoans)).toBe(0);
         expect(refound!.assets[planet.id]!.deposits).toBeCloseTo(1 * 0.975, 6);
         expect(refound!.assets[planet.id]!.workforceDemography[25].none.active).toBe(10);
@@ -792,7 +793,8 @@ describe('loan interest and bankruptcy', () => {
         preProductionFinancialTick(gameState.agents, planet, 1, gameState);
 
         expect(gameState.agents.has('bankrupt')).toBe(false);
-        expect(gameState.agents.has('bankrupt-refound-1')).toBe(true);
+        expect(gameState.agents.has('bankrupt_lastRefounded_2200')).toBe(true);
+        expect(gameState.agents.get('bankrupt_lastRefounded_2200')!.name).toBe('Bankrupt ♻1');
         expect(planet.bankruptcies).toBe(1);
         expect(healthyAssets.deposits).toBe(9_800);
         expect(planet.wagePerEdu.none).toBeCloseTo(210 / 110, 6);

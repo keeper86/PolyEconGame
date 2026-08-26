@@ -3,6 +3,7 @@ import { processFacilityContraction } from '../agents/recycler';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
+import { nextRefoundName, refoundId } from './refound';
 
 const AGENT_ID_FIELDS = new Set([
     'tenantAgentId',
@@ -66,8 +67,8 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     const oldId = agent.id;
     const refound: Agent = {
         ...agent,
-        id: `${oldId}-refound-${tick}`,
-        name: `${agent.name} II`,
+        id: refoundId(agent.name, tick),
+        name: nextRefoundName(agent.name),
         foundedTick: tick,
         starterLoanTaken: true,
     };
