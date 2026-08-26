@@ -203,6 +203,7 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
         assets.deposits -= interestDue;
         bank.deposits -= interestDue;
         collected += interestDue;
+        assets.monthAcc.interestPaid = (assets.monthAcc.interestPaid ?? 0) + interestDue;
     });
     bank.interestCollected += collected;
     bank.profit += collected;

@@ -83,6 +83,7 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
             continue;
         }
         assets.deposits -= paid;
+        assets.monthAcc.wealthTaxPaid = (assets.monthAcc.wealthTaxPaid ?? 0) + paid;
         total += paid;
     }
     govAssets.deposits += total;

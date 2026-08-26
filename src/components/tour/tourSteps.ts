@@ -398,7 +398,7 @@ export function getStepsForPage(
                         'The AI will buy construction services each day to keep your stock filled when you require the resource. ' +
                         'You can configure pricing and volume strategies below.',
                     title: '\uD83D\uDED2 Enable Buy for Construction Services',
-                    placement: 'auto',
+                    placement: 'right',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,
@@ -447,7 +447,7 @@ export function getStepsForPage(
                         'When your company gets really large, it may become beneficial to produce a base level ' +
                         'of Administration yourself via an Administrative Center.',
                     title: '\uD83D\uDED2 Enable Buy for Administration',
-                    placement: 'auto',
+                    placement: 'right',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,
@@ -483,7 +483,7 @@ export function getStepsForPage(
                         'When your company gets really large, it may become beneficial to produce a base level ' +
                         'of Logistics yourself via a Logistics Hub.',
                     title: '\uD83D\uDED2 Enable Buy for Logistics',
-                    placement: 'bottom',
+                    placement: 'auto',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,
@@ -520,7 +520,7 @@ export function getStepsForPage(
                         'When your company gets really large, it may become beneficial to produce a base level ' +
                         'of Maintenance yourself via a Maintenance Facility.',
                     title: '\uD83D\uDED2 Enable Buy for Maintenance',
-                    placement: 'auto',
+                    placement: 'right',
                     hideOverlay: false,
                     blockTargetInteraction: false,
                     spotlightPadding: 8,

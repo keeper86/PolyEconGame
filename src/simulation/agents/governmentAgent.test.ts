@@ -129,6 +129,7 @@ describe('collectWealthTax', () => {
 
         const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
         expect(total).toBeCloseTo(expectedTax);
+        expect(company.assets[PLANET_ID]!.monthAcc.wealthTaxPaid).toBeCloseTo(expectedTax);
         expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(companyBefore - total);
         expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(govBefore + total);
         expect(company.assets[PLANET_ID]!.deposits + gov.assets[PLANET_ID]!.deposits).toBeCloseTo(

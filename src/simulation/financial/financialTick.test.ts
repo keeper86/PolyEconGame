@@ -681,6 +681,7 @@ describe('loan interest and bankruptcy', () => {
         maturesLoans(agentMap(agent), planet, 1);
 
         expect(agent.assets[planet.id]!.deposits).toBe(3599.5);
+        expect(agent.assets[planet.id]!.monthAcc.interestPaid).toBeCloseTo(0.5, 6);
         expect(planet.bank!.deposits).toBe(3599.5);
         expect(bankEquity(planet.bank!)).toBeCloseTo(0.5, 6);
         expect(planet.bank!.interestCollected).toBeCloseTo(0.5, 6);

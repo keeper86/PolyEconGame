@@ -2,7 +2,18 @@
 
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { Coins, Package, ShoppingCart, Scale, TrendingDown, TrendingUp, Users, Trash } from 'lucide-react';
+import {
+    Coins,
+    Landmark,
+    Package,
+    Percent,
+    Scale,
+    ShoppingCart,
+    Trash,
+    TrendingDown,
+    TrendingUp,
+    Users,
+} from 'lucide-react';
 import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
@@ -90,12 +101,28 @@ export default function AgentFinancialOverview({
         (sum, entry) => sum + entry.value,
         0,
     );
+    const currentMonthlyInterest = monthAcc.interestPaid ?? 0;
+    const lastMonthlyInterest = lastMonthAcc.interestPaid ?? 0;
+    const currentMonthlyWealthTax = monthAcc.wealthTaxPaid ?? 0;
+    const lastMonthlyWealthTax = lastMonthAcc.wealthTaxPaid ?? 0;
     const currentNetCashFlow =
-        currentMonthlyRevenue - currentMonthlyWages - currentMonthlyPurchases - currentMonthlyClaimPayments;
+        currentMonthlyRevenue -
+        currentMonthlyWages -
+        currentMonthlyPurchases -
+        currentMonthlyClaimPayments -
+        currentMonthlyInterest -
+        currentMonthlyWealthTax;
+    const lastNetCashFlow =
+        loanConditions.lastMonthlyRevenue -
+        loanConditions.lastMonthlyWages -
+        loanConditions.lastMonthlyPurchases -
+        loanConditions.lastMonthlyClaimPayments -
+        lastMonthlyInterest -
+        lastMonthlyWealthTax;
 
     return (
         <div className='space-y-3' data-tour='financial-overview'>
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 items-start'>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1' data-tour='financial-cash-flow'>
                     <div className={`flex justify-between gap-2`}>
                         <span className=' text-xs font-semibold text-muted-foreground'>Monthly flow</span>
@@ -161,13 +188,43 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
+                        label='Interest'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyInterest}
+                                subValue={lastMonthlyInterest}
+                                planetId={planetId}
+                                subValueClassName={
+                                    currentMonthlyInterest === 0 ? 'text-muted-foreground' : 'text-amber-500/50'
+                                }
+                            />
+                        }
+                        icon={<Percent className='h-3 w-3' />}
+                        valueClassName={currentMonthlyInterest === 0 ? 'text-muted-foreground' : 'text-amber-500'}
+                    />
+                    <Stat
+                        label='Wealth tax'
+                        value={
+                            <ValueWithSub
+                                value={currentMonthlyWealthTax}
+                                subValue={lastMonthlyWealthTax}
+                                planetId={planetId}
+                                subValueClassName={
+                                    currentMonthlyWealthTax === 0 ? 'text-muted-foreground' : 'text-amber-500/50'
+                                }
+                            />
+                        }
+                        icon={<Landmark className='h-3 w-3' />}
+                        valueClassName={currentMonthlyWealthTax === 0 ? 'text-muted-foreground' : 'text-amber-500'}
+                    />
+                    <Stat
                         label='Net cash flow'
                         value={
                             <ValueWithSub
                                 value={currentNetCashFlow}
-                                subValue={loanConditions.monthlyNetCashFlow}
+                                subValue={lastNetCashFlow}
                                 planetId={planetId}
-                                subValueClassName={mutedCashFlowColor(loanConditions.monthlyNetCashFlow)}
+                                subValueClassName={mutedCashFlowColor(lastNetCashFlow)}
                             />
                         }
                         icon={

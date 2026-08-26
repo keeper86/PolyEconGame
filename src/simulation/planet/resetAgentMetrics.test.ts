@@ -35,6 +35,8 @@ describe('resetAgentMetrics', () => {
             revenue: 600,
             purchases: 50,
             claimPayments: 30,
+            interestPaid: 12,
+            wealthTaxPaid: 7,
             producedResources: { iron: { quantity: 10, value: 500 } },
             consumedResources: { coal: { quantity: 5, value: 100 } },
             boughtResources: { machinery: { quantity: 1, value: 2000 } },
@@ -52,6 +54,8 @@ describe('resetAgentMetrics', () => {
         expect(last.revenue).toBeCloseTo(600);
         expect(last.purchases).toBeCloseTo(50);
         expect(last.claimPayments).toBeCloseTo(30);
+        expect(last.interestPaid).toBeCloseTo(12);
+        expect(last.wealthTaxPaid).toBeCloseTo(7);
 
         expect(last.producedResources).toEqual({ iron: { quantity: 10, value: 500 } });
         expect(last.consumedResources).toEqual({ coal: { quantity: 5, value: 100 } });
