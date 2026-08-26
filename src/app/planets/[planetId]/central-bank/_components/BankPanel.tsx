@@ -93,11 +93,6 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         icon={<Percent className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Deposit rate (p.a.)'
-                        value={pct(bank.depositRatePerYear)}
-                        icon={<Percent className='h-3 w-3' />}
-                    />
-                    <Stat
                         label='Interest collected'
                         value={formatNumberWithUnit(bank.interestCollected, 'currency', planetId)}
                         icon={<Percent className='h-3 w-3' />}

@@ -2,6 +2,7 @@
 
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
+import type { MonthAccumulator } from '@/simulation/planet/planet';
 import {
     Coins,
     Landmark,
@@ -14,10 +15,9 @@ import {
     TrendingUp,
     Users,
 } from 'lucide-react';
-import { TbBuildingFactory2 } from 'react-icons/tb';
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
-import type { MonthAccumulator } from '@/simulation/planet/planet';
+import { TbBuildingFactory2 } from 'react-icons/tb';
 
 type Props = {
     deposits: number;
@@ -93,10 +93,7 @@ export default function AgentFinancialOverview({
     const currentMonthlyWages = monthAcc.wages;
     const currentMonthlyPurchases = monthAcc.purchases;
     const currentMonthlyClaimPayments = monthAcc.claimPayments;
-    const currentMonthlyDepreciation = Object.values(monthAcc.depreciatedServices).reduce(
-        (sum, entry) => sum + entry.value,
-        0,
-    );
+
     const lastMonthlyDepreciation = Object.values(lastMonthAcc.depreciatedServices).reduce(
         (sum, entry) => sum + entry.value,
         0,
@@ -236,19 +233,6 @@ export default function AgentFinancialOverview({
                         }
                         valueClassName={cashFlowColor(currentNetCashFlow)}
                     />
-                    <Stat
-                        label='Depreciation*'
-                        value={
-                            <ValueWithSub
-                                value={currentMonthlyDepreciation}
-                                subValue={lastMonthlyDepreciation}
-                                planetId={planetId}
-                                subValueClassName={mutedCashFlowColor(-lastMonthlyDepreciation)}
-                            />
-                        }
-                        icon={<Trash className='h-3 w-3' />}
-                        valueClassName={mutedCashFlowColor(-currentMonthlyDepreciation)}
-                    />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1' data-tour='financial-positions'>
                     <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
@@ -299,6 +283,12 @@ export default function AgentFinancialOverview({
                         value={formatNumberWithUnit(loanConditions.storageCollateral, 'currency', planetId)}
                         icon={<Package className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
+                    />
+                    <Stat
+                        label='Depreciation* (last month)'
+                        value={formatNumberWithUnit(lastMonthlyDepreciation, 'currency', planetId)}
+                        icon={<Trash className='h-3 w-3' />}
+                        valueClassName={mutedCashFlowColor(-lastMonthlyDepreciation)}
                     />
                 </div>
             </div>
