@@ -488,19 +488,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         if (assets.deposits < 0) {
             agentsInDistress += 1;
         }
-        totalLoans += totalOutstandingLoans(assets.activeLoans);
-        for (const loan of assets.activeLoans) {
-            const rp = loan.remainingPrincipal;
-            if (loan.type === 'wageCoverage') {
-                loansWageCoverage += rp;
-            } else if (loan.type === 'bufferCoverage') {
-                loansBufferCoverage += rp;
-            } else if (loan.type === 'rollover') {
-                loansRollover += rp;
-            } else if (loan.type === 'starter') {
-                loansStarter += rp;
-            } else {
-                loansOther += rp;
+        if (agent.id !== planet.governmentId) {
+            totalLoans += totalOutstandingLoans(assets.activeLoans);
+            for (const loan of assets.activeLoans) {
+                const rp = loan.remainingPrincipal;
+                if (loan.type === 'wageCoverage') {
+                    loansWageCoverage += rp;
+                } else if (loan.type === 'bufferCoverage') {
+                    loansBufferCoverage += rp;
+                } else if (loan.type === 'rollover') {
+                    loansRollover += rp;
+                } else if (loan.type === 'starter') {
+                    loansStarter += rp;
+                } else {
+                    loansOther += rp;
+                }
             }
         }
         if (agent.id !== planet.governmentId && agent.id !== planet.recycler.id && agent.agentRole === undefined) {
@@ -1105,7 +1107,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthTotal = wealthWeighted;
     const redistributedTotal = planet.governmentSupportVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
-    const governmentDebt = planet.bank.governmentDebt;
+    const governmentDebt = totalOutstandingLoans(
+        gameState.agents.get(planet.governmentId)?.assets[planet.id]?.activeLoans ?? [],
+    );
     const governmentDeposits =
         gameState.agents.get(planet.governmentId)?.assets[planet.id]?.deposits ?? 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);

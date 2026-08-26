@@ -124,14 +124,13 @@ export function checkMonetaryConservation(
                 agentLoansTotal += totalOutstandingLoans(at.assets[planetId]?.activeLoans ?? []);
             }
         }
-        const expectedLoans = agentLoansTotal + bank.governmentDebt;
+        const expectedLoans = agentLoansTotal;
         const loanDiff = Math.abs(expectedLoans - bank.loans);
         if (loanDiff > tolerance) {
             discrepancies.push(
                 `planet=${planetId}: loan decomposition violated: ` +
                     `bank.loans=${bank.loans.toFixed(4)}, ` +
                     `agentLoans=${agentLoansTotal.toFixed(4)}, ` +
-                    `governmentDebt=${bank.governmentDebt.toFixed(4)}, ` +
                     `absDiff=${loanDiff.toFixed(6)}`,
             );
         }

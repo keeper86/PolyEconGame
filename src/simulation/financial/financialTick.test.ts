@@ -885,7 +885,7 @@ describe('money conservation', () => {
     /**
      * The fundamental money conservation invariant is:
      * Σ(agentDeposits) + bank.householdDeposits = bank.deposits
-     * and bank.loans = Σ(agent loans) + bank.governmentDebt, with
+     * and bank.loans = Σ(agent loans), with
      * bank.equity = bank.loans - bank.deposits = bank.profit - bank.writeOffs.
      * This should be preserved across operations.
      */

@@ -17,7 +17,6 @@ export interface Bank {
     loans: number;
     deposits: number;
     householdDeposits: number;
-    governmentDebt: number;
     loanRatePerYear: number;
     depositRatePerYear: number;
     profit: number;

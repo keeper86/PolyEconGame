@@ -224,7 +224,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            governmentDebt: 0,
             loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
             depositRatePerYear: 0,
             profit: 0,
