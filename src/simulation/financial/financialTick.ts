@@ -29,6 +29,7 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
     return cost;
 }
 
+// TODO: Simplify parameters
 export function preProductionFinancialTick(
     agents: Map<string, Agent>,
     planet: Planet,
