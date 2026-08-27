@@ -23,6 +23,11 @@ export type InboundMessage =
           automateWorkerAllocation: boolean;
       }
     | {
+          type: 'acknowledgeBankruptcy';
+          requestId: string;
+          agentId: string;
+      }
+    | {
           type: 'setWorkerAllocationTargets';
           requestId: string;
           agentId: string;
@@ -296,6 +301,8 @@ export type OutboundMessage =
     | { type: 'repayDenied'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'automationSet'; requestId: string; agentId: string; processedAtTick: number }
     | { type: 'automationFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'bankruptcyAcknowledged'; requestId: string; agentId: string; processedAtTick: number }
+    | { type: 'bankruptcyAcknowledgeFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'workerAllocationSet'; requestId: string; agentId: string; processedAtTick: number }
     | { type: 'workerAllocationFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'sellOffersSet'; requestId: string; agentId: string; processedAtTick: number }
@@ -469,6 +476,11 @@ export type PendingAction =
           requestId: string;
           agentId: string;
           automateWorkerAllocation: boolean;
+      }
+    | {
+          type: 'acknowledgeBankruptcy';
+          requestId: string;
+          agentId: string;
       }
     | {
           type: 'setWorkerAllocationTargets';

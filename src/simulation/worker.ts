@@ -145,6 +145,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'createAgent':
                     case 'setAutomation':
                     case 'setWorkerAllocationTargets':
+                    case 'acknowledgeBankruptcy':
                         handleAgentAction(state, action, safePostMessage);
                         break;
                     case 'requestLoan':
@@ -784,6 +785,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 automateWorkerAllocation,
             });
+
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acknowledgeBankruptcy') {
+            const { requestId, agentId } = msg;
+            pendingActions.push({ type: 'acknowledgeBankruptcy', requestId, agentId });
 
             if (!processingTick) {
                 drainActionQueue();

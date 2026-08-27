@@ -383,6 +383,15 @@ export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): 
     return license !== undefined && !license.frozen;
 }
 
+export type BankruptcyRecord = {
+    agentId: string;
+    agentName: string;
+    planetId: string;
+    tick: number;
+    outcome: 'restructured' | 'liquidated';
+    message: string;
+};
+
 export type Agent = {
     id: string;
     automated: boolean;
@@ -410,12 +419,22 @@ export interface GameState {
 
     arbitrageTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
+    bankruptcies: BankruptcyRecord[];
     nextEventId: number;
 }
 
 export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
     const tickerEvent: TickerEvent = { ...event, id: gameState.nextEventId++ };
     gameState.tickerEvents.push(tickerEvent);
+}
+
+export const MAX_BANKRUPTCY_RECORDS = 200;
+
+export function pushBankruptcyRecord(gameState: GameState, record: BankruptcyRecord): void {
+    gameState.bankruptcies.push(record);
+    if (gameState.bankruptcies.length > MAX_BANKRUPTCY_RECORDS) {
+        gameState.bankruptcies = gameState.bankruptcies.slice(-MAX_BANKRUPTCY_RECORDS);
+    }
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {

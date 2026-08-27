@@ -453,6 +453,7 @@ export function makeGameState(
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
         tickerEvents: [],
+        bankruptcies: [],
         nextEventId: 1,
     };
 }

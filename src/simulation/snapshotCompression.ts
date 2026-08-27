@@ -1,7 +1,7 @@
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
 
-import type { Planet, Agent, GameState } from './planet/planet';
+import type { Planet, Agent, GameState, BankruptcyRecord } from './planet/planet';
 import type { ShipCapitalMarket } from './ships/ships';
 
 export interface WireGameState {
@@ -12,6 +12,7 @@ export interface WireGameState {
     forexMarketMakers?: Agent[];
     shipbuilderAgents?: Agent[];
     arbitrageTraders?: Agent[];
+    bankruptcies?: BankruptcyRecord[];
     nextEventId: number;
 }
 
@@ -24,6 +25,7 @@ export function gameStateToWire(gs: GameState): WireGameState {
         forexMarketMakers: [...gs.forexMarketMakers.values()],
         shipbuilderAgents: [...gs.shipbuilderAgents.values()],
         arbitrageTraders: [...gs.arbitrageTraders.values()],
+        bankruptcies: gs.bankruptcies,
         nextEventId: gs.nextEventId,
     };
 }
@@ -80,6 +82,7 @@ function wireToGameState(wire: WireGameState): GameState {
         shipbuilderAgents,
         arbitrageTraders,
         tickerEvents: [],
+        bankruptcies: wire.bankruptcies ?? [],
         nextEventId: wire.nextEventId,
     };
 }

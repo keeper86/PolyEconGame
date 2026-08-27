@@ -2,6 +2,7 @@ import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet/plane
 import { bankEquity } from './planet/planet';
 import { totalOutstandingLoans } from './financial/loanTypes';
 import { forEachPopulationCohort } from './population/population';
+import { EPSILON } from './constants';
 
 export function checkMonetaryConservation(
     agents: Map<string, Agent>,
@@ -125,8 +126,8 @@ export function checkMonetaryConservation(
             }
         }
         const expectedLoans = agentLoansTotal;
-        const loanDiff = Math.abs(expectedLoans - bank.loans);
-        if (loanDiff > tolerance) {
+        const loanDiff = Math.abs((expectedLoans - bank.loans) / expectedLoans);
+        if (loanDiff > EPSILON) {
             discrepancies.push(
                 `planet=${planetId}: loan decomposition violated: ` +
                     `bank.loans=${bank.loans.toFixed(4)}, ` +

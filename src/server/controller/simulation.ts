@@ -43,7 +43,8 @@ import {
 } from '../../simulation/workerClient/syncQueries';
 import { db } from '../db';
 import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
-import { procedure, protectedProcedure } from '../trpcRoot';
+import { resolveBankruptcyForUser } from '../bankruptcy';
+import { getUserIdFromContext, procedure, protectedProcedure } from '../trpcRoot';
 
 const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
 
@@ -743,6 +744,26 @@ export const getUsedLogos = () =>
                 .map((a) => a.logo)
                 .filter((l): l is string => !!l);
             return { usedLogos };
+        });
+
+const bankruptcyRecordSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    planetId: z.string(),
+    planetName: z.string().nullable(),
+    tick: z.number(),
+    outcome: z.enum(['restructured', 'liquidated']),
+    message: z.string(),
+});
+
+export const getMyBankruptcy = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(z.object({ bankruptcy: bankruptcyRecordSchema.nullable() }))
+        .query(async ({ ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            return { bankruptcy: resolveBankruptcyForUser(row?.agent_id ?? null) };
         });
 
 export const generateNewsReport = () =>

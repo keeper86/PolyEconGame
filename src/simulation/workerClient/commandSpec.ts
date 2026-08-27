@@ -63,6 +63,19 @@ export const setAutomationSpec: CommandSpec<
     extract: () => undefined,
 };
 
+type AcknowledgeBankruptcySuccess = Extract<OutboundMessage, { type: 'bankruptcyAcknowledged' }>;
+type AcknowledgeBankruptcyFailure = Extract<OutboundMessage, { type: 'bankruptcyAcknowledgeFailed' }>;
+export const acknowledgeBankruptcySpec: CommandSpec<
+    Extract<InboundMessage, { type: 'acknowledgeBankruptcy' }>,
+    AcknowledgeBankruptcySuccess,
+    AcknowledgeBankruptcyFailure,
+    void
+> = {
+    successType: 'bankruptcyAcknowledged',
+    failureType: 'bankruptcyAcknowledgeFailed',
+    extract: () => undefined,
+};
+
 type SetWorkerAllocationSuccess = Extract<OutboundMessage, { type: 'workerAllocationSet' }>;
 type SetWorkerAllocationFailure = Extract<OutboundMessage, { type: 'workerAllocationFailed' }>;
 export const setWorkerAllocationTargetsSpec: CommandSpec<

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { makeGameState, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
 import { STORAGE_DEPARTMENT_NAME } from '../planet/specialFacilities';
-import { handleCreateAgent } from './agentActions';
+import { handleCreateAgent, handleAcknowledgeBankruptcy } from './agentActions';
 import type { OutboundMessage } from './messages';
 
 function makeMessages() {
@@ -92,6 +92,71 @@ describe('handleCreateAgent', () => {
             primary: 20,
             secondary: 30,
             tertiary: 40,
+        });
+    });
+});
+
+describe('handleAcknowledgeBankruptcy', () => {
+    it('removes the matching bankruptcy record and posts an acknowledgment', () => {
+        const gov = makeGovernmentAgent('gov-1', 'p');
+        const planet = makePlanet({ governmentId: gov.id });
+        const state = makeGameState([planet], [gov]);
+        state.bankruptcies = [
+            {
+                agentId: 'gone-co',
+                agentName: 'Gone Co',
+                planetId: 'p',
+                tick: 5,
+                outcome: 'liquidated',
+                message: 'Gone Co bankrupt; company dissolved',
+            },
+            {
+                agentId: 'other-co',
+                agentName: 'Other Co',
+                planetId: 'p',
+                tick: 6,
+                outcome: 'restructured',
+                message: 'Other Co bankrupt; restructured',
+            },
+        ];
+
+        const { messages, post } = makeMessages();
+
+        handleAcknowledgeBankruptcy(
+            state,
+            { type: 'acknowledgeBankruptcy', requestId: 'req-1', agentId: 'gone-co' },
+            post,
+        );
+
+        expect(state.bankruptcies).toHaveLength(1);
+        expect(state.bankruptcies[0].agentId).toBe('other-co');
+        expect(messages).toContainEqual({
+            type: 'bankruptcyAcknowledged',
+            requestId: 'req-1',
+            agentId: 'gone-co',
+            processedAtTick: 0,
+        });
+    });
+
+    it('fails when no record matches', () => {
+        const gov = makeGovernmentAgent('gov-1', 'p');
+        const planet = makePlanet({ governmentId: gov.id });
+        const state = makeGameState([planet], [gov]);
+        state.bankruptcies = [];
+
+        const { messages, post } = makeMessages();
+
+        handleAcknowledgeBankruptcy(
+            state,
+            { type: 'acknowledgeBankruptcy', requestId: 'req-1', agentId: 'gone-co' },
+            post,
+        );
+
+        expect(messages).toContainEqual({
+            type: 'bankruptcyAcknowledgeFailed',
+            requestId: 'req-1',
+            reason: 'No bankruptcy record found for agent',
+            processedAtTick: 0,
         });
     });
 });

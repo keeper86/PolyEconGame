@@ -98,6 +98,7 @@ function makeChainGameState(planet: Planet, facility: ProductionFacility): GameS
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
         tickerEvents: [],
+        bankruptcies: [],
         nextEventId: 1,
     };
 }

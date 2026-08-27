@@ -67,4 +67,18 @@ describe('user endpoint (integration)', async () => {
         expect(result).toHaveProperty('total');
         expect(Array.isArray(result.users)).toBe(true);
     });
+
+    it('getMyBankruptcy returns null when the user has no company', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const result = await caller.simulation.getMyBankruptcy();
+
+        expect(result).toEqual({ bankruptcy: null });
+    });
+
+    it('acknowledgeBankruptcy fails when the user has no company', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        await expect(caller.acknowledgeBankruptcy()).rejects.toThrow();
+    });
 });

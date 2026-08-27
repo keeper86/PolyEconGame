@@ -28,8 +28,9 @@ import {
     workerSetSellOffers,
     workerSetShipConstructionTarget,
     workerSetWorkerAllocationTargets,
+    workerAcknowledgeBankruptcy,
 } from '@/simulation/workerClient/commands';
-import { getAgentSync, getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
+import { getAgentSync, getAllAgentsSync, getBankruptciesSync } from '@/simulation/workerClient/syncQueries';
 import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
@@ -307,6 +308,40 @@ export const createAgent = () => {
             logger.info({ component: 'create-agent' }, `Agent ${createdId} associated with user ${userId}`);
 
             return { tick: processedAtTick, agentId: createdId, planetId: input.planetId };
+        });
+};
+
+export const acknowledgeBankruptcy = () => {
+    return protectedProcedure
+        .input(z.void())
+        .output(z.object({ processedAtTick: z.number() }))
+        .mutation(async ({ ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            const agentId = row?.agent_id ?? null;
+            if (!agentId) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'No company to acknowledge' });
+            }
+
+            const { bankruptcies } = getBankruptciesSync();
+            const record = bankruptcies.find((r) => r.agentId === agentId);
+            if (!record) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'No bankruptcy record found' });
+            }
+
+            const { processedAtTick } = await workerAcknowledgeBankruptcy({ agentId });
+
+            await db('user_data').where({ user_id: userId }).update({ agent_id: null, planet_id: null });
+
+            revalidateTag('session');
+
+            logger.info(
+                { component: 'acknowledge-bankruptcy' },
+                `User ${userId} acknowledged bankruptcy of ${agentId}`,
+            );
+
+            return { processedAtTick };
         });
 };
 

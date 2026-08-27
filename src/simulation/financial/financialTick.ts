@@ -11,7 +11,7 @@ import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
 import { grantLoan, hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
 import { creditWageIncome } from './wealthOps';
-import { terminateAndRefound } from './bankruptcy';
+import { processBankruptcy } from './bankruptcy';
 
 export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
@@ -106,7 +106,7 @@ export function preProductionFinancialTick(
             hasOutstandingEmergencyLoan(assets.activeLoans) &&
             gameState
         ) {
-            terminateAndRefound(gameState, planet, agent, tick);
+            processBankruptcy(gameState, planet, agent, tick);
             continue;
         }
 

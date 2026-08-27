@@ -110,6 +110,27 @@ export function handleSetWorkerAllocationTargets(
     safePostMessage({ type: 'workerAllocationSet', requestId, agentId, processedAtTick: state.tick });
 }
 
+export function handleAcknowledgeBankruptcy(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'acknowledgeBankruptcy' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId } = action;
+    const recordIndex = state.bankruptcies.findIndex((record) => record.agentId === agentId);
+    if (recordIndex === -1) {
+        safePostMessage({
+            type: 'bankruptcyAcknowledgeFailed',
+            requestId,
+            reason: 'No bankruptcy record found for agent',
+            processedAtTick: state.tick,
+        });
+        return;
+    }
+    state.bankruptcies.splice(recordIndex, 1);
+    console.log(`[worker] Bankruptcy acknowledged for agent '${agentId}'`);
+    safePostMessage({ type: 'bankruptcyAcknowledged', requestId, agentId, processedAtTick: state.tick });
+}
+
 export function handleAgentAction(
     state: GameState,
     action: PendingAction,
@@ -124,6 +145,9 @@ export function handleAgentAction(
             break;
         case 'setWorkerAllocationTargets':
             handleSetWorkerAllocationTargets(state, action, safePostMessage);
+            break;
+        case 'acknowledgeBankruptcy':
+            handleAcknowledgeBankruptcy(state, action, safePostMessage);
             break;
         default:
             break;
