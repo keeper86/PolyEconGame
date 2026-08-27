@@ -70,6 +70,7 @@ const loanSchema = z.object({
 
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
+    bankruptcyTrigger: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
     lastMonthlyWages: z.number(),

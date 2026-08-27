@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { LOAN_COLLATERAL_FACTOR, RECYCLER_BASE_RECOVERY_EFFICIENCY, STARTER_LOAN_AMOUNT } from '../constants';
+import {
+    BANKRUPTCY_TRIGGER_MULTIPLE,
+    LOAN_CASH_FLOW_MONTHS,
+    LOAN_COLLATERAL_FACTOR,
+    RECYCLER_BASE_RECOVERY_EFFICIENCY,
+    STARTER_LOAN_AMOUNT,
+} from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
-import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
-import { computeLoanConditions } from './loanConditions';
-import { makeLoan } from './loanTypes';
+import { makeAgent, makeGameState, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import { automaticLoanType, computeLoanConditions, grantAutomaticLoan } from './loanConditions';
+import { hasOutstandingEmergencyLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
 
 function makeEstablishedAgent(
     planet: Planet,
@@ -78,13 +84,14 @@ describe('computeLoanConditions', () => {
         });
         const result = computeLoanConditions(agent, planet);
         expect(result.maxLoanAmount).toBe(0);
+        expect(result.bankruptcyTrigger).toBe(BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + 6 * 100));
     });
 
-    it('cash-flow negative without storage: maxLoanAmount is 0', () => {
+    it('keeps the starter loan as a floor for maxLoanAmount when negative cash flow leaves headroom', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
         const result = computeLoanConditions(agent, planet);
-        expect(result.maxLoanAmount).toBe(0);
+        expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT - 1);
     });
 
     it('cash-flow negative with storage: storageCollateral is computed but not included in maxLoanAmount', () => {
@@ -105,7 +112,7 @@ describe('computeLoanConditions', () => {
         const result = computeLoanConditions(agent, planet);
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
         expect(result.storageCollateral).toBeCloseTo(expectedCollateral);
-        expect(result.maxLoanAmount).toBe(0);
+        expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT - 1);
     });
 
     it('storage collateral is computed but not added to credit limit for profitable agents', () => {
@@ -163,6 +170,84 @@ describe('computeLoanConditions', () => {
         const agent = makeEstablishedAgent(planet, { existingLoans: 12345, lastMonthRevenue: 1 });
         const result = computeLoanConditions(agent, planet);
         expect(result.existingLoans).toBe(12345);
+    });
+
+    it('computes the bankruptcy trigger as the multiple of total lending capacity', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, {
+            lastMonthRevenue: 100,
+            lastMonthWages: 50,
+            existingLoans: 12345,
+        });
+        const result = computeLoanConditions(agent, planet);
+        expect(result.bankruptcyTrigger).toBe(
+            Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + LOAN_CASH_FLOW_MONTHS * 50)),
+        );
+    });
+
+    it('keeps the bankruptcy trigger independent of existing loans', () => {
+        const planet = makePlanet();
+        const lightDebt = makeEstablishedAgent(planet, { existingLoans: 1000 });
+        const heavyDebt = makeEstablishedAgent(planet, { existingLoans: 50_000_000 });
+        expect(computeLoanConditions(lightDebt, planet).bankruptcyTrigger).toBe(
+            computeLoanConditions(heavyDebt, planet).bankruptcyTrigger,
+        );
+        expect(computeLoanConditions(heavyDebt, planet).bankruptcyTrigger).toBe(
+            BANKRUPTCY_TRIGGER_MULTIPLE * STARTER_LOAN_AMOUNT,
+        );
+    });
+
+    it('classifies an automatic loan within loan conditions as its purpose', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
+        const conditions = computeLoanConditions(agent, planet);
+        expect(automaticLoanType(conditions, 10_000, 'wageCoverage')).toBe('wageCoverage');
+    });
+
+    it('classifies an automatic loan beyond loan conditions as emergency', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
+        const conditions = computeLoanConditions(agent, planet);
+        expect(automaticLoanType(conditions, conditions.maxLoanAmount * 10, 'wageCoverage')).toBe('emergency');
+    });
+
+    it('grantAutomaticLoan grants the purpose type within conditions and records no emergency', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
+        const gameState = makeGameState([planet], [agent]);
+        const result = grantAutomaticLoan(gameState, agent, planet, 10_000, 'wageCoverage', 1);
+        expect(result.kind).toBe('granted');
+        if (result.kind === 'granted') {
+            expect(result.loan.type).toBe('wageCoverage');
+        }
+        expect(hasOutstandingEmergencyLoan(agent.assets[planet.id].activeLoans)).toBe(false);
+        expect(planet.bank.emergencyLoansGranted).toBe(0);
+    });
+
+    it('grantAutomaticLoan grants an emergency loan beyond conditions and records it', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
+        const gameState = makeGameState([planet], [agent]);
+        const result = grantAutomaticLoan(gameState, agent, planet, 100_000_000, 'bufferCoverage', 1);
+        expect(result.kind).toBe('granted');
+        if (result.kind === 'granted') {
+            expect(result.loan.type).toBe('emergency');
+        }
+        expect(hasOutstandingEmergencyLoan(agent.assets[planet.id].activeLoans)).toBe(true);
+        expect(totalOutstandingLoans(agent.assets[planet.id].activeLoans)).toBe(100_000_000);
+        expect(planet.bank.emergencyLoansGranted).toBe(1);
+    });
+
+    it('grantAutomaticLoan declares bankruptcy when an emergency loan breaches the trigger', () => {
+        const planet = makePlanet();
+        const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0 });
+        agent.assets[planet.id].activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
+        planet.bank.loans = 20_000_000;
+        planet.bank.deposits = 20_000_000;
+        const gameState = makeGameState([planet], [agent]);
+        const result = grantAutomaticLoan(gameState, agent, planet, 100_000, 'bufferCoverage', 1);
+        expect(result.kind).toBe('bankrupt');
+        expect(planet.bank.bankruptcies).toBe(1);
     });
 
     it('uses market price for construction services when the cost floor is not yet populated', () => {

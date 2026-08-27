@@ -10,8 +10,8 @@ import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
 import { grantLoan, hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
+import { grantAutomaticLoan } from './loanConditions';
 import { creditWageIncome } from './wealthOps';
-import { processBankruptcy } from './bankruptcy';
 
 export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
@@ -100,14 +100,21 @@ export function preProductionFinancialTick(
             continue;
         }
 
-        if (
-            agent.id !== planet.governmentId &&
-            assets.deposits < wageBill &&
-            hasOutstandingEmergencyLoan(assets.activeLoans) &&
-            gameState
-        ) {
-            processBankruptcy(gameState, planet, agent, tick);
-            continue;
+        const wageLoanAmount =
+            assets.deposits < wageBill ? EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits : 0;
+        if (wageLoanAmount > 0) {
+            const result = grantAutomaticLoan(
+                gameState ?? null,
+                agent,
+                planet,
+                wageLoanAmount,
+                'wageCoverage',
+                tick,
+                gameState?.shipCapitalMarket,
+            );
+            if (result.kind === 'bankrupt') {
+                continue;
+            }
         }
 
         assets.monthAcc.wages += wageBill;
@@ -118,19 +125,24 @@ export function preProductionFinancialTick(
             totalWorkersForEdu.tertiary;
         assets.monthAcc.totalWorkersTicks += totalAgentWorkerCount;
 
-        if (assets.deposits < wageBill) {
-            const shortfall = EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits;
-            grantLoan(assets, bank, shortfall, 'emergency', tick);
-            bank.emergencyLoansGranted += 1;
-        }
-
         assets.deposits -= wageBill;
 
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
                 const shortfall = bufferCost - assets.deposits;
-                grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
+                const result = grantAutomaticLoan(
+                    gameState ?? null,
+                    agent,
+                    planet,
+                    shortfall,
+                    'bufferCoverage',
+                    tick,
+                    gameState?.shipCapitalMarket,
+                );
+                if (result.kind === 'bankrupt') {
+                    continue;
+                }
             }
         }
 

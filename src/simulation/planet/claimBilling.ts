@@ -1,11 +1,11 @@
 import { TICKS_PER_MONTH } from '../constants';
-import { grantLoan } from '../financial/loanTypes';
+import { grantAutomaticLoan } from '../financial/loanConditions';
 import { mergeClaimBackIntoPool } from './claims';
-import type { Agent, Planet } from './planet';
+import type { Agent, GameState, Planet } from './planet';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
-export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number, gameState: GameState): void {
     for (const resourceName of Object.keys(planet.resources)) {
         const { pool, claims } = planet.resources[resourceName];
         const mergedClaimIds = new Set<string>();
@@ -43,7 +43,18 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
 
             if (assets.deposits < cost && agent.automated) {
                 const shortfall = cost * TICKS_PER_MONTH - assets.deposits;
-                grantLoan(assets, planet.bank, shortfall, 'claimCoverage', tick);
+                const result = grantAutomaticLoan(
+                    gameState,
+                    agent,
+                    planet,
+                    shortfall,
+                    'claimCoverage',
+                    tick,
+                    gameState.shipCapitalMarket,
+                );
+                if (result.kind === 'bankrupt') {
+                    continue;
+                }
             }
 
             if (assets.deposits >= cost) {

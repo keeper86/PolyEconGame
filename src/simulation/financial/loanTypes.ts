@@ -142,6 +142,9 @@ export function grantLoan(
     assets.activeLoans.push(loan);
     bank.loans += amount;
     bank.deposits += amount;
+    if (purpose === 'emergency') {
+        bank.emergencyLoansGranted += 1;
+    }
 
     return loan;
 }

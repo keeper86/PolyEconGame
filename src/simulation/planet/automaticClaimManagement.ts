@@ -1,5 +1,5 @@
 import { TICKS_PER_YEAR } from '../constants';
-import { grantLoan } from '../financial/loanTypes';
+import { grantAutomaticLoan } from '../financial/loanConditions';
 import { computeLeaseClaimUpfrontCost, leaseClaim, reduceClaim } from './claims';
 import type { GameState, Planet } from './planet';
 
@@ -77,7 +77,18 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
             const upfrontCost = computeLeaseClaimUpfrontCost(entry.pool, toAcquire);
             if (assets.deposits < upfrontCost) {
                 const loanShortfall = upfrontCost - assets.deposits;
-                grantLoan(assets, planet.bank, loanShortfall, 'claimCoverage', gameState.tick);
+                const result = grantAutomaticLoan(
+                    gameState,
+                    agent,
+                    planet,
+                    loanShortfall,
+                    'claimCoverage',
+                    gameState.tick,
+                    gameState.shipCapitalMarket,
+                );
+                if (result.kind === 'bankrupt') {
+                    continue;
+                }
             }
 
             const result = leaseClaim(gameState, agent.id, planet.id, resourceName, toAcquire);

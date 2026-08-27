@@ -14,6 +14,7 @@ import {
 import { produceResourceType, steelResourceType } from './planet/resources';
 import { createShip, shipTick, shiptypes } from './ships/ships';
 import type { TransportShip, TransportShipStatusTransporting } from './ships/ships';
+import { makeLoan } from './financial/loanTypes';
 
 describe('checkMonetaryConservation', () => {
     it('reports no violation when all balances are zero', () => {
@@ -84,8 +85,11 @@ describe('checkMonetaryConservation', () => {
         company.assets[planet.id].productionFacilities.push(
             makeProductionFacility({ none: 500, primary: 200, secondary: 50, tertiary: 20 }, { planetId: planet.id }),
         );
-        company.assets[planet.id].wagePerEdu = { none: 100, primary: 100, secondary: 100, tertiary: 100 };
-        company.assets[planet.id].deposits = 0;
+        company.assets[planet.id].wagePerEdu = { none: 1000, primary: 1000, secondary: 1000, tertiary: 1000 };
+        company.assets[planet.id].deposits = 5_000_000;
+        company.assets[planet.id].activeLoans = [makeLoan('emergency', 5_000_000, 0.05, 1, 361, true)];
+        planet.bank.loans = 5_000_000;
+        planet.bank.deposits = 5_000_000;
 
         for (let t = 1; t <= 60; t++) {
             gameState.tick = t;

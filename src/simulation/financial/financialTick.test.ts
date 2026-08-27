@@ -88,11 +88,11 @@ describe('preProductionFinancialTick', () => {
 
         preProductionFinancialTick(agentMap(agent), planet);
 
-        expect(planet.bank!.loans).toBeCloseTo(359_000, -1);
-        expect(assets.deposits).toBeCloseTo(358_000, -1);
+        expect(planet.bank!.loans).toBeCloseTo(119_000, -1);
+        expect(assets.deposits).toBeCloseTo(118_000, -1);
         expect(assets.activeLoans.length).toBeGreaterThanOrEqual(1);
-        expect(assets.activeLoans[0]!.type).toBe('emergency');
-        expect(planet.bank!.emergencyLoansGranted).toBe(1);
+        expect(assets.activeLoans[0]!.type).toBe('wageCoverage');
+        expect(planet.bank!.emergencyLoansGranted).toBe(0);
     });
 
     it('does not grant wage coverage loan when deposits exactly cover wages', () => {
@@ -735,34 +735,75 @@ describe('loan interest and bankruptcy', () => {
         expect(govPlanet.bank!.interestCollected).toBe(0);
     });
 
-    it('grants an emergency loan and records the warning when wages cannot be covered', () => {
+    it('keeps a wage loan within loan conditions as wageCoverage', () => {
         addWorker(agent.assets[planet.id]!, 25, 'none', 10);
         addEmployed(planet, 25, 'none', 10);
         agent.assets[planet.id]!.wagePerEdu.none = 1;
         agent.assets[planet.id]!.deposits = 1;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 500_000, 0.05, 1, 361, true)];
         planet.wagePerEdu.none = 1;
+        planet.bank!.loans = 500_000;
+        planet.bank!.deposits = 1000;
+        const gameState = makeGameState([planet], [agent]);
 
-        preProductionFinancialTick(agentMap(agent), planet, 1);
+        preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+
+        expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
+        expect(agent.assets[planet.id]!.activeLoans.find((l) => l.type === 'wageCoverage')).toBeDefined();
+        expect(planet.bank!.emergencyLoansGranted).toBe(0);
+        expect(planet.bank!.bankruptcies).toBe(0);
+    });
+
+    it('classifies a wage loan beyond loan conditions as emergency without bankruptcy', () => {
+        addWorker(agent.assets[planet.id]!, 25, 'none', 7000);
+        addEmployed(planet, 25, 'none', 7000);
+        agent.assets[planet.id]!.wagePerEdu.none = 1;
+        agent.assets[planet.id]!.deposits = 1;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 600_000, 0.05, 1, 361, true)];
+        planet.wagePerEdu.none = 1;
+        planet.bank!.loans = 600_000;
+        planet.bank!.deposits = 1;
+        const gameState = makeGameState([planet], [agent]);
+
+        preProductionFinancialTick(gameState.agents, planet, 1, gameState);
 
         expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
         expect(planet.bank!.emergencyLoansGranted).toBe(1);
         expect(planet.bank!.bankruptcies).toBe(0);
     });
 
-    it('terminates and refounds the company on the second wage failure', () => {
+    it('terminates and refounds the company when an emergency wage loan would breach the bankruptcy trigger', () => {
+        addWorker(agent.assets[planet.id]!, 25, 'none', 10);
+        addEmployed(planet, 25, 'none', 10);
+        agent.assets[planet.id]!.wagePerEdu.none = 2000;
+        agent.assets[planet.id]!.deposits = 1;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
+        planet.wagePerEdu.none = 2000;
+        planet.bank!.loans = 20_000_000;
+        planet.bank!.deposits = 1;
+        const gameState = makeGameState([planet], [agent]);
+
+        preProductionFinancialTick(gameState.agents, planet, 1, gameState);
+
+        expect(planet.bank!.bankruptcies).toBe(1);
+        expect(planet.bank!.writeOffs).toBeGreaterThan(0);
+        const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id);
+        expect(refound).toBeDefined();
+        expect(totalOutstandingLoans(refound!.assets[planet.id]!.activeLoans)).toBe(0);
+    });
+
+    it('terminates and refounds the company when the first emergency wage loan breaches the bankruptcy trigger', () => {
         addWorker(agent.assets[planet.id]!, 25, 'none', 10);
         addEmployed(planet, 25, 'none', 10);
         agent.assets[planet.id]!.wagePerEdu.none = 1;
         agent.assets[planet.id]!.deposits = 1;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
         planet.wagePerEdu.none = 1;
         planet.bank!.deposits = 1000;
+        planet.bank!.loans = 20_000_000;
         const gameState = makeGameState([planet], [agent]);
 
         preProductionFinancialTick(gameState.agents, planet, 1, gameState);
-        expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
-
-        agent.assets[planet.id]!.deposits = 1;
-        preProductionFinancialTick(gameState.agents, planet, 2, gameState);
 
         expect(planet.bank!.bankruptcies).toBe(1);
         expect(planet.bank!.writeOffs).toBeGreaterThan(0);
@@ -783,13 +824,13 @@ describe('loan interest and bankruptcy', () => {
         bankruptAssets.wagePerEdu = { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 };
         healthyAssets.wagePerEdu = { none: 2.0, primary: 2.0, secondary: 2.0, tertiary: 2.0 };
         bankruptAssets.deposits = 1;
-        bankruptAssets.activeLoans = [makeLoan('emergency', 100, 0.05, 1, 361, true)];
+        bankruptAssets.activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
         healthyAssets.deposits = 10_000;
         addWorker(bankruptAssets, 25, 'none', 10);
         addWorker(healthyAssets, 25, 'none', 100);
         addEmployed(planet, 25, 'none', 110);
         planet.bank!.deposits = 1000;
-        planet.bank!.loans = 100;
+        planet.bank!.loans = 20_000_100;
         const gameState = makeGameState([planet], [bankrupt, healthy], 1);
 
         preProductionFinancialTick(gameState.agents, planet, 1, gameState);
@@ -808,8 +849,10 @@ describe('loan interest and bankruptcy', () => {
         addEmployed(planet, 25, 'none', 10);
         agent.assets[planet.id]!.wagePerEdu.none = 1;
         agent.assets[planet.id]!.deposits = 1;
+        agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
         planet.wagePerEdu.none = 1;
         planet.bank!.deposits = 1000;
+        planet.bank!.loans = 20_000_000;
         planet.resources[ironOreResourceType.name] = {
             pool: { resource: ironOreResourceType, quantity: 100, regenerationRate: 1, maximumCapacity: 100 },
             claims: [
