@@ -44,21 +44,21 @@ export function computeLoanConditions(
         ? computeShipsValue(agent, shipCapitalMarket, planet.marketPrices) * LOAN_COLLATERAL_FACTOR
         : 0;
 
-    let maxLoanAmount: number;
-    if (isNewAgent) {
-        maxLoanAmount = STARTER_LOAN_AMOUNT;
-    } else if (monthlyNetCashFlow <= 0) {
-        maxLoanAmount = Math.max(0, facilitiesCollateral + shipsCollateral - existingLoans);
+    let maxLoanAmount: number = STARTER_LOAN_AMOUNT;
+    if (monthlyNetCashFlow <= 0) {
+        maxLoanAmount += Math.max(0, facilitiesCollateral + shipsCollateral - existingLoans);
     } else {
         const projectedCapacity = LOAN_CASH_FLOW_MONTHS * monthlyNetCashFlow + facilitiesCollateral + shipsCollateral;
-        maxLoanAmount = Math.max(0, projectedCapacity - existingLoans);
-        if (maxLoanAmount < existingLoans / 10) {
-            maxLoanAmount = 0;
-        }
+        maxLoanAmount += Math.max(0, projectedCapacity - existingLoans);
+    }
+    if (maxLoanAmount < existingLoans / 10) {
+        maxLoanAmount = 0;
+    } else {
+        maxLoanAmount = Math.floor(maxLoanAmount);
     }
 
     return {
-        maxLoanAmount: Math.floor(maxLoanAmount),
+        maxLoanAmount,
         annualInterestRate,
         existingLoans,
         lastMonthlyWages,
