@@ -12,7 +12,7 @@ export interface WireGameState {
     forexMarketMakers?: Agent[];
     shipbuilderAgents?: Agent[];
     arbitrageTraders?: Agent[];
-    bankruptcies?: BankruptcyRecord[];
+    bankruptcies: BankruptcyRecord[];
     nextEventId: number;
 }
 
@@ -82,7 +82,7 @@ function wireToGameState(wire: WireGameState): GameState {
         shipbuilderAgents,
         arbitrageTraders,
         tickerEvents: [],
-        bankruptcies: wire.bankruptcies ?? [],
+        bankruptcies: wire.bankruptcies,
         nextEventId: wire.nextEventId,
     };
 }

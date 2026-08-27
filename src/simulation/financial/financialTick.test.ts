@@ -41,7 +41,7 @@ describe('preProductionFinancialTick', () => {
     });
 
     it('does nothing when agent has no workers', () => {
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
         expect(agent.assets[planet.id]?.deposits ?? 0).toBe(0);
         expect(planet.bank!.loans).toBe(0);
     });
@@ -60,7 +60,7 @@ describe('preProductionFinancialTick', () => {
         addWorker(assets, 25, 'none', 100);
         addEmployed(planet, 25, 'none', 100);
 
-        preProductionFinancialTick(agentMap(workerless, workerAgent), planet);
+        preProductionFinancialTick(agentMap(workerless, workerAgent), planet, 1, makeGameState());
 
         expect(assets.deposits).toBe(9_900);
         expect(planet.wagePerEdu.none).toBeCloseTo(1.0, 6);
@@ -73,7 +73,7 @@ describe('preProductionFinancialTick', () => {
 
         addWorker(assets, 25, 'none', 10);
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(assets.deposits).toBe(9_990);
         expect(planet.bank!.loans).toBe(0);
@@ -86,7 +86,7 @@ describe('preProductionFinancialTick', () => {
 
         addWorker(assets, 25, 'none', 2000);
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(planet.bank!.loans).toBeCloseTo(119_000, -1);
         expect(assets.deposits).toBeCloseTo(118_000, -1);
@@ -101,7 +101,7 @@ describe('preProductionFinancialTick', () => {
 
         addWorker(assets, 25, 'none', 500);
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(planet.bank!.loans).toBe(0);
         expect(assets.deposits).toBe(0);
@@ -117,7 +117,7 @@ describe('preProductionFinancialTick', () => {
 
         const initialHouseholdDeposits = planet.bank!.householdDeposits;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 1, -6);
     });
@@ -133,7 +133,7 @@ describe('preProductionFinancialTick', () => {
         const initialHouseholdDeposits = planet.bank!.householdDeposits;
         const initialPopWealth = planet.population.demography[30].employed.none.wealth.mean;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 3, -6);
         expect(planet.population.demography[30].employed.none.wealth.mean).toBeCloseTo(initialPopWealth + 0.3, -6);
@@ -155,7 +155,7 @@ describe('preProductionFinancialTick', () => {
         const noneWealthBefore = planet.population.demography[30].employed.none.wealth.mean;
         const tertiaryWealthBefore = planet.population.demography[30].employed.tertiary.wealth.mean;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         const perCapitaWage = 25 / 15;
         expect(planet.bank!.householdDeposits).toBeCloseTo(initialHouseholdDeposits + 25, -6);
@@ -188,7 +188,7 @@ describe('preProductionFinancialTick', () => {
 
         planet.marketPrices[ironOreResourceType.name] = 10;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
         expect(bufferLoan).toBeDefined();
@@ -213,7 +213,7 @@ describe('preProductionFinancialTick', () => {
         assets.productionFacilities = [facility];
         planet.marketPrices.iron_ore = 10;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
         expect(bufferLoan).toBeUndefined();
@@ -242,7 +242,7 @@ describe('preProductionFinancialTick', () => {
         planet.marketPrices.iron_ore = 10;
         planet.marketPrices['Coal Deposit'] = 50;
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         const bufferLoan = assets.activeLoans.find((l) => l.type === 'bufferCoverage');
         expect(bufferLoan).toBeUndefined();
@@ -258,7 +258,7 @@ describe('preProductionFinancialTick', () => {
         addWorker(agent2.assets[planet.id]!, 25, 'none', 3);
         agent2.assets[planet.id]!.deposits = 1_000;
 
-        preProductionFinancialTick(agentMap(agent, agent2), planet);
+        preProductionFinancialTick(agentMap(agent, agent2), planet, 1, makeGameState());
 
         expect(planet.wagePerEdu.none).toBeCloseTo(1.75, -6);
     });
@@ -270,7 +270,7 @@ describe('preProductionFinancialTick', () => {
 
         const agent2 = makeAgent('agent-2', 'other-planet', 'Agent 2');
 
-        preProductionFinancialTick(agentMap(agent, agent2), planet);
+        preProductionFinancialTick(agentMap(agent, agent2), planet, 1, makeGameState());
 
         expect(planet.bank!.loans).toBe(0);
     });
@@ -282,7 +282,7 @@ describe('preProductionFinancialTick', () => {
         addWorker(assets, 25, 'none', 5);
         addWorker(assets, 25, 'primary', 3);
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(assets.monthAcc.wages).toBe(8);
 
@@ -294,7 +294,7 @@ describe('preProductionFinancialTick', () => {
         grantLoan(assets, planet.bank!, 10_000, 'starter', 0);
         addWorker(assets, 25, 'none', 10);
 
-        preProductionFinancialTick(agentMap(agent), planet);
+        preProductionFinancialTick(agentMap(agent), planet, 1, makeGameState());
 
         expect(bankEquity(planet.bank!)).toBe(planet.bank!.loans - planet.bank!.deposits);
         expect(bankEquity(planet.bank!)).toBe(planet.bank!.profit - planet.bank!.writeOffs);
@@ -961,7 +961,7 @@ describe('money conservation', () => {
         const agents = agentMap(agent1, agent2);
         const before = totalMoney(agents, planet);
 
-        preProductionFinancialTick(agents, planet);
+        preProductionFinancialTick(agents, planet, 1, makeGameState());
 
         const after = totalMoney(agents, planet);
         expect(after).toBeCloseTo(before, -6);

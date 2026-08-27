@@ -8,7 +8,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Landmark } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { toast } from 'sonner';
 import { Page } from './Page';
 
@@ -22,21 +22,13 @@ export function BankruptcyNotice() {
     const { update: updateSession } = useSession();
     const queryClient = useQueryClient();
 
-    const [loadedWithBankruptcy, setLoadedWithBankruptcy] = useState(false);
-
     const { data, isLoading } = useSimulationQuery(trpc.simulation.getMyBankruptcy.queryOptions());
 
     useEffect(() => {
-        if (!isLoading && data?.bankruptcy && !loadedWithBankruptcy) {
-            setLoadedWithBankruptcy(true);
-        }
-    }, [data, isLoading, loadedWithBankruptcy]);
-
-    useEffect(() => {
-        if (loadedWithBankruptcy && !isLoading && !data?.bankruptcy) {
+        if (!isLoading && !data?.bankruptcy) {
             router.replace('/');
         }
-    }, [loadedWithBankruptcy, isLoading, data, router]);
+    }, [isLoading, data, router]);
 
     const acknowledgeMutation = useMutation(
         trpc.acknowledgeBankruptcy.mutationOptions({

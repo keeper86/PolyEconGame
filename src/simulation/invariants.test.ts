@@ -116,6 +116,28 @@ describe('checkMonetaryConservation', () => {
 
         expect(discrepancies).toEqual([]);
     });
+
+    it('reports a loan decomposition violation when bank.loans exceed the sum of agent loans', () => {
+        const planet = makePlanet();
+        planet.bank.loans = 100;
+        const gameState = makeGameState([planet], []);
+
+        const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets);
+
+        expect(discrepancies.some((d) => d.includes('loan decomposition violated'))).toBe(true);
+        expect(discrepancies.some((d) => d.includes('bank.loans=100.0000'))).toBe(true);
+    });
+
+    it('reports a loan decomposition violation when agent loans exceed bank.loans', () => {
+        const planet = makePlanet();
+        const agent = makeAgent('a1', planet.id);
+        agent.assets[planet.id].activeLoans = [makeLoan('starter', 100, 0.01, 0, 360, true)];
+        const gameState = makeGameState([planet], [agent]);
+
+        const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets);
+
+        expect(discrepancies.some((d) => d.includes('loan decomposition violated'))).toBe(true);
+    });
 });
 
 describe(

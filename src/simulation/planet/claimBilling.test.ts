@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TICKS_PER_MONTH } from '../constants';
+import { checkMonetaryConservation } from '../invariants';
+import { makeLoan } from '../financial/loanTypes';
 import { makeWorld } from '../utils/testHelper';
 import { claimBillingTick } from './claimBilling';
 import { arableLandResourceType, ironOreDepositResourceType } from './landBoundResources';
@@ -496,6 +498,40 @@ describe('claimBillingTick', () => {
             claimBillingTick(agents, planet, 1, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(1000);
+        });
+    });
+
+    describe('bankruptcy during claim billing', () => {
+        it('refounds the company and does not bill leftover claims to the bankrupt entity', () => {
+            company.assets[planet.id].deposits = 1;
+            company.automated = true;
+            company.assets[planet.id].activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
+            gov.assets[planet.id].deposits = 19_999_999;
+            planet.bank.deposits = 20_000_000;
+            planet.bank.loans = 20_000_000;
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [
+                    makeRenewableClaim({ costPerTick: 10 }),
+                    makeRenewableClaim({ id: 'claim-2', costPerTick: 10 }),
+                ],
+            };
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 1, gameState);
+
+            const refound = [...gameState.agents.values()].find((a) => a.id !== company.id && a.id !== gov.id);
+            expect(refound).toBeDefined();
+            expect(refound!.assets[planet.id].activeLoans).toHaveLength(0);
+            expect(
+                planet.resources[arableLandResourceType.name].claims.every((c) => c.tenantAgentId === refound!.id),
+            ).toBe(true);
+            expect(planet.bank.bankruptcies).toBe(1);
+            const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]));
+            expect(issues).toEqual([]);
         });
     });
 });

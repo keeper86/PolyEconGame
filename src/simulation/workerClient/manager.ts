@@ -262,7 +262,7 @@ export function startWorker(): void {
             shipbuilderAgents: data.shipbuilderAgents ?? [],
             arbitrageTraders: data.arbitrageTraders ?? [],
             tickerEvents: tickerEvents ?? [],
-            bankruptcies: data.bankruptcies ?? [],
+            bankruptcies: data.bankruptcies,
         };
 
         (g as Record<symbol, SnapshotCache>)[GLOBAL_KEY_STATE] = cache;

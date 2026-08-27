@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { makeAgent, makeGameState, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import { checkMonetaryConservation } from '../invariants';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { processBankruptcy } from './bankruptcy';
+import { processBankruptcy, terminateAndRefound } from './bankruptcy';
 
 function setupWorld(player: Agent, extraAgents: Agent[] = []): { gameState: GameState; planet: Planet } {
     const planet = makePlanet();
@@ -228,6 +228,25 @@ describe('processBankruptcy', () => {
         expect(refound!.name).toBe('NPC Co ♻1');
         expect(refound!.automated).toBe(true);
         expect(gameState.bankruptcies).toHaveLength(0);
+        assertConserved(gameState, planet);
+    });
+
+    it('assigns a unique id when two companies with the same name are refounded in the same year', () => {
+        const planet = makePlanet();
+        const gov = makeAgent('gov', planet.id, 'Gov');
+        planet.governmentId = gov.id;
+        const a = makeAgent('a1', planet.id, 'Player Co');
+        const b = makeAgent('a2', planet.id, 'Player Co');
+        const gameState = makeGameState([planet], [gov, a, b, planet.recycler], 2);
+
+        const refoundA = terminateAndRefound(gameState, planet, a, 2);
+        const refoundB = terminateAndRefound(gameState, planet, b, 2);
+
+        expect(refoundA!.id).toBe('player-co_lastRefounded_2200');
+        expect(refoundB!.id).toBe('player-co_lastRefounded_2200-2');
+        expect(gameState.agents.has(refoundA!.id)).toBe(true);
+        expect(gameState.agents.has(refoundB!.id)).toBe(true);
+        expect(gameState.agents.size).toBe(4);
         assertConserved(gameState, planet);
     });
 });

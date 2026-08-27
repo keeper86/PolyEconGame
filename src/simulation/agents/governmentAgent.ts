@@ -83,7 +83,7 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
             continue;
         }
         assets.deposits -= paid;
-        assets.monthAcc.wealthTaxPaid = (assets.monthAcc.wealthTaxPaid ?? 0) + paid;
+        assets.monthAcc.wealthTaxPaid += paid;
         total += paid;
     }
     govAssets.deposits += total;
@@ -119,7 +119,6 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
         return 0;
     }
     let total = 0;
-    let perTickSupport = 0;
     for (let age = 0; age < planet.population.demography.length; age++) {
         forEachPopulationCohort(planet.population.demography[age], (category, occ, edu) => {
             if (category.total <= 0) {
@@ -130,7 +129,6 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
                 return;
             }
             const monthlyInsurance = rate * base;
-            perTickSupport += (monthlyInsurance / TICKS_PER_MONTH) * category.total;
             if (category.wealth.mean >= monthlyInsurance) {
                 return;
             }
@@ -148,7 +146,7 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     }
 
     if (assets.deposits < total) {
-        const shortfall = GOVERNMENT_SUPPORT_LOAN_TICKS * perTickSupport - assets.deposits;
+        const shortfall = GOVERNMENT_SUPPORT_LOAN_TICKS * total - assets.deposits;
         const loan = grantLoan(assets, planet.bank, shortfall, 'governmentSupport', gameState.tick);
         loan.annualInterestRate = 0;
     }

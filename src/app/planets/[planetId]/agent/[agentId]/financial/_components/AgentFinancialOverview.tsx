@@ -98,10 +98,10 @@ export default function AgentFinancialOverview({
         (sum, entry) => sum + entry.value,
         0,
     );
-    const currentMonthlyInterest = monthAcc.interestPaid ?? 0;
-    const lastMonthlyInterest = lastMonthAcc.interestPaid ?? 0;
-    const currentMonthlyWealthTax = monthAcc.wealthTaxPaid ?? 0;
-    const lastMonthlyWealthTax = lastMonthAcc.wealthTaxPaid ?? 0;
+    const currentMonthlyInterest = monthAcc.interestPaid;
+    const lastMonthlyInterest = lastMonthAcc.interestPaid;
+    const currentMonthlyWealthTax = monthAcc.wealthTaxPaid;
+    const lastMonthlyWealthTax = lastMonthAcc.wealthTaxPaid;
     const currentNetCashFlow =
         currentMonthlyRevenue -
         currentMonthlyWages -

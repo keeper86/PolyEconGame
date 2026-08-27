@@ -85,22 +85,20 @@ export function automaticLoanType(conditions: LoanConditions, amount: number, pu
 export type AutomaticLoanResult = { kind: 'granted'; loan: Loan } | { kind: 'bankrupt' };
 
 export function grantAutomaticLoan(
-    gameState: GameState | null,
+    gameState: GameState,
     agent: Agent,
     planet: Planet,
     amount: number,
     purpose: LoanType,
     tick: number,
-    shipCapitalMarket?: ShipCapitalMarket,
 ): AutomaticLoanResult {
-    const conditions = computeLoanConditions(agent, planet, shipCapitalMarket);
+    const conditions = computeLoanConditions(agent, planet, gameState.shipCapitalMarket);
     const type = automaticLoanType(conditions, amount, purpose);
     if (
         type === 'emergency' &&
         hasOutstandingEmergencyLoan(agent.assets[planet.id].activeLoans) &&
         totalOutstandingLoans(agent.assets[planet.id].activeLoans) > conditions.bankruptcyTrigger &&
-        agent.id !== planet.governmentId &&
-        gameState
+        agent.id !== planet.governmentId
     ) {
         processBankruptcy(gameState, planet, agent, tick);
         return { kind: 'bankrupt' };

@@ -67,15 +67,7 @@ export function handleAcquireLicense(
     const cost = licenseType === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST;
 
     if (isNewPlanet) {
-        const result = grantAutomaticLoan(
-            state,
-            agent,
-            planet,
-            cost,
-            'licenseBootstrap',
-            state.tick,
-            state.shipCapitalMarket,
-        );
+        const result = grantAutomaticLoan(state, agent, planet, cost, 'licenseBootstrap', state.tick);
         if (result.kind === 'bankrupt') {
             return;
         }

@@ -84,10 +84,9 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
                     loanShortfall,
                     'claimCoverage',
                     gameState.tick,
-                    gameState.shipCapitalMarket,
                 );
                 if (result.kind === 'bankrupt') {
-                    continue;
+                    break;
                 }
             }
 

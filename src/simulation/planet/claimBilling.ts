@@ -43,17 +43,9 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
 
             if (assets.deposits < cost && agent.automated) {
                 const shortfall = cost * TICKS_PER_MONTH - assets.deposits;
-                const result = grantAutomaticLoan(
-                    gameState,
-                    agent,
-                    planet,
-                    shortfall,
-                    'claimCoverage',
-                    tick,
-                    gameState.shipCapitalMarket,
-                );
+                const result = grantAutomaticLoan(gameState, agent, planet, shortfall, 'claimCoverage', tick);
                 if (result.kind === 'bankrupt') {
-                    continue;
+                    break;
                 }
             }
 
@@ -77,7 +69,9 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
         }
 
         if (mergedClaimIds.size > 0) {
-            planet.resources[resourceName].claims = claims.filter((c) => !mergedClaimIds.has(c.id));
+            planet.resources[resourceName].claims = planet.resources[resourceName].claims.filter(
+                (c) => !mergedClaimIds.has(c.id),
+            );
         }
 
         let totalCost = 0;

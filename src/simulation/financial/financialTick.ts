@@ -29,12 +29,11 @@ function estimateInputBufferCost(assets: AgentPlanetAssets, planet: Planet): num
     return cost;
 }
 
-// TODO: Simplify parameters
 export function preProductionFinancialTick(
     agents: Map<string, Agent>,
     planet: Planet,
     tick = 1,
-    gameState?: GameState,
+    gameState: GameState,
 ): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
@@ -50,10 +49,6 @@ export function preProductionFinancialTick(
     for (const agent of [...agents.values()]) {
         const assets = agent.assets[planet.id];
         if (!assets) {
-            continue;
-        }
-
-        if (!assets.workforceDemography) {
             continue;
         }
 
@@ -104,15 +99,7 @@ export function preProductionFinancialTick(
         const wageLoanAmount =
             assets.deposits < wageBill ? EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits : 0;
         if (wageLoanAmount > 0) {
-            const result = grantAutomaticLoan(
-                gameState ?? null,
-                agent,
-                planet,
-                wageLoanAmount,
-                'wageCoverage',
-                tick,
-                gameState?.shipCapitalMarket,
-            );
+            const result = grantAutomaticLoan(gameState, agent, planet, wageLoanAmount, 'wageCoverage', tick);
             if (result.kind === 'bankrupt') {
                 continue;
             }
@@ -132,15 +119,7 @@ export function preProductionFinancialTick(
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
                 const shortfall = bufferCost - assets.deposits;
-                const result = grantAutomaticLoan(
-                    gameState ?? null,
-                    agent,
-                    planet,
-                    shortfall,
-                    'bufferCoverage',
-                    tick,
-                    gameState?.shipCapitalMarket,
-                );
+                const result = grantAutomaticLoan(gameState, agent, planet, shortfall, 'bufferCoverage', tick);
                 if (result.kind === 'bankrupt') {
                     continue;
                 }
@@ -216,7 +195,7 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
         assets.deposits -= interestDue;
         bank.deposits -= interestDue;
         collected += interestDue;
-        assets.monthAcc.interestPaid = (assets.monthAcc.interestPaid ?? 0) + interestDue;
+        assets.monthAcc.interestPaid += interestDue;
     });
     bank.interestCollected += collected;
     bank.profit += collected;

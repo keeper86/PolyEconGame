@@ -107,7 +107,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     }
     const bank = planet.bank;
 
-    // Write off all outstanding loans; the bank absorbs them.
     const debt = totalOutstandingLoans(assets.activeLoans);
     if (debt > 0) {
         bank.writeOffs += debt;
@@ -115,7 +114,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     }
     bank.bankruptcies += 1;
 
-    // Sell the removed 2.5% of every facility's scale to the recycler at full value; the bank gets the price.
     for (const facility of assets.productionFacilities) {
         const targetMax = Math.max(1, Math.floor(facility.maxScale * BANKRUPTCY_ASSET_FRACTION));
         if (targetMax < facility.maxScale) {
@@ -123,7 +121,6 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
         }
     }
 
-    // Re-found with 97.5% of deposits, loan-free. The retained 2.5% stays with the bank.
     const retained = assets.deposits * (1 - BANKRUPTCY_ASSET_FRACTION);
     assets.deposits *= BANKRUPTCY_ASSET_FRACTION;
     bank.deposits -= retained;
@@ -131,21 +128,27 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     assets.activeLoans = [];
 
     const oldId = agent.id;
+    let newId = refoundId(agent.name, tick);
+    let suffix = 2;
+    while (newId !== oldId && gameState.agents.has(newId)) {
+        newId = `${refoundId(agent.name, tick)}-${suffix}`;
+        suffix++;
+    }
+
     const refound: Agent = {
         ...agent,
-        id: refoundId(agent.name, tick),
+        id: newId,
         name: nextRefoundName(agent.name),
         foundedTick: tick,
         starterLoanTaken: true,
     };
 
-    // Re-point contracts, ships and resource claims from the old id to the re-founded company.
-    repointAgentReferences(assets, oldId, refound.id);
-    repointAgentReferences(refound.ships, oldId, refound.id);
-    repointAgentReferences(planet.resources, oldId, refound.id);
+    repointAgentReferences(assets, oldId, newId);
+    repointAgentReferences(refound.ships, oldId, newId);
+    repointAgentReferences(planet.resources, oldId, newId);
 
     gameState.agents.delete(oldId);
-    gameState.agents.set(refound.id, refound);
+    gameState.agents.set(newId, refound);
 
     pushTickerEvent(gameState, {
         category: 'agentBankrupt',

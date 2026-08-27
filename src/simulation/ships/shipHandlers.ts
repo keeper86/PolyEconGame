@@ -417,7 +417,6 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
                                     shortfall,
                                     'shipPenaltyCoverage',
                                     ctx.tick,
-                                    ctx.shipCapitalMarket,
                                 );
                                 if (result.kind === 'bankrupt') {
                                     break outer;
