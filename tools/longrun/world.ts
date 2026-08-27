@@ -65,6 +65,8 @@ export interface BenchmarkWorldConfig {
     maintenanceBufferTicks?: number;
     constructionScaleFactor?: number;
     buildChainScaleFactor?: number;
+    loanRatePerYear?: number;
+    bankruptcyWriteOffFraction?: number;
 }
 
 interface FacilityTarget {
@@ -311,7 +313,7 @@ export function buildBenchmarkWorld(
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            loanRatePerYear: config.loanRatePerYear ?? LOAN_INTEREST_RATE_PER_YEAR,
             depositRatePerYear: 0,
             profit: 0,
             interestCollected: 0,

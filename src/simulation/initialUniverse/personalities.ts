@@ -133,6 +133,7 @@ export function generateAgentPersonality(): AgentPersonality {
             priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
 
             bidOfferMaxCostMultiplier: buyPriceAgressiveness,
+            costSpringStrength: 0.05,
         },
         sellAutoConfig: {
             ...VOLUME_SELL_CONFIGS.balanced,
@@ -140,6 +141,7 @@ export function generateAgentPersonality(): AgentPersonality {
             priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
             priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
             automatedCostFloorBuffer: sellPriceAgressiveness,
+            costSpringStrength: 0.05,
         },
     };
 }

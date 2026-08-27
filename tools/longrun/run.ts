@@ -5,6 +5,7 @@ import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants'
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { setGovernmentOperatingBuffer, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
+import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
 import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
@@ -211,9 +212,14 @@ function main(): void {
     }
     const interestRateArg = arg('interestRate');
     if (interestRateArg !== undefined) {
-        console.warn(
-            "The --interestRate flag is obsolete: the rate is now set via LOAN_INTEREST_RATE_PER_YEAR on each planet's bank.",
-        );
+        scenario.world = { ...scenario.world, loanRatePerYear: Number(interestRateArg) };
+    }
+    if (scenario.world.bankruptcyWriteOffFraction !== undefined) {
+        setBankruptcyDebtWriteOffFraction(scenario.world.bankruptcyWriteOffFraction);
+    }
+    const bankruptcyWriteOffArg = arg('bankruptcyWriteOffFraction');
+    if (bankruptcyWriteOffArg !== undefined) {
+        setBankruptcyDebtWriteOffFraction(Number(bankruptcyWriteOffArg));
     }
     const askFloorArg = arg('sellAggressiveness');
     if (askFloorArg !== undefined) {

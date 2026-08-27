@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { makeAgent, makeGameState, makePlanet, makeProductionFacility } from '../utils/testHelper';
 import { checkMonetaryConservation } from '../invariants';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { processBankruptcy, terminateAndRefound } from './bankruptcy';
+import { processBankruptcy, setBankruptcyDebtWriteOffFraction, terminateAndRefound } from './bankruptcy';
+import { makeLoan } from './loanTypes';
 
 function setupWorld(player: Agent, extraAgents: Agent[] = []): { gameState: GameState; planet: Planet } {
     const planet = makePlanet();
@@ -216,6 +217,38 @@ describe('processBankruptcy', () => {
         expect(refound).not.toBeNull();
         expect(refound!.automated).toBe(true);
         expect(gameState.bankruptcies[0].outcome).toBe('restructured');
+    });
+
+    it('writes off only the configured fraction and rolls the rest over at the bank rate', () => {
+        setBankruptcyDebtWriteOffFraction(0.5);
+        try {
+            const planet = makePlanet();
+            planet.bank.loanRatePerYear = 0.05;
+            const gov = makeAgent('gov', planet.id, 'Gov');
+            const agent = makeAgent('a1', planet.id, 'A1');
+            const assets = agent.assets[planet.id]!;
+            assets.deposits = 1000;
+            assets.activeLoans = [makeLoan('emergency', 1000, 0.05, 1, 361, true)];
+            planet.governmentId = gov.id;
+            planet.bank.deposits = 1000;
+            planet.bank.loans = 1000;
+            const gameState = makeGameState([planet], [gov, agent, planet.recycler], 2);
+
+            const refound = terminateAndRefound(gameState, planet, agent, 2);
+
+            expect(refound).not.toBeNull();
+            expect(planet.bank.bankruptcies).toBe(1);
+            expect(planet.bank.writeOffs).toBe(500);
+            expect(planet.bank.loans).toBe(500);
+            const retained = refound!.assets[planet.id]!.activeLoans;
+            expect(retained).toHaveLength(1);
+            expect(retained[0]!.type).toBe('rollover');
+            expect(retained[0]!.remainingPrincipal).toBe(500);
+            expect(retained[0]!.annualInterestRate).toBe(0.05);
+            assertConserved(gameState, planet);
+        } finally {
+            setBankruptcyDebtWriteOffFraction(1);
+        }
     });
 
     it('keeps the existing refound behaviour for automated NPC companies without a bankruptcy record', () => {

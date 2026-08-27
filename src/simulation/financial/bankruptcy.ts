@@ -1,10 +1,20 @@
-import { BANKRUPTCY_ASSET_FRACTION, BANKRUPTCY_RESTRUCTURE_MARKET_SHARE } from '../constants';
+import {
+    BANKRUPTCY_ASSET_FRACTION,
+    BANKRUPTCY_DEBT_WRITE_OFF_FRACTION,
+    BANKRUPTCY_RESTRUCTURE_MARKET_SHARE,
+} from '../constants';
 import { processFacilityContraction } from '../agents/recycler';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { pushTickerEvent, pushBankruptcyRecord } from '../planet/planet';
-import { totalOutstandingLoans } from './loanTypes';
+import { LOAN_TERM_TICKS, makeLoan, totalOutstandingLoans } from './loanTypes';
 import { nextRefoundName, refoundId } from './refound';
 import { liquidateAgent } from './liquidation';
+
+let debtWriteOffFraction = BANKRUPTCY_DEBT_WRITE_OFF_FRACTION;
+
+export function setBankruptcyDebtWriteOffFraction(fraction: number): void {
+    debtWriteOffFraction = fraction;
+}
 
 const AGENT_ID_FIELDS = new Set([
     'tenantAgentId',
@@ -108,9 +118,10 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     const bank = planet.bank;
 
     const debt = totalOutstandingLoans(assets.activeLoans);
-    if (debt > 0) {
-        bank.writeOffs += debt;
-        bank.loans -= debt;
+    const writtenOff = debt * debtWriteOffFraction;
+    if (writtenOff > 0) {
+        bank.writeOffs += writtenOff;
+        bank.loans -= writtenOff;
     }
     bank.bankruptcies += 1;
 
@@ -125,7 +136,14 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     assets.deposits *= BANKRUPTCY_ASSET_FRACTION;
     bank.deposits -= retained;
     bank.profit += retained;
+
+    const retainedDebt = debt - writtenOff;
     assets.activeLoans = [];
+    if (retainedDebt > 0) {
+        assets.activeLoans.push(
+            makeLoan('rollover', retainedDebt, bank.loanRatePerYear, tick, tick + LOAN_TERM_TICKS.rollover, false),
+        );
+    }
 
     const oldId = agent.id;
     let newId = refoundId(agent.name, tick);
