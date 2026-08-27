@@ -31,6 +31,7 @@ import {
     workerAcknowledgeBankruptcy,
 } from '@/simulation/workerClient/commands';
 import { getAgentSync, getAllAgentsSync, getBankruptciesSync } from '@/simulation/workerClient/syncQueries';
+import { deleteAgentMonthlyHistory } from '@/simulation/gameSnapshotRepository';
 import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
@@ -331,6 +332,8 @@ export const acknowledgeBankruptcy = () => {
             }
 
             const { processedAtTick } = await workerAcknowledgeBankruptcy({ agentId });
+
+            await deleteAgentMonthlyHistory(db, agentId);
 
             await db('user_data').where({ user_id: userId }).update({ agent_id: null, planet_id: null });
 
