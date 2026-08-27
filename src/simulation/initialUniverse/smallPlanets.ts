@@ -10,6 +10,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, Planet } from '../planet/planet';
+import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import { agriculturalFacility, neededWorkersByFacility, waterFacility } from '../planet/productionFacilities';
 import { humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
 import { humanResourcesScaleForWorkers } from './helpers';
@@ -152,20 +153,18 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            equity: 0,
-            loanRate: 0,
-            depositRate: 0,
+            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
         },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
         governmentSupportVolume: 0,
-        rolloverDenials: 0,
-        debtWriteOffs: 0,
-        bankruptcies: 0,
-        refoundCount: 0,
-        loanInterestCollected: 0,
-        emergencyLoansGranted: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},
@@ -177,7 +176,6 @@ function buildSmallPlanet(spec: SmallPlanetSpec): { planet: Planet; agents: Agen
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
-        governmentDebt: 0,
         resources,
         infrastructure: spec.infrastructure,
         environment: spec.environment,

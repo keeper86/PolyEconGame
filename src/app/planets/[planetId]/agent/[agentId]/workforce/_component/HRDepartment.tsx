@@ -360,7 +360,6 @@ export default function HRDepartment({
                     planetId={planetId}
                     constructionServicePrice={constructionServicePrice}
                     otherConstructionCosts={otherConstructionCosts}
-                    hrProductivityMultiplier={assets.hrProductivityMultiplier}
                     headerBadge={statusBadge}
                 >
                     <div className='grid w-full items-center gap-x-2 py-2' style={{ gridTemplateColumns }}>

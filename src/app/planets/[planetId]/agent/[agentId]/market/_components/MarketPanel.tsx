@@ -14,6 +14,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
+import { useOnlyRelevantResourcesPreference } from '@/hooks/uiPreferences';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
@@ -71,7 +72,7 @@ export default function MarketPanel({
     ships,
     dataTick,
 }: MarketPanelProps): React.ReactElement {
-    const [showRelevant, setShowRelevant] = useState(true);
+    const [showRelevant, setShowRelevant] = useOnlyRelevantResourcesPreference();
     const showAll = !showRelevant;
     const cardRef = useRef<HTMLDivElement>(null);
     const visibleColumns = useVisibleColumns(cardRef, COLUMN_AREA_OVERHEAD);

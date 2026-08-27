@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { useLogger } from '../hooks/useLogger';
 import { SimulationOfflineBanner } from '@/components/client/SimulationOfflineBanner';
 import { SessionRecovery } from '@/components/client/SessionRecovery';
+import { CompanyStatusWatcher } from '@/components/client/CompanyStatusWatcher';
 
 function makeQueryClient() {
     return new QueryClient({
@@ -63,6 +64,7 @@ export default function AppProviders({ children, session }: { children: React.Re
                 <SimulationOfflineBanner />
                 <SessionProvider session={session} refetchOnWindowFocus={true} refetchInterval={10 * 60}>
                     <SessionRecovery />
+                    <CompanyStatusWatcher />
                     <SimulationTickPoller />
                     <PendingActionProvider>
                         <TourProvider>{children}</TourProvider>

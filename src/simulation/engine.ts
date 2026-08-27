@@ -177,7 +177,7 @@ export function advanceTick(gameState: GameState) {
             }
 
             // Must be after productionTick, to infer claim usage
-            claimBillingTick(gameState.agents, planet, gameState.tick);
+            claimBillingTick(gameState.agents, planet, gameState.tick, gameState);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('claimBilling', '  claimBillingTick', t);
             }

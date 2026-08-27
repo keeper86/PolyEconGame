@@ -1,5 +1,6 @@
 import { authOptions } from '@/app/api/auth/[...nextauth]/authOptions';
 import { GameConfigProvider } from '@/components/client/GameConfigContext';
+import { resolveBankruptcyForUser } from '@/server/bankruptcy';
 import { db } from '@/server/db';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
@@ -16,6 +17,10 @@ export default async function PlanetsLayout({ children }: { children: ReactNode 
 
     if (!row?.agent_id) {
         redirect('/');
+    }
+
+    if (resolveBankruptcyForUser(row.agent_id)) {
+        redirect('/bankrupt');
     }
 
     let tickIntervalMs = Number(process.env.TICK_INTERVAL_MS);

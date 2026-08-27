@@ -13,6 +13,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
+import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
@@ -223,20 +224,18 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            equity: 0,
-            loanRate: 0,
-            depositRate: 0,
+            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
         },
         wagePerEdu: { none: 10.0, primary: 10.0, secondary: 10.0, tertiary: 10.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
         governmentSupportVolume: 0,
-        rolloverDenials: 0,
-        debtWriteOffs: 0,
-        bankruptcies: 0,
-        refoundCount: 0,
-        loanInterestCollected: 0,
-        emergencyLoansGranted: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},
@@ -248,7 +247,6 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
-        governmentDebt: 0,
         resources: {
             [arableLandResourceType.name]: {
                 pool: makePool({

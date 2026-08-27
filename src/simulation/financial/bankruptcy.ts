@@ -1,8 +1,10 @@
-import { BANKRUPTCY_ASSET_FRACTION } from '../constants';
+import { BANKRUPTCY_ASSET_FRACTION, BANKRUPTCY_RESTRUCTURE_MARKET_SHARE } from '../constants';
 import { processFacilityContraction } from '../agents/recycler';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { pushTickerEvent } from '../planet/planet';
+import { pushTickerEvent, pushBankruptcyRecord } from '../planet/planet';
 import { totalOutstandingLoans } from './loanTypes';
+import { nextRefoundName, refoundId } from './refound';
+import { liquidateAgent } from './liquidation';
 
 const AGENT_ID_FIELDS = new Set([
     'tenantAgentId',
@@ -31,6 +33,70 @@ function repointAgentReferences(value: unknown, oldId: string, newId: string): v
     }
 }
 
+export function agentMarketShare(gameState: GameState, planet: Planet, agent: Agent): number {
+    const total = [...gameState.agents.values()].reduce((sum, a) => {
+        if (a.id === planet.governmentId) {
+            return sum;
+        }
+        const assets = a.assets[planet.id];
+        if (!assets) {
+            return sum;
+        }
+        return sum + assets.lastMonthAcc.productionValue;
+    }, 0);
+    const own = agent.assets[planet.id]?.lastMonthAcc.productionValue ?? 0;
+    if (total <= 0) {
+        return 0;
+    }
+    return own / total;
+}
+
+export function canLiquidate(agent: Agent): boolean {
+    for (const ship of agent.ships) {
+        if (ship.state.type === 'idle' || ship.state.type === 'listed' || ship.state.type === 'derelict') {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
+export function processBankruptcy(gameState: GameState, planet: Planet, agent: Agent, tick: number): Agent | null {
+    if (agent.id === planet.governmentId) {
+        return null;
+    }
+    if (!agent.assets[planet.id]) {
+        return null;
+    }
+
+    if (agent.automated) {
+        return terminateAndRefound(gameState, planet, agent, tick);
+    }
+
+    if (agentMarketShare(gameState, planet, agent) > BANKRUPTCY_RESTRUCTURE_MARKET_SHARE || !canLiquidate(agent)) {
+        const refound = terminateAndRefound(gameState, planet, agent, tick);
+        if (!refound) {
+            return null;
+        }
+        refound.automated = true;
+        refound.automateWorkerAllocation = true;
+        refound.logo = 'ai_company';
+
+        pushBankruptcyRecord(gameState, {
+            agentId: agent.id,
+            agentName: agent.name,
+            planetId: planet.id,
+            tick,
+            outcome: 'restructured',
+            message: `${agent.name} bankrupt; restructured as ${refound.name} under automated administration`,
+        });
+
+        return refound;
+    }
+
+    return liquidateAgent(gameState, planet, agent, tick);
+}
+
 export function terminateAndRefound(gameState: GameState, planet: Planet, agent: Agent, tick: number): Agent | null {
     if (agent.id === planet.governmentId) {
         return null;
@@ -41,15 +107,13 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
     }
     const bank = planet.bank;
 
-    // Write off all outstanding loans; the bank absorbs them.
     const debt = totalOutstandingLoans(assets.activeLoans);
     if (debt > 0) {
-        planet.debtWriteOffs += debt;
+        bank.writeOffs += debt;
         bank.loans -= debt;
     }
-    planet.bankruptcies += 1;
+    bank.bankruptcies += 1;
 
-    // Sell the removed 2.5% of every facility's scale to the recycler at full value; the bank gets the price.
     for (const facility of assets.productionFacilities) {
         const targetMax = Math.max(1, Math.floor(facility.maxScale * BANKRUPTCY_ASSET_FRACTION));
         if (targetMax < facility.maxScale) {
@@ -57,30 +121,35 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
         }
     }
 
-    // Re-found with 97.5% of deposits, loan-free. The retained 2.5% stays with the bank.
     const retained = assets.deposits * (1 - BANKRUPTCY_ASSET_FRACTION);
     assets.deposits *= BANKRUPTCY_ASSET_FRACTION;
     bank.deposits -= retained;
+    bank.profit += retained;
     assets.activeLoans = [];
 
     const oldId = agent.id;
+    let newId = refoundId(agent.name, tick);
+    let suffix = 2;
+    while (newId !== oldId && gameState.agents.has(newId)) {
+        newId = `${refoundId(agent.name, tick)}-${suffix}`;
+        suffix++;
+    }
+
     const refound: Agent = {
         ...agent,
-        id: `${oldId}-refound-${tick}`,
-        name: `${agent.name} II`,
+        id: newId,
+        name: nextRefoundName(agent.name),
         foundedTick: tick,
         starterLoanTaken: true,
     };
 
-    // Re-point contracts, ships and resource claims from the old id to the re-founded company.
-    repointAgentReferences(assets, oldId, refound.id);
-    repointAgentReferences(refound.ships, oldId, refound.id);
-    repointAgentReferences(planet.resources, oldId, refound.id);
+    repointAgentReferences(assets, oldId, newId);
+    repointAgentReferences(refound.ships, oldId, newId);
+    repointAgentReferences(planet.resources, oldId, newId);
 
     gameState.agents.delete(oldId);
-    gameState.agents.set(refound.id, refound);
+    gameState.agents.set(newId, refound);
 
-    planet.refoundCount += 1;
     pushTickerEvent(gameState, {
         category: 'agentBankrupt',
         planetId: planet.id,

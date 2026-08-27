@@ -3,9 +3,7 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setBankruptcyEnabled, setLoanInterestRatePerYear } from '../../src/simulation/financial/financialTick';
 import { setGovernmentOperatingBuffer, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
-import { setGovernmentSupportEmaMonths } from '../../src/simulation/constants';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
@@ -209,11 +207,13 @@ function main(): void {
     }
     const bankruptcyArg = arg('bankruptcy');
     if (bankruptcyArg !== undefined) {
-        setBankruptcyEnabled(bankruptcyArg === '1' || bankruptcyArg === 'true');
+        console.warn("The --bankruptcy flag is obsolete: bankruptcy is always enabled now.");
     }
     const interestRateArg = arg('interestRate');
     if (interestRateArg !== undefined) {
-        setLoanInterestRatePerYear(Number(interestRateArg));
+        console.warn(
+            "The --interestRate flag is obsolete: the rate is now set via LOAN_INTEREST_RATE_PER_YEAR on each planet's bank.",
+        );
     }
     const askFloorArg = arg('sellAggressiveness');
     if (askFloorArg !== undefined) {
@@ -230,10 +230,6 @@ function main(): void {
     const govBufferArg = arg('govBuffer');
     if (govBufferArg !== undefined) {
         setGovernmentOperatingBuffer(Number(govBufferArg));
-    }
-    const govEmaArg = arg('govEmaMonths');
-    if (govEmaArg !== undefined) {
-        setGovernmentSupportEmaMonths(Number(govEmaArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

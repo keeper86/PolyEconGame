@@ -150,3 +150,5 @@ This will format, lint, build and run all tests. The CI pipeline runs this comma
 ## Memory
 
 You find something so important you wished knew earlier:
+- The user is often concurrently editing the codebase — files can change while you work. Re-read before finalizing and don't be surprised by mid-task edits.
+- The user always forgets to adapt tests. When tests fail after a change, check whether the current implementation moved on and fix the tests proactively.

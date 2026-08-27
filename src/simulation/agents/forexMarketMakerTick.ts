@@ -37,10 +37,7 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             }
 
             if (shortfall > 0) {
-                const fee = 0;
-                const rolloverPrincipal = shortfall + fee;
-
-                grantLoan(assets, planet.bank, rolloverPrincipal, 'forexWorkingCapital', gameState.tick);
+                grantLoan(assets, planet.bank, shortfall, 'forexWorkingCapital', gameState.tick);
 
                 assets.deposits -= shortfall;
                 planet.bank.loans -= shortfall;
@@ -51,7 +48,6 @@ function enforceForexMMLoanMaturities(gameState: GameState): void {
             }
 
             assets.activeLoans = remainingLoans;
-            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }
@@ -79,7 +75,6 @@ export function forexMMRepaymentTick(gameState: GameState): void {
             assets.deposits -= actualRepayment;
             planet.bank.loans -= actualRepayment;
             planet.bank.deposits -= actualRepayment;
-            planet.bank.equity = planet.bank.deposits - planet.bank.loans;
         }
     }
 }

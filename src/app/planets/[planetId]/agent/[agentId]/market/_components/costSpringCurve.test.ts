@@ -122,6 +122,11 @@ describe('computeSpringDomain', () => {
         expect(computeSpringDomain('sell', sellParams, sellParams, 4).max).toBeGreaterThanOrEqual(4 * 1.15);
     });
 
+    it('extends to include the own price ratio', () => {
+        expect(computeSpringDomain('sell', sellParams, sellParams, 4, 5).max).toBeGreaterThanOrEqual(5 * 1.15);
+        expect(computeSpringDomain('buy', buyParams, buyParams, 1, 4.375).max).toBeGreaterThanOrEqual(4.375 * 1.15);
+    });
+
     it('caps the buy domain even when the current ratio is far out', () => {
         expect(computeSpringDomain('buy', buyParams, buyParams, 50).max).toBe(20);
     });

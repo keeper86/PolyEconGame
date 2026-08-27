@@ -1,4 +1,6 @@
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet/planet';
+import { bankEquity } from './planet/planet';
+import { totalOutstandingLoans } from './financial/loanTypes';
 import { forEachPopulationCohort } from './population/population';
 
 export function checkMonetaryConservation(
@@ -89,7 +91,51 @@ export function checkMonetaryConservation(
             );
         }
 
-        const residual = bank.householdDeposits + effectiveFirmDeposits - bank.loans;
+        let agentLoansTotal = 0;
+        const loanSeenIds = new Set<string>();
+        for (const agent of agents.values()) {
+            loanSeenIds.add(agent.id);
+            agentLoansTotal += totalOutstandingLoans(agent.assets[planetId]?.activeLoans ?? []);
+        }
+        if (forexMarketMakers) {
+            for (const mm of forexMarketMakers.values()) {
+                if (loanSeenIds.has(mm.id)) {
+                    continue;
+                }
+                loanSeenIds.add(mm.id);
+                agentLoansTotal += totalOutstandingLoans(mm.assets[planetId]?.activeLoans ?? []);
+            }
+        }
+        if (shipbuilderAgents) {
+            for (const sb of shipbuilderAgents.values()) {
+                if (loanSeenIds.has(sb.id)) {
+                    continue;
+                }
+                loanSeenIds.add(sb.id);
+                agentLoansTotal += totalOutstandingLoans(sb.assets[planetId]?.activeLoans ?? []);
+            }
+        }
+        if (arbitrageTraders) {
+            for (const at of arbitrageTraders.values()) {
+                if (loanSeenIds.has(at.id)) {
+                    continue;
+                }
+                loanSeenIds.add(at.id);
+                agentLoansTotal += totalOutstandingLoans(at.assets[planetId]?.activeLoans ?? []);
+            }
+        }
+        const loanDiff = Math.abs(bank.loans - agentLoansTotal);
+        const loanDiffRel = loanDiff === 0 ? 0 : loanDiff / Math.max(Math.abs(bank.loans), Math.abs(agentLoansTotal));
+        if (loanDiffRel > tolerance) {
+            discrepancies.push(
+                `planet=${planetId}: loan decomposition violated: ` +
+                    `bank.loans=${bank.loans.toFixed(4)}, ` +
+                    `agentLoans=${agentLoansTotal.toFixed(4)}, ` +
+                    `relDiff=${loanDiffRel.toFixed(6)}`,
+            );
+        }
+
+        const residual = bankEquity(bank) - (bank.profit - bank.writeOffs);
         const residualRel =
             bank.loans === 0 && residual === 0
                 ? 0
@@ -100,7 +146,8 @@ export function checkMonetaryConservation(
         if (residualRel > tolerance) {
             discrepancies.push(
                 `planet=${planetId}: monetary conservation violated: ` +
-                    `householdDeposits + firmDeposits - loans = ${residual.toFixed(4)}, ` +
+                    `equity=${bankEquity(bank).toFixed(4)}, ` +
+                    `profit - writeOffs=${(bank.profit - bank.writeOffs).toFixed(4)}, ` +
                     `loans=${bank.loans.toFixed(4)}, relResidual=${residualRel.toFixed(6)}`,
             );
         }

@@ -136,6 +136,10 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
     );
 }
 
+export async function deleteAgentMonthlyHistory(db: Knex, agentId: string): Promise<void> {
+    await db('agent_monthly_history').where({ agent_id: agentId }).delete();
+}
+
 export async function getLatestAgentMonthlyHistoryByPlanet(
     db: Knex,
     planetId: string,

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TICKS_PER_MONTH } from '../constants';
+import { checkMonetaryConservation } from '../invariants';
+import { makeLoan } from '../financial/loanTypes';
 import { makeWorld } from '../utils/testHelper';
 import { claimBillingTick } from './claimBilling';
 import { arableLandResourceType, ironOreDepositResourceType } from './landBoundResources';
 import type { Agent, Planet } from './planet';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
-
 function makeRenewableClaim(
     overrides?: Partial<{
         id: string;
@@ -56,6 +57,7 @@ describe('claimBillingTick', () => {
     let planet: Planet;
     let gov: Agent;
     let company: Agent;
+    let gameState: ReturnType<typeof makeWorld>['gameState'];
 
     beforeEach(() => {
         const world = makeWorld({ companyIds: ['company-1'] });
@@ -64,6 +66,7 @@ describe('claimBillingTick', () => {
         company = world.agents.find((a) => a.id === 'company-1')!;
         company.assets[planet.id].deposits = 1000;
         gov.assets[planet.id].deposits = 0;
+        gameState = world.gameState;
     });
 
     describe('active renewable claim', () => {
@@ -77,7 +80,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(990);
         });
@@ -92,7 +95,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(gov.assets[planet.id].deposits).toBe(10);
         });
@@ -107,9 +110,9 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
-            claimBillingTick(agents, planet, 2);
-            claimBillingTick(agents, planet, 3);
+            claimBillingTick(agents, planet, 1, gameState);
+            claimBillingTick(agents, planet, 2, gameState);
+            claimBillingTick(agents, planet, 3, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(970);
             expect(gov.assets[planet.id].deposits).toBe(30);
@@ -125,7 +128,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(planet.resources[arableLandResourceType.name].claims[0].claimStatus).toBe('active');
         });
@@ -144,7 +147,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(planet.resources[arableLandResourceType.name].claims[0].claimStatus).toBe('paused');
         });
@@ -161,7 +164,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(5);
             expect(gov.assets[planet.id].deposits).toBe(0);
@@ -179,7 +182,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(planet.resources[arableLandResourceType.name].claims[0].claimStatus).toBe('active');
             expect(company.assets[planet.id].deposits).toBe(90);
@@ -198,10 +201,51 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(planet.resources[arableLandResourceType.name].claims[0].claimStatus).toBe('paused');
             expect(company.assets[planet.id].deposits).toBe(5);
+        });
+    });
+
+    describe('automatic claim coverage loans', () => {
+        it('classifies a claim loan within loan conditions as claimCoverage', () => {
+            company.assets[planet.id].deposits = 1;
+            company.assets[planet.id].activeLoans = [];
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [makeRenewableClaim({ costPerTick: 10 })],
+            };
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 1, gameState);
+
+            expect(company.assets[planet.id].activeLoans).toHaveLength(1);
+            expect(company.assets[planet.id].activeLoans[0].type).toBe('claimCoverage');
+            expect(planet.bank.emergencyLoansGranted).toBe(0);
+        });
+
+        it('classifies a claim loan beyond loan conditions as emergency', () => {
+            company.assets[planet.id].deposits = 1;
+            company.assets[planet.id].activeLoans = [];
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [makeRenewableClaim({ costPerTick: 200_000 })],
+            };
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 1, gameState);
+
+            const loan = company.assets[planet.id].activeLoans.find((l) => l.remainingPrincipal > 0);
+            expect(loan).toBeDefined();
+            expect(loan!.type).toBe('emergency');
+            expect(planet.bank.emergencyLoansGranted).toBe(1);
         });
     });
 
@@ -216,7 +260,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 50);
+            claimBillingTick(agents, planet, 50, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(990);
             expect(gov.assets[planet.id].deposits).toBe(10);
@@ -232,7 +276,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 100);
+            claimBillingTick(agents, planet, 100, gameState);
 
             const entries = planet.resources[arableLandResourceType.name];
             const tenanted = entries.claims.filter((e) => e.tenantAgentId === company.id);
@@ -256,7 +300,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 100);
+            claimBillingTick(agents, planet, 100, gameState);
 
             const entries = planet.resources[arableLandResourceType.name];
             expect(entries.claims).toHaveLength(0);
@@ -274,7 +318,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 99);
+            claimBillingTick(agents, planet, 99, gameState);
 
             const entries = planet.resources[arableLandResourceType.name];
             const tenanted = entries.claims.filter((e) => e.tenantAgentId === company.id);
@@ -292,7 +336,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 50);
+            claimBillingTick(agents, planet, 50, gameState);
 
             const entry = planet.resources[arableLandResourceType.name].claims[0];
             expect(entry!.claimStatus).toBe('active');
@@ -313,7 +357,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 42);
+            claimBillingTick(agents, planet, 42, gameState);
 
             const entry = planet.resources[arableLandResourceType.name].claims[0];
             expect(entry!.claimStatus).toBe('paused');
@@ -332,7 +376,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 20);
+            claimBillingTick(agents, planet, 20, gameState);
 
             expect(planet.resources[arableLandResourceType.name].claims[0]!.pausedTicksThisYear).toBe(11);
         });
@@ -348,7 +392,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 20);
+            claimBillingTick(agents, planet, 20, gameState);
 
             const entry = planet.resources[arableLandResourceType.name].claims[0];
             expect(entry!.claimStatus).toBe('active');
@@ -367,7 +411,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 100);
+            claimBillingTick(agents, planet, 100, gameState);
 
             const entry = planet.resources[arableLandResourceType.name].claims.find(
                 (e) => e.tenantAgentId === company.id,
@@ -387,7 +431,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 100);
+            claimBillingTick(agents, planet, 100, gameState);
 
             const entry = planet.resources[arableLandResourceType.name].claims.find(
                 (e) => e.tenantAgentId === company.id,
@@ -415,7 +459,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, TICKS_PER_MONTH);
+            claimBillingTick(agents, planet, TICKS_PER_MONTH, gameState);
 
             const entries = planet.resources[arableLandResourceType.name];
             expect(entries.claims).toHaveLength(0);
@@ -435,7 +479,7 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(1000);
             expect(gov.assets[planet.id].deposits).toBe(0);
@@ -451,9 +495,43 @@ describe('claimBillingTick', () => {
                 [company.id, company],
             ]);
 
-            claimBillingTick(agents, planet, 1);
+            claimBillingTick(agents, planet, 1, gameState);
 
             expect(company.assets[planet.id].deposits).toBe(1000);
+        });
+    });
+
+    describe('bankruptcy during claim billing', () => {
+        it('refounds the company and does not bill leftover claims to the bankrupt entity', () => {
+            company.assets[planet.id].deposits = 1;
+            company.automated = true;
+            company.assets[planet.id].activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
+            gov.assets[planet.id].deposits = 19_999_999;
+            planet.bank.deposits = 20_000_000;
+            planet.bank.loans = 20_000_000;
+            planet.resources[arableLandResourceType.name] = {
+                pool: makePool({ type: arableLandResourceType, quantity: 0, renewable: true }),
+                claims: [
+                    makeRenewableClaim({ costPerTick: 10 }),
+                    makeRenewableClaim({ id: 'claim-2', costPerTick: 10 }),
+                ],
+            };
+            const agents = new Map([
+                [gov.id, gov],
+                [company.id, company],
+            ]);
+
+            claimBillingTick(agents, planet, 1, gameState);
+
+            const refound = [...gameState.agents.values()].find((a) => a.id !== company.id && a.id !== gov.id);
+            expect(refound).toBeDefined();
+            expect(refound!.assets[planet.id].activeLoans).toHaveLength(0);
+            expect(
+                planet.resources[arableLandResourceType.name].claims.every((c) => c.tenantAgentId === refound!.id),
+            ).toBe(true);
+            expect(planet.bank.bankruptcies).toBe(1);
+            const issues = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]));
+            expect(issues).toEqual([]);
         });
     });
 });

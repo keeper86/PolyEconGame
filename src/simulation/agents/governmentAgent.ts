@@ -1,5 +1,6 @@
 import {
     GOVERNMENT_OPERATING_BUFFER,
+    GOVERNMENT_SUPPORT_LOAN_TICKS,
     MIN_WAGE,
     TICKS_PER_MONTH,
     UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
@@ -9,7 +10,7 @@ import {
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from '../financial/assetValuation';
-import { totalOutstandingLoans } from '../financial/loanTypes';
+import { grantLoan, repayLoansOldestFirst, totalOutstandingLoans } from '../financial/loanTypes';
 import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { forEachPopulationCohort, type Occupation } from '../population/population';
@@ -82,6 +83,7 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
             continue;
         }
         assets.deposits -= paid;
+        assets.monthAcc.wealthTaxPaid += paid;
         total += paid;
     }
     govAssets.deposits += total;
@@ -97,12 +99,13 @@ export const governmentTick = (gameState: GameState, planet: Planet, agent: Agen
     if (!assets) {
         return;
     }
-    if (planet.governmentDebt > 0 && assets.deposits > governmentOperatingBuffer()) {
-        const repayment = Math.min(planet.governmentDebt, assets.deposits - governmentOperatingBuffer());
-        planet.governmentDebt -= repayment;
-        planet.bank.loans -= repayment;
-        planet.bank.deposits -= repayment;
-        assets.deposits -= repayment;
+    const loanTotal = totalOutstandingLoans(assets.activeLoans);
+    if (loanTotal > 0 && assets.deposits > governmentOperatingBuffer()) {
+        const repayment = Math.min(loanTotal, assets.deposits - governmentOperatingBuffer());
+        const actualRepaid = repayLoansOldestFirst(assets.activeLoans, repayment);
+        assets.deposits -= actualRepaid;
+        planet.bank.loans -= actualRepaid;
+        planet.bank.deposits -= actualRepaid;
     }
 };
 
@@ -141,10 +144,14 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     if (total <= 0) {
         return 0;
     }
+
+    if (assets.deposits < total) {
+        const shortfall = GOVERNMENT_SUPPORT_LOAN_TICKS * total - assets.deposits;
+        const loan = grantLoan(assets, planet.bank, shortfall, 'governmentSupport', gameState.tick);
+        loan.annualInterestRate = 0;
+    }
+    assets.deposits -= total;
     planet.bank.householdDeposits += total;
-    planet.bank.deposits += total;
-    planet.bank.loans += total;
     planet.governmentSupportVolume += total;
-    planet.governmentDebt += total;
     return total;
 };

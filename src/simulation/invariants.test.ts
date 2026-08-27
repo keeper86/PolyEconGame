@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { checkMonetaryConservation, checkTransportPipeline, checkWealthBankConsistency } from './invariants';
 import { advanceTick, seedRng } from './engine';
+import { createInitialGameState } from './initialUniverse';
 import { putIntoStorageFacility } from './planet/facility';
 import {
     makeAgent,
@@ -13,6 +14,7 @@ import {
 import { produceResourceType, steelResourceType } from './planet/resources';
 import { createShip, shipTick, shiptypes } from './ships/ships';
 import type { TransportShip, TransportShipStatusTransporting } from './ships/ships';
+import { makeLoan } from './financial/loanTypes';
 
 describe('checkMonetaryConservation', () => {
     it('reports no violation when all balances are zero', () => {
@@ -69,6 +71,72 @@ describe('checkMonetaryConservation', () => {
 
         const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets, 0.02);
         expect(discrepancies).toEqual([]);
+    });
+
+    it('holds across bankruptcies (write-offs and bankruptcy recoveries stay in balance)', () => {
+        seedRng(42);
+
+        const { gameState, planet, agents } = makeWorld({
+            populationByEdu: { none: 2000, primary: 1000, secondary: 500, tertiary: 200 },
+            companyIds: ['company-1'],
+        });
+
+        const company = agents.find((a) => a.id === 'company-1')!;
+        company.assets[planet.id].productionFacilities.push(
+            makeProductionFacility({ none: 500, primary: 200, secondary: 50, tertiary: 20 }, { planetId: planet.id }),
+        );
+        company.assets[planet.id].wagePerEdu = { none: 1000, primary: 1000, secondary: 1000, tertiary: 1000 };
+        company.assets[planet.id].deposits = 5_000_000;
+        company.assets[planet.id].activeLoans = [makeLoan('emergency', 5_000_000, 0.05, 1, 361, true)];
+        planet.bank.loans = 5_000_000;
+        planet.bank.deposits = 5_000_000;
+
+        for (let t = 1; t <= 60; t++) {
+            gameState.tick = t;
+            advanceTick(gameState);
+            const discrepancies = checkMonetaryConservation(gameState.agents, new Map([[planet.id, planet]]), 0.01);
+            expect(discrepancies, `tick ${t}`).toEqual([]);
+        }
+
+        expect(planet.bank.bankruptcies).toBeGreaterThan(0);
+        expect(planet.bank.writeOffs).toBeGreaterThan(0);
+    });
+
+    it('does not double-count loans of agents present in both gameState.agents and the dedicated maps', () => {
+        const gameState = createInitialGameState();
+
+        const discrepancies = checkMonetaryConservation(
+            gameState.agents,
+            gameState.planets,
+            0.001,
+            gameState.forexMarketMakers,
+            gameState.shipbuilderAgents,
+            gameState.arbitrageTraders,
+        );
+
+        expect(discrepancies).toEqual([]);
+    });
+
+    it('reports a loan decomposition violation when bank.loans exceed the sum of agent loans', () => {
+        const planet = makePlanet();
+        planet.bank.loans = 100;
+        const gameState = makeGameState([planet], []);
+
+        const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets);
+
+        expect(discrepancies.some((d) => d.includes('loan decomposition violated'))).toBe(true);
+        expect(discrepancies.some((d) => d.includes('bank.loans=100.0000'))).toBe(true);
+    });
+
+    it('reports a loan decomposition violation when agent loans exceed bank.loans', () => {
+        const planet = makePlanet();
+        const agent = makeAgent('a1', planet.id);
+        agent.assets[planet.id].activeLoans = [makeLoan('starter', 100, 0.01, 0, 360, true)];
+        const gameState = makeGameState([planet], [agent]);
+
+        const discrepancies = checkMonetaryConservation(gameState.agents, gameState.planets);
+
+        expect(discrepancies.some((d) => d.includes('loan decomposition violated'))).toBe(true);
     });
 });
 

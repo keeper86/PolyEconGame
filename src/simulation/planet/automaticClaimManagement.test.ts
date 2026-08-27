@@ -5,7 +5,8 @@ import { updateAgentClaims } from './automaticClaimManagement';
 import { arableLandResourceType, coalDepositResourceType } from './landBoundResources';
 import { produceResourceType } from './resources';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../constants';
-import { totalOutstandingLoans } from '../financial/loanTypes';
+import { checkMonetaryConservation } from '../invariants';
+import { makeLoan, totalOutstandingLoans } from '../financial/loanTypes';
 
 describe('updateAgentClaims', () => {
     it('leases renewable claim when facility needs exceed current capacity', () => {
@@ -507,5 +508,47 @@ describe('updateAgentClaims', () => {
 
         // Deposits should now be non-negative (loan was deposited, then spent on the lease)
         expect(agent.assets['test-p'].deposits).toBeGreaterThanOrEqual(0);
+    });
+
+    it('refounds the company when a claim loan breaches the bankruptcy trigger', () => {
+        const gov = makeGovernmentAgent('gov-1', 'test-p');
+        const planet = makePlanet({ id: 'test-p', governmentId: gov.id });
+
+        planet.resources[arableLandResourceType.name] = {
+            pool: makePool({ type: arableLandResourceType, quantity: 100_000, renewable: true }),
+            claims: [],
+        };
+
+        const agent = makeAgent('auto-1', 'test-p', 'Auto Agent');
+        agent.automated = true;
+        agent.assets['test-p'].deposits = 1;
+        agent.assets['test-p'].activeLoans = [makeLoan('emergency', 20_000_000, 0.05, 1, 361, true)];
+        gov.assets['test-p'].deposits = 19_999_999;
+        planet.bank.deposits = 20_000_000;
+        planet.bank.loans = 20_000_000;
+
+        const facility = makeProductionFacility(undefined, {
+            planetId: 'test-p',
+            id: 'farm-1',
+            name: 'Test Farm',
+            maxScale: 10,
+            scale: 10,
+            needs: [{ resource: arableLandResourceType, quantity: 100 }],
+            produces: [{ resource: produceResourceType, quantity: 0 }],
+        });
+        agent.assets['test-p'].productionFacilities = [facility];
+
+        const gameState = makeGameState([planet], [gov, agent, planet.recycler]);
+
+        updateAgentClaims(gameState, planet);
+
+        const refound = [...gameState.agents.values()].find((a) => a.id !== agent.id && a.id !== gov.id);
+        expect(refound).toBeDefined();
+        expect(planet.resources[arableLandResourceType.name].claims.some((c) => c.tenantAgentId === agent.id)).toBe(
+            false,
+        );
+        expect(planet.bank.bankruptcies).toBe(1);
+        const issues = checkMonetaryConservation(gameState.agents, gameState.planets);
+        expect(issues).toEqual([]);
     });
 });

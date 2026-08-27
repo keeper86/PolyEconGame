@@ -11,6 +11,7 @@ import { PLANET_LARGE_IMAGES } from '@/lib/planetAssets';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
+import { bankEquity } from '@/simulation/planet/planet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -257,7 +258,7 @@ export function FoundingPage() {
                                                         <span className='text-muted-foreground'>Bank Equity</span>
                                                         <span className='text-right font-medium'>
                                                             {formatNumberWithUnit(
-                                                                p.bank.equity,
+                                                                bankEquity(p.bank),
                                                                 'currency',
                                                                 p.planetId,
                                                             )}

@@ -4,7 +4,7 @@ import {
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
 } from '../constants';
-import { grantLoan } from '../financial/loanTypes';
+import { grantAutomaticLoan } from '../financial/loanConditions';
 import type { Facility, ProductionFacility } from '../planet/facility';
 import {
     calculateCostsForConstruction,
@@ -410,7 +410,17 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
                         if (carrierAssets && bank) {
                             if (carrierAssets.deposits < penalty) {
                                 const shortfall = penalty - carrierAssets.deposits;
-                                grantLoan(carrierAssets, bank, shortfall, 'shipPenaltyCoverage', ctx.tick);
+                                const result = grantAutomaticLoan(
+                                    ctx,
+                                    agent,
+                                    ctx.planets.get(s.planetId)!,
+                                    shortfall,
+                                    'shipPenaltyCoverage',
+                                    ctx.tick,
+                                );
+                                if (result.kind === 'bankrupt') {
+                                    break outer;
+                                }
                             }
                             carrierAssets.deposits -= penalty;
                         }

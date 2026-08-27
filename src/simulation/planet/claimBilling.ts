@@ -1,11 +1,11 @@
 import { TICKS_PER_MONTH } from '../constants';
-import { grantLoan } from '../financial/loanTypes';
+import { grantAutomaticLoan } from '../financial/loanConditions';
 import { mergeClaimBackIntoPool } from './claims';
-import type { Agent, Planet } from './planet';
+import type { Agent, GameState, Planet } from './planet';
 
 const PAUSED_DAYS_TERMINATION_THRESHOLD = 31;
 
-export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tick: number, gameState: GameState): void {
     for (const resourceName of Object.keys(planet.resources)) {
         const { pool, claims } = planet.resources[resourceName];
         const mergedClaimIds = new Set<string>();
@@ -43,7 +43,10 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
 
             if (assets.deposits < cost && agent.automated) {
                 const shortfall = cost * TICKS_PER_MONTH - assets.deposits;
-                grantLoan(assets, planet.bank, shortfall, 'claimCoverage', tick);
+                const result = grantAutomaticLoan(gameState, agent, planet, shortfall, 'claimCoverage', tick);
+                if (result.kind === 'bankrupt') {
+                    break;
+                }
             }
 
             if (assets.deposits >= cost) {
@@ -66,7 +69,9 @@ export function claimBillingTick(agents: Map<string, Agent>, planet: Planet, tic
         }
 
         if (mergedClaimIds.size > 0) {
-            planet.resources[resourceName].claims = claims.filter((c) => !mergedClaimIds.has(c.id));
+            planet.resources[resourceName].claims = planet.resources[resourceName].claims.filter(
+                (c) => !mergedClaimIds.has(c.id),
+            );
         }
 
         let totalCost = 0;

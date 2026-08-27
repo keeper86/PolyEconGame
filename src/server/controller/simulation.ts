@@ -8,6 +8,7 @@ import {
 import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
+import { getStorageStarvation } from '@/simulation/planet/facility';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
@@ -42,7 +43,8 @@ import {
 } from '../../simulation/workerClient/syncQueries';
 import { db } from '../db';
 import { generateAndLogNewsPrompt } from '../newsAgent/monthlyReportExtractor';
-import { procedure, protectedProcedure } from '../trpcRoot';
+import { resolveBankruptcyForUser } from '../bankruptcy';
+import { getUserIdFromContext, procedure, protectedProcedure } from '../trpcRoot';
 
 const PERF_DEBUG = typeof process !== 'undefined' && process.env?.PERF_DEBUG === '1';
 
@@ -68,6 +70,7 @@ const loanSchema = z.object({
 
 const loanConditionsSchema = z.object({
     maxLoanAmount: z.number(),
+    bankruptcyTrigger: z.number(),
     annualInterestRate: z.number(),
     existingLoans: z.number(),
     lastMonthlyWages: z.number(),
@@ -120,7 +123,7 @@ const planetSummarySchema = z.object({
     name: z.string(),
     populationTotal: z.number(),
     bank: z.object({
-        equity: z.number(),
+        loans: z.number(),
         deposits: z.number(),
     }),
     foodPrice: z.number(),
@@ -156,7 +159,7 @@ export const getLatestPlanetSummaries = () =>
                     planetId: planet.id,
                     populationTotal: computePopulationTotal(planet),
                     bank: {
-                        equity: planet.bank.equity,
+                        loans: planet.bank.loans,
                         deposits: planet.bank.deposits,
                     },
                     foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
@@ -170,7 +173,7 @@ export const getLatestPlanetSummaries = () =>
                             TICKS_PER_YEAR +
                             (planet.monthTransferVolume * 1) / 3,
                     moneySupply: planet.bank.deposits,
-                    policyRate: planet.bank.loanRate,
+                    policyRate: planet.bank.loanRatePerYear,
                     costOfLiving: computeCostOfLiving(planet, false),
                     costOfLivingRich: computeCostOfLiving(planet, true),
                     wageEdu0: planet.wagePerEdu.none ?? 0,
@@ -744,6 +747,26 @@ export const getUsedLogos = () =>
             return { usedLogos };
         });
 
+const bankruptcyRecordSchema = z.object({
+    agentId: z.string(),
+    agentName: z.string(),
+    planetId: z.string(),
+    planetName: z.string().nullable(),
+    tick: z.number(),
+    outcome: z.enum(['restructured', 'liquidated']),
+    message: z.string(),
+});
+
+export const getMyBankruptcy = () =>
+    protectedProcedure
+        .input(z.void())
+        .output(z.object({ bankruptcy: bankruptcyRecordSchema.nullable() }))
+        .query(async ({ ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('user_data').where({ user_id: userId }).first();
+            return { bankruptcy: resolveBankruptcyForUser(row?.agent_id ?? null) };
+        });
+
 export const generateNewsReport = () =>
     protectedProcedure
         .input(z.void())
@@ -816,6 +839,24 @@ export const getAgentFinancials = () =>
             const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
             const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
             return { deposits, monthlyNetCashFlow };
+        });
+
+export const getAgentConditions = () =>
+    protectedProcedure
+        .input(z.object({ agentId: z.string(), planetId: z.string() }))
+        .output(
+            z.object({
+                hrProductivityMultiplier: z.number(),
+                storageStarvation: z.number(),
+            }),
+        )
+        .query(async ({ input }) => {
+            const { agent } = getAgentSync(input.agentId);
+            const assets = agent?.assets?.[input.planetId];
+            return {
+                hrProductivityMultiplier: assets?.hrProductivityMultiplier ?? 1,
+                storageStarvation: assets?.storageFacility ? getStorageStarvation(assets.storageFacility) : 1,
+            };
         });
 
 export const getLoanConditions = () =>

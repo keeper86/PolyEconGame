@@ -31,6 +31,7 @@ import {
     postTransportContract,
 } from './controller/ship';
 import {
+    getAgentConditions,
     getAgentDetail,
     getAgentFinancialHistory,
     getAgentFinancials,
@@ -44,6 +45,7 @@ import {
     getLatestPlanetSummaries,
     getListOfPlanets,
     getLoanConditions,
+    getMyBankruptcy,
     getPlanetBufferHistory,
     getPlanetDetail,
     getPlanetEconomyHistory,
@@ -56,6 +58,7 @@ import {
 
 import {
     acquireLicense,
+    acknowledgeBankruptcy,
     buildFacility,
     buildShipConstructionFacility,
     cancelBuyBid,
@@ -91,6 +94,7 @@ const simulationRouter = trpcRoot.router({
     getAgentDetail: getAgentDetail(),
     getAgentOverview: getAgentOverview(),
     getAgentPlanetDetail: getAgentPlanetDetail(),
+    getAgentConditions: getAgentConditions(),
     getPlanetDetail: getPlanetDetail(),
     getPlanetEconomyHistory: getPlanetEconomyHistory(),
     getPlanetBufferHistory: getPlanetBufferHistory(),
@@ -112,6 +116,7 @@ const simulationRouter = trpcRoot.router({
     getArbitrageForResources: getArbitrageForResources(),
     getRawAgents: getRawAgents(),
     getUsedLogos: getUsedLogos(),
+    getMyBankruptcy: getMyBankruptcy(),
     generateNewsReport: generateNewsReport(),
 });
 
@@ -121,6 +126,7 @@ const protectedAppRouter = trpcRoot.router({
     updateUser: updateUser(),
     getUserIdFromSession: getUserIdFromSession(),
     createAgent: createAgent(),
+    acknowledgeBankruptcy: acknowledgeBankruptcy(),
     requestLoan: requestLoan(),
     repayLoan: repayLoan(),
     setAutomation: setAutomation(),

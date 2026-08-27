@@ -17,10 +17,18 @@ export interface Bank {
     loans: number;
     deposits: number;
     householdDeposits: number;
-    equity: number;
-    loanRate: number;
-    depositRate: number;
+    loanRatePerYear: number;
+    depositRatePerYear: number;
+    profit: number;
+    interestCollected: number;
+    writeOffs: number;
+    bankruptcies: number;
+    emergencyLoansGranted: number;
 }
+
+export type BankEquityView = Pick<Bank, 'loans' | 'deposits'>;
+
+export const bankEquity = (bank: BankEquityView): number => bank.loans - bank.deposits;
 
 export type PlanetaryId = {
     planetId: string;
@@ -116,18 +124,6 @@ export type Planet = {
 
     governmentSupportVolume: number;
 
-    rolloverDenials: number;
-
-    debtWriteOffs: number;
-
-    bankruptcies: number;
-
-    refoundCount: number;
-
-    loanInterestCollected: number;
-
-    emergencyLoansGranted: number;
-
     monthPriceAcc: {
         [resourceName: string]: { min: number; max: number; sum: number; count: number };
     };
@@ -156,8 +152,6 @@ export type Planet = {
     _smoothedReachableVacancyWage?: PerEducation;
 
     _govSupportAnchoredPrices?: Record<string, number>;
-
-    governmentDebt: number;
 };
 
 export type PerEducation = { [L in EducationLevelType]?: number };
@@ -307,6 +301,8 @@ export type MonthAccumulator = {
     revenue: number;
     purchases: number;
     claimPayments: number;
+    interestPaid: number;
+    wealthTaxPaid: number;
     totalWorkersTicks: number;
     forexRevenue: number;
     forexPurchases: number;
@@ -387,6 +383,15 @@ export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): 
     return license !== undefined && !license.frozen;
 }
 
+export type BankruptcyRecord = {
+    agentId: string;
+    agentName: string;
+    planetId: string;
+    tick: number;
+    outcome: 'restructured' | 'liquidated';
+    message: string;
+};
+
 export type Agent = {
     id: string;
     automated: boolean;
@@ -414,12 +419,22 @@ export interface GameState {
 
     arbitrageTraders: Map<string, Agent>;
     tickerEvents: TickerEvent[];
+    bankruptcies: BankruptcyRecord[];
     nextEventId: number;
 }
 
 export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, 'id'>): void {
     const tickerEvent: TickerEvent = { ...event, id: gameState.nextEventId++ };
     gameState.tickerEvents.push(tickerEvent);
+}
+
+export const MAX_BANKRUPTCY_RECORDS = 200;
+
+export function pushBankruptcyRecord(gameState: GameState, record: BankruptcyRecord): void {
+    gameState.bankruptcies.push(record);
+    if (gameState.bankruptcies.length > MAX_BANKRUPTCY_RECORDS) {
+        gameState.bankruptcies = gameState.bankruptcies.slice(-MAX_BANKRUPTCY_RECORDS);
+    }
 }
 
 export function createEmptyAccumulator(): MonthAccumulator {
@@ -430,6 +445,8 @@ export function createEmptyAccumulator(): MonthAccumulator {
         revenue: 0,
         purchases: 0,
         claimPayments: 0,
+        interestPaid: 0,
+        wealthTaxPaid: 0,
         totalWorkersTicks: 0,
         forexRevenue: 0,
         forexPurchases: 0,
@@ -456,6 +473,8 @@ export function resetAgentMetrics(agents: Map<string, Agent>, planet: Planet): v
             revenue: assets.monthAcc.revenue,
             purchases: assets.monthAcc.purchases,
             claimPayments: assets.monthAcc.claimPayments,
+            interestPaid: assets.monthAcc.interestPaid,
+            wealthTaxPaid: assets.monthAcc.wealthTaxPaid,
             totalWorkersTicks: assets.monthAcc.totalWorkersTicks,
             forexRevenue: assets.monthAcc.forexRevenue,
             forexPurchases: assets.monthAcc.forexPurchases,

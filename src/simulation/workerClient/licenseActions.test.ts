@@ -3,6 +3,7 @@ import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
 import { checkMonetaryConservation } from '../invariants';
 import { totalOutstandingLoans } from '../financial/loanTypes';
 import { makeWorld } from '../utils/testHelper';
+import { grantLoan } from '../financial/loanTypes';
 import type { OutboundMessage } from './messages';
 import { handleAcquireLicense } from './licenseActions';
 
@@ -220,9 +221,7 @@ describe('handleAcquireLicense — monetary invariants', () => {
 
     it('preserves monetary conservation when paying for a commercial license from existing deposits', () => {
         const { gameState, planet, company } = setupWorld();
-        company.assets[planet.id]!.deposits = 200_000;
-        planet.bank.deposits = 200_000;
-        planet.bank.loans = 200_000;
+        grantLoan(company.assets[planet.id]!, planet.bank, 200_000, 'starter', 0);
         delete company.assets[planet.id]!.licenses.commercial;
         const { post } = makeMessages();
 
@@ -244,9 +243,7 @@ describe('handleAcquireLicense — monetary invariants', () => {
 
     it('preserves monetary conservation when paying for a workforce license from existing deposits', () => {
         const { gameState, planet, company } = setupWorld();
-        company.assets[planet.id]!.deposits = 200_000;
-        planet.bank.deposits = 200_000;
-        planet.bank.loans = 200_000;
+        grantLoan(company.assets[planet.id]!, planet.bank, 200_000, 'starter', 0);
         delete company.assets[planet.id]!.licenses.workforce;
         const { post } = makeMessages();
 

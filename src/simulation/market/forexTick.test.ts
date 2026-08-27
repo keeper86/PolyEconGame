@@ -3,8 +3,17 @@ import { forexTick } from './forexTick';
 import { getCurrencyResourceName } from './currencyResources';
 import { checkMonetaryConservation } from '../invariants';
 import { creditForeignDeposit, makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
+import { makeLoan } from '../financial/loanTypes';
 import type { Agent, Planet } from '../planet/planet';
 import type { GameState } from '../planet/planet';
+
+function fundLocalCurrency(agent: Agent, planet: Planet, amount: number): void {
+    const assets = agent.assets[planet.id]!;
+    assets.deposits = amount;
+    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, planet.bank.loanRatePerYear, 0, 0, false));
+    planet.bank.deposits += amount;
+    planet.bank.loans += amount;
+}
 
 function makeTwoPlanetState(): {
     gameState: GameState;
@@ -68,6 +77,7 @@ describe('forexTick', () => {
         };
 
         aB.assets.pA.deposits = 500;
+        aB.assets.pA.activeLoans.push(makeLoan('forexWorkingCapital', 500, pA.bank.loanRatePerYear, 0, 0, false));
         pA.bank.deposits += 500;
         pA.bank.loans += 500;
         if (!aB.assets.pA.market) {
@@ -124,9 +134,7 @@ describe('forexTick', () => {
 
     it('releases deposit holds fully after a no-trade tick (only bids)', () => {
         const curB = getCurrencyResourceName('pB');
-        aB.assets.pA.deposits = 300;
-        pA.bank.deposits += 300;
-        pA.bank.loans += 300;
+        fundLocalCurrency(aB, pA, 300);
         if (!aB.assets.pA.market) {
             aB.assets.pA.market = { sell: {}, buy: {} };
         }
@@ -161,9 +169,7 @@ describe('forexTick', () => {
             offerRetainment: 0,
             automated: false,
         };
-        aA.assets.pA.deposits = 600;
-        pA.bank.deposits += 600;
-        pA.bank.loans += 600;
+        fundLocalCurrency(aA, pA, 600);
         aA.assets.pA.market.buy[curA] = {
             resource: { name: curA, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
             bidPrice: 1.05,
@@ -181,9 +187,7 @@ describe('forexTick', () => {
             offerRetainment: 0,
             automated: false,
         };
-        aB.assets.pB.deposits = 600;
-        pB.bank.deposits += 600;
-        pB.bank.loans += 600;
+        fundLocalCurrency(aB, pB, 600);
         aB.assets.pB.market.buy[curB] = {
             resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
             bidPrice: 1.05,
@@ -214,9 +218,7 @@ describe('forexTick', () => {
         };
 
         const fullBudget = 200;
-        aB.assets.pA.deposits = fullBudget;
-        pA.bank.deposits += fullBudget;
-        pA.bank.loans += fullBudget;
+        fundLocalCurrency(aB, pA, fullBudget);
         if (!aB.assets.pA.market) {
             aB.assets.pA.market = { sell: {}, buy: {} };
         }
@@ -267,9 +269,7 @@ describe('forexTick', () => {
         };
         pA.marketPrices[curB] = 1.0;
 
-        aB.assets.pA.deposits = 10;
-        pA.bank.deposits += 10;
-        pA.bank.loans += 10;
+        fundLocalCurrency(aB, pA, 10);
         aB.assets.pA.market = { sell: {}, buy: {} };
         aB.assets.pA.market.buy[curB] = {
             resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
@@ -294,9 +294,7 @@ describe('forexTick', () => {
         aA.assets.pC = makeAgentPlanetAssets('pC');
 
         aB.assets.pC = makeAgentPlanetAssets('pC');
-        aB.assets.pC.deposits = 200;
-        pC.bank.deposits += 200;
-        pC.bank.loans += 200;
+        fundLocalCurrency(aB, pC, 200);
 
         creditForeignDeposit(aA, pB, 100);
         const curB = getCurrencyResourceName('pB');
@@ -316,9 +314,7 @@ describe('forexTick', () => {
             automated: false,
         };
 
-        aB.assets.pA.deposits = 200;
-        pA.bank.deposits += 200;
-        pA.bank.loans += 200;
+        fundLocalCurrency(aB, pA, 200);
         aB.assets.pA.market = { sell: {}, buy: {} };
         aB.assets.pA.market.buy[curB] = {
             resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },
@@ -363,9 +359,7 @@ describe('forexTick', () => {
         pA.marketPrices[curB] = 1.0;
 
         const buyerDeposits = 50;
-        aB.assets.pA.deposits = buyerDeposits;
-        pA.bank.deposits += buyerDeposits;
-        pA.bank.loans += buyerDeposits;
+        fundLocalCurrency(aB, pA, buyerDeposits);
         aB.assets.pA.market = { sell: {}, buy: {} };
         aB.assets.pA.market.buy[curB] = {
             resource: { name: curB, form: 'currency', level: 'currency', volumePerQuantity: 0, massPerQuantity: 0 },

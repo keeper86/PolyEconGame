@@ -118,6 +118,7 @@ function makeGameState(agents: Map<string, Agent>): GameState {
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
         tickerEvents: [],
+        bankruptcies: [],
         nextEventId: 1,
     };
 }

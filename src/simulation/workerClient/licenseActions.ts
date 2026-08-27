@@ -1,6 +1,6 @@
 import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '../constants';
 import { makeAgentPlanetAssets, makeStorage } from '../initialUniverse/helpers';
-import { grantLoan } from '../financial/loanTypes';
+import { grantAutomaticLoan } from '../financial/loanConditions';
 import type { GameState } from '../planet/planet';
 import { pushTickerEvent } from '../planet/planet';
 import type { OutboundMessage, PendingAction } from './messages';
@@ -67,7 +67,10 @@ export function handleAcquireLicense(
     const cost = licenseType === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST;
 
     if (isNewPlanet) {
-        grantLoan(assets, planet.bank, cost, 'licenseBootstrap', state.tick);
+        const result = grantAutomaticLoan(state, agent, planet, cost, 'licenseBootstrap', state.tick);
+        if (result.kind === 'bankrupt') {
+            return;
+        }
         assets.deposits -= cost;
     } else {
         if (assets.deposits < cost) {

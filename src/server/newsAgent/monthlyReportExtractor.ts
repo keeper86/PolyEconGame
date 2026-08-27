@@ -6,6 +6,7 @@ import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormal
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
 import type { ManagementFacility, ProductionFacility, ShipConstructionFacility } from '@/simulation/planet/facility';
 import type { Agent, Planet } from '@/simulation/planet/planet';
+import { bankEquity } from '@/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { educationLevelKeys } from '@/simulation/population/education';
@@ -513,9 +514,9 @@ export function extractMonthlyReport(): MonthlyReport {
                 edu2: planet.wagePerEdu.secondary ?? 0,
                 edu3: planet.wagePerEdu.tertiary ?? 0,
             },
-            policyRate: planet.bank.loanRate,
+            policyRate: planet.bank.loanRatePerYear,
             moneySupply: planet.bank.deposits,
-            bankEquity: planet.bank.equity,
+            bankEquity: bankEquity(planet.bank),
             foodPrice: planet.marketPrices[groceryServiceResourceType.name] ?? 1,
             agentCount,
             ...demo,

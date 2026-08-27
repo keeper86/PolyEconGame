@@ -8,7 +8,6 @@ import {
     FOREX_MM_TARGET_DEPOSIT,
     FOREX_MM_WORKING_CAPITAL,
     PRICE_CEIL,
-    TICKS_PER_YEAR,
 } from '../constants';
 import { FOREX_PRICE_FLOOR, getCurrencyResourceName } from '../market/currencyResources';
 import { seedRng } from '../utils/stochasticRound';
@@ -26,7 +25,18 @@ function makeSeededState(loanRate = 0.001) {
         id: 'p1',
         name: 'Planet 1',
         governmentId: 'gov-p1',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate, depositRate: 0 },
+        bank: {
+            loans: 0,
+            deposits: 0,
+            householdDeposits: 0,
+            loanRatePerYear: loanRate,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
+        },
     });
     const state = makeGameState([planet], [gov]);
     seedForexMarketMakers(state);
@@ -40,13 +50,35 @@ function makeSeededStateMultiPlanet(rate1 = 0.001, rate2 = 0.002) {
         id: 'p1',
         name: 'Planet 1',
         governmentId: 'gov-p1',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: rate1, depositRate: 0 },
+        bank: {
+            loans: 0,
+            deposits: 0,
+            householdDeposits: 0,
+            loanRatePerYear: rate1,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
+        },
     });
     const planet2 = makePlanet({
         id: 'p2',
         name: 'Planet 2',
         governmentId: 'gov-p2',
-        bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: rate2, depositRate: 0 },
+        bank: {
+            loans: 0,
+            deposits: 0,
+            householdDeposits: 0,
+            loanRatePerYear: rate2,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
+        },
     });
     const state = makeGameState([planet1, planet2], [gov1, gov2]);
     seedForexMarketMakers(state);
@@ -60,7 +92,18 @@ function makeThreePlanetState() {
             id,
             name: `Planet ${i + 1}`,
             governmentId: `gov-${id}`,
-            bank: { loans: 0, deposits: 0, householdDeposits: 0, equity: 0, loanRate: 0.001, depositRate: 0 },
+            bank: {
+                loans: 0,
+                deposits: 0,
+                householdDeposits: 0,
+                loanRatePerYear: 0.001,
+                depositRatePerYear: 0,
+                profit: 0,
+                interestCollected: 0,
+                writeOffs: 0,
+                bankruptcies: 0,
+                emergencyLoansGranted: 0,
+            },
         }),
     );
     const state = makeGameState(planets, govs);
@@ -146,7 +189,7 @@ describe('seedForexMarketMakers', () => {
                 const homeLoan = mm.assets[mm.associatedPlanetId]!.activeLoans.find(
                     (l) => l.type === 'forexWorkingCapital',
                 );
-                expect(homeLoan?.annualInterestRate).toBeCloseTo(planetRate * TICKS_PER_YEAR);
+                expect(homeLoan?.annualInterestRate).toBeCloseTo(planetRate);
             }
         });
 
@@ -159,9 +202,9 @@ describe('seedForexMarketMakers', () => {
                     mm.assets.p1!.activeLoans.find((l) => l.type === 'forexWorkingCapital')?.annualInterestRate ?? 0;
                 const apr2 =
                     mm.assets.p2!.activeLoans.find((l) => l.type === 'forexWorkingCapital')?.annualInterestRate ?? 0;
-                expect(apr1).toBeCloseTo(rate1 * TICKS_PER_YEAR);
-                expect(apr2).toBeCloseTo(rate2 * TICKS_PER_YEAR);
-                expect(apr2).not.toBeCloseTo(apr1);
+                expect(apr1).toBeCloseTo(rate1);
+                expect(apr2).toBeCloseTo(rate2);
+                expect(apr2).not.toBeCloseTo(apr1, 4);
             }
         });
 

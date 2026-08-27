@@ -17,6 +17,7 @@ import {
 import { computeNormalizedBuffer } from './market/serviceBufferNormalizer';
 import { computeCostOfLiving } from './market/serviceDefinitions';
 import type { GameState } from './planet/planet';
+import { bankEquity } from './planet/planet';
 
 import { PRICE_FLOOR, TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import { createInitialGameState } from './initialUniverse';
@@ -144,6 +145,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'createAgent':
                     case 'setAutomation':
                     case 'setWorkerAllocationTargets':
+                    case 'acknowledgeBankruptcy':
                         handleAgentAction(state, action, safePostMessage);
                         break;
                     case 'requestLoan':
@@ -376,8 +378,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
             const wageEdu2 = planet.wagePerEdu.secondary ?? 0;
             const wageEdu3 = planet.wagePerEdu.tertiary ?? 0;
 
-            const policyRate = bank.loanRate;
-            const bankEquity = bank.equity;
+            const policyRate = bank.loanRatePerYear;
+            const derivedEquity = bankEquity(bank);
             const moneySupply = bank.deposits;
 
             return {
@@ -391,7 +393,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 wage_edu2: wageEdu2,
                 wage_edu3: wageEdu3,
                 policy_rate: policyRate,
-                bank_equity: bankEquity,
+                bank_equity: derivedEquity,
                 money_supply: moneySupply,
             };
         });
@@ -783,6 +785,16 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 agentId,
                 automateWorkerAllocation,
             });
+
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'acknowledgeBankruptcy') {
+            const { requestId, agentId } = msg;
+            pendingActions.push({ type: 'acknowledgeBankruptcy', requestId, agentId });
 
             if (!processingTick) {
                 drainActionQueue();

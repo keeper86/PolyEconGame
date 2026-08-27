@@ -12,7 +12,7 @@ import { computeCostOfLiving } from '../../src/simulation/market/serviceDefiniti
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import { coalDepositResourceType, ironOreDepositResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
-import { operatingProfit, type GameState, type Planet } from '../../src/simulation/planet/planet';
+import { bankEquity, operatingProfit, type GameState, type Planet } from '../../src/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '../../src/simulation/planet/resourceCatalog';
 import {
     chemicalResourceType,
@@ -488,19 +488,21 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         if (assets.deposits < 0) {
             agentsInDistress += 1;
         }
-        totalLoans += totalOutstandingLoans(assets.activeLoans);
-        for (const loan of assets.activeLoans) {
-            const rp = loan.remainingPrincipal;
-            if (loan.type === 'wageCoverage') {
-                loansWageCoverage += rp;
-            } else if (loan.type === 'bufferCoverage') {
-                loansBufferCoverage += rp;
-            } else if (loan.type === 'rollover') {
-                loansRollover += rp;
-            } else if (loan.type === 'starter') {
-                loansStarter += rp;
-            } else {
-                loansOther += rp;
+        if (agent.id !== planet.governmentId) {
+            totalLoans += totalOutstandingLoans(assets.activeLoans);
+            for (const loan of assets.activeLoans) {
+                const rp = loan.remainingPrincipal;
+                if (loan.type === 'wageCoverage') {
+                    loansWageCoverage += rp;
+                } else if (loan.type === 'bufferCoverage') {
+                    loansBufferCoverage += rp;
+                } else if (loan.type === 'rollover') {
+                    loansRollover += rp;
+                } else if (loan.type === 'starter') {
+                    loansStarter += rp;
+                } else {
+                    loansOther += rp;
+                }
             }
         }
         if (agent.id !== planet.governmentId && agent.id !== planet.recycler.id && agent.agentRole === undefined) {
@@ -1105,7 +1107,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const wealthTotal = wealthWeighted;
     const redistributedTotal = planet.governmentSupportVolume;
     const redistributedPerCapita = totalPopulation > 0 ? planet.governmentSupportVolume / totalPopulation : 0;
-    const governmentDebt = planet.governmentDebt;
+    const governmentDebt = totalOutstandingLoans(
+        gameState.agents.get(planet.governmentId)?.assets[planet.id]?.activeLoans ?? [],
+    );
     const governmentDeposits =
         gameState.agents.get(planet.governmentId)?.assets[planet.id]?.deposits ?? 0;
     const foodPrice = priceOf(planet, groceryServiceResourceType.name);
@@ -1245,16 +1249,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         groceryTotalVolume: groceryResult?.totalVolume ?? 0,
         gdpAnnual,
         costOfLiving: computeCostOfLiving(planet, false),
-        bankEquity: planet.bank.equity,
+        bankEquity: bankEquity(planet.bank),
         bankDeposits: planet.bank.deposits,
         bankLoans: planet.bank.loans,
         householdDeposits: planet.bank.householdDeposits,
-        rolloverDenials: planet.rolloverDenials,
-        debtWriteOffs: planet.debtWriteOffs,
-        bankruptcies: planet.bankruptcies,
-        refoundCount: planet.refoundCount,
-        loanInterestCollected: planet.loanInterestCollected,
-        emergencyLoansGranted: planet.emergencyLoansGranted,
+        debtWriteOffs: planet.bank.writeOffs,
+        bankruptcies: planet.bank.bankruptcies,
+        loanInterestCollected: planet.bank.interestCollected,
+        emergencyLoansGranted: planet.bank.emergencyLoansGranted,
         totalLoans,
         loansWageCoverage,
         loansBufferCoverage,
@@ -1600,10 +1602,8 @@ export const METRIC_KEYS: string[] = [
     'bankDeposits',
     'bankLoans',
     'householdDeposits',
-    'rolloverDenials',
     'debtWriteOffs',
     'bankruptcies',
-    'refoundCount',
     'loanInterestCollected',
     'emergencyLoansGranted',
     'totalLoans',

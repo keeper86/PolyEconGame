@@ -15,6 +15,7 @@ export const LOAN_TYPES = [
     'discretionary',
     'wageCoverage',
     'emergency',
+    'governmentSupport',
     'rollover',
     'bufferCoverage',
     'claimCoverage',
@@ -43,6 +44,7 @@ export const LOAN_TERM_TICKS: Record<LoanType, number> = {
     discretionary: TICKS_PER_YEAR,
     wageCoverage: TICKS_PER_YEAR,
     emergency: TICKS_PER_YEAR,
+    governmentSupport: TICKS_PER_YEAR * 10,
     rollover: TICKS_PER_YEAR * 5,
     bufferCoverage: TICKS_PER_YEAR,
     claimCoverage: TICKS_PER_YEAR,
@@ -59,6 +61,7 @@ const LOAN_EARLY_REPAYMENT: Record<LoanType, boolean> = {
     rollover: false,
     wageCoverage: false,
     emergency: true,
+    governmentSupport: true,
     bufferCoverage: false,
     claimCoverage: false,
     shipPenaltyCoverage: false,
@@ -133,13 +136,15 @@ export function grantLoan(
     const maturityTick = LOAN_TERM_TICKS[purpose] > 0 ? tick + LOAN_TERM_TICKS[purpose] : 0;
     const earlyRepaymentAllowed = LOAN_EARLY_REPAYMENT[purpose];
 
-    const loan = makeLoan(purpose, amount, bank.loanRate * TICKS_PER_YEAR, tick, maturityTick, earlyRepaymentAllowed);
+    const loan = makeLoan(purpose, amount, bank.loanRatePerYear, tick, maturityTick, earlyRepaymentAllowed);
 
     assets.deposits += amount;
     assets.activeLoans.push(loan);
     bank.loans += amount;
     bank.deposits += amount;
-    bank.equity = bank.deposits - bank.loans;
+    if (purpose === 'emergency') {
+        bank.emergencyLoansGranted += 1;
+    }
 
     return loan;
 }

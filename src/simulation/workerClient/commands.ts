@@ -5,6 +5,7 @@ import {
     acceptShipListingSpec,
     acceptTransportContractSpec,
     acquireLicenseSpec,
+    acknowledgeBankruptcySpec,
     buildFacilitySpec,
     buildShipConstructionFacilitySpec,
     cancelBuyBidSpec,
@@ -89,6 +90,18 @@ export function workerSetAutomation(opts: {
     return sendCommandSpec(
         { type: 'setAutomation', requestId: randomUUID(), agentId, automateWorkerAllocation },
         setAutomationSpec,
+        timeoutMs,
+    );
+}
+
+export function workerAcknowledgeBankruptcy(opts: {
+    agentId: string;
+    timeoutMs?: number;
+}): Promise<{ result: void; processedAtTick: number }> {
+    const { agentId, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'acknowledgeBankruptcy', requestId: randomUUID(), agentId },
+        acknowledgeBankruptcySpec,
         timeoutMs,
     );
 }

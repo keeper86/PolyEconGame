@@ -7,7 +7,8 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
-import { Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
+import { bankEquity } from '@/simulation/planet/planet';
+import { FileX, Landmark, Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
@@ -17,9 +18,10 @@ const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 type Props = {
     bank: Bank;
     planetId: string;
+    governmentBalance: number;
 };
 
-export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
+export default function BankPanel({ bank, planetId, governmentBalance }: Props): React.ReactElement | null {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -55,7 +57,8 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
         [economyData],
     );
 
-    const equityColor = bank.equity < 0 ? 'text-red-500' : bank.equity > 0 ? 'text-green-600' : '';
+    const equity = bankEquity(bank);
+    const equityColor = equity < 0 ? 'text-red-500' : equity > 0 ? 'text-green-600' : '';
 
     return (
         <>
@@ -77,16 +80,35 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         value={formatNumberWithUnit(bank.householdDeposits, 'currency', planetId)}
                         icon={<Users className='h-3 w-3' />}
                     />
+                    <Stat
+                        label='Government balance'
+                        value={formatNumberWithUnit(governmentBalance, 'currency', planetId)}
+                        icon={<Landmark className='h-3 w-3' />}
+                    />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
                         label='Bank equity'
-                        value={formatNumberWithUnit(bank.equity, 'currency', planetId)}
+                        value={formatNumberWithUnit(equity, 'currency', planetId)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
                     />
-                    <Stat label='Loan rate' value={pct(bank.loanRate)} icon={<Percent className='h-3 w-3' />} />
-                    <Stat label='Deposit rate' value={pct(bank.depositRate)} icon={<Percent className='h-3 w-3' />} />
+                    <Stat
+                        label='Written-off debt (total)'
+                        value={formatNumberWithUnit(bank.writeOffs, 'currency', planetId)}
+                        icon={<FileX className='h-3 w-3' />}
+                        valueClassName={bank.writeOffs > 0 ? 'text-red-500' : ''}
+                    />
+                    <Stat
+                        label='Loan rate (new loans, p.a.)'
+                        value={pct(bank.loanRatePerYear)}
+                        icon={<Percent className='h-3 w-3' />}
+                    />
+                    <Stat
+                        label='Interest collected'
+                        value={formatNumberWithUnit(bank.interestCollected, 'currency', planetId)}
+                        icon={<Percent className='h-3 w-3' />}
+                    />
                 </div>
             </div>
 

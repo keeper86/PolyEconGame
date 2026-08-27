@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useHideAutomatedCompaniesPreference, useShowAllCompaniesPreference } from '@/hooks/uiPreferences';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentListSummary } from '@/simulation/snapshotRepository';
@@ -34,8 +35,8 @@ export default function PlanetAgentsLeaderboardPage() {
     const planetId = (params?.planetId as string) ?? '';
     const smallScreen = useIsSmallScreen();
 
-    const [showAll, setShowAll] = useState(false);
-    const [hideAutomated, setHideAutomated] = useState(true);
+    const [showAll, setShowAll] = useShowAllCompaniesPreference();
+    const [hideAutomated, setHideAutomated] = useHideAutomatedCompaniesPreference();
 
     const trpc = useTRPC();
     const { isLoading, data } = useSimulationQuery(

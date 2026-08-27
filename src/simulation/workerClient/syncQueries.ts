@@ -1,5 +1,5 @@
 import { getCachedGameState, getLatestTick, type SnapshotCache } from './manager';
-import type { Planet, Agent } from '../planet/planet';
+import type { Planet, Agent, BankruptcyRecord } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
 import type { TickerEvent, LoanConditions } from '../../server/controller/simulation';
 import type { Loan } from '../financial/loanTypes';
@@ -119,4 +119,12 @@ export function getTickerEventsSync(): { tickerEvents: TickerEvent[] } {
         return { tickerEvents: [] };
     }
     return { tickerEvents: cache.tickerEvents as TickerEvent[] };
+}
+
+export function getBankruptciesSync(): { bankruptcies: BankruptcyRecord[] } {
+    const cache = getCache();
+    if (!cache) {
+        return { bankruptcies: [] };
+    }
+    return { bankruptcies: cache.bankruptcies };
 }

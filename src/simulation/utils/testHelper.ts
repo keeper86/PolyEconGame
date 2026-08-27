@@ -1,5 +1,5 @@
 import { createRecyclerAgent } from '../agents/recycler';
-import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
+import { LOAN_INTEREST_RATE_PER_YEAR, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
@@ -140,9 +140,13 @@ export function makeBank(overrides?: Partial<Bank>): Bank {
         loans: 0,
         deposits: 0,
         householdDeposits: 0,
-        equity: 0,
-        loanRate: 0,
-        depositRate: 0,
+        loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+        depositRatePerYear: 0,
+        profit: 0,
+        interestCollected: 0,
+        writeOffs: 0,
+        bankruptcies: 0,
+        emergencyLoansGranted: 0,
         ...overrides,
     };
 }
@@ -403,12 +407,6 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         transportPipeline: {},
         monthTransferVolume: 0,
         governmentSupportVolume: 0,
-        rolloverDenials: 0,
-        debtWriteOffs: 0,
-        bankruptcies: 0,
-        refoundCount: 0,
-        loanInterestCollected: 0,
-        emergencyLoansGranted: 0,
         orderBooks: {},
         lastMarketResult: {},
         avgMarketResult: {},
@@ -419,7 +417,6 @@ export function makePlanet(overrides?: Partial<Planet> & { governmentId?: string
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
-        governmentDebt: 0,
         ...restOverrides,
     };
 
@@ -456,6 +453,7 @@ export function makeGameState(
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
         tickerEvents: [],
+        bankruptcies: [],
         nextEventId: 1,
     };
 }
@@ -617,5 +615,5 @@ export function creditForeignDeposit(agent: Agent, issuingPlanet: Planet, amount
     assets.deposits += amount;
     issuingPlanet.bank.deposits += amount;
     issuingPlanet.bank.loans += amount;
-    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRate, 0, 0, false));
+    assets.activeLoans.push(makeLoan('forexWorkingCapital', amount, issuingPlanet.bank.loanRatePerYear, 0, 0, false));
 }

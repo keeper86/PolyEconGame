@@ -5,7 +5,7 @@ import { Piscina } from 'piscina';
 import { spawnSync } from 'node:child_process';
 
 import type { InboundMessage, OutboundMessage } from '../worker';
-import type { Planet, Agent } from '../planet/planet';
+import type { Planet, Agent, BankruptcyRecord } from '../planet/planet';
 import type { ShipCapitalMarket } from '../ships/ships';
 import type { TickerEvent } from '../../server/controller/simulation';
 
@@ -34,6 +34,7 @@ export interface SnapshotCache {
     shipbuilderAgents: Agent[];
     arbitrageTraders: Agent[];
     tickerEvents: TickerEvent[];
+    bankruptcies: BankruptcyRecord[];
 }
 
 const GLOBAL_KEY_STATE = Symbol.for('__polyecon_cached_state__');
@@ -261,6 +262,7 @@ export function startWorker(): void {
             shipbuilderAgents: data.shipbuilderAgents ?? [],
             arbitrageTraders: data.arbitrageTraders ?? [],
             tickerEvents: tickerEvents ?? [],
+            bankruptcies: data.bankruptcies,
         };
 
         (g as Record<symbol, SnapshotCache>)[GLOBAL_KEY_STATE] = cache;

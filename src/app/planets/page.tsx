@@ -6,6 +6,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { PLANET_LARGE_IMAGES } from '@/lib/planetAssets';
 import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResources';
+import { bankEquity } from '@/simulation/planet/planet';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -101,7 +102,11 @@ export default function PlanetsPage() {
 
                                                     <span className='text-muted-foreground'>Bank Equity</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.bank.equity, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(
+                                                            bankEquity(p.bank),
+                                                            'currency',
+                                                            p.planetId,
+                                                        )}
                                                     </span>
 
                                                     <span className='text-muted-foreground'>Interest Rate</span>

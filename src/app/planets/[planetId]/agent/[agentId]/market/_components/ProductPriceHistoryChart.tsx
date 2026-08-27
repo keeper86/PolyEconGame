@@ -4,18 +4,17 @@ import { GranularityHeader, useGranularity } from '@/components/client/Granulari
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-
-type RescaleMode = 'absolute' | 'relative';
 
 function rescalePoints(points: ChartPoint[]): ChartPoint[] {
     return points.map((p) => {
@@ -94,7 +93,7 @@ function usesLogScale(points: ChartPoint[]): boolean {
 const tooltipValueFormatter = (
     value: number,
     _name: string,
-    rescaleMode: RescaleMode,
+    rescaleMode: PriceScaleMode,
     planetId: string,
 ): [string, string] => {
     const labels: Record<string, string> = {
@@ -158,7 +157,7 @@ function SimplePriceAreaChart({
     yDomain: [number, number] | ['auto', 'auto'];
     yTicks?: number[];
     verticalGridValues?: number[];
-    rescaleMode: RescaleMode;
+    rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const smallScreen = useIsSmallScreen();
@@ -508,7 +507,7 @@ function MonthlyChart({
     monthlyPoints: RawPoint[];
     live?: LiveData;
     productName: string;
-    rescaleMode: RescaleMode;
+    rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const data = useMemo(
@@ -571,7 +570,7 @@ function YearlyChart({
 }: {
     yearlyPoints: RawPoint[];
     productName: string;
-    rescaleMode: RescaleMode;
+    rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
@@ -637,7 +636,7 @@ function DecadesChart({
 }: {
     decadePoints: RawPoint[];
     productName: string;
-    rescaleMode: RescaleMode;
+    rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
@@ -699,7 +698,7 @@ function DecadesChart({
 export default function ProductPriceHistoryChart({ planetId, productName, live }: Props): React.ReactElement {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
-    const [rescaleMode, setRescaleMode] = useState<RescaleMode>('absolute');
+    const [rescaleMode, setRescaleMode] = usePriceScaleModePreference();
 
     const smallScreen = useIsSmallScreen();
 
@@ -778,7 +777,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 className='pb-2'
                 title={
                     <span className='pb-2'>
-                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as RescaleMode)}>
+                        <Tabs value={rescaleMode} onValueChange={(v) => setRescaleMode(v as PriceScaleMode)}>
                             <TabsList className='h-6 p-0'>
                                 <TabsTrigger
                                     value='absolute'

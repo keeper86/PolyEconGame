@@ -37,7 +37,7 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
             const incrCost = calculateCostsForConstruction(type, facility.maxScale, constructionTargetMaxScale).cost;
             const progressFraction =
                 totalConstructionServiceRequired > 0 ? Math.min(progress / totalConstructionServiceRequired, 1) : 0;
-            const partialCS = incrCost * RECYCLER_BASE_RECOVERY_EFFICIENCY * progressFraction;
+            const partialCS = incrCost * 0.5 * progressFraction * progressFraction;
             total += partialCS * csPrice;
         }
     }

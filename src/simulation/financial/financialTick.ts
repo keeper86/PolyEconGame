@@ -1,7 +1,6 @@
 import {
     EMERGENCY_LOAN_WAGE_MONTHS,
     INPUT_BUFFER_TARGET_TICKS,
-    LOAN_INTEREST_RATE_PER_YEAR,
     MIN_WAGE,
     TICKS_PER_MONTH,
     TICKS_PER_YEAR,
@@ -10,15 +9,9 @@ import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/plan
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
-import {
-    grantLoan,
-    hasOutstandingEmergencyLoan,
-    repayLoansEmergencyFirst,
-    repayLoansOldestFirst,
-    totalOutstandingLoans,
-} from './loanTypes';
+import { grantLoan, hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
+import { grantAutomaticLoan } from './loanConditions';
 import { creditWageIncome } from './wealthOps';
-import { terminateAndRefound } from './bankruptcy';
 
 export const DEFAULT_WAGE_PER_EDU = MIN_WAGE;
 
@@ -40,7 +33,7 @@ export function preProductionFinancialTick(
     agents: Map<string, Agent>,
     planet: Planet,
     tick = 1,
-    gameState?: GameState,
+    gameState: GameState,
 ): void {
     const bank = planet.bank;
     const demography = planet.population.demography;
@@ -56,10 +49,6 @@ export function preProductionFinancialTick(
     for (const agent of [...agents.values()]) {
         const assets = agent.assets[planet.id];
         if (!assets) {
-            continue;
-        }
-
-        if (!assets.workforceDemography) {
             continue;
         }
 
@@ -107,15 +96,13 @@ export function preProductionFinancialTick(
             continue;
         }
 
-        if (
-            bankruptcyEnabled &&
-            agent.id !== planet.governmentId &&
-            assets.deposits < wageBill &&
-            hasOutstandingEmergencyLoan(assets.activeLoans) &&
-            gameState
-        ) {
-            terminateAndRefound(gameState, planet, agent, tick);
-            continue;
+        const wageLoanAmount =
+            assets.deposits < wageBill ? EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits : 0;
+        if (wageLoanAmount > 0) {
+            const result = grantAutomaticLoan(gameState, agent, planet, wageLoanAmount, 'wageCoverage', tick);
+            if (result.kind === 'bankrupt') {
+                continue;
+            }
         }
 
         assets.monthAcc.wages += wageBill;
@@ -126,21 +113,16 @@ export function preProductionFinancialTick(
             totalWorkersForEdu.tertiary;
         assets.monthAcc.totalWorkersTicks += totalAgentWorkerCount;
 
-        if (assets.deposits < wageBill) {
-            const shortfall = EMERGENCY_LOAN_WAGE_MONTHS * TICKS_PER_MONTH * wageBill - assets.deposits;
-            grantLoan(assets, bank, shortfall, bankruptcyEnabled ? 'emergency' : 'wageCoverage', tick);
-            if (bankruptcyEnabled) {
-                planet.emergencyLoansGranted += 1;
-            }
-        }
-
         assets.deposits -= wageBill;
 
         if (agent.automated) {
             const bufferCost = estimateInputBufferCost(assets, planet);
             if (bufferCost > 0 && assets.deposits < bufferCost) {
                 const shortfall = bufferCost - assets.deposits;
-                grantLoan(assets, bank, shortfall, 'bufferCoverage', tick);
+                const result = grantAutomaticLoan(gameState, agent, planet, shortfall, 'bufferCoverage', tick);
+                if (result.kind === 'bankrupt') {
+                    continue;
+                }
             }
         }
 
@@ -181,26 +163,10 @@ export function preProductionFinancialTick(
             planet.wagePerEdu[edu] = weightedWageSum[edu] / totalPlanetWorkersForEdu[edu];
         }
     }
-
-    bank.equity = bank.deposits - bank.loans;
 }
 
-export const ROLLOVER_FEE_RATE = 0.05;
-
-let bankruptcyEnabled = false;
-let loanInterestRatePerYear = LOAN_INTEREST_RATE_PER_YEAR;
-
-export function setBankruptcyEnabled(enabled: boolean): void {
-    bankruptcyEnabled = enabled;
-}
-
-export function setLoanInterestRatePerYear(rate: number): void {
-    loanInterestRatePerYear = rate;
-}
-
-function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
+function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     const bank = planet.bank;
-    const ratePerTick = loanInterestRatePerYear / TICKS_PER_YEAR;
     let collected = 0;
     agents.forEach((agent) => {
         if (agent.id === planet.governmentId) {
@@ -210,28 +176,35 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet): void {
         if (!assets) {
             return;
         }
-        const outstanding = totalOutstandingLoans(assets.activeLoans);
-        if (outstanding <= 0) {
+
+        let interestDue = 0;
+        for (const loan of assets.activeLoans) {
+            interestDue += (loan.remainingPrincipal * loan.annualInterestRate) / TICKS_PER_YEAR;
+        }
+        if (interestDue <= 0) {
             return;
         }
-        const interest = outstanding * ratePerTick;
-        const debit = Math.min(interest, assets.deposits);
-        if (debit <= 0) {
-            return;
+
+        const debit = Math.min(interestDue, assets.deposits);
+        if (debit < interestDue) {
+            const uncovered = interestDue - debit;
+            const rolloverType = hasOutstandingEmergencyLoan(assets.activeLoans) ? 'emergency' : 'rollover';
+            grantLoan(assets, bank, uncovered, rolloverType, tick);
         }
-        assets.deposits -= debit;
-        bank.deposits -= debit;
-        collected += debit;
+
+        assets.deposits -= interestDue;
+        bank.deposits -= interestDue;
+        collected += interestDue;
+        assets.monthAcc.interestPaid += interestDue;
     });
-    planet.loanInterestCollected += collected;
+    bank.interestCollected += collected;
+    bank.profit += collected;
 }
 
 export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
     const bank = planet.bank;
 
-    if (bankruptcyEnabled) {
-        collectLoanInterest(agents, planet);
-    }
+    collectLoanInterest(agents, planet, tick);
 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -270,8 +243,6 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
 
         assets.activeLoans = remainingLoans;
     });
-
-    bank.equity = bank.deposits - bank.loans;
 }
 
 export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Planet): void {
@@ -318,13 +289,10 @@ export function automaticLoanRepayment(agents: Map<string, Agent>, planet: Plane
         }
 
         const maxRepayment = Math.min(agentLoanTotal, excessDeposits);
-        const actualRepayment = bankruptcyEnabled
-            ? repayLoansEmergencyFirst(assets.activeLoans, maxRepayment)
-            : repayLoansOldestFirst(assets.activeLoans, maxRepayment);
+        const actualRepayment = repayLoansEmergencyFirst(assets.activeLoans, maxRepayment);
 
         assets.deposits -= actualRepayment;
         bank.loans -= actualRepayment;
         bank.deposits -= actualRepayment;
     });
-    bank.equity = bank.deposits - bank.loans;
 }

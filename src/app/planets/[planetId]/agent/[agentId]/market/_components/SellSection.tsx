@@ -39,6 +39,7 @@ import {
     type SellVolumePresetType,
 } from './StrategyPresets';
 import { useSellSectionMutations } from './useSellSectionMutations';
+import { useSellPricingOpenPreference, useSellVolumeOpenPreference } from '@/hooks/uiPreferences';
 
 type SellStatusKind =
     | 'offering'
@@ -164,6 +165,9 @@ export default function SellSection({
         assets,
         offer,
     });
+
+    const [sellPricingOpen, setSellPricingOpen] = useSellPricingOpenPreference();
+    const [sellVolumeOpen, setSellVolumeOpen] = useSellVolumeOpenPreference();
 
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
@@ -376,6 +380,10 @@ export default function SellSection({
     const defaultPrice = overviewRow?.clearingPrice?.toFixed(2);
     const costFloor =
         overviewRow && overviewRow.priceCostRatio > 0 ? overviewRow.clearingPrice / overviewRow.priceCostRatio : 0;
+    const ownRatio =
+        offer?.offerPrice !== undefined && costFloor > 0
+            ? Number((offer.offerPrice / costFloor).toFixed(4))
+            : undefined;
     const quickPrices =
         overviewRow && costFloor > 0
             ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
@@ -450,8 +458,11 @@ export default function SellSection({
                             />
                         </div>
 
-                        {/* ── Pricing Strategy Collapsible ────────────────────── */}
-                        <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
+                        <Collapsible
+                            open={sellPricingOpen}
+                            onOpenChange={setSellPricingOpen}
+                            className='rounded-md border bg-muted/30'
+                        >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
                                     Pricing Strategy
@@ -551,6 +562,7 @@ export default function SellSection({
                                                 ghost={springGhost}
                                                 active={springActive}
                                                 currentRatio={springRatio}
+                                                ownRatio={ownRatio}
                                             />
                                         )}
                                     </div>
@@ -684,8 +696,11 @@ export default function SellSection({
                             </CollapsibleContent>
                         </Collapsible>
 
-                        {/* ── Volume Strategy Collapsible ──────────────────────── */}
-                        <Collapsible defaultOpen={false} className='rounded-md border bg-muted/30'>
+                        <Collapsible
+                            open={sellVolumeOpen}
+                            onOpenChange={setSellVolumeOpen}
+                            className='rounded-md border bg-muted/30'
+                        >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
                                     Volume Strategy

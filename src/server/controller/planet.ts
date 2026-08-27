@@ -12,7 +12,7 @@ import { computePopulationTotal } from '../../simulation/snapshotRepository';
 import { EPSILON, RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
 import { getRecyclerPaymentRatio } from '../../simulation/agents/recycler';
 import { getLatestTick } from '../../simulation/workerClient/manager';
-import { getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
+import { getAgentSync, getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
 import { protectedProcedure } from '../trpcRoot';
 
 export const getPlanetOverview = () =>
@@ -116,6 +116,7 @@ export const getPlanetEconomy = () =>
                     .object({
                         planetName: z.string(),
                         bank: z.any(),
+                        governmentBalance: z.number(),
                         wagePerEdu: z.record(z.string(), z.number()).nullable(),
                         priceLevel: z.number().nullable(),
                     })
@@ -128,11 +129,13 @@ export const getPlanetEconomy = () =>
             if (!planet) {
                 return { tick, economy: null };
             }
+            const { agent: government } = getAgentSync(planet.governmentId);
             return {
                 tick,
                 economy: {
                     planetName: planet.name,
                     bank: planet.bank,
+                    governmentBalance: government?.assets[planet.id]?.deposits ?? 0,
                     wagePerEdu: planet.wagePerEdu as Record<string, number>,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
                 },

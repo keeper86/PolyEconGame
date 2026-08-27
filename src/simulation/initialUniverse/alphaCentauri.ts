@@ -6,6 +6,7 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Planet } from '../planet/planet';
+import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import { makePool } from './resourceClaimFactory';
@@ -42,20 +43,18 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            equity: 0,
-            loanRate: 0,
-            depositRate: 0,
+            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            depositRatePerYear: 0,
+            profit: 0,
+            interestCollected: 0,
+            writeOffs: 0,
+            bankruptcies: 0,
+            emergencyLoansGranted: 0,
         },
         wagePerEdu: { none: 1.0, primary: 1.0, secondary: 1.0, tertiary: 1.0 },
         marketPrices: { ...initialMarketPrices },
         monthTransferVolume: 0,
         governmentSupportVolume: 0,
-        rolloverDenials: 0,
-        debtWriteOffs: 0,
-        bankruptcies: 0,
-        refoundCount: 0,
-        loanInterestCollected: 0,
-        emergencyLoansGranted: 0,
         transportPipeline: {},
         orderBooks: {},
         lastMarketResult: {},
@@ -67,7 +66,6 @@ export function buildAlphaCentauri(): { planet: Planet; agents: import('../plane
         productionCosts: {},
         lastProductionCostFloors: {},
         landBoundCostPerUnit: {},
-        governmentDebt: 0,
         resources: {
             [arableLandResourceType.name]: {
                 pool: makePool({ type: arableLandResourceType, quantity: TOTAL_ARABLE, renewable: true }),

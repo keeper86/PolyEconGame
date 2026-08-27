@@ -42,7 +42,6 @@ export function handleRequestLoan(
         return;
     }
     grantLoan(assets, planet.bank, amount, conditions.isNewAgent ? 'starter' : 'discretionary', state.tick);
-    planet.bank.equity = planet.bank.deposits - planet.bank.loans;
     if (conditions.isNewAgent) {
         agent.starterLoanTaken = true;
     }
@@ -125,7 +124,6 @@ export function handleRepayLoan(
     assets.deposits -= actualRepayment;
     planet.bank.loans -= actualRepayment;
     planet.bank.deposits -= actualRepayment;
-    planet.bank.equity = planet.bank.deposits - planet.bank.loans;
 
     console.log(`[worker] Loan '${loanId}' repaid ${actualRepayment} by agent '${agentId}' on planet '${planetId}'`);
     safePostMessage({

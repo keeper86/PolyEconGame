@@ -50,6 +50,7 @@ export function createInitialGameState(): GameState {
         shipbuilderAgents: new Map(),
         arbitrageTraders: new Map(),
         tickerEvents: [],
+        bankruptcies: [],
         nextEventId: 1,
     };
 
