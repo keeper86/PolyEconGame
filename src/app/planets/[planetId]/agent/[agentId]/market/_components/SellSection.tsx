@@ -14,6 +14,7 @@ import {
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
+    SPRING_NORMALIZATION,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
 } from '@/simulation/constants';
@@ -358,7 +359,8 @@ export default function SellSection({
 
     const springGhost = useMemo(
         () => ({
-            strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
+            strength:
+                (committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
             reference: committedVal(committedConfig, 'automatedCostFloorBuffer') ?? AUTOMATED_COST_FLOOR_BUFFER,
             maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
             maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
@@ -366,7 +368,7 @@ export default function SellSection({
         [committedConfig],
     );
     const springActive = {
-        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
+        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
         reference: sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER),
         maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
         maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
@@ -550,8 +552,8 @@ export default function SellSection({
                                             value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
-                                            max={0.2}
-                                            step={0.002}
+                                            max={1}
+                                            step={0.01}
                                             onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />

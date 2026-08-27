@@ -20,6 +20,7 @@ import {
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
+    SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
     TARGET_FILL_RATE_SERVICES,
 } from '@/simulation/constants';
@@ -388,7 +389,8 @@ export default function BuySection({
 
     const springGhost = useMemo(
         () => ({
-            strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
+            strength:
+                (committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
             reference: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
             maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
             maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
@@ -396,7 +398,7 @@ export default function BuySection({
         [committedConfig],
     );
     const springActive = {
-        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
+        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
         reference: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
         maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
         maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
@@ -584,8 +586,8 @@ export default function BuySection({
                                             value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
-                                            max={0.2}
-                                            step={0.002}
+                                            max={1}
+                                            step={0.01}
                                             onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />

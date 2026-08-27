@@ -1,3 +1,5 @@
+import { COST_SPRING_STRENGTH, SPRING_NORMALIZATION } from '@/simulation/constants';
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type PidParams = {
@@ -38,7 +40,7 @@ export const PID_DEFAULTS: PidParams = {
 export const PRICING_DEFAULTS: PricingParams = {
     priceAdjustMaxUp: 1.05,
     priceAdjustMaxDown: 0.95,
-    costSpringStrength: 0.1,
+    costSpringStrength: COST_SPRING_STRENGTH,
     targetSellThrough: 0.6,
     automatedCostFloorBuffer: 1.5,
     bidOfferMaxCostMultiplier: 6,
@@ -283,7 +285,7 @@ function computeOfferPrice(
 
     const brakeZoneTop = costFloor * params.automatedCostFloorBuffer;
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / currentPrice - 1));
-    const netFactor = factor + params.costSpringStrength * deviation;
+    const netFactor = factor + params.costSpringStrength * SPRING_NORMALIZATION * deviation;
     const newPrice = currentPrice * netFactor;
 
     return Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
@@ -332,7 +334,7 @@ function computeBidPrice(
     );
 
     const overDeviation = Math.sqrt(Math.max(0, currentBidPrice / ceilingPrice - 1));
-    const ceilingSpring = params.costSpringStrength * overDeviation;
+    const ceilingSpring = params.costSpringStrength * SPRING_NORMALIZATION * overDeviation;
     const factor = baseFactor - ceilingSpring;
     const newPrice = currentBidPrice * factor;
 

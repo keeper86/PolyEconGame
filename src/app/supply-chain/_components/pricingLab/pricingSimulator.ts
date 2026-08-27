@@ -1,4 +1,11 @@
-import { PRICE_FLOOR, PRICE_CEIL, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN } from '@/simulation/constants';
+import {
+    PRICE_FLOOR,
+    PRICE_CEIL,
+    PRICE_ADJUST_MAX_UP,
+    PRICE_ADJUST_MAX_DOWN,
+    COST_SPRING_STRENGTH,
+    SPRING_NORMALIZATION,
+} from '@/simulation/constants';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -107,7 +114,7 @@ export const SELL_DEFAULTS: SellScenario = {
     targetSellThrough: 0.6,
     priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
     priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-    costSpringStrength: 0.1,
+    costSpringStrength: COST_SPRING_STRENGTH,
     inventorySmoothingMaxExtra: 2,
     outputBufferMaxTicks: 20,
     automatedCostFloorBuffer: 1.5,
@@ -129,7 +136,7 @@ export const BUY_DEFAULTS: BuyScenario = {
     targetFillRate: 0.6,
     priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
     priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-    costSpringStrength: 0.1,
+    costSpringStrength: COST_SPRING_STRENGTH,
     inventorySmoothingMaxExtra: 2,
     inputBufferTargetTicks: 30,
     freeBuyQuantity: 0,
@@ -236,7 +243,7 @@ function computeSellPrice(
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / currentPrice - 1));
-    const netFactor = factor + cfg.costSpringStrength * deviation;
+    const netFactor = factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
     const rawPrice = currentPrice * netFactor;
     const clampedPrice = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, rawPrice));
 
@@ -344,7 +351,7 @@ function computeBuyPrice(
     const baseFactor = fillRateFactor(fillRate, cfg.targetFillRate, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
 
     const overDeviation = Math.sqrt(Math.max(0, currentBidPrice / ceilingPrice - 1));
-    const ceilingSpring = cfg.costSpringStrength * overDeviation;
+    const ceilingSpring = cfg.costSpringStrength * SPRING_NORMALIZATION * overDeviation;
     const factor = baseFactor - ceilingSpring;
     const rawPrice = currentBidPrice * factor;
     const clampedPrice = Math.max(PRICE_FLOOR, Math.min(PRICE_CEIL, rawPrice));
@@ -514,7 +521,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetSellThrough: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.1,
+        costSpringStrength: COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
@@ -534,7 +541,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetSellThrough: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.1,
+        costSpringStrength: COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
@@ -554,7 +561,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetSellThrough: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.3,
+        costSpringStrength: COST_SPRING_STRENGTH * 3,
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
@@ -574,7 +581,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetSellThrough: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.5,
+        costSpringStrength: COST_SPRING_STRENGTH * 5,
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
@@ -594,7 +601,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetSellThrough: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.1,
+        costSpringStrength: COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: 2,
         outputBufferMaxTicks: 20,
         automatedCostFloorBuffer: 1.5,
@@ -615,7 +622,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetFillRate: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.1,
+        costSpringStrength: COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: 2,
         inputBufferTargetTicks: 30,
         freeBuyQuantity: 0,
@@ -635,7 +642,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetFillRate: 0.6,
         priceAdjustMaxUp: 1.1,
         priceAdjustMaxDown: 0.9,
-        costSpringStrength: 0.2,
+        costSpringStrength: COST_SPRING_STRENGTH * 2,
         inventorySmoothingMaxExtra: 2,
         inputBufferTargetTicks: 30,
         freeBuyQuantity: 0,
@@ -655,7 +662,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         targetFillRate: 0.6,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: 0.1,
+        costSpringStrength: COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: 2,
         inputBufferTargetTicks: 30,
         freeBuyQuantity: 0,

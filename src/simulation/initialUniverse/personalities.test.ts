@@ -130,9 +130,8 @@ describe('buildSellAutoConfigForResource', () => {
             massPerQuantity: 0,
             volumePerQuantity: 0,
         };
-        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9, askPriceSensitivity: 0.5 }, service);
+        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9 }, service);
         expect(cfg.targetSellThrough).toBeUndefined();
-        expect(cfg.askPriceSensitivity).toBe(0.5);
     });
 
     it('keeps all fields for goods', () => {
@@ -143,8 +142,7 @@ describe('buildSellAutoConfigForResource', () => {
             massPerQuantity: 1,
             volumePerQuantity: 1,
         };
-        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9, askPriceSensitivity: 0.5 }, goods);
+        const cfg = buildSellAutoConfigForResource({ targetSellThrough: 0.9 }, goods);
         expect(cfg.targetSellThrough).toBe(0.9);
-        expect(cfg.askPriceSensitivity).toBe(0.5);
     });
 });

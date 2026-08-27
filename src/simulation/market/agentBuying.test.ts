@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA, PRICE_CEIL, TARGET_FILL_RATE } from '../constants';
+import {
+    BID_OFFER_MAX_COST_MULTIPLIER,
+    COST_SPRING_STRENGTH,
+    INPUT_BUFFER_TARGET_TICKS,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
+    PRICE_CEIL,
+    SPRING_NORMALIZATION,
+    TARGET_FILL_RATE,
+} from '../constants';
 import { putIntoStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
@@ -413,7 +421,7 @@ describe('automaticPricing — buy side', () => {
         expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
-    it('pulls an underfilled bid above the per-agent ceiling back down via the ceiling spring', () => {
+    it('damps an underfilled bid above the per-agent ceiling via the ceiling spring', () => {
         planet.lastProductionCostFloors[COAL] = 1.0;
         const buyer = makeSteelProducer();
         automaticPricing(agentMap(buyer), planet);
@@ -429,11 +437,19 @@ describe('automaticPricing — buy side', () => {
 
         const diagnostics = bid.diagnostics;
         expect(diagnostics).toBeDefined();
-        // unfilled → the fill-rate factor wants to raise the bid, but the ceiling spring caps it
+        // unfilled → the fill-rate factor wants to raise the bid, but the ceiling spring dampens it
         expect(diagnostics!.baseFactor).toBeGreaterThan(1);
         expect(diagnostics!.ceilingSpring).toBeGreaterThan(0);
         expect(diagnostics!.netFactor).toBeLessThan(diagnostics!.baseFactor);
-        expect(bid.bidPrice!).toBeLessThanOrEqual(5);
+
+        const ceiling = Math.min(PRICE_CEIL, 1.0 * BID_OFFER_MAX_COST_MULTIPLIER);
+        const expectedPrice =
+            5 * (diagnostics!.baseFactor - COST_SPRING_STRENGTH * SPRING_NORMALIZATION * Math.sqrt(5 / ceiling - 1));
+        expect(bid.bidPrice!).toBeCloseTo(expectedPrice, 5);
+        // with SPRING_NORMALIZATION the spring no longer wins against the fill-rate push in a single tick,
+        // but the bid rises strictly less than it would without the spring
+        expect(bid.bidPrice!).toBeGreaterThan(5);
+        expect(bid.bidPrice!).toBeLessThan(5 * diagnostics!.baseFactor);
     });
 
     it('bids the full quantity regardless of market price and anchors the price via the ceiling spring', () => {

@@ -1,9 +1,7 @@
 import {
-    ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     JOINT_DEMAND_WEIGHT_MAX,
     JOINT_DEMAND_WEIGHT_MIN,
@@ -26,6 +24,9 @@ import {
     facilityWageCostPerTick,
 } from '../../src/simulation/planet/auxiliaryCosts';
 import { makePlanet } from '../../src/simulation/utils/testHelper';
+
+const BID_PRICE_SENSITIVITY = 0.5;
+const ASK_PRICE_SENSITIVITY = 0.15;
 
 const REF: Record<string, number> = {
     Fuel: initialMarketPrices.Fuel ?? 1.5,

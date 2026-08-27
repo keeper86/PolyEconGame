@@ -1,8 +1,6 @@
 import {
-    ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
     BID_ANCHOR_MULTIPLE,
-    BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
@@ -10,7 +8,7 @@ import {
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     TARGET_FILL_RATE,
-    TARGET_SELL_THROUGH,
+    TARGET_SELL_THROUGH
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { AutomatedPricingConfig } from '../planet/planet';
@@ -50,21 +48,18 @@ const PRICING_BUY_CONFIGS: Record<BuyPricingPreset, Partial<AutomatedPricingConf
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
         targetFillRate: parseFloat((TARGET_FILL_RATE * 0.78).toFixed(2)),
         bidVolumeFloorFraction: 0.05,
-        bidPriceSensitivity: 0.6,
     },
     'market-rate': {
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         targetFillRate: TARGET_FILL_RATE,
         bidVolumeFloorFraction: BID_VOLUME_FLOOR_FRACTION,
-        bidPriceSensitivity: BID_PRICE_SENSITIVITY,
     },
     'urgent': {
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         targetFillRate: parseFloat(Math.min(1, TARGET_FILL_RATE * 1.06).toFixed(2)),
         bidVolumeFloorFraction: 0.2,
-        bidPriceSensitivity: 1.5,
     },
 };
 
@@ -86,21 +81,18 @@ const PRICING_SELL_CONFIGS: Record<SellPricingPreset, Partial<AutomatedPricingCo
         priceAdjustMaxDown: parseFloat((PRICE_ADJUST_MAX_DOWN * 0.84).toFixed(2)),
         targetSellThrough: parseFloat(Math.min(1, TARGET_SELL_THROUGH * 1.06).toFixed(2)),
         askVolumeFloorFraction: 0,
-        askPriceSensitivity: 1.5,
     },
     'market-rate': {
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         targetSellThrough: TARGET_SELL_THROUGH,
         askVolumeFloorFraction: ASK_VOLUME_FLOOR_FRACTION,
-        askPriceSensitivity: ASK_PRICE_SENSITIVITY,
     },
     'premium': {
         priceAdjustMaxUp: parseFloat((PRICE_ADJUST_MAX_UP * 1.1).toFixed(2)),
         priceAdjustMaxDown: parseFloat((1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6).toFixed(2)),
         targetSellThrough: parseFloat((TARGET_SELL_THROUGH * 0.7).toFixed(2)),
         askVolumeFloorFraction: 0,
-        askPriceSensitivity: 0.6,
     },
 };
 
@@ -133,7 +125,7 @@ export function generateAgentPersonality(): AgentPersonality {
             priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
 
             bidOfferMaxCostMultiplier: buyPriceAgressiveness,
-            costSpringStrength: 0.05,
+            costSpringStrength: 0.35,
         },
         sellAutoConfig: {
             ...VOLUME_SELL_CONFIGS.balanced,
@@ -141,13 +133,13 @@ export function generateAgentPersonality(): AgentPersonality {
             priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
             priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
             automatedCostFloorBuffer: sellPriceAgressiveness,
-            costSpringStrength: 0.05,
+            costSpringStrength: 0.35,
         },
     };
 }
 
-export { BUY_VOLUME_PRESETS, BUY_PRICING_PRESETS, SELL_VOLUME_PRESETS, SELL_PRICING_PRESETS };
-export type { BuyVolumePreset, BuyPricingPreset, SellVolumePreset, SellPricingPreset };
+export { BUY_PRICING_PRESETS, BUY_VOLUME_PRESETS, SELL_PRICING_PRESETS, SELL_VOLUME_PRESETS };
+export type { BuyPricingPreset, BuyVolumePreset, SellPricingPreset, SellVolumePreset };
 
 export function buildBuyAutoConfigForResource(
     base: AutomatedPricingConfig,

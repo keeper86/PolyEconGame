@@ -13,6 +13,7 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SELL_THROUGH_EMA_ALPHA,
+    SPRING_NORMALIZATION,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
     TICKS_PER_YEAR,
@@ -136,7 +137,6 @@ describe('resolveOfferConfig — config resolution', () => {
                 inventorySmoothingMaxExtra: 5,
                 targetSellThrough: 0.8,
                 askVolumeFloorFraction: 0.3,
-                askPriceSensitivity: 1.5,
                 freeRetainment: 0,
                 freeRetainmentSmoothingMaxExtra: 2,
             } as AutomatedPricingConfig,
@@ -414,7 +414,7 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         expect(offer.diagnostics!.costSpringDeviation).toBeCloseTo(deviation, 10);
         // sell-through 0.6 equals the target → factor = 1, spring alone pushes the price up
         expect(offer.diagnostics!.baseFactor).toBeCloseTo(1, 10);
-        expect(offer.offerPrice).toBeCloseTo(10 * (1 + 0.05 * deviation), 10);
+        expect(offer.offerPrice).toBeCloseTo(10 * (1 + 0.05 * SPRING_NORMALIZATION * deviation), 10);
         expect(offer.offerPrice).toBeGreaterThan(10);
     });
 
