@@ -103,7 +103,7 @@ describe('computeFacilitiesValue', () => {
 
         const completedValue = fullValue(1) * 0.25;
         const incrCost = calculateCostsForConstruction('raw', 1, 2).cost;
-        const partialValue = incrCost * RECYCLER_BASE_RECOVERY_EFFICIENCY * CS_PRICE * 0.5;
+        const partialValue = incrCost * 0.5 * CS_PRICE * 0.25;
 
         expect(computeFacilitiesValue(assets, CS_PRICE)).toBeCloseTo(completedValue + partialValue);
     });
