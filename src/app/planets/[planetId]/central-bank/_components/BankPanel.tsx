@@ -8,7 +8,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
 import { bankEquity } from '@/simulation/planet/planet';
-import { Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
+import { FileX, Landmark, Percent, Scale, Search, TrendingDown, Users, Wallet } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
@@ -18,9 +18,10 @@ const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 type Props = {
     bank: Bank;
     planetId: string;
+    governmentBalance: number;
 };
 
-export default function BankPanel({ bank, planetId }: Props): React.ReactElement | null {
+export default function BankPanel({ bank, planetId, governmentBalance }: Props): React.ReactElement | null {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -79,6 +80,11 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         value={formatNumberWithUnit(bank.householdDeposits, 'currency', planetId)}
                         icon={<Users className='h-3 w-3' />}
                     />
+                    <Stat
+                        label='Government balance'
+                        value={formatNumberWithUnit(governmentBalance, 'currency', planetId)}
+                        icon={<Landmark className='h-3 w-3' />}
+                    />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
@@ -86,6 +92,12 @@ export default function BankPanel({ bank, planetId }: Props): React.ReactElement
                         value={formatNumberWithUnit(equity, 'currency', planetId)}
                         icon={<Scale className='h-3 w-3' />}
                         valueClassName={equityColor}
+                    />
+                    <Stat
+                        label='Written-off debt (total)'
+                        value={formatNumberWithUnit(bank.writeOffs, 'currency', planetId)}
+                        icon={<FileX className='h-3 w-3' />}
+                        valueClassName={bank.writeOffs > 0 ? 'text-red-500' : ''}
                     />
                     <Stat
                         label='Loan rate (new loans, p.a.)'
