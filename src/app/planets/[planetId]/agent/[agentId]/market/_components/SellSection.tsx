@@ -29,6 +29,8 @@ import {
     autoConfigToLocal,
     buildResetTarget,
     canResetToTarget,
+    SELL_PRICING_KEYS,
+    SELL_VOLUME_KEYS,
     type AutoConfigLocalState,
     type SellSectionProps,
 } from './marketTypes';
@@ -134,15 +136,6 @@ function committedVal(
 }
 
 const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['freeRetainment', 'freeRetainmentSmoothingMaxExtra']);
-
-const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'automatedCostFloorBuffer',
-    'targetSellThrough',
-];
-const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
 export default function SellSection({
     resourceName,

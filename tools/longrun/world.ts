@@ -373,6 +373,7 @@ export function buildBenchmarkWorld(
         arbitrageTraders: new Map(),
         tickerEvents: [],
         nextEventId: 1,
+        bankruptcies: [],
     };
 
     prefillAgentStorageFromFacilities(gameState);

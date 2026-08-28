@@ -1,4 +1,10 @@
-import type { AutoConfigLocalState } from './marketTypes';
+import {
+    BUY_PRICING_KEYS,
+    BUY_VOLUME_KEYS,
+    SELL_PRICING_KEYS,
+    SELL_VOLUME_KEYS,
+    type AutoConfigLocalState,
+} from './marketTypes';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
@@ -274,31 +280,6 @@ export function getPricingSellPreset(
 
 // ─── Detection helpers ──────────────────────────────────────────────────────
 
-const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = [
-    'inventorySmoothingMaxExtra',
-    'inputBufferTargetTicks',
-    'freeBuyQuantity',
-    'freeBuyQuantitySmoothingMaxExtra',
-];
-
-const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
-
-const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'targetFillRate',
-    'bidOfferMaxCostMultiplier',
-];
-
-const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'automatedCostFloorBuffer',
-    'targetSellThrough',
-];
-
 function matchesPreset(
     localConfig: AutoConfigLocalState,
     presetValues: Record<string, string>,
@@ -318,13 +299,13 @@ function matchesPreset(
 }
 
 export function detectVolumeBuyPreset(localConfig: AutoConfigLocalState, isService: boolean): BuyVolumePresetType {
-    if (VOLUME_BUY_KEYS.every((key) => localConfig[key] === '')) {
+    if (BUY_VOLUME_KEYS.every((key) => localConfig[key] === '')) {
         return 'balanced';
     }
     const presets = isService ? VOLUME_BUY_PRESETS_SERVICES : VOLUME_BUY_PRESETS;
     const entries = Object.entries(presets) as [Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, VOLUME_BUY_KEYS)) {
+        if (matchesPreset(localConfig, values, BUY_VOLUME_KEYS)) {
             return preset;
         }
     }
@@ -332,7 +313,7 @@ export function detectVolumeBuyPreset(localConfig: AutoConfigLocalState, isServi
 }
 
 export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellVolumePresetType {
-    if (VOLUME_SELL_KEYS.every((key) => localConfig[key] === '')) {
+    if (SELL_VOLUME_KEYS.every((key) => localConfig[key] === '')) {
         return 'balanced';
     }
     const entries = Object.entries(VOLUME_SELL_PRESETS) as [
@@ -340,7 +321,7 @@ export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellV
         VolumeSellValues,
     ][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, VOLUME_SELL_KEYS)) {
+        if (matchesPreset(localConfig, values, SELL_VOLUME_KEYS)) {
             return preset;
         }
     }
@@ -348,13 +329,13 @@ export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellV
 }
 
 export function detectPricingBuyPreset(localConfig: AutoConfigLocalState, isService: boolean): PricingPresetType {
-    if (PRICING_BUY_KEYS.every((key) => localConfig[key] === '')) {
+    if (BUY_PRICING_KEYS.every((key) => localConfig[key] === '')) {
         return 'market-rate';
     }
     const presets = isService ? PRICING_BUY_PRESETS_SERVICES : PRICING_BUY_PRESETS;
     const entries = Object.entries(presets) as [Exclude<PricingPresetType, 'custom'>, PricingBuyValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, PRICING_BUY_KEYS)) {
+        if (matchesPreset(localConfig, values, BUY_PRICING_KEYS)) {
             return preset;
         }
     }
@@ -362,13 +343,13 @@ export function detectPricingBuyPreset(localConfig: AutoConfigLocalState, isServ
 }
 
 export function detectPricingSellPreset(localConfig: AutoConfigLocalState, isService: boolean): SellPricingPresetType {
-    if (PRICING_SELL_KEYS.every((key) => localConfig[key] === '')) {
+    if (SELL_PRICING_KEYS.every((key) => localConfig[key] === '')) {
         return 'market-rate';
     }
     const presets = isService ? PRICING_SELL_PRESETS_SERVICES : PRICING_SELL_PRESETS;
     const entries = Object.entries(presets) as [Exclude<SellPricingPresetType, 'custom'>, PricingSellValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, PRICING_SELL_KEYS)) {
+        if (matchesPreset(localConfig, values, SELL_PRICING_KEYS)) {
             return preset;
         }
     }

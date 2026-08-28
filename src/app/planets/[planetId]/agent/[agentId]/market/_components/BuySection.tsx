@@ -45,6 +45,8 @@ import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import {
     autoConfigToLocal,
     buildResetTarget,
+    BUY_PRICING_KEYS,
+    BUY_VOLUME_KEYS,
     canResetToTarget,
     type AutoConfigLocalState,
     type BuySectionProps,
@@ -166,20 +168,6 @@ function committedVal(
 }
 
 const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['inputBufferTargetTicks', 'inventorySmoothingMaxExtra']);
-
-const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'bidOfferMaxCostMultiplier',
-    'targetFillRate',
-];
-const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
-    'inputBufferTargetTicks',
-    'inventorySmoothingMaxExtra',
-    'freeBuyQuantity',
-    'freeBuyQuantitySmoothingMaxExtra',
-];
 
 export default function BuySection({
     resourceName,

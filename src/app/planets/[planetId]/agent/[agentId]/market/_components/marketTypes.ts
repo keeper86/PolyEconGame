@@ -23,6 +23,31 @@ export type AutoConfigLocalState = {
     freeRetainmentSmoothingMaxExtra: string;
 };
 
+export const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'bidOfferMaxCostMultiplier',
+    'targetFillRate',
+];
+
+export const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
+    'inputBufferTargetTicks',
+    'inventorySmoothingMaxExtra',
+    'freeBuyQuantity',
+    'freeBuyQuantitySmoothingMaxExtra',
+];
+
+export const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'automatedCostFloorBuffer',
+    'targetSellThrough',
+];
+
+export const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
+
 export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
     return {
         priceAdjustMaxUp: config?.priceAdjustMaxUp?.toString() ?? '',

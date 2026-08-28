@@ -10,21 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketBidEntry } from './marketTypes';
-import { localToAutoConfig } from './marketTypes';
-
-const BUY_PRICING_KEYS = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'bidOfferMaxCostMultiplier',
-    'targetFillRate',
-] as const;
-const BUY_VOLUME_KEYS = [
-    'inputBufferTargetTicks',
-    'inventorySmoothingMaxExtra',
-    'freeBuyQuantity',
-    'freeBuyQuantitySmoothingMaxExtra',
-] as const;
+import { BUY_PRICING_KEYS, BUY_VOLUME_KEYS, localToAutoConfig } from './marketTypes';
 
 function depositWarning(message: string, agentId: string, planetId: string) {
     return (
@@ -50,7 +36,7 @@ function pickAutoConfigKeys(source: AutoConfigLocalState, keys: readonly string[
 }
 
 function commitPricingConfig(autoConfig: AutomatedPricingConfig | undefined): AutomatedPricingConfig | undefined {
-    const keySet = new Set<string>(BUY_PRICING_KEYS as readonly string[]);
+    const keySet = new Set<string>(BUY_PRICING_KEYS);
     const filtered: Record<string, number> = {};
     if (autoConfig) {
         for (const [k, v] of Object.entries(autoConfig)) {
@@ -63,7 +49,7 @@ function commitPricingConfig(autoConfig: AutomatedPricingConfig | undefined): Au
 }
 
 function commitVolumeConfig(autoConfig: AutomatedPricingConfig | undefined): AutomatedPricingConfig | undefined {
-    const keySet = new Set<string>(BUY_VOLUME_KEYS as readonly string[]);
+    const keySet = new Set<string>(BUY_VOLUME_KEYS);
     const filtered: Record<string, number> = {};
     if (autoConfig) {
         for (const [k, v] of Object.entries(autoConfig)) {

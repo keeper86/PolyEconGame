@@ -42,10 +42,8 @@ npx tsx tools/longrun/orchestrator.ts --years=30 --bands=strict
 | `--buildChainScaleFactor=<n>` | scenario | Overrides build-chain seed scaling. |
 | `--interestRate=<n>` | scenario | Sets the annual loan rate (0.05 = 5%). |
 | `--bankruptcyWriteOffFraction=<n>` | scenario | Sets the bankruptcy debt write-off fraction (1.0 = full write-off). |
-| `--sellAggressiveness=<n>` | — | Overrides the mean sell-price aggressiveness. |
 | `--claimCostMultiplier=<n>` | — | Overrides the non-renewable claim cost multiplier. |
 | `--wealthTaxAllowance=<n>` | — | Overrides the wealth tax allowance. |
-| `--govBuffer=<n>` | — | Overrides the government operating buffer. |
 
 
 ## Scenarios

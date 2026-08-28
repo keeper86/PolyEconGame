@@ -3,10 +3,9 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setGovernmentOperatingBuffer, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
-import { setSellPriceAggressivenessMean } from '../../src/simulation/initialUniverse/personalities';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
@@ -221,10 +220,6 @@ function main(): void {
     if (bankruptcyWriteOffArg !== undefined) {
         setBankruptcyDebtWriteOffFraction(Number(bankruptcyWriteOffArg));
     }
-    const askFloorArg = arg('sellAggressiveness');
-    if (askFloorArg !== undefined) {
-        setSellPriceAggressivenessMean(Number(askFloorArg));
-    }
     const claimCostArg = arg('claimCostMultiplier');
     if (claimCostArg !== undefined) {
         setNonRenewableClaimCostMultiplier(Number(claimCostArg));
@@ -232,10 +227,6 @@ function main(): void {
     const wealthTaxAllowanceArg = arg('wealthTaxAllowance');
     if (wealthTaxAllowanceArg !== undefined) {
         setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
-    }
-    const govBufferArg = arg('govBuffer');
-    if (govBufferArg !== undefined) {
-        setGovernmentOperatingBuffer(Number(govBufferArg));
     }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;

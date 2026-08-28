@@ -2,7 +2,7 @@ import { TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
 import { auxiliaryCostPerTick, auxiliaryCostRates } from '../../src/simulation/planet/auxiliaryCosts';
 import { facilityInputCostPerTick, facilityWageCostPerTick } from '../../src/simulation/planet/auxiliaryCosts';
-import { maintenanceFacility } from '../../src/simulation/planet/productionFacilities';
+import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../../src/simulation/planet/productionFacilities';
 import { maintenanceServiceResourceType } from '../../src/simulation/planet/services';
 import { buildBenchmarkWorld } from './world';
 
@@ -10,7 +10,7 @@ function main(): void {
     const years = Number(process.argv[2] ?? 4);
     seedRng(1001);
     const { gameState, planet } = buildBenchmarkWorld({});
-    const template = maintenanceFacility('catalog', 'preview');
+    const template = ALL_PRODUCTION_FACILITY_ENTRIES['maintenanceFacility'].factory('catalog', 'preview');
 
     const totalTicks = years * TICKS_PER_YEAR;
     for (let t = 1; t <= totalTicks; t++) {

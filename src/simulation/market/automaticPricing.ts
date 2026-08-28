@@ -439,7 +439,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
 // ── Sell-side helpers ─────────────────────────────────────────────────────────
 
-function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
+export function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
     const clamped = Math.max(0, Math.min(1, sellThrough));
     if (clamped >= target) {
         const t = (clamped - target) / (1 - target);
