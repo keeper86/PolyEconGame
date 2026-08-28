@@ -155,7 +155,8 @@ export function computeMarketSummary(
 ): { clearingPrice: number; totalVolume: number; totalRevenue: number } {
     const totalVolume = trades.reduce((s, t) => s + t.quantity, 0);
     const totalRevenue = trades.reduce((s, t) => s + t.price * t.quantity, 0);
-    const clearingPrice = totalVolume > 0 ? totalRevenue / totalVolume : referencePrice;
+    const clearingPrice =
+        totalVolume > 0 ? trades.reduce((marginal, t) => Math.max(marginal, t.price), -Infinity) : referencePrice;
     return { clearingPrice, totalVolume, totalRevenue };
 }
 

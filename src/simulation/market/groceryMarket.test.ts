@@ -286,7 +286,7 @@ describe('groceryMarketTick', () => {
         }
     });
 
-    it('volume-weighted average price is updated', () => {
+    it('market price is updated to the marginal trade price', () => {
         putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 2.5);
 
