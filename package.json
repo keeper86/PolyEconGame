@@ -30,7 +30,8 @@
         "db:types:check": "node ./tools/db_types.cjs check",
         "db:types:update": "node ./tools/db_types.cjs update",
         "db:waitFor": "npx wait-on --timeout=60000 tcp:localhost:5432",
-        "generate-keycloak-realm": "set -a && . ./.env && set +a && envsubst < ./keycloak/data/template.json > ./keycloak/data/import/initialRealm.json"
+        "generate-keycloak-realm": "set -a && . ./.env && set +a && envsubst < ./keycloak/data/template.json > ./keycloak/data/import/initialRealm.json",
+        "knip": "knip"
     },
     "dependencies": {
         "@msgpack/msgpack": "^3.1.3",

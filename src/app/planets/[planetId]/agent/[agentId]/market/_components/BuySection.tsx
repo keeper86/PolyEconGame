@@ -314,15 +314,6 @@ export default function BuySection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
 
-    // The last preset the user picked. Reset restores this preset until the user saves;
-    // once saved (or on navigation) the reset target falls back to the saved config.
-    const [volumePresetOverride, setVolumePresetOverride] = useState<Exclude<BuyVolumePresetType, 'custom'> | null>(
-        null,
-    );
-    const [pricingPresetOverride, setPricingPresetOverride] = useState<Exclude<PricingPresetType, 'custom'> | null>(
-        null,
-    );
-
     // Re-detect only when this section is bound to a different resource/agent/planet.
     // Live edits never snap the active preset highlight back to a preset.
     const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
@@ -334,8 +325,6 @@ export default function BuySection({
         setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
         setActivePricingPreset(detectedPricingPreset);
-        setVolumePresetOverride(null);
-        setPricingPresetOverride(null);
     }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
@@ -344,7 +333,6 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
-            setVolumePresetOverride(preset);
             const values = getVolumeBuyPreset(preset as Exclude<BuyVolumePresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
@@ -357,32 +345,15 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
-            setPricingPresetOverride(preset);
             const values = getPricingBuyPreset(preset as Exclude<PricingPresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
         [handleBuyConfigChange, isService],
     );
 
-    // Saving re-baselines the reset target to whatever was saved (a preset or a custom config).
-    const handleSaveBuyPricingConfig = () => {
-        setPricingPresetOverride(null);
-        onSaveBuyPricingConfig();
-    };
-    const handleSaveBuyVolumeConfig = () => {
-        setVolumePresetOverride(null);
-        onSaveBuyVolumeConfig();
-    };
-
     const committedLocal = autoConfigToLocal(bid?.autoConfig);
-    const pricingResetTarget = buildResetTarget(
-        pricingPresetOverride,
-        pricingPresetOverride ? getPricingBuyPreset(pricingPresetOverride, isService) : undefined,
-        committedLocal,
-        BUY_PRICING_KEYS,
-    );
-    const pricingPostResetMode: PricingPresetType =
-        pricingPresetOverride ?? detectPricingBuyPreset(committedLocal, isService);
+    const pricingResetTarget = buildResetTarget(committedLocal, BUY_PRICING_KEYS);
+    const pricingPostResetMode: PricingPresetType = detectPricingBuyPreset(committedLocal, isService);
     const canResetPricing = canResetToTarget(
         local.buyAutoConfig,
         pricingResetTarget,
@@ -391,14 +362,8 @@ export default function BuySection({
         pricingPostResetMode,
     );
 
-    const volumeResetTarget = buildResetTarget(
-        volumePresetOverride,
-        volumePresetOverride ? getVolumeBuyPreset(volumePresetOverride, isService) : undefined,
-        committedLocal,
-        BUY_VOLUME_KEYS,
-    );
-    const volumePostResetMode: BuyVolumePresetType =
-        volumePresetOverride ?? detectVolumeBuyPreset(committedLocal, isService);
+    const volumeResetTarget = buildResetTarget(committedLocal, BUY_VOLUME_KEYS);
+    const volumePostResetMode: BuyVolumePresetType = detectVolumeBuyPreset(committedLocal, isService);
     const canResetVolume = canResetToTarget(
         local.buyAutoConfig,
         volumeResetTarget,
@@ -695,7 +660,7 @@ export default function BuySection({
                                         <Button
                                             size='sm'
                                             className='h-7 text-[11px] px-3 flex-1'
-                                            onClick={handleSaveBuyPricingConfig}
+                                            onClick={onSaveBuyPricingConfig}
                                             disabled={
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || buyPricingConfigSaving
                                             }
@@ -1035,7 +1000,7 @@ export default function BuySection({
                                         <Button
                                             size='sm'
                                             className='h-7 text-[11px] px-3 flex-1'
-                                            onClick={handleSaveBuyVolumeConfig}
+                                            onClick={onSaveBuyVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || buyVolumeConfigSaving
                                             }

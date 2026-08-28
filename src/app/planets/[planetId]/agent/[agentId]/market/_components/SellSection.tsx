@@ -289,15 +289,6 @@ export default function SellSection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<SellVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<SellPricingPresetType>(detectedPricingPreset);
 
-    // The last preset the user picked. Reset restores this preset until the user saves;
-    // once saved (or on navigation) the reset target falls back to the saved config.
-    const [volumePresetOverride, setVolumePresetOverride] = useState<Exclude<SellVolumePresetType, 'custom'> | null>(
-        null,
-    );
-    const [pricingPresetOverride, setPricingPresetOverride] = useState<Exclude<SellPricingPresetType, 'custom'> | null>(
-        null,
-    );
-
     // Re-detect only when this section is bound to a different resource/agent/planet.
     // Live edits never snap the active preset highlight back to a preset.
     const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
@@ -309,8 +300,6 @@ export default function SellSection({
         setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
         setActivePricingPreset(detectedPricingPreset);
-        setVolumePresetOverride(null);
-        setPricingPresetOverride(null);
     }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
@@ -319,7 +308,6 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
-            setVolumePresetOverride(preset);
             const values = getVolumeSellPreset(preset as Exclude<SellVolumePresetType, 'custom'>);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
@@ -332,32 +320,15 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
-            setPricingPresetOverride(preset);
             const values = getPricingSellPreset(preset as Exclude<SellPricingPresetType, 'custom'>, isService);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
         [handleSellConfigChange, isService],
     );
 
-    // Saving re-baselines the reset target to whatever was saved (a preset or a custom config).
-    const handleSaveSellPricingConfig = () => {
-        setPricingPresetOverride(null);
-        onSaveSellPricingConfig();
-    };
-    const handleSaveSellVolumeConfig = () => {
-        setVolumePresetOverride(null);
-        onSaveSellVolumeConfig();
-    };
-
     const committedLocal = autoConfigToLocal(offer?.autoConfig);
-    const pricingResetTarget = buildResetTarget(
-        pricingPresetOverride,
-        pricingPresetOverride ? getPricingSellPreset(pricingPresetOverride, isService) : undefined,
-        committedLocal,
-        SELL_PRICING_KEYS,
-    );
-    const pricingPostResetMode: SellPricingPresetType =
-        pricingPresetOverride ?? detectPricingSellPreset(committedLocal, isService);
+    const pricingResetTarget = buildResetTarget(committedLocal, SELL_PRICING_KEYS);
+    const pricingPostResetMode: SellPricingPresetType = detectPricingSellPreset(committedLocal, isService);
     const canResetPricing = canResetToTarget(
         local.sellAutoConfig,
         pricingResetTarget,
@@ -366,13 +337,8 @@ export default function SellSection({
         pricingPostResetMode,
     );
 
-    const volumeResetTarget = buildResetTarget(
-        volumePresetOverride,
-        volumePresetOverride ? getVolumeSellPreset(volumePresetOverride) : undefined,
-        committedLocal,
-        SELL_VOLUME_KEYS,
-    );
-    const volumePostResetMode: SellVolumePresetType = volumePresetOverride ?? detectVolumeSellPreset(committedLocal);
+    const volumeResetTarget = buildResetTarget(committedLocal, SELL_VOLUME_KEYS);
+    const volumePostResetMode: SellVolumePresetType = detectVolumeSellPreset(committedLocal);
     const canResetVolume = canResetToTarget(
         local.sellAutoConfig,
         volumeResetTarget,
@@ -660,7 +626,7 @@ export default function SellSection({
                                         <Button
                                             size='sm'
                                             className='h-7 text-[11px] px-3 flex-1'
-                                            onClick={handleSaveSellPricingConfig}
+                                            onClick={onSaveSellPricingConfig}
                                             disabled={
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || sellPricingConfigSaving
                                             }
@@ -868,7 +834,7 @@ export default function SellSection({
                                         <Button
                                             size='sm'
                                             className='h-7 text-[11px] px-3 flex-1'
-                                            onClick={handleSaveSellVolumeConfig}
+                                            onClick={onSaveSellVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || sellVolumeConfigSaving
                                             }

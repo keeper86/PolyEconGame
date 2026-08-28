@@ -98,16 +98,12 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
     return false;
 }
 
-// The values Reset restores: either the picked preset (override) or the saved config.
+// The values Reset restores: the committed (last applied) config for the given keys.
+// Until apply, the committed config is the "current" setting; presets/sliders only draft.
 export function buildResetTarget(
-    override: string | null,
-    presetValues: Record<string, string> | undefined,
     committedLocal: AutoConfigLocalState,
     keys: readonly (keyof AutoConfigLocalState)[],
 ): Record<string, string> {
-    if (override) {
-        return { ...(presetValues ?? {}) };
-    }
     const result: Record<string, string> = {};
     for (const k of keys) {
         result[k] = committedLocal[k];
@@ -115,8 +111,9 @@ export function buildResetTarget(
     return result;
 }
 
-// Reset is meaningful when the current values differ from the reset target, or when
-// the active mode (e.g. custom) differs from the mode Reset would switch back to.
+// Reset is meaningful when the draft differs from the committed state: either the values
+// differ from the committed config, or the active mode (e.g. custom) differs from the mode
+// the committed config would be detected as.
 export function canResetToTarget(
     local: AutoConfigLocalState,
     target: Record<string, string>,
