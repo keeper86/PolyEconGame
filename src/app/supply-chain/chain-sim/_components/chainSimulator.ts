@@ -1,4 +1,4 @@
-import { COST_SPRING_STRENGTH, SPRING_NORMALIZATION } from '@/simulation/constants';
+import { DEFAULT_COST_SPRING_STRENGTH, SPRING_NORMALIZATION } from '@/simulation/constants';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ export const PID_DEFAULTS: PidParams = {
 export const PRICING_DEFAULTS: PricingParams = {
     priceAdjustMaxUp: 1.05,
     priceAdjustMaxDown: 0.95,
-    costSpringStrength: COST_SPRING_STRENGTH,
+    costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
     targetSellThrough: 0.6,
     automatedCostFloorBuffer: 1.5,
     bidOfferMaxCostMultiplier: 6,

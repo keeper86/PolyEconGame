@@ -14,7 +14,7 @@ import { useBuyPricingOpenPreference, useBuyVolumeOpenPreference } from '@/hooks
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     BID_OFFER_MAX_COST_MULTIPLIER,
-    COST_SPRING_STRENGTH,
+    DEFAULT_COST_SPRING_STRENGTH,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -419,7 +419,8 @@ export default function BuySection({
     const springGhost = useMemo(
         () => ({
             strength:
-                (committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
+                (committedVal(committedConfig, 'costSpringStrength') ?? DEFAULT_COST_SPRING_STRENGTH) *
+                SPRING_NORMALIZATION,
             reference: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
             maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
             maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
@@ -427,7 +428,7 @@ export default function BuySection({
         [committedConfig],
     );
     const springActive = {
-        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
+        strength: sliderVal('costSpringStrength', DEFAULT_COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
         reference: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
         maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
         maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
@@ -609,7 +610,7 @@ export default function BuySection({
                                         />
                                         <ConfigSlider
                                             label='Ceiling spring strength'
-                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
+                                            value={sliderVal('costSpringStrength', DEFAULT_COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
                                             max={1}

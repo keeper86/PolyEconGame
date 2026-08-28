@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import {
     BID_OFFER_MAX_COST_MULTIPLIER,
-    COST_SPRING_STRENGTH,
+    DEFAULT_COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_CEIL,
@@ -444,7 +444,9 @@ describe('automaticPricing — buy side', () => {
 
         const ceiling = Math.min(PRICE_CEIL, 1.0 * BID_OFFER_MAX_COST_MULTIPLIER);
         const expectedPrice =
-            5 * (diagnostics!.baseFactor - COST_SPRING_STRENGTH * SPRING_NORMALIZATION * Math.sqrt(5 / ceiling - 1));
+            5 *
+            (diagnostics!.baseFactor -
+                DEFAULT_COST_SPRING_STRENGTH * SPRING_NORMALIZATION * Math.sqrt(5 / ceiling - 1));
         expect(bid.bidPrice!).toBeCloseTo(expectedPrice, 5);
         // with SPRING_NORMALIZATION the spring no longer wins against the fill-rate push in a single tick,
         // but the bid rises strictly less than it would without the spring

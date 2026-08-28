@@ -4,7 +4,7 @@ import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
     BID_VOLUME_FLOOR_FRACTION,
-    COST_SPRING_STRENGTH,
+    DEFAULT_COST_SPRING_STRENGTH,
     EPSILON,
     FILL_RATE_EMA_ALPHA,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -53,7 +53,7 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
     return {
         priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
+        costSpringStrength: c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
         targetSellThrough:
             c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
         askVolumeFloorFraction: c.askVolumeFloorFraction ?? ASK_VOLUME_FLOOR_FRACTION,
@@ -68,7 +68,7 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
     return {
         priceAdjustMaxUp: c.priceAdjustMaxUp ?? PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
-        costSpringStrength: c.costSpringStrength ?? COST_SPRING_STRENGTH,
+        costSpringStrength: c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
         inventorySmoothingMaxExtra: c.inventorySmoothingMaxExtra ?? INVENTORY_SMOOTHING_MAX_EXTRA,
         inputBufferTargetTicks:
             c.inputBufferTargetTicks ??
