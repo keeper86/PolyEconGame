@@ -213,6 +213,10 @@ function main(): void {
     if (interestRateArg !== undefined) {
         scenario.world = { ...scenario.world, loanRatePerYear: Number(interestRateArg) };
     }
+    const costSpringArg = arg('costSpringStrength');
+    if (costSpringArg !== undefined) {
+        scenario.world = { ...scenario.world, costSpringStrength: Number(costSpringArg) };
+    }
     if (scenario.world.bankruptcyWriteOffFraction !== undefined) {
         setBankruptcyDebtWriteOffFraction(scenario.world.bankruptcyWriteOffFraction);
     }

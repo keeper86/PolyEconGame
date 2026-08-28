@@ -67,6 +67,7 @@ export interface BenchmarkWorldConfig {
     buildChainScaleFactor?: number;
     loanRatePerYear?: number;
     bankruptcyWriteOffFraction?: number;
+    costSpringStrength?: number;
 }
 
 interface FacilityTarget {
@@ -229,7 +230,7 @@ export function buildBenchmarkWorld(
                 hrDepartment,
             });
 
-            const personality = generateAgentPersonality();
+            const personality = generateAgentPersonality(config.costSpringStrength);
             const assets = agent.assets[BENCHMARK_PLANET_ID];
 
             assets.market.buy[constructionServiceResourceType.name] = {

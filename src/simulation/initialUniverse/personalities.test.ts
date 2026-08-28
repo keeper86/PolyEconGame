@@ -87,6 +87,15 @@ describe('generateAgentPersonality', () => {
         expect(seenSellPricing.has('liquidation')).toBe(true);
         expect(seenSellPricing.has('premium')).toBe(true);
     });
+    it('honors the costSpringStrength parameter', () => {
+        const personality = generateAgentPersonality(0.45);
+        expect(personality.buyAutoConfig.costSpringStrength).toBe(0.45);
+        expect(personality.sellAutoConfig.costSpringStrength).toBe(0.45);
+
+        const personalityDefault = generateAgentPersonality();
+        expect(personalityDefault.buyAutoConfig.costSpringStrength).toBe(0.35);
+        expect(personalityDefault.sellAutoConfig.costSpringStrength).toBe(0.35);
+    });
 });
 
 describe('buildBuyAutoConfigForResource', () => {

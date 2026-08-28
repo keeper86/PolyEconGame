@@ -42,6 +42,7 @@ npx tsx tools/longrun/orchestrator.ts --years=30 --bands=strict
 | `--buildChainScaleFactor=<n>` | scenario | Overrides build-chain seed scaling. |
 | `--interestRate=<n>` | scenario | Sets the annual loan rate (0.05 = 5%). |
 | `--bankruptcyWriteOffFraction=<n>` | scenario | Sets the bankruptcy debt write-off fraction (1.0 = full write-off). |
+| `--costSpringStrength=<n>` | scenario | Overrides the agent-personality cost-spring strength (0.35 = default). |
 | `--claimCostMultiplier=<n>` | — | Overrides the non-renewable claim cost multiplier. |
 | `--wealthTaxAllowance=<n>` | — | Overrides the wealth tax allowance. |
 
@@ -65,6 +66,24 @@ unless the scenario says otherwise, so identical inputs produce identical output
 | `maintenanceRich` / `maintenanceBufferDeep` / `maintenanceRichBufferDeep` | 10y | Maintenance capacity / buffer isolation tests. |
 | `singleAgent` | 10y | One agent per product (monopoly). |
 | `wealthTax` | 50y | Company wealth tax + needs-based support. |
+| `longrun-baseline` / `longrun-wo50` / `longrun-spring040` / `longrun-spring045` | 600y | Long-horizon parameter variations: as-is vs. 50% bankruptcy write-off vs. cost-spring strength 0.4/0.45. |
+
+## 600-year parameter runs
+
+The four `longrun-*` scenarios share `seed=1001` and run 600 years. Launch them in parallel:
+
+```sh
+npx tsx tools/longrun/orchestrator.ts --scenario=longrun-baseline,longrun-wo50,longrun-spring040,longrun-spring045 --years=600 --bands=report
+```
+
+Compare the finished runs (population, starvation, fill rate, facility condition, wealth, banking
+metrics at y100/y300/y600 plus band pass/fail):
+
+```sh
+npx tsx tools/longrun/compareLongrun.ts
+```
+
+Add `--runs=a,b,c` to restrict the comparison to a subset.
 
 ## Stability bands
 

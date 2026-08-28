@@ -245,6 +245,70 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'medianWealth', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 1.0 },
         ],
     },
+    {
+        name: 'longrun-baseline',
+        description:
+            '600-year control run with as-is parameters. Reference for the long-run cost-spring and bankruptcy variants.',
+        seed: 1001,
+        years: 600,
+        world: {},
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-wo50',
+        description:
+            '600-year run with BANKRUPTCY_DEBT_WRITE_OFF_FRACTION = 0.5 (half the debt rolls over on the refounded company at the default 5% rate).',
+        seed: 1001,
+        years: 600,
+        world: { bankruptcyWriteOffFraction: 0.5 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-spring040',
+        description:
+            '600-year run with agent personality costSpringStrength = 0.4 (ceiling/floor spring pulls price back to cost harder).',
+        seed: 1001,
+        years: 600,
+        world: { costSpringStrength: 0.4 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-spring045',
+        description:
+            '600-year run with agent personality costSpringStrength = 0.45 (ceiling/floor spring pulls price back to cost harder).',
+        seed: 1001,
+        years: 600,
+        world: { costSpringStrength: 0.45 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
 ];
 
 export function getScenario(name: string): Scenario | undefined {
