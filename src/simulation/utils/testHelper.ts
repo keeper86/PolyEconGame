@@ -135,7 +135,7 @@ export function makePopulationByEducation(distribution: Partial<Record<Education
     return pop;
 }
 
-export function makeBank(overrides?: Partial<Bank>): Bank {
+function makeBank(overrides?: Partial<Bank>): Bank {
     return {
         loans: 0,
         deposits: 0,
@@ -151,7 +151,7 @@ export function makeBank(overrides?: Partial<Bank>): Bank {
     };
 }
 
-export function makeInfrastructure(overrides?: Partial<Infrastructure>): Infrastructure {
+function makeInfrastructure(overrides?: Partial<Infrastructure>): Infrastructure {
     return {
         primarySchools: 0,
         secondarySchools: 0,

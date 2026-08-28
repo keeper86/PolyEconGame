@@ -3,8 +3,8 @@ import { grantAutomaticLoan } from '../financial/loanConditions';
 import { computeLeaseClaimUpfrontCost, leaseClaim, reduceClaim } from './claims';
 import type { GameState, Planet } from './planet';
 
-export const NON_RENEWABLE_SAFETY_MARGIN_IN_TICKS = TICKS_PER_YEAR;
-export const OVER_SUPPLIED_LIMIT = 1.5;
+const NON_RENEWABLE_SAFETY_MARGIN_IN_TICKS = TICKS_PER_YEAR;
+const OVER_SUPPLIED_LIMIT = 1.5;
 
 export function updateAgentClaims(gameState: GameState, planet: Planet): void {
     for (const agent of gameState.agents.values()) {

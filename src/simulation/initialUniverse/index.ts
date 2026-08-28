@@ -7,18 +7,6 @@ import { prefillAgentStorageFromFacilities } from './helpers';
 import { buildProceduralWorld, PROC_PLANET_ID } from './proceduralWorld';
 import { buildSmallPlanets } from './smallPlanets';
 
-export {
-    createPopulation,
-    makeAgent,
-    makeAgentPlanetAssets,
-    makeAgriculturalProduction,
-    makeDefaultEnvironment,
-    makeProductionFacility,
-    makeStorage,
-    makeWaterExtraction,
-    prefillAgentStorageFromFacilities,
-} from './helpers';
-export { makeClaim, makePool } from './resourceClaimFactory';
 export { AC_ID, PROC_PLANET_ID };
 
 export function createInitialGameState(): GameState {

@@ -4,7 +4,7 @@ import { type WorkforceCohort } from '../workforce/workforce';
 import type { EducationLevelType } from './education';
 import { educationLevelKeys } from './education';
 
-export const forEachOccupiedPopulation = <T>(
+const forEachOccupiedPopulation = <T>(
     cohort: WorkforceCohort<T>,
     forEachFunction: (category: T, edu: EducationLevelType) => void,
 ): void => {
@@ -57,17 +57,17 @@ type DemographyStat = {
     countThisMonth: number;
     countLastMonth: number;
 };
-export type RetirementStats = DemographyStat & {
+type RetirementStats = DemographyStat & {
     type: 'retirement';
 };
-export type DeathStats = DemographyStat & {
+type DeathStats = DemographyStat & {
     type: 'death';
 };
-export type DisabilityStats = DemographyStat & {
+type DisabilityStats = DemographyStat & {
     type: 'disability';
 };
 
-export type ServiceState = {
+type ServiceState = {
     buffer: number;
     starvationLevel: number;
 };
@@ -100,7 +100,7 @@ export type Population = {
     lastTransferMatrix: PopulationTransferMatrix;
 };
 
-export const nullServicesState = () => ({
+const nullServicesState = () => ({
     grocery: { buffer: 0, starvationLevel: 0 },
     retail: { buffer: 0, starvationLevel: 0 },
     logistics: { buffer: 0, starvationLevel: 0 },
@@ -208,7 +208,7 @@ export const reducePopulationCohort = (cohort: Cohort<PopulationCategory>): Popu
     return total;
 };
 
-export const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => {
+const populationSumFunction = (a: PopulationCategory, b: PopulationCategory): PopulationCategory => {
     const services = { ...a.services };
 
     for (const serviceName of Object.keys(services) as ServiceName[]) {

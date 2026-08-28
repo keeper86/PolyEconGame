@@ -38,14 +38,14 @@ export const scaleMapping: Record<ShipScale, number> = {
     super: 8,
 } as const;
 
-export const scaleToLevel: Record<ShipScale, number> = {
+const scaleToLevel: Record<ShipScale, number> = {
     small: 1,
     medium: 2,
     large: 3,
     super: 4,
 } as const;
 
-export const scaleArrayToLevel = (quantity: ResourceQuantity[], scale: ShipScale): ResourceQuantity[] => {
+const scaleArrayToLevel = (quantity: ResourceQuantity[], scale: ShipScale): ResourceQuantity[] => {
     return quantity.map((q) => ({ resource: q.resource, quantity: q.quantity * scaleToLevel[scale] }));
 };
 
@@ -74,7 +74,7 @@ export type ShipStatusIdle = {
     planetId: string;
 };
 
-export type ShipStatusListed = {
+type ShipStatusListed = {
     type: 'listed';
     planetId: string;
 };
@@ -84,14 +84,14 @@ export type ShipStatusDerelict = {
     planetId: string;
 };
 
-export type ShipStatusLost = {
+type ShipStatusLost = {
     type: 'lost';
     lostAtTick: number;
 };
 
-export type CommonShipStatus = ShipStatusIdle | ShipStatusListed | ShipStatusDerelict | ShipStatusLost;
+type CommonShipStatus = ShipStatusIdle | ShipStatusListed | ShipStatusDerelict | ShipStatusLost;
 
-export type BaseShipStatusLoading = {
+type BaseShipStatusLoading = {
     planetId: string;
     to: string;
     contractId?: string;
@@ -130,7 +130,7 @@ export type PassengerShipStatusProvisioning = BaseShipStatusLoading &
         manifest: PassengerManifest;
     };
 
-export type BaseShipStatusTransporting = {
+type BaseShipStatusTransporting = {
     from: string;
     to: string;
     arrivalTick: number;
@@ -153,13 +153,13 @@ export type ConstructionShipStatusTransporting = BaseShipStatusTransporting & {
     buildingTarget: Facility | null;
 };
 
-export type BaseShipStatusUnloading = {
+type BaseShipStatusUnloading = {
     planetId: string;
     contractId?: string;
     posterAgentId?: string;
 };
 
-export type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
+type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
     type: 'passenger_unloading';
     manifest: PassengerManifest;
 };
@@ -200,9 +200,7 @@ export type PassengerShipStatus =
 
 export type PassengerShipStatusType = PassengerShipStatus['type'];
 
-export type ShipState = TransportShipStatus | ConstructionShipStatus | PassengerShipStatus;
-
-export type BaseShip = {
+type BaseShip = {
     id: string;
     name: string;
     builtAtTick: number;
@@ -222,7 +220,7 @@ export type ConstructionShip = BaseShip & {
     state: ConstructionShipStatus;
 };
 
-export type ConstructionContractBase = {
+type ConstructionContractBase = {
     id: string;
     fromPlanetId: string;
     toPlanetId: string;
@@ -333,7 +331,7 @@ const defaultRequiredCrew = {
     tertiary: 1,
 };
 
-export const scaleShipType = (newScale: ShipScale, newName: string, template: TransportShipType): TransportShipType => {
+const scaleShipType = (newScale: ShipScale, newName: string, template: TransportShipType): TransportShipType => {
     return {
         ...template,
         name: newName,
@@ -460,7 +458,7 @@ export const shiptypes = {
     } as const,
 } as const;
 
-export type ShipTypeKey = {
+type ShipTypeKey = {
     [K in keyof typeof shiptypes]: keyof (typeof shiptypes)[K];
 }[keyof typeof shiptypes];
 
@@ -554,8 +552,6 @@ export function canCarryResource(ship: Ship, resource: Resource): boolean {
     return ship.type.cargoSpecification.type === (form as TransportableResourceType);
 }
 
-export type ContractStatus = 'open' | 'accepted';
-
 export type ShipBuyingOffer = {
     id: string;
     shipType: ShipTypeKey;
@@ -563,7 +559,7 @@ export type ShipBuyingOffer = {
     price: number;
 } & ({ status: 'open' } | { status: 'accepted'; sellerAgentId: string; shipId: string });
 
-export type TransportContractBase = {
+type TransportContractBase = {
     id: string;
     fromPlanetId: string;
     toPlanetId: string;

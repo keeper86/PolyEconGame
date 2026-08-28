@@ -65,6 +65,9 @@ export interface BenchmarkWorldConfig {
     maintenanceBufferTicks?: number;
     constructionScaleFactor?: number;
     buildChainScaleFactor?: number;
+    loanRatePerYear?: number;
+    bankruptcyWriteOffFraction?: number;
+    costSpringStrength?: number;
 }
 
 interface FacilityTarget {
@@ -227,7 +230,7 @@ export function buildBenchmarkWorld(
                 hrDepartment,
             });
 
-            const personality = generateAgentPersonality();
+            const personality = generateAgentPersonality(config.costSpringStrength);
             const assets = agent.assets[BENCHMARK_PLANET_ID];
 
             assets.market.buy[constructionServiceResourceType.name] = {
@@ -311,7 +314,7 @@ export function buildBenchmarkWorld(
             loans: 0,
             deposits: 0,
             householdDeposits: 0,
-            loanRatePerYear: LOAN_INTEREST_RATE_PER_YEAR,
+            loanRatePerYear: config.loanRatePerYear ?? LOAN_INTEREST_RATE_PER_YEAR,
             depositRatePerYear: 0,
             profit: 0,
             interestCollected: 0,
@@ -371,6 +374,7 @@ export function buildBenchmarkWorld(
         arbitrageTraders: new Map(),
         tickerEvents: [],
         nextEventId: 1,
+        bankruptcies: [],
     };
 
     prefillAgentStorageFromFacilities(gameState);

@@ -1,7 +1,6 @@
 import {
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FACILITY_MAINTENANCE_REPAIR_PER_TICK,
-    FACILITY_RESTORATION_PER_TICK,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     RESTORATION_COST_FACTOR_SIGMOID_STEEPNESS,
@@ -69,7 +68,7 @@ export function facilityRestorationCostFactor(maxMaintenance: number): number {
 }
 
 export const facilityRestorationCapacityPerTick = (facility: Facility): number => {
-    const wanted = Math.min(1 - facility.maxMaintenance, FACILITY_RESTORATION_PER_TICK);
+    const wanted = Math.min(1 - facility.maxMaintenance, MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE);
     return wanted * facilityFullRestoreCost(facility) * facilityRestorationCostFactor(facility.maxMaintenance);
 };
 

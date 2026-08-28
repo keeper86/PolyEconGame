@@ -48,7 +48,7 @@ export function findMaxAffordableScale(
     return best;
 }
 
-export const OVER_SHARE_FACTOR = 1.2;
+const OVER_SHARE_FACTOR = 1.2;
 
 // TODO: choose a better scale cost function that is easily invertible
 export function findMaxScaleForCSBudget(

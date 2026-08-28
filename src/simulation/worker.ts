@@ -47,7 +47,7 @@ import {
     handlePostShipListing,
     handlePostTransportContract,
 } from './workerClient/shipContractActions';
-export type { InboundMessage, OutboundMessage, PendingAction } from './workerClient/messages';
+export type { InboundMessage, OutboundMessage } from './workerClient/messages';
 
 interface TaskPayload {
     command: string;

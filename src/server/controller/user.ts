@@ -53,7 +53,7 @@ const userData = z.object({
     hasAssessmentPublished: z.boolean().optional(),
     avatar: z.string().max(bytesToBase64Chars(MAX_SIZE_BYTES_AVATAR), 'Avatar image (base64) is too large').optional(),
 });
-export const userSummary = userId.merge(userData).extend({
+const userSummary = userId.merge(userData).extend({
     agentId: z.string().nullable().optional(),
     planetId: z.string().nullable().optional(),
 });
@@ -724,7 +724,7 @@ const autoConfigSchema = z
     })
     .optional();
 
-export const buyBid = z.object({
+const buyBid = z.object({
     bidPrice: z.number().positive().optional(),
     bidStorageTarget: z.number().min(0).optional(),
     automated: z.boolean().optional(),

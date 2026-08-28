@@ -51,7 +51,7 @@ export function handleCreateAgent(
     safePostMessage({ type: 'agentCreated', requestId, agentId, processedAtTick: state.tick });
 }
 
-export function handleSetAutomation(
+function handleSetAutomation(
     state: GameState,
     action: Extract<PendingAction, { type: 'setAutomation' }>,
     safePostMessage: (msg: OutboundMessage) => void,
@@ -74,7 +74,7 @@ export function handleSetAutomation(
     safePostMessage({ type: 'automationSet', requestId, agentId, processedAtTick: state.tick });
 }
 
-export function handleSetWorkerAllocationTargets(
+function handleSetWorkerAllocationTargets(
     state: GameState,
     action: Extract<PendingAction, { type: 'setWorkerAllocationTargets' }>,
     safePostMessage: (msg: OutboundMessage) => void,

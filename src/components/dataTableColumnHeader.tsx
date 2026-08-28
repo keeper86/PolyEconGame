@@ -38,5 +38,3 @@ export function DataTableColumnHeader({
         </div>
     );
 }
-
-export default DataTableColumnHeader;

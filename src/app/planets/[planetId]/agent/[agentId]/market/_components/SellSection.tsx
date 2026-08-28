@@ -4,9 +4,11 @@ import { Stat } from '@/components/client/Stat';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
+import { useSellPricingOpenPreference, useSellVolumeOpenPreference } from '@/hooks/uiPreferences';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
@@ -14,18 +16,24 @@ import {
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
+    SPRING_NORMALIZATION,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
 } from '@/simulation/constants';
 import { AlertCircle, ChevronDown, Package, RotateCcw, Tag } from 'lucide-react';
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { getResourceByName, productionPerTick } from './marketHelpers';
-import type { SellSectionProps } from './marketTypes';
-import type { AutoConfigLocalState } from './marketTypes';
-import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
-import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
 import { CostSpringCurve } from './CostSpringCurve';
-import { Label } from '@/components/ui/label';
+import { getResourceByName, productionPerTick } from './marketHelpers';
+import {
+    autoConfigToLocal,
+    buildResetTarget,
+    canResetToTarget,
+    SELL_PRICING_KEYS,
+    SELL_VOLUME_KEYS,
+    type AutoConfigLocalState,
+    type SellSectionProps,
+} from './marketTypes';
 import {
     detectPricingSellPreset,
     detectVolumeSellPreset,
@@ -39,7 +47,6 @@ import {
     type SellVolumePresetType,
 } from './StrategyPresets';
 import { useSellSectionMutations } from './useSellSectionMutations';
-import { useSellPricingOpenPreference, useSellVolumeOpenPreference } from '@/hooks/uiPreferences';
 
 type SellStatusKind =
     | 'offering'
@@ -145,9 +152,7 @@ export default function SellSection({
         resetSell: onResetSell,
         automationChange: onAutomationChange,
         savePricingConfig: onSaveSellPricingConfig,
-        resetPricingConfig: onResetSellPricingConfig,
         saveVolumeConfig: onSaveSellVolumeConfig,
-        resetVolumeConfig: onResetSellVolumeConfig,
         sellPriceSaving,
         sellAutomationSaving,
         sellPricingConfigSaving,
@@ -277,12 +282,18 @@ export default function SellSection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<SellVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<SellPricingPresetType>(detectedPricingPreset);
 
+    // Re-detect only when this section is bound to a different resource/agent/planet.
+    // Live edits never snap the active preset highlight back to a preset.
+    const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
+    const [syncedPresetIdentityKey, setSyncedPresetIdentityKey] = useState(presetIdentityKey);
     useEffect(() => {
+        if (presetIdentityKey === syncedPresetIdentityKey) {
+            return;
+        }
+        setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
-    }, [detectedVolumePreset]);
-    useEffect(() => {
         setActivePricingPreset(detectedPricingPreset);
-    }, [detectedPricingPreset]);
+    }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: SellVolumePresetType) => {
@@ -308,6 +319,39 @@ export default function SellSection({
         [handleSellConfigChange, isService],
     );
 
+    const committedLocal = autoConfigToLocal(offer?.autoConfig);
+    const pricingResetTarget = buildResetTarget(committedLocal, SELL_PRICING_KEYS);
+    const pricingPostResetMode: SellPricingPresetType = detectPricingSellPreset(committedLocal, isService);
+    const canResetPricing = canResetToTarget(
+        local.sellAutoConfig,
+        pricingResetTarget,
+        SELL_PRICING_KEYS,
+        activePricingPreset,
+        pricingPostResetMode,
+    );
+
+    const volumeResetTarget = buildResetTarget(committedLocal, SELL_VOLUME_KEYS);
+    const volumePostResetMode: SellVolumePresetType = detectVolumeSellPreset(committedLocal);
+    const canResetVolume = canResetToTarget(
+        local.sellAutoConfig,
+        volumeResetTarget,
+        SELL_VOLUME_KEYS,
+        activeVolumePreset,
+        volumePostResetMode,
+    );
+
+    const handleResetSellPricingConfig = useCallback(() => {
+        const current = local.sellAutoConfig;
+        setActivePricingPreset(pricingPostResetMode);
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...pricingResetTarget } as AutoConfigLocalState });
+    }, [local.sellAutoConfig, onLocalChange, resourceName, pricingResetTarget, pricingPostResetMode]);
+
+    const handleResetSellVolumeConfig = useCallback(() => {
+        const current = local.sellAutoConfig;
+        setActiveVolumePreset(volumePostResetMode);
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...volumeResetTarget } as AutoConfigLocalState });
+    }, [local.sellAutoConfig, onLocalChange, resourceName, volumeResetTarget, volumePostResetMode]);
+
     const handleSliderChange = useCallback(
         (patch: Record<string, string>) => {
             const changedKey = Object.keys(patch)[0] as keyof AutoConfigLocalState | undefined;
@@ -326,15 +370,6 @@ export default function SellSection({
         },
         [handleSellConfigChange, activeVolumePreset, activePricingPreset],
     );
-
-    const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-        'priceAdjustMaxUp',
-        'priceAdjustMaxDown',
-        'costSpringStrength',
-        'automatedCostFloorBuffer',
-        'targetSellThrough',
-    ];
-    const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
     const hasPricingConfigDirty = SELL_PRICING_KEYS.some((key) => {
         const localVal = local.sellAutoConfig[key] !== '' ? parseFloat(local.sellAutoConfig[key]) : undefined;
@@ -358,7 +393,8 @@ export default function SellSection({
 
     const springGhost = useMemo(
         () => ({
-            strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
+            strength:
+                (committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
             reference: committedVal(committedConfig, 'automatedCostFloorBuffer') ?? AUTOMATED_COST_FLOOR_BUFFER,
             maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
             maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
@@ -366,7 +402,7 @@ export default function SellSection({
         [committedConfig],
     );
     const springActive = {
-        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
+        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
         reference: sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER),
         maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
         maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
@@ -471,7 +507,7 @@ export default function SellSection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {SELL_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -500,6 +536,16 @@ export default function SellSection({
                                             }
                                         }}
                                     >
+                                        <Separator />
+                                        {!isCurrency && (
+                                            <CostSpringCurve
+                                                mode='sell'
+                                                ghost={springGhost}
+                                                active={springActive}
+                                                currentRatio={springRatio}
+                                                ownRatio={ownRatio}
+                                            />
+                                        )}
                                         <ConfigRangeSlider
                                             label='Adjustment speed'
                                             valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
@@ -531,6 +577,18 @@ export default function SellSection({
                                             }
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
+
+                                        <ConfigSlider
+                                            label='Cost spring strength'
+                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
+                                            committed={committedVal(committedConfig, 'costSpringStrength')}
+                                            min={0}
+                                            max={1}
+                                            step={0.01}
+                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
+                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
                                         <ConfigSlider
                                             label='Target sell-through'
                                             value={sliderVal(
@@ -545,54 +603,29 @@ export default function SellSection({
                                             onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
-                                        <ConfigSlider
-                                            label='Cost spring strength'
-                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
-                                            committed={committedVal(committedConfig, 'costSpringStrength')}
-                                            min={0}
-                                            max={0.2}
-                                            step={0.002}
-                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
-                                            disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <Separator />
-                                        {!isCurrency && (
-                                            <CostSpringCurve
-                                                mode='sell'
-                                                ghost={springGhost}
-                                                active={springActive}
-                                                currentRatio={springRatio}
-                                                ownRatio={ownRatio}
-                                            />
-                                        )}
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                        <PriceAlgorithmDialog mode='sell' diagnostics={offer?.diagnostics} />
-                                        <div className='flex items-center gap-2'>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                className={`h-7 text-[11px] px-2`}
-                                                onClick={onResetSellPricingConfig}
-                                                disabled={sellPricingConfigSaving || !hasPricingConfigDirty}
-                                            >
-                                                <RotateCcw className='h-3 w-3 mr-1' />
-                                                Reset
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                className='h-7 text-[11px] px-3'
-                                                onClick={onSaveSellPricingConfig}
-                                                disabled={
-                                                    !hasPricingConfigDirty ||
-                                                    !hasAnyPricingValue ||
-                                                    sellPricingConfigSaving
-                                                }
-                                            >
-                                                {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
-                                            </Button>
-                                        </div>
+                                    <div className='flex items-center gap-2 pt-1 pb-1.5'>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetSellPricingConfig}
+                                            disabled={sellPricingConfigSaving || !canResetPricing}
+                                        >
+                                            <RotateCcw className='h-3 w-3 mr-1' />
+                                            Reset
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            className='h-7 text-[11px] px-3 flex-1'
+                                            onClick={onSaveSellPricingConfig}
+                                            disabled={
+                                                !hasPricingConfigDirty || !hasAnyPricingValue || sellPricingConfigSaving
+                                            }
+                                        >
+                                            {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                        </Button>
                                     </div>
 
                                     {overlay(sellPricingConfigOverlay)}
@@ -780,20 +813,20 @@ export default function SellSection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1'>
+                                    <div className='flex items-center gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2`}
-                                            onClick={onResetSellVolumeConfig}
-                                            disabled={sellVolumeConfigSaving || !hasVolumeConfigDirty}
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetSellVolumeConfig}
+                                            disabled={sellVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset
                                         </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
+                                            className='h-7 text-[11px] px-3 flex-1'
                                             onClick={onSaveSellVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || sellVolumeConfigSaving

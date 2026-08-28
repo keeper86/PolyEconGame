@@ -20,7 +20,7 @@ export const mortalityProbability = (age: number) => {
     return mortalityByThousands[age] / 1000.0;
 };
 
-export const MAX_MORTALITY_PER_TICK = 0.8;
+const MAX_MORTALITY_PER_TICK = 0.8;
 
 export const STARVATION_ACUTE_POWER = 4;
 

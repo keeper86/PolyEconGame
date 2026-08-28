@@ -8,23 +8,11 @@ import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
 
 export * from './automaticProductionScale/constants';
-export { initiateCapacityContraction, initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 export {
-    calculateExpansionParams,
-    computeDynamicExpansionTarget,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
-    OVER_SHARE_FACTOR,
 } from './automaticProductionScale/expansionTarget';
-export {
-    agentHasOwnConstructionFacility,
-    checkExpansionFunds,
-    computeConstructionInflationFactor,
-    computeExpansionWorkforceStats,
-    type ExpansionFundsCheckResult,
-    type ExpansionWorkforceStats,
-} from './automaticProductionScale/expansionUtils';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 export {
     computeFacilitySignal,

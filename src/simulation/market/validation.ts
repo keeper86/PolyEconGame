@@ -117,11 +117,11 @@ export function validateBuyBid(
     return { isValid: true };
 }
 
-export function clampPrice(price: number): number {
+function clampPrice(price: number): number {
     return Math.max(PRICE_FLOOR, Math.min(PRICE_CEIL, price));
 }
 
-export function validatedBidQuantity(qty: number, _form: string): number {
+function validatedBidQuantity(qty: number, _form: string): number {
     if (qty < EPSILON) {
         return 0;
     }

@@ -11,7 +11,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
 
-export type AgentMetric =
+type AgentMetric =
     | 'netBalance'
     | 'monthlyNetIncome'
     | 'productionValue'

@@ -1,9 +1,5 @@
 export const LABEL_COLUMN_WIDTH = 145;
 
-export function getLabelColumnWidthClass(): string {
-    return `w-[${LABEL_COLUMN_WIDTH}px]`;
-}
-
 export interface ColumnConfig {
     id: string;
 
@@ -95,30 +91,25 @@ export const MARKET_COLUMNS: ColumnConfig[] = [
     },
 ];
 
-export function getColumnWidthClass(columnId: string): string {
+function getColumnWidthClass(columnId: string): string {
     const column = MARKET_COLUMNS.find((col) => col.id === columnId);
     return column?.widthClass || 'w-auto';
 }
 
-export function getColumnPriority(columnId: string): number {
-    const column = MARKET_COLUMNS.find((col) => col.id === columnId);
-    return column?.priority || 999;
-}
-
-export function getColumnAlignClass(columnId: string): string {
+function getColumnAlignClass(columnId: string): string {
     const column = MARKET_COLUMNS.find((col) => col.id === columnId);
     return column?.align || 'text-left';
 }
 
-export function getEnabledColumns(): ColumnConfig[] {
+function getEnabledColumns(): ColumnConfig[] {
     return MARKET_COLUMNS.filter((col) => col.enabled);
 }
 
-export function getEnabledColumnsByPriority(): ColumnConfig[] {
+function getEnabledColumnsByPriority(): ColumnConfig[] {
     return getEnabledColumns().sort((a, b) => a.priority - b.priority);
 }
 
-export function getEnabledColumnsInDisplayOrder(): ColumnConfig[] {
+function getEnabledColumnsInDisplayOrder(): ColumnConfig[] {
     return MARKET_COLUMNS.filter((col) => col.enabled);
 }
 
@@ -132,18 +123,6 @@ export function getColumnClasses(columnId: string): string {
 export function getHeaderColumnClasses(columnId: string): string {
     const baseClasses = getColumnClasses(columnId);
     return `${baseClasses} text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none`.trim();
-}
-
-export function calculateTotalWidth(columns: ColumnConfig[]): number {
-    const widthMap: Record<string, number> = {
-        'w-[72px]': 72,
-        'w-[4.5rem]': 72,
-        'w-auto': 0,
-    };
-
-    return columns.reduce((total, column) => {
-        return total + (widthMap[column.widthClass] || 0);
-    }, 0);
 }
 
 export function getVisibleColumns(availableWidth: number): ColumnConfig[] {

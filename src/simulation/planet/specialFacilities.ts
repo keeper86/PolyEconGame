@@ -1,4 +1,3 @@
-import { nullWagePidState } from './facility';
 import type {
     HRFacility,
     LastManagementTickResults,
@@ -7,6 +6,7 @@ import type {
     StorageDepartment,
     TrainingsDepartment,
 } from './facility';
+import { nullWagePidState } from './facility';
 import {
     administrativeServiceResourceType,
     educationServiceResourceType,
@@ -55,7 +55,7 @@ const makeManagementFacilityDefaults = () => ({
 
 export const HR_DEPARTMENT_NAME = 'HR Department';
 export const PRODUCED_HR_QUANTITY = 2000;
-export const USED_QUANTITY = 20;
+const USED_QUANTITY = 20;
 export const ESTIMATED_HR_OVERHEAD = 1.025;
 export const HR_WORLD_BUFFER = 1.4;
 export const humanResourcesOfficeFacilityType = (planetId: string, id: string): HRFacility => ({
@@ -101,7 +101,7 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
 });
 // service shield for production
 // increased buffer for storageServiceResourceType
-
+// KEEP. ONLY UNUSED UNTIL NEXT TICKET
 export const RESEARCH_DEPARTMENT_NAME = 'R&D Department';
 export const researchAndDevelopmentFacilityType = (planetId: string, id: string): ManagementFacility => ({
     ...makeManagementFacilityDefaults(),
@@ -121,7 +121,7 @@ export const researchAndDevelopmentFacilityType = (planetId: string, id: string)
     ],
     produces: [{ resource: administrativeServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
 });
-
+// KEEP. ONLY UNUSED UNTIL NEXT TICKET
 export const TRAINING_CENTER_NAME = 'Training Center';
 export const trainingCenterFacilityType = (planetId: string, id: string): TrainingsDepartment => ({
     ...makeManagementFacilityDefaults(),

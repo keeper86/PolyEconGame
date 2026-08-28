@@ -189,7 +189,7 @@ function makeTooltip(
     };
 }
 
-export function BandLegend() {
+function BandLegend() {
     return (
         <div className='flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mt-1'>
             {BANDS.slice()

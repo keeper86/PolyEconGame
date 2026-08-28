@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LogSlider } from '@/components/ui/log-slider';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
-import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { useBuyPricingOpenPreference, useBuyVolumeOpenPreference } from '@/hooks/uiPreferences';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
@@ -20,9 +21,11 @@ import {
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
+    SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
     TARGET_FILL_RATE_SERVICES,
 } from '@/simulation/constants';
+import type { BuyDiagnostics } from '@/simulation/planet/planet';
 import {
     AlertCircle,
     Anchor,
@@ -35,24 +38,28 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
-import type { BuySectionProps } from './marketTypes';
-import type { BuyDiagnostics } from '@/simulation/planet/planet';
-import type { AutoConfigLocalState } from './marketTypes';
-import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
-import { LogSlider } from '@/components/ui/log-slider';
-import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
 import { CostSpringCurve } from './CostSpringCurve';
+import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
 import {
-    detectPricingBuyPreset,
-    detectVolumeBuyPreset,
-    getPricingBuyPreset,
-    getVolumeBuyPreset,
+    autoConfigToLocal,
+    buildResetTarget,
+    BUY_PRICING_KEYS,
+    BUY_VOLUME_KEYS,
+    canResetToTarget,
+    type AutoConfigLocalState,
+    type BuySectionProps,
+} from './marketTypes';
+import {
     BUY_PRICING_PRESET_LABELS,
     BUY_PRICING_PRESET_ORDER,
     BUY_VOLUME_PRESET_LABELS,
     BUY_VOLUME_PRESET_ORDER,
+    detectPricingBuyPreset,
+    detectVolumeBuyPreset,
+    getPricingBuyPreset,
+    getVolumeBuyPreset,
     type BuyVolumePresetType,
     type PricingPresetType,
 } from './StrategyPresets';
@@ -178,9 +185,7 @@ export default function BuySection({
         resetBuy: onResetBuy,
         automationChange: onAutomationChange,
         savePricingConfig: onSaveBuyPricingConfig,
-        resetPricingConfig: onResetBuyPricingConfig,
         saveVolumeConfig: onSaveBuyVolumeConfig,
-        resetVolumeConfig: onResetBuyVolumeConfig,
         buyPriceSaving,
         buyAutomationSaving,
         buyPricingConfigSaving,
@@ -297,12 +302,18 @@ export default function BuySection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
 
+    // Re-detect only when this section is bound to a different resource/agent/planet.
+    // Live edits never snap the active preset highlight back to a preset.
+    const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
+    const [syncedPresetIdentityKey, setSyncedPresetIdentityKey] = useState(presetIdentityKey);
     useEffect(() => {
+        if (presetIdentityKey === syncedPresetIdentityKey) {
+            return;
+        }
+        setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
-    }, [detectedVolumePreset]);
-    useEffect(() => {
         setActivePricingPreset(detectedPricingPreset);
-    }, [detectedPricingPreset]);
+    }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: BuyVolumePresetType) => {
@@ -328,6 +339,39 @@ export default function BuySection({
         [handleBuyConfigChange, isService],
     );
 
+    const committedLocal = autoConfigToLocal(bid?.autoConfig);
+    const pricingResetTarget = buildResetTarget(committedLocal, BUY_PRICING_KEYS);
+    const pricingPostResetMode: PricingPresetType = detectPricingBuyPreset(committedLocal, isService);
+    const canResetPricing = canResetToTarget(
+        local.buyAutoConfig,
+        pricingResetTarget,
+        BUY_PRICING_KEYS,
+        activePricingPreset,
+        pricingPostResetMode,
+    );
+
+    const volumeResetTarget = buildResetTarget(committedLocal, BUY_VOLUME_KEYS);
+    const volumePostResetMode: BuyVolumePresetType = detectVolumeBuyPreset(committedLocal, isService);
+    const canResetVolume = canResetToTarget(
+        local.buyAutoConfig,
+        volumeResetTarget,
+        BUY_VOLUME_KEYS,
+        activeVolumePreset,
+        volumePostResetMode,
+    );
+
+    const handleResetBuyPricingConfig = useCallback(() => {
+        const current = local.buyAutoConfig;
+        setActivePricingPreset(pricingPostResetMode);
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...pricingResetTarget } as AutoConfigLocalState });
+    }, [local.buyAutoConfig, onLocalChange, resourceName, pricingResetTarget, pricingPostResetMode]);
+
+    const handleResetBuyVolumeConfig = useCallback(() => {
+        const current = local.buyAutoConfig;
+        setActiveVolumePreset(volumePostResetMode);
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...volumeResetTarget } as AutoConfigLocalState });
+    }, [local.buyAutoConfig, onLocalChange, resourceName, volumeResetTarget, volumePostResetMode]);
+
     const handleSliderChange = useCallback(
         (patch: Record<string, string>) => {
             const changedKey = Object.keys(patch)[0] as keyof AutoConfigLocalState | undefined;
@@ -350,20 +394,6 @@ export default function BuySection({
         },
         [handleBuyConfigChange, activeVolumePreset, activePricingPreset],
     );
-
-    const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-        'priceAdjustMaxUp',
-        'priceAdjustMaxDown',
-        'costSpringStrength',
-        'bidOfferMaxCostMultiplier',
-        'targetFillRate',
-    ];
-    const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
-        'inputBufferTargetTicks',
-        'inventorySmoothingMaxExtra',
-        'freeBuyQuantity',
-        'freeBuyQuantitySmoothingMaxExtra',
-    ];
 
     const hasPricingConfigDirty = BUY_PRICING_KEYS.some((key) => {
         const localVal = local.buyAutoConfig[key] !== '' ? parseFloat(local.buyAutoConfig[key]) : undefined;
@@ -388,7 +418,8 @@ export default function BuySection({
 
     const springGhost = useMemo(
         () => ({
-            strength: committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH,
+            strength:
+                (committedVal(committedConfig, 'costSpringStrength') ?? COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
             reference: committedVal(committedConfig, 'bidOfferMaxCostMultiplier') ?? BID_OFFER_MAX_COST_MULTIPLIER,
             maxUp: committedVal(committedConfig, 'priceAdjustMaxUp') ?? PRICE_ADJUST_MAX_UP,
             maxDown: committedVal(committedConfig, 'priceAdjustMaxDown') ?? PRICE_ADJUST_MAX_DOWN,
@@ -396,7 +427,7 @@ export default function BuySection({
         [committedConfig],
     );
     const springActive = {
-        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH),
+        strength: sliderVal('costSpringStrength', COST_SPRING_STRENGTH) * SPRING_NORMALIZATION,
         reference: sliderVal('bidOfferMaxCostMultiplier', BID_OFFER_MAX_COST_MULTIPLIER),
         maxUp: sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP),
         maxDown: sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN),
@@ -503,7 +534,7 @@ export default function BuySection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -532,6 +563,17 @@ export default function BuySection({
                                             }
                                         }}
                                     >
+                                        <Separator />
+
+                                        {!isCurrency && (
+                                            <CostSpringCurve
+                                                mode='buy'
+                                                ghost={springGhost}
+                                                active={springActive}
+                                                currentRatio={springRatio}
+                                                ownRatio={ownRatio}
+                                            />
+                                        )}
                                         <ConfigRangeSlider
                                             label='Adjustment speed'
                                             valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
@@ -566,6 +608,17 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
+                                            label='Ceiling spring strength'
+                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
+                                            committed={committedVal(committedConfig, 'costSpringStrength')}
+                                            min={0}
+                                            max={1}
+                                            step={0.01}
+                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
+                                        <ConfigSlider
                                             label='Target fill rate'
                                             value={sliderVal(
                                                 'targetFillRate',
@@ -579,46 +632,22 @@ export default function BuySection({
                                             onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
-                                        <ConfigSlider
-                                            label='Ceiling spring strength'
-                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
-                                            committed={committedVal(committedConfig, 'costSpringStrength')}
-                                            min={0}
-                                            max={0.2}
-                                            step={0.002}
-                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <Separator />
-
-                                        {!isCurrency && (
-                                            <CostSpringCurve
-                                                mode='buy'
-                                                ghost={springGhost}
-                                                active={springActive}
-                                                currentRatio={springRatio}
-                                                ownRatio={ownRatio}
-                                            />
-                                        )}
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                        <div className='flex items-center justify-between gap-2'>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                className='h-7 text-[11px] px-2'
-                                                onClick={onResetBuyPricingConfig}
-                                                disabled={buyPricingConfigSaving || !hasPricingConfigDirty}
-                                            >
-                                                <RotateCcw className='h-3 w-3 mr-1' />
-                                                Reset
-                                            </Button>
-                                            <PriceAlgorithmDialog mode='buy' diagnostics={bid?.diagnostics} />
-                                        </div>
+                                    <div className='flex items-center gap-2 pt-1 pb-1.5'>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-7 text-[11px] px-2 flex-1'
+                                            onClick={handleResetBuyPricingConfig}
+                                            disabled={buyPricingConfigSaving || !canResetPricing}
+                                        >
+                                            <RotateCcw className='h-3 w-3 mr-1' />
+                                            Reset
+                                        </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
+                                            className='h-7 text-[11px] px-3 flex-1'
                                             onClick={onSaveBuyPricingConfig}
                                             disabled={
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || buyPricingConfigSaving
@@ -945,20 +974,20 @@ export default function BuySection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1'>
+                                    <div className='flex items-center gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2`}
-                                            onClick={onResetBuyVolumeConfig}
-                                            disabled={buyVolumeConfigSaving || !hasVolumeConfigDirty}
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetBuyVolumeConfig}
+                                            disabled={buyVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset
                                         </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
+                                            className='h-7 text-[11px] px-3 flex-1'
                                             onClick={onSaveBuyVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || buyVolumeConfigSaving

@@ -10,21 +10,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketBidEntry } from './marketTypes';
-import { localToAutoConfig } from './marketTypes';
-
-const BUY_PRICING_KEYS = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'costSpringStrength',
-    'bidOfferMaxCostMultiplier',
-    'targetFillRate',
-] as const;
-const BUY_VOLUME_KEYS = [
-    'inputBufferTargetTicks',
-    'inventorySmoothingMaxExtra',
-    'freeBuyQuantity',
-    'freeBuyQuantitySmoothingMaxExtra',
-] as const;
+import { BUY_PRICING_KEYS, BUY_VOLUME_KEYS, localToAutoConfig } from './marketTypes';
 
 function depositWarning(message: string, agentId: string, planetId: string) {
     return (
@@ -50,7 +36,7 @@ function pickAutoConfigKeys(source: AutoConfigLocalState, keys: readonly string[
 }
 
 function commitPricingConfig(autoConfig: AutomatedPricingConfig | undefined): AutomatedPricingConfig | undefined {
-    const keySet = new Set<string>(BUY_PRICING_KEYS as readonly string[]);
+    const keySet = new Set<string>(BUY_PRICING_KEYS);
     const filtered: Record<string, number> = {};
     if (autoConfig) {
         for (const [k, v] of Object.entries(autoConfig)) {
@@ -63,7 +49,7 @@ function commitPricingConfig(autoConfig: AutomatedPricingConfig | undefined): Au
 }
 
 function commitVolumeConfig(autoConfig: AutomatedPricingConfig | undefined): AutomatedPricingConfig | undefined {
-    const keySet = new Set<string>(BUY_VOLUME_KEYS as readonly string[]);
+    const keySet = new Set<string>(BUY_VOLUME_KEYS);
     const filtered: Record<string, number> = {};
     if (autoConfig) {
         for (const [k, v] of Object.entries(autoConfig)) {
@@ -290,17 +276,6 @@ export function useBuySectionMutations({
         );
     };
 
-    const handleResetBuyPricingConfig = () => {
-        const committed = bid?.autoConfig ?? {};
-        const current = local.buyAutoConfig;
-        const resetFields: Record<string, string> = {};
-        for (const k of BUY_PRICING_KEYS) {
-            const committedVal = committed[k as keyof typeof committed];
-            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-        }
-        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
-    };
-
     const handleSaveBuyVolumeConfig = () => {
         const autoConfig = localToAutoConfig(
             pickAutoConfigKeys(local.buyAutoConfig, BUY_VOLUME_KEYS) as AutoConfigLocalState,
@@ -334,17 +309,6 @@ export function useBuySectionMutations({
                 },
             },
         );
-    };
-
-    const handleResetBuyVolumeConfig = () => {
-        const committed = bid?.autoConfig ?? {};
-        const current = local.buyAutoConfig;
-        const resetFields: Record<string, string> = {};
-        for (const k of BUY_VOLUME_KEYS) {
-            const committedVal = committed[k as keyof typeof committed];
-            resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-        }
-        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
     };
 
     const pendingBuyPriceAction = pendingActions.find(
@@ -385,9 +349,7 @@ export function useBuySectionMutations({
         resetBuy: handleResetBuy,
         automationChange: handleBuyAutomationChange,
         savePricingConfig: handleSaveBuyPricingConfig,
-        resetPricingConfig: handleResetBuyPricingConfig,
         saveVolumeConfig: handleSaveBuyVolumeConfig,
-        resetVolumeConfig: handleResetBuyVolumeConfig,
         buyPriceSaving,
         buyAutomationSaving,
         buyPricingConfigSaving,

@@ -51,8 +51,14 @@ async function main(): Promise<void> {
     const years = Number(arg('years') ?? 30);
     const bands = arg('bands') ?? 'report';
     const only = arg('scenario');
+    const onlyNames = only
+        ? only
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean)
+        : undefined;
 
-    const scenarios = only ? SCENARIOS.filter((s) => s.name === only) : SCENARIOS;
+    const scenarios = onlyNames ? SCENARIOS.filter((s) => onlyNames.includes(s.name)) : SCENARIOS;
     if (scenarios.length === 0) {
         console.error(`No scenarios to run (--scenario=${only})`);
         process.exit(2);

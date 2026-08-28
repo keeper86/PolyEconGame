@@ -1,10 +1,8 @@
 import assert from 'assert';
 import {
-    ASK_PRICE_SENSITIVITY,
     ASK_VOLUME_FLOOR_FRACTION,
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    BID_PRICE_SENSITIVITY,
     BID_VOLUME_FLOOR_FRACTION,
     COST_SPRING_STRENGTH,
     EPSILON,
@@ -18,6 +16,7 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SELL_THROUGH_EMA_ALPHA,
+    SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
     TARGET_FILL_RATE_SERVICES,
     TARGET_SELL_THROUGH,
@@ -58,7 +57,6 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         targetSellThrough:
             c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
         askVolumeFloorFraction: c.askVolumeFloorFraction ?? ASK_VOLUME_FLOOR_FRACTION,
-        askPriceSensitivity: c.askPriceSensitivity ?? ASK_PRICE_SENSITIVITY,
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
         freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -78,7 +76,6 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
         targetFillRate:
             c.targetFillRate ?? (resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE),
         bidVolumeFloorFraction: c.bidVolumeFloorFraction ?? BID_VOLUME_FLOOR_FRACTION,
-        bidPriceSensitivity: c.bidPriceSensitivity ?? BID_PRICE_SENSITIVITY,
         bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
         freeBuyQuantitySmoothingMaxExtra: c.freeBuyQuantitySmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -545,7 +542,7 @@ export function adjustOfferPrice(
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
-    const netFactor = factor + cfg.costSpringStrength * deviation;
+    const netFactor = factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
@@ -642,7 +639,7 @@ function adjustBidPrice(
     );
 
     const overDeviation = Math.sqrt(Math.max(0, bid.bidPrice / ceilingPrice - 1));
-    const ceilingSpring = cfg.costSpringStrength * overDeviation;
+    const ceilingSpring = cfg.costSpringStrength * SPRING_NORMALIZATION * overDeviation;
     const factor = baseFactor - ceilingSpring;
 
     const newPrice = bid.bidPrice * factor;

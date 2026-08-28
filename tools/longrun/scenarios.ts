@@ -34,6 +34,90 @@ export const SCENARIOS: Scenario[] = [
         ],
     },
     {
+        name: 'bankruptcyHaircut',
+        description:
+            'Bankruptcy restructure writes off only 50% of outstanding debt; the remaining 50% rolls over on the refounded company at a 5% loan rate. Tests whether halving the per-bankruptcy equity loss while raising interest income keeps the banking system stable over 30 years.',
+        seed: 1001,
+        years: 30,
+        world: { bankruptcyWriteOffFraction: 0.5, loanRatePerYear: 0.05 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest10',
+        description:
+            'Bankruptcy restructure writes off 100% of debt, but new and rollover loans carry a 10% annual rate. Tests how far interest income can be pushed to reduce the bank equity drain.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.1 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest5-wo66',
+        description:
+            '5% loan rate with a 66% bankruptcy debt write-off; the remaining 33% of debt rolls over on the refounded company. Tests whether a two-thirds haircut at the new baseline rate keeps the banking system stable with less equity drain.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.05, bankruptcyWriteOffFraction: 0.66 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest7.5-wo75',
+        description:
+            '7.5% loan rate with a 75% bankruptcy debt write-off; the remaining 25% of debt rolls over on the refounded company. Tests a middle path between the 5% baseline and the 10% stress case.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.075, bankruptcyWriteOffFraction: 0.75 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest5-wo95',
+        description:
+            '5% loan rate with a 95% bankruptcy debt write-off; only 5% of debt rolls over on the refounded company. Tests the low-retention end of the write-off spectrum after 66% was found to be unstable.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.05, bankruptcyWriteOffFraction: 0.95 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest5-wo90',
+        description:
+            '5% loan rate with a 90% bankruptcy debt write-off; only 10% of debt rolls over on the refounded company. Tests the low-retention end of the write-off spectrum after 66% was found to be unstable.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.05, bankruptcyWriteOffFraction: 0.9 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
         name: 'waterCapped',
         description: 'Water source is capped and cannot be extended; population must shrink to carrying capacity.',
         seed: 1002,
@@ -159,6 +243,70 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'avgGroceryStarvation', horizonYears: 50, windowYears: 3, max: 0.25 },
             { metric: 'groceryFillRate', horizonYears: 50, windowYears: 3, min: 0.6 },
             { metric: 'medianWealth', horizonYears: 50, windowYears: 5, relativeToStart: true, min: 1.0 },
+        ],
+    },
+    {
+        name: 'longrun-baseline',
+        description:
+            '600-year control run with as-is parameters. Reference for the long-run cost-spring and bankruptcy variants.',
+        seed: 1001,
+        years: 600,
+        world: {},
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-wo50',
+        description:
+            '600-year run with BANKRUPTCY_DEBT_WRITE_OFF_FRACTION = 0.5 (half the debt rolls over on the refounded company at the default 5% rate).',
+        seed: 1001,
+        years: 600,
+        world: { bankruptcyWriteOffFraction: 0.5 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-spring040',
+        description:
+            '600-year run with agent personality costSpringStrength = 0.4 (ceiling/floor spring pulls price back to cost harder).',
+        seed: 1001,
+        years: 600,
+        world: { costSpringStrength: 0.4 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-spring045',
+        description:
+            '600-year run with agent personality costSpringStrength = 0.45 (ceiling/floor spring pulls price back to cost harder).',
+        seed: 1001,
+        years: 600,
+        world: { costSpringStrength: 0.45 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
         ],
     },
 ];

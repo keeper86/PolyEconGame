@@ -178,14 +178,12 @@ export interface AutomatedPricingConfig {
 
     targetSellThrough?: number;
     askVolumeFloorFraction?: number;
-    askPriceSensitivity?: number;
     automatedCostFloorBuffer?: number;
     costSpringStrength?: number;
 
     inputBufferTargetTicks?: number;
     targetFillRate?: number;
     bidVolumeFloorFraction?: number;
-    bidPriceSensitivity?: number;
     bidOfferMaxCostMultiplier?: number;
 }
 
@@ -256,7 +254,7 @@ export type AgentMarketBidState = {
     diagnostics?: BuyDiagnostics;
 };
 
-export type AgentMarketOffers = {
+type AgentMarketOffers = {
     sell: {
         [resourceName: string]: AgentMarketOfferState;
     };
@@ -285,7 +283,7 @@ export type MarketResult = {
 
 export type LicenseType = 'commercial' | 'workforce';
 
-export type PlanetLicense = {
+type PlanetLicense = {
     acquiredTick: number;
     frozen: boolean;
 };
@@ -314,9 +312,6 @@ export type MonthAccumulator = {
     depreciatedServices: Record<string, ResourceAccumulator>;
     naturalDepreciationValue: number;
 };
-
-export const operatingProfit = (acc: MonthAccumulator): number =>
-    acc.revenue - acc.wages - acc.purchases - acc.claimPayments;
 
 export type AgentPlanetAssets = {
     productionFacilities: ProductionFacility[];
@@ -428,7 +423,7 @@ export function pushTickerEvent(gameState: GameState, event: Omit<TickerEvent, '
     gameState.tickerEvents.push(tickerEvent);
 }
 
-export const MAX_BANKRUPTCY_RECORDS = 200;
+const MAX_BANKRUPTCY_RECORDS = 2000;
 
 export function pushBankruptcyRecord(gameState: GameState, record: BankruptcyRecord): void {
     gameState.bankruptcies.push(record);

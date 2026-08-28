@@ -9,7 +9,7 @@ import type { ConsumptionShipInfo } from './consumptionShipInfo';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
-export type ConsumptionBreakdownItem = {
+type ConsumptionBreakdownItem = {
     sourceType:
         | 'production'
         | 'management'

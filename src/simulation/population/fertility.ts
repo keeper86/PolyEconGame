@@ -8,7 +8,7 @@ export const START_FERTILE_AGE = 18;
 
 export const END_FERTILE_AGE = 45;
 
-export const LIFETIME_FERTILITY = 3.0;
+const LIFETIME_FERTILITY = 3.0;
 
 export function fertReductionFromPollution(pollution: Environment['pollution']): number {
     return Math.min(1, pollution.air * 0.01 + pollution.water * 0.002 + pollution.soil * 0.0005);

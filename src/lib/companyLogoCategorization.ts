@@ -55,7 +55,7 @@ function categoryForBaseKey(base: string): string {
     return CATEGORY_GENERAL;
 }
 
-export const LOGO_CATEGORIES: Record<string, string> = {};
+const LOGO_CATEGORIES: Record<string, string> = {};
 for (const key of Object.keys(assetManifest)) {
     const base = getBaseIconKey(key);
     if (base) {

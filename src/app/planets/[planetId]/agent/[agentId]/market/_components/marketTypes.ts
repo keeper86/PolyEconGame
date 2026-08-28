@@ -7,8 +7,6 @@ import type {
     BuyDiagnostics,
 } from '@/simulation/planet/planet';
 
-export const TTL_FEEDBACK = 5_000;
-
 export type AutoConfigLocalState = {
     priceAdjustMaxUp: string;
     priceAdjustMaxDown: string;
@@ -24,6 +22,31 @@ export type AutoConfigLocalState = {
     freeBuyQuantitySmoothingMaxExtra: string;
     freeRetainmentSmoothingMaxExtra: string;
 };
+
+export const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'bidOfferMaxCostMultiplier',
+    'targetFillRate',
+];
+
+export const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
+    'inputBufferTargetTicks',
+    'inventorySmoothingMaxExtra',
+    'freeBuyQuantity',
+    'freeBuyQuantitySmoothingMaxExtra',
+];
+
+export const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'automatedCostFloorBuffer',
+    'targetSellThrough',
+];
+
+export const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
 export function autoConfigToLocal(config: AutomatedPricingConfig | undefined): AutoConfigLocalState {
     return {
@@ -96,6 +119,43 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
         }
     }
     return false;
+}
+
+// The values Reset restores: the committed (last applied) config for the given keys.
+// Until apply, the committed config is the "current" setting; presets/sliders only draft.
+export function buildResetTarget(
+    committedLocal: AutoConfigLocalState,
+    keys: readonly (keyof AutoConfigLocalState)[],
+): Record<string, string> {
+    const result: Record<string, string> = {};
+    for (const k of keys) {
+        result[k] = committedLocal[k];
+    }
+    return result;
+}
+
+// Reset is meaningful when the draft differs from the committed state: either the values
+// differ from the committed config, or the active mode (e.g. custom) differs from the mode
+// the committed config would be detected as.
+export function canResetToTarget(
+    local: AutoConfigLocalState,
+    target: Record<string, string>,
+    keys: readonly (keyof AutoConfigLocalState)[],
+    activeMode: string,
+    postResetMode: string,
+): boolean {
+    const valuesDiffer = keys.some((key) => {
+        const localStr = local[key];
+        const targetStr = target[key] ?? '';
+        if (localStr === '' && targetStr === '') {
+            return false;
+        }
+        if (localStr === '' || targetStr === '') {
+            return true;
+        }
+        return parseFloat(localStr) !== parseFloat(targetStr);
+    });
+    return valuesDiffer || activeMode !== postResetMode;
 }
 
 export type MarketBidEntry = {

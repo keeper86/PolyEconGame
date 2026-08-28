@@ -463,7 +463,7 @@ function computeRootCauses(rows: FacilityPerf[], resourceActuals: ResourceGap[])
 /**
  * Create a MonthlyReport from the current cached game state.
  */
-export function extractMonthlyReport(): MonthlyReport {
+function extractMonthlyReport(): MonthlyReport {
     const { tick, planets } = getAllPlanetsSync();
     const { agents } = getAllAgentsSync();
     const forexMMs = getForexMarketMakersSync();
@@ -550,7 +550,7 @@ function computeDeathRatePer100k(planet: MonthlyPlanetReport): number {
 /**
  * Build the condensed prompt-friendly report.
  */
-export function computeCondensedReport(current: MonthlyReport, previous: MonthlyReport | null): CondensedReport {
+function computeCondensedReport(current: MonthlyReport, previous: MonthlyReport | null): CondensedReport {
     // ── 0. Human-readable dates ───────────────────────────────────────────
     const date = tickToMonthYear(current.tick);
     const previousDate = previous ? tickToMonthYear(previous.tick) : null;

@@ -189,7 +189,6 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                askPriceSensitivity: 2,
                 targetSellThrough: 0.8,
             };
 
@@ -256,7 +255,6 @@ describe('marketActions autoConfig merge', () => {
             const pricingConfig: AutomatedPricingConfig = {
                 priceAdjustMaxUp: 1.1,
                 priceAdjustMaxDown: 0.9,
-                askPriceSensitivity: 2,
                 targetSellThrough: 0.8,
             };
 

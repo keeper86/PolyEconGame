@@ -9,7 +9,7 @@ import { EDU_COLORS } from '@/app/planets/[planetId]/agent/[agentId]/workforce/_
 import { borderColor, fillColor } from '@/components/client/ProductQuantity';
 import Link from 'next/link';
 
-export const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
+const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
 export function WorkerBars({
     workerRequirement,

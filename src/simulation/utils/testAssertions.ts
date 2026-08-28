@@ -62,31 +62,3 @@ export function assertAllNonNegative(planet: Planet, agents: Agent[]): void {
         }
     }
 }
-
-export function assertPerCellWorkforcePopulationConsistency(planet: Planet, agents: Agent[], label = ''): void {
-    for (let age = 0; age < planet.population.demography.length; age++) {
-        for (const edu of educationLevelKeys) {
-            const popEmployed = planet.population.demography[age].employed[edu].total;
-
-            let wfTotal = 0;
-            for (const agent of agents) {
-                const wf = agent.assets[planet.id]?.workforceDemography;
-                if (!wf || age >= wf.length) {
-                    continue;
-                }
-                const cell = wf[age][edu];
-                wfTotal += cell.active;
-                wfTotal += cell.voluntaryDeparting.reduce((s: number, d: number) => s + d, 0);
-                wfTotal += cell.departingFired.reduce((s: number, d: number) => s + d, 0);
-                wfTotal += cell.departingRetired.reduce((s: number, d: number) => s + d, 0);
-            }
-
-            if (popEmployed !== 0 || wfTotal !== 0) {
-                expect(
-                    wfTotal,
-                    `${label} per-cell mismatch at age=${age}, edu=${edu}: wf=${wfTotal}, pop(employed)=${popEmployed}`,
-                ).toBe(popEmployed);
-            }
-        }
-    }
-}

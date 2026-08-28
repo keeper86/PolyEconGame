@@ -5,7 +5,7 @@ import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from '.
 import type { AgentPlanetAssets, PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
 
-export type ConstructionState = {
+type ConstructionState = {
     type: 'new' | 'expansion';
     constructionTargetMaxScale: number;
     totalConstructionServiceRequired: number;
@@ -121,7 +121,7 @@ export type LastManagementTickResults = LastTickResults & {
     lastProduced: { [resourceName: string]: number };
 };
 
-export type LastProductionTickResults = LastManagementTickResults & {
+type LastProductionTickResults = LastManagementTickResults & {
     revenue: number;
 };
 

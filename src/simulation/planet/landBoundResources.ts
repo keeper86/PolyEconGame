@@ -17,7 +17,7 @@ export const oilReservoirResourceType: Resource = {
     name: 'Oil Reservoir',
 };
 
-export const naturalGasFieldResourceType: Resource = {
+const naturalGasFieldResourceType: Resource = {
     ...landBoundResourceDefault,
     name: 'Natural Gas Field',
 };

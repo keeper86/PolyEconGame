@@ -409,7 +409,7 @@ export function unloadPassengersToWorkforce(
     }
 }
 
-export function unloadPassengersToPlanet(planet: Planet, manifest: PassengerManifest): void {
+function unloadPassengersToPlanet(planet: Planet, manifest: PassengerManifest): void {
     const demography = planet.population.demography;
 
     for (const [key, category] of Object.entries(manifest)) {

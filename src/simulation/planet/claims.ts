@@ -21,7 +21,7 @@ export type ResourceQuantity = {
     quantity: number;
 };
 
-export type ClaimStatus = 'active' | 'paused';
+type ClaimStatus = 'active' | 'paused';
 
 /** The unleased, publicly-available pool of a resource on a planet. */
 export type ResourcePool = {

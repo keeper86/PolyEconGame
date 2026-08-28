@@ -30,22 +30,22 @@ import {
     serviceKeyOf,
 } from './serviceDefinitions';
 
-export interface DependentNeed {
+interface DependentNeed {
     totalNeed: number;
 
     totalPop: number;
 }
 
-export interface CellAggregate {
+interface CellAggregate {
     pop: number;
     wealth: GaussianMoments;
 
     buffers: Partial<Record<ServiceName, number>>;
 }
 
-export type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
+type AggregateCache = Array<{ [O in Occupation]: { [L in EducationLevelType]: CellAggregate } }>;
 
-export function buildAggregateCache(
+function buildAggregateCache(
     demography: Cohort<PopulationCategory>[],
     referenceMonthlyIncomeValue: number,
 ): AggregateCache {
@@ -143,7 +143,7 @@ function computeSurplusSnapshot(cache: AggregateCache, floor: number): number[] 
     return snapshot;
 }
 
-export function computeDependentNeedsForTier(
+function computeDependentNeedsForTier(
     cache: AggregateCache,
     tierServices: ServiceName[],
     marketPrices: Record<string, number>,
@@ -445,7 +445,7 @@ function debitSupporters(
     return actuallyDebited;
 }
 
-export function creditDependents(
+function creditDependents(
     cache: AggregateCache,
     demography: Cohort<PopulationCategory>[],
     age: number,

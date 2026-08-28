@@ -8,21 +8,14 @@ import {
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
-import type { Resource } from '../planet/claims';
 import type { HRFacility } from '../planet/facility';
-import {
-    createLastTickResults,
-    putIntoStorageFacility,
-    type ProductionFacility,
-    type StorageFacility,
-} from '../planet/facility';
+import { putIntoStorageFacility, type ProductionFacility, type StorageFacility } from '../planet/facility';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
     type Agent,
     type AgentPlanetAssets,
 } from '../planet/planet';
-import { agriculturalFacility, waterFacility } from '../planet/productionFacilities';
 import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
@@ -35,50 +28,6 @@ import {
     type Population,
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
-
-export function makeProductionFacility(opts: {
-    planetId: string;
-    id: string;
-    name: string;
-    scale: number;
-    powerPerTick: number;
-    workers: { none?: number; primary?: number; secondary?: number; tertiary?: number };
-    pollution: { air: number; water: number; soil: number };
-    needs: { resource: Resource; quantity: number }[];
-    produces: { resource: Resource; quantity: number }[];
-}): ProductionFacility {
-    return {
-        type: 'production',
-        planetId: opts.planetId,
-        id: opts.id,
-        name: opts.name,
-        maxScale: opts.scale,
-        scale: opts.scale,
-        construction: null,
-        lastConstructionCompletedTick: 0,
-        maintenanceStatus: 1,
-        maxMaintenance: 1,
-        cumulativeRepairAcc: 0,
-        lastTickMaintenanceConsumption: 0,
-        lastTickRestorationConsumption: 0,
-        powerConsumptionPerTick: opts.powerPerTick,
-        workerRequirement: {
-            none: opts.workers.none ?? 0,
-            primary: opts.workers.primary ?? 0,
-            secondary: opts.workers.secondary ?? 0,
-            tertiary: opts.workers.tertiary ?? 0,
-        },
-        pollutionPerTick: opts.pollution,
-        needs: opts.needs,
-        produces: opts.produces,
-        lastTickResults: {
-            ...createLastTickResults(),
-            lastProduced: {},
-            revenue: 0,
-        },
-        pidState: null,
-    };
-}
 
 export function makeStorage(opts: {
     planetId: string;
@@ -340,19 +289,6 @@ export function makeDefaultEnvironment(opts: {
     };
 }
 
-export function makeWaterExtraction(planetId: string, agentId: string, scale: number): ProductionFacility {
-    const facility = waterFacility(planetId, `${agentId}-water-extraction`);
-    facility.scale = scale;
-    facility.maxScale = scale;
-    return facility;
-}
-
-export function makeAgriculturalProduction(planetId: string, agentId: string, scale: number): ProductionFacility {
-    const facility = agriculturalFacility(planetId, `${agentId}-agricultural`);
-    facility.scale = scale;
-    facility.maxScale = scale;
-    return facility;
-}
 export const humanResourcesScaleForWorkers = (neededWorkers: number): number =>
     neededWorkers / ((2 / 3) * PRODUCED_HR_QUANTITY);
 

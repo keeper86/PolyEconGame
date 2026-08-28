@@ -1,7 +1,14 @@
-import type { AutoConfigLocalState } from './marketTypes';
+import {
+    BUY_PRICING_KEYS,
+    BUY_VOLUME_KEYS,
+    SELL_PRICING_KEYS,
+    SELL_VOLUME_KEYS,
+    type AutoConfigLocalState,
+} from './marketTypes';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
+    COST_SPRING_STRENGTH,
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -90,7 +97,7 @@ export const VOLUME_BUY_PRESETS: Record<Exclude<BuyVolumePresetType, 'custom'>, 
 };
 
 // Services decay at 10%/tick, so tiny buffer targets — hoarding is wasteful.
-export const VOLUME_BUY_PRESETS_SERVICES: Record<Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues> = {
+const VOLUME_BUY_PRESETS_SERVICES: Record<Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues> = {
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         inputBufferTargetTicks: String(Math.round(INPUT_BUFFER_TARGET_TICKS_SERVICES / 3)),
@@ -146,7 +153,7 @@ export function getVolumeSellPreset(preset: Exclude<SellVolumePresetType, 'custo
 
 export type PricingBuyValues = Pick<
     AutoConfigLocalState,
-    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'targetFillRate' | 'bidOfferMaxCostMultiplier'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'costSpringStrength' | 'targetFillRate' | 'bidOfferMaxCostMultiplier'
 >;
 
 // Helper: format to 2 decimal places as used in presets
@@ -156,40 +163,46 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
     'patient': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 0.5),
         targetFillRate: f2(TARGET_FILL_RATE * 0.78),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 0.5)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
+        costSpringStrength: f2(COST_SPRING_STRENGTH),
         targetFillRate: f2(TARGET_FILL_RATE),
         bidOfferMaxCostMultiplier: String(BID_OFFER_MAX_COST_MULTIPLIER),
     },
     'urgent': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 1.67),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE * 1.06)),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
     },
 };
 
 // Services: higher target fill rate since decaying stock needs aggressive fill
-export const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
+const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
     'patient': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.89),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 0.5),
         targetFillRate: f2(TARGET_FILL_RATE_SERVICES * 0.89),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 0.5)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
+        costSpringStrength: f2(COST_SPRING_STRENGTH),
         targetFillRate: f2(TARGET_FILL_RATE_SERVICES),
         bidOfferMaxCostMultiplier: String(BID_OFFER_MAX_COST_MULTIPLIER),
     },
     'urgent': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 1.67),
         targetFillRate: f2(Math.min(1, TARGET_FILL_RATE_SERVICES * 1.04)),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
     },
@@ -206,47 +219,53 @@ export function getPricingBuyPreset(
 
 export type PricingSellValues = Pick<
     AutoConfigLocalState,
-    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'automatedCostFloorBuffer' | 'targetSellThrough'
+    'priceAdjustMaxUp' | 'priceAdjustMaxDown' | 'costSpringStrength' | 'automatedCostFloorBuffer' | 'targetSellThrough'
 >;
 
 export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 0.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
         targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH * 1.06)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
+        costSpringStrength: f2(COST_SPRING_STRENGTH),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER),
         targetSellThrough: f2(TARGET_SELL_THROUGH),
     },
     'premium': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 1.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
         targetSellThrough: f2(TARGET_SELL_THROUGH * 0.7),
     },
 };
 
 // Services: need higher sell-through to prevent decay waste
-export const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
+const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 0.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
         targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH_SERVICES * 1.04)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN),
+        costSpringStrength: f2(COST_SPRING_STRENGTH),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER),
         targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES),
     },
     'premium': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
+        costSpringStrength: f2(COST_SPRING_STRENGTH * 1.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 1.67),
         targetSellThrough: f2(TARGET_SELL_THROUGH_SERVICES * 0.75),
     },
@@ -260,29 +279,6 @@ export function getPricingSellPreset(
 }
 
 // ─── Detection helpers ──────────────────────────────────────────────────────
-
-const VOLUME_BUY_KEYS: (keyof VolumeBuyValues)[] = [
-    'inventorySmoothingMaxExtra',
-    'inputBufferTargetTicks',
-    'freeBuyQuantity',
-    'freeBuyQuantitySmoothingMaxExtra',
-];
-
-const VOLUME_SELL_KEYS: (keyof VolumeSellValues)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
-
-const PRICING_BUY_KEYS: (keyof PricingBuyValues)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'targetFillRate',
-    'bidOfferMaxCostMultiplier',
-];
-
-const PRICING_SELL_KEYS: (keyof PricingSellValues)[] = [
-    'priceAdjustMaxUp',
-    'priceAdjustMaxDown',
-    'automatedCostFloorBuffer',
-    'targetSellThrough',
-];
 
 function matchesPreset(
     localConfig: AutoConfigLocalState,
@@ -303,13 +299,13 @@ function matchesPreset(
 }
 
 export function detectVolumeBuyPreset(localConfig: AutoConfigLocalState, isService: boolean): BuyVolumePresetType {
-    if (VOLUME_BUY_KEYS.every((key) => localConfig[key] === '')) {
+    if (BUY_VOLUME_KEYS.every((key) => localConfig[key] === '')) {
         return 'balanced';
     }
     const presets = isService ? VOLUME_BUY_PRESETS_SERVICES : VOLUME_BUY_PRESETS;
     const entries = Object.entries(presets) as [Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, VOLUME_BUY_KEYS)) {
+        if (matchesPreset(localConfig, values, BUY_VOLUME_KEYS)) {
             return preset;
         }
     }
@@ -317,7 +313,7 @@ export function detectVolumeBuyPreset(localConfig: AutoConfigLocalState, isServi
 }
 
 export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellVolumePresetType {
-    if (VOLUME_SELL_KEYS.every((key) => localConfig[key] === '')) {
+    if (SELL_VOLUME_KEYS.every((key) => localConfig[key] === '')) {
         return 'balanced';
     }
     const entries = Object.entries(VOLUME_SELL_PRESETS) as [
@@ -325,7 +321,7 @@ export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellV
         VolumeSellValues,
     ][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, VOLUME_SELL_KEYS)) {
+        if (matchesPreset(localConfig, values, SELL_VOLUME_KEYS)) {
             return preset;
         }
     }
@@ -333,13 +329,13 @@ export function detectVolumeSellPreset(localConfig: AutoConfigLocalState): SellV
 }
 
 export function detectPricingBuyPreset(localConfig: AutoConfigLocalState, isService: boolean): PricingPresetType {
-    if (PRICING_BUY_KEYS.every((key) => localConfig[key] === '')) {
+    if (BUY_PRICING_KEYS.every((key) => localConfig[key] === '')) {
         return 'market-rate';
     }
     const presets = isService ? PRICING_BUY_PRESETS_SERVICES : PRICING_BUY_PRESETS;
     const entries = Object.entries(presets) as [Exclude<PricingPresetType, 'custom'>, PricingBuyValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, PRICING_BUY_KEYS)) {
+        if (matchesPreset(localConfig, values, BUY_PRICING_KEYS)) {
             return preset;
         }
     }
@@ -347,13 +343,13 @@ export function detectPricingBuyPreset(localConfig: AutoConfigLocalState, isServ
 }
 
 export function detectPricingSellPreset(localConfig: AutoConfigLocalState, isService: boolean): SellPricingPresetType {
-    if (PRICING_SELL_KEYS.every((key) => localConfig[key] === '')) {
+    if (SELL_PRICING_KEYS.every((key) => localConfig[key] === '')) {
         return 'market-rate';
     }
     const presets = isService ? PRICING_SELL_PRESETS_SERVICES : PRICING_SELL_PRESETS;
     const entries = Object.entries(presets) as [Exclude<SellPricingPresetType, 'custom'>, PricingSellValues][];
     for (const [preset, values] of entries) {
-        if (matchesPreset(localConfig, values, PRICING_SELL_KEYS)) {
+        if (matchesPreset(localConfig, values, SELL_PRICING_KEYS)) {
             return preset;
         }
     }

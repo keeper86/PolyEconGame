@@ -12,7 +12,7 @@ import { computeCostOfLiving } from '../../src/simulation/market/serviceDefiniti
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import { coalDepositResourceType, ironOreDepositResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
-import { bankEquity, operatingProfit, type GameState, type Planet } from '../../src/simulation/planet/planet';
+import { bankEquity, type GameState, type Planet } from '../../src/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '../../src/simulation/planet/resourceCatalog';
 import {
     chemicalResourceType,
@@ -38,7 +38,7 @@ import {
 import { educationLevelKeys } from '../../src/simulation/population/education';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
-import { sumExactUsedByEdu, sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
+import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
 import { facilityNameToKey } from './solverDiagnostic';
 import { computeCompanyNetWorth, computeWealthTax } from '../../src/simulation/agents/governmentAgent';
 import { computeLoanConditions } from '../../src/simulation/financial/loanConditions';
@@ -512,7 +512,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             if (netWorth < 0) {
                 companyNetWorthNegativeCount += 1;
             }
-            const profit = operatingProfit(assets.monthAcc);
+            const acc = assets.monthAcc;
+            const profit = acc.revenue - acc.wages - acc.purchases - acc.claimPayments;
             companyProfits.push(profit);
             if (profit < 0) {
                 companiesDeepLoss += 1;
@@ -892,7 +893,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         const wf = assets.workforceDemography;
         const slotsFilled = sumTotalUsedByEdu(assets);
         const slotFill = sumSlotFillByEdu(assets);
-        const exactUsed = sumExactUsedByEdu(assets);
+        const overqualified = assets.overqualifiedWorkers;
         for (const edu of educationLevelKeys) {
             allocByEdu[edu] += assets.allocatedWorkers?.[edu] ?? 0;
             if (typeof assets.wagePerEdu?.[edu] === 'number') {
@@ -902,7 +903,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             capacityByEdu[edu] += assets.totalSlotCapacity?.[edu] ?? 0;
             slotsFilledByEdu[edu] += slotsFilled[edu];
             slotFillByEdu[edu] += slotFill[edu];
-            overqualByEdu[edu] += Math.max(0, slotFill[edu] - exactUsed[edu]);
+            const oqBreakdown = overqualified?.[edu] ?? {};
+            overqualByEdu[edu] += Object.values(oqBreakdown).reduce((sum, count) => sum + (count ?? 0), 0);
             if (wf) {
                 activeByEdu[edu] += totalActiveForEdu(wf, edu);
             }

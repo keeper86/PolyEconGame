@@ -360,7 +360,7 @@ export function handleFacilityAction(
     }
 }
 
-export function handleBuildShipConstructionFacility(
+function handleBuildShipConstructionFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'buildShipConstructionFacility' }>,
     safePostMessage: (msg: OutboundMessage) => void,
@@ -423,7 +423,7 @@ export function handleBuildShipConstructionFacility(
     });
 }
 
-export function handleExpandShipConstructionFacility(
+function handleExpandShipConstructionFacility(
     state: GameState,
     action: Extract<PendingAction, { type: 'expandShipConstructionFacility' }>,
     safePostMessage: (msg: OutboundMessage) => void,
@@ -498,7 +498,7 @@ export function handleExpandShipConstructionFacility(
     });
 }
 
-export function handleSetShipConstructionTarget(
+function handleSetShipConstructionTarget(
     state: GameState,
     action: Extract<PendingAction, { type: 'setShipConstructionTarget' }>,
     safePostMessage: (msg: OutboundMessage) => void,

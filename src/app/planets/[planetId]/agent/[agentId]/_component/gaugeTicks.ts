@@ -1,10 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-export const GAUGE_ARC_START_DEG = -135;
-export const GAUGE_ARC_SWEEP_DEG = 270;
-export const MIN_TICK_LABEL_SEPARATION_DEG = 11;
-export const MIN_ZONE_ARC_DEG = 2;
-export const TICK_LABEL_NUDGE_PX = 10;
+const GAUGE_ARC_START_DEG = -135;
+const GAUGE_ARC_SWEEP_DEG = 270;
+const MIN_TICK_LABEL_SEPARATION_DEG = 11;
+const MIN_ZONE_ARC_DEG = 2;
+const TICK_LABEL_NUDGE_PX = 10;
 
 export function getTickAngle(value: number, maxValue: number): number {
     const safeMax = maxValue > 0 ? maxValue : 1;

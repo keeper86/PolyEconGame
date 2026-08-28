@@ -96,7 +96,7 @@ export type AuxiliaryCostRates = {
     constructionServicePrice: number;
 };
 
-export const facilityUpkeepCostPerTick = (
+const facilityUpkeepCostPerTick = (
     facility: Facility,
     rates: Pick<AuxiliaryCostRates, 'maintenanceCostPerScale' | 'constructionServicePrice'>,
 ): number => rates.maintenanceCostPerScale + restorationDemandPerTick(facility) * rates.constructionServicePrice;
