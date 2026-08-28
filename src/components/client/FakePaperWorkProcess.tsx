@@ -71,7 +71,7 @@ const STATIC_LAST_STEPS = [
 
 const STATIC_LAST_STEP_DELAYS = [10000, 2000, 3000, 10000, 10000, 20000];
 
-export function getRegistrySteps(): string[] {
+function getRegistrySteps(): string[] {
     // Shufflers
     const drawRandom = (arr: string[], count: number) => {
         return [...arr].sort(() => 0.5 - Math.random()).slice(0, count);

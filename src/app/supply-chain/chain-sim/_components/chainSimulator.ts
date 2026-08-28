@@ -148,10 +148,10 @@ export const DEFAULT_CHAIN_CONFIG: ChainNodeConfig[] = [
 
 // ── Constants from real game ─────────────────────────────────────────────────
 
-export const INVENTORY_SMOOTHING_MAX_EXTRA = 2;
-export const SELL_SMOOTHING_HEADROOM = 1.0;
-export const POP_GROWTH_RATE = 0.0005;
-export const POP_DECLINE_RATE = 0.002;
+const INVENTORY_SMOOTHING_MAX_EXTRA = 2;
+const SELL_SMOOTHING_HEADROOM = 1.0;
+const POP_GROWTH_RATE = 0.0005;
+const POP_DECLINE_RATE = 0.002;
 
 // ── PID controller (extracted from automaticProductionScale.ts) ──────────────
 

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FACILITY_MAINTENANCE_REPAIR_PER_TICK,
-    FACILITY_RESTORATION_PER_TICK,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     TICKS_PER_YEAR,
@@ -188,7 +187,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + FACILITY_RESTORATION_PER_TICK, 10);
+        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, 10);
     });
 
     it('wears maintenanceStatus down when no Maintenance service is available', () => {
@@ -358,7 +357,7 @@ describe('facilityMaintenanceTick', () => {
         expect(facility.maxMaintenance).toBe(1);
     });
 
-    it('restores maxMaintenance by FACILITY_RESTORATION_PER_TICK when Construction is available', () => {
+    it('restores maxMaintenance by MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE when Construction is available', () => {
         const { gameState, planet, facility, storage } = setup();
         facility.maxMaintenance = HALF_CONDITION;
         facility.maintenanceStatus = HALF_CONDITION;
@@ -367,9 +366,9 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + FACILITY_RESTORATION_PER_TICK, 10);
+        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, 10);
         expect(queryStorageFacility(storage, constructionServiceResourceType.name)).toBeCloseTo(
-            cost - FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
+            cost - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5),
             6,
         );
     });
@@ -382,14 +381,17 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maxMaintenance).toBeCloseTo(HALF_CONDITION + FACILITY_RESTORATION_PER_TICK / 2, 10);
+        expect(facility.maxMaintenance).toBeCloseTo(
+            HALF_CONDITION + MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2,
+            10,
+        );
         expect(queryStorageFacility(storage, constructionServiceResourceType.name)).toBe(0);
     });
 
     it('caps restoration at maxMaintenance = 1', () => {
         const { gameState, planet, facility, storage } = setup();
-        facility.maxMaintenance = 1 - FACILITY_RESTORATION_PER_TICK / 2;
-        facility.maintenanceStatus = 1 - FACILITY_RESTORATION_PER_TICK / 2;
+        facility.maxMaintenance = 1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2;
+        facility.maintenanceStatus = 1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2;
         seedService(storage, constructionServiceResourceType, fullRestoreCost(facility));
 
         facilityMaintenanceTick(gameState, planet);
@@ -405,8 +407,8 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.maxMaintenance).toBeCloseTo(FACILITY_RESTORATION_PER_TICK, 10);
-        expect(facility.maintenanceStatus).toBeCloseTo(FACILITY_RESTORATION_PER_TICK, 10);
+        expect(facility.maxMaintenance).toBeCloseTo(MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, 10);
+        expect(facility.maintenanceStatus).toBeCloseTo(MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE, 10);
     });
 
     it('does not restore without Construction service', () => {
@@ -433,7 +435,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        const consumed = FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5);
+        const consumed = MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5);
         const assets = agent.assets[PLANET_ID]!;
         expect(planet.consumedResources[constructionServiceResourceType.name]).toBeCloseTo(consumed, 6);
         expect(assets.monthAcc.consumedResources[constructionServiceResourceType.name].quantity).toBeCloseTo(
@@ -476,7 +478,7 @@ describe('facilityMaintenanceTick', () => {
         facilityMaintenanceTick(gameState, planet);
 
         expect(facility.lastTickRestorationConsumption).toBeCloseTo(
-            FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
+            MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5),
             6,
         );
     });
@@ -529,24 +531,26 @@ describe('collectAgentFacilities', () => {
                 expect(facilityRestorationCapacityPerTick(facility)).toBe(0);
             });
 
-            it('returns FACILITY_RESTORATION_PER_TICK times full restore cost when headroom exceeds the per-tick cap', () => {
+            it('returns MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE times full restore cost when headroom exceeds the per-tick cap', () => {
                 const facility = makeProductionFacility();
                 facility.maxMaintenance = 0.5;
                 const cost = fullRestoreCost(facility);
 
                 expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    FACILITY_RESTORATION_PER_TICK * cost * facilityRestorationCostFactor(0.5),
+                    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5),
                     10,
                 );
             });
 
             it('clamps to the remaining headroom when nearly full', () => {
                 const facility = makeProductionFacility();
-                facility.maxMaintenance = 1 - FACILITY_RESTORATION_PER_TICK / 2;
+                facility.maxMaintenance = 1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2;
                 const cost = fullRestoreCost(facility);
 
                 expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    (FACILITY_RESTORATION_PER_TICK / 2) * cost * facilityRestorationCostFactor(facility.maxMaintenance),
+                    (MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2) *
+                        cost *
+                        facilityRestorationCostFactor(facility.maxMaintenance),
                     10,
                 );
             });

@@ -8,7 +8,7 @@ import {
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     TARGET_FILL_RATE,
-    TARGET_SELL_THROUGH
+    TARGET_SELL_THROUGH,
 } from '../constants';
 import type { Resource } from '../planet/claims';
 import type { AutomatedPricingConfig } from '../planet/planet';
@@ -18,11 +18,6 @@ type BuyVolumePreset = 'just-in-time' | 'balanced' | 'stockpile';
 type BuyPricingPreset = 'patient' | 'market-rate' | 'urgent';
 type SellVolumePreset = 'dump' | 'balanced' | 'reserve';
 type SellPricingPreset = 'liquidation' | 'market-rate' | 'premium';
-
-const BUY_VOLUME_PRESETS: BuyVolumePreset[] = ['just-in-time', 'balanced', 'stockpile'];
-const BUY_PRICING_PRESETS: BuyPricingPreset[] = ['patient', 'market-rate', 'urgent'];
-const SELL_VOLUME_PRESETS: SellVolumePreset[] = ['dump', 'balanced', 'reserve'];
-const SELL_PRICING_PRESETS: SellPricingPreset[] = ['liquidation', 'market-rate', 'premium'];
 
 const VOLUME_BUY_CONFIGS: Record<BuyVolumePreset, Partial<AutomatedPricingConfig>> = {
     'just-in-time': {
@@ -105,17 +100,11 @@ export interface AgentPersonality {
 const gauss = (mean: number, std: number) =>
     Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
 
-let sellPriceAggressivenessGaussMean = 1;
-
-export function setSellPriceAggressivenessMean(targetBufferMean: number): void {
-    sellPriceAggressivenessGaussMean = (targetBufferMean - 1.0) / 0.5;
-}
-
 export function generateAgentPersonality(): AgentPersonality {
     const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
     const priceAdjustmentAggressivenessDown = Math.min(0.999, 0.975 - 0.05 * gauss(0.5, 0.2));
-    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.5 * gauss(sellPriceAggressivenessGaussMean, 0.5));
-    const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 6 * gauss(0.5, 0.2)));
+    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.5 * gauss(1, 0.5));
+    const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 3 * gauss(1, 0.5)));
 
     return {
         buyAutoConfig: {
@@ -137,9 +126,6 @@ export function generateAgentPersonality(): AgentPersonality {
         },
     };
 }
-
-export { BUY_PRICING_PRESETS, BUY_VOLUME_PRESETS, SELL_PRICING_PRESETS, SELL_VOLUME_PRESETS };
-export type { BuyPricingPreset, BuyVolumePreset, SellPricingPreset, SellVolumePreset };
 
 export function buildBuyAutoConfigForResource(
     base: AutomatedPricingConfig,

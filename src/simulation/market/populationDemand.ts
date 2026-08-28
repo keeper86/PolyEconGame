@@ -4,8 +4,6 @@ import { forEachPopulationCohort } from '../population/population';
 import type { BidOrder } from './marketTypes';
 import { allServices, householdDemandPriority, referenceMonthlyIncome, serviceKeyOf } from './serviceDefinitions';
 export { householdDemandPriority, SERVICE_DEFINITIONS } from './serviceDefinitions';
-export type { ServiceDefinition } from './serviceDefinitions';
-
 export function binHouseholdBids(
     bids: BidOrder[],
     filled: number[],

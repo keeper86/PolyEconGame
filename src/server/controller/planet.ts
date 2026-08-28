@@ -432,8 +432,6 @@ const agentOfferSchema = z.object({
     lastRevenue: z.number(),
 });
 
-export type AgentOffer = z.infer<typeof agentOfferSchema>;
-
 type AgentBidEntry = {
     agentId: string;
     agentName: string;
@@ -494,8 +492,6 @@ const agentBidSchema = z.object({
     fillRatio: z.number(),
     lastSpent: z.number(),
 });
-
-export type AgentBid = z.infer<typeof agentBidSchema>;
 
 const marketSnapshotSchema = z.object({
     planetId: z.string(),

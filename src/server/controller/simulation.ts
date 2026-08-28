@@ -139,8 +139,6 @@ const planetSummarySchema = z.object({
     claims: z.array(resourceSummarySchema),
 });
 
-export type PlanetSummary = z.infer<typeof planetSummarySchema>;
-
 export const getLatestPlanetSummaries = () =>
     protectedProcedure
         .input(z.void())
@@ -1031,45 +1029,6 @@ function computeArbitrageRoutesForShip(
 
     return routes;
 }
-
-export const getArbitrageRoutes = () =>
-    protectedProcedure
-        .input(
-            z.object({
-                shipTypeName: z.string(),
-                maxRoutes: z.number().int().min(1).max(500).default(200),
-            }),
-        )
-        .output(
-            z.object({
-                tick: z.number(),
-                shipTypeName: z.string(),
-                routes: z.array(routeRowSchema),
-            }),
-        )
-        .query(async ({ input }) => {
-            const shipType = ALL_TRANSPORT_SHIP_TYPES.find((s) => s.name === input.shipTypeName);
-            if (!shipType || shipType.type !== 'transport') {
-                return { tick: 0, shipTypeName: input.shipTypeName, routes: [] };
-            }
-
-            const { tick, planets } = getAllPlanetsSync();
-            const { shipCapitalMarket } = getShipCapitalMarketSync();
-
-            const oneWayTicks = Math.ceil(1000 / shipType.speed);
-            const roundTripTicks = oneWayTicks * 2 + ARBITRAGE_LOAD_UNLOAD_OVERHEAD_TICKS;
-            const emaPrice = shipCapitalMarket.emaPrice[shipType.name] ?? 0;
-            const depreciationRatePerTick = emaPrice > 0 ? emaPrice / ARBITRAGE_SHIP_ESTIMATED_LIFETIME_TICKS : 0;
-            const depreciation = depreciationRatePerTick * roundTripTicks;
-
-            const routes = computeArbitrageRoutesForShip(planets, shipType, depreciation, roundTripTicks);
-            routes.sort((a, b) => b.profitPerTick - a.profitPerTick);
-            return {
-                tick,
-                shipTypeName: input.shipTypeName,
-                routes: routes.slice(0, input.maxRoutes),
-            };
-        });
 
 export const getRawAgents = () =>
     protectedProcedure

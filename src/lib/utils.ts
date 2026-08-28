@@ -26,10 +26,6 @@ export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Unit
     }
 }
 
-export function getCurrencySymbol(planetId: string): string {
-    return currencyMapping[planetId]?.symbol ?? '¤';
-}
-
 export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
     const formattedNumber = formatNumbers(n);
     if (formattedNumber === '—') {

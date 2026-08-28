@@ -5,15 +5,15 @@ import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 
 export type PriceScaleMode = 'absolute' | 'relative';
 
-export function isGranularity(raw: unknown): raw is Granularity {
+function isGranularity(raw: unknown): raw is Granularity {
     return raw === 'monthly' || raw === 'yearly' || raw === 'decade';
 }
 
-export function isPriceScaleMode(raw: unknown): raw is PriceScaleMode {
+function isPriceScaleMode(raw: unknown): raw is PriceScaleMode {
     return raw === 'absolute' || raw === 'relative';
 }
 
-export function isBoolean(raw: unknown): raw is boolean {
+function isBoolean(raw: unknown): raw is boolean {
     return typeof raw === 'boolean';
 }
 

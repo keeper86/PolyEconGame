@@ -7,8 +7,6 @@ import type {
     BuyDiagnostics,
 } from '@/simulation/planet/planet';
 
-export const TTL_FEEDBACK = 5_000;
-
 export type AutoConfigLocalState = {
     priceAdjustMaxUp: string;
     priceAdjustMaxDown: string;

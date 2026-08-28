@@ -138,38 +138,6 @@ export function getSecondaryNavRoutes(): RouteMetadata[] {
     return secondaryNavRoutes;
 }
 
-export function getBreadcrumbData(pathname: string): Array<{ path: string; label: string; isLast: boolean }> {
-    const pathLabelMap: Record<string, string> = {};
-    function flatten(obj: unknown) {
-        if (obj && typeof obj === 'object') {
-            const o = obj as Record<string, unknown>;
-            if ('path' in o && 'label' in o && typeof o.path === 'string' && typeof o.label === 'string') {
-                pathLabelMap[o.path] = o.label;
-            }
-            for (const key in o) {
-                if (typeof o[key] === 'object' && o[key] !== null) {
-                    flatten(o[key]);
-                }
-            }
-        }
-    }
-    flatten(APP_ROUTES);
-
-    const segments = pathname.split('/').filter(Boolean);
-    const breadcrumbs: Array<{ path: string; label: string; isLast: boolean }> = [
-        { path: '/', label: 'Home', isLast: segments.length === 0 },
-    ];
-
-    let currentPath = '';
-    segments.forEach((segment, index) => {
-        currentPath += `/${segment}`;
-        const isLast = index === segments.length - 1;
-        const label = pathLabelMap[currentPath] || segment.charAt(0).toUpperCase() + segment.slice(1);
-        breadcrumbs.push({ path: currentPath, label, isLast });
-    });
-    return breadcrumbs;
-}
-
 export type AgentSubPage = {
     segment: string;
     label: string;

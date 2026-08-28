@@ -69,7 +69,7 @@ export function handleSetSellOffers(
     safePostMessage({ type: 'sellOffersSet', requestId, agentId, processedAtTick: state.tick });
 }
 
-export function handleCancelSellOffer(
+function handleCancelSellOffer(
     state: GameState,
     action: Extract<PendingAction, { type: 'cancelSellOffer' }>,
     safePostMessage: (msg: OutboundMessage) => void,
@@ -102,7 +102,7 @@ export function handleCancelSellOffer(
     safePostMessage({ type: 'sellOfferCancelled', requestId, agentId, processedAtTick: state.tick });
 }
 
-export function handleCancelBuyBid(
+function handleCancelBuyBid(
     state: GameState,
     action: Extract<PendingAction, { type: 'cancelBuyBid' }>,
     safePostMessage: (msg: OutboundMessage) => void,

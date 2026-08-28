@@ -62,7 +62,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
-export const RESOURCE_COLOR_MAP: Record<string, string> = {
+const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------
     // Iron / Steel / Metal — ColorBrewer "Oranges" / "YlOrRd" ramp
     // -------------------------------------------------------------

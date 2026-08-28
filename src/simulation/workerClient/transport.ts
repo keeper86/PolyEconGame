@@ -10,7 +10,7 @@ const g = globalThis as unknown as {
     [GLOBAL_KEY_LOG_LISTENER]?: boolean;
 };
 
-export const DEFAULT_TIMEOUT_MS = 5_000;
+const DEFAULT_TIMEOUT_MS = 5_000;
 
 function ensureLogListener(): void {
     if (g[GLOBAL_KEY_LOG_LISTENER]) {

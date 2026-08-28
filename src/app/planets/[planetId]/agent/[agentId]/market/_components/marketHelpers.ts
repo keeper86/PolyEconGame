@@ -10,51 +10,6 @@ import type { MarketBidEntry, MarketOfferEntry } from './marketTypes';
 import { autoConfigToLocal } from './marketTypes';
 import type { ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 
-export function priceArrow(dir?: number): { label: string; className: string } {
-    if (dir === undefined) {
-        return { label: '', className: '' };
-    }
-    if (dir > 0) {
-        return { label: '↑', className: 'text-green-600 dark:text-green-400' };
-    }
-    if (dir < 0) {
-        return { label: '↓', className: 'text-red-500 dark:text-red-400' };
-    }
-    return { label: '→', className: 'text-muted-foreground' };
-}
-
-export function buyFulfillmentClass(inventory: number, storageTarget: number): string {
-    if (storageTarget <= 0) {
-        return '';
-    }
-    const ratio = inventory / storageTarget;
-    if (ratio >= 1) {
-        return 'text-green-600 dark:text-green-400';
-    }
-    if (ratio >= 0.5) {
-        return 'text-yellow-600 dark:text-yellow-400';
-    }
-    return 'text-red-500 dark:text-red-400';
-}
-
-export function sellFulfillmentClass(inventory: number, retainment: number): string {
-    const effective = Math.max(0, inventory - retainment);
-    if (effective <= 0) {
-        return 'text-red-500 dark:text-red-400';
-    }
-    if (retainment <= 0 || effective > retainment) {
-        return 'text-green-600 dark:text-green-400';
-    }
-    return 'text-yellow-600 dark:text-yellow-400';
-}
-
-export function consumptionPerTick(facilities: ProductionFacility[], resourceName: string): number {
-    return facilities.reduce((sum, f) => {
-        const need = f.needs.find((n) => n.resource.name === resourceName);
-        return need ? sum + need.quantity * f.scale : sum;
-    }, 0);
-}
-
 export function productionPerTick(facilities: ProductionFacility[], resourceName: string): number {
     return facilities.reduce((sum, f) => {
         const prod = f.produces.find((p) => p.resource.name === resourceName);
@@ -63,7 +18,7 @@ export function productionPerTick(facilities: ProductionFacility[], resourceName
 }
 
 // ── Re-export types from the shared function ─────────────────────────────────
-export type { ConsumptionBreakdownItem, ConsumptionInfo } from '@/simulation/market/consumptionSources';
+export type { ConsumptionInfo } from '@/simulation/market/consumptionSources';
 
 export function totalConsumptionPerTick(
     assets: AgentPlanetAssets,

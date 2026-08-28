@@ -21,16 +21,6 @@ export const protectedProcedure = trpcRoot.procedure.use(async ({ ctx, next }) =
     throw unauthorizedError;
 });
 
-export const patAccessibleProcedure = trpcRoot.procedure.use(async ({ ctx, next }) => {
-    if (ctx.session.user?.id) {
-        return next();
-    }
-
-    throw unauthorizedError;
-});
-
-export type ProcedureBuilderType = typeof procedure | typeof protectedProcedure | typeof patAccessibleProcedure;
-
 export const getUserIdFromContext = (ctx: Context): string => {
     const session = ctx.session;
     if (session.user?.id) {

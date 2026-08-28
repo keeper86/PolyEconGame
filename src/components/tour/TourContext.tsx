@@ -14,7 +14,7 @@ type TourStorage = {
     completedActions: string[];
 };
 
-export function isTourStorage(raw: unknown): raw is TourStorage {
+function isTourStorage(raw: unknown): raw is TourStorage {
     if (typeof raw !== 'object' || raw === null) {
         return false;
     }

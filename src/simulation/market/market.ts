@@ -15,8 +15,6 @@ import { binHouseholdBids, buildPopulationDemand, householdDemandPriority } from
 import { computeMarketSummary, settleAgentBuyers, settleAgentSellers, settleHouseholds } from './settlement';
 import { buildPlanetOrderBook } from './orderBookSnapshot';
 
-export type { BidOrder } from './marketTypes';
-
 export function marketTick(agents: Map<string, Agent>, planet: Planet): void {
     planet.lastMarketResult = {};
 

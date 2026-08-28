@@ -91,7 +91,7 @@ export const VOLUME_BUY_PRESETS: Record<Exclude<BuyVolumePresetType, 'custom'>, 
 };
 
 // Services decay at 10%/tick, so tiny buffer targets — hoarding is wasteful.
-export const VOLUME_BUY_PRESETS_SERVICES: Record<Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues> = {
+const VOLUME_BUY_PRESETS_SERVICES: Record<Exclude<BuyVolumePresetType, 'custom'>, VolumeBuyValues> = {
     'just-in-time': {
         inventorySmoothingMaxExtra: '0',
         inputBufferTargetTicks: String(Math.round(INPUT_BUFFER_TARGET_TICKS_SERVICES / 3)),
@@ -178,7 +178,7 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
 };
 
 // Services: higher target fill rate since decaying stock needs aggressive fill
-export const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
+const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'custom'>, PricingBuyValues> = {
     'patient': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.89),
@@ -241,7 +241,7 @@ export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom
 };
 
 // Services: need higher sell-through to prevent decay waste
-export const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
+const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'custom'>, PricingSellValues> = {
     'liquidation': {
         priceAdjustMaxUp: f2(Math.min(1.2, PRICE_ADJUST_MAX_UP * 0.96)),
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),

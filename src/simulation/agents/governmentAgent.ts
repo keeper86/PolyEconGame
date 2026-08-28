@@ -25,17 +25,13 @@ const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
 };
 
 let wealthTaxAllowanceOverride: number | undefined = undefined;
-let governmentOperatingBufferOverride: number | undefined = undefined;
+const governmentOperatingBufferOverride: number | undefined = undefined;
 
 export function setWealthTaxAllowance(allowance: number): void {
     wealthTaxAllowanceOverride = allowance;
 }
 
-export function setGovernmentOperatingBuffer(buffer: number): void {
-    governmentOperatingBufferOverride = buffer;
-}
-
-export const governmentOperatingBuffer = (): number => governmentOperatingBufferOverride ?? GOVERNMENT_OPERATING_BUFFER;
+const governmentOperatingBuffer = (): number => governmentOperatingBufferOverride ?? GOVERNMENT_OPERATING_BUFFER;
 
 export const wealthTaxAllowance = (planet: Planet): number => {
     const base = wealthTaxAllowanceOverride ?? WEALTH_TAX_ALLOWANCE;

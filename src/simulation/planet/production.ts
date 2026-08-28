@@ -808,7 +808,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
     });
 }
 
-export const DEPARTING_EFFICIENCY = 0.5;
+const DEPARTING_EFFICIENCY = 0.5;
 export const ageProductivityMultiplier = (age: number): number => {
     if (age <= 18) {
         return 0.8;

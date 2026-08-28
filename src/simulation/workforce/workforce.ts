@@ -12,7 +12,7 @@ export type WorkforceCategory = {
     workforceExperience: number;
 };
 
-export const totalDeparting = (category: WorkforceCategory): number =>
+const totalDeparting = (category: WorkforceCategory): number =>
     category.voluntaryDeparting.reduce((sum, count) => sum + count, 0) +
     category.departingFired.reduce((sum, count) => sum + count, 0) +
     category.departingRetired.reduce((sum, count) => sum + count, 0);
@@ -32,12 +32,6 @@ export type WorkforceCohort<T> = {
 
 export type WorkforceDemography = WorkforceCohort<WorkforceCategory>[];
 
-export type Workforce = {
-    demography: WorkforceDemography;
-    summedWorkforce: WorkforceCohort<WorkforceCategory>;
-    count: number;
-};
-
 export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCohort<T> => {
     const cohort = {} as WorkforceCohort<T>;
     for (const l of educationLevelKeys) {
@@ -49,7 +43,7 @@ export const nullWorkforceCohortFactory = <T>(nullFactory: () => T): WorkforceCo
 export const nullWorkforceCohort = (): WorkforceCohort<WorkforceCategory> =>
     nullWorkforceCohortFactory(nullWorkforceCategory);
 
-export const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
+const workForceSumFunction = (a: WorkforceCategory, b: WorkforceCategory): WorkforceCategory => ({
     active: a.active + b.active,
     onboarding: a.onboarding.map((count, i) => count + (b.onboarding[i] ?? 0)),
     voluntaryDeparting: a.voluntaryDeparting.map((count, i) => count + (b.voluntaryDeparting[i] ?? 0)),
@@ -92,7 +86,7 @@ export function subtractProportionalXP(category: WorkforceCategory, n: number, t
     category.workforceExperience -= fraction * category.workforceExperience;
 }
 
-export const totalOnboarding = (category: WorkforceCategory): number =>
+const totalOnboarding = (category: WorkforceCategory): number =>
     category.onboarding.reduce((sum, count) => sum + count, 0);
 
 export const totalWorkersInCategory = (category: WorkforceCategory): number =>

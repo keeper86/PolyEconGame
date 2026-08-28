@@ -43,7 +43,7 @@ function repointAgentReferences(value: unknown, oldId: string, newId: string): v
     }
 }
 
-export function agentMarketShare(gameState: GameState, planet: Planet, agent: Agent): number {
+function agentMarketShare(gameState: GameState, planet: Planet, agent: Agent): number {
     const total = [...gameState.agents.values()].reduce((sum, a) => {
         if (a.id === planet.governmentId) {
             return sum;
@@ -61,7 +61,7 @@ export function agentMarketShare(gameState: GameState, planet: Planet, agent: Ag
     return own / total;
 }
 
-export function canLiquidate(agent: Agent): boolean {
+function canLiquidate(agent: Agent): boolean {
     for (const ship of agent.ships) {
         if (ship.state.type === 'idle' || ship.state.type === 'listed' || ship.state.type === 'derelict') {
             continue;

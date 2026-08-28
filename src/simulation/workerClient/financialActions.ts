@@ -3,7 +3,7 @@ import type { OutboundMessage, PendingAction } from './messages';
 import { computeLoanConditions } from '../financial/loanConditions';
 import { grantLoan } from '../financial/loanTypes';
 
-export function handleRequestLoan(
+function handleRequestLoan(
     state: GameState,
     action: Extract<PendingAction, { type: 'requestLoan' }>,
     safePostMessage: (msg: OutboundMessage) => void,
@@ -49,7 +49,7 @@ export function handleRequestLoan(
     safePostMessage({ type: 'loanGranted', requestId, agentId, amount, processedAtTick: state.tick });
 }
 
-export function handleRepayLoan(
+function handleRepayLoan(
     state: GameState,
     action: Extract<PendingAction, { type: 'repayLoan' }>,
     safePostMessage: (msg: OutboundMessage) => void,

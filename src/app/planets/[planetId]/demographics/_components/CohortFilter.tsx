@@ -1,12 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import type { EducationLevelType } from '@/simulation/population/education';
-import { educationLevelKeys } from '@/simulation/population/education';
 import type { Occupation } from '@/simulation/population/population';
-import { OCCUPATIONS } from '@/simulation/population/population';
 
 export const EDU_COLORS: Record<EducationLevelType, string> = {
     none: '#94a3b8',
@@ -35,96 +30,3 @@ export const OCC_LABELS: Record<Occupation, string> = {
     education: 'Education',
     unableToWork: 'Unable to work',
 };
-
-export type CohortFilterState = {
-    edu: EducationLevelType | null;
-
-    occ: Occupation | null;
-};
-
-type Props = {
-    value: CohortFilterState;
-    onChange: (next: CohortFilterState) => void;
-
-    compact?: boolean;
-};
-
-export default function CohortFilter({ value, onChange, compact }: Props): React.ReactElement {
-    const toggleEdu = (edu: EducationLevelType) => {
-        if (value.edu === edu) {
-            onChange({ edu: null, occ: null });
-        } else {
-            onChange({ edu, occ: value.occ });
-        }
-    };
-
-    const toggleOcc = (occ: Occupation) => {
-        if (value.occ === occ) {
-            onChange({ edu: value.edu, occ: null });
-        } else {
-            onChange({ edu: value.edu, occ });
-        }
-    };
-
-    const badgeSizeClass = compact ? 'text-[10px] px-1.5 py-0' : 'text-[11px] px-2 py-0.5';
-
-    return (
-        <div className={cn('flex flex-col gap-1', compact && 'gap-0.5')}>
-            <div className='flex items-center gap-1 flex-wrap'>
-                <span className='text-[10px] text-muted-foreground w-8 shrink-0'>Edu</span>
-                {educationLevelKeys.map((edu) => {
-                    const selected = value.edu === edu;
-                    return (
-                        <Badge
-                            key={edu}
-                            variant={selected ? 'default' : 'outline'}
-                            className={cn(
-                                badgeSizeClass,
-                                'cursor-pointer select-none transition-all',
-                                selected && 'ring-1 ring-offset-1',
-                            )}
-                            style={
-                                selected
-                                    ? { backgroundColor: EDU_COLORS[edu], borderColor: EDU_COLORS[edu], color: '#fff' }
-                                    : { borderColor: EDU_COLORS[edu], color: EDU_COLORS[edu] }
-                            }
-                            onClick={() => {
-                                toggleEdu(edu);
-                            }}
-                        >
-                            {EDU_LABELS[edu]}
-                        </Badge>
-                    );
-                })}
-            </div>
-
-            <div className='flex items-center gap-1 flex-wrap'>
-                <span className='text-[10px] text-muted-foreground w-8 shrink-0'>Occ</span>
-                {OCCUPATIONS.map((occ) => {
-                    const selected = value.occ === occ;
-                    return (
-                        <Badge
-                            key={occ}
-                            variant={selected ? 'default' : 'outline'}
-                            className={cn(
-                                badgeSizeClass,
-                                'cursor-pointer select-none transition-all',
-                                selected && 'ring-1 ring-offset-1',
-                            )}
-                            style={
-                                selected
-                                    ? { backgroundColor: OCC_COLORS[occ], borderColor: OCC_COLORS[occ], color: '#fff' }
-                                    : { borderColor: OCC_COLORS[occ], color: OCC_COLORS[occ] }
-                            }
-                            onClick={() => {
-                                toggleOcc(occ);
-                            }}
-                        >
-                            {OCC_LABELS[occ]}
-                        </Badge>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}

@@ -1,10 +1,5 @@
 import type { Knex } from 'knex';
-import type {
-    AgentMonthlyHistory,
-    GameSnapshots,
-    PlanetPopulationHistory,
-    ProductPriceHistory,
-} from '../types/db_schemas';
+import type { GameSnapshots } from '../types/db_schemas';
 
 export type GameSnapshotRow = GameSnapshots;
 
@@ -83,18 +78,6 @@ export async function insertPlanetPopulationHistory(db: Knex, rows: InsertPlanet
     );
 }
 
-export async function getLatestPlanetPopulations(db: Knex) {
-    return db
-        .raw(
-            `SELECT DISTINCT ON (planet_id) *
-         FROM planet_population_history
-         ORDER BY planet_id, tick DESC`,
-        )
-        .then((res: { rows: PlanetPopulationHistory[] }) => res.rows);
-}
-
-export type AgentMonthlyHistoryRow = AgentMonthlyHistory;
-
 export interface InsertAgentMonthlyHistory {
     tick: number;
     planet_id: string;
@@ -139,23 +122,6 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
 export async function deleteAgentMonthlyHistory(db: Knex, agentId: string): Promise<void> {
     await db('agent_monthly_history').where({ agent_id: agentId }).delete();
 }
-
-export async function getLatestAgentMonthlyHistoryByPlanet(
-    db: Knex,
-    planetId: string,
-): Promise<AgentMonthlyHistoryRow[]> {
-    return db
-        .raw(
-            `SELECT DISTINCT ON (agent_id) *
-         FROM agent_monthly_history
-         WHERE planet_id = ?
-         ORDER BY agent_id, tick DESC`,
-            [planetId],
-        )
-        .then((res: { rows: AgentMonthlyHistoryRow[] }) => res.rows);
-}
-
-export type ProductPriceHistoryRow = ProductPriceHistory;
 
 export interface InsertProductPrice {
     tick: number;

@@ -11,7 +11,7 @@ import {
 } from '@/simulation/planet/services';
 import type { SupplyChainBalance } from './computeBalance';
 
-export interface LimitingInput {
+interface LimitingInput {
     resourceName: string;
 
     requiredPerTick: number;

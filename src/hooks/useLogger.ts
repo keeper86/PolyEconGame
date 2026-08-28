@@ -53,5 +53,3 @@ export function useLogger(component?: string) {
         success: logger('info', 'success'),
     };
 }
-
-export type Logger = ReturnType<typeof useLogger>;

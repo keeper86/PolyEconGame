@@ -1,9 +1,6 @@
 {
     "$schema": "https://unpkg.com/knip@6/schema.json",
-    "tags": [
-        "-lintignore"
-    ],
-    "ignoreBinaries": [
-        "envsubst"
-    ]
+    "tags": ["-lintignore"],
+    "ignore": ["src/types/db_schemas.ts"],
+    "ignoreBinaries": ["envsubst"]
 }

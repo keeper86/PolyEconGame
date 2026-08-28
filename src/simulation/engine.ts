@@ -35,7 +35,6 @@ import { TickProfiler } from './TickProfiler';
 import { facilityMaintenanceTick } from './planet/facilityMaintenance';
 
 export { seedRng };
-export { TickProfiler };
 
 const MAX_TICKER_EVENTS = 200;
 

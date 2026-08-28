@@ -55,21 +55,6 @@ export function sumTotalUsedByEdu(assets: AgentPlanetAssets): Record<EducationLe
     return totalUsed;
 }
 
-export function sumExactUsedByEdu(assets: AgentPlanetAssets): Record<EducationLevelType, number> {
-    const allFacilities = allWorkforceFacilities(assets);
-    const exactUsed: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    for (const facility of allFacilities) {
-        const tick = facility.lastTickResults;
-        if (!tick) {
-            continue;
-        }
-        for (const edu of educationLevelKeys) {
-            exactUsed[edu] += tick.exactUsedByEdu?.[edu] ?? 0;
-        }
-    }
-    return exactUsed;
-}
-
 function allWorkforceFacilities(assets: AgentPlanetAssets): Facility[] {
     return [
         ...assets.productionFacilities,

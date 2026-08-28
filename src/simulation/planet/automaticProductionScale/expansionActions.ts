@@ -1,8 +1,6 @@
-import { processFacilityContraction } from '../../agents/recycler';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
 import { calculateCostsForConstruction, getFacilityType } from '../facility';
-import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet';
-import { MAX_SCALE_CONTRACT_FRACTION } from './constants';
+import type { AgentPlanetAssets, Planet } from '../planet';
 import { checkExpansionFunds } from './expansionUtils';
 
 export function initiateCapacityExpansion(
@@ -37,19 +35,4 @@ export function initiateCapacityExpansion(
         lastTickInvestedConstructionServices: 0,
     };
     return true;
-}
-
-export function initiateCapacityContraction(
-    facility: ProductionFacility,
-    planet: Planet,
-    agent: Agent,
-    gameState: GameState,
-): boolean {
-    const currentMax = facility.maxScale;
-    const targetMax = Math.max(1, Math.floor(currentMax * (1 - MAX_SCALE_CONTRACT_FRACTION)));
-    if (targetMax >= currentMax) {
-        return false;
-    }
-
-    return processFacilityContraction(planet, facility, agent, targetMax, gameState);
 }

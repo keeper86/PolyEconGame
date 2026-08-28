@@ -110,6 +110,7 @@
         "eslint-config-next": "^15.3.2",
         "globals": "^14.0.0",
         "jsdom": "^26.1.0",
+        "knip": "^6.32.3",
         "nextjs-routes": "^2.2.5",
         "tailwindcss": "^4.1.13",
         "typescript": "^5",

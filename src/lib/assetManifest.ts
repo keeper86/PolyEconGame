@@ -460,7 +460,7 @@ export const assetManifest = {
     hr_department: '/images/facilities/human_resources_department.webp',
 } as const;
 
-export type AssetKey = keyof typeof assetManifest;
+type AssetKey = keyof typeof assetManifest;
 
 export function getAssetPath(key: string): string {
     const normalizedKey = key.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');

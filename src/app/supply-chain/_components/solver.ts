@@ -16,7 +16,7 @@ export interface SolverConfig {
     objective: SolverObjective;
 }
 
-export interface ServiceDiagnostic {
+interface ServiceDiagnostic {
     serviceName: string;
 
     hasProducer: boolean;
@@ -26,7 +26,7 @@ export interface ServiceDiagnostic {
     feasibleInIsolation: boolean;
 }
 
-export interface SolverDiagnostic {
+interface SolverDiagnostic {
     per_service: ServiceDiagnostic[];
 
     unproducableResources: string[];
