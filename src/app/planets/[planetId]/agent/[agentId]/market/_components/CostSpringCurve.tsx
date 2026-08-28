@@ -183,7 +183,7 @@ export function CostSpringCurve({
 
     return (
         <div className='py-1'>
-            <div className='flex items-center justify-between mb-1'>
+            <div className='flex items-center justify-between'>
                 <span className='text-[10px] uppercase tracking-wider text-muted-foreground font-semibold'>
                     {title}
                 </span>
@@ -199,7 +199,7 @@ export function CostSpringCurve({
                 </div>
             </div>
             <ResponsiveContainer width='100%' height={170}>
-                <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                <ComposedChart data={data} margin={{ top: 4.5, right: 8, bottom: 8, left: 8 }}>
                     <CartesianGrid
                         strokeDasharray='3 3'
                         stroke='#334155'

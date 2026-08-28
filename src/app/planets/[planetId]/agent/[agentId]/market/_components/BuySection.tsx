@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LogSlider } from '@/components/ui/log-slider';
 import { Separator } from '@/components/ui/separator';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
-import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { useBuyPricingOpenPreference, useBuyVolumeOpenPreference } from '@/hooks/uiPreferences';
+import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     COST_SPRING_STRENGTH,
@@ -24,6 +25,7 @@ import {
     TARGET_FILL_RATE,
     TARGET_FILL_RATE_SERVICES,
 } from '@/simulation/constants';
+import type { BuyDiagnostics } from '@/simulation/planet/planet';
 import {
     AlertCircle,
     Anchor,
@@ -36,24 +38,20 @@ import {
     ShoppingCart,
     Wrench,
 } from 'lucide-react';
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
-import type { BuySectionProps } from './marketTypes';
-import type { BuyDiagnostics } from '@/simulation/planet/planet';
-import type { AutoConfigLocalState } from './marketTypes';
-import { ConfigSlider, ConfigRangeSlider } from './ConfigSlider';
-import { LogSlider } from '@/components/ui/log-slider';
-import { PriceAlgorithmDialog } from './PriceAlgorithmDialog';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
 import { CostSpringCurve } from './CostSpringCurve';
+import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
+import type { AutoConfigLocalState, BuySectionProps } from './marketTypes';
 import {
-    detectPricingBuyPreset,
-    detectVolumeBuyPreset,
-    getPricingBuyPreset,
-    getVolumeBuyPreset,
     BUY_PRICING_PRESET_LABELS,
     BUY_PRICING_PRESET_ORDER,
     BUY_VOLUME_PRESET_LABELS,
     BUY_VOLUME_PRESET_ORDER,
+    detectPricingBuyPreset,
+    detectVolumeBuyPreset,
+    getPricingBuyPreset,
+    getVolumeBuyPreset,
     type BuyVolumePresetType,
     type PricingPresetType,
 } from './StrategyPresets';
@@ -298,12 +296,18 @@ export default function BuySection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
 
+    // Re-detect only when this section is bound to a different resource/agent/planet.
+    // Live edits never snap the active preset highlight back to a preset.
+    const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
+    const [syncedPresetIdentityKey, setSyncedPresetIdentityKey] = useState(presetIdentityKey);
     useEffect(() => {
+        if (presetIdentityKey === syncedPresetIdentityKey) {
+            return;
+        }
+        setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
-    }, [detectedVolumePreset]);
-    useEffect(() => {
         setActivePricingPreset(detectedPricingPreset);
-    }, [detectedPricingPreset]);
+    }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
         (preset: BuyVolumePresetType) => {
@@ -505,7 +509,7 @@ export default function BuySection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-1 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {BUY_PRICING_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activePricingPreset;
@@ -534,6 +538,17 @@ export default function BuySection({
                                             }
                                         }}
                                     >
+                                        <Separator />
+
+                                        {!isCurrency && (
+                                            <CostSpringCurve
+                                                mode='buy'
+                                                ghost={springGhost}
+                                                active={springActive}
+                                                currentRatio={springRatio}
+                                                ownRatio={ownRatio}
+                                            />
+                                        )}
                                         <ConfigRangeSlider
                                             label='Adjustment speed'
                                             valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
@@ -568,6 +583,17 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
+                                            label='Ceiling spring strength'
+                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
+                                            committed={committedVal(committedConfig, 'costSpringStrength')}
+                                            min={0}
+                                            max={1}
+                                            step={0.01}
+                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
+                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
+                                        />
+                                        <Separator />
+                                        <ConfigSlider
                                             label='Target fill rate'
                                             value={sliderVal(
                                                 'targetFillRate',
@@ -581,27 +607,6 @@ export default function BuySection({
                                             onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
-                                        <ConfigSlider
-                                            label='Ceiling spring strength'
-                                            value={sliderVal('costSpringStrength', COST_SPRING_STRENGTH)}
-                                            committed={committedVal(committedConfig, 'costSpringStrength')}
-                                            min={0}
-                                            max={1}
-                                            step={0.01}
-                                            onChange={(v) => handleSliderChange({ costSpringStrength: String(v) })}
-                                            disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
-                                        />
-                                        <Separator />
-
-                                        {!isCurrency && (
-                                            <CostSpringCurve
-                                                mode='buy'
-                                                ghost={springGhost}
-                                                active={springActive}
-                                                currentRatio={springRatio}
-                                                ownRatio={ownRatio}
-                                            />
-                                        )}
                                     </div>
 
                                     <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
@@ -610,13 +615,12 @@ export default function BuySection({
                                                 variant='outline'
                                                 size='sm'
                                                 className='h-7 text-[11px] px-2'
-                                                onClick={onResetBuyPricingConfig}
+                                                onClick={() => onResetBuyPricingConfig(activePricingPreset)}
                                                 disabled={buyPricingConfigSaving || !hasPricingConfigDirty}
                                             >
                                                 <RotateCcw className='h-3 w-3 mr-1' />
                                                 Reset
                                             </Button>
-                                            <PriceAlgorithmDialog mode='buy' diagnostics={bid?.diagnostics} />
                                         </div>
                                         <Button
                                             size='sm'
@@ -952,7 +956,7 @@ export default function BuySection({
                                             variant='outline'
                                             size='sm'
                                             className={`h-7 text-[11px] px-2`}
-                                            onClick={onResetBuyVolumeConfig}
+                                            onClick={() => onResetBuyVolumeConfig(activeVolumePreset)}
                                             disabled={buyVolumeConfigSaving || !hasVolumeConfigDirty}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />

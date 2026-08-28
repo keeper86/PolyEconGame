@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { COST_SPRING_STRENGTH } from '@/simulation/constants';
 import type { AutoConfigLocalState } from './marketTypes';
 import {
     detectPricingBuyPreset,
@@ -135,6 +136,17 @@ describe('detectPricingBuyPreset', () => {
     it('returns market-rate for empty config', () => {
         expect(detectPricingBuyPreset(emptyLocal(), false)).toBe('market-rate');
     });
+
+    it('includes the cost spring in every buy preset', () => {
+        expect(PRICING_BUY_PRESETS.patient.costSpringStrength).toBe((COST_SPRING_STRENGTH * 0.5).toFixed(2));
+        expect(PRICING_BUY_PRESETS['market-rate'].costSpringStrength).toBe(COST_SPRING_STRENGTH.toFixed(2));
+        expect(PRICING_BUY_PRESETS.urgent.costSpringStrength).toBe((COST_SPRING_STRENGTH * 1.67).toFixed(2));
+    });
+
+    it('returns custom when only the cost spring deviates from a preset', () => {
+        const local = localWith({ ...PRICING_BUY_PRESETS['market-rate'], costSpringStrength: '0.09' });
+        expect(detectPricingBuyPreset(local, false)).toBe('custom');
+    });
 });
 
 describe('detectPricingSellPreset', () => {
@@ -175,5 +187,16 @@ describe('detectPricingSellPreset', () => {
 
     it('returns market-rate for empty config', () => {
         expect(detectPricingSellPreset(emptyLocal(), false)).toBe('market-rate');
+    });
+
+    it('includes the cost spring in every sell preset', () => {
+        expect(PRICING_SELL_PRESETS.liquidation.costSpringStrength).toBe((COST_SPRING_STRENGTH * 0.67).toFixed(2));
+        expect(PRICING_SELL_PRESETS['market-rate'].costSpringStrength).toBe(COST_SPRING_STRENGTH.toFixed(2));
+        expect(PRICING_SELL_PRESETS.premium.costSpringStrength).toBe((COST_SPRING_STRENGTH * 1.67).toFixed(2));
+    });
+
+    it('returns custom when only the cost spring deviates from a preset', () => {
+        const local = localWith({ ...PRICING_SELL_PRESETS['market-rate'], costSpringStrength: '0.12' });
+        expect(detectPricingSellPreset(local, false)).toBe('custom');
     });
 });
