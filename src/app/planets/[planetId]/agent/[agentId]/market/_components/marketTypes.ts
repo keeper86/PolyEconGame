@@ -98,6 +98,46 @@ export function isAutoConfigDirty(local: AutoConfigLocalState, committed: Automa
     return false;
 }
 
+// The values Reset restores: either the picked preset (override) or the saved config.
+export function buildResetTarget(
+    override: string | null,
+    presetValues: Record<string, string> | undefined,
+    committedLocal: AutoConfigLocalState,
+    keys: readonly (keyof AutoConfigLocalState)[],
+): Record<string, string> {
+    if (override) {
+        return { ...(presetValues ?? {}) };
+    }
+    const result: Record<string, string> = {};
+    for (const k of keys) {
+        result[k] = committedLocal[k];
+    }
+    return result;
+}
+
+// Reset is meaningful when the current values differ from the reset target, or when
+// the active mode (e.g. custom) differs from the mode Reset would switch back to.
+export function canResetToTarget(
+    local: AutoConfigLocalState,
+    target: Record<string, string>,
+    keys: readonly (keyof AutoConfigLocalState)[],
+    activeMode: string,
+    postResetMode: string,
+): boolean {
+    const valuesDiffer = keys.some((key) => {
+        const localStr = local[key];
+        const targetStr = target[key] ?? '';
+        if (localStr === '' && targetStr === '') {
+            return false;
+        }
+        if (localStr === '' || targetStr === '') {
+            return true;
+        }
+        return parseFloat(localStr) !== parseFloat(targetStr);
+    });
+    return valuesDiffer || activeMode !== postResetMode;
+}
+
 export type MarketBidEntry = {
     bidPrice?: number;
     bidStorageTarget?: number;

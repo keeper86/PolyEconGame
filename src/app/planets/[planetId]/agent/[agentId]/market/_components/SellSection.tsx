@@ -25,7 +25,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
 import { CostSpringCurve } from './CostSpringCurve';
 import { getResourceByName, productionPerTick } from './marketHelpers';
-import type { AutoConfigLocalState, SellSectionProps } from './marketTypes';
+import {
+    autoConfigToLocal,
+    buildResetTarget,
+    canResetToTarget,
+    type AutoConfigLocalState,
+    type SellSectionProps,
+} from './marketTypes';
 import {
     detectPricingSellPreset,
     detectVolumeSellPreset,
@@ -129,6 +135,15 @@ function committedVal(
 
 const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['freeRetainment', 'freeRetainmentSmoothingMaxExtra']);
 
+const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'automatedCostFloorBuffer',
+    'targetSellThrough',
+];
+const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
+
 export default function SellSection({
     resourceName,
     agentId,
@@ -144,9 +159,7 @@ export default function SellSection({
         resetSell: onResetSell,
         automationChange: onAutomationChange,
         savePricingConfig: onSaveSellPricingConfig,
-        resetPricingConfig: onResetSellPricingConfig,
         saveVolumeConfig: onSaveSellVolumeConfig,
-        resetVolumeConfig: onResetSellVolumeConfig,
         sellPriceSaving,
         sellAutomationSaving,
         sellPricingConfigSaving,
@@ -276,6 +289,15 @@ export default function SellSection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<SellVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<SellPricingPresetType>(detectedPricingPreset);
 
+    // The last preset the user picked. Reset restores this preset until the user saves;
+    // once saved (or on navigation) the reset target falls back to the saved config.
+    const [volumePresetOverride, setVolumePresetOverride] = useState<Exclude<SellVolumePresetType, 'custom'> | null>(
+        null,
+    );
+    const [pricingPresetOverride, setPricingPresetOverride] = useState<Exclude<SellPricingPresetType, 'custom'> | null>(
+        null,
+    );
+
     // Re-detect only when this section is bound to a different resource/agent/planet.
     // Live edits never snap the active preset highlight back to a preset.
     const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
@@ -287,6 +309,8 @@ export default function SellSection({
         setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
         setActivePricingPreset(detectedPricingPreset);
+        setVolumePresetOverride(null);
+        setPricingPresetOverride(null);
     }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
@@ -295,6 +319,7 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
+            setVolumePresetOverride(preset);
             const values = getVolumeSellPreset(preset as Exclude<SellVolumePresetType, 'custom'>);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
@@ -307,11 +332,66 @@ export default function SellSection({
             if (preset === 'custom') {
                 return;
             }
+            setPricingPresetOverride(preset);
             const values = getPricingSellPreset(preset as Exclude<SellPricingPresetType, 'custom'>, isService);
             handleSellConfigChange(values as unknown as Record<string, string>);
         },
         [handleSellConfigChange, isService],
     );
+
+    // Saving re-baselines the reset target to whatever was saved (a preset or a custom config).
+    const handleSaveSellPricingConfig = () => {
+        setPricingPresetOverride(null);
+        onSaveSellPricingConfig();
+    };
+    const handleSaveSellVolumeConfig = () => {
+        setVolumePresetOverride(null);
+        onSaveSellVolumeConfig();
+    };
+
+    const committedLocal = autoConfigToLocal(offer?.autoConfig);
+    const pricingResetTarget = buildResetTarget(
+        pricingPresetOverride,
+        pricingPresetOverride ? getPricingSellPreset(pricingPresetOverride, isService) : undefined,
+        committedLocal,
+        SELL_PRICING_KEYS,
+    );
+    const pricingPostResetMode: SellPricingPresetType =
+        pricingPresetOverride ?? detectPricingSellPreset(committedLocal, isService);
+    const canResetPricing = canResetToTarget(
+        local.sellAutoConfig,
+        pricingResetTarget,
+        SELL_PRICING_KEYS,
+        activePricingPreset,
+        pricingPostResetMode,
+    );
+
+    const volumeResetTarget = buildResetTarget(
+        volumePresetOverride,
+        volumePresetOverride ? getVolumeSellPreset(volumePresetOverride) : undefined,
+        committedLocal,
+        SELL_VOLUME_KEYS,
+    );
+    const volumePostResetMode: SellVolumePresetType = volumePresetOverride ?? detectVolumeSellPreset(committedLocal);
+    const canResetVolume = canResetToTarget(
+        local.sellAutoConfig,
+        volumeResetTarget,
+        SELL_VOLUME_KEYS,
+        activeVolumePreset,
+        volumePostResetMode,
+    );
+
+    const handleResetSellPricingConfig = useCallback(() => {
+        const current = local.sellAutoConfig;
+        setActivePricingPreset(pricingPostResetMode);
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...pricingResetTarget } as AutoConfigLocalState });
+    }, [local.sellAutoConfig, onLocalChange, resourceName, pricingResetTarget, pricingPostResetMode]);
+
+    const handleResetSellVolumeConfig = useCallback(() => {
+        const current = local.sellAutoConfig;
+        setActiveVolumePreset(volumePostResetMode);
+        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...volumeResetTarget } as AutoConfigLocalState });
+    }, [local.sellAutoConfig, onLocalChange, resourceName, volumeResetTarget, volumePostResetMode]);
 
     const handleSliderChange = useCallback(
         (patch: Record<string, string>) => {
@@ -331,15 +411,6 @@ export default function SellSection({
         },
         [handleSellConfigChange, activeVolumePreset, activePricingPreset],
     );
-
-    const SELL_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-        'priceAdjustMaxUp',
-        'priceAdjustMaxDown',
-        'costSpringStrength',
-        'automatedCostFloorBuffer',
-        'targetSellThrough',
-    ];
-    const SELL_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = ['freeRetainment', 'freeRetainmentSmoothingMaxExtra'];
 
     const hasPricingConfigDirty = SELL_PRICING_KEYS.some((key) => {
         const localVal = local.sellAutoConfig[key] !== '' ? parseFloat(local.sellAutoConfig[key]) : undefined;
@@ -575,31 +646,27 @@ export default function SellSection({
                                         />
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                        <div className='flex items-center gap-2'>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                className={`h-7 text-[11px] px-2`}
-                                                onClick={() => onResetSellPricingConfig(activePricingPreset)}
-                                                disabled={sellPricingConfigSaving || !hasPricingConfigDirty}
-                                            >
-                                                <RotateCcw className='h-3 w-3 mr-1' />
-                                                Reset
-                                            </Button>
-                                            <Button
-                                                size='sm'
-                                                className='h-7 text-[11px] px-3'
-                                                onClick={onSaveSellPricingConfig}
-                                                disabled={
-                                                    !hasPricingConfigDirty ||
-                                                    !hasAnyPricingValue ||
-                                                    sellPricingConfigSaving
-                                                }
-                                            >
-                                                {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
-                                            </Button>
-                                        </div>
+                                    <div className='flex items-center gap-2 pt-1 pb-1.5'>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetSellPricingConfig}
+                                            disabled={sellPricingConfigSaving || !canResetPricing}
+                                        >
+                                            <RotateCcw className='h-3 w-3 mr-1' />
+                                            Reset
+                                        </Button>
+                                        <Button
+                                            size='sm'
+                                            className='h-7 text-[11px] px-3 flex-1'
+                                            onClick={handleSaveSellPricingConfig}
+                                            disabled={
+                                                !hasPricingConfigDirty || !hasAnyPricingValue || sellPricingConfigSaving
+                                            }
+                                        >
+                                            {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                        </Button>
                                     </div>
 
                                     {overlay(sellPricingConfigOverlay)}
@@ -787,21 +854,21 @@ export default function SellSection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1'>
+                                    <div className='flex items-center gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2`}
-                                            onClick={() => onResetSellVolumeConfig(activeVolumePreset)}
-                                            disabled={sellVolumeConfigSaving || !hasVolumeConfigDirty}
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetSellVolumeConfig}
+                                            disabled={sellVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset
                                         </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
-                                            onClick={onSaveSellVolumeConfig}
+                                            className='h-7 text-[11px] px-3 flex-1'
+                                            onClick={handleSaveSellVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || sellVolumeConfigSaving
                                             }

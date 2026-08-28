@@ -11,12 +11,6 @@ import { toast } from 'sonner';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketBidEntry } from './marketTypes';
 import { localToAutoConfig } from './marketTypes';
-import {
-    getPricingBuyPreset,
-    getVolumeBuyPreset,
-    type BuyVolumePresetType,
-    type PricingPresetType,
-} from './StrategyPresets';
 
 const BUY_PRICING_KEYS = [
     'priceAdjustMaxUp',
@@ -105,7 +99,6 @@ export function useBuySectionMutations({
     const pendingActions = usePendingActions(agentId, planetId);
     const { isTourActive: marketIsTourActive, markActionCompleted: marketMarkActionCompleted } = useTour();
     const resource = getResourceByName(resourceName);
-    const isService = resource?.form === 'services';
 
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
@@ -297,21 +290,6 @@ export function useBuySectionMutations({
         );
     };
 
-    const handleResetBuyPricingConfig = (activePreset: PricingPresetType) => {
-        const current = local.buyAutoConfig;
-        const resetFields: Record<string, string> = {};
-        if (activePreset !== 'custom') {
-            Object.assign(resetFields, getPricingBuyPreset(activePreset, isService));
-        } else {
-            const committed = bid?.autoConfig ?? {};
-            for (const k of BUY_PRICING_KEYS) {
-                const committedVal = committed[k as keyof typeof committed];
-                resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-            }
-        }
-        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
-    };
-
     const handleSaveBuyVolumeConfig = () => {
         const autoConfig = localToAutoConfig(
             pickAutoConfigKeys(local.buyAutoConfig, BUY_VOLUME_KEYS) as AutoConfigLocalState,
@@ -345,21 +323,6 @@ export function useBuySectionMutations({
                 },
             },
         );
-    };
-
-    const handleResetBuyVolumeConfig = (activePreset: BuyVolumePresetType) => {
-        const current = local.buyAutoConfig;
-        const resetFields: Record<string, string> = {};
-        if (activePreset !== 'custom') {
-            Object.assign(resetFields, getVolumeBuyPreset(activePreset, isService));
-        } else {
-            const committed = bid?.autoConfig ?? {};
-            for (const k of BUY_VOLUME_KEYS) {
-                const committedVal = committed[k as keyof typeof committed];
-                resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-            }
-        }
-        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
     };
 
     const pendingBuyPriceAction = pendingActions.find(
@@ -400,9 +363,7 @@ export function useBuySectionMutations({
         resetBuy: handleResetBuy,
         automationChange: handleBuyAutomationChange,
         savePricingConfig: handleSaveBuyPricingConfig,
-        resetPricingConfig: handleResetBuyPricingConfig,
         saveVolumeConfig: handleSaveBuyVolumeConfig,
-        resetVolumeConfig: handleResetBuyVolumeConfig,
         buyPriceSaving,
         buyAutomationSaving,
         buyPricingConfigSaving,

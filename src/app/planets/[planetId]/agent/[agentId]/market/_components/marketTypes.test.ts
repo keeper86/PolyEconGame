@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { AutomatedPricingConfig } from '@/simulation/planet/planet';
-import { autoConfigToLocal, isAutoConfigDirty, localToAutoConfig, type AutoConfigLocalState } from './marketTypes';
+import {
+    autoConfigToLocal,
+    buildResetTarget,
+    canResetToTarget,
+    isAutoConfigDirty,
+    localToAutoConfig,
+    type AutoConfigLocalState,
+} from './marketTypes';
 
 describe('autoConfigToLocal', () => {
     it('returns empty strings for undefined config', () => {
@@ -150,5 +157,54 @@ describe('isAutoConfigDirty', () => {
     it('returns true when local has a value but committed is undefined', () => {
         const local: AutoConfigLocalState = autoConfigToLocal({ priceAdjustMaxUp: 1.05 });
         expect(isAutoConfigDirty(local, undefined)).toBe(true);
+    });
+});
+
+describe('buildResetTarget', () => {
+    const KEYS = ['priceAdjustMaxUp', 'priceAdjustMaxDown'] as const;
+
+    it('returns the preset values when an override is set', () => {
+        const committed = autoConfigToLocal({ priceAdjustMaxUp: 1.05, priceAdjustMaxDown: 0.95 });
+        const target = buildResetTarget(
+            'urgent',
+            { priceAdjustMaxUp: '1.16', priceAdjustMaxDown: '0.98' },
+            committed,
+            KEYS,
+        );
+        expect(target.priceAdjustMaxUp).toBe('1.16');
+        expect(target.priceAdjustMaxDown).toBe('0.98');
+    });
+
+    it('returns the committed values when no override is set', () => {
+        const committed = autoConfigToLocal({ priceAdjustMaxUp: 1.05, priceAdjustMaxDown: 0.95 });
+        const target = buildResetTarget(null, undefined, committed, KEYS);
+        expect(target.priceAdjustMaxUp).toBe('1.05');
+        expect(target.priceAdjustMaxDown).toBe('0.95');
+    });
+
+    it('returns empty strings when committed is undefined', () => {
+        const target = buildResetTarget(null, undefined, autoConfigToLocal(undefined), KEYS);
+        expect(target.priceAdjustMaxUp).toBe('');
+        expect(target.priceAdjustMaxDown).toBe('');
+    });
+});
+
+describe('canResetToTarget', () => {
+    const KEYS = ['priceAdjustMaxUp', 'priceAdjustMaxDown'] as const;
+    const empty = (): AutoConfigLocalState => autoConfigToLocal(undefined);
+
+    it('returns false when values and mode already match the target', () => {
+        const target = { priceAdjustMaxUp: '', priceAdjustMaxDown: '' };
+        expect(canResetToTarget(empty(), target, KEYS, 'custom', 'custom')).toBe(false);
+    });
+
+    it('returns true when values differ from the target', () => {
+        const target = { priceAdjustMaxUp: '1.05', priceAdjustMaxDown: '' };
+        expect(canResetToTarget(empty(), target, KEYS, 'custom', 'custom')).toBe(true);
+    });
+
+    it('returns true when the active mode differs from the post-reset mode even with equal values', () => {
+        const target = { priceAdjustMaxUp: '', priceAdjustMaxDown: '' };
+        expect(canResetToTarget(empty(), target, KEYS, 'custom', 'market-rate')).toBe(true);
     });
 });

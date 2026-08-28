@@ -42,7 +42,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
 import { CostSpringCurve } from './CostSpringCurve';
 import { getResourceByName, totalConsumptionPerTick } from './marketHelpers';
-import type { AutoConfigLocalState, BuySectionProps } from './marketTypes';
+import {
+    autoConfigToLocal,
+    buildResetTarget,
+    canResetToTarget,
+    type AutoConfigLocalState,
+    type BuySectionProps,
+} from './marketTypes';
 import {
     BUY_PRICING_PRESET_LABELS,
     BUY_PRICING_PRESET_ORDER,
@@ -161,6 +167,20 @@ function committedVal(
 
 const BUFFER_KEYS = new Set<keyof AutoConfigLocalState>(['inputBufferTargetTicks', 'inventorySmoothingMaxExtra']);
 
+const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
+    'priceAdjustMaxUp',
+    'priceAdjustMaxDown',
+    'costSpringStrength',
+    'bidOfferMaxCostMultiplier',
+    'targetFillRate',
+];
+const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
+    'inputBufferTargetTicks',
+    'inventorySmoothingMaxExtra',
+    'freeBuyQuantity',
+    'freeBuyQuantitySmoothingMaxExtra',
+];
+
 export default function BuySection({
     resourceName,
     agentId,
@@ -177,9 +197,7 @@ export default function BuySection({
         resetBuy: onResetBuy,
         automationChange: onAutomationChange,
         savePricingConfig: onSaveBuyPricingConfig,
-        resetPricingConfig: onResetBuyPricingConfig,
         saveVolumeConfig: onSaveBuyVolumeConfig,
-        resetVolumeConfig: onResetBuyVolumeConfig,
         buyPriceSaving,
         buyAutomationSaving,
         buyPricingConfigSaving,
@@ -296,6 +314,15 @@ export default function BuySection({
     const [activeVolumePreset, setActiveVolumePreset] = useState<BuyVolumePresetType>(detectedVolumePreset);
     const [activePricingPreset, setActivePricingPreset] = useState<PricingPresetType>(detectedPricingPreset);
 
+    // The last preset the user picked. Reset restores this preset until the user saves;
+    // once saved (or on navigation) the reset target falls back to the saved config.
+    const [volumePresetOverride, setVolumePresetOverride] = useState<Exclude<BuyVolumePresetType, 'custom'> | null>(
+        null,
+    );
+    const [pricingPresetOverride, setPricingPresetOverride] = useState<Exclude<PricingPresetType, 'custom'> | null>(
+        null,
+    );
+
     // Re-detect only when this section is bound to a different resource/agent/planet.
     // Live edits never snap the active preset highlight back to a preset.
     const presetIdentityKey = `${resourceName}|${agentId}|${planetId}`;
@@ -307,6 +334,8 @@ export default function BuySection({
         setSyncedPresetIdentityKey(presetIdentityKey);
         setActiveVolumePreset(detectedVolumePreset);
         setActivePricingPreset(detectedPricingPreset);
+        setVolumePresetOverride(null);
+        setPricingPresetOverride(null);
     }, [presetIdentityKey, syncedPresetIdentityKey, detectedVolumePreset, detectedPricingPreset]);
 
     const handleVolumePresetSelect = useCallback(
@@ -315,6 +344,7 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
+            setVolumePresetOverride(preset);
             const values = getVolumeBuyPreset(preset as Exclude<BuyVolumePresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
@@ -327,11 +357,67 @@ export default function BuySection({
             if (preset === 'custom') {
                 return;
             }
+            setPricingPresetOverride(preset);
             const values = getPricingBuyPreset(preset as Exclude<PricingPresetType, 'custom'>, isService);
             handleBuyConfigChange(values as unknown as Record<string, string>);
         },
         [handleBuyConfigChange, isService],
     );
+
+    // Saving re-baselines the reset target to whatever was saved (a preset or a custom config).
+    const handleSaveBuyPricingConfig = () => {
+        setPricingPresetOverride(null);
+        onSaveBuyPricingConfig();
+    };
+    const handleSaveBuyVolumeConfig = () => {
+        setVolumePresetOverride(null);
+        onSaveBuyVolumeConfig();
+    };
+
+    const committedLocal = autoConfigToLocal(bid?.autoConfig);
+    const pricingResetTarget = buildResetTarget(
+        pricingPresetOverride,
+        pricingPresetOverride ? getPricingBuyPreset(pricingPresetOverride, isService) : undefined,
+        committedLocal,
+        BUY_PRICING_KEYS,
+    );
+    const pricingPostResetMode: PricingPresetType =
+        pricingPresetOverride ?? detectPricingBuyPreset(committedLocal, isService);
+    const canResetPricing = canResetToTarget(
+        local.buyAutoConfig,
+        pricingResetTarget,
+        BUY_PRICING_KEYS,
+        activePricingPreset,
+        pricingPostResetMode,
+    );
+
+    const volumeResetTarget = buildResetTarget(
+        volumePresetOverride,
+        volumePresetOverride ? getVolumeBuyPreset(volumePresetOverride, isService) : undefined,
+        committedLocal,
+        BUY_VOLUME_KEYS,
+    );
+    const volumePostResetMode: BuyVolumePresetType =
+        volumePresetOverride ?? detectVolumeBuyPreset(committedLocal, isService);
+    const canResetVolume = canResetToTarget(
+        local.buyAutoConfig,
+        volumeResetTarget,
+        BUY_VOLUME_KEYS,
+        activeVolumePreset,
+        volumePostResetMode,
+    );
+
+    const handleResetBuyPricingConfig = useCallback(() => {
+        const current = local.buyAutoConfig;
+        setActivePricingPreset(pricingPostResetMode);
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...pricingResetTarget } as AutoConfigLocalState });
+    }, [local.buyAutoConfig, onLocalChange, resourceName, pricingResetTarget, pricingPostResetMode]);
+
+    const handleResetBuyVolumeConfig = useCallback(() => {
+        const current = local.buyAutoConfig;
+        setActiveVolumePreset(volumePostResetMode);
+        onLocalChange(resourceName, { buyAutoConfig: { ...current, ...volumeResetTarget } as AutoConfigLocalState });
+    }, [local.buyAutoConfig, onLocalChange, resourceName, volumeResetTarget, volumePostResetMode]);
 
     const handleSliderChange = useCallback(
         (patch: Record<string, string>) => {
@@ -355,20 +441,6 @@ export default function BuySection({
         },
         [handleBuyConfigChange, activeVolumePreset, activePricingPreset],
     );
-
-    const BUY_PRICING_KEYS: (keyof AutoConfigLocalState)[] = [
-        'priceAdjustMaxUp',
-        'priceAdjustMaxDown',
-        'costSpringStrength',
-        'bidOfferMaxCostMultiplier',
-        'targetFillRate',
-    ];
-    const BUY_VOLUME_KEYS: (keyof AutoConfigLocalState)[] = [
-        'inputBufferTargetTicks',
-        'inventorySmoothingMaxExtra',
-        'freeBuyQuantity',
-        'freeBuyQuantitySmoothingMaxExtra',
-    ];
 
     const hasPricingConfigDirty = BUY_PRICING_KEYS.some((key) => {
         const localVal = local.buyAutoConfig[key] !== '' ? parseFloat(local.buyAutoConfig[key]) : undefined;
@@ -609,23 +681,21 @@ export default function BuySection({
                                         />
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1 pb-1.5'>
-                                        <div className='flex items-center justify-between gap-2'>
-                                            <Button
-                                                variant='outline'
-                                                size='sm'
-                                                className='h-7 text-[11px] px-2'
-                                                onClick={() => onResetBuyPricingConfig(activePricingPreset)}
-                                                disabled={buyPricingConfigSaving || !hasPricingConfigDirty}
-                                            >
-                                                <RotateCcw className='h-3 w-3 mr-1' />
-                                                Reset
-                                            </Button>
-                                        </div>
+                                    <div className='flex items-center gap-2 pt-1 pb-1.5'>
+                                        <Button
+                                            variant='outline'
+                                            size='sm'
+                                            className='h-7 text-[11px] px-2 flex-1'
+                                            onClick={handleResetBuyPricingConfig}
+                                            disabled={buyPricingConfigSaving || !canResetPricing}
+                                        >
+                                            <RotateCcw className='h-3 w-3 mr-1' />
+                                            Reset
+                                        </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
-                                            onClick={onSaveBuyPricingConfig}
+                                            className='h-7 text-[11px] px-3 flex-1'
+                                            onClick={handleSaveBuyPricingConfig}
                                             disabled={
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || buyPricingConfigSaving
                                             }
@@ -951,21 +1021,21 @@ export default function BuySection({
                                         </div>
                                     </div>
 
-                                    <div className='flex items-center justify-between gap-2 pt-1'>
+                                    <div className='flex items-center gap-2 pt-1'>
                                         <Button
                                             variant='outline'
                                             size='sm'
-                                            className={`h-7 text-[11px] px-2`}
-                                            onClick={() => onResetBuyVolumeConfig(activeVolumePreset)}
-                                            disabled={buyVolumeConfigSaving || !hasVolumeConfigDirty}
+                                            className={`h-7 text-[11px] px-2 flex-1`}
+                                            onClick={handleResetBuyVolumeConfig}
+                                            disabled={buyVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
                                             Reset
                                         </Button>
                                         <Button
                                             size='sm'
-                                            className='h-7 text-[11px] px-3'
-                                            onClick={onSaveBuyVolumeConfig}
+                                            className='h-7 text-[11px] px-3 flex-1'
+                                            onClick={handleSaveBuyVolumeConfig}
                                             disabled={
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || buyVolumeConfigSaving
                                             }

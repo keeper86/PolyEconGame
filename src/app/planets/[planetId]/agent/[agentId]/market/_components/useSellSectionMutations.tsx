@@ -11,12 +11,6 @@ import { toast } from 'sonner';
 import { getResourceByName } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketOfferEntry } from './marketTypes';
 import { localToAutoConfig } from './marketTypes';
-import {
-    getPricingSellPreset,
-    getVolumeSellPreset,
-    type SellPricingPresetType,
-    type SellVolumePresetType,
-} from './StrategyPresets';
 
 const SELL_PRICING_KEYS = [
     'priceAdjustMaxUp',
@@ -99,7 +93,6 @@ export function useSellSectionMutations({
     const addPending = useAddPendingAction();
     const pendingActions = usePendingActions(agentId, planetId);
     const resource = getResourceByName(resourceName);
-    const isService = resource?.form === 'services';
     const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
 
     const sellMutation = useMutation(
@@ -273,21 +266,6 @@ export function useSellSectionMutations({
         );
     };
 
-    const handleResetSellPricingConfig = (activePreset: SellPricingPresetType) => {
-        const current = local.sellAutoConfig;
-        const resetFields: Record<string, string> = {};
-        if (activePreset !== 'custom') {
-            Object.assign(resetFields, getPricingSellPreset(activePreset, isService));
-        } else {
-            const committed = offer?.autoConfig ?? {};
-            for (const k of SELL_PRICING_KEYS) {
-                const committedVal = committed[k as keyof typeof committed];
-                resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-            }
-        }
-        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
-    };
-
     const handleSaveSellVolumeConfig = () => {
         const autoConfig = localToAutoConfig(
             pickAutoConfigKeys(local.sellAutoConfig, SELL_VOLUME_KEYS) as AutoConfigLocalState,
@@ -321,21 +299,6 @@ export function useSellSectionMutations({
                 },
             },
         );
-    };
-
-    const handleResetSellVolumeConfig = (activePreset: SellVolumePresetType) => {
-        const current = local.sellAutoConfig;
-        const resetFields: Record<string, string> = {};
-        if (activePreset !== 'custom') {
-            Object.assign(resetFields, getVolumeSellPreset(activePreset));
-        } else {
-            const committed = offer?.autoConfig ?? {};
-            for (const k of SELL_VOLUME_KEYS) {
-                const committedVal = committed[k as keyof typeof committed];
-                resetFields[k] = committedVal !== undefined ? String(committedVal) : '';
-            }
-        }
-        onLocalChange(resourceName, { sellAutoConfig: { ...current, ...resetFields } as AutoConfigLocalState });
     };
 
     const pendingSellPriceAction = pendingActions.find(
@@ -376,9 +339,7 @@ export function useSellSectionMutations({
         resetSell: handleResetSell,
         automationChange: handleSellAutomationChange,
         savePricingConfig: handleSaveSellPricingConfig,
-        resetPricingConfig: handleResetSellPricingConfig,
         saveVolumeConfig: handleSaveSellVolumeConfig,
-        resetVolumeConfig: handleResetSellVolumeConfig,
         sellPriceSaving,
         sellAutomationSaving,
         sellPricingConfigSaving,
