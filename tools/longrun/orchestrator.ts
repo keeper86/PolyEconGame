@@ -12,13 +12,17 @@ function arg(name: string): string | undefined {
     return found ? found.slice(prefix.length) : undefined;
 }
 
-function runOne(name: string, years: number, bands: string): Promise<{ name: string; code: number | null }> {
-    const outDir = path.join(OUT_ROOT, name);
+function runOne(name: string, years: number, bands: string, seed: number | undefined): Promise<{ name: string; code: number | null }> {
+    const outDir = path.join(OUT_ROOT, seed !== undefined ? `${name}-s${seed}` : name);
     fs.mkdirSync(outDir, { recursive: true });
     const logPath = path.join(outDir, 'run.log');
     const log = fs.openSync(logPath, 'w');
 
     const args = ['tsx', path.join(__dirname, 'run.ts'), `--scenario=${name}`, `--years=${years}`, `--bands=${bands}`];
+    if (seed !== undefined) {
+        args.push(`--seed=${seed}`);
+        args.push(`--out=${name}-s${seed}`);
+    }
 
     console.log(`[orchestrator] launch ${name} → ${logPath}`);
 
@@ -50,6 +54,7 @@ function runOne(name: string, years: number, bands: string): Promise<{ name: str
 async function main(): Promise<void> {
     const years = Number(arg('years') ?? 30);
     const bands = arg('bands') ?? 'report';
+    const seed = arg('seed') !== undefined ? Number(arg('seed')) : undefined;
     const only = arg('scenario');
     const onlyNames = only
         ? only
@@ -64,8 +69,10 @@ async function main(): Promise<void> {
         process.exit(2);
     }
 
-    console.log(`[orchestrator] running ${scenarios.length} scenario(s) in parallel (years=${years}, bands=${bands})`);
-    const results = await Promise.all(scenarios.map((s) => runOne(s.name, years, bands)));
+    console.log(
+        `[orchestrator] running ${scenarios.length} scenario(s) in parallel (years=${years}, bands=${bands}${seed !== undefined ? `, seed=${seed}` : ''})`,
+    );
+    const results = await Promise.all(scenarios.map((s) => runOne(s.name, years, bands, seed)));
 
     console.log('\n[orchestrator] summary:');
     let failed = 0;

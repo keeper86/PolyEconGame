@@ -456,6 +456,26 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         // sold 0 < target → factor = maxDown → price falls
         expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
     });
+
+    it('disables the cost spring for saturated products so surplus can clear', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 30,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                costSpringStrength: 0.05,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 20, true);
+
+        // Same configuration as the "pushes the price up below the buffer" case,
+        // but saturation removes the spring: price must fall on weak sell-through.
+        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
+        expect(offer.diagnostics!.netFactor).toBeCloseTo(offer.diagnostics!.baseFactor, 10);
+        expect(offer.offerPrice).toBeLessThan(10);
+    });
 });
 
 // ── Sell-side config override tests ──────────────────────────────────────────

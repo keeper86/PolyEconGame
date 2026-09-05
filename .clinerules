@@ -2,11 +2,7 @@
 
 ## Expected Behavior
 
-- We do an explicit planning for each feature/refactor.
-- The plan has enough detail to be executed without much thinking.
-- When the plan exists:
-    - Use the plan, do not think it through a second time.
-    - Do not verify everything again.
+- We do an explicit planning for each feature/refactor. Regardless of the user mode.
 - if you run in circles, returning to the user to ask something, is expected and greeted behaviour.
 
 ## Rules:
@@ -150,5 +146,6 @@ This will format, lint, build and run all tests. The CI pipeline runs this comma
 ## Memory
 
 You find something so important you wished knew earlier:
+
 - The user is often concurrently editing the codebase — files can change while you work. Re-read before finalizing and don't be surprised by mid-task edits.
 - The user always forgets to adapt tests. When tests fail after a change, check whether the current implementation moved on and fix the tests proactively.

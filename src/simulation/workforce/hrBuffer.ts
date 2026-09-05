@@ -69,9 +69,9 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const producedHr = pullAllHrFromStorage(assets.storageFacility);
     const demand = assets.usedWorkers;
     const maxDailyHROutput = computeMaxDailyHROutput(hrDepartment.maxScale);
-    if (demand > maxDailyHROutput * 1.5) {
+    if (demand > maxDailyHROutput * 2.5) {
         console.warn(
-            `Demand ${demand} exceeds max daily output ${maxDailyHROutput}, ratio ${demand / maxDailyHROutput}`,
+            `HR Demand ${demand} exceeds max daily output ${maxDailyHROutput}, ratio ${demand / maxDailyHROutput}`,
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);

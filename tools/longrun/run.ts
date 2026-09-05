@@ -3,11 +3,25 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setPopulationWealthTaxEnabled, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import {
+    setContractionIntegralThreshold,
+    setExpansionIntegralThreshold,
+    setPidOutMaxDown,
+    setServiceFillRateTarget,
+    setServiceFlowDecayTarget,
+    setServiceSellThroughTarget,
+    setStorageCapacityMonths,
+    setStorageSpaceClampEnabled,
+    setStorageTargetMonths,
+} from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
+import { deserializeSnapshot, serializeGameState } from '../../src/simulation/snapshotCompression';
+import { getRngState, setRngState } from '../../src/simulation/utils/stochasticRound';
+import type { GameState } from '../../src/simulation/planet/planet';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
-import { formatDuration, printYearly, toCsv, yearlySeries } from './report';
+import { formatDuration, printYearly, yearlySeries } from './report';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
     buildScaleComparison,
@@ -38,6 +52,105 @@ const GAP_METRIC_KEYS = [
     'scaleEndogenousActualToSeeded',
     'inFlightConstruction',
 ] as const;
+
+const CHECKPOINT_META_FILE = 'checkpoint.json';
+const CHECKPOINT_STATE_FILE = 'checkpoint.bin';
+
+interface CheckpointMeta {
+    scenario: string;
+    seed: number;
+    years: number;
+    tick: number;
+    rng: [number, number];
+    prevPopulation: number;
+    pid: number;
+}
+
+function resetNonRenewableResources(gameState: GameState, multiplier: number): void {
+    for (const planet of gameState.planets.values()) {
+        for (const entry of Object.values(planet.resources)) {
+            if (entry.pool.regenerationRate > 0) {
+                continue;
+            }
+            entry.pool.quantity = entry.pool.maximumCapacity * multiplier;
+            entry.pool.maximumCapacity *= multiplier;
+            for (const claim of entry.claims) {
+                claim.quantity = claim.maximumCapacity * multiplier;
+                claim.maximumCapacity *= multiplier;
+            }
+        }
+    }
+}
+
+function hasCheckpoint(outDir: string): boolean {
+    return (
+        fs.existsSync(path.join(outDir, CHECKPOINT_META_FILE)) &&
+        fs.existsSync(path.join(outDir, CHECKPOINT_STATE_FILE))
+    );
+}
+
+function saveCheckpoint(
+    outDir: string,
+    gameState: GameState,
+    meta: Omit<CheckpointMeta, 'rng' | 'pid'>,
+): void {
+    fs.mkdirSync(outDir, { recursive: true });
+    const metaFile: CheckpointMeta = { ...meta, rng: getRngState(), pid: process.pid };
+    fs.writeFileSync(path.join(outDir, CHECKPOINT_META_FILE), JSON.stringify(metaFile, null, 2));
+    fs.writeFileSync(path.join(outDir, CHECKPOINT_STATE_FILE), serializeGameState(gameState));
+    console.log(
+        `[checkpoint] saved tick ${meta.tick} (y${(meta.tick / TICKS_PER_YEAR).toFixed(1)}), rng=[${metaFile.rng.join(',')}]`,
+    );
+}
+
+function loadCheckpoint(outDir: string): { meta: CheckpointMeta; gameState: GameState } {
+    const meta = JSON.parse(fs.readFileSync(path.join(outDir, CHECKPOINT_META_FILE), 'utf8')) as CheckpointMeta;
+    const gameState = deserializeSnapshot(fs.readFileSync(path.join(outDir, CHECKPOINT_STATE_FILE)));
+    return { meta, gameState };
+}
+
+function removeCheckpoint(outDir: string): void {
+    fs.rmSync(path.join(outDir, CHECKPOINT_META_FILE), { force: true });
+    fs.rmSync(path.join(outDir, CHECKPOINT_STATE_FILE), { force: true });
+}
+
+function writeCsvHeader(filePath: string, keys: readonly string[]): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, keys.join(',') + '\n');
+}
+
+function appendCsvRows(
+    filePath: string,
+    keys: readonly string[],
+    rows: Array<Record<string, number | undefined>>,
+): void {
+    if (rows.length === 0) {
+        return;
+    }
+    const lines = rows.map((row) => keys.map((key) => row[key] ?? '').join(','));
+    fs.appendFileSync(filePath, lines.join('\n') + '\n');
+}
+
+function readCsv(filePath: string): Array<Record<string, number | undefined>> {
+    if (!fs.existsSync(filePath)) {
+        return [];
+    }
+    const text = fs.readFileSync(filePath, 'utf8').trim();
+    if (!text) {
+        return [];
+    }
+    const [headerLine, ...lines] = text.split('\n');
+    const keys = headerLine.split(',');
+    return lines.map((line) => {
+        const values = line.split(',');
+        const row: Record<string, number | undefined> = {};
+        keys.forEach((key, index) => {
+            const value = values[index];
+            row[key] = value === undefined || value === '' ? undefined : Number(value);
+        });
+        return row;
+    });
+}
 
 function arg(name: string): string | undefined {
     const prefix = `--${name}=`;
@@ -102,48 +215,109 @@ function evaluateBands(yearly: Map<number, MetricMap>, bands: MetricBand[]): Ban
     });
 }
 
-function runScenario(
+async function runScenario(
     scenario: Scenario,
     years: number,
     sampleEvery: number,
-): { monthly: MetricMap[]; msPerTick: number; seedGap: string; scaleGaps: Array<Record<string, number>> } {
-    seedRng(scenario.seed);
-    const { gameState, planet, agents } = buildBenchmarkWorld(scenario.world);
-    const population = scenario.world.population ?? 10_000_000;
-
+    seedOverride: number | undefined,
+    outDir: string,
+    checkpointEveryYears: number,
+    resume: boolean,
+    resumeResourceMultiplier?: number,
+): Promise<{ monthly: MetricMap[]; msPerTick: number; scaleGaps: Array<Record<string, number>>; startTick: number }> {
     const totalTicks = years * TICKS_PER_YEAR;
     const monthly: MetricMap[] = [];
     const scaleGaps: Array<Record<string, number>> = [];
+    const population = scenario.world.population ?? 10_000_000;
 
-    const seedComparison = buildScaleComparison(population, sampleActualScales(gameState));
-    seedComparison.inFlightConstruction = sampleInFlightConstruction(gameState);
-    const seedGap = formatScaleComparison(seedComparison);
+    let gameState: GameState;
+    let startTick: number;
+    let prevPopulation: number;
+    let planetId = '';
 
-    console.log(`[${scenario.name}] world ready: ${agents.length} agents, 1 planet, ${totalTicks} ticks`);
+    if (resume && hasCheckpoint(outDir)) {
+        const { meta, gameState: loaded } = loadCheckpoint(outDir);
+        if (meta.scenario !== scenario.name || meta.seed !== (seedOverride ?? scenario.seed) || meta.years !== years) {
+            throw new Error(
+                `checkpoint mismatch: found ${meta.scenario}/s${meta.seed}/${meta.years}y at tick ${meta.tick}, ` +
+                    `run is ${scenario.name}/s${seedOverride ?? scenario.seed}/${years}y`,
+            );
+        }
+        gameState = loaded;
+        startTick = meta.tick;
+        prevPopulation = meta.prevPopulation;
+        setRngState(meta.rng);
+        if (resumeResourceMultiplier !== undefined && resumeResourceMultiplier !== 1) {
+            resetNonRenewableResources(gameState, resumeResourceMultiplier);
+            console.log(
+                `[${scenario.name}] reset non-renewable resources to ${resumeResourceMultiplier}x initial capacity`,
+            );
+        }
+        monthly.push(...(readCsv(path.join(outDir, 'series.csv')) as MetricMap[]));
+        scaleGaps.push(...(readCsv(path.join(outDir, 'scaleGaps.csv')) as Array<Record<string, number>>));
+        console.log(
+            `[${scenario.name}] resuming from checkpoint tick ${startTick} ` +
+                `(y${(startTick / TICKS_PER_YEAR).toFixed(1)}), ${monthly.length} samples already recorded`,
+        );
+    } else {
+        seedRng(seedOverride ?? scenario.seed);
+        const built = buildBenchmarkWorld(scenario.world);
+        gameState = built.gameState;
+        planetId = built.planet.id;
+        startTick = 0;
+        prevPopulation = sampleMetrics(gameState).totalPopulation;
+        fs.mkdirSync(outDir, { recursive: true });
+        writeCsvHeader(path.join(outDir, 'series.csv'), METRIC_KEYS);
+        writeCsvHeader(path.join(outDir, 'scaleGaps.csv'), GAP_METRIC_KEYS);
+        const seedComparison = buildScaleComparison(population, sampleActualScales(gameState));
+        seedComparison.inFlightConstruction = sampleInFlightConstruction(gameState);
+        fs.writeFileSync(path.join(outDir, 'seedGap.txt'), formatScaleComparison(seedComparison) + '\n');
+        console.log(`[${scenario.name}] world ready: ${built.agents.length} agents, 1 planet, ${totalTicks} ticks`);
+    }
+
+    const checkpointInterval = checkpointEveryYears * TICKS_PER_YEAR;
+    const checkpointMeta = { scenario: scenario.name, seed: seedOverride ?? scenario.seed, years };
+
     console.log(`[${scenario.name}] starting…`);
 
+    let lastCompletedTick = startTick;
+    let abortReason = '';
     const t0 = process.hrtime.bigint();
 
-    let prevPopulation = sampleMetrics(gameState).totalPopulation;
-    for (let t = 1; t <= totalTicks; t++) {
+    const onSignal = (signal: string): void => {
+        console.log(`\n[${scenario.name}] ${signal} received — saving checkpoint at tick ${lastCompletedTick}…`);
+        saveCheckpoint(outDir, gameState, { ...checkpointMeta, tick: lastCompletedTick, prevPopulation });
+        console.log(`[${scenario.name}] checkpoint saved, exiting. Resume later with --resume.`);
+        process.exit(0);
+    };
+    const onInt = (): void => onSignal('SIGINT');
+    const onTerm = (): void => onSignal('SIGTERM');
+    process.on('SIGINT', onInt);
+    process.on('SIGTERM', onTerm);
+
+    for (let t = startTick + 1; t <= totalTicks; t++) {
         gameState.tick = t;
         advanceTick(gameState);
+        lastCompletedTick = t;
+        if (t % 30 === 0) {
+            await new Promise<void>((resolve) => setImmediate(resolve));
+        }
         if (t % sampleEvery === 0) {
             const sample = sampleMetrics(gameState);
             sample.birthsThisMonth = Math.max(0, sample.totalPopulation - prevPopulation + sample.deathsThisMonth);
             prevPopulation = sample.totalPopulation;
             monthly.push(sample);
+            appendCsvRows(path.join(outDir, 'series.csv'), METRIC_KEYS, [sample]);
             if (sample.totalPopulation < 1) {
-                console.log(
-                    `[${scenario.name}] population extinct at y${(t / TICKS_PER_YEAR).toFixed(2)}, aborting run`,
-                );
+                abortReason = `population extinct at y${(t / TICKS_PER_YEAR).toFixed(2)}`;
+                console.log(`[${scenario.name}] ${abortReason}, aborting run`);
                 break;
             }
         }
         if (t % TICKS_PER_YEAR === 0) {
             const year = t / TICKS_PER_YEAR;
             const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
-            const msPerTick = elapsedMs / t;
+            const msPerTick = elapsedMs / (t - startTick);
             const etaMs = msPerTick * (totalTicks - t);
             const lastSample = monthly[monthly.length - 1];
             console.log(
@@ -154,22 +328,36 @@ function runScenario(
 
             const actual = sampleActualScales(gameState);
             const inFlight = sampleInFlightConstruction(gameState);
-            scaleGaps.push({ year, ...computeGapMetrics(population, actual, inFlight) });
+            const gapRow = { year, ...computeGapMetrics(population, actual, inFlight) };
+            scaleGaps.push(gapRow);
+            appendCsvRows(path.join(outDir, 'scaleGaps.csv'), GAP_METRIC_KEYS, [gapRow]);
+        }
+        if (t % checkpointInterval === 0) {
+            saveCheckpoint(outDir, gameState, { ...checkpointMeta, tick: t, prevPopulation });
         }
     }
 
+    process.removeListener('SIGINT', onInt);
+    process.removeListener('SIGTERM', onTerm);
+
     const t1 = process.hrtime.bigint();
     const wallMs = Number(t1 - t0) / 1e6;
-    const msPerTick = wallMs / totalTicks;
+    const ticksRun = abortReason === '' ? totalTicks - startTick : lastCompletedTick - startTick;
+    const msPerTick = wallMs / Math.max(1, ticksRun);
 
     console.log(
-        `[${scenario.name}] done: ${msPerTick.toFixed(2)} ms/tick, ${(1000 / msPerTick).toFixed(1)} ticks/s. Planet: ${planet.id}`,
+        `[${scenario.name}] done: ${msPerTick.toFixed(2)} ms/tick, ${(1000 / msPerTick).toFixed(1)} ticks/s. ` +
+            `Planet: ${planetId || 'n/a (resumed)'}`,
     );
 
-    return { monthly, msPerTick, seedGap, scaleGaps };
+    if (abortReason === '') {
+        removeCheckpoint(outDir);
+    }
+
+    return { monthly, msPerTick, scaleGaps, startTick };
 }
 
-function main(): void {
+async function main(): Promise<void> {
     const debug = process.argv.includes('--debug');
     if (debug) {
         process.env.SIM_DEBUG = '1';
@@ -217,6 +405,70 @@ function main(): void {
     if (costSpringArg !== undefined) {
         scenario.world = { ...scenario.world, costSpringStrength: Number(costSpringArg) };
     }
+    if (process.argv.includes('--fixedPersonalities')) {
+        scenario.world = { ...scenario.world, fixedPersonalities: true };
+    }
+    const refineryMinAskArg = arg('refineryMinAskMultiplier');
+    if (refineryMinAskArg !== undefined) {
+        scenario.world = { ...scenario.world, refineryMinAskMultiplier: Number(refineryMinAskArg) };
+    }
+    const refineryPriceDownArg = arg('refineryPriceAdjustMaxDown');
+    if (refineryPriceDownArg !== undefined) {
+        scenario.world = { ...scenario.world, refineryPriceAdjustMaxDown: Number(refineryPriceDownArg) };
+    }
+    const refinerySellThroughArg = arg('refineryTargetSellThrough');
+    if (refinerySellThroughArg !== undefined) {
+        scenario.world = { ...scenario.world, refineryTargetSellThrough: Number(refinerySellThroughArg) };
+    }
+    const populationWealthTaxArg = arg('populationWealthTax');
+    if (populationWealthTaxArg !== undefined) {
+        scenario.world = { ...scenario.world, populationWealthTax: populationWealthTaxArg !== 'off' };
+    }
+    setPopulationWealthTaxEnabled(scenario.world.populationWealthTax ?? false);
+    if (process.argv.includes('--noStorageClamp')) {
+        setStorageSpaceClampEnabled(false);
+        console.log('storage space clamp DISABLED (--noStorageClamp)');
+    }
+    const pidDownArg = arg('pidDown');
+    if (pidDownArg !== undefined) {
+        setPidOutMaxDown(Number(pidDownArg));
+        console.log(`PID ramp-down limit overridden to ${pidDownArg}`);
+    }
+    const expansionThresholdArg = arg('expansionThreshold');
+    if (expansionThresholdArg !== undefined) {
+        setExpansionIntegralThreshold(Number(expansionThresholdArg));
+        console.log(`expansion integral threshold overridden to ${expansionThresholdArg}`);
+    }
+    const contractionThresholdArg = arg('contractionThreshold');
+    if (contractionThresholdArg !== undefined) {
+        setContractionIntegralThreshold(Number(contractionThresholdArg));
+        console.log(`contraction integral threshold overridden to ${contractionThresholdArg}`);
+    }
+    const storageTargetMonthsArg = arg('storageTargetMonths');
+    if (storageTargetMonthsArg !== undefined) {
+        setStorageTargetMonths(Number(storageTargetMonthsArg));
+        console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
+    }
+    const storageCapacityMonthsArg = arg('storageCapacityMonths');
+    if (storageCapacityMonthsArg !== undefined) {
+        setStorageCapacityMonths(Number(storageCapacityMonthsArg));
+        console.log(`goods storage max buffer overridden to ${storageCapacityMonthsArg} months`);
+    }
+    const serviceSellThroughArg = arg('serviceSellThrough');
+    if (serviceSellThroughArg !== undefined) {
+        setServiceSellThroughTarget(Number(serviceSellThroughArg));
+        console.log(`service seller sell-through target overridden to ${serviceSellThroughArg}`);
+    }
+    const serviceFillRateArg = arg('serviceFillRate');
+    if (serviceFillRateArg !== undefined) {
+        setServiceFillRateTarget(Number(serviceFillRateArg));
+        console.log(`service buyer fill-rate target overridden to ${serviceFillRateArg}`);
+    }
+    const serviceDecayArg = arg('serviceDecayTarget');
+    if (serviceDecayArg !== undefined) {
+        setServiceFlowDecayTarget(Number(serviceDecayArg));
+        console.log(`service flow decay target overridden to ${serviceDecayArg}`);
+    }
     if (scenario.world.bankruptcyWriteOffFraction !== undefined) {
         setBankruptcyDebtWriteOffFraction(scenario.world.bankruptcyWriteOffFraction);
     }
@@ -232,33 +484,54 @@ function main(): void {
     if (wealthTaxAllowanceArg !== undefined) {
         setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
     }
+    const resourceMultiplierArg = arg('resourceMultiplier');
+    if (resourceMultiplierArg !== undefined) {
+        scenario.world = { ...scenario.world, resourceMultiplier: Number(resourceMultiplierArg) };
+    }
+    const oilReservoirMultiplierArg = arg('oilReservoirMultiplier');
+    if (oilReservoirMultiplierArg !== undefined) {
+        scenario.world = { ...scenario.world, oilReservoirMultiplier: Number(oilReservoirMultiplierArg) };
+        console.log(`oil reservoir multiplier overridden to ${oilReservoirMultiplierArg}`);
+    }
+    const populationArg = arg('population');
+    if (populationArg !== undefined) {
+        scenario.world = { ...scenario.world, population: Number(populationArg) };
+        console.log(`initial population overridden to ${populationArg}`);
+    }
     const bandsMode = arg('bands') ?? 'report';
     const sampleEvery = TICKS_PER_MONTH;
+    const seedOverride = arg('seed') !== undefined ? Number(arg('seed')) : undefined;
+    const checkpointEveryYears = Math.max(1, Number(arg('checkpointEveryYears') ?? 50));
+    const resume = process.argv.includes('--resume');
+    const resumeResourceMultiplier =
+        arg('resumeResourceMultiplier') !== undefined ? Number(arg('resumeResourceMultiplier')) : undefined;
+    const outDir = path.join(OUT_ROOT, arg('out') ?? scenario.name);
 
     console.log(`=== scenario: ${scenario.name} ===`);
     console.log(scenario.description);
+    console.log(`checkpointing every ${checkpointEveryYears}y → ${path.join(outDir, 'checkpoint.json')}${resume ? ' (--resume)' : ''}`);
 
-    const { monthly, msPerTick, seedGap, scaleGaps } = runScenario(scenario, years, sampleEvery);
+    const { monthly, msPerTick, startTick } = await runScenario(
+        scenario,
+        years,
+        sampleEvery,
+        seedOverride,
+        outDir,
+        checkpointEveryYears,
+        resume,
+        resumeResourceMultiplier,
+    );
     const yearly = yearlySeries(monthly);
     const bandResults = bandsMode === 'off' ? [] : evaluateBands(yearly, scenario.bands);
 
-    const outDir = path.join(OUT_ROOT, arg('out') ?? scenario.name);
-    fs.mkdirSync(outDir, { recursive: true });
-
     const csvPath = path.join(outDir, 'series.csv');
-    fs.writeFileSync(csvPath, toCsv(monthly));
-
-    fs.writeFileSync(path.join(outDir, 'seedGap.txt'), seedGap + '\n');
-
-    const gapHeader = GAP_METRIC_KEYS.join(',');
-    const gapLines = scaleGaps.map((row) => GAP_METRIC_KEYS.map((key) => row[key] ?? '').join(','));
-    fs.writeFileSync(path.join(outDir, 'scaleGaps.csv'), [gapHeader, ...gapLines].join('\n') + '\n');
 
     const summary = {
         scenario: scenario.name,
         description: scenario.description,
         seed: scenario.seed,
         years,
+        resumedFromTick: startTick > 0 ? startTick : null,
         msPerTick,
         ticksPerSecond: msPerTick > 0 ? 1000 / msPerTick : 0,
         bands: bandResults.map((b) => ({ ...b, actual: Number.isFinite(b.actual) ? b.actual : null })),
@@ -301,4 +574,7 @@ function main(): void {
     }
 }
 
-main();
+main().catch((err) => {
+    console.error(err);
+    process.exitCode = 1;
+});

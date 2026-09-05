@@ -13,6 +13,7 @@ import {
     buildBuyAutoConfigForResource,
     buildSellAutoConfigForResource,
     generateAgentPersonality,
+    generateFixedPersonality,
 } from '../../src/simulation/initialUniverse/personalities';
 import { getNamesFor } from '../../src/simulation/initialUniverse/preConfiguredCompanies';
 import { splitScale } from '../../src/simulation/initialUniverse/proceduralWorld';
@@ -68,6 +69,37 @@ export interface BenchmarkWorldConfig {
     loanRatePerYear?: number;
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
+    fixedPersonalities?: boolean;
+    populationWealthTax?: boolean;
+    refineryMinAskMultiplier?: number;
+    refineryPriceAdjustMaxDown?: number;
+    refineryTargetSellThrough?: number;
+    oilReservoirMultiplier?: number;
+    resourceMultiplier?: number;
+}
+
+export function applyRefinerySellOverride(
+    sellConfig: AutomatedPricingConfig,
+    facilityType: string,
+    config: BenchmarkWorldConfig,
+): AutomatedPricingConfig {
+    if (facilityType !== 'oilRefinery') {
+        return sellConfig;
+    }
+    const override: Partial<AutomatedPricingConfig> = {};
+    if (config.refineryMinAskMultiplier !== undefined) {
+        override.automatedCostFloorBuffer = config.refineryMinAskMultiplier;
+    }
+    if (config.refineryPriceAdjustMaxDown !== undefined) {
+        override.priceAdjustMaxDown = config.refineryPriceAdjustMaxDown;
+    }
+    if (config.refineryTargetSellThrough !== undefined) {
+        override.targetSellThrough = config.refineryTargetSellThrough;
+    }
+    if (Object.keys(override).length === 0) {
+        return sellConfig;
+    }
+    return { ...sellConfig, ...override };
 }
 
 interface FacilityTarget {
@@ -163,8 +195,14 @@ const BASE_RESOURCES: Array<{ resource: ReturnType<typeof makePool>['resource'];
 function buildResources(config: BenchmarkWorldConfig): Planet['resources'] {
     const resources: Planet['resources'] = {};
     const rawPoolFactor = config.rawPoolFactor ?? 1;
+    const resourceMultiplier = config.resourceMultiplier ?? 100;
+    const oilReservoirMultiplier = config.oilReservoirMultiplier ?? 1;
     for (const { resource, quantity, renewable } of BASE_RESOURCES) {
-        let qty = quantity * rawPoolFactor;
+        let qty =
+            quantity *
+            rawPoolFactor *
+            resourceMultiplier *
+            (resource.name === oilReservoirResourceType.name ? oilReservoirMultiplier : 1);
         if (resource.name === waterSourceResourceType.name && config.waterPoolQuantity !== undefined) {
             qty = config.waterPoolQuantity;
         }
@@ -230,7 +268,9 @@ export function buildBenchmarkWorld(
                 hrDepartment,
             });
 
-            const personality = generateAgentPersonality(config.costSpringStrength);
+            const personality = config.fixedPersonalities
+                ? generateFixedPersonality(config.costSpringStrength)
+                : generateAgentPersonality(config.costSpringStrength);
             const assets = agent.assets[BENCHMARK_PLANET_ID];
 
             assets.market.buy[constructionServiceResourceType.name] = {
@@ -254,7 +294,11 @@ export function buildBenchmarkWorld(
                     assets.market.sell[resource.name] = {
                         resource,
                         automated: true,
-                        autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                        autoConfig: applyRefinerySellOverride(
+                            buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                            facilityType,
+                            config,
+                        ),
                     };
                 }
             }

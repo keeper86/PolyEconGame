@@ -11,7 +11,7 @@ import { MAX_AGE } from '../population/population';
 import { perTickRetirement } from '../population/retirement';
 import { stochasticRound } from '../utils/stochasticRound';
 import type { TickProfiler } from '../TickProfiler';
-import { computeLaborMarket, quitPropensity, smoothedReachableVacancyWage } from './laborMarket';
+import { betterOfferStats, computeLaborMarket, quitPropensity } from './laborMarket';
 import type { WorkforceCategory, WorkforceCohort } from './workforce';
 import { subtractProportionalXP } from './workforce';
 
@@ -61,6 +61,16 @@ export function workforceDemographicTick(
 
         const workforce = assets.workforceDemography;
 
+        const betterByEdu: Record<EducationLevelType, { meanWage: number; share: number }> = {
+            none: { meanWage: 0, share: 0 },
+            primary: { meanWage: 0, share: 0 },
+            secondary: { meanWage: 0, share: 0 },
+            tertiary: { meanWage: 0, share: 0 },
+        };
+        for (const l of educationLevelKeys) {
+            betterByEdu[l] = betterOfferStats(laborMarket.reachableVacancySteps[l], assets.wagePerEdu[l] ?? 0);
+        }
+
         for (let age = 0; age < workforce.length; age++) {
             const cohort = workforce[age];
 
@@ -88,10 +98,11 @@ export function workforceDemographicTick(
                 }
 
                 if (category.active > 0) {
+                    const better = betterByEdu[l];
                     const quitRate = quitPropensity(
                         assets.wagePerEdu[l] ?? 0,
-                        laborMarket.reachableTightness[l],
-                        smoothedReachableVacancyWage(planet, l, laborMarket.reachableVacancyWage[l]),
+                        laborMarket.reachableTightness[l] * better.share,
+                        better.meanWage,
                     );
                     const voluntaryQuitters = stochasticRound(category.active * quitRate);
                     if (voluntaryQuitters > 0) {

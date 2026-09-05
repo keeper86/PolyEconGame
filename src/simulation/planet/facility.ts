@@ -132,16 +132,19 @@ export type PidState = {
     expansionIntegral: number;
     contractionIntegral: number;
     smoothedSignal: number;
-    profitEMA: number;
-    revenueEMA: number;
-    profitAtExpansionScale: number;
-    profitAtContractionScale: number;
+    flowProducedEMA?: number;
+    flowClearedEMA?: number;
+    flowUnfilledEMA?: number;
+    flowDecayedEMA?: number;
 };
 
 export type ProductionFacility = FacilityBase & {
     type: 'production';
     needs: ResourceQuantity[];
     produces: ResourceQuantity[];
+    outputFlexible?: boolean;
+    productionMix?: { [resourceName: string]: number };
+    wasteSurplusTicks?: number;
 
     lastTickResults: LastProductionTickResults;
     pidState?: PidState | null;

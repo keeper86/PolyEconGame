@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
-import { constructionTick, productionTick } from './production';
+import { computeStorageSpaceFactor, constructionTick, productionTick } from './production';
 
 import type { TransportShipType } from '../ships/ships';
 import {
@@ -14,7 +14,14 @@ import {
     makeStorageFacility,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
-import { produceResourceType, ironOreResourceType, steelResourceType, waterResourceType } from './resources';
+import {
+    chemicalResourceType,
+    fuelResourceType,
+    produceResourceType,
+    ironOreResourceType,
+    steelResourceType,
+    waterResourceType,
+} from './resources';
 import { constructionServiceResourceType } from './services';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
 
@@ -65,6 +72,40 @@ describe('productionTick (basic)', () => {
 
         const ironEntries = planet.resources['Iron Ore Deposit'];
         expect(ironEntries?.claims[0]?.quantity).toBeLessThan(5000);
+    });
+
+    it('splits production according to the output mix', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('refinery-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
+        facility.id = 'refinery';
+        facility.needs = [{ resource: waterResourceType, quantity: 10 }];
+        facility.produces = [
+            { resource: fuelResourceType, quantity: 100 },
+            { resource: chemicalResourceType, quantity: 100 },
+        ];
+        facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
+
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 1000,
+        };
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.active = 1;
+
+        const gameState = makeGameState(planet, [agent, gov]);
+
+        productionTick(gameState, planet);
+
+        const stored = agent.assets.p.storageFacility.currentInStorage;
+        const fuel = stored[fuelResourceType.name]?.quantity ?? 0;
+        const chem = stored[chemicalResourceType.name]?.quantity ?? 0;
+
+        // total template output is 200; the mix 25/75 splits it into 50/150
+        expect(fuel).toBeCloseTo(50, 1);
+        expect(chem).toBeCloseTo(150, 1);
     });
 
     it('does not operate facility when required land-bound resource is unavailable', () => {
@@ -340,7 +381,7 @@ describe('productionTick (basic)', () => {
         agent.assets.p.productionFacilities = [facility];
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
-            quantity: 50,
+            quantity: 150,
         };
         agent.assets.p.workforceDemography[30].none.active = 20;
 
@@ -365,11 +406,11 @@ describe('productionTick — shared stored-resource allocation', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('company');
 
-        const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 400 });
+        const facilityA = makeProductionFacility({ none: 1 }, { id: 'fac-a', scale: 400, maxScale: 400 });
         facilityA.needs = [{ resource: waterResourceType, quantity: 800 }];
         facilityA.produces = [{ resource: produceResourceType, quantity: 1000 }];
 
-        const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 800 });
+        const facilityB = makeProductionFacility({ none: 1 }, { id: 'fac-b', scale: 800, maxScale: 800 });
         facilityB.needs = [{ resource: waterResourceType, quantity: 500 }];
         facilityB.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
@@ -432,6 +473,124 @@ describe('productionTick — shared stored-resource allocation', () => {
         expect(remaining).toBeGreaterThanOrEqual(0);
 
         expect(remaining).toBeLessThanOrEqual(initialWater);
+    });
+});
+
+describe('productionTick — storage space clamp', () => {
+    beforeEach(() => {
+        seedRng(12345);
+    });
+
+    const virtualShelf = (maxScale: number) => 6 * 30 * maxScale * 1000;
+
+    function makeWaterConsumer() {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('clamped-company');
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 10, maxScale: 10 });
+        facility.needs = [{ resource: waterResourceType, quantity: 100 }];
+        facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
+        agent.assets.p.productionFacilities = [facility];
+        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+            resource: waterResourceType,
+            quantity: 100000,
+        };
+        agent.assets.p.storageFacility.current.volume = 100000 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storageFacility.current.mass = 100000 * waterResourceType.massPerQuantity;
+        agent.assets.p.workforceDemography[30].secondary.active = 10;
+        const gs = makeGameState(planet, [agent, gov]);
+        return { planet, agent, facility, gs };
+    }
+
+    it('produces at full efficiency while the output is below the virtual shelf', () => {
+        const { planet, agent, facility, gs } = makeWaterConsumer();
+        productionTick(gs, planet);
+        const produced = agent.assets.p.storageFacility.currentInStorage[produceResourceType.name]?.quantity ?? 0;
+        expect(produced).toBeCloseTo(10000, 0);
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
+    });
+
+    it('throttles production to the free shelf space when the shelf is nearly full', () => {
+        const { planet, agent, facility, gs } = makeWaterConsumer();
+        const shelf = virtualShelf(10);
+        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+            resource: produceResourceType,
+            quantity: shelf - 5000,
+        };
+        productionTick(gs, planet);
+        const produced = agent.assets.p.storageFacility.currentInStorage[produceResourceType.name]?.quantity ?? 0;
+        expect(produced).toBeCloseTo(shelf, 0);
+        expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
+    });
+
+    it('keeps the production-health efficiency intact so a full output storage cannot block expansion', () => {
+        const { planet, agent, facility, gs } = makeWaterConsumer();
+        const shelf = virtualShelf(10);
+        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+            resource: produceResourceType,
+            quantity: shelf,
+        };
+        agent.assets.p.market.sell[produceResourceType.name] = {
+            resource: produceResourceType,
+            lastSold: 3000,
+        };
+        productionTick(gs, planet);
+        expect(facility.lastTickResults.overallEfficiency).toBeGreaterThanOrEqual(0.9);
+        expect(facility.lastTickResults.lastProduced[produceResourceType.name]).toBeCloseTo(3000, 0);
+    });
+
+    it('scales input consumption down with the throttled production', () => {
+        const { planet, agent, gs } = makeWaterConsumer();
+        const shelf = virtualShelf(10);
+        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+            resource: produceResourceType,
+            quantity: shelf - 5000,
+        };
+        productionTick(gs, planet);
+        const water = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        expect(water).toBeCloseTo(100000 - 500, 0);
+    });
+});
+
+describe('computeStorageSpaceFactor', () => {
+    it('allows producing what was sold when the shelf is full', () => {
+        const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
+        facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
+        const agent = makeAgent('sold-allowance');
+        const shelf = 6 * 30 * 10 * 1000;
+        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+            resource: produceResourceType,
+            quantity: shelf,
+        };
+        agent.assets.p.market.sell[produceResourceType.name] = {
+            resource: produceResourceType,
+            lastSold: 3000,
+        };
+        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.3, 10);
+    });
+
+    it('takes the minimum factor across multiple outputs', () => {
+        const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
+        facility.produces = [
+            { resource: produceResourceType, quantity: 1000 },
+            { resource: ironOreResourceType, quantity: 1000 },
+        ];
+        const agent = makeAgent('multi-output');
+        const shelf = 6 * 30 * 10 * 1000;
+        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+            resource: produceResourceType,
+            quantity: shelf - 5000,
+        };
+        agent.assets.p.storageFacility.currentInStorage[ironOreResourceType.name] = {
+            resource: ironOreResourceType,
+            quantity: 0,
+        };
+        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.5, 10);
+    });
+
+    it('returns 1 for facilities without storage outputs', () => {
+        const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
+        const agent = makeAgent('no-output');
+        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(1, 10);
     });
 });
 
@@ -979,7 +1138,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         agent.assets.p.productionFacilities = [facility];
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
-            quantity: 1000,
+            quantity: 6000,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 25;
@@ -992,7 +1151,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(75, 0);
 
         const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
-        expect(remaining).toBeCloseTo(925, -1);
+        expect(remaining).toBeCloseTo(6000 - 75, -1);
     });
 
     it('worker efficiency is limited by available headcount when hrProductivityMultiplier < 1', () => {
@@ -1044,7 +1203,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         agent.assets.p.humanResourcesDepartment = hrFacility;
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
-            quantity: 50,
+            quantity: 150,
         };
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 10;
@@ -1067,7 +1226,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         agent.assets.p.productionFacilities = [facility];
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
-            quantity: 50,
+            quantity: 150,
         };
         agent.assets.p.hrProductivityMultiplier = 0.5;
         agent.assets.p.workforceDemography[30].none.active = 20;
@@ -1102,7 +1261,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         agent.assets.p.productionFacilities = [prodFacility];
         agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
-            quantity: 100,
+            quantity: 180,
         };
 
         agent.assets.p.workforceDemography[30].none.active = 5;

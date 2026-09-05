@@ -35,6 +35,10 @@ import type {
     AutomatedPricingConfig,
     Planet,
 } from '../planet/planet';
+import {
+    getServiceFillRateTarget,
+    getServiceSellThroughTarget,
+} from '../planet/automaticProductionScale/runtimeConfig';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
@@ -55,7 +59,10 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         priceAdjustMaxDown: c.priceAdjustMaxDown ?? PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: c.costSpringStrength ?? DEFAULT_COST_SPRING_STRENGTH,
         targetSellThrough:
-            c.targetSellThrough ?? (resource.form === 'services' ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH),
+            c.targetSellThrough ??
+            (resource.form === 'services'
+                ? (getServiceSellThroughTarget() ?? TARGET_SELL_THROUGH_SERVICES)
+                : TARGET_SELL_THROUGH),
         askVolumeFloorFraction: c.askVolumeFloorFraction ?? ASK_VOLUME_FLOOR_FRACTION,
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
@@ -74,7 +81,10 @@ function resolveBidConfig(config: AutomatedPricingConfig | undefined, resource: 
             c.inputBufferTargetTicks ??
             (resource.form === 'services' ? INPUT_BUFFER_TARGET_TICKS_SERVICES : INPUT_BUFFER_TARGET_TICKS),
         targetFillRate:
-            c.targetFillRate ?? (resource.form === 'services' ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE),
+            c.targetFillRate ??
+            (resource.form === 'services'
+                ? (getServiceFillRateTarget() ?? TARGET_FILL_RATE_SERVICES)
+                : TARGET_FILL_RATE),
         bidVolumeFloorFraction: c.bidVolumeFloorFraction ?? BID_VOLUME_FLOOR_FRACTION,
         bidOfferMaxCostMultiplier: c.bidOfferMaxCostMultiplier ?? BID_OFFER_MAX_COST_MULTIPLIER,
         freeBuyQuantity: c.freeBuyQuantity ?? 0,
@@ -146,6 +156,24 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         inputReserve.set(resourceName, target);
     }
 
+    const saturatedOutputs = new Set<string>();
+    for (const facility of assets.productionFacilities) {
+        const wasteTicks = facility.wasteSurplusTicks ?? 0;
+        if (wasteTicks <= 0) {
+            continue;
+        }
+        for (const output of facility.produces) {
+            if (output.resource.form === 'services') {
+                continue;
+            }
+            const keep = wasteTicks * facility.maxScale * output.quantity;
+            const free = queryStorageFacility(assets.storageFacility, output.resource.name);
+            if (free >= keep) {
+                saturatedOutputs.add(output.resource.name);
+            }
+        }
+    }
+
     // ── Sell-side automated offers ───────────────────────────────────────────
 
     const productionRate = new Map<string, number>();
@@ -179,7 +207,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, saturatedOutputs.has(resource.name));
         }
     }
 
@@ -455,6 +483,7 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
+    saturated = false,
 ): void {
     const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
 
@@ -541,8 +570,8 @@ export function adjustOfferPrice(
     );
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
-    const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
-    const netFactor = factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
+    const deviation = saturated ? 0 : Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
+    const netFactor = saturated ? factor : factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {

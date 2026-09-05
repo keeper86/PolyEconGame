@@ -294,19 +294,268 @@ export const SCENARIOS: Scenario[] = [
         ],
     },
     {
-        name: 'longrun-spring045',
+        name: 'interest2',
         description:
-            '600-year run with agent personality costSpringStrength = 0.45 (ceiling/floor spring pulls price back to cost harder).',
+            '30-year run at a 2% loan interest rate (baseline is 5%). Proxy for a central bank that keeps rates low to slow the compounding of the loan book.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.02 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'wealthTaxPop',
+        description:
+            '30-year run with a wealth tax on rich population cohorts: per-capita wealth above 120 months of the education-level wage is taxed at 2%/yr; revenue goes to the government budget (support spending).',
+        seed: 1001,
+        years: 30,
+        world: { populationWealthTax: true },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'interest2-wealthTaxPop',
+        description:
+            '30-year run combining 2% loan interest and the population wealth tax. Tests whether low rates + wealth redistribution together slow loan compounding.',
+        seed: 1001,
+        years: 30,
+        world: { loanRatePerYear: 0.02, populationWealthTax: true },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'refineryFirmAsk',
+        description:
+            '30-year run where refinery agents sell with a soft-min ask of 3x cost (automatedCostFloorBuffer), price cuts capped at 1% (priceAdjustMaxDown 0.99) and a sell-through target of 0.5. Tests whether pricing the joint-output refinery above cost keeps it alive and changes the economy. High dose: collapses at ~y16 from cost-push inflation.',
+        seed: 1001,
+        years: 30,
+        world: { refineryMinAskMultiplier: 3, refineryPriceAdjustMaxDown: 0.99, refineryTargetSellThrough: 0.5 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'refineryBreakEven',
+        description:
+            '30-year run where refinery agents sell with a soft-min ask of 1.3x cost (just above break-even), price cuts capped at 2% (priceAdjustMaxDown 0.98) and a sell-through target of 0.65. The moderate dose of the refineryFirmAsk experiment: cover cost without a 3x markup inflation spiral.',
+        seed: 1001,
+        years: 30,
+        world: { refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest1',
+        description:
+            '600-year baseline-economy run at a 1% loan interest rate. Tests whether the loan-book compounding (and the y499 collapse) scales with the interest rate.',
         seed: 1001,
         years: 600,
-        world: { costSpringStrength: 0.45 },
+        world: { loanRatePerYear: 0.01 },
         bands: [
             { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
             { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
             { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
             { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
             { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
-            { metric: 'bankEquity', horizonYears: 600, windowYears: 30, min: 0 },
+        ],
+    },
+    {
+        name: 'longrun-interest2',
+        description:
+            '600-year baseline-economy run at a 2% loan interest rate. Tests whether the loan-book compounding (and the y499 collapse) scales with the interest rate.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.02 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest3',
+        description:
+            '600-year baseline-economy run at a 3% loan interest rate. Tests whether the loan-book compounding (and the y499 collapse) scales with the interest rate.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.03 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest4',
+        description:
+            '600-year baseline-economy run at a 4% loan interest rate. Tests whether the loan-book compounding (and the y499 collapse) scales with the interest rate.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.04 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest1-ref',
+        description:
+            '600-year run at 1% loan interest PLUS the break-even refinery pricing (soft-min ask 1.3x, price cuts capped at 2%, sell-through 0.65). Tests whether keeping the refinery profitable prevents the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.01, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest2-ref',
+        description:
+            '600-year run at 2% loan interest PLUS the break-even refinery pricing (soft-min ask 1.3x, price cuts capped at 2%, sell-through 0.65). Tests whether keeping the refinery profitable prevents the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.02, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest3-ref',
+        description:
+            '600-year run at 3% loan interest PLUS the break-even refinery pricing (soft-min ask 1.3x, price cuts capped at 2%, sell-through 0.65). Tests whether keeping the refinery profitable prevents the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.03, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest4-ref',
+        description:
+            '600-year run at 4% loan interest PLUS the break-even refinery pricing (soft-min ask 1.3x, price cuts capped at 2%, sell-through 0.65). Tests whether keeping the refinery profitable prevents the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.04, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest1-ratio',
+        description:
+            '600-year run at 1% loan interest with the break-even refinery pricing AND the consumption-matched refinery output ratio (fuel 90 / plastic 62 / chemical 48). Tests whether matching the by-product ratio to the economy demand stabilizes the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.01, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-oil2x',
+        description:
+            '600-year baseline run with DOUBLE the oil reservoir (2e9 vs 1e9). Tests whether the collapse is purely oil-resource depletion: with twice the oil, the collapse should move well past y600.',
+        seed: 1001,
+        years: 600,
+        world: { oilReservoirMultiplier: 2 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-interest4-ratio',
+        description:
+            '600-year run at 4% loan interest with the break-even refinery pricing AND the consumption-matched refinery output ratio (fuel 90 / plastic 62 / chemical 48). Tests whether matching the by-product ratio to the economy demand stabilizes the collapse.',
+        seed: 1001,
+        years: 600,
+        world: { loanRatePerYear: 0.04, refineryMinAskMultiplier: 1.3, refineryPriceAdjustMaxDown: 0.98, refineryTargetSellThrough: 0.65 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 100, windowYears: 10, relativeToStart: true, min: 0.8, max: 2 },
+            { metric: 'totalPopulation', horizonYears: 600, windowYears: 30, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 600, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 600, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 600, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'longrun-resources10',
+        description:
+            '6000-year baseline run with ALL resource pools scaled x10 (renewable and non-renewable). Tests whether the collapse is purely finite-resource exhaustion: with 10x iron/oil/coal/etc the depletion clock should move from ~y500 to ~y5000 if that is the only constraint.',
+        seed: 1001,
+        years: 6000,
+        world: { resourceMultiplier: 10 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 1000, windowYears: 30, relativeToStart: true, min: 0.8, max: 200 },
+            { metric: 'totalPopulation', horizonYears: 6000, windowYears: 30, relativeToStart: true, min: 0.5, max: 5000 },
+            { metric: 'avgGroceryStarvation', horizonYears: 6000, windowYears: 30, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 6000, windowYears: 30, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 6000, windowYears: 30, min: 0.5 },
+        ],
+    },
+    {
+        name: 'storage-controller',
+        description:
+            'Baseline economy with the storage-based expansion/contraction controller. Production is driven by a PID on the storage error against a 3-month own-production target; capacity expands at a constant rate while the storage is below target and contracts gently while above target. Direct test of the chainModel.ts finding that the pure-feedback inventory controller survives 600y at every growth rate without relying on any aggregate demand data.',
+        seed: 1001,
+        years: 30,
+        world: { resourceMultiplier: 100 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 30, windowYears: 3, relativeToStart: true, min: 0.8, max: 1.2 },
+            { metric: 'avgGroceryStarvation', horizonYears: 30, windowYears: 3, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 30, windowYears: 3, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 30, windowYears: 3, min: 0.5 },
+            { metric: 'constructionServicePrice', horizonYears: 10, windowYears: 3, relativeToStart: true, max: 3 },
         ],
     },
 ];

@@ -2,6 +2,8 @@ import {
     GOVERNMENT_OPERATING_BUFFER,
     GOVERNMENT_SUPPORT_LOAN_TICKS,
     MIN_WAGE,
+    POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS,
+    POPULATION_WEALTH_TAX_MONTHLY_RATE,
     TICKS_PER_MONTH,
     UNEMPLOYMENT_INSURANCE_RATE_EDUCATION,
     UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
@@ -24,6 +26,7 @@ const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
     unableToWork: UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
 };
 
+const INSURANCE_WEALTH_CAP_DAYS = 5;
 let wealthTaxAllowanceOverride: number | undefined = undefined;
 
 export function setWealthTaxAllowance(allowance: number): void {
@@ -83,11 +86,58 @@ export const collectWealthTax = (gameState: GameState, planet: Planet): number =
     return total;
 };
 
+let populationWealthTaxEnabled = false;
+
+export function setPopulationWealthTaxEnabled(enabled: boolean): void {
+    populationWealthTaxEnabled = enabled;
+}
+
+export const collectPopulationWealthTax = (gameState: GameState, planet: Planet): number => {
+    if (!populationWealthTaxEnabled) {
+        return 0;
+    }
+    const govAssets = gameState.agents.get(planet.governmentId)?.assets[planet.id];
+    if (!govAssets) {
+        return 0;
+    }
+    const demography = planet.population.demography;
+
+    let total = 0;
+    for (let age = 0; age < demography.length; age++) {
+        forEachPopulationCohort(demography[age], (cat, occ, edu) => {
+            if (cat.total <= 0) {
+                return;
+            }
+            const allowance =
+                (planet.wagePerEdu[edu] ?? MIN_WAGE) * TICKS_PER_MONTH * POPULATION_WEALTH_TAX_ALLOWANCE_MONTHS;
+            if (cat.wealth.mean <= allowance) {
+                return;
+            }
+            const perCapitaTax = (cat.wealth.mean - allowance) * POPULATION_WEALTH_TAX_MONTHLY_RATE;
+            const oldMean = cat.wealth.mean;
+            const newMean = Math.max(0, oldMean - perCapitaTax);
+            const actualPerCapita = oldMean - newMean;
+            if (actualPerCapita <= 0) {
+                return;
+            }
+            cat.wealth = { mean: newMean, variance: cat.wealth.variance };
+            total += actualPerCapita * cat.total;
+        });
+    }
+    if (total <= 0) {
+        return 0;
+    }
+    govAssets.deposits += total;
+    planet.bank.householdDeposits -= total;
+    return total;
+};
+
 export const governmentTick = (gameState: GameState, planet: Planet, agent: Agent) => {
     if (agent.id !== planet.governmentId) {
         throw new Error(`Tick called on non-government agent ${agent.id} of planet ${planet.id}`);
     }
     collectWealthTax(gameState, planet);
+    collectPopulationWealthTax(gameState, planet);
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -121,17 +171,15 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
             if (!rate) {
                 return;
             }
-            const monthlyInsurance = rate * base;
-            if (category.wealth.mean >= monthlyInsurance) {
+            // Daily subsistence top-up = `rate` × wage, each recipient carries at most
+            // INSURANCE_WEALTH_CAP_DAYS of it so transfers feed consumption without
+            // letting cohorts accumulate spendable cash that prices suddenly.
+            const dailyInsurance = rate * base;
+            const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
+            if (category.wealth.mean >= wealthCap) {
                 return;
             }
-            total += distributeWealthChangeTracked(
-                planet.population.demography,
-                age,
-                occ,
-                edu,
-                monthlyInsurance / TICKS_PER_MONTH,
-            );
+            total += distributeWealthChangeTracked(planet.population.demography, age, occ, edu, dailyInsurance);
         });
     }
     if (total <= 0) {

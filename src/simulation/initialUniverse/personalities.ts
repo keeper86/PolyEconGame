@@ -100,10 +100,10 @@ export interface AgentPersonality {
 const gauss = (mean: number, std: number) =>
     Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
 
-export function generateAgentPersonality(costSpringStrength = 0.35): AgentPersonality {
+export function generateAgentPersonality(costSpringStrength = 0.5): AgentPersonality {
     const priceAdjustmentAggressivenessUp = Math.max(1.001, 1.025 + 0.05 * gauss(0.5, 0.2));
     const priceAdjustmentAggressivenessDown = Math.min(0.999, 0.975 - 0.05 * gauss(0.5, 0.2));
-    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.5 * gauss(1, 0.5));
+    const sellPriceAgressiveness = Math.max(1.0, 1.0 + 0.25 * gauss(1, 0.5));
     const buyPriceAgressiveness = Math.min(BID_ANCHOR_MULTIPLE, Math.max(1, 2 + 3 * gauss(1, 0.5)));
 
     return {
@@ -122,6 +122,27 @@ export function generateAgentPersonality(costSpringStrength = 0.35): AgentPerson
             priceAdjustMaxDown: priceAdjustmentAggressivenessDown,
             priceAdjustMaxUp: priceAdjustmentAggressivenessUp,
             automatedCostFloorBuffer: sellPriceAgressiveness,
+            costSpringStrength,
+        },
+    };
+}
+
+export function generateFixedPersonality(costSpringStrength = 0.5): AgentPersonality {
+    return {
+        buyAutoConfig: {
+            ...VOLUME_BUY_CONFIGS.balanced,
+            ...PRICING_BUY_CONFIGS['market-rate'],
+            priceAdjustMaxDown: 0.95,
+            priceAdjustMaxUp: 1.05,
+            bidOfferMaxCostMultiplier: 5,
+            costSpringStrength,
+        },
+        sellAutoConfig: {
+            ...VOLUME_SELL_CONFIGS.balanced,
+            ...PRICING_SELL_CONFIGS['market-rate'],
+            priceAdjustMaxDown: 0.95,
+            priceAdjustMaxUp: 1.05,
+            automatedCostFloorBuffer: 1.6,
             costSpringStrength,
         },
     };

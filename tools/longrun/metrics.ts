@@ -11,7 +11,7 @@ import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBuff
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
 import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
-import { coalDepositResourceType, ironOreDepositResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
+import { coalDepositResourceType, ironOreDepositResourceType, oilReservoirResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
 import { bankEquity, type GameState, type Planet } from '../../src/simulation/planet/planet';
 import { TRADABLE_RESOURCES } from '../../src/simulation/planet/resourceCatalog';
 import {
@@ -442,6 +442,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let oilRefineryCount = 0;
     let oilRefineryScale = 0;
     let oilRefineryRevenue = 0;
+    let oilRefineryChemicalShare = 0;
 
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -703,6 +704,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             if (facility.name === 'Oil Refinery') {
                 oilRefineryScale += facility.scale;
                 oilRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                oilRefineryChemicalShare += facility.productionMix?.[chemicalResourceType.name] ?? 0;
                 oilRefineryCount += 1;
             }
 
@@ -1021,6 +1023,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const steelFillRate = steelTotalDemand > 0 ? steelVolume / steelTotalDemand : 0;
     const oilRefineryScaleAvg = oilRefineryCount > 0 ? oilRefineryScale / oilRefineryCount : 0;
     const oilRefineryRevenueAvg = oilRefineryCount > 0 ? oilRefineryRevenue / oilRefineryCount : 0;
+    const oilRefineryChemicalShareAvg = oilRefineryCount > 0 ? oilRefineryChemicalShare / oilRefineryCount : 0;
     const fuelPrice = priceOf(planet, fuelResourceType.name);
     const plasticPrice = priceOf(planet, plasticResourceType.name);
     const chemicalPrice = priceOf(planet, chemicalResourceType.name);
@@ -1069,6 +1072,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const coalTotalSupply = coalResult?.totalSupply ?? 0;
     const coalUnfilledDemand = coalResult?.unfilledDemand ?? 0;
     const coalUnsoldSupply = coalResult?.unsoldSupply ?? 0;
+    const oilReservoirEntry = planet.resources[oilReservoirResourceType.name];
+    const oilReservoirLeft = oilReservoirEntry
+        ? oilReservoirEntry.pool.quantity +
+          oilReservoirEntry.claims.reduce((sum, claim) => sum + claim.quantity, 0)
+        : 0;
     const coalMineScaleAvg = coalMineCount > 0 ? coalMineScale / coalMineCount : 0;
     const coalMineMaxScaleAvg = coalMineCount > 0 ? coalMineMaxScale / coalMineCount : 0;
     const coalMineConditionAvg = coalMineCount > 0 ? coalMineCondition / coalMineCount : 1;
@@ -1433,6 +1441,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         sandMineContractionIntegral: sandMineContractionIntegralAvg,
         sandMineExpansionIntegral: sandMineExpansionIntegralAvg,
         sandMineSmoothedSignal: sandMineSmoothedSignalAvg,
+        oilReservoirLeft,
         coalTotalDemand,
         coalTotalSupply,
         coalUnfilledDemand,
@@ -1481,6 +1490,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         steelFillRate,
         oilRefineryScale: oilRefineryScaleAvg,
         oilRefineryRevenue: oilRefineryRevenueAvg,
+        oilRefineryChemicalShare: oilRefineryChemicalShareAvg,
         fuelPrice,
         plasticPrice,
         chemicalPrice,
@@ -1800,6 +1810,7 @@ export const METRIC_KEYS: string[] = [
     'coalMineContractionIntegral',
     'coalMineExpansionIntegral',
     'coalMineSmoothedSignal',
+    'oilReservoirLeft',
     'ironMineScale',
     'ironMineMaxScale',
     'ironMineCondition',
@@ -1835,6 +1846,7 @@ export const METRIC_KEYS: string[] = [
     'steelFillRate',
     'oilRefineryScale',
     'oilRefineryRevenue',
+    'oilRefineryChemicalShare',
     'fuelPrice',
     'plasticPrice',
     'chemicalPrice',

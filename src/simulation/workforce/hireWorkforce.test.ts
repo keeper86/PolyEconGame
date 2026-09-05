@@ -21,6 +21,7 @@ import { assertBackfillProgress, hireWorkforce } from './hireWorkforce';
 import { automaticWorkerAllocation } from './automaticWorkerAllocation';
 import {
     acceptProbability,
+    betterOfferMeanWage,
     computeLaborMarket,
     jobFindingProbability,
     outsideIncome,
@@ -66,6 +67,29 @@ describe('labor market helpers', () => {
     it('quitPropensity starts at the base rate and rises with a better outside option', () => {
         expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
         expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
+    });
+});
+
+describe('betterOfferMeanWage', () => {
+    it('returns 0 when no vacancy pays above the current wage', () => {
+        const steps = [
+            { wage: 10, cumVacancy: 100, cumWage: 1000 },
+            { wage: 12, cumVacancy: 200, cumWage: 3400 },
+        ];
+        expect(betterOfferMeanWage(steps, 12)).toBe(0);
+        expect(betterOfferMeanWage(steps, 20)).toBe(0);
+    });
+
+    it('returns the vacancy-weighted mean of the offers above the current wage', () => {
+        // 100 vacancies at wage 10, 200 vacancies at wage 20
+        const steps = [
+            { wage: 10, cumVacancy: 100, cumWage: 1000 },
+            { wage: 20, cumVacancy: 300, cumWage: 5000 },
+        ];
+        expect(betterOfferMeanWage(steps, 10)).toBe(20);
+        expect(betterOfferMeanWage(steps, 15)).toBe(20);
+        expect(betterOfferMeanWage(steps, 8)).toBeCloseTo(5000 / 300, 10);
+        expect(betterOfferMeanWage([], 10)).toBe(0);
     });
 });
 
