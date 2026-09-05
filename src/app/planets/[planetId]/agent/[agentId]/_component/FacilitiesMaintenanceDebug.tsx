@@ -2,11 +2,11 @@ import { Badge } from '@/components/ui/badge';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { computeFacilityConditionEfficiency, isFacilityOperating, type Facility } from '@/simulation/planet/facility';
 import {
-    collectAgentFacilities,
     facilityMaintenanceConsumptionPerTick,
     facilityRestorationCapacityPerTick,
 } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { getAllFacilities } from '@/simulation/planet/planet';
 
 function fmt(n: number): string {
     return formatNumberWithUnit(n, 'units');
@@ -43,7 +43,7 @@ function maintenanceState(facility: Facility): MaintenanceState {
 }
 
 export function FacilitiesMaintenanceDebug({ assets }: { assets: AgentPlanetAssets }): React.ReactElement {
-    const facilities = collectAgentFacilities(assets);
+    const facilities = getAllFacilities(assets);
 
     const entry = (label: string, value: string) => (
         <span>

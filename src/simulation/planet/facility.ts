@@ -303,6 +303,7 @@ export const putIntoStorageFacility = (
     return additionalQuantity * overallRestriction;
 };
 
+// TODO: gather these on the fly where it happens, not reconstructed after the fact.
 export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number => {
     let throughput = 0;
 

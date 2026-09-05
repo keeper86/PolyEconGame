@@ -34,13 +34,12 @@ import type {
 import {
     computeFacilityConditionEfficiency,
     createLastTickResults,
-    isFacilityOperating,
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
-import { hasActiveLicense, pushTickerEvent } from './planet';
+import { getAllFacilities, hasActiveLicense, pushTickerEvent } from './planet';
 import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
@@ -134,15 +133,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
             return;
         }
 
-        const allFacilities: Array<Facility> = [
-            ...assets.productionFacilities,
-            ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
-            ...assets.shipConstructionFacilities,
-        ];
-
-        if (assets.humanResourcesDepartment) {
-            allFacilities.push(assets.humanResourcesDepartment);
-        }
+        const allFacilities = getAllFacilities(assets);
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
@@ -663,16 +654,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             xpProdByEdu[edu] = productivityFromXP(avgXP);
         }
 
-        const activeFacilities: Array<Facility> = [
-            ...assets.productionFacilities.filter(isFacilityOperating),
-            ...(assets.storageFacility.department && isFacilityOperating(assets.storageFacility.department)
-                ? [assets.storageFacility.department]
-                : []),
-            ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
-                ? [assets.humanResourcesDepartment]
-                : []),
-            ...assets.shipConstructionFacilities.filter(isFacilityOperating),
-        ];
+        const activeFacilities = getAllFacilities(assets, true);
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
             return { facility, resourceEfficiencyMap: {} };

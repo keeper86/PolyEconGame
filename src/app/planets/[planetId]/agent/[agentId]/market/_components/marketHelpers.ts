@@ -26,15 +26,7 @@ export function totalConsumptionPerTick(
     planetId: string,
     resourceName: string,
 ): ConsumptionInfo {
-    return computeConsumptionBreakdown(
-        assets.productionFacilities,
-        assets.humanResourcesDepartment,
-        assets.storageFacility.department,
-        assets.shipConstructionFacilities,
-        ships,
-        planetId,
-        resourceName,
-    );
+    return computeConsumptionBreakdown(assets, ships, planetId, resourceName);
 }
 
 /** Result of clamping an area to a visible domain */

@@ -15,21 +15,11 @@ import {
     type Facility,
 } from './facility';
 import type { AgentPlanetAssets, GameState, Planet } from './planet';
+import { getAllFacilities } from './planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
 
-export function collectAgentFacilities(assets: AgentPlanetAssets): Facility[] {
-    const facilities: Facility[] = [...assets.productionFacilities, ...assets.shipConstructionFacilities];
-    if (assets.storageFacility.department) {
-        facilities.push(assets.storageFacility.department);
-    }
-    if (assets.humanResourcesDepartment) {
-        facilities.push(assets.humanResourcesDepartment);
-    }
-    return facilities;
-}
-
 export function computeOtherConstructionCosts(assets: AgentPlanetAssets, constructionServicePrice: number): number {
-    return collectAgentFacilities(assets)
+    return getAllFacilities(assets)
         .filter((f) => f.construction !== null)
         .reduce((sum, f) => {
             const remaining = f.construction!.totalConstructionServiceRequired - f.construction!.progress;
@@ -78,7 +68,7 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
         if (!assets) {
             return;
         }
-        for (const facility of collectAgentFacilities(assets)) {
+        for (const facility of getAllFacilities(assets)) {
             facility.lastTickMaintenanceConsumption = 0;
             facility.lastTickRestorationConsumption = 0;
             if (!isFacilityOperating(facility)) {

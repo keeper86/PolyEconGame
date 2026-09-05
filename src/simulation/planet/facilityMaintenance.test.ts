@@ -25,7 +25,6 @@ import {
     type StorageFacility,
 } from './facility';
 import {
-    collectAgentFacilities,
     computeOtherConstructionCosts,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
@@ -492,84 +491,6 @@ describe('facilityMaintenanceTick', () => {
 
         expect(facility.lastTickMaintenanceConsumption).toBe(0);
         expect(facility.lastTickRestorationConsumption).toBe(0);
-    });
-});
-
-describe('collectAgentFacilities', () => {
-    it('collects production, ship construction, storage department and HR facilities', () => {
-        const agent = makeAgent(AGENT_ID, PLANET_ID);
-        const assets = agent.assets[PLANET_ID]!;
-        const production = makeProductionFacility();
-        const shipyard = makeShipConstructionFacility();
-        const hr = makeHRFacility();
-        assets.productionFacilities = [production];
-        assets.shipConstructionFacilities = [shipyard];
-        assets.humanResourcesDepartment = hr;
-
-        const facilities = collectAgentFacilities(assets);
-
-        expect(facilities).toContain(production);
-        expect(facilities).toContain(shipyard);
-        expect(facilities).toContain(hr);
-        expect(facilities).toContain(assets.storageFacility.department);
-        expect(facilities).toHaveLength(4);
-    });
-
-    it('skips absent storage department and HR department', () => {
-        const agent = makeAgent(AGENT_ID, PLANET_ID);
-        const assets = agent.assets[PLANET_ID]!;
-        assets.storageFacility.department = null;
-        assets.humanResourcesDepartment = null;
-
-        const facilities = collectAgentFacilities(assets);
-
-        describe('facilityRestorationCapacityPerTick', () => {
-            it('returns 0 at full maxMaintenance', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 1;
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBe(0);
-            });
-
-            it('returns MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE times full restore cost when headroom exceeds the per-tick cap', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 0.5;
-                const cost = fullRestoreCost(facility);
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5),
-                    10,
-                );
-            });
-
-            it('clamps to the remaining headroom when nearly full', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2;
-                const cost = fullRestoreCost(facility);
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    (MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2) *
-                        cost *
-                        facilityRestorationCostFactor(facility.maxMaintenance),
-                    10,
-                );
-            });
-
-            it('scales with the full restore cost of the facility type', () => {
-                const rawFacility = makeProductionFacility();
-                rawFacility.maxMaintenance = 0.5;
-
-                const constructionFacility = makeProductionFacility();
-                constructionFacility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
-                constructionFacility.maxMaintenance = 0.5;
-
-                expect(facilityRestorationCapacityPerTick(constructionFacility)).toBeGreaterThan(
-                    facilityRestorationCapacityPerTick(rawFacility),
-                );
-            });
-        });
-
-        expect(facilities).toHaveLength(0);
     });
 });
 

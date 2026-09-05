@@ -953,15 +953,15 @@ export const neededWorkersByFacility: (facility: Facility) => number = (facility
     );
 };
 
-const allFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
+const allProductionFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
-    raw: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
-    refined: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
-    manufactured: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
-    services: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
-    internal: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
+    raw: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
+    refined: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
+    manufactured: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
+    services: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
+    internal: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(
-    allFacilityEntries.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
+    allProductionFacilityEntries.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
 );

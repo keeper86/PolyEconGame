@@ -45,6 +45,8 @@ function setupWorld(companyDeposits = 0): {
     const gov = makeGovernmentAgent('gov-1', PLANET_ID);
     const company = makeAgent('co-1', PLANET_ID);
     company.assets[PLANET_ID]!.deposits = companyDeposits;
+    // No facility capital by default: storage shells are player-built and not auto-granted.
+    company.assets[PLANET_ID]!.storageFacility.department = null;
     const planet = makePlanet({ governmentId: gov.id });
     const gameState = makeGameState([planet], [gov, company, planet.recycler]);
     return { gameState, planet, gov, company };
@@ -161,6 +163,7 @@ describe('governmentTick', () => {
         const gov = makeGovernmentAgent('gov-1', PLANET_ID);
         const company = makeAgent('co-1', PLANET_ID);
         company.assets[PLANET_ID]!.deposits = 2_000_000_000;
+        company.assets[PLANET_ID]!.storageFacility.department = null;
         const planet = makePlanet({
             governmentId: gov.id,
             population: makePopulationByEducation({ none: 1000 }),

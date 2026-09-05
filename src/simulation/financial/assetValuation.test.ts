@@ -9,9 +9,11 @@ import { computeFacilitiesValue } from './assetValuation';
 const CS_PRICE = 10;
 
 function makeAssets(overrides: Parameters<typeof makeProductionFacility>[1]): AgentPlanetAssets {
-    return makeAgentPlanetAssets('p', {
+    const assets = makeAgentPlanetAssets('p', {
         productionFacilities: [makeProductionFacility(undefined, overrides)],
     });
+    assets.storageFacility.department = null;
+    return assets;
 }
 
 function fullValue(scale: number): number {

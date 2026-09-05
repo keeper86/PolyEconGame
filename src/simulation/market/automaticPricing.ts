@@ -133,14 +133,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const shipsForConsumption = agent.ships.map(toConsumptionShipInfo);
 
-    const consumptionRates = computeAllConsumptionRates(
-        assets.productionFacilities,
-        assets.humanResourcesDepartment,
-        assets.storageFacility.department,
-        assets.shipConstructionFacilities,
-        shipsForConsumption,
-        planet.id,
-    );
+    const consumptionRates = computeAllConsumptionRates(assets, shipsForConsumption, planet.id);
 
     const inputReserve = new Map<string, number>();
     for (const [resourceName, rate] of consumptionRates) {
