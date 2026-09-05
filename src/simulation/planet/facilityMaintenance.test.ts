@@ -52,13 +52,13 @@ interface Setup {
 function setup(overrides?: Partial<ProductionFacility>): Setup {
     const agent = makeAgent(AGENT_ID, PLANET_ID);
     const assets = agent.assets[PLANET_ID]!;
-    assets.storageFacility.department = null;
+    assets.storage.department = null;
     const facility = makeProductionFacility({}, overrides);
     facility.lastTickResults.overallEfficiency = 1;
     assets.productionFacilities = [facility];
     const planet = makePlanet({ marketPrices: { [constructionServiceResourceType.name]: CONSTRUCTION_PRICE } });
     const gameState = makeGameState([planet], [agent]);
-    return { gameState, planet, agent, facility, storage: assets.storageFacility };
+    return { gameState, planet, agent, facility, storage: assets.storage };
 }
 
 function seedService(storage: Storage, resource: Resource, quantity: number): void {
@@ -539,7 +539,7 @@ describe('computeOtherConstructionCosts', () => {
         });
         assets.productionFacilities = [production];
         assets.humanResourcesDepartment = hr;
-        assets.storageFacility.department = storageDepartment;
+        assets.storage.department = storageDepartment;
         assets.shipConstructionFacilities = [shipyard];
 
         const remainingConstructionServices = 70 + 30 + 30 + 60;

@@ -75,7 +75,7 @@ export function makeAgentPlanetAssets(
     return {
         productionFacilities: facilities,
         shipConstructionFacilities: [],
-        storageFacility: storage,
+        storage: storage,
         humanResourcesDepartment: hrDepartment,
         hrProductivityMultiplier: 1,
         transportContracts: [],
@@ -147,7 +147,7 @@ export function makeAgent(opts: {
 export function prefillAgentStorageFromFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
         for (const [, assets] of Object.entries(agent.assets)) {
-            const storage = (assets as AgentPlanetAssets).storageFacility;
+            const storage = (assets as AgentPlanetAssets).storage;
             const facilities = (assets as AgentPlanetAssets).productionFacilities;
             for (const facility of facilities) {
                 for (const { resource, quantity } of facility.needs) {

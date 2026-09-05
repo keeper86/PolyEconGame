@@ -84,7 +84,7 @@ export function useSellSectionMutations({
     const addPending = useAddPendingAction();
     const pendingActions = usePendingActions(agentId, planetId);
     const resource = getResourceByName(resourceName);
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
 
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({

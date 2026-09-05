@@ -60,7 +60,7 @@ export function handlePostTransportContract(
         return;
     }
 
-    const storageEntry = assets.storageFacility.currentInStorage[cargo.resource.name];
+    const storageEntry = assets.storage.currentInStorage[cargo.resource.name];
     if (!storageEntry) {
         safePostMessage({
             type: 'transportContractPostFailed',
@@ -71,7 +71,7 @@ export function handlePostTransportContract(
         return;
     }
 
-    const availableQuantity = queryStorageFacility(assets.storageFacility, cargo.resource.name);
+    const availableQuantity = queryStorageFacility(assets.storage, cargo.resource.name);
     if (cargo.quantity > availableQuantity) {
         safePostMessage({
             type: 'transportContractPostFailed',
@@ -85,7 +85,7 @@ export function handlePostTransportContract(
     assets.deposits -= offeredReward;
     assets.depositHold += offeredReward;
 
-    lockIntoEscrow(assets.storageFacility, cargo.resource.name, cargo.quantity);
+    lockIntoEscrow(assets.storage, cargo.resource.name, cargo.quantity);
 
     const contractId = generateId('tc');
     const contract: TransportContract = {
@@ -292,7 +292,7 @@ export function handleCancelTransportContract(
     assets.depositHold -= contract.offeredReward;
     assets.deposits += contract.offeredReward;
 
-    releaseFromEscrow(assets.storageFacility, contract.cargo.resource.name, contract.cargo.quantity);
+    releaseFromEscrow(assets.storage, contract.cargo.resource.name, contract.cargo.quantity);
 
     assets.transportContracts.splice(contractIndex, 1);
     safePostMessage({
@@ -1179,7 +1179,7 @@ export function handleDispatchShip(
 
     if (cargoGoal) {
         const assets = agent.assets[fromPlanetId];
-        if (!assets?.storageFacility) {
+        if (!assets?.storage) {
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,
@@ -1190,7 +1190,7 @@ export function handleDispatchShip(
         }
 
         const targetAssets = agent.assets[toPlanetId];
-        if (!targetAssets?.storageFacility) {
+        if (!targetAssets?.storage) {
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,
@@ -1200,7 +1200,7 @@ export function handleDispatchShip(
             return;
         }
 
-        const storageEntry = assets.storageFacility.currentInStorage[cargoGoal.resource.name];
+        const storageEntry = assets.storage.currentInStorage[cargoGoal.resource.name];
         if (!storageEntry) {
             safePostMessage({
                 type: 'shipDispatchFailed',

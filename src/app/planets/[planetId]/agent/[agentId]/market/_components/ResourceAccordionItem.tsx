@@ -38,7 +38,7 @@ export default function ResourceAccordionItem({
     const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
         ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
-        : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
+        : (assets.storage.currentInStorage[resourceName]?.quantity ?? 0);
     const trpc = useTRPC();
 
     const { planetId } = useParams() as { planetId: string };

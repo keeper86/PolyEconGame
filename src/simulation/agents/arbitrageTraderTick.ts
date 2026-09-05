@@ -271,7 +271,7 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
 
         const loadingResources = loadingByPlanet.get(planetId) ?? new Set<string>();
 
-        for (const [resourceName, entry] of Object.entries(assets.storageFacility.currentInStorage)) {
+        for (const [resourceName, entry] of Object.entries(assets.storage.currentInStorage)) {
             if (loadingResources.has(resourceName) || entry.quantity <= 0) {
                 continue;
             }

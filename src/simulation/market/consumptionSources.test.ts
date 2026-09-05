@@ -17,7 +17,7 @@ function makeDegradedProducer(id: string) {
 
 function makeAssets(facility: ReturnType<typeof makeDegradedProducer>) {
     const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
-    assets.storageFacility.department = null;
+    assets.storage.department = null;
     return assets;
 }
 

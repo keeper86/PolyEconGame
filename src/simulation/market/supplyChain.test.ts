@@ -30,7 +30,7 @@ function makeIronSmelterAgent(id: string) {
     const agent = makeAgent(id, PLANET_ID);
     agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
-    agent.assets[PLANET_ID].storageFacility = storage;
+    agent.assets[PLANET_ID].storage = storage;
     return agent;
 }
 
@@ -41,7 +41,7 @@ function makeMachineryAgent(id: string) {
     const agent = makeAgent(id, PLANET_ID);
     agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
-    agent.assets[PLANET_ID].storageFacility = storage;
+    agent.assets[PLANET_ID].storage = storage;
     return agent;
 }
 

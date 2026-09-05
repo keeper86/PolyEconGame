@@ -406,7 +406,7 @@ export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number 
         }
     }
 
-    const storageDept = assets.storageFacility.department;
+    const storageDept = assets.storage.department;
     if (storageDept) {
         for (const n of storageDept.needs) {
             if (n.resource.massPerQuantity <= 0) {

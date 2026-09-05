@@ -77,7 +77,7 @@ export function updateProductionMix(gameState: GameState, planet: Planet): void 
             let rawTotal = 0;
             for (const output of facility.produces) {
                 const keep = keepTicks * facility.maxScale * output.quantity;
-                const free = queryStorageFacility(assets.storageFacility, output.resource.name);
+                const free = queryStorageFacility(assets.storage, output.resource.name);
                 const deficit = keep > 0 ? Math.max(0, Math.min(1, (keep - free) / keep)) : 0;
                 raw[output.resource.name] = Math.max(1e-6, deficit) * output.quantity;
                 rawTotal += raw[output.resource.name];

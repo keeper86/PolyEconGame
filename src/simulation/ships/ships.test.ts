@@ -57,7 +57,7 @@ describe('applyMaintenance', () => {
     it('degrades maintainanceStatus each tick for an idle ship without storage', () => {
         const agent = makeAgent('a1', 'p1');
 
-        agent.assets.p1!.storageFacility = undefined as unknown as ReturnType<typeof makeStorageFacility>;
+        agent.assets.p1!.storage = undefined as unknown as ReturnType<typeof makeStorageFacility>;
         const ship = makeTransportShip('S1', 'p1');
         ship.maintainanceStatus = 1.0;
 
@@ -75,7 +75,7 @@ describe('applyMaintenance', () => {
         ship.maintainanceStatus = 0.5;
         ship.maxMaintenance = 1.0;
 
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
@@ -96,7 +96,7 @@ describe('applyMaintenance', () => {
         };
         ship.maintainanceStatus = 0.5;
 
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
@@ -112,7 +112,7 @@ describe('applyMaintenance', () => {
         ship.maxMaintenance = 1.0;
         ship.cumulativeRepairAcc = 0.0;
 
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
 
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 1.0);
 
@@ -132,7 +132,7 @@ describe('applyMaintenance', () => {
         ship.maxMaintenance = 0.001;
         ship.cumulativeRepairAcc = 0.999;
 
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
@@ -161,7 +161,7 @@ describe('applyMaintenance', () => {
             postedAtTick: 0,
         });
 
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, maintenanceServiceResourceType, 100);
 
         const state = makeGameState([makePlanet({ id: 'p1' })], [agent]);
@@ -314,7 +314,7 @@ describe('transport ship: loading → transporting', () => {
     it('loads cargo from storage and transitions to transporting', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p1');
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, steelResourceType, 500);
 
         ship.state = {
@@ -478,14 +478,14 @@ describe('transport ship: unloading → idle', () => {
         expect(ship.state.type).toBe('idle');
         const shipState = ship.state as unknown as ShipStatusIdle;
         expect(shipState.planetId).toBe('p2');
-        const stored = agent.assets.p2!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
+        const stored = agent.assets.p2!.storage.currentInStorage.Steel?.quantity ?? 0;
         expect(stored).toBe(200);
     });
 
     it('stays in unloading when destination storage is full', () => {
         const agent = makeAgent('a1', 'p1');
         agent.assets.p2 = makeAgentPlanetAssets('p2', {
-            storageFacility: makeStorageFacility({
+            storage: makeStorageFacility({
                 planetId: 'p2',
                 id: 'storage-p2',
                 capacity: { volume: 0.1, mass: 0.1 },
@@ -584,7 +584,7 @@ describe('handleDispatchShip validation', () => {
         agent.assets.p2 = makeAgentPlanetAssets('p2');
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         putIntoStorageFacility(storage, steelResourceType, 500);
 
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent], 5);
@@ -843,7 +843,7 @@ describe('handleAcceptTransportContract deadlineTick', () => {
         const ship = makeTransportShip('S1', 'p1');
         carrier.ships.push(ship);
 
-        const posterStorage = poster.assets.p1!.storageFacility;
+        const posterStorage = poster.assets.p1!.storage;
         putIntoStorageFacility(posterStorage, steelResourceType, 1000);
 
         poster.assets.p1!.transportContracts.push({
@@ -986,7 +986,7 @@ describe('transport ship loading: cross-agent storage via posterAgentId', () => 
         const poster = makeAgent('poster', 'p1');
         const carrier = makeAgent('carrier', 'p1');
 
-        putIntoStorageFacility(poster.assets.p1!.storageFacility, steelResourceType, 500);
+        putIntoStorageFacility(poster.assets.p1!.storage, steelResourceType, 500);
 
         const ship = makeTransportShip('S1', 'p1');
         ship.state = {
@@ -1004,9 +1004,9 @@ describe('transport ship loading: cross-agent storage via posterAgentId', () => 
 
         expect(ship.state.type).toBe('transporting');
 
-        const posterSteelLeft = poster.assets.p1!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
+        const posterSteelLeft = poster.assets.p1!.storage.currentInStorage.Steel?.quantity ?? 0;
         expect(posterSteelLeft).toBeCloseTo(300, 1);
-        const carrierSteelLeft = carrier.assets.p1!.storageFacility.currentInStorage.Steel?.quantity ?? 0;
+        const carrierSteelLeft = carrier.assets.p1!.storage.currentInStorage.Steel?.quantity ?? 0;
         expect(carrierSteelLeft).toBe(0);
     });
 });

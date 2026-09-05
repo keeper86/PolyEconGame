@@ -281,9 +281,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 totalActiveConstructionDemand +=
                     assets.humanResourcesDepartment?.construction.maximumConstructionServiceConsumption ?? 0;
             }
-            if (assets.storageFacility?.department?.construction !== null) {
+            if (assets.storage?.department?.construction !== null) {
                 totalActiveConstructionDemand +=
-                    assets.storageFacility.department?.construction.maximumConstructionServiceConsumption ?? 0;
+                    assets.storage.department?.construction.maximumConstructionServiceConsumption ?? 0;
             }
             for (const facility of assets.shipConstructionFacilities) {
                 if (facility.construction !== null) {
@@ -350,7 +350,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             facility.scale = newScale;
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
-            const storageHealthy = getStorageStarvation(assets.storageFacility) <= STORAGE_STARVATION_EXPANSION_MAX;
+            const storageHealthy = getStorageStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
             const atMaxScale = facility.scale >= facility.maxScale * 0.999;
             const atMinScale = facility.scale <= MIN_SCALE_FRACTION * facility.maxScale * 1.001;
@@ -634,7 +634,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             hrDepartment.pidState = hrState;
         }
 
-        const storageDepartment = assets.storageFacility.department;
+        const storageDepartment = assets.storage.department;
         if (storageDepartment && storageDepartment.construction?.type !== 'new') {
             const stoRawSignal = computeStorageSignal(storageDepartment);
             const stoState: PidState = { ...getDefaultPidState(), ...storageDepartment.pidState };

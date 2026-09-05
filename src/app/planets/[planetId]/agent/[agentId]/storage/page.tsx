@@ -32,7 +32,7 @@ export default function StoragePage() {
                 agentId={agentId}
                 planetId={planetId}
             >
-                {assets?.storageFacility ? (
+                {assets?.storage ? (
                     <div className='space-y-4'>
                         <span className='flex flex-row flex-wrap gap-2'>
                             <StorageDepartment agentId={agentId} planetId={planetId} assets={assets} />

@@ -109,7 +109,7 @@ export function buildResourceList(
         productionFacilities: facilities,
         humanResourcesDepartment,
         shipConstructionFacilities,
-        storageFacility,
+        storage: storageFacility,
         market,
     } = assets;
     const buyBids = market?.buy ?? {};

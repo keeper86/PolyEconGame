@@ -87,7 +87,7 @@ function clearResourceMarket(
             const assets = ask.agent.assets[planet.id];
             if (assets) {
                 if (process.env.SIM_DEBUG === '1') {
-                    const escrowed = assets.storageFacility.escrow[ask.resource.name] ?? 0;
+                    const escrowed = assets.storage.escrow[ask.resource.name] ?? 0;
                     if (escrowed < ask.quantity - EPSILON) {
                         throw new Error(
                             `Escrow mismatch: trying to release ${ask.quantity} but only ${escrowed} escrowed. ` +
@@ -95,7 +95,7 @@ function clearResourceMarket(
                         );
                     }
                 }
-                releaseFromEscrow(assets.storageFacility, ask.resource.name, ask.quantity);
+                releaseFromEscrow(assets.storage, ask.resource.name, ask.quantity);
             }
         }
 

@@ -64,7 +64,7 @@ export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void 
         const unfilled = ask.quantity - filled;
 
         if (filled > 0) {
-            transferFromEscrow(assets.storageFacility, ask.resource.name, filled);
+            transferFromEscrow(assets.storage, ask.resource.name, filled);
             assets.deposits += revenue;
             assets.monthAcc.revenue += revenue;
             assets.monthAcc.soldResources[ask.resource.name] = {
@@ -80,7 +80,7 @@ export function settleAgentSellers(planet: Planet, askOrders: AskOrder[]): void 
         }
 
         if (unfilled > 0) {
-            releaseFromEscrow(assets.storageFacility, ask.resource.name, unfilled);
+            releaseFromEscrow(assets.storage, ask.resource.name, unfilled);
         }
     }
 }
@@ -106,7 +106,7 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
 
         assets.depositHold -= holdConsumed;
 
-        const actuallyStored = putIntoStorageFacility(assets.storageFacility, bid.resource, bid.filled);
+        const actuallyStored = putIntoStorageFacility(assets.storage, bid.resource, bid.filled);
         const storageFull = actuallyStored < bid.filled;
 
         const costForStored = bid.filled > 0 ? bid.cost * (actuallyStored / bid.filled) : 0;

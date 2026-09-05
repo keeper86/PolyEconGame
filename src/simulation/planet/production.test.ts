@@ -66,7 +66,7 @@ describe('productionTick (basic)', () => {
 
         productionTick(gameState, planet);
 
-        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
+        const storedIron = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity || 0;
 
         expect(storedIron).toBeGreaterThanOrEqual(1000);
 
@@ -88,7 +88,7 @@ describe('productionTick (basic)', () => {
         facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 1000,
         };
@@ -99,7 +99,7 @@ describe('productionTick (basic)', () => {
 
         productionTick(gameState, planet);
 
-        const stored = agent.assets.p.storageFacility.currentInStorage;
+        const stored = agent.assets.p.storage.currentInStorage;
         const fuel = stored[fuelResourceType.name]?.quantity ?? 0;
         const chem = stored[chemicalResourceType.name]?.quantity ?? 0;
 
@@ -143,7 +143,7 @@ describe('productionTick (basic)', () => {
         const gameState = makeGameState(planet, [agent, gov]);
 
         productionTick(gameState, planet);
-        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity || 0;
+        const storedIron = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity || 0;
         expect(storedIron).toBe(0);
 
         const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'iron-extract');
@@ -258,7 +258,7 @@ describe('productionTick (basic)', () => {
         expect(overall).toBeGreaterThan(0);
         expect(overall).toBeLessThan(1);
 
-        const stored = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        const stored = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(stored).toBeLessThan(1000);
     });
 
@@ -379,7 +379,7 @@ describe('productionTick (basic)', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 150,
         };
@@ -417,12 +417,12 @@ describe('productionTick — shared stored-resource allocation', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 2;
 
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 720,
         };
-        agent.assets.p.storageFacility.current.volume = 720 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storageFacility.current.mass = 720 * waterResourceType.massPerQuantity;
+        agent.assets.p.storage.current.volume = 720 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storage.current.mass = 720 * waterResourceType.massPerQuantity;
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
@@ -432,7 +432,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
         expect(facilityB.lastTickResults.overallEfficiency).toBeGreaterThan(0);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThanOrEqual(1);
 
         expect(facilityA.lastTickResults.resourceEfficiency[waterResourceType.name]).toBeCloseTo(
@@ -457,19 +457,19 @@ describe('productionTick — shared stored-resource allocation', () => {
         wf[30].none.active = 2;
 
         const initialWater = 500;
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: initialWater,
         };
-        agent.assets.p.storageFacility.current.volume = initialWater * waterResourceType.volumePerQuantity;
-        agent.assets.p.storageFacility.current.mass = initialWater * waterResourceType.massPerQuantity;
+        agent.assets.p.storage.current.volume = initialWater * waterResourceType.volumePerQuantity;
+        agent.assets.p.storage.current.mass = initialWater * waterResourceType.massPerQuantity;
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeGreaterThanOrEqual(0);
 
         expect(remaining).toBeLessThanOrEqual(initialWater);
@@ -490,12 +490,12 @@ describe('productionTick — storage space clamp', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 100000,
         };
-        agent.assets.p.storageFacility.current.volume = 100000 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storageFacility.current.mass = 100000 * waterResourceType.massPerQuantity;
+        agent.assets.p.storage.current.volume = 100000 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storage.current.mass = 100000 * waterResourceType.massPerQuantity;
         agent.assets.p.workforceDemography[30].secondary.active = 10;
         const gs = makeGameState(planet, [agent, gov]);
         return { planet, agent, facility, gs };
@@ -504,7 +504,7 @@ describe('productionTick — storage space clamp', () => {
     it('produces at full efficiency while the output is below the virtual shelf', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         productionTick(gs, planet);
-        const produced = agent.assets.p.storageFacility.currentInStorage[produceResourceType.name]?.quantity ?? 0;
+        const produced = agent.assets.p.storage.currentInStorage[produceResourceType.name]?.quantity ?? 0;
         expect(produced).toBeCloseTo(10000, 0);
         expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
     });
@@ -512,12 +512,12 @@ describe('productionTick — storage space clamp', () => {
     it('throttles production to the free shelf space when the shelf is nearly full', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         const shelf = virtualShelf(10);
-        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
             quantity: shelf - 5000,
         };
         productionTick(gs, planet);
-        const produced = agent.assets.p.storageFacility.currentInStorage[produceResourceType.name]?.quantity ?? 0;
+        const produced = agent.assets.p.storage.currentInStorage[produceResourceType.name]?.quantity ?? 0;
         expect(produced).toBeCloseTo(shelf, 0);
         expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
     });
@@ -525,7 +525,7 @@ describe('productionTick — storage space clamp', () => {
     it('keeps the production-health efficiency intact so a full output storage cannot block expansion', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         const shelf = virtualShelf(10);
-        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
             quantity: shelf,
         };
@@ -541,12 +541,12 @@ describe('productionTick — storage space clamp', () => {
     it('scales input consumption down with the throttled production', () => {
         const { planet, agent, gs } = makeWaterConsumer();
         const shelf = virtualShelf(10);
-        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
             quantity: shelf - 5000,
         };
         productionTick(gs, planet);
-        const water = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        const water = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(water).toBeCloseTo(100000 - 500, 0);
     });
 });
@@ -557,7 +557,7 @@ describe('computeStorageSpaceFactor', () => {
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         const agent = makeAgent('sold-allowance');
         const shelf = 6 * 30 * 10 * 1000;
-        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
             quantity: shelf,
         };
@@ -576,11 +576,11 @@ describe('computeStorageSpaceFactor', () => {
         ];
         const agent = makeAgent('multi-output');
         const shelf = 6 * 30 * 10 * 1000;
-        agent.assets.p.storageFacility.currentInStorage[produceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
             quantity: shelf - 5000,
         };
-        agent.assets.p.storageFacility.currentInStorage[ironOreResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[ironOreResourceType.name] = {
             resource: ironOreResourceType,
             quantity: 0,
         };
@@ -616,7 +616,7 @@ describe('constructionTick', () => {
 
         agent.assets.p.productionFacilities = [facility];
 
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 80,
         };
@@ -626,8 +626,7 @@ describe('constructionTick', () => {
 
         expect(facility.construction).not.toBeNull();
         expect(facility.construction!.progress).toBe(50);
-        const remaining =
-            agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name]?.quantity ?? 0;
         expect(remaining).toBe(30);
     });
 
@@ -647,7 +646,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -698,7 +697,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 30,
         };
@@ -726,7 +725,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -759,7 +758,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -789,7 +788,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 30,
         };
@@ -821,7 +820,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -859,7 +858,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -895,7 +894,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 20,
         };
@@ -937,7 +936,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [f1, f2];
-        agent.assets.p.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: 100,
         };
@@ -961,7 +960,7 @@ describe('productionTick — storage department', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        agent.assets.p.storageFacility = makeStorageFacility({
+        agent.assets.p.storage = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
             department: {
@@ -977,7 +976,7 @@ describe('productionTick — storage department', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        const results = agent.assets.p.storageFacility.department!.lastTickResults;
+        const results = agent.assets.p.storage.department!.lastTickResults;
         expect(results).toBeDefined();
         expect(results.overallEfficiency).toBeGreaterThan(0);
     });
@@ -986,7 +985,7 @@ describe('productionTick — storage department', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
-        agent.assets.p.storageFacility = makeStorageFacility({
+        agent.assets.p.storage = makeStorageFacility({
             planetId: 'p',
             id: 'storage-p',
             department: {
@@ -1014,12 +1013,12 @@ describe('productionTick — storage department', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 1;
 
-        const initialEfficiency = agent.assets.p.storageFacility.department!.lastTickResults.overallEfficiency;
+        const initialEfficiency = agent.assets.p.storage.department!.lastTickResults.overallEfficiency;
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        expect(agent.assets.p.storageFacility.department!.lastTickResults.overallEfficiency).toBe(initialEfficiency);
+        expect(agent.assets.p.storage.department!.lastTickResults.overallEfficiency).toBe(initialEfficiency);
     });
 });
 
@@ -1043,12 +1042,12 @@ describe('productionTick — humanResourcesDepartment', () => {
         );
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 50,
         };
-        agent.assets.p.storageFacility.current.volume += 50 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storageFacility.current.mass += 50 * waterResourceType.massPerQuantity;
+        agent.assets.p.storage.current.volume += 50 * waterResourceType.volumePerQuantity;
+        agent.assets.p.storage.current.mass += 50 * waterResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 1;
@@ -1060,7 +1059,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         expect(mgmtFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeGreaterThan(0);
         expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeGreaterThan(0);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeLessThan(50);
     });
 
@@ -1136,7 +1135,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 6000,
         };
@@ -1150,7 +1149,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         expect(facility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(75, 0);
         expect(facility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(75, 0);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[waterResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeCloseTo(6000 - 75, -1);
     });
 
@@ -1170,7 +1169,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         const shipyard = makeShipConstructionFacility({ secondary: 3 }, { id: 'hr-scarce-sy', scale: 9, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 1000,
         };
@@ -1201,7 +1200,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         );
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 150,
         };
@@ -1224,7 +1223,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 150,
         };
@@ -1259,7 +1258,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
         agent.assets.p.productionFacilities = [prodFacility];
-        agent.assets.p.storageFacility.currentInStorage[waterResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
             resource: waterResourceType,
             quantity: 180,
         };
@@ -1300,12 +1299,12 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
 
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 60,
         };
-        agent.assets.p.storageFacility.current.volume = 60 * steelResourceType.volumePerQuantity;
-        agent.assets.p.storageFacility.current.mass = 60 * steelResourceType.massPerQuantity;
+        agent.assets.p.storage.current.volume = 60 * steelResourceType.volumePerQuantity;
+        agent.assets.p.storage.current.mass = 60 * steelResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 9;
@@ -1317,7 +1316,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const consumed = shipyard.lastTickResults.lastConsumed[steelResourceType.name] ?? 0;
         expect(consumed).toBeCloseTo(30, 5);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[steelResourceType.name]?.quantity ?? 0;
         expect(remaining).toBeCloseTo(30, 5);
     });
 
@@ -1328,7 +1327,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
 
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storageFacility.currentInStorage[steelResourceType.name] = {
+        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
             resource: steelResourceType,
             quantity: 100,
         };
@@ -1339,7 +1338,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         expect(shipyard.lastTickResults.overallEfficiency).toBe(0);
         expect(shipyard.lastTickResults.lastConsumed[steelResourceType.name]).toBe(0);
 
-        const remaining = agent.assets.p.storageFacility.currentInStorage[steelResourceType.name]?.quantity ?? 0;
+        const remaining = agent.assets.p.storage.currentInStorage[steelResourceType.name]?.quantity ?? 0;
         expect(remaining).toBe(100);
     });
 
@@ -1503,7 +1502,7 @@ describe('productionTick — XP boost effect on production', () => {
         expect(recorded).toBeDefined();
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.4875);
 
-        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        const storedIron = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(storedIron).toBeGreaterThan(950);
         expect(storedIron).toBeLessThan(1000);
     });
@@ -1547,7 +1546,7 @@ describe('productionTick — XP boost effect on production', () => {
         expect(recorded).toBeDefined();
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.25);
 
-        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        const storedIron = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(storedIron).toBeGreaterThan(450);
         expect(storedIron).toBeLessThan(550);
     });
@@ -1596,7 +1595,7 @@ describe('productionTick — XP boost effect on production', () => {
 
         expect(recorded!.lastTickResults.overallEfficiency).toBeCloseTo(0.975);
 
-        const storedIron = agent.assets.p.storageFacility.currentInStorage['Iron Ore']?.quantity ?? 0;
+        const storedIron = agent.assets.p.storage.currentInStorage['Iron Ore']?.quantity ?? 0;
         expect(storedIron).toBeGreaterThan(1900);
         expect(storedIron).toBeLessThan(2000);
     });

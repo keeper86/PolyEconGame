@@ -85,7 +85,7 @@ export function applyMaintenance(ship: Ship, agent: Agent, gameState: GameState)
 
     const planetId = ship.state.planetId;
     const assets = agent.assets[planetId];
-    const storage = assets?.storageFacility;
+    const storage = assets?.storage;
     if (!storage) {
         return false;
     }
@@ -223,7 +223,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     if (s.deadlineTick !== undefined && ctx.tick > s.deadlineTick) {
         if (s.contractId) {
             const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
-            const storage = storageAgent.assets[s.planetId]?.storageFacility;
+            const storage = storageAgent.assets[s.planetId]?.storage;
             if (storage && s.currentCargo && s.currentCargo.quantity > 0) {
                 lockIntoEscrow(storage, s.currentCargo.resource.name, s.currentCargo.quantity);
             }
@@ -255,7 +255,7 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     }
 
     const storageAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
-    const storage = storageAgent.assets[s.planetId]?.storageFacility;
+    const storage = storageAgent.assets[s.planetId]?.storage;
 
     if (!s.cargoGoal || !s.currentCargo || !storage) {
         const toPlanet = ctx.planets.get(s.to);
@@ -357,7 +357,7 @@ function handleTransportUnloading(ship: TransportShip, ctx: GameState, agent: Ag
     if (!assets) {
         return STAY;
     }
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     if (!storage) {
         return STAY;
     }
@@ -485,7 +485,7 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
     const assets = agent.assets[s.planetId];
     const planet = ctx.planets.get(s.planetId);
     if (planet && assets) {
-        consumeConstructionForFacility(target, assets.storageFacility, {
+        consumeConstructionForFacility(target, assets.storage, {
             planet,
             monthAcc: assets.monthAcc,
             gameStateTick: ctx.tick,
@@ -646,7 +646,7 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
         return { action: 'transition', newState: { type: 'idle', planetId: shipState.planetId } };
     }
 
-    const storage = gameState.agents.get(agent.id)?.assets[shipState.planetId]?.storageFacility;
+    const storage = gameState.agents.get(agent.id)?.assets[shipState.planetId]?.storage;
     if (!storage) {
         console.warn(`No storage facility found on planet '${shipState.planetId}' for passenger provisioning`);
         return STAY;

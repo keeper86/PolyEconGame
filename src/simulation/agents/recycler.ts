@@ -69,7 +69,7 @@ export function getRecyclerPaymentRatio(planet: Planet, amount: number): number 
     }
 
     const unsoldSupply = Math.max(1, marketResult?.unsoldSupply ?? 0);
-    const recyclerCSStock = queryStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType.name);
+    const recyclerCSStock = queryStorageFacility(recyclerAssets.storage, constructionServiceResourceType.name);
 
     const unfilledDemand = Math.max(1, marketResult?.unfilledDemand ?? 0);
     const demandRatio = unsoldSupply / unfilledDemand - 1;
@@ -160,7 +160,7 @@ export function processFacilityContraction(
     }
 
     // Add recovered CS to recycler's storage (services have 0 volume/mass, so no overflow possible)
-    putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, recoveredCS);
+    putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, recoveredCS);
 
     const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
     facility.maxScale = targetMax;

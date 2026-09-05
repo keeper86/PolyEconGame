@@ -298,7 +298,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
                 const planet = gs.planets.get(planetId);
                 let storageValue = 0;
-                for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
+                for (const entry of Object.values(assets.storage.currentInStorage)) {
                     if (entry?.quantity) {
                         const price = planet?.marketPrices[entry.resource.name] ?? 0;
                         storageValue += entry.quantity * price;

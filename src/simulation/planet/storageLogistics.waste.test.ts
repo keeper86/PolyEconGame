@@ -22,18 +22,18 @@ describe('wasteSurplusOutputs', () => {
     it('flares surplus goods output down to the configured keep level', () => {
         const assets = makeAgentPlanetAssets('p');
         assets.productionFacilities.push(makeWasteFacility());
-        putIntoStorageFacility(assets.storageFacility, chemicalResourceType, 1_000_000);
+        putIntoStorageFacility(assets.storage, chemicalResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
         const keep = 30 * 100 * 48;
-        expect(queryStorageFacility(assets.storageFacility, chemicalResourceType.name)).toBeCloseTo(keep, 6);
+        expect(queryStorageFacility(assets.storage, chemicalResourceType.name)).toBeCloseTo(keep, 6);
     });
 
     it('does not touch inventory below the keep level', () => {
         const assets = makeAgentPlanetAssets('p');
         assets.productionFacilities.push(makeWasteFacility());
-        putIntoStorageFacility(assets.storageFacility, fuelResourceType, 5_000);
+        putIntoStorageFacility(assets.storage, fuelResourceType, 5_000);
         wasteSurplusOutputs(assets);
-        expect(queryStorageFacility(assets.storageFacility, fuelResourceType.name)).toBeCloseTo(5_000, 6);
+        expect(queryStorageFacility(assets.storage, fuelResourceType.name)).toBeCloseTo(5_000, 6);
     });
 
     it('leaves facilities without the waste config untouched', () => {
@@ -43,8 +43,8 @@ describe('wasteSurplusOutputs', () => {
                 produces: [{ resource: plasticResourceType, quantity: 10 }],
             }),
         );
-        putIntoStorageFacility(assets.storageFacility, plasticResourceType, 1_000_000);
+        putIntoStorageFacility(assets.storage, plasticResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
-        expect(queryStorageFacility(assets.storageFacility, plasticResourceType.name)).toBeCloseTo(1_000_000, 6);
+        expect(queryStorageFacility(assets.storage, plasticResourceType.name)).toBeCloseTo(1_000_000, 6);
     });
 });

@@ -98,7 +98,7 @@ function makeStorageSignalFixture(inventory: number): {
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
     });
     const assets = makeAgentPlanetAssets('p', {
-        storageFacility: makeStorageFacility({
+        storage: makeStorageFacility({
             currentInStorage: {
                 [RESOURCE_NAME]: { resource: maintenanceServiceResourceType, quantity: inventory },
             },
@@ -215,7 +215,7 @@ describe('computeFacilityStorageSignal (3-month own-production storage error)', 
             : [{ resource: maintenanceServiceResourceType, quantity: 100 }];
         const facility = makeProductionFacility(undefined, { maxScale: 1, scale: 1, produces });
         const assets = makeAgentPlanetAssets('p', {
-            storageFacility: makeStorageFacility({
+            storage: makeStorageFacility({
                 currentInStorage: {
                     [RESOURCE_NAME]: { resource: maintenanceServiceResourceType, quantity: overrides?.inventory ?? 0 },
                 },
@@ -247,7 +247,7 @@ describe('computeFacilityStorageSignal (3-month own-production storage error)', 
 
     it('maxError tracks the most starved output', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
-        fixture.assets.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        fixture.assets.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: target / 4,
         };
@@ -257,14 +257,14 @@ describe('computeFacilityStorageSignal (3-month own-production storage error)', 
 
     it('maxError is negative only when every output is above the target', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
-        fixture.assets.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        fixture.assets.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: target * 2,
         };
         const bothFull = computeFacilityStorageSignal(fixture.facility, fixture.assets);
         expect(bothFull.maxError).toBeLessThan(0);
 
-        fixture.assets.storageFacility.currentInStorage[constructionServiceResourceType.name] = {
+        fixture.assets.storage.currentInStorage[constructionServiceResourceType.name] = {
             resource: constructionServiceResourceType,
             quantity: target / 2,
         };
@@ -324,7 +324,7 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
         });
         const assets = makeAgentPlanetAssets(planet.id, {
             productionFacilities: [facility],
-            storageFacility: makeStorageFacility({
+            storage: makeStorageFacility({
                 currentInStorage: {
                     [RESOURCE_NAME]: { resource: maintenanceServiceResourceType, quantity: 4500 },
                 },
@@ -345,7 +345,7 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
         });
         const assets = makeAgentPlanetAssets(planet.id, {
             productionFacilities: [facility],
-            storageFacility: makeStorageFacility({
+            storage: makeStorageFacility({
                 currentInStorage: {
                     [RESOURCE_NAME]: { resource: maintenanceServiceResourceType, quantity: 9000 },
                 },

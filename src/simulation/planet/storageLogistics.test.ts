@@ -34,7 +34,7 @@ function makeAssetsWithStorage(overrides?: {
     return {
         productionFacilities: [],
         shipConstructionFacilities: [],
-        storageFacility: storage,
+        storage: storage,
         humanResourcesDepartment: null,
         hrProductivityMultiplier: 1,
         transportContracts: [],
@@ -160,16 +160,16 @@ describe('putIntoStorageFacility logistics', () => {
 describe('storageLogisticsTick', () => {
     it('resets logisticsBuffer to 0', () => {
         const assets = makeAssetsWithStorage();
-        assets.storageFacility.department!.storageBuffer = -100;
+        assets.storage.department!.storageBuffer = -100;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        expect(assets.storageFacility.department!.storageBuffer).toBe(0);
+        expect(assets.storage.department!.storageBuffer).toBe(0);
     });
 
     it('relaxes SS when buffer >= 0', () => {
         const assets = makeAssetsWithStorage();
-        const dept = assets.storageFacility.department!;
+        const dept = assets.storage.department!;
         dept.storageStarvation = 0.5;
         dept.storageBuffer = 0;
         const planet = makePlanet();
@@ -180,7 +180,7 @@ describe('storageLogisticsTick', () => {
 
     it('drives SS upward when buffer negative', () => {
         const assets = makeAssetsWithStorage();
-        const dept = assets.storageFacility.department!;
+        const dept = assets.storage.department!;
         dept.storageStarvation = 0.1;
         dept.storageBuffer = -7000;
         dept.scale = 5;
@@ -192,9 +192,9 @@ describe('storageLogisticsTick', () => {
 
     it('credits buffer from produced storage service', () => {
         const assets = makeAssetsWithStorage();
-        const dept = assets.storageFacility.department!;
+        const dept = assets.storage.department!;
         dept.storageBuffer = -100;
-        putIntoStorageFacility(assets.storageFacility, storageServiceResourceType, 500);
+        putIntoStorageFacility(assets.storage, storageServiceResourceType, 500);
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
@@ -204,7 +204,7 @@ describe('storageLogisticsTick', () => {
     it('degrades stored physical goods when SS > 0', () => {
         const iron = makeResource('Iron Ore', 1);
         const assets = makeAssetsWithStorage();
-        const storage = assets.storageFacility;
+        const storage = assets.storage;
         storage.department!.storageStarvation = 1;
         storage.capacity = { volume: 1e9, mass: 1e9 };
         putIntoStorageFacility(storage, iron, 1000);
@@ -217,7 +217,7 @@ describe('storageLogisticsTick', () => {
 
     it('degrades services faster when SS high', () => {
         const assets = makeAssetsWithStorage();
-        const storage = assets.storageFacility;
+        const storage = assets.storage;
         storage.department!.storageStarvation = 1;
         putIntoStorageFacility(storage, logisticsServiceResourceType, 1000);
         const planet = makePlanet();
@@ -229,13 +229,13 @@ describe('storageLogisticsTick', () => {
 
     it('normalizes starvation update rate independent of department scale', () => {
         const assets1 = makeAssetsWithStorage();
-        const dept1 = assets1.storageFacility.department!;
+        const dept1 = assets1.storage.department!;
         dept1.scale = 1;
         dept1.storageStarvation = 0.1;
         dept1.storageBuffer = -2000;
 
         const assets2 = makeAssetsWithStorage();
-        const dept2 = assets2.storageFacility.department!;
+        const dept2 = assets2.storage.department!;
         dept2.scale = 100;
         dept2.storageStarvation = 0.1;
         dept2.storageBuffer = -200000;
@@ -259,7 +259,7 @@ describe('storageLogisticsTick', () => {
 
     it('skips agents without commercial license', () => {
         const assets = makeAssetsWithStorage({ hasCommercialLicense: false });
-        const dept = assets.storageFacility.department!;
+        const dept = assets.storage.department!;
         dept.storageBuffer = -100;
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });

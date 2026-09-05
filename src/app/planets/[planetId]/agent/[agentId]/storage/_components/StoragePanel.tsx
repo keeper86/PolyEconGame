@@ -102,7 +102,7 @@ function aggregateSoldPerTick(assets: AgentPlanetAssets): Record<string, number>
 }
 
 function buildStorageEntries(assets: AgentPlanetAssets): StorageResourceEntry[] {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const prodPerTick = aggregateProduction(assets);
     const consPerTick = aggregateConsumption(assets);
     const boughtPerTick = aggregateBoughtPerTick(assets);
@@ -303,7 +303,7 @@ export function StoragePanel({ assets, planetId, agentId }: Props): React.ReactE
         direction: 'desc',
     });
 
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const usedVol = storage.current.volume;
     const scale = storage.department?.scale ?? 0;
     const capVol = storage.capacity.volume * scale;

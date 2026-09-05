@@ -339,7 +339,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
+        agent.assets['p-dest']!.storage.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
         };
@@ -372,7 +372,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             currentCargo: { resource: steelResource, quantity: 0 },
         };
 
-        agent.assets['p-origin']!.storageFacility.currentInStorage.Steel = {
+        agent.assets['p-origin']!.storage.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
         };
@@ -393,7 +393,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
+        agent.assets['p-dest']!.storage.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
         };
@@ -421,7 +421,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
+        agent.assets['p-dest']!.storage.currentInStorage.Steel = {
             resource: steelResource,
             quantity: 50,
         };

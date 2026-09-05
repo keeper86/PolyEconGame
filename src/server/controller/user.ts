@@ -577,7 +577,7 @@ export const setSellOffers = () => {
 
                 const inventoryQty = isCurrencyResource(resource)
                     ? 0
-                    : queryStorageFacility(sellAssets.storageFacility, resourceName);
+                    : queryStorageFacility(sellAssets.storage, resourceName);
 
                 const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 

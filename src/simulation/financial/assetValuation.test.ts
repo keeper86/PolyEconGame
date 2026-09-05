@@ -12,7 +12,7 @@ function makeAssets(overrides: Parameters<typeof makeProductionFacility>[1]): Ag
     const assets = makeAgentPlanetAssets('p', {
         productionFacilities: [makeProductionFacility(undefined, overrides)],
     });
-    assets.storageFacility.department = null;
+    assets.storage.department = null;
     return assets;
 }
 

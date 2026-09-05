@@ -40,7 +40,7 @@ describe('checkMonetaryConservation', () => {
             makeProductionFacility({ none: 100, primary: 50, secondary: 20, tertiary: 5 }, { planetId: planet.id }),
         );
 
-        putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e9);
+        putIntoStorageFacility(gov.assets[planet.id].storage, produceResourceType, 1e9);
 
         gameState.tick = 1;
         advanceTick(gameState);
@@ -62,7 +62,7 @@ describe('checkMonetaryConservation', () => {
             makeProductionFacility({ none: 500, primary: 200, secondary: 50, tertiary: 20 }, { planetId: planet.id }),
         );
 
-        putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e9);
+        putIntoStorageFacility(gov.assets[planet.id].storage, produceResourceType, 1e9);
 
         for (let t = 1; t <= 30; t++) {
             gameState.tick = t;
@@ -166,7 +166,7 @@ describe(
                 makeProductionFacility({ none: 100, primary: 50, secondary: 20, tertiary: 5 }, { planetId: planet.id }),
             );
 
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e9);
+            putIntoStorageFacility(gov.assets[planet.id].storage, produceResourceType, 1e9);
 
             for (let t = 1; t <= 30; t++) {
                 gameState.tick = t;
@@ -196,7 +196,7 @@ describe(
                         { planetId: planet.id },
                     ),
                 );
-                putIntoStorageFacility(assets.storageFacility, produceResourceType, 1e9);
+                putIntoStorageFacility(assets.storage, produceResourceType, 1e9);
             }
 
             for (let t = 1; t <= 60; t++) {
@@ -224,7 +224,7 @@ describe(
                 ),
             );
 
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e6);
+            putIntoStorageFacility(gov.assets[planet.id].storage, produceResourceType, 1e6);
 
             for (let t = 1; t <= 90; t++) {
                 gameState.tick = t;

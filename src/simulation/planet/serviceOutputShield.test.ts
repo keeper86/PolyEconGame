@@ -19,7 +19,7 @@ describe('service output shield', () => {
         storage.department!.storageStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
-            storageFacility: storage,
+            storage: storage,
         });
         return { assets, storage };
     }
@@ -55,7 +55,7 @@ describe('service output shield', () => {
         storage.department!.storageStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
-            storageFacility: storage,
+            storage: storage,
         });
         putIntoStorageFacility(storage, logisticsServiceResourceType, 1000);
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });

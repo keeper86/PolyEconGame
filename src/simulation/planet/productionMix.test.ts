@@ -44,7 +44,7 @@ describe('updateProductionMix', () => {
         updateProductionMix(gameState, planet);
 
         const keep = 30 * facility.maxScale * 48;
-        putIntoStorageFacility(assets.storageFacility, chemicalResourceType, keep * 2);
+        putIntoStorageFacility(assets.storage, chemicalResourceType, keep * 2);
         const before = facility.productionMix![chemicalResourceType.name];
         for (let i = 0; i < 300; i++) {
             updateProductionMix(gameState, planet);
@@ -60,7 +60,7 @@ describe('updateProductionMix', () => {
         updateProductionMix(gameState, planet);
 
         const keep = 30 * facility.maxScale * 48;
-        putIntoStorageFacility(assets.storageFacility, chemicalResourceType, keep * 2);
+        putIntoStorageFacility(assets.storage, chemicalResourceType, keep * 2);
         for (let i = 0; i < 500; i++) {
             updateProductionMix(gameState, planet);
         }

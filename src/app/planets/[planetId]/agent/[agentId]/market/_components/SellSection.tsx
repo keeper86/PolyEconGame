@@ -174,7 +174,7 @@ export default function SellSection({
     const [sellPricingOpen, setSellPricingOpen] = useSellPricingOpenPreference();
     const [sellVolumeOpen, setSellVolumeOpen] = useSellVolumeOpenPreference();
 
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
     const isCurrency = resourceName.startsWith('CUR_');

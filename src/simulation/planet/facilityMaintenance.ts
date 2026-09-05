@@ -94,7 +94,7 @@ function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets,
 
     const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
     const consumed = removeFromStorageFacility(
-        assets.storageFacility,
+        assets.storage,
         maintenanceServiceResourceType.name,
         repairFraction * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale,
     );
@@ -135,14 +135,14 @@ function applyFacilityRestoration(facility: Facility, assets: AgentPlanetAssets,
 
     const costFactor = facilityRestorationCostFactor(facility.maxMaintenance);
     const needed = facilityRestorationCapacityPerTick(facility);
-    const available = queryStorageFacility(assets.storageFacility, constructionServiceResourceType.name);
+    const available = queryStorageFacility(assets.storage, constructionServiceResourceType.name);
 
     const toConsume = Math.min(needed, available);
     if (toConsume <= 0) {
         return;
     }
 
-    const consumed = removeFromStorageFacility(assets.storageFacility, constructionServiceResourceType.name, toConsume);
+    const consumed = removeFromStorageFacility(assets.storage, constructionServiceResourceType.name, toConsume);
     facility.lastTickRestorationConsumption = consumed;
     const restored = consumed / (fullRestoreCost * costFactor);
     facility.maxMaintenance = Math.min(1, facility.maxMaintenance + restored);

@@ -75,8 +75,8 @@ function pct(n: number): string {
 
 function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
     const hr = assets.humanResourcesDepartment;
-    const stoDept = assets.storageFacility.department;
-    const stoFac = assets.storageFacility;
+    const stoDept = assets.storage.department;
+    const stoFac = assets.storage;
 
     const hrDemand = assets.usedWorkers;
     const hrBufRatio = hrDemand > 0 ? (hr?.hrBuffer ?? 0) / hrDemand : Number.POSITIVE_INFINITY;

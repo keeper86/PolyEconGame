@@ -57,7 +57,7 @@ describe('createRecyclerAgent', () => {
 
     it('starts with empty CS storage', () => {
         const recycler = createRecyclerAgent('p1', 'Test Planet');
-        const csStock = queryStorageFacility(recycler.assets.p1!.storageFacility, 'Construction');
+        const csStock = queryStorageFacility(recycler.assets.p1!.storage, 'Construction');
         expect(csStock).toBe(0);
     });
 });
@@ -101,7 +101,7 @@ describe('getRecyclerPaymentRatio', () => {
     it('reduces ratio when recycler holds a significant share of unsold supply', () => {
         const planet = makePlanet();
         const recyclerAssets = planet.recycler!.assets[planet.id]!;
-        putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, 100);
+        putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, 100);
 
         // @ts-expect-error intentionally simple type
         planet.avgMarketResult.Construction = { unsoldSupply: 200, unfilledDemand: 0, totalDemand: 100 };
@@ -339,9 +339,9 @@ describe('processFacilityContraction', () => {
         const dynamicRatio = RECYCLER_PAYMENT_RATIO * getRecyclerPaymentRatio(planet, recoveredCS);
         recyclerAssets.deposits = recoveredCS * 10 * dynamicRatio;
 
-        const csBefore = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csBefore = queryStorageFacility(recyclerAssets.storage, 'Construction');
         processFacilityContraction(planet, facility, agent, 90, gameState);
-        const csAfter = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csAfter = queryStorageFacility(recyclerAssets.storage, 'Construction');
         expect(csAfter - csBefore).toBeCloseTo(recoveredCS);
     });
 
@@ -377,7 +377,7 @@ describe('processFacilityContraction', () => {
         expect(facility.maxScale).toBe(0);
         expect(facility.scale).toBe(0);
         // CS should still be recovered for the full scale
-        const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csStock = queryStorageFacility(recyclerAssets.storage, 'Construction');
         expect(csStock).toBeGreaterThan(0);
         // Payment should still be transferred
         expect(agent.assets[planet.id]!.deposits).toBeGreaterThan(0);
@@ -406,7 +406,7 @@ describe('recycler end-to-end: contraction → storage → market sale', () => {
         const recyclerAssets = recycler.assets[planet.id]!;
 
         const csAmount = 1000;
-        putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, csAmount);
+        putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, csAmount);
 
         const agents = new Map<string, Agent>([[recycler.id, recycler]]);
         automaticPricing(agents, planet);
@@ -416,7 +416,7 @@ describe('recycler end-to-end: contraction → storage → market sale', () => {
         expect(offer.offerPrice).toBeGreaterThan(0);
         expect(offer.offerRetainment).toBe(0);
 
-        const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csStock = queryStorageFacility(recyclerAssets.storage, 'Construction');
         expect(csStock).toBe(csAmount);
     });
 
@@ -445,7 +445,7 @@ describe('recycler end-to-end: contraction → storage → market sale', () => {
         const result = processFacilityContraction(planet, facility, agent, 90, gameState);
         expect(result).toBe(true);
 
-        const csInRecycler = queryStorageFacility(recycledAssets.storageFacility, 'Construction');
+        const csInRecycler = queryStorageFacility(recycledAssets.storage, 'Construction');
         expect(csInRecycler).toBeGreaterThan(0);
 
         const agentMap = new Map<string, Agent>([[recycler.id, recycler]]);
@@ -463,7 +463,7 @@ describe('recycler pricing in automaticPricing', () => {
         const planet = makePlanet({ marketPrices: { Construction: 15 } });
         const recycler = planet.recycler!;
         const recyclerAssets = recycler.assets[planet.id]!;
-        putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, 500);
+        putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, 500);
         const agentMap = new Map<string, Agent>([[recycler.id, recycler]]);
         automaticPricing(agentMap, planet);
         expect(recyclerAssets.market!.sell.Construction!.offerPrice).toBe(15);
@@ -473,7 +473,7 @@ describe('recycler pricing in automaticPricing', () => {
         const planet = makePlanet();
         const recycler = planet.recycler!;
         const recyclerAssets = recycler.assets[planet.id]!;
-        putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, 500);
+        putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, 500);
         const agentMap = new Map<string, Agent>([[recycler.id, recycler]]);
         automaticPricing(agentMap, planet);
         expect(recyclerAssets.market!.sell.Construction!.offerRetainment).toBe(0);
@@ -509,7 +509,7 @@ describe('recycler profitability over multiple contraction cycles', () => {
         processFacilityContraction(planet, facility, agent, 90, gameState);
 
         // After: CS increased
-        const csAfterContraction = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csAfterContraction = queryStorageFacility(recyclerAssets.storage, 'Construction');
         expect(csAfterContraction).toBeGreaterThan(0);
 
         // Simulate market sale of CS at market price
@@ -518,7 +518,7 @@ describe('recycler profitability over multiple contraction cycles', () => {
         const payment = recoveredCS * 10 * RECYCLER_PAYMENT_RATIO; // demandFactor=1.0
 
         recyclerAssets.deposits += saleRevenue;
-        removeFromStorageFacility(recyclerAssets.storageFacility, 'Construction', csAfterContraction);
+        removeFromStorageFacility(recyclerAssets.storage, 'Construction', csAfterContraction);
 
         // Net profit = (saleRevenue - payment)
         const netProfit = saleRevenue - payment;
@@ -553,11 +553,11 @@ describe('recycler profitability over multiple contraction cycles', () => {
         for (let i = 0; i < cycles; i++) {
             processFacilityContraction(planet, facility, agent, 100 - 10 * (i + 1), gameState);
 
-            const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+            const csStock = queryStorageFacility(recyclerAssets.storage, 'Construction');
             if (csStock > 0) {
                 const revenue = csStock * 10;
                 recyclerAssets.deposits += revenue;
-                removeFromStorageFacility(recyclerAssets.storageFacility, 'Construction', csStock);
+                removeFromStorageFacility(recyclerAssets.storage, 'Construction', csStock);
             }
         }
 
@@ -592,11 +592,11 @@ describe('recycler profitability over multiple contraction cycles', () => {
         for (let i = 0; i < cycles; i++) {
             processFacilityContraction(planet, facility, agent, 100 - 10 * (i + 1), gameState);
 
-            const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+            const csStock = queryStorageFacility(recyclerAssets.storage, 'Construction');
             if (csStock > 0) {
                 const revenue = csStock * 10;
                 recyclerAssets.deposits += revenue;
-                removeFromStorageFacility(recyclerAssets.storageFacility, 'Construction', csStock);
+                removeFromStorageFacility(recyclerAssets.storage, 'Construction', csStock);
             }
         }
 
@@ -612,13 +612,13 @@ describe('recycler market integration - validation', () => {
         const recycler = planet.recycler!;
         const recyclerAssets = recycler.assets[planet.id]!;
 
-        putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, 500);
+        putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, 500);
 
         const agentMap = new Map<string, Agent>([[recycler.id, recycler]]);
         automaticPricing(agentMap, planet);
 
         const offer = recyclerAssets.market!.sell.Construction!;
-        const csStock = queryStorageFacility(recyclerAssets.storageFacility, 'Construction');
+        const csStock = queryStorageFacility(recyclerAssets.storage, 'Construction');
         const effectiveQuantity = Math.max(0, csStock - (offer.offerRetainment ?? 0));
 
         expect(effectiveQuantity).toBeGreaterThan(0);

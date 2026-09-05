@@ -100,7 +100,7 @@ describe('engine basic behavior', () => {
 
         productionTick(makeGameState([planet], [agent]), planet);
 
-        const entry = agent.assets[planet.id].storageFacility.currentInStorage[produceResourceType.name];
+        const entry = agent.assets[planet.id].storage.currentInStorage[produceResourceType.name];
         expect(entry).toBeDefined();
         expect(entry!.quantity).toBeGreaterThanOrEqual(10);
     });
@@ -132,7 +132,7 @@ describe('engine basic behavior', () => {
 
         agent.assets[planet.id].productionFacilities.push(prod);
 
-        const storage = agent.assets[planet.id].storageFacility;
+        const storage = agent.assets[planet.id].storage;
         putIntoStorageFacility(storage, neededResource, neededResourceQuantity);
 
         productionTick(makeGameState([planet], [agent]), planet);
@@ -172,7 +172,7 @@ describe('engine basic behavior', () => {
         );
         agent.assets[planet.id].productionFacilities.push(prod);
 
-        const storage = agent.assets[planet.id].storageFacility;
+        const storage = agent.assets[planet.id].storage;
         putIntoStorageFacility(storage, neededResource, neededResourceQuantity / 10);
 
         const storageOfNeededResource = queryStorageFacility(storage, neededResource.name);
@@ -201,7 +201,7 @@ describe('engine basic behavior', () => {
         );
         agent.assets[planet.id].productionFacilities.push(prod);
 
-        const storage = agent.assets[planet.id].storageFacility;
+        const storage = agent.assets[planet.id].storage;
 
         setActualWorkers(agent, planet.id, { none: 5 });
 
@@ -523,7 +523,7 @@ describe('population ↔ workforce consistency', () => {
                 ),
             );
 
-            putIntoStorageFacility(gov.assets[planet.id].storageFacility, produceResourceType, 1e9);
+            putIntoStorageFacility(gov.assets[planet.id].storage, produceResourceType, 1e9);
 
             for (let t = 1; t <= 60; t++) {
                 gameState.tick = t;
@@ -545,8 +545,8 @@ describe('engine tick order — restoration outcompetes expansion for constructi
         });
 
         const agent = makeAgent('co-1', 'planet-1');
-        agent.assets['planet-1'].storageFacility = makeStorageFacility({ planetId: 'planet-1' });
-        agent.assets['planet-1'].storageFacility.department = null;
+        agent.assets['planet-1'].storage = makeStorageFacility({ planetId: 'planet-1' });
+        agent.assets['planet-1'].storage.department = null;
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'f-1', scale: 1 });
         facility.needs = [];
@@ -563,7 +563,7 @@ describe('engine tick order — restoration outcompetes expansion for constructi
         agent.assets['planet-1'].productionFacilities = [facility];
 
         const gameState = makeGameState([planet], [government, agent, planet.recycler]);
-        const storage = agent.assets['planet-1'].storageFacility;
+        const storage = agent.assets['planet-1'].storage;
         const restorationNeed = facilityRestorationCapacityPerTick(facility);
         expect(restorationNeed).toBeGreaterThan(0);
         putIntoStorageFacility(storage, constructionServiceResourceType, restorationNeed);

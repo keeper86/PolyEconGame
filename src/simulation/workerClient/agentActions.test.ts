@@ -42,11 +42,11 @@ describe('handleCreateAgent', () => {
 
         const assets = agent!.assets.p;
         expect(assets).toBeDefined();
-        expect(assets.storageFacility).toBeDefined();
-        expect(assets.storageFacility.department).toBeDefined();
+        expect(assets.storage).toBeDefined();
+        expect(assets.storage.department).toBeDefined();
 
-        expect(assets.storageFacility.department!.name).toBe(LOGISTICS_DEPARTMENT_NAME);
-        expect(assets.storageFacility.department!.name).not.toBe('Test Management');
+        expect(assets.storage.department!.name).toBe(LOGISTICS_DEPARTMENT_NAME);
+        expect(assets.storage.department!.name).not.toBe('Test Management');
 
         expect(assets.licenses).toEqual({
             commercial: { acquiredTick: 0, frozen: false },

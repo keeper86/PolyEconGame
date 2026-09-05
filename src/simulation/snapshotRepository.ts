@@ -48,7 +48,7 @@ export const computeAgentStorage = (agent: Agent): Record<string, number> => {
     const start = perfStart('computeAgentStorage');
     const storage: Record<string, number> = {};
     for (const planetAssets of Object.values(agent.assets)) {
-        const stor = planetAssets.storageFacility;
+        const stor = planetAssets.storage;
         if (stor?.currentInStorage) {
             for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
                 storage[rName] = (storage[rName] || 0) + (entry?.quantity || 0);
@@ -131,7 +131,7 @@ export function summariseAgentBlob(
             }
         }
 
-        const stor = assets?.storageFacility;
+        const stor = assets?.storage;
         if (stor?.currentInStorage) {
             for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
                 storageTotals[rName] = (storageTotals[rName] || 0) + (entry?.quantity || 0);
@@ -225,7 +225,7 @@ export const summarisePlanetAssets = (planetId: string, assets: Agent['assets'][
         }
     }
 
-    const stor = assets.storageFacility;
+    const stor = assets.storage;
     if (stor?.currentInStorage) {
         for (const [rName, entry] of Object.entries(stor.currentInStorage)) {
             storageTotals[rName] = (storageTotals[rName] || 0) + (entry?.quantity || 0);

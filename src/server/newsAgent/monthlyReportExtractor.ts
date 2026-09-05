@@ -230,7 +230,7 @@ function aggregateFacilities(agents: Agent[]): FacilityPerf[] {
                 processFacility(hr);
             }
 
-            const sto = planetAssets.storageFacility?.department;
+            const sto = planetAssets.storage?.department;
             if (sto) {
                 processFacility(sto);
             }

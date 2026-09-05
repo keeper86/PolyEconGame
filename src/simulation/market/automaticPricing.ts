@@ -160,7 +160,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
             const keep = wasteTicks * facility.maxScale * output.quantity;
-            const free = queryStorageFacility(assets.storageFacility, output.resource.name);
+            const free = queryStorageFacility(assets.storage, output.resource.name);
             if (free >= keep) {
                 saturatedOutputs.add(output.resource.name);
             }
@@ -179,7 +179,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
             productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.scale);
 
-            const inventoryQty = queryStorageFacility(assets.storageFacility, resource.name);
+            const inventoryQty = queryStorageFacility(assets.storage, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
 
             if (!assets.market.sell[resource.name]) {
@@ -212,7 +212,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (baseRate !== undefined) {
             continue;
         }
-        const inventoryQty = queryStorageFacility(assets.storageFacility, resourceName);
+        const inventoryQty = queryStorageFacility(assets.storage, resourceName);
         const initialPrice = planet.marketPrices[resourceName] ?? initialMarketPrices[resourceName] ?? PRICE_FLOOR;
 
         const costFloor = planet.lastProductionCostFloors[resourceName];
@@ -234,7 +234,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     for (const facility of [
         ...assets.productionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-        ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
+        ...(assets.storage.department ? [assets.storage.department] : []),
         ...assets.shipConstructionFacilities,
     ]) {
         if (isFacilityOperating(facility)) {
@@ -374,7 +374,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const bidCfg = resolveBidConfig(bid.autoConfig, bid.resource);
         if (bidCfg.freeBuyQuantity > 0) {
-            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+            const currentInventory = queryStorageFacility(assets.storage, resourceName);
             // freeBuyQuantity is an absolute additional inventory target
             const freeBuyTarget = currentInventory < bidCfg.freeBuyQuantity ? bidCfg.freeBuyQuantity : 0;
             const existing = aggregatedBuyTargets.get(resourceName);
@@ -406,7 +406,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         const bidCfg = resolveBidConfig(bid.autoConfig, resource);
 
-        const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+        const currentInventory = queryStorageFacility(assets.storage, resourceName);
 
         let totalShortfall = Math.max(0, storageTarget - currentInventory);
 

@@ -306,7 +306,7 @@ export const getAgentPlanetStorage = () =>
             if (!agent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
             }
-            const inStorage = agent.assets?.[input.planetId]?.storageFacility?.currentInStorage ?? {};
+            const inStorage = agent.assets?.[input.planetId]?.storage?.currentInStorage ?? {};
             const result: Record<string, number> = {};
             for (const [resourceName, entry] of Object.entries(inStorage)) {
                 const qty = (entry as { quantity?: number })?.quantity ?? 0;

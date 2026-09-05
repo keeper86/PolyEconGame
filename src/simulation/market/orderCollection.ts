@@ -28,7 +28,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 continue;
             }
 
-            const free = queryStorageFacility(assets.storageFacility, resourceName);
+            const free = queryStorageFacility(assets.storage, resourceName);
 
             const validatedOffer = validateAndPrepareSellOffer(offer, free);
 
@@ -43,7 +43,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
 
             offer.lastPlacedQty = quantity;
             offer.lastOfferPrice = askPrice;
-            lockIntoEscrow(assets.storageFacility, resourceName, quantity);
+            lockIntoEscrow(assets.storage, resourceName, quantity);
 
             let book = books.get(resourceName);
             if (!book) {
@@ -91,7 +91,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             if (isCurrencyResource(bid.resource) || bid.resource.form === 'internal') {
                 continue;
             }
-            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+            const currentInventory = queryStorageFacility(assets.storage, resourceName);
 
             const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
 
@@ -111,7 +111,7 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             return;
         }
 
-        const storage = assets.storageFacility;
+        const storage = assets.storage;
         const scale = getStorageScaleBasis(storage);
         const freeVolume = storage.capacity.volume * scale - storage.current.volume;
         const freeMass = storage.capacity.mass * scale - storage.current.mass;

@@ -131,7 +131,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
-            const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storageFacility, {
+            const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storage, {
                 planet,
                 monthAcc: assets.monthAcc,
                 gameStateTick: gameState.tick,
@@ -329,7 +329,7 @@ export function computeStorageSpaceFactor(
     if (facility.produces.length === 0) {
         return 1;
     }
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const totalTemplateOutput = facility.produces.reduce((sum, output) => sum + output.quantity, 0);
     const mix = facility.type === 'production' ? facility.productionMix : undefined;
     let factor = 1;
@@ -659,7 +659,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             ef.resourceEfficiencyMap = computeResourceEfficiencyMap(
                 ef,
                 totalStorageDemand,
-                assets.storageFacility,
+                assets.storage,
                 planet,
                 agent,
             );
@@ -817,7 +817,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             }
 
             const productionParameterBase = {
-                storage: assets.storageFacility,
+                storage: assets.storage,
                 overallEfficiency,
                 storageSpaceFactor,
                 workerResults,

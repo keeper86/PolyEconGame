@@ -71,7 +71,7 @@ function seedWorkforce(
 }
 
 function putProvisions(agent: Agent, planetId: string, grocery: number, healthcare: number): void {
-    const storage = agent.assets[planetId]?.storageFacility;
+    const storage = agent.assets[planetId]?.storage;
     if (!storage) {
         return;
     }
@@ -589,7 +589,7 @@ describe('shipTick passenger boarding', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('passenger_transporting');
-        const storage = agent.assets.p1!.storageFacility;
+        const storage = agent.assets.p1!.storage;
         const groceryLeft = storage.currentInStorage[groceryServiceResourceType.name]?.quantity ?? 0;
         const healthcareLeft = storage.currentInStorage[healthcareServiceResourceType.name]?.quantity ?? 0;
 

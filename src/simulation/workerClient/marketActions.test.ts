@@ -20,7 +20,7 @@ function makeState(): GameState {
         assets: {
             p: {
                 ...makeAgent('agent-1', 'p').assets.p,
-                storageFacility,
+                storage: storageFacility,
             },
         },
     });

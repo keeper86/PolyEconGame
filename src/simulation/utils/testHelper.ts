@@ -347,7 +347,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         deposits: 0,
         depositHold: 0,
         activeLoans: [],
-        storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
+        storage: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         wagePerEdu: {
             none: DEFAULT_WAGE_PER_EDU,
             primary: DEFAULT_WAGE_PER_EDU,

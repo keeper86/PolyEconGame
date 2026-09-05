@@ -207,7 +207,7 @@ export default function BuySection({
     const [buyPricingOpen, setBuyPricingOpen] = useBuyPricingOpenPreference();
     const [buyVolumeOpen, setBuyVolumeOpen] = useBuyVolumeOpenPreference();
 
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');

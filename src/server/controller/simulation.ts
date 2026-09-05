@@ -853,7 +853,7 @@ export const getAgentConditions = () =>
             const assets = agent?.assets?.[input.planetId];
             return {
                 hrProductivityMultiplier: assets?.hrProductivityMultiplier ?? 1,
-                storageStarvation: assets?.storageFacility ? getStorageStarvation(assets.storageFacility) : 1,
+                storageStarvation: assets?.storage ? getStorageStarvation(assets.storage) : 1,
             };
         });
 

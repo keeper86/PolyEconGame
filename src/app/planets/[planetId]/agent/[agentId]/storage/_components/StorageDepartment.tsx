@@ -321,7 +321,7 @@ export default function StorageDepartment({
     }, [pendingActions]);
 
     const template = useMemo(() => logisticsDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
-    const department = assets.storageFacility.department;
+    const department = assets.storage.department;
 
     const storageDemand = useMemo(() => computeStorageThroughputMass(assets), [assets]);
     const status = useMemo(

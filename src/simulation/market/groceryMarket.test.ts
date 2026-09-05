@@ -110,7 +110,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('collects per-agent ask orders from storage and sells food', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 500);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 500);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
@@ -122,7 +122,7 @@ describe('groceryMarketTick', () => {
 
         expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold).toBeDefined();
 
-        const remaining = groceryAgent.assets.p.storageFacility.currentInStorage[GROCERY_SERVICE]?.quantity ?? 0;
+        const remaining = groceryAgent.assets.p.storage.currentInStorage[GROCERY_SERVICE]?.quantity ?? 0;
         expect(remaining).toBeLessThan(500);
     });
 
@@ -132,7 +132,7 @@ describe('groceryMarketTick', () => {
         planet.bank.householdDeposits = totalPop * 100;
         planet.bank.deposits = totalPop * 100;
 
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 10000);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 10000);
         automaticPricing(agentMap(groceryAgent), planet);
 
         marketTick(agentMap(groceryAgent), planet);
@@ -145,7 +145,7 @@ describe('groceryMarketTick', () => {
         planet.bank.householdDeposits = pop * 1000;
         planet.bank.deposits = pop * 1000;
 
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 1e6);
         automaticPricing(agentMap(groceryAgent), planet);
 
         planet.population.demography.forEach((cohort) =>
@@ -183,7 +183,7 @@ describe('groceryMarketTick', () => {
         planet.bank.deposits = planet.bank.householdDeposits;
 
         const supplyQty = groceryDef.bufferTargetTicks * richCat.total * 0.5;
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, supplyQty);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, supplyQty);
         setGroceryOffer(groceryAgent, 0.5);
 
         const poorFoodBefore = poorCat.services.grocery.buffer;
@@ -202,8 +202,8 @@ describe('groceryMarketTick', () => {
         const cheapAgent = makeAgentWithGroceryServiceFacility('cheap');
         const expensiveAgent = makeAgentWithGroceryServiceFacility('expensive');
 
-        putIntoStorageFacility(cheapAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
-        putIntoStorageFacility(expensiveAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
+        putIntoStorageFacility(cheapAgent.assets.p.storage, groceryServiceResourceType, 100);
+        putIntoStorageFacility(expensiveAgent.assets.p.storage, groceryServiceResourceType, 100);
 
         setGroceryOffer(cheapAgent, 1.0);
         setGroceryOffer(expensiveAgent, 5.0);
@@ -222,7 +222,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('bid below ask price → no trade occurs', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 500);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 500);
         setGroceryOffer(groceryAgent, 1_000_000);
 
         const totalPop = giveHouseholdsWealth(planet, 0.001);
@@ -239,7 +239,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('revenue flows directly to selling agents', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 1000);
 
         groceryAgent.assets[planet.id].deposits = 0;
         automaticPricing(agentMap(groceryAgent), planet);
@@ -254,7 +254,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('monetary conservation: householdDeposits decrease equals agent deposit increase', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 1.0);
         groceryAgent.assets.p.deposits = 0;
 
@@ -287,7 +287,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('market price is updated to the marginal trade price', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1000);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 1000);
         setGroceryOffer(groceryAgent, 2.5);
 
         planet.marketPrices[GROCERY_SERVICE] = 5.0;
@@ -302,7 +302,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('persists lastMarketResult snapshot on planet', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 500);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 500);
         setGroceryOffer(groceryAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 50);
@@ -326,7 +326,7 @@ describe('groceryMarketTick', () => {
 
     it('lastMarketResult.unfilledDemand is positive when supply is scarce', () => {
         const tinySupply = 0.001;
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, tinySupply);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, tinySupply);
         setGroceryOffer(groceryAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 100);
@@ -339,7 +339,7 @@ describe('groceryMarketTick', () => {
     });
 
     it('lastMarketResult.unsoldSupply is positive when demand is insufficient', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 1e6);
         setGroceryOffer(groceryAgent, 1.0);
 
         const totalPop = giveHouseholdsWealth(planet, 0.00001);
@@ -364,7 +364,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('bootstraps offer price from seeded marketPrices on first tick', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 100);
 
         automaticPricing(agentMap(groceryAgent), planet);
 
@@ -374,7 +374,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('lowers price when excess supply (produced > sold)', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 100);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 100);
         setGroceryOffer(groceryAgent, 2.0, 20);
 
         automaticPricing(agentMap(groceryAgent), planet);
@@ -383,7 +383,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('raises price when excess demand (produced < sold)', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 0);
         setGroceryOffer(groceryAgent, 1.0, 50);
 
         automaticPricing(agentMap(groceryAgent), planet);
@@ -392,7 +392,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('does not set price below GROCERY_PRICE_FLOOR', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 10000);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 10000);
         setGroceryOffer(groceryAgent, 0.02, 0);
 
         automaticPricing(agentMap(groceryAgent), planet);
@@ -401,7 +401,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('does not raise price when agent has nothing to offer and last sold is from a prior tick', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 0);
 
         setGroceryOffer(groceryAgent, 0.73, 1550);
 
@@ -413,7 +413,7 @@ describe('updateAgentPricing', () => {
     });
 
     it('does not change price when agent has no stock and sold nothing (intermittent production)', () => {
-        putIntoStorageFacility(groceryAgent.assets.p.storageFacility, groceryServiceResourceType, 0);
+        putIntoStorageFacility(groceryAgent.assets.p.storage, groceryServiceResourceType, 0);
         setGroceryOffer(groceryAgent, 2.0, 0);
 
         automaticPricing(agentMap(groceryAgent), planet);
@@ -428,7 +428,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
 
     function makeRetailServiceAgent(id = 'retail-agent'): Agent {
         const agent = makeAgent(id);
-        putIntoStorageFacility(agent.assets.p.storageFacility, retailServiceResourceType, 1e6);
+        putIntoStorageFacility(agent.assets.p.storage, retailServiceResourceType, 1e6);
         agent.assets.p.market = {
             sell: {
                 [RETAIL_SERVICE]: {
@@ -444,7 +444,7 @@ describe('sequential settlement: food is settled before discretionary goods', ()
 
     function makeGroceryServiceAgent(id = 'grocery-agent', price = SERVICE_PRICE): Agent {
         const agent = makeAgent(id);
-        putIntoStorageFacility(agent.assets.p.storageFacility, groceryServiceResourceType, 1e6);
+        putIntoStorageFacility(agent.assets.p.storage, groceryServiceResourceType, 1e6);
         agent.assets.p.market = {
             sell: {
                 [GROCERY_SERVICE]: {

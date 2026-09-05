@@ -24,7 +24,7 @@ export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet)
 }
 
 export function wasteSurplusOutputs(assets: AgentPlanetAssets): void {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     for (const facility of assets.productionFacilities) {
         const wasteTicks = facility.wasteSurplusTicks ?? 0;
         if (wasteTicks <= 0) {
@@ -48,7 +48,7 @@ export function wasteSurplusOutputs(assets: AgentPlanetAssets): void {
 }
 
 function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): void {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const dept = storage.department;
     if (!dept) {
         return;
@@ -106,7 +106,7 @@ function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
     if (assets.humanResourcesDepartment) {
         total += assets.humanResourcesDepartment.lastTickResults?.lastProduced?.[name] ?? 0;
     }
-    const dept = assets.storageFacility.department;
+    const dept = assets.storage.department;
     if (dept) {
         total += dept.lastTickResults?.lastProduced?.[name] ?? 0;
     }

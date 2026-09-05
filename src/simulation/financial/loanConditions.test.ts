@@ -26,7 +26,7 @@ function makeEstablishedAgent(
 ): Agent {
     const a = makeAgent('a1', planet.id, 'Player', { automated: false, starterLoanTaken: true });
     const assets = a.assets[planet.id]!;
-    assets.storageFacility.department = null;
+    assets.storage.department = null;
     if (overrides?.existingLoans && overrides.existingLoans > 0) {
         assets.activeLoans = [makeLoan('discretionary', overrides.existingLoans, 0.05, 0, 360, true)];
     }
@@ -48,7 +48,7 @@ describe('computeLoanConditions', () => {
     it('grants STARTER_LOAN_AMOUNT to a brand-new agent (starterLoanTaken=false)', () => {
         const planet = makePlanet();
         const agent = makeAgent('a1', planet.id, 'Player', { automated: false });
-        agent.assets[planet.id]!.storageFacility.department = null;
+        agent.assets[planet.id]!.storage.department = null;
         const result = computeLoanConditions(agent, planet);
         expect(result.isNewAgent).toBe(true);
         expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT);
@@ -107,10 +107,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
-        agent.assets[planet.id]!.storageFacility = makeStorageFacility({
+        agent.assets[planet.id]!.storage = makeStorageFacility({
             currentInStorage: { wheat: { resource, quantity: 100 } },
         });
-        agent.assets[planet.id]!.storageFacility.department = null;
+        agent.assets[planet.id]!.storage.department = null;
 
         const result = computeLoanConditions(agent, planet);
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
@@ -129,10 +129,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
-        agent.assets[planet.id]!.storageFacility = makeStorageFacility({
+        agent.assets[planet.id]!.storage = makeStorageFacility({
             currentInStorage: { iron: { resource, quantity: 50 } },
         });
-        agent.assets[planet.id]!.storageFacility.department = null;
+        agent.assets[planet.id]!.storage.department = null;
 
         const withoutStorage = computeLoanConditions(makeEstablishedAgent(planet, { lastMonthRevenue: 1000 }), planet);
         const withStorage = computeLoanConditions(agent, planet);
@@ -153,10 +153,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
-        agent.assets[planet.id]!.storageFacility = makeStorageFacility({
+        agent.assets[planet.id]!.storage = makeStorageFacility({
             currentInStorage: { iron: { resource, quantity: 0 } },
         });
-        agent.assets[planet.id]!.storageFacility.department = null;
+        agent.assets[planet.id]!.storage.department = null;
 
         const result = computeLoanConditions(agent, planet);
         expect(result.storageCollateral).toBe(0);

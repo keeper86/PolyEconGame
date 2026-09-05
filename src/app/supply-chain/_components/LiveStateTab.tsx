@@ -163,7 +163,7 @@ function aggregateFacilities(agents: Agent[], filterPlanetId?: string): Facility
                 processFacility(hr);
             }
 
-            const sto = planetAssets.storageFacility?.department;
+            const sto = planetAssets.storage?.department;
             if (sto) {
                 processFacility(sto);
             }

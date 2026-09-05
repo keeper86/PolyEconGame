@@ -62,7 +62,7 @@ function aggregateSoldPerTick(assets: AgentPlanetAssets): Record<string, number>
 }
 
 function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCardEntry[] {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const prodPerTick = aggregateProduction(assets);
     const consPerTick = aggregateConsumption(assets);
     const boughtPerTick = aggregateBoughtPerTick(assets);
@@ -203,7 +203,7 @@ type Props = {
 
 // TODO: consolidate and unify storage related functions. Use same logic anywhere.
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const usedVol = storage.current.volume;
     const scale = storage.department?.maxScale ?? 0;
     const capVol = storage.capacity.volume * scale;

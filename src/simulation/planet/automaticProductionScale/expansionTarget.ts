@@ -109,7 +109,7 @@ export function computeDynamicExpansionTarget(
     let maxDemandScale = facility.maxScale;
 
     for (const output of facility.produces) {
-        const inventory = assets.storageFacility?.currentInStorage[output.resource.name]?.quantity ?? 0;
+        const inventory = assets.storage?.currentInStorage[output.resource.name]?.quantity ?? 0;
         const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
         const target = targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
         const deficit = Math.max(0, target - inventory);

@@ -325,7 +325,7 @@ export type AgentPlanetAssets = {
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
 
-    storageFacility: Storage;
+    storage: Storage;
 
     humanResourcesDepartment: HRFacility | null;
     hrProductivityMultiplier: number;
@@ -384,8 +384,8 @@ export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean 
     if (onlyActive) {
         return [
             ...assets.productionFacilities.filter(isFacilityOperating),
-            ...(assets.storageFacility.department && isFacilityOperating(assets.storageFacility.department)
-                ? [assets.storageFacility.department]
+            ...(assets.storage.department && isFacilityOperating(assets.storage.department)
+                ? [assets.storage.department]
                 : []),
             ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
                 ? [assets.humanResourcesDepartment]
@@ -395,7 +395,7 @@ export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean 
     }
     return [
         ...assets.productionFacilities,
-        ...((assets.storageFacility.department && [assets.storageFacility.department]) ?? []),
+        ...((assets.storage.department && [assets.storage.department]) ?? []),
         ...assets.shipConstructionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
     ];

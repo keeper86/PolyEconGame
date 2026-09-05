@@ -95,8 +95,8 @@ export function validateBuyBid(
         return { isValid: false, error: 'Quantity must be non-negative' };
     }
 
-    const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, resource);
-    const currentInventory = queryStorageFacility(assets.storageFacility, resource.name);
+    const availableStorageCapacity = getAvailableStorageCapacity(assets.storage, resource);
+    const currentInventory = queryStorageFacility(assets.storage, resource.name);
     const quantity = bidStorageTarget !== undefined ? Math.max(0, bidStorageTarget - currentInventory) : 0;
 
     const fieldResult = validateBidFields(bidPrice, quantity, availableStorageCapacity);
@@ -169,7 +169,7 @@ export function validateAndPrepareBuyBid(
     const effectiveQuantity =
         bid.bidStorageTarget !== undefined ? Math.max(0, bid.bidStorageTarget - currentInventory) : 0;
 
-    const availableStorageCapacity = getAvailableStorageCapacity(assets.storageFacility, bid.resource);
+    const availableStorageCapacity = getAvailableStorageCapacity(assets.storage, bid.resource);
     const cappedQuantity = Math.min(effectiveQuantity, availableStorageCapacity);
 
     const validation = validateBidFields(bid.bidPrice, cappedQuantity, availableStorageCapacity);

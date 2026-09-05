@@ -86,7 +86,7 @@ function makeSetup(
         assets: {
             [planet.id]: makeAgentPlanetAssets(planet.id, {
                 productionFacilities: [facility],
-                storageFacility: makeStorageFacility({
+                storage: makeStorageFacility({
                     currentInStorage: {
                         [RESOURCE_NAME]: {
                             resource: RESOURCE,
@@ -133,7 +133,7 @@ function makeGameState(agents: Map<string, Agent>): GameState {
 function setStorageQuantity(agents: Map<string, Agent>, quantity: number): void {
     const agent = agents.values().next().value as Agent;
     const assets = agent.assets[Object.keys(agent.assets)[0]];
-    assets.storageFacility.currentInStorage[RESOURCE_NAME] = { resource: RESOURCE, quantity };
+    assets.storage.currentInStorage[RESOURCE_NAME] = { resource: RESOURCE, quantity };
 }
 /** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
  * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */
@@ -1066,7 +1066,7 @@ describe('updateAgentProductionScale', () => {
             },
         });
         const agent = agents.values().next().value as Agent;
-        agent.assets[planet.id].storageFacility.department!.storageStarvation = 0.5;
+        agent.assets[planet.id].storage.department!.storageStarvation = 0.5;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
@@ -2071,7 +2071,7 @@ describe('computeStorageExpansionTarget', () => {
 
         const planet = makePlanet();
         const assets = makeAgentPlanetAssets('p', {
-            storageFacility: storage,
+            storage: storage,
             deposits: 1_000_000,
         });
         assets.lastMonthAcc.revenue = 100_000;

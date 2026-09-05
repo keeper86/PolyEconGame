@@ -303,7 +303,7 @@ export default function MarketPanel({
             case 'currentStorage':
                 return resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
                     ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
-                    : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
+                    : (assets.storage.currentInStorage[resourceName]?.quantity ?? 0);
             case 'clearingPrice':
                 return overviewRows[resourceName]?.clearingPrice ?? 0;
             case 'totalProduction':

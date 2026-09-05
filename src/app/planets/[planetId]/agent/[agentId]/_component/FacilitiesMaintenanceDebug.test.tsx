@@ -10,7 +10,7 @@ describe('FacilitiesMaintenanceDebug', () => {
         facility.maxMaintenance = 1;
 
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
-        assets.storageFacility.department = null;
+        assets.storage.department = null;
 
         render(<FacilitiesMaintenanceDebug assets={assets} />);
 
@@ -26,7 +26,7 @@ describe('FacilitiesMaintenanceDebug', () => {
         facility.lastTickMaintenanceConsumption = 0;
 
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
-        assets.storageFacility.department = null;
+        assets.storage.department = null;
 
         render(<FacilitiesMaintenanceDebug assets={assets} />);
 
@@ -45,7 +45,7 @@ describe('FacilitiesMaintenanceDebug', () => {
         };
 
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
-        assets.storageFacility.department = null;
+        assets.storage.department = null;
 
         render(<FacilitiesMaintenanceDebug assets={assets} />);
 
