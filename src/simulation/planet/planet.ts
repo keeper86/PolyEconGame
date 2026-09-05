@@ -396,7 +396,7 @@ export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean 
     return [
         ...assets.productionFacilities,
         ...((assets.storageFacility.department && [assets.storageFacility.department]) ?? []),
-        ...assets.shipConstructionFacilities, 
+        ...assets.shipConstructionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
     ];
 };

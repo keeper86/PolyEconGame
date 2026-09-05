@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INPUT_BUFFER_TARGET_TICKS, TARGET_FILL_RATE, TARGET_SELL_THROUGH } from '../constants';
+import { DEFAULT_COST_SPRING_STRENGTH, INPUT_BUFFER_TARGET_TICKS, TARGET_FILL_RATE, TARGET_SELL_THROUGH } from '../constants';
 import type { Resource } from '../planet/claims';
 import {
     buildBuyAutoConfigForResource,
@@ -93,8 +93,8 @@ describe('generateAgentPersonality', () => {
         expect(personality.sellAutoConfig.costSpringStrength).toBe(0.45);
 
         const personalityDefault = generateAgentPersonality();
-        expect(personalityDefault.buyAutoConfig.costSpringStrength).toBe(0.35);
-        expect(personalityDefault.sellAutoConfig.costSpringStrength).toBe(0.35);
+        expect(personalityDefault.buyAutoConfig.costSpringStrength).toBe(DEFAULT_COST_SPRING_STRENGTH);
+        expect(personalityDefault.sellAutoConfig.costSpringStrength).toBe(DEFAULT_COST_SPRING_STRENGTH);
     });
 });
 
