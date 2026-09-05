@@ -76,13 +76,13 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     wagePidState: nullWagePidState(),
 });
 
-export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
+export const LOGISTICS_DEPARTMENT_NAME = 'Logistics Department';
 export const PRODUCED_STORAGE_QUANTITY = 10000;
-export const storageDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
+export const logisticsDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
-    name: STORAGE_DEPARTMENT_NAME,
+    name: LOGISTICS_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 25,

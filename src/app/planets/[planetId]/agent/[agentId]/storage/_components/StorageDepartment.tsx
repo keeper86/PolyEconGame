@@ -24,7 +24,7 @@ import { computeStorageThroughputMass, getFacilityType } from '@/simulation/plan
 import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { PRODUCED_STORAGE_QUANTITY, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_STORAGE_QUANTITY, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -320,7 +320,7 @@ export default function StorageDepartment({
         return keys;
     }, [pendingActions]);
 
-    const template = useMemo(() => storageDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
+    const template = useMemo(() => logisticsDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
     const department = assets.storageFacility.department;
 
     const storageDemand = useMemo(() => computeStorageThroughputMass(assets), [assets]);

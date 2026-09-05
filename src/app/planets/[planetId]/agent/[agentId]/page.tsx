@@ -125,7 +125,7 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
             <Separator />
 
             <div>
-                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Storage Department</h3>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Logistics Department</h3>
                 {!stoDept ? (
                     <p className='italic text-muted-foreground'>Not built</p>
                 ) : (

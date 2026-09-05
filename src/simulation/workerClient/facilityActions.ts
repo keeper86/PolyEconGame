@@ -7,8 +7,8 @@ import {
     HR_DEPARTMENT_NAME,
     humanResourcesOfficeFacilityType,
     shipConstructionFacilityType,
-    STORAGE_DEPARTMENT_NAME,
-    storageDepartmentFacilityType,
+    LOGISTICS_DEPARTMENT_NAME,
+    logisticsDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import type { OutboundMessage, PendingAction } from './messages';
@@ -41,7 +41,7 @@ export function handleBuildFacility(
     }
     const catalogEntry = facilityByName.get(facilityKey);
     const isHrDepartment = facilityKey === HR_DEPARTMENT_NAME;
-    const isStorageDepartment = facilityKey === STORAGE_DEPARTMENT_NAME;
+    const isStorageDepartment = facilityKey === LOGISTICS_DEPARTMENT_NAME;
     if (!isHrDepartment && !isStorageDepartment && !catalogEntry) {
         safePostMessage({
             type: 'facilityBuildFailed',
@@ -55,7 +55,7 @@ export function handleBuildFacility(
     const newFacility = isHrDepartment
         ? humanResourcesOfficeFacilityType(planetId, facilityId)
         : isStorageDepartment
-          ? storageDepartmentFacilityType(planetId, facilityId)
+          ? logisticsDepartmentFacilityType(planetId, facilityId)
           : catalogEntry!.factory(planetId, facilityId);
     const alreadyExists = isHrDepartment
         ? assets.humanResourcesDepartment !== null

@@ -19,7 +19,7 @@ import {
 import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
-    storageDepartmentFacilityType,
+    logisticsDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import {
     MAX_AGE,
@@ -37,7 +37,7 @@ export function makeStorage(opts: {
     massCapacity?: number;
 }): StorageFacility {
     const scale = opts.scale ?? 1;
-    const department = storageDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
+    const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
     return {

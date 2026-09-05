@@ -1,5 +1,5 @@
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import { humanResourcesOfficeFacilityType, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { computePopulationServiceDemand } from './populationDemandHelper';
 
 const TOOL_PLANET = 'tool';
@@ -116,7 +116,7 @@ export function computeSupplyChainBalance(scales: Record<string, number>, popula
 
     const specialFacilities = [
         humanResourcesOfficeFacilityType(TOOL_PLANET, `${TOOL_ID}-hr`),
-        storageDepartmentFacilityType(TOOL_PLANET, `${TOOL_ID}-sto`),
+        logisticsDepartmentFacilityType(TOOL_PLANET, `${TOOL_ID}-sto`),
     ];
 
     for (const sf of specialFacilities) {

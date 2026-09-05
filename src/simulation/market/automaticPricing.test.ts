@@ -40,7 +40,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
 } from '../planet/services';
-import { storageDepartmentFacilityType } from '../planet/specialFacilities';
+import { logisticsDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -1284,7 +1284,7 @@ describe('automaticPricing — storage department generates buy bids', () => {
     it('generates buy bids for logistics and administration when storage department exists', () => {
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = storageDepartmentFacilityType(PLANET_ID, 'storage-dept');
+        agent.assets[PLANET_ID].storageFacility.department = logisticsDepartmentFacilityType(PLANET_ID, 'storage-dept');
         agent.assets[PLANET_ID].storageFacility.department.scale = 1;
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.automated = true;

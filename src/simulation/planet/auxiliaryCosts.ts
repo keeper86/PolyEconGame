@@ -21,14 +21,14 @@ import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
     humanResourcesOfficeFacilityType,
-    storageDepartmentFacilityType,
+    logisticsDepartmentFacilityType,
 } from './specialFacilities';
 
 const CATALOG_PLANET = 'catalog';
 const CATALOG_ID = 'preview';
 
 const hrTemplate = humanResourcesOfficeFacilityType(CATALOG_PLANET, CATALOG_ID);
-const storageTemplate = storageDepartmentFacilityType(CATALOG_PLANET, CATALOG_ID);
+const storageTemplate = logisticsDepartmentFacilityType(CATALOG_PLANET, CATALOG_ID);
 
 const facilityWorkerCount = (facility: ManagementFacility | ProductionFacility): number =>
     (facility.workerRequirement.none ?? 0) +

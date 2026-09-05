@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { makeGameState, makeGovernmentAgent, makePlanet } from '../utils/testHelper';
-import { STORAGE_DEPARTMENT_NAME } from '../planet/specialFacilities';
+import { LOGISTICS_DEPARTMENT_NAME } from '../planet/specialFacilities';
 import { handleCreateAgent, handleAcknowledgeBankruptcy } from './agentActions';
 import type { OutboundMessage } from './messages';
 
@@ -11,7 +11,7 @@ function makeMessages() {
 }
 
 describe('handleCreateAgent', () => {
-    it('creates an agent with correct Storage Department name', () => {
+    it('creates an agent with correct Logistics Department name', () => {
         const gov = makeGovernmentAgent('gov-1', 'p');
         const planet = makePlanet({ governmentId: gov.id });
         const state = makeGameState([planet], [gov]);
@@ -45,7 +45,7 @@ describe('handleCreateAgent', () => {
         expect(assets.storageFacility).toBeDefined();
         expect(assets.storageFacility.department).toBeDefined();
 
-        expect(assets.storageFacility.department!.name).toBe(STORAGE_DEPARTMENT_NAME);
+        expect(assets.storageFacility.department!.name).toBe(LOGISTICS_DEPARTMENT_NAME);
         expect(assets.storageFacility.department!.name).not.toBe('Test Management');
 
         expect(assets.licenses).toEqual({
