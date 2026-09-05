@@ -24,13 +24,7 @@ import {
     jointOutputCostShares,
     type AuxiliaryCostRates,
 } from './auxiliaryCosts';
-import type {
-    Facility,
-    ManagementFacility,
-    ProductionFacility,
-    ShipConstructionFacility,
-    StorageFacility,
-} from './facility';
+import type { Facility, ManagementFacility, ProductionFacility, ShipConstructionFacility, Storage } from './facility';
 import {
     computeFacilityConditionEfficiency,
     createLastTickResults,
@@ -75,7 +69,7 @@ type ConstructionTracking = { planet: Planet; monthAcc: MonthAccumulator; gameSt
 
 export function consumeConstructionForFacility(
     facility: Facility,
-    storage: StorageFacility | null,
+    storage: Storage | null,
     tracking: ConstructionTracking,
 ): number {
     if (!facility.construction || !storage) {
@@ -287,7 +281,7 @@ function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<
 function computeResourceEfficiencyMap(
     ef: EnrichedFacility,
     totalStorageDemand: Map<string, number>,
-    storage: StorageFacility,
+    storage: Storage,
     planet: Planet,
     agent: Agent,
 ): Record<string, number> {
@@ -356,7 +350,7 @@ export function computeStorageSpaceFactor(
 }
 
 type IntermediateResults = {
-    storage: StorageFacility;
+    storage: Storage;
     overallEfficiency: number;
     storageSpaceFactor: number;
     workerResults: WaterFillFacilityResult;

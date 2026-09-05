@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { makeAgent, makeManagementFacility, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import type { Resource } from './claims';
-import type { StorageDepartment, StorageFacility } from './facility';
+import type { StorageDepartment, Storage } from './facility';
 import {
     getStorageStarvation,
     inflowPreservation,
@@ -24,7 +24,7 @@ function makeResource(name: string, massPerQty = 1, volumePerQty = 0): Resource 
 }
 
 function makeAssetsWithStorage(overrides?: {
-    storageOverrides?: Partial<StorageFacility>;
+    storageOverrides?: Partial<Storage>;
     hasCommercialLicense?: boolean;
 }): AgentPlanetAssets {
     const storage = makeStorageFacility({

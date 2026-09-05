@@ -5,13 +5,14 @@ import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createLastTickResults,
+    makeStorageShell,
     nullWagePidState,
     type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
     type ShipConstructionFacility,
     type StorageDepartment,
-    type StorageFacility,
+    type Storage,
 } from '../planet/facility';
 import {
     createEmptyAccumulator,
@@ -176,21 +177,38 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
     };
 }
 
-export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
-    return {
+export function makeStorageFacility(overrides?: Partial<Storage>): Storage {
+    const base: Storage = {
         planetId: 'p',
         id: 'storage-p',
         capacity: { volume: 1e13, mass: 1e13 },
         current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
+        shells: {
+            solid: makeStorageShell('p', 'storage-p-silo', 'solid'),
+            liquid: makeStorageShell('p', 'storage-p-tank', 'liquid'),
+            pieces: makeStorageShell('p', 'storage-p-warehouse', 'pieces'),
+        },
         department: {
             ...makeManagementFacility(),
             storageBuffer: 0,
             storageStarvation: 0,
         } as StorageDepartment,
         ...overrides,
-    } as StorageFacility;
+    };
+    const planetId = base.planetId;
+    const id = base.id;
+    if (!overrides?.shells) {
+        const capacity = base.capacity.volume > 0 || base.capacity.mass > 0 ? base.capacity : undefined;
+        const scale = base.department?.maxScale && base.department.maxScale > 0 ? base.department.maxScale : 1;
+        base.shells = {
+            solid: makeStorageShell(planetId, `${id}-silo`, 'solid', capacity, scale),
+            liquid: makeStorageShell(planetId, `${id}-tank`, 'liquid', capacity, scale),
+            pieces: makeStorageShell(planetId, `${id}-warehouse`, 'pieces', capacity, scale),
+        };
+    }
+    return base;
 }
 
 export function makeManagementFacility(

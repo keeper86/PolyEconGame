@@ -19,7 +19,7 @@ import {
     TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
-import type { StorageFacility } from '../planet/facility';
+import type { Storage } from '../planet/facility';
 import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
@@ -50,7 +50,7 @@ function makePlanetWithPrice(prices: Record<string, number> = {}) {
 }
 
 function makeStorageWith(
-    contents: Record<string, { resource: StorageFacility['currentInStorage'][string]['resource']; quantity: number }>,
+    contents: Record<string, { resource: Storage['currentInStorage'][string]['resource']; quantity: number }>,
 ) {
     return makeStorageFacility({ planetId: PLANET_ID, currentInStorage: contents });
 }

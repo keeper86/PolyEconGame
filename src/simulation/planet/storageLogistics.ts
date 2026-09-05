@@ -5,7 +5,7 @@ import {
     SS_RELAXATION_RATE,
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
-import type { StorageFacility } from './facility';
+import type { Storage } from './facility';
 import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
@@ -90,7 +90,7 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     applyStorageDegradation(storage, planet, assets);
 }
 
-function pullStorageServiceFromStorage(storage: StorageFacility): number {
+function pullStorageServiceFromStorage(storage: Storage): number {
     const available = queryStorageFacility(storage, storageServiceResourceType.name);
     if (available <= 0) {
         return 0;
@@ -113,7 +113,7 @@ function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {
     return total;
 }
 
-function applyStorageDegradation(storage: StorageFacility, planet: Planet, assets: AgentPlanetAssets): void {
+function applyStorageDegradation(storage: Storage, planet: Planet, assets: AgentPlanetAssets): void {
     assets.lastDepreciatedPerTick = {};
     const ss = storage.department?.storageStarvation ?? 1;
     const preservation = storagePreservationFactor(ss);

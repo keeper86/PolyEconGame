@@ -9,7 +9,7 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import type { HRFacility } from '../planet/facility';
-import { putIntoStorageFacility, type ProductionFacility, type StorageFacility } from '../planet/facility';
+import { makeStorageShell, putIntoStorageFacility, type ProductionFacility, type Storage } from '../planet/facility';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -35,28 +35,34 @@ export function makeStorage(opts: {
     scale?: number;
     volumeCapacity?: number;
     massCapacity?: number;
-}): StorageFacility {
+}): Storage {
     const scale = opts.scale ?? 1;
     const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
+    const capacity = {
+        volume: opts.volumeCapacity ?? 1e13,
+        mass: opts.massCapacity ?? 1e15,
+    };
     return {
         planetId: opts.planetId,
         id: opts.id,
-        capacity: {
-            volume: opts.volumeCapacity ?? 1e13,
-            mass: opts.massCapacity ?? 1e15,
-        },
+        capacity,
         current: { mass: 0, volume: 0 },
         currentInStorage: {},
         escrow: {},
+        shells: {
+            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', capacity, scale),
+            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', capacity, scale),
+            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', capacity, scale),
+        },
         department,
     };
 }
 
 export function makeAgentPlanetAssets(
     facilities: ProductionFacility[],
-    storage: StorageFacility,
+    storage: Storage,
     hrDepartment: HRFacility | null,
 ): AgentPlanetAssets {
     if (hrDepartment && hrDepartment.construction === null) {
@@ -114,7 +120,7 @@ export function makeAgent(opts: {
     associatedPlanetId: string;
     planetId: string;
     facilities: ProductionFacility[];
-    storage: StorageFacility;
+    storage: Storage;
     hrDepartment: HRFacility | null;
     logo?: string;
 }): Agent {

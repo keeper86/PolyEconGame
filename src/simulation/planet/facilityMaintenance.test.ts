@@ -22,7 +22,7 @@ import {
     getFacilityType,
     queryStorageFacility,
     type ProductionFacility,
-    type StorageFacility,
+    type Storage,
 } from './facility';
 import {
     computeOtherConstructionCosts,
@@ -46,7 +46,7 @@ interface Setup {
     planet: Planet;
     agent: Agent;
     facility: ProductionFacility;
-    storage: StorageFacility;
+    storage: Storage;
 }
 
 function setup(overrides?: Partial<ProductionFacility>): Setup {
@@ -61,7 +61,7 @@ function setup(overrides?: Partial<ProductionFacility>): Setup {
     return { gameState, planet, agent, facility, storage: assets.storageFacility };
 }
 
-function seedService(storage: StorageFacility, resource: Resource, quantity: number): void {
+function seedService(storage: Storage, resource: Resource, quantity: number): void {
     storage.currentInStorage[resource.name] = { resource, quantity };
 }
 

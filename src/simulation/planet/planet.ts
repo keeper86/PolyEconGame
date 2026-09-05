@@ -17,7 +17,7 @@ import {
     type HRFacility,
     type ProductionFacility,
     type ShipConstructionFacility,
-    type StorageFacility,
+    type Storage,
 } from './facility';
 
 export interface Bank {
@@ -325,7 +325,7 @@ export type AgentPlanetAssets = {
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
 
-    storageFacility: StorageFacility;
+    storageFacility: Storage;
 
     humanResourcesDepartment: HRFacility | null;
     hrProductivityMultiplier: number;

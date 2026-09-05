@@ -150,7 +150,7 @@ export type ProductionFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
-export type StorageFacility = PlanetaryId & {
+export type Storage = PlanetaryId & {
     capacity: {
         volume: number;
         mass: number;
@@ -165,10 +165,70 @@ export type StorageFacility = PlanetaryId & {
 
     escrow: { [resourceName in string]: number };
 
+    shells: {
+        solid: StorageShell;
+        liquid: StorageShell;
+        pieces: StorageShell;
+    };
+
     department: StorageDepartment | null;
 };
 
-export const getStorageScaleBasis = (storage: StorageFacility): number => storage.department?.maxScale ?? 0;
+export const getStorageScaleBasis = (storage: Storage): number => storage.department?.maxScale ?? 0;
+
+export type StorageForm = 'solid' | 'liquid' | 'pieces';
+
+export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
+    solid: 'Silo',
+    liquid: 'Tank',
+    pieces: 'Warehouse',
+};
+
+export type StorageShell = PlanetaryId & {
+    type: 'storage_shell';
+    form: StorageForm;
+    name: string;
+    maxScale: number;
+    scale: number;
+    capacity: {
+        volume: number;
+        mass: number;
+    };
+    current: {
+        volume: number;
+        mass: number;
+    };
+};
+
+export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageForm | null => {
+    if (resource.form === 'solid' || resource.form === 'liquid' || resource.form === 'pieces') {
+        return resource.form;
+    }
+    return null;
+};
+
+// services, currency, internal and landBoundResource are not stored in a physical shell; they have
+// ~zero volume/mass. Solid/liquid/pieces route to the matching shell.
+export const makeStorageShell = (
+    planetId: string,
+    id: string,
+    form: StorageForm,
+    capacity?: { volume: number; mass: number },
+    scale = 1,
+): StorageShell => {
+    const cap = capacity ?? { volume: 1e13, mass: 1e13 };
+    return {
+        planetId,
+        id,
+        type: 'storage_shell',
+        form,
+        name: STORAGE_SHELL_FORM_NAMES[form],
+        maxScale: scale,
+        scale,
+        capacity: { ...cap },
+        current: { volume: 0, mass: 0 },
+    };
+};
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
@@ -213,7 +273,7 @@ export type TrainingsDepartment = ManagementFacility & {
     trainingsBuffer: number;
 };
 
-export function getStorageStarvation(storage: StorageFacility): number {
+export function getStorageStarvation(storage: Storage): number {
     return storage.department?.storageStarvation ?? 1.0;
 }
 
@@ -249,11 +309,7 @@ export const createLastTickResults = (): LastTickResults => ({
     lastConsumed: {},
 });
 
-export const putIntoStorageFacility = (
-    storage: StorageFacility,
-    resource: Resource,
-    additionalQuantity: number,
-): number => {
+export const putIntoStorageFacility = (storage: Storage, resource: Resource, additionalQuantity: number): number => {
     const ss = getStorageStarvation(storage);
     const effectiveQuantity = additionalQuantity * inflowPreservation(ss);
 
@@ -261,28 +317,26 @@ export const putIntoStorageFacility = (
 
     const scale = getStorageScaleBasis(storage);
 
+    const aggregateFreeVolume = storage.capacity.volume * scale - storage.current.volume;
+    const aggregateFreeMass = storage.capacity.mass * scale - storage.current.mass;
+
+    const form = shellFormOfResource(resource);
+    const shell = form ? storage.shells[form] : null;
+
+    const shellFreeVolume = shell ? shell.capacity.volume * shell.scale - shell.current.volume : Infinity;
+    const shellFreeMass = shell ? shell.capacity.mass * shell.scale - shell.current.mass : Infinity;
+
+    const freeVolume = Math.min(aggregateFreeVolume, shellFreeVolume);
+    const freeMass = Math.min(aggregateFreeMass, shellFreeMass);
+
     const volumeRestriction =
         resource.volumePerQuantity > 0
-            ? Math.max(
-                  0,
-                  Math.min(
-                      1,
-                      (storage.capacity.volume * scale - storage.current.volume) /
-                          (effectiveQuantity * resource.volumePerQuantity),
-                  ),
-              )
+            ? Math.max(0, Math.min(1, freeVolume / (effectiveQuantity * resource.volumePerQuantity)))
             : 1;
 
     const massRestriction =
         resource.massPerQuantity > 0
-            ? Math.max(
-                  0,
-                  Math.min(
-                      1,
-                      (storage.capacity.mass * scale - storage.current.mass) /
-                          (effectiveQuantity * resource.massPerQuantity),
-                  ),
-              )
+            ? Math.max(0, Math.min(1, freeMass / (effectiveQuantity * resource.massPerQuantity)))
             : 1;
 
     const overallRestriction = Math.min(volumeRestriction, massRestriction);
@@ -295,6 +349,11 @@ export const putIntoStorageFacility = (
 
     storage.current.volume += stored * resource.volumePerQuantity;
     storage.current.mass += stored * resource.massPerQuantity;
+
+    if (shell) {
+        shell.current.volume += stored * resource.volumePerQuantity;
+        shell.current.mass += stored * resource.massPerQuantity;
+    }
 
     if (storage.department) {
         storage.department.storageBuffer -= stored * resource.massPerQuantity;
@@ -360,7 +419,7 @@ export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number 
     return throughput;
 };
 
-export const queryStorageFacility = (storage: StorageFacility | undefined, resourceName: string): number => {
+export const queryStorageFacility = (storage: Storage | undefined, resourceName: string): number => {
     if (!storage) {
         return 0;
     }
@@ -369,10 +428,20 @@ export const queryStorageFacility = (storage: StorageFacility | undefined, resou
     return Math.max(0, total - escrowed);
 };
 
-export const getAvailableStorageCapacity = (storage: StorageFacility, resource: Resource): number => {
+export const getAvailableStorageCapacity = (storage: Storage, resource: Resource): number => {
     const scale = getStorageScaleBasis(storage);
-    const freeVolume = storage.capacity.volume * scale - storage.current.volume;
-    const freeMass = storage.capacity.mass * scale - storage.current.mass;
+    const aggregateFreeVolume = storage.capacity.volume * scale - storage.current.volume;
+    const aggregateFreeMass = storage.capacity.mass * scale - storage.current.mass;
+
+    const form = shellFormOfResource(resource);
+    const shell = form ? storage.shells[form] : null;
+
+    const shellFreeVolume = shell ? shell.capacity.volume * shell.scale - shell.current.volume : Infinity;
+    const shellFreeMass = shell ? shell.capacity.mass * shell.scale - shell.current.mass : Infinity;
+
+    const freeVolume = Math.min(aggregateFreeVolume, shellFreeVolume);
+    const freeMass = Math.min(aggregateFreeMass, shellFreeMass);
+
     const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
     const byMass = resource.massPerQuantity > 0 ? freeMass / resource.massPerQuantity : Infinity;
     return Math.max(0, Math.min(byVolume, byMass));
@@ -380,7 +449,7 @@ export const getAvailableStorageCapacity = (storage: StorageFacility, resource: 
 
 // returns the quantity actually removed
 export const removeFromStorageFacility = (
-    storage: StorageFacility | undefined,
+    storage: Storage | undefined,
     resourceName: string,
     quantityToRemove: number,
 ): number => {
@@ -396,6 +465,16 @@ export const removeFromStorageFacility = (
     storage.current.volume -= quantityRemoved * currentEntry.resource.volumePerQuantity;
     storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
 
+    const form = shellFormOfResource(currentEntry.resource);
+    if (form) {
+        const shell = storage.shells[form];
+        shell.current.volume = Math.max(
+            0,
+            shell.current.volume - quantityRemoved * currentEntry.resource.volumePerQuantity,
+        );
+        shell.current.mass = Math.max(0, shell.current.mass - quantityRemoved * currentEntry.resource.massPerQuantity);
+    }
+
     if (storage.department) {
         storage.department.storageBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
     }
@@ -403,7 +482,7 @@ export const removeFromStorageFacility = (
     return quantityRemoved;
 };
 
-export const lockIntoEscrow = (storage: StorageFacility, resourceName: string, quantity: number): number => {
+export const lockIntoEscrow = (storage: Storage, resourceName: string, quantity: number): number => {
     const locked = Math.min(queryStorageFacility(storage, resourceName), quantity);
     if (locked <= 0) {
         return 0;
@@ -412,12 +491,12 @@ export const lockIntoEscrow = (storage: StorageFacility, resourceName: string, q
     return locked;
 };
 
-export const releaseFromEscrow = (storage: StorageFacility, resourceName: string, quantity: number): void => {
+export const releaseFromEscrow = (storage: Storage, resourceName: string, quantity: number): void => {
     const current = storage.escrow[resourceName] ?? 0;
     storage.escrow[resourceName] = Math.max(0, current - quantity);
 };
 
-export const transferFromEscrow = (storage: StorageFacility, resourceName: string, quantity: number): number => {
+export const transferFromEscrow = (storage: Storage, resourceName: string, quantity: number): number => {
     const escrowed = storage.escrow[resourceName] ?? 0;
     const transferred = Math.min(escrowed, quantity);
     if (transferred <= 0) {
