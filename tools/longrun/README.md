@@ -34,7 +34,7 @@ npx tsx tools/longrun/orchestrator.ts --years=30 --bands=strict
 | `--scenario=<name>` | `baseline` | Scenario to run, see list below. |
 | `--years=<n>` | scenario default | Number of simulated years (360 ticks per year). |
 | `--bands=report\|strict\|off` | `report` | Band check mode: `report` prints PASS/FAIL per band, `strict` additionally exits with code 1 on any failure, `off` skips band evaluation. |
-| `--out=<dir>` | scenario name | Output directory under `results/`. |
+| `--out=<dir>` | scenario name | Output directory under `results/`. **Must be empty/non-existent** for a fresh run — a fresh run into a dir that already contains results (e.g. reused name from a previous or still-running run) is refused, because run.ts would truncate `series.csv`/`scaleGaps.csv` and then mix rows from the two runs (unsorted ticks). Pick a fresh name, or pass `--resume` to continue the SAME run from its checkpoint. |
 | `--debug` | off | Enables `SIM_DEBUG=1` (assertions + verbose warnings). Slower; use for short runs. |
 | `--agentsPerProduct=<n>` | scenario | Overrides agent count per product. |
 | `--slack=<n>` | scenario | Overrides the LP-solver seed slack. |
@@ -53,7 +53,7 @@ npx tsx tools/longrun/orchestrator.ts --years=30 --bands=strict
 | `--resourceMultiplier=<n>` | scenario/world | Scales ALL resource pools (renewable + non-renewable) by `n`. Default is `100` (both the world builder and the `storage-controller` scenario); pass `<100` to stress finite-resource scarcity (e.g. `longrun-resources10` uses 10). |
 | `--oilReservoirMultiplier=<n>` | — | Scales the non-renewable oil reservoir *further*, on top of `--resourceMultiplier` (1.0 = the ×multiplier base of 1e9 units). |
 | `--checkpointEveryYears=<n>` | `50` | Saves a checkpoint (serialized game state + RNG state) every `n` years into `<out>/checkpoint.{json,bin}`. |
-| `--resume` | off | Resumes from the latest checkpoint in `<out>/` instead of building a fresh world. |
+| `--resume` | off | Resumes from the latest checkpoint in `<out>/` instead of building a fresh world. Errors if no checkpoint exists in `<out>/`. |
 
 | `--serviceSellThrough=<n>` | `0.70` | Sell-side target sell-through for *service* offers (e.g. 0.90). Higher → services cut offers harder when sell-through is below target. |
 | `--serviceFillRate=<n>` | `0.70` | Buy-side target fill-rate for *service* bids (e.g. 0.85). Higher → buyers bid harder to keep service buffers full. |
@@ -83,6 +83,23 @@ npx tsx tools/longrun/run.ts --scenario=longrun-resources10 --checkpointEveryYea
 # … kill / crash / reboot … resume exactly where it stopped:
 npx tsx tools/longrun/run.ts --scenario=longrun-resources10 --checkpointEveryYears=50 --bands=off --resume
 ```
+
+### Do not reuse an output dir for a different run
+
+`series.csv` / `scaleGaps.csv` are streamed with `fs.appendFileSync` as the run progresses. A fresh run
+strictly truncates them and starts at tick 0. If you launch a fresh (non-`--resume`) run into a dir that
+already has results — e.g. you reuse the same `--out=<name>` for a second experiment, or a relaunch of the
+*longer* version of a run you already started with fewer years and no checkpoint — the new process truncates
+the files while the earlier process (or the leftover rows) are still being appended, and you end up with a
+`series.csv` whose rows jump around (`.csv` has unsorted, interleaved ticks like `4740,4770,30,4800,...`).
+
+run.ts refuses this now: a fresh run into a non-empty result dir aborts with a clear error, and
+`--resume` with no checkpoint aborts too. Workflow:
+- **New experiment** → use a brand-new `--out=<name>`.
+- **Continue the same long run** after a crash/kill → replay the exact commandline with `--resume`
+  (it continues from `checkpoint.{json,bin}` and merges the already-streamed rows).
+- If you ended up with a polluted file (mixed ticks), treat that run's `series.csv` as unusable and
+  restart into a fresh `--out=`; the checkpoint contents are still authoritative.
 
 
 ## Scenarios

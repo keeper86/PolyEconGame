@@ -558,6 +558,20 @@ export const SCENARIOS: Scenario[] = [
             { metric: 'constructionServicePrice', horizonYears: 10, windowYears: 3, relativeToStart: true, max: 3 },
         ],
     },
+    {
+        name: 'competitive-6agent',
+        description:
+            "Robustness of the tuned default (random) personalities under real competition. 6 agents per product, RANDOM personalities (generateAgentPersonality - the 'more competitive' sell-pressure variant), storage-based controller, high resource multiplier, oil x500 to push the finite-resource clock off the horizon, seed 1001 for reproducibility. Tests whether diversity of aggressive/competitive random sellers is long-run stable vs a 1-agent-per-product fixed world. Target: hold stable long-term.",
+        seed: 1001,
+        years: 10000,
+        world: { agentsPerProduct: 6, resourceMultiplier: 100 },
+        bands: [
+            { metric: 'totalPopulation', horizonYears: 500, windowYears: 25, relativeToStart: true, min: 0.5, max: 8 },
+            { metric: 'avgGroceryStarvation', horizonYears: 500, windowYears: 25, max: 0.25 },
+            { metric: 'groceryFillRate', horizonYears: 500, windowYears: 25, min: 0.6 },
+            { metric: 'avgFacilityCondition', horizonYears: 500, windowYears: 25, min: 0.5 },
+        ],
+    },
 ];
 
 export function getScenario(name: string): Scenario | undefined {

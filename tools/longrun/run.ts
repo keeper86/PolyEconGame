@@ -406,7 +406,7 @@ async function main(): Promise<void> {
         scenario.world = { ...scenario.world, costSpringStrength: Number(costSpringArg) };
     }
     if (process.argv.includes('--fixedPersonalities')) {
-        scenario.world = { ...scenario.world, fixedPersonalities: true };
+        throw new Error('--fixedPersonalities was removed: generateFixedPersonality is gone; personalities are now always random.');
     }
     const refineryMinAskArg = arg('refineryMinAskMultiplier');
     if (refineryMinAskArg !== undefined) {
@@ -506,6 +506,26 @@ async function main(): Promise<void> {
     const resumeResourceMultiplier =
         arg('resumeResourceMultiplier') !== undefined ? Number(arg('resumeResourceMultiplier')) : undefined;
     const outDir = path.join(OUT_ROOT, arg('out') ?? scenario.name);
+
+    const RESULT_FILES = ['series.csv', 'scaleGaps.csv', 'checkpoint.json', 'checkpoint.bin', 'summary.json', 'seedGap.txt'];
+    const existingOut = fs.existsSync(outDir)
+        ? fs.readdirSync(outDir).filter((f) => RESULT_FILES.includes(f))
+        : [];
+    if (!resume && existingOut.length > 0) {
+        throw new Error(
+            `out dir '${outDir}' already contains results (${existingOut.join(', ')}). ` +
+                `A fresh run truncates series.csv/scaleGaps.csv and silently mixes rows with any previous ` +
+                `or still-running process on the same dir. Use a fresh --out=<name>, or re-run the same run ` +
+                `with --resume to continue from its checkpoint instead.`,
+        );
+    }
+    if (resume && !hasCheckpoint(outDir)) {
+        throw new Error(
+            `--resume was passed but no checkpoint exists in '${outDir}' ` +
+                `(need both checkpoint.json and checkpoint.bin). Start fresh without --resume into a clean ` +
+                `--out=<name> instead.`,
+        );
+    }
 
     console.log(`=== scenario: ${scenario.name} ===`);
     console.log(scenario.description);

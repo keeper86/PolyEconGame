@@ -13,7 +13,6 @@ import {
     buildBuyAutoConfigForResource,
     buildSellAutoConfigForResource,
     generateAgentPersonality,
-    generateFixedPersonality,
 } from '../../src/simulation/initialUniverse/personalities';
 import { getNamesFor } from '../../src/simulation/initialUniverse/preConfiguredCompanies';
 import { splitScale } from '../../src/simulation/initialUniverse/proceduralWorld';
@@ -69,7 +68,6 @@ export interface BenchmarkWorldConfig {
     loanRatePerYear?: number;
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
-    fixedPersonalities?: boolean;
     populationWealthTax?: boolean;
     refineryMinAskMultiplier?: number;
     refineryPriceAdjustMaxDown?: number;
@@ -268,9 +266,7 @@ export function buildBenchmarkWorld(
                 hrDepartment,
             });
 
-            const personality = config.fixedPersonalities
-                ? generateFixedPersonality(config.costSpringStrength)
-                : generateAgentPersonality(config.costSpringStrength);
+            const personality = generateAgentPersonality(config.costSpringStrength);
             const assets = agent.assets[BENCHMARK_PLANET_ID];
 
             assets.market.buy[constructionServiceResourceType.name] = {

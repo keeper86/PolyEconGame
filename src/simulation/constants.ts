@@ -115,7 +115,7 @@ export const VACANCY_WAGE_SMOOTHING = 0.1;
 
 export const WAGE_FEEDBACK_GAIN = 0.2;
 
-export const WAGE_SHARE = 0.6;
+export const WAGE_SHARE = 0.5;
 export const WAGE_BARGAINING_GAIN = 1.0;
 
 export const SPRING_K = 0.5;

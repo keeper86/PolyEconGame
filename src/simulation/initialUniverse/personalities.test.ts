@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { INPUT_BUFFER_TARGET_TICKS, TARGET_FILL_RATE, TARGET_SELL_THROUGH } from '../constants';
+import type { Resource } from '../planet/claims';
 import {
     buildBuyAutoConfigForResource,
     buildSellAutoConfigForResource,
     generateAgentPersonality,
-    generateFixedPersonality,
 } from './personalities';
-import { INPUT_BUFFER_TARGET_TICKS, TARGET_FILL_RATE, TARGET_SELL_THROUGH } from '../constants';
-import type { Resource } from '../planet/claims';
 
 describe('generateAgentPersonality', () => {
     it('returns configs with populated fields', () => {
@@ -96,26 +95,6 @@ describe('generateAgentPersonality', () => {
         const personalityDefault = generateAgentPersonality();
         expect(personalityDefault.buyAutoConfig.costSpringStrength).toBe(0.35);
         expect(personalityDefault.sellAutoConfig.costSpringStrength).toBe(0.35);
-    });
-});
-
-describe('generateFixedPersonality', () => {
-    it('is deterministic and returns a conservative profile', () => {
-        const p1 = generateFixedPersonality();
-        const p2 = generateFixedPersonality();
-        expect(p1).toEqual(p2);
-        expect(p1.buyAutoConfig.bidOfferMaxCostMultiplier).toBeGreaterThanOrEqual(4);
-        expect(p1.sellAutoConfig.automatedCostFloorBuffer).toBeGreaterThanOrEqual(1.5);
-        expect(p1.sellAutoConfig.priceAdjustMaxDown).toBeGreaterThan(0.94);
-        expect(p1.buyAutoConfig.priceAdjustMaxUp).toBeGreaterThanOrEqual(1.04);
-        expect(p1.buyAutoConfig.costSpringStrength).toBe(0.5);
-        expect(p1.sellAutoConfig.costSpringStrength).toBe(0.5);
-    });
-
-    it('honors the costSpringStrength parameter', () => {
-        const personality = generateFixedPersonality(0.45);
-        expect(personality.buyAutoConfig.costSpringStrength).toBe(0.45);
-        expect(personality.sellAutoConfig.costSpringStrength).toBe(0.45);
     });
 });
 

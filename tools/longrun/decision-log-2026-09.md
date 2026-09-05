@@ -103,3 +103,122 @@ does, and its current status (default vs opt-in) so we can decide what to promot
    funding pathology across multi-millennia before locking in.
 4. Finite-oil: keep default `resourceMultiplier = 100` (+ what default oilReservoirMultiplier?) so
    6000/20000y runs are not resource-clock ended.
+
+## Run verdict — robust-1agent (2026-09-05): still collapses at ~y285
+The fresh 8B single-agent world (all stacked defaults, insurance 0.5/5day, oil ×500, resource ×100,
+storage controller, flaring, asym damping, saturated pricing bypass) ran FULLY-HEALTHY y1→y283
+(pop 7.8B → **39.4B**, fill 1.0, starvation 0.0, food price ~3) — then collapsed in under a year:
+food price 3 → 10 → 157 → 1409 and grocery supply to 0 in ~12 months (pop extinct y285.75).
+- This was NOT the oil/exhaust clock of the earlier ~15-19B deaths (oil is ×500×100) — it reached
+  2× higher pop than any prior run first, so it is the true **systemic wholesale collapse** the
+  stacked tunables delayed but did not remove. Same ~y200-300 family as the historical failures.
+- Root cause not yet identified. 40 companies never dropped (no bankruptcy) yet the whole grocery+chain
+  stop supplying simultaneously (condition 0.62, avg starvation 0.94, fill 0.00) — smells like a
+  synchronized staffing/cash cliff around ~3-4e10 pop, distinct from the chronic sub-fed plateau
+  (fill ~0.7/mean-starve ~0.2) that svcopt/fixstack survived for 20k+ years at 100-150B.
+- Note: its `series.csv` got contaminated by reusing the out-dir (see README guard) — only ticks the
+  dying run itself wrote (>102000) were trusted for this read.
+
+## Open (carried on)
+- robust-1agent verdict above is unresolved; comp6 (6-agent competitive random personalities, 10k y)
+  launched 2026-09-05 is the live experiment to see whether competition changes this ~y285 wall.
+- Root-cause the y285 wholesale collapse (likely fastest via resuming robust checkpoint at y~280
+  with diagnostics) instead of waiting out a 12-day comp6 run to the same window.
+
+
+## Root cause of the robust-1agent ~y285 collapse (2026-09-05) — single-refinery tier halt
+Resumed the y250 checkpoint to a fresh clean dir and tracked monthly columns; also cross-compared
+original vs resumed twins. Findings:
+- The collapse is NOT oil depletion (well count stays 1, reservoir stays ~5e13, never near empty),
+  NOT food-first, NOT maintenance-first. The FIRST mover is the **fuel/chemical (refinery) tier**:
+  ~y284 fuel 0.4→1.2→43 and chemical 3.4→295 within ~8 months while the single oil-well agent and
+  its refinery keep count 1. Only AFTER that food/fill collapses and facility maintenance losses
+  appear (maint=6) — the condition crash is an effect of the earlier supply crash (as suspected).
+- Mechanism hypothesis: the single refinery agent, at full-fill signals near the ~39-40B peak,
+  momentarily idles/contracts (storage-target sees glut → decays to floor), starving the whole goods
+  chain that needs fuel/chemicals. With 1 agent/product it's a fragile monopoly oscillation.
+- Determinism caveat (IMPORTANT): the original run that died at y285.75 and a resume from its own
+  y250 checkpoint ended slightly different (~ppm drift compounding) and the TWIN did NOT collapse:
+  it sailed through y285 → y300 healthy at 43B. So the ~y285 collapse sits on a knife-edge — tiny
+  numerical/path differences flip it. This is exactly the kind of latent fragility that stacked
+  tunables raise but don't remove.
+- Upstream implication: the single-agent worlds are NOT a safe stability test — the interesting
+  question is whether 6-agent competition (comp6, live) makes the refinery tier robust or replicates
+  this near-threshold behavior.
+
+
+## Refined collapse mechanism (2026-09-05) — refinery at FULL SCALE, zero output
+Correction to the earlier note. Instrumented refinery oil-well telemetry across the y283-285 fork
+(columns facilityScale_oilRefinery, facilityScale_oilWell, margins, oilRefineryRevenue). Neither
+"tried to expand and couldn't" nor "workers left first" is the mechanism:
+- y~276-283 (the ~30-40B run-up): the single refinery is pinned at its HARD maxScale=11,911,810,
+  oscillating at the storage-target boundary (can't add capacity above the ceiling as demand grows).
+  So capacity is ceiling-bound during the decade before the event (one part of the fragility).
+- y~284 collapse: refinery STAYS at maxScale but output truly stops: oilRefineryRevenue → exactly 0.0
+  and stays 0, facility/well margins → 0.0, autoscale signal → 0 (not a contraction response), while
+  priceOverCost climbs 1.1 → 7-10 (gigantic profit opportunity ignored). Workforce is still ~18B
+  employed with no starvation at this point → NOT a staff desertion, and food/maintenance catastrophes
+  follow later (starvation sev→1 THEN employment 17.7B→8.7B as people die).
+- Ordering (confirmed here): fuel/chemical halt → food dies (3→80→105) → mass starvation → THEN the
+  workforce dies off. Condition/maintenance losses are the final effect. The user's causal instinct
+  (condition crash is effect, not cause) holds; the true first cause is the oil→refinery tier ceasing
+  output at full scale with full oil + full workforce + huge margins.
+- Most-consistent cause: the single oil-well's max EXTRACTABLE FLOW (claim/flow ceiling) can no longer
+  feed the refinery once it's at ceiling capacity for a ~40B economy → the refinery's crude input buffer
+  empties → zero output regardless of price/margin/scale. Full disaggregation of crude extraction across
+  multiple wells/claims (i.e. multi-agent competition) is the natural robustness test → comp6.
+- Question to verify on comp6 or a targeted probe: is it a well-flow (claim) ceiling, or an intra-refinery
+  input-starvation scheduling bug at extreme scale? Distinguish by replaying near-y283 with crude-flow and
+  refinery-input columns as instrumented METRIC_KEYS.
+
+
+## CORRECTION (2026-09-05, important) — the ~y285 collapse was an OIL-DEPLETION artifact, not a full-oil systemic bug
+Re-examining the interleaved columns exposed that `1agent-robust-8b/series.csv` mixes rows from
+**MULTIPLE DISTINCT OIL-SCALED RUNS**, not two paths of one world:
+- Panel A (the "dying" rows I mis-scaled): `oilReservoirLeft` ≈ 4e9 and falls linearly to exactly 0.0
+  by ~y283.9, then well scale frozen, refinery revenue → 0, fuel 0.4→43, food collapse, mass death.
+- Panel B (the survivor rows): `oilReservoirLeft` stays ≈ 4.99e13 (the real ×500 world) and is healthy
+  at y285+ (fuel ~0.4, revenue high)
+
+So the "collapse with FULL oil at 40B" was false: those rows belonged to a small-oil run that simply
+RAN OUT of oil (the finite-resource clock), which the ×500 world never hits. That ALSO explains why the
+clean diagnostic resume from the real ×500 y250 checkpoint sailed through y285 → y300 healthy at 43B:
+the true ×500 robust world did NOT collapse at y285.
+
+Recency/implications:
+- Rescind the "refinery flow-ceiling starvation / single-well monopoly fragility at 40B with full oil"
+  hypothesis — its evidence came from the oil-DRY world (input 0 because reservoir empty, not because of
+  a flow cap).
+- The earlier "robust-1agent dies at y285 full-oil" verdict and its knife-edge/determinism speculation
+  are UNSUPPORTED. The genuinely clean signal: the ×500 world was healthy at y300/43B when its diagnostic
+  continuation was killed.
+- Unknown still: does the TRUE ×500 8B single-agent world collapse LATER (y400-2000 as it grows further)?
+  The diagnostic (resumed, clean) needs to be carried forward to answer this.
+- Data hygiene: do not trust anything read from `1agent-robust-8b/series.csv` further (multi-run
+  contamination). Track the pushed diag copy `robust-death-diag` (clean from y250).
+
+
+## DEFINITIVE: both worlds collapse via the SAME maintenance-price spiral (2026-09-05, resumption runs finished)
+Two clean full runs both died with a common first-mover:
+- robust-death-diag (single-agent x500, resumed at y300): healthy growth to ~80B, extinction y423.75.
+- comp6 (competitive 6-agent, random personalities, fresh y0): healthy to ~21B, extinction y340.83.
+- So competition (6 wells/refineries/agents on the same economy) did NOT defuse the collapse — it died
+  EARLIER in sim-time (y340 vs y423) and at ~1/4 the population (21B vs ~79B).
+
+Collapse signature is IDENTICAL in both: after ~300-400y healthy (fill 1.0, no starvation, oil full),
+the MAINTENANCE service price blow-out is the trigger:
+- diag: maintenance price 4.7 → 765 over ~10 months, condition 1.0 → 0.5 → 0.22, food dies second.
+- comp6: maintenance 1.7 → tiny creep at y338.7 → 5.5 → 20.9 → 43 → 66 → 104 in 2 months, with fuel
+  and chemical ticking up in lockstep → then EVERY input hyperinflates (foodP 1.9→12.5→167→916→38,000,
+  maint up to 286,000) → starvation 0.997, extinction.
+- In comp6 the competitive pricing turns the SAME maintenance trigger into explosive downstream
+  hyperinflation (100-1000x larger than single-agent's orderly spiral) → it's a worse outcome.
+
+Interpretation:
+- The single-agent "monopoly" was NOT the problem; the underlying maintenance-supply price-spiral
+  failure is structural and scale/personality independent. 6-agent competition amplifies it.
+- No config tested survives past ~y423 single / ~y340 competitive. All prior "survivors >1000y" in this
+  repo's history either plateau-subfed with chronic starvation (svcopt/fixstack) or are oil-clock short.
+- Next lever must address the maintenance supplier's price spiral directly (why a healthy, charged
+  economy lets one segment's maintenance price run away 100-1000x), not company-count competition.
+
