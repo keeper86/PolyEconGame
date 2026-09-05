@@ -6,8 +6,8 @@
     "clients": [
         {
             "clientId": "polyecongame-app",
-            "name": "Game Application",
-            "description": "Client for Game",
+            "name": "Enterprise Engine Application",
+            "description": "Client for Enterprise Engine",
             "rootUrl": "https://polysim.work",
             "adminUrl": "https://polysim.work",
             "baseUrl": "https://polysim.work",

@@ -6,8 +6,8 @@
     "clients": [
         {
             "clientId": "polyecongame-app",
-            "name": "Game Application",
-            "description": "Client for Game",
+            "name": "Enterprise Engine Application",
+            "description": "Client for Enterprise Engine",
             "rootUrl": "http://localhost:3000",
             "adminUrl": "http://localhost:3000",
             "baseUrl": "http://localhost:3000",

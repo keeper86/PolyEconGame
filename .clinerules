@@ -72,7 +72,7 @@ src/
 
 ## Core Simulation System
 
-### Game State Model
+### Enterprise Engine State Model
 
 The simulation uses an immutable data structure for snapshots with structural sharing:
 

@@ -16,10 +16,10 @@ export function getStepsForPage(
             steps.push({
                 target: 'body',
                 content:
-                    'Welcome to Game (name is work in progress)! This is a living, breathing macro-economic simulation. ' +
+                    'Welcome to Enterprise Engine (name is work in progress)! This is a living, breathing macro-economic simulation. ' +
                     'You run a company on a dynamic planet. Every action — loans, hiring, production, trades — ' +
                     'is queued up and processed each  day. ',
-                title: '\uD83C\uDF0D Welcome to Game!',
+                title: '\uD83C\uDF0D Welcome to Enterprise Engine!',
                 placement: 'center',
                 hideOverlay: false,
                 skipBeacon: true,
@@ -960,7 +960,7 @@ export function getStepsForPage(
                 target: 'body',
                 content:
                     '\uD83C\uDF89 Congratulations! You have completed the guided tour. ' +
-                    'You now understand the core mechanics of Game. ' +
+                    'You now understand the core mechanics of Enterprise Engine. ' +
                     'Explore each section in detail, experiment with strategies, ' +
                     'and build your interplanetary economic empire. Good luck, CEO!',
                 title: '\u2705 Tour Complete',

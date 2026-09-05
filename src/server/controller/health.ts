@@ -7,7 +7,7 @@ export const health = () => {
             openapi: {
                 method: 'GET',
                 path: '/health',
-                tags: ['Game'],
+                tags: ['Enterprise Engine'],
                 summary: 'Health Check',
                 description: 'Simple health check endpoint to verify the server is running',
             },

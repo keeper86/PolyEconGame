@@ -6,8 +6,8 @@
     "clients": [
         {
             "clientId": "${KEYCLOAK_CLIENT_ID}",
-            "name": "Game Application",
-            "description": "Client for Game",
+            "name": "Enterprise Engine Application",
+            "description": "Client for Enterprise Engine",
             "rootUrl": "https://${APP_DOMAIN}",
             "adminUrl": "https://${APP_DOMAIN}",
             "baseUrl": "https://${APP_DOMAIN}",

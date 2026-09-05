@@ -1,7 +1,7 @@
 {
     "name": "polyecongame-migrator",
     "version": "1.0.0",
-    "description": "Minimal dependencies for running Knex migrations in Game.",
+    "description": "Minimal dependencies for running Knex migrations in Enterprise Engine.",
     "main": "knexfile.js",
     "scripts": {
         "migrate": "knex migrate:latest",

@@ -191,7 +191,13 @@ export const updateUser = () => {
 export const getUserIdFromSession = () => {
     return protectedProcedure
         .meta({
-            openapi: { method: 'GET', path: '/user-id', tags: ['Game'], summary: 'Get User ID', protect: true },
+            openapi: {
+                method: 'GET',
+                path: '/user-id',
+                tags: ['Enterprise Engine'],
+                summary: 'Get User ID',
+                protect: true,
+            },
         })
         .input(z.void())
         .output(z.object({ userId: z.string() }))

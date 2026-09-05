@@ -6,7 +6,7 @@ export default function ImprintPage() {
     return (
         <Page title='Imprint'>
             <div className='prose'>
-                <p>This is the legal imprint for Game.</p>
+                <p>This is the legal imprint for Enterprise Engine.</p>
                 <p>
                     Responsible for content: <br />
                     Tobias
