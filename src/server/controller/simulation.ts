@@ -910,7 +910,6 @@ export const getTickerEvents = () =>
 const ALL_TRANSPORT_SHIP_TYPES = [
     ...Object.values(shiptypes.solid),
     ...Object.values(shiptypes.liquid),
-    ...Object.values(shiptypes.gas),
     ...Object.values(shiptypes.pieces),
 ] as const;
 
