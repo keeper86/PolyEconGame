@@ -32,7 +32,6 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
     EXPANSION_WORKING_CAPITAL_TICKS,
-    FACILITY_EXPANSION_MIN_MAINTENANCE,
     HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
@@ -355,13 +354,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const atMaxScale = facility.scale >= facility.maxScale * 0.999;
             const atMinScale = facility.scale <= MIN_SCALE_FRACTION * facility.maxScale * 1.001;
 
-            if (
-                atMaxScale &&
-                signal > 0 &&
-                facility.maintenanceStatus > FACILITY_EXPANSION_MIN_MAINTENANCE &&
-                hrHealthy &&
-                storageHealthy
-            ) {
+            if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
                 state.expansionIntegral = Math.min(
                     EXPANSION_INTEGRAL_MAX,
                     state.expansionIntegral + STORAGE_EXPANSION_RATE,

@@ -243,7 +243,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('does not initiate capacity expansion when the facility maintenance is below the expansion threshold', () => {
+    it('still initiates capacity expansion when maintenance is below the old 0.95 threshold (maintenance no longer gates growth)', () => {
         const planet = makePlanetWithWorkersAndCostFloor(12, 10);
         planet.marketPrices = { Construction: 1, [RESOURCE_NAME]: 12 };
 
@@ -286,7 +286,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.construction).toBeNull();
+        expect(facility.construction).not.toBeNull();
     });
 
     it('clamps scale to the minimum floor when already at very low scale and oversupplied', () => {

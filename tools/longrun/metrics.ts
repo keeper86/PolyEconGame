@@ -473,19 +473,19 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             }
         }
         depreciatedNaturalValue += assets.monthAcc.naturalDepreciationValue ?? 0;
-        const ss = assets.storageFacility.department?.storageStarvation ?? 0;
+        const ss = assets.storage.department?.storageStarvation ?? 0;
         if (ss > maxStorageStarvation) {
             maxStorageStarvation = ss;
         }
         if (ss > 0.5) {
             highStarvationCompanies += 1;
         }
-        if (assets.storageFacility.department) {
-            storageDeptScaleTotal += assets.storageFacility.department.scale;
-            storageDeptMaxScaleTotal += assets.storageFacility.department.maxScale;
+        if (assets.storage.department) {
+            storageDeptScaleTotal += assets.storage.department.scale;
+            storageDeptMaxScaleTotal += assets.storage.department.maxScale;
             storageDeptCount += 1;
         }
-        maintAggregateBuffer += queryStorageFacility(assets.storageFacility, maintenanceServiceResourceType.name);
+        maintAggregateBuffer += queryStorageFacility(assets.storage, maintenanceServiceResourceType.name);
         if (assets.deposits < 0) {
             agentsInDistress += 1;
         }
@@ -729,9 +729,9 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 maintInputEfficiencySteel += resEff[steelResourceType.name] ?? 1;
                 maintInputEfficiencyElectronics += resEff[electronicsResourceType.name] ?? 1;
                 maintInputEfficiencyPlastic += resEff[plasticResourceType.name] ?? 1;
-                maintSteelBuffer += queryStorageFacility(assets.storageFacility, steelResourceType.name);
-                maintElectronicsBuffer += queryStorageFacility(assets.storageFacility, electronicsResourceType.name);
-                maintPlasticBuffer += queryStorageFacility(assets.storageFacility, plasticResourceType.name);
+                maintSteelBuffer += queryStorageFacility(assets.storage, steelResourceType.name);
+                maintElectronicsBuffer += queryStorageFacility(assets.storage, electronicsResourceType.name);
+                maintPlasticBuffer += queryStorageFacility(assets.storage, plasticResourceType.name);
             }
 
             if (isConstructionFacility(facility.name)) {
@@ -878,7 +878,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             hrExpansionIntegralSum += assets.humanResourcesDepartment.pidState?.expansionIntegral ?? 0;
             hrCount += 1;
         }
-        const storageDept = assets.storageFacility?.department;
+        const storageDept = assets.storage?.department;
         if (storageDept) {
             storageStarvationSum += storageDept.storageStarvation ?? 0;
             storageStarvationCount += 1;

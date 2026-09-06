@@ -1,10 +1,5 @@
 # PolyEconGame Codebase Summary
 
-## Expected Behavior
-
-- We do an explicit planning for each feature/refactor. Regardless of the user mode.
-- if you run in circles, returning to the user to ask something, is expected and greeted behaviour.
-
 ## Rules:
 
 - Avoid comments! If a comment seems necessary, restructure or rename instead.

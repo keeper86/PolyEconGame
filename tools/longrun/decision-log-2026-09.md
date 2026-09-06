@@ -222,3 +222,58 @@ Interpretation:
 - Next lever must address the maintenance supplier's price spiral directly (why a healthy, charged
   economy lets one segment's maintenance price run away 100-1000x), not company-count competition.
 
+## ROOT CAUSE (2026-09-05, definitive) — maintenance outputs are hard-gated to zero on material shortage
+`unif150-wage60-1000y` (6-agent, uniform 1.5 floor, WAGE_SHARE=0.6, oil×500) held healthy y1-173
+(pop 7.8B→21B, maint price ~2.5, fill 1.0, starv 0) — proving the WAGE_SHARE=0.5 labour-lockout fix.
+
+Death: extinct y218.58. First mover traced monthly:
+- At y174.75 the MAINTENANCE SUPPLY collapses ~150x in one month (5e8 → ~0) while the 6 maintenance
+  facilities stay present and even GROW scale (960k → 1.15M). Output 9.5e7 → 1.1e6, yet workerEff=1.0,
+  conditionEff=1.0, and the individual input efficiencies show the single binding break:
+      maintInputEfficiencyPlastic: 1.00 → 0.31
+  (steel + electronics stay 1.0; overallEff 1.0→0.14, resourceEff 1.0→0.31 from the plastic term alone).
+- Why it crashes to ZERO despite scale+staff+being "present": production.ts:226 hard gates
+      if (overallEfficiency <= 0) → every output = 0
+  and overallEfficiency = min(workerEff, conditionEff, min over r resourceEfficiency[r]), with
+      resourceEfficiency[r] = min(1, available_r / (need_r × scale)).
+  So when ONE material input (plastic) is short, the whole facility produces ~0 - regardless of profit.
+  It is not idling for lack of margin; it is structurally unable to produce for want of that input, and
+  the efficiency formula turns scarcity into a full outage, not into degraded-but-proportional output.
+
+Causality: mid-chain good (plastic) intermittently starves the maintenance producer → maintenance output
+gated to ~0 → NO facility upkeep performed → all facilities decay planet-wide → repair backlog explodes
+(e2e backlog 4e9) → maint/food price hyperinflate → mass starvation ⇒ extinction. Same substrate as the
+single-agent y423 and comp6 y340 deaths: the maintenance sector is the propagation duct because it is
+(1) planet-critical (every facility needs it) and (2) hard-zeroed on any one material shortage.
+
+Design gap surfacing: a min() -product efficiency + hard >=0 gate means a transient shortage of ONE deep
+input produces a 100%-output outage for a critical service instead of a scaled-down response. Candidate
+fix direction (discuss before implementing): floor the applied efficiency so material scarcity degrades
+output proportionally rather than gating to zero for maintenance; and/or make the maintenance facility's
+material usage scarcer-resilient (buffer/once per upkeep, not per-tick just-in-time).
+
+
+
+## Upstream cause confirmed (2026-09-05): the capacity-clamped flexible refinery is the plastic gatekeeper
+Refines the previous entry. The plastic shortage that forces maintenance to zero is NOT a refinery
+behavioural failure - it is capacity. Facts from unif150-wage60 metrics:
+- Oil Refinery (productionFacilities.ts:262) is the ONLY outputFlexible producer in the economy:
+  crude -> { fuel 90, plastic 62, chemical 48 }, wasteSurplusTicks 120. productionMix.ts operates on it
+  alone. Plastic is produced NOWHERE else. => plastic scarcity is refinery/mix-driven by construction.
+- Refinery fleet: 6 units, aggregate scale grows monotonically 2.7M -> 25.5M, each pinned at its
+  maxScale cap (~4.3M). Margin ~0-0.2 and priceOverCost ~0.94-1.18 for years (thin but fine), then at
+  the y174 crunch margin -> 0.72-0.85 and priceOverCost -> 7.5-8.2 (VERY profitable) while scale is
+  frozen at max. So the refinery is economically healthy and maxed out, NOT misbehaving.
+- Because productionMix apportions output by storage deficit, once overall refinery demand > max
+  capacity (~y170, at ~24-26B pop) the controller doles out shortage; plastic (fillRatePlastic 0.9->0.22)
+  gets shorted ahead of fuel -> maintInputEfficiencyPlastic -> ~0.31 -> maintenance hard-gated to zero
+  -> collapse. Fuel fill oscillates 1.0/0.17/0.8/0.2/0.43/1.0/0.76 right at the supply edge all run.
+- Verdict on "are refineries doing fine": yes financially, but they are a single capacity cap between the
+  whole economy and its maintenance material. The fragile junction = a capacity-clamped, single flexible
+  refinery being the involuntary gatekeeper of the economy-wide maintenance input.
+- Two independent lever classes, distinguished (not yet chosen):
+  (A) refinery-side: stop it being the sole plastic gatekeeper - more flexible producers, or let
+      maxScale grow to meet demand (expansion was pinned at cap; investigate why it cannot exceed ~24B-worth).
+  (B) maintenance-side: don't let ONE input shortfall hard-zero a planet-critical service - floor/apportion
+      the efficiency so a plastic dip degrades repairs proportionally rather than killing all upkeep.
+
