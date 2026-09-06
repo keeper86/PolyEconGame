@@ -6,7 +6,7 @@ import {
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
 import type { Storage } from './facility';
-import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor } from './facility';
+import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor, totalStoredByShell } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
@@ -57,7 +57,7 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     const produced = pullStorageServiceFromStorage(storage);
     dept.storageBuffer += produced;
 
-    dept.storageBuffer -= storage.current.mass * SR_HOLDING_COST_PER_TON;
+    dept.storageBuffer -= totalStoredByShell(storage).mass * SR_HOLDING_COST_PER_TON;
 
     const deptScale = Math.max(1, dept.scale);
     const producedQuantity = deptScale * PRODUCED_STORAGE_QUANTITY;

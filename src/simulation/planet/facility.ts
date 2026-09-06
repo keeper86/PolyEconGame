@@ -230,6 +230,15 @@ export const makeStorageShell = (
     };
 };
 
+// Aggregate stored volume/mass across the three physical shells. Used by form-agnostic consumers
+// (e.g. holding costs) that do not care about a single resource's form.
+export const totalStoredByShell = (storage: Storage): { volume: number; mass: number } => {
+    return {
+        volume: storage.shells.solid.current.volume + storage.shells.liquid.current.volume + storage.shells.pieces.current.volume,
+        mass: storage.shells.solid.current.mass + storage.shells.liquid.current.mass + storage.shells.pieces.current.mass,
+    };
+};
+
 export type ManagementFacility = FacilityBase & {
     type: 'management';
     needs: ResourceQuantity[];
@@ -315,19 +324,10 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
 
     const current = storage.currentInStorage[resource.name]?.quantity || 0;
 
-    const scale = getStorageScaleBasis(storage);
+    const state = getStorageCapacityState(storage, resource);
 
-    const aggregateFreeVolume = storage.capacity.volume * scale - storage.current.volume;
-    const aggregateFreeMass = storage.capacity.mass * scale - storage.current.mass;
-
-    const form = shellFormOfResource(resource);
-    const shell = form ? storage.shells[form] : null;
-
-    const shellFreeVolume = shell ? shell.capacity.volume * shell.scale - shell.current.volume : Infinity;
-    const shellFreeMass = shell ? shell.capacity.mass * shell.scale - shell.current.mass : Infinity;
-
-    const freeVolume = Math.min(aggregateFreeVolume, shellFreeVolume);
-    const freeMass = Math.min(aggregateFreeMass, shellFreeMass);
+    const freeVolume = state.free.volume;
+    const freeMass = state.free.mass;
 
     const volumeRestriction =
         resource.volumePerQuantity > 0
@@ -347,13 +347,16 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
         quantity: current + stored,
     };
 
-    storage.current.volume += stored * resource.volumePerQuantity;
-    storage.current.mass += stored * resource.massPerQuantity;
-
-    if (shell) {
+    if (state.form) {
+        const shell = storage.shells[state.form];
         shell.current.volume += stored * resource.volumePerQuantity;
         shell.current.mass += stored * resource.massPerQuantity;
     }
+
+    // Aggregate total is kept for the form-agnostic views that still read it; the shells above are
+    // the authority for per-form capacity.
+    storage.current.volume += stored * resource.volumePerQuantity;
+    storage.current.mass += stored * resource.massPerQuantity;
 
     if (storage.department) {
         storage.department.storageBuffer -= stored * resource.massPerQuantity;
@@ -428,24 +431,48 @@ export const queryStorageFacility = (storage: Storage | undefined, resourceName:
     return Math.max(0, total - escrowed);
 };
 
-export const getAvailableStorageCapacity = (storage: Storage, resource: Resource): number => {
-    const scale = getStorageScaleBasis(storage);
-    const aggregateFreeVolume = storage.capacity.volume * scale - storage.current.volume;
-    const aggregateFreeMass = storage.capacity.mass * scale - storage.current.mass;
+export type StorageCapacityState = {
+    form: StorageForm | null;
+    capacity: { volume: number; mass: number };
+    used: { volume: number; mass: number };
+    free: { volume: number; mass: number };
+    freeQuantity: number;
+};
 
+// The shell is the single authority for a physical form: its own scale decides effective capacity
+// and its own counters track what is stored. Resources without a shell (services, currency,
+// internal, landBound) carry no physical capacity and are unrestricted here.
+export const getStorageCapacityState = (storage: Storage, resource: Resource): StorageCapacityState => {
     const form = shellFormOfResource(resource);
-    const shell = form ? storage.shells[form] : null;
 
-    const shellFreeVolume = shell ? shell.capacity.volume * shell.scale - shell.current.volume : Infinity;
-    const shellFreeMass = shell ? shell.capacity.mass * shell.scale - shell.current.mass : Infinity;
+    let capacity = { volume: Infinity, mass: Infinity };
+    let used = { volume: 0, mass: 0 };
 
-    const freeVolume = Math.min(aggregateFreeVolume, shellFreeVolume);
-    const freeMass = Math.min(aggregateFreeMass, shellFreeMass);
+    if (form) {
+        const shell = storage.shells[form];
+        capacity = { volume: shell.capacity.volume * shell.scale, mass: shell.capacity.mass * shell.scale };
+        used = { volume: Math.max(0, shell.current.volume), mass: Math.max(0, shell.current.mass) };
+    }
+
+    const freeVolume = Math.max(0, capacity.volume - used.volume);
+    const freeMass = Math.max(0, capacity.mass - used.mass);
 
     const byVolume = resource.volumePerQuantity > 0 ? freeVolume / resource.volumePerQuantity : Infinity;
     const byMass = resource.massPerQuantity > 0 ? freeMass / resource.massPerQuantity : Infinity;
-    return Math.max(0, Math.min(byVolume, byMass));
+    const freeQuantity = Math.max(0, Math.min(byVolume, byMass));
+
+    return {
+        form,
+        capacity: { volume: capacity.volume, mass: capacity.mass },
+        used: { volume: used.volume, mass: used.mass },
+        free: { volume: freeVolume, mass: freeMass },
+        freeQuantity,
+    };
 };
+
+/** Quantity of `resource` that still fits given the single per-form shell it would occupy. */
+export const getAvailableStorageCapacity = (storage: Storage, resource: Resource): number =>
+    getStorageCapacityState(storage, resource).freeQuantity;
 
 // returns the quantity actually removed
 export const removeFromStorageFacility = (

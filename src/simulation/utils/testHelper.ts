@@ -200,7 +200,7 @@ export function makeStorageFacility(overrides?: Partial<Storage>): Storage {
     const planetId = base.planetId;
     const id = base.id;
     if (!overrides?.shells) {
-        const capacity = base.capacity.volume > 0 || base.capacity.mass > 0 ? base.capacity : undefined;
+        const capacity = base.capacity;
         const scale = base.department?.maxScale && base.department.maxScale > 0 ? base.department.maxScale : 1;
         base.shells = {
             solid: makeStorageShell(planetId, `${id}-silo`, 'solid', capacity, scale),

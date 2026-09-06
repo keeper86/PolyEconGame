@@ -87,7 +87,7 @@ function validateBidFields(
 export function validateBuyBid(
     bid: BuyBid,
     resource: Resource,
-    assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
+    assets: Pick<AgentPlanetAssets, 'storage' | 'deposits'>,
 ): ValidationResult {
     const { bidPrice, bidStorageTarget } = bid;
 
@@ -159,7 +159,7 @@ export function validateAndPrepareSellOffer(
 
 export function validateAndPrepareBuyBid(
     bid: AgentMarketBidState,
-    assets: Pick<AgentPlanetAssets, 'storageFacility' | 'deposits'>,
+    assets: Pick<AgentPlanetAssets, 'storage' | 'deposits'>,
     currentInventory: number,
 ): { price: number; quantity: number; maxCost: number } | null {
     if (!bid.bidPrice || bid.bidPrice <= 0 || !isFinite(bid.bidPrice)) {

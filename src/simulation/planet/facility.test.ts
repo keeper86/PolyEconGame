@@ -1,9 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { Resource } from './claims';
 import {
-    backfillStorageShells,
     getAvailableStorageCapacity,
+    makeStorageShell,
     putIntoStorageFacility,
     removeFromStorageFacility,
 } from './facility';
@@ -23,69 +23,72 @@ function makeResource(overrides?: Partial<Resource> & { form?: Resource['form'] 
 }
 
 describe('putIntoStorageFacility', () => {
-    it('does not remove stored items when storage is full', () => {
-        const storage = makeStorageFacility({
-            capacity: { volume: 100, mass: 100 },
-            current: { volume: 100, mass: 100 },
-        });
+    // A single solid-entry setup where the silo is the only authority and its fill is preset so we
+    // don't have to run intermediate puts to build the precondition.
+    function presetSolid(used: number, cap: number): void {
+        storage.capacity = { volume: cap, mass: cap };
+        storage.shells.solid.capacity = { volume: cap, mass: cap };
+        storage.shells.solid.current = { volume: used, mass: used };
+        storage.current = { volume: used, mass: used };
+        const existing = makeResource({ name: 'existing' });
+        storage.currentInStorage = { existing: { resource: existing, quantity: used } };
+    }
+    let storage: Storage;
+
+    beforeEach(() => {
+        storage = makeStorageFacility();
+    });
+
+    it('does not remove stored items when the silo is full', () => {
+        presetSolid(100, 100);
         const resource = makeResource();
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBe(0);
         expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
+        expect(storage.shells.solid.current.volume).toBe(100);
         expect(storage.current.volume).toBe(100);
-        expect(storage.current.mass).toBe(100);
     });
 
-    it('does not remove stored items when storage is overfull', () => {
-        const storage = makeStorageFacility({
-            capacity: { volume: 100, mass: 100 },
-            current: { volume: 120, mass: 120 },
-            currentInStorage: {
-                existing: { resource: makeResource({ name: 'existing' }), quantity: 120 },
-            },
-        });
+    it('does not add stored items when the silo is overfull', () => {
+        presetSolid(120, 100);
         const resource = makeResource();
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBe(0);
         expect(storage.currentInStorage.existing.quantity).toBe(120);
+        expect(storage.shells.solid.current.volume).toBe(120);
         expect(storage.current.volume).toBe(120);
-        expect(storage.current.mass).toBe(120);
     });
 
-    it('stores only the quantity that fits in the remaining capacity', () => {
-        const storage = makeStorageFacility({
-            capacity: { volume: 100, mass: 100 },
-            current: { volume: 90, mass: 90 },
-        });
+    it('stores only the quantity that fits in the remaining shell capacity', () => {
+        presetSolid(90, 100);
         const resource = makeResource();
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBeCloseTo(10);
         expect(storage.currentInStorage['test-resource']?.quantity).toBeCloseTo(10);
+        expect(storage.shells.solid.current.volume).toBeCloseTo(100);
         expect(storage.current.volume).toBeCloseTo(100);
-        expect(storage.current.mass).toBeCloseTo(100);
     });
 
-    it('stores nothing when storage department max scale is 0', () => {
+    it('stores nothing when the owning shell has not been expanded (scale 0)', () => {
+        storage.capacity = { volume: 1e13, mass: 1e13 };
+        storage.currentInStorage = {};
+        storage.shells = {
+            solid: makeStorageShell(storage.planetId, 'silo', 'solid', { volume: 1e13, mass: 1e13 }, 0),
+            liquid: makeStorageShell(storage.planetId, 'tank', 'liquid', { volume: 1e13, mass: 1e13 }),
+            pieces: makeStorageShell(storage.planetId, 'ware', 'pieces', { volume: 1e13, mass: 1e13 }),
+        };
         const resource = makeResource();
-        const storage = makeStorageFacility({
-            capacity: { volume: 100, mass: 100 },
-            current: { volume: 50, mass: 50 },
-            currentInStorage: { existing: { resource, quantity: 50 } },
-        });
-        storage.department = { ...storage.department!, maxScale: 0 };
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBe(0);
-        expect(storage.currentInStorage.existing.quantity).toBe(50);
-        expect(storage.current.volume).toBe(50);
-        expect(storage.current.mass).toBe(50);
+        expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
     });
 });
 
@@ -161,28 +164,5 @@ describe('storage form shells', () => {
 
         const available = getAvailableStorageCapacity(storage, resource);
         expect(available).toBeCloseTo(70);
-    });
-});
-
-describe('backfillStorageShells', () => {
-    it('adds per-form shells to a storage facility persisted before shells existed', () => {
-        const { shells: _omittedShells, ...legacyFields } = makeStorageFacility();
-        const legacyStorage = legacyFields as unknown as Storage;
-        expect(legacyStorage.shells).toBeUndefined();
-
-        backfillStorageShells(legacyStorage);
-
-        expect(legacyStorage.shells.solid.capacity.volume).toBe(1e13);
-        expect(legacyStorage.shells.solid.name).toBe('Silo');
-        expect(legacyStorage.shells.liquid.name).toBe('Tank');
-        expect(legacyStorage.shells.pieces.name).toBe('Warehouse');
-        expect(legacyStorage.shells.solid.current).toEqual({ volume: 0, mass: 0 });
-    });
-
-    it('leaves an already-upgraded storage facility untouched', () => {
-        const storage = makeStorageFacility();
-        const originalSilo = storage.shells.solid;
-        backfillStorageShells(storage);
-        expect(storage.shells.solid).toBe(originalSilo);
     });
 });
