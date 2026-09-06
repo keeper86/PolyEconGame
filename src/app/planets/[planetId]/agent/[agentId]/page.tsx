@@ -76,13 +76,11 @@ function pct(n: number): string {
 function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
     const hr = assets.humanResourcesDepartment;
     const stoDept = assets.storage.department;
-    const stoFac = assets.storage;
 
     const hrDemand = assets.usedWorkers;
     const hrBufRatio = hrDemand > 0 ? (hr?.hrBuffer ?? 0) / hrDemand : Number.POSITIVE_INFINITY;
     const stoDemand = computeStorageThroughputMass(assets);
     const stoBufRatio = stoDemand > 0 ? (stoDept?.storageBuffer ?? 0) / stoDemand : Number.POSITIVE_INFINITY;
-    const stoDeptScale = stoDept?.scale ?? 0;
 
     const entry = (label: string, value: string) => (
         <span>
@@ -145,21 +143,6 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
                             )}
                     </div>
                 )}
-            </div>
-
-            <Separator />
-
-            <div>
-                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Storage Facility (warehouse)</h3>
-                <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
-                    {entry('Dept Scale', `${fmt(stoDeptScale)}`)}
-                    {entry('Volume', `${fmt(stoFac.current.volume)} / ${fmt(stoFac.capacity.volume * stoDeptScale)}`)}
-                    {entry('Mass', `${fmt(stoFac.current.mass)} / ${fmt(stoFac.capacity.mass * stoDeptScale)}`)}
-                    {entry(
-                        'Stored types',
-                        `${Object.values(stoFac.currentInStorage).filter((v) => v.quantity > 0).length}`,
-                    )}
-                </div>
             </div>
         </div>
     );

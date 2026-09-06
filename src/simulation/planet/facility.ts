@@ -151,14 +151,6 @@ export type ProductionFacility = FacilityBase & {
 };
 
 export type Storage = PlanetaryId & {
-    capacity: {
-        volume: number;
-        mass: number;
-    };
-    current: {
-        volume: number;
-        mass: number;
-    };
     currentInStorage: {
         [resourceName in string]: ResourceQuantity;
     };
@@ -234,8 +226,12 @@ export const makeStorageShell = (
 // (e.g. holding costs) that do not care about a single resource's form.
 export const totalStoredByShell = (storage: Storage): { volume: number; mass: number } => {
     return {
-        volume: storage.shells.solid.current.volume + storage.shells.liquid.current.volume + storage.shells.pieces.current.volume,
-        mass: storage.shells.solid.current.mass + storage.shells.liquid.current.mass + storage.shells.pieces.current.mass,
+        volume:
+            storage.shells.solid.current.volume +
+            storage.shells.liquid.current.volume +
+            storage.shells.pieces.current.volume,
+        mass:
+            storage.shells.solid.current.mass + storage.shells.liquid.current.mass + storage.shells.pieces.current.mass,
     };
 };
 
@@ -352,11 +348,6 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
         shell.current.volume += stored * resource.volumePerQuantity;
         shell.current.mass += stored * resource.massPerQuantity;
     }
-
-    // Aggregate total is kept for the form-agnostic views that still read it; the shells above are
-    // the authority for per-form capacity.
-    storage.current.volume += stored * resource.volumePerQuantity;
-    storage.current.mass += stored * resource.massPerQuantity;
 
     if (storage.department) {
         storage.department.storageBuffer -= stored * resource.massPerQuantity;
@@ -489,8 +480,6 @@ export const removeFromStorageFacility = (
     }
     const quantityRemoved = Math.min(currentEntry.quantity, quantityToRemove);
     currentEntry.quantity -= quantityRemoved;
-    storage.current.volume -= quantityRemoved * currentEntry.resource.volumePerQuantity;
-    storage.current.mass -= quantityRemoved * currentEntry.resource.massPerQuantity;
 
     const form = shellFormOfResource(currentEntry.resource);
     if (form) {

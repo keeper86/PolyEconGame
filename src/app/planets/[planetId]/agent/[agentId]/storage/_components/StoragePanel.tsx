@@ -303,18 +303,6 @@ export function StoragePanel({ assets, planetId, agentId }: Props): React.ReactE
         direction: 'desc',
     });
 
-    const storage = assets.storage;
-    const usedVol = storage.current.volume;
-    const scale = storage.department?.scale ?? 0;
-    const capVol = storage.capacity.volume * scale;
-    const usedMass = storage.current.mass;
-    const capMass = storage.capacity.mass * scale;
-    const volPercent = capVol > 0 ? (usedVol / capVol) * 100 : 0;
-    const massPercent = capMass > 0 ? (usedMass / capMass) * 100 : 0;
-
-    const volColorClass = volPercent > 90 ? 'bg-red-500' : volPercent > 70 ? 'bg-amber-500' : 'bg-green-500';
-    const massColorClass = massPercent > 90 ? 'bg-red-500' : massPercent > 70 ? 'bg-amber-500' : 'bg-green-500';
-
     const entries = useMemo(() => buildStorageEntries(assets), [assets]);
 
     const resourceGroups = useMemo(() => {
@@ -422,46 +410,6 @@ export function StoragePanel({ assets, planetId, agentId }: Props): React.ReactE
             </TabsList>
             <Card ref={cardRef}>
                 <CardContent className='p-3'>
-                    {/* Capacity bars */}
-                    <div className='flex items-center gap-3 mb-3 text-[10px]' data-tour='storage-capacity'>
-                        <div className='flex items-center gap-1 flex-1'>
-                            <span className='text-muted-foreground shrink-0'>Volume:</span>
-                            <span
-                                className={`shrink-0 font-medium ${volPercent > 90 ? 'text-red-500' : volPercent > 70 ? 'text-amber-500' : ''}`}
-                            >
-                                {Math.round(volPercent)}%
-                            </span>
-                            <div className='flex-1 h-1.5 bg-muted rounded-full overflow-hidden'>
-                                <div
-                                    className={`h-full rounded-full transition-all ${volColorClass}`}
-                                    style={{ width: `${Math.min(volPercent, 100)}%` }}
-                                />
-                            </div>
-                            <span className='text-muted-foreground shrink-0'>
-                                {formatNumberWithUnit(Math.round(usedVol), 'm3')} /{' '}
-                                {formatNumberWithUnit(Math.round(capVol), 'm3')}
-                            </span>
-                        </div>
-                        <div className='flex items-center gap-1 flex-1'>
-                            <span className='text-muted-foreground shrink-0'>Mass:</span>
-                            <span
-                                className={`shrink-0 font-medium ${massPercent > 90 ? 'text-red-500' : massPercent > 70 ? 'text-amber-500' : ''}`}
-                            >
-                                {Math.round(massPercent)}%
-                            </span>
-                            <div className='flex-1 h-1.5 bg-muted rounded-full overflow-hidden'>
-                                <div
-                                    className={`h-full rounded-full transition-all ${massColorClass}`}
-                                    style={{ width: `${Math.min(massPercent, 100)}%` }}
-                                />
-                            </div>
-                            <span className='text-muted-foreground shrink-0'>
-                                {formatNumberWithUnit(Math.round(usedMass), 'tonnes')} /{' '}
-                                {formatNumberWithUnit(Math.round(capMass), 'tonnes')}
-                            </span>
-                        </div>
-                    </div>
-
                     {/* Column headers */}
                     <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b' data-tour='storage-inventory'>
                         <div className='flex flex-1 items-center gap-2 text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/50 select-none'>
