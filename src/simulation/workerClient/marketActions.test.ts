@@ -14,7 +14,6 @@ function makeState(): GameState {
         currentInStorage: {
             [RESOURCE]: { resource, quantity: 100 },
         },
-        current: { volume: 100, mass: 100 },
     });
     const agent = makeAgent('agent-1', 'p', 'Agent 1', {
         assets: {

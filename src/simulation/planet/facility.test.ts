@@ -26,10 +26,8 @@ describe('putIntoStorageFacility', () => {
     // A single solid-entry setup where the silo is the only authority and its fill is preset so we
     // don't have to run intermediate puts to build the precondition.
     function presetSolid(used: number, cap: number): void {
-        storage.capacity = { volume: cap, mass: cap };
         storage.shells.solid.capacity = { volume: cap, mass: cap };
         storage.shells.solid.current = { volume: used, mass: used };
-        storage.current = { volume: used, mass: used };
         const existing = makeResource({ name: 'existing' });
         storage.currentInStorage = { existing: { resource: existing, quantity: used } };
     }
@@ -48,7 +46,6 @@ describe('putIntoStorageFacility', () => {
         expect(stored).toBe(0);
         expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
         expect(storage.shells.solid.current.volume).toBe(100);
-        expect(storage.current.volume).toBe(100);
     });
 
     it('does not add stored items when the silo is overfull', () => {
@@ -60,7 +57,6 @@ describe('putIntoStorageFacility', () => {
         expect(stored).toBe(0);
         expect(storage.currentInStorage.existing.quantity).toBe(120);
         expect(storage.shells.solid.current.volume).toBe(120);
-        expect(storage.current.volume).toBe(120);
     });
 
     it('stores only the quantity that fits in the remaining shell capacity', () => {
@@ -72,11 +68,9 @@ describe('putIntoStorageFacility', () => {
         expect(stored).toBeCloseTo(10);
         expect(storage.currentInStorage['test-resource']?.quantity).toBeCloseTo(10);
         expect(storage.shells.solid.current.volume).toBeCloseTo(100);
-        expect(storage.current.volume).toBeCloseTo(100);
     });
 
     it('stores nothing when the owning shell has not been expanded (scale 0)', () => {
-        storage.capacity = { volume: 1e13, mass: 1e13 };
         storage.currentInStorage = {};
         storage.shells = {
             solid: makeStorageShell(storage.planetId, 'silo', 'solid', { volume: 1e13, mass: 1e13 }, 0),
@@ -100,10 +94,7 @@ describe('storage form shells', () => {
         storage: Storage;
         resource: Resource;
     } {
-        const storage = makeStorageFacility({
-            capacity: { volume: 1e13, mass: 1e13 },
-            current: { volume: 0, mass: 0 },
-        });
+        const storage = makeStorageFacility();
         const shell = storage.shells[form];
         shell.capacity = { volume: capacity, mass: capacity };
         shell.current = { volume: 0, mass: 0 };

@@ -421,8 +421,6 @@ describe('productionTick — shared stored-resource allocation', () => {
             resource: waterResourceType,
             quantity: 720,
         };
-        agent.assets.p.storage.current.volume = 720 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storage.current.mass = 720 * waterResourceType.massPerQuantity;
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
@@ -461,8 +459,6 @@ describe('productionTick — shared stored-resource allocation', () => {
             resource: waterResourceType,
             quantity: initialWater,
         };
-        agent.assets.p.storage.current.volume = initialWater * waterResourceType.volumePerQuantity;
-        agent.assets.p.storage.current.mass = initialWater * waterResourceType.massPerQuantity;
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
@@ -494,8 +490,6 @@ describe('productionTick — storage space clamp', () => {
             resource: waterResourceType,
             quantity: 100000,
         };
-        agent.assets.p.storage.current.volume = 100000 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storage.current.mass = 100000 * waterResourceType.massPerQuantity;
         agent.assets.p.workforceDemography[30].secondary.active = 10;
         const gs = makeGameState(planet, [agent, gov]);
         return { planet, agent, facility, gs };
@@ -1046,8 +1040,6 @@ describe('productionTick — humanResourcesDepartment', () => {
             resource: waterResourceType,
             quantity: 50,
         };
-        agent.assets.p.storage.current.volume += 50 * waterResourceType.volumePerQuantity;
-        agent.assets.p.storage.current.mass += 50 * waterResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 1;
@@ -1303,8 +1295,6 @@ describe('productionTick — shipyard facility (building mode)', () => {
             resource: steelResourceType,
             quantity: 60,
         };
-        agent.assets.p.storage.current.volume = 60 * steelResourceType.volumePerQuantity;
-        agent.assets.p.storage.current.mass = 60 * steelResourceType.massPerQuantity;
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 9;

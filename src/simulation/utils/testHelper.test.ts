@@ -235,7 +235,7 @@ describe('makeStorageFacility', () => {
     it('creates empty storage', () => {
         const sf = makeStorageFacility();
         expect(sf.planetId).toBe('p');
-        expect(sf.capacity.volume).toBe(1e13);
+        expect(sf.shells.solid.capacity.volume).toBe(1e13);
         expect(Object.keys(sf.currentInStorage)).toHaveLength(0);
     });
 });

@@ -15,7 +15,6 @@ export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Unit
     switch (form) {
         case 'solid':
         case 'pieces':
-        case 'gas':
             return 'tonnes';
         case 'liquid':
             return 'litres';

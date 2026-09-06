@@ -25,22 +25,26 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
 
     agent.assets[planetId].deposits = 1_000_000;
-    agent.assets[planetId].storage = makeStorageFacility({
-        planetId,
-        id: `storage-${planetId}`,
-        capacity: { volume: 1e9, mass: 1e9 },
-    });
+    agent.assets[planetId].storage = makeStorageFacility(
+        {
+            planetId,
+            id: `storage-${planetId}`,
+        },
+        { volume: 1e9, mass: 1e9 },
+    );
     agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
     return agent;
 }
 
 function makeCoalSeller(coalStock: number, askPrice: number, id = 'coal-seller', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
-    agent.assets[planetId].storage = makeStorageFacility({
-        planetId,
-        id: `storage-${planetId}-coal`,
-        capacity: { volume: 1e9, mass: 1e9 },
-    });
+    agent.assets[planetId].storage = makeStorageFacility(
+        {
+            planetId,
+            id: `storage-${planetId}-coal`,
+        },
+        { volume: 1e9, mass: 1e9 },
+    );
     putIntoStorageFacility(agent.assets[planetId].storage, coalResourceType, coalStock);
     agent.assets[planetId].market = {
         sell: {
@@ -482,11 +486,13 @@ describe('automaticPricing — buy side', () => {
     it('freeBuyQuantity smoothing is stable across multiple ticks when no production/consumption exists', () => {
         const buyer = makeAgent('free-buyer');
         buyer.assets.p.deposits = 1_000_000;
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-free',
-            capacity: { volume: 1e9, mass: 1e9 },
-        });
+        buyer.assets.p.storage = makeStorageFacility(
+            {
+                planetId: 'p',
+                id: 'storage-free',
+            },
+            { volume: 1e9, mass: 1e9 },
+        );
 
         // No production facilities, no management, no ships — pure free buy
         const FREE_TARGET = 1_000_000;
@@ -550,11 +556,13 @@ describe('automaticPricing — buy side', () => {
     it('freeBuyQuantity smoothing — near the target the per-tick quantity decreases', () => {
         const buyer = makeAgent('free-buyer-2');
         buyer.assets.p.deposits = 1_000_000;
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-free-2',
-            capacity: { volume: 1e9, mass: 1e9 },
-        });
+        buyer.assets.p.storage = makeStorageFacility(
+            {
+                planetId: 'p',
+                id: 'storage-free-2',
+            },
+            { volume: 1e9, mass: 1e9 },
+        );
 
         const FREE_TARGET = 10_000;
         const SMOOTHING_DAYS = 10;
@@ -879,10 +887,12 @@ describe('marketTick — agent buying', () => {
 
     it('food market (household demand) is unaffected when an unrelated agent buys coal', () => {
         const foodAgent = makeAgent('food-seller');
-        foodAgent.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            capacity: { volume: 1e9, mass: 1e9 },
-        });
+        foodAgent.assets.p.storage = makeStorageFacility(
+            {
+                planetId: 'p',
+            },
+            { volume: 1e9, mass: 1e9 },
+        );
         putIntoStorageFacility(foodAgent.assets.p.storage, produceResourceType, 10000);
         foodAgent.assets.p.market = {
             sell: {
@@ -917,11 +927,13 @@ describe('marketTick — agent buying', () => {
         buyer.assets.p.deposits = 1_000_000;
 
         const coalResource = coalResourceType;
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-p',
-            capacity: { volume: 1e9, mass: 50 * coalResource.massPerQuantity },
-        });
+        buyer.assets.p.storage = makeStorageFacility(
+            {
+                planetId: 'p',
+                id: 'storage-p',
+            },
+            { volume: 1e9, mass: 50 * coalResource.massPerQuantity },
+        );
 
         buyer.assets.p.market = {
             sell: {},
@@ -950,11 +962,13 @@ describe('marketTick — agent buying', () => {
 
     it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {
         const buyer = makeSteelProducer();
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-p',
-            capacity: { volume: 0, mass: 0 },
-        });
+        buyer.assets.p.storage = makeStorageFacility(
+            {
+                planetId: 'p',
+                id: 'storage-p',
+            },
+            { volume: 0, mass: 0 },
+        );
         buyer.assets.p.market = {
             sell: {},
             buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidStorageTarget: 100 } },

@@ -136,12 +136,10 @@ describe('putIntoStorageFacility logistics', () => {
         const iron = makeResource('Iron Ore', 1);
         const s0 = makeStorageFacility();
         s0.department!.storageStarvation = 0;
-        s0.capacity = { volume: 1e9, mass: 1e9 };
         expect(putIntoStorageFacility(s0, iron, 100)).toBeCloseTo(100);
 
         const s1 = makeStorageFacility();
         s1.department!.storageStarvation = 1;
-        s1.capacity = { volume: 1e9, mass: 1e9 };
         const accepted = putIntoStorageFacility(s1, iron, 100);
         expect(accepted).toBeCloseTo(100);
         expect(s1.currentInStorage['Iron Ore']?.quantity).toBeCloseTo(50, 0);
@@ -151,7 +149,6 @@ describe('putIntoStorageFacility logistics', () => {
         const iron = makeResource('Iron Ore', 5);
         const storage = makeStorageFacility();
         storage.department!.storageBuffer = 100;
-        storage.capacity = { volume: 1e9, mass: 1e9 };
         putIntoStorageFacility(storage, iron, 20);
         expect(storage.department!.storageBuffer).toBeCloseTo(0);
     });
@@ -206,7 +203,6 @@ describe('storageLogisticsTick', () => {
         const assets = makeAssetsWithStorage();
         const storage = assets.storage;
         storage.department!.storageStarvation = 1;
-        storage.capacity = { volume: 1e9, mass: 1e9 };
         putIntoStorageFacility(storage, iron, 1000);
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });

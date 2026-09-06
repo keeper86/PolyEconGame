@@ -6,10 +6,12 @@ import { validateBuyBid, validateSellOffer } from './validation';
 function makeAssets(deposits: number, volumeCapacity = 1e9, massCapacity = 1e9) {
     return {
         deposits,
-        storage: makeStorageFacility({
-            capacity: { volume: volumeCapacity, mass: massCapacity },
-            department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
-        }),
+        storage: makeStorageFacility(
+            {
+                department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
+            },
+            { volume: volumeCapacity, mass: massCapacity },
+        ),
     };
 }
 

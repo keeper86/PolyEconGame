@@ -47,8 +47,6 @@ export function makeStorage(opts: {
     return {
         planetId: opts.planetId,
         id: opts.id,
-        capacity,
-        current: { mass: 0, volume: 0 },
         currentInStorage: {},
         escrow: {},
         shells: {

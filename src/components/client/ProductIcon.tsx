@@ -20,8 +20,6 @@ export function ProductIcon({
 
     const formIcon = useMemo(() => {
         switch (form) {
-            case 'gas':
-                return getAssetPath('form_gas');
             case 'liquid':
                 return getAssetPath('form_liquid');
             case 'solid':

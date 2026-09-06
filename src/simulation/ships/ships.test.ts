@@ -485,11 +485,13 @@ describe('transport ship: unloading → idle', () => {
     it('stays in unloading when destination storage is full', () => {
         const agent = makeAgent('a1', 'p1');
         agent.assets.p2 = makeAgentPlanetAssets('p2', {
-            storage: makeStorageFacility({
-                planetId: 'p2',
-                id: 'storage-p2',
-                capacity: { volume: 0.1, mass: 0.1 },
-            }),
+            storage: makeStorageFacility(
+                {
+                    planetId: 'p2',
+                    id: 'storage-p2',
+                },
+                { volume: 0.1, mass: 0.1 },
+            ),
         });
         const ship = makeTransportShip('S1', 'p1');
         ship.state = {
