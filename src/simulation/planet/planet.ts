@@ -381,24 +381,23 @@ export type AgentPlanetAssets = {
 };
 
 export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean = false): Array<Facility> => {
+    const manageStorage: Array<Facility> = [
+        ...(assets.storage.department ? [assets.storage.department] : []),
+        assets.storage.shells.solid,
+        assets.storage.shells.liquid,
+        assets.storage.shells.pieces,
+    ];
     if (onlyActive) {
         return [
             ...assets.productionFacilities.filter(isFacilityOperating),
-            ...(assets.storage.department && isFacilityOperating(assets.storage.department)
-                ? [assets.storage.department]
-                : []),
+            ...manageStorage.filter(isFacilityOperating),
             ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
                 ? [assets.humanResourcesDepartment]
                 : []),
             ...assets.shipConstructionFacilities.filter(isFacilityOperating),
         ];
     }
-    return [
-        ...assets.productionFacilities,
-        ...((assets.storage.department && [assets.storage.department]) ?? []),
-        ...assets.shipConstructionFacilities,
-        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-    ];
+    return [...assets.productionFacilities, ...manageStorage, ...assets.shipConstructionFacilities, ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : [])];
 };
 
 export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {

@@ -317,13 +317,16 @@ function computeResourceEfficiencyMap(
 }
 
 export function computeStorageSpaceFactor(
-    facility: ProductionFacility | ManagementFacility | ShipConstructionFacility,
+    facility: Facility,
     assets: AgentPlanetAssets,
 ): number {
     if (!isStorageSpaceClampEnabled()) {
         return 1;
     }
     if (facility.type === 'ship_construction') {
+        return 1;
+    }
+    if (facility.type === 'storage') {
         return 1;
     }
     if (facility.produces.length === 0) {
@@ -829,8 +832,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
             if (facility.type === 'production') {
                 processProductionFacility({ ...productionParameterBase, facility });
-            } else if (facility.type === 'management') {
-                processManagementFacility({ ...productionParameterBase, facility });
+            } else if (facility.type === 'management' || facility.type === 'storage') {
+                processManagementFacility({
+                    ...productionParameterBase,
+                    facility: facility as ManagementFacility,
+                });
             } else {
                 processShipConstructionFacility({ ...productionParameterBase, facility }, gameState);
             }

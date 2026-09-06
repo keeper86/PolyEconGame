@@ -4,6 +4,7 @@ import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
 import type { AgentPlanetAssets, PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
+import { administrativeServiceResourceType } from './services';
 
 type ConstructionState = {
     type: 'new' | 'expansion';
@@ -14,7 +15,7 @@ type ConstructionState = {
     lastTickInvestedConstructionServices: number;
 } | null;
 
-export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'management' | 'ship_construction';
+export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'management' | 'ship_construction' | 'storage';
 export const getFacilityType = (facility: Facility): FacilityType => {
     if (facility.type === 'production') {
         return facility.produces.reduce((prev, curr) => {
@@ -49,6 +50,7 @@ const facilityConstructionMultiplier: Record<FacilityType, number> = {
     services: 4,
     management: 0.1,
     ship_construction: 5,
+    storage: 0.1,
 };
 
 export const calculateCostsForConstruction = (
@@ -71,7 +73,7 @@ export const calculateCostsForConstruction = (
 };
 
 export type FacilityBase = PlanetaryId & {
-    type: 'production' | 'management' | 'ship_construction';
+    type: 'production' | 'management' | 'ship_construction' | 'storage';
     name: string;
     maxScale: number;
     scale: number;
@@ -176,12 +178,12 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
-export type StorageShell = PlanetaryId & {
-    type: 'storage_shell';
+// A storage shell is itself a buildable facility (construction/expansion, maintenance, workers). It
+// carries no logistics service on its own: it uses administrative service and a few (mostly
+// unskilled) staff as its running input, and contributes finite per-form capacity.
+export type StorageShell = FacilityBase & {
+    type: 'storage';
     form: StorageForm;
-    name: string;
-    maxScale: number;
-    scale: number;
     capacity: {
         volume: number;
         mass: number;
@@ -190,6 +192,9 @@ export type StorageShell = PlanetaryId & {
         volume: number;
         mass: number;
     };
+    needs: ResourceQuantity[];
+    produces: ResourceQuantity[];
+    lastTickResults: LastManagementTickResults;
 };
 
 export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageForm | null => {
@@ -212,13 +217,31 @@ export const makeStorageShell = (
     return {
         planetId,
         id,
-        type: 'storage_shell',
+        type: 'storage',
         form,
         name: STORAGE_SHELL_FORM_NAMES[form],
         maxScale: scale,
         scale,
         capacity: { ...cap },
         current: { volume: 0, mass: 0 },
+
+        construction: null,
+        lastConstructionCompletedTick: 0,
+        maintenanceStatus: 1,
+        maxMaintenance: 1,
+        cumulativeRepairAcc: 0,
+        lastTickMaintenanceConsumption: 0,
+        lastTickRestorationConsumption: 0,
+        powerConsumptionPerTick: 0.5,
+        pollutionPerTick: { air: 0, water: 0, soil: 0 },
+        workerRequirement: { none: 2, primary: 0, secondary: 0, tertiary: 0 },
+
+        needs: [{ resource: administrativeServiceResourceType, quantity: 40 }],
+        produces: [],
+        lastTickResults: {
+            ...createLastTickResults(),
+            lastProduced: {},
+        },
     };
 };
 
@@ -299,7 +322,7 @@ export type ShipConstructionFacility = FacilityBase & {
     lastTickResults: LastTickResults;
 };
 
-export type Facility = ProductionFacility | ManagementFacility | ShipConstructionFacility;
+export type Facility = ProductionFacility | ManagementFacility | StorageShell | ShipConstructionFacility;
 
 export const createLastTickResults = (): LastTickResults => ({
     overallEfficiency: 0,
