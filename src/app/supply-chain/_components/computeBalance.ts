@@ -1,5 +1,8 @@
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import {
+    humanResourcesOfficeFacilityType,
+    logisticsDepartmentFacilityType,
+} from '@/simulation/planet/specialFacilities';
 import { computePopulationServiceDemand } from './populationDemandHelper';
 
 const TOOL_PLANET = 'tool';

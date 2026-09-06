@@ -6,7 +6,12 @@ import {
     STORAGE_BUFFER_CAPACITY_MULTIPLIER,
 } from '../constants';
 import type { Storage } from './facility';
-import { queryStorageFacility, removeFromStorageFacility, storagePreservationFactor, totalStoredByShell } from './facility';
+import {
+    queryStorageFacility,
+    removeFromStorageFacility,
+    storagePreservationFactor,
+    totalStoredByShell,
+} from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
 import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';

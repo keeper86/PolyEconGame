@@ -18,7 +18,10 @@ import {
     FACILITY_LEVEL_LABELS,
     FACILITY_LEVELS,
 } from '@/simulation/planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import {
+    humanResourcesOfficeFacilityType,
+    logisticsDepartmentFacilityType,
+} from '@/simulation/planet/specialFacilities';
 import { solveSupplyChain, type SolverResult, type SolverObjective } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';

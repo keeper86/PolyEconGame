@@ -1,7 +1,10 @@
 import { FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK } from '@/simulation/constants';
 import { allServices } from '@/simulation/market/serviceDefinitions';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '@/simulation/planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import {
+    humanResourcesOfficeFacilityType,
+    logisticsDepartmentFacilityType,
+} from '@/simulation/planet/specialFacilities';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '@/simulation/planet/services';
 import type { Model, SolveResult } from 'javascript-lp-solver';
 import solver from 'javascript-lp-solver';
