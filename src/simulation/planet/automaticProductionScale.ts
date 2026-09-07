@@ -60,7 +60,7 @@ import { computePidDelta, getDefaultPidState } from './automaticProductionScale/
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
-import { updateAgentShellCompartments } from './automaticProductionScale/shellAutoscale';
+import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
