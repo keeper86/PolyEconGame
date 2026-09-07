@@ -35,9 +35,9 @@ describe('putIntoStorageFacility', () => {
 
     it('stores nothing when the owning shell has not been expanded (scale 0)', () => {
         storage.shells = {
-            solid: makeStorageShell(storage.planetId, 'silo', 'solid', { volume: 1e13, mass: 1e13 }, 0),
-            liquid: makeStorageShell(storage.planetId, 'tank', 'liquid', { volume: 1e13, mass: 1e13 }),
-            pieces: makeStorageShell(storage.planetId, 'ware', 'pieces', { volume: 1e13, mass: 1e13 }),
+            solid: makeStorageShell(storage.planetId, 'silo', 'solid', 0),
+            liquid: makeStorageShell(storage.planetId, 'tank', 'liquid'),
+            pieces: makeStorageShell(storage.planetId, 'ware', 'pieces'),
         };
         const resource = makeResource();
         storage.shells.solid.compartments[resource.name] = 1;

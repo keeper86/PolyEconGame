@@ -185,12 +185,6 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
-export type StorageBin = {
-    inventory: ResourceQuantity;
-    escrow: number;
-    capacity: number;
-};
-
 export type StorageShell = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
@@ -215,14 +209,8 @@ export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageFo
 // services, currency, internal and landBoundResource are not stored in a physical shell; they have
 // ~zero volume/mass and live in the Storage-level (no-form) ledger. Solid/liquid/pieces hold their
 // own ledger on the matching shell.
-export const makeStorageShell = (
-    planetId: string,
-    id: string,
-    form: StorageForm,
-    capacity?: { volume: number; mass: number },
-    scale = 1,
-): StorageShell => {
-    const cap = capacity ?? { volume: 1e13, mass: 1e13 };
+export const makeStorageShell = (planetId: string, id: string, form: StorageForm, scale = 1): StorageShell => {
+    const cap = { volume: 200000, mass: 50000 };
     return {
         planetId,
         id,

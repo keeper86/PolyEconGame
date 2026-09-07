@@ -40,19 +40,15 @@ export function makeStorage(opts: {
     const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
-    const capacity = {
-        volume: opts.volumeCapacity ?? 1e13,
-        mass: opts.massCapacity ?? 1e15,
-    };
     return {
         planetId: opts.planetId,
         id: opts.id,
         currentInStorage: {},
         escrow: {},
         shells: {
-            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', capacity, scale),
-            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', capacity, scale),
-            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', capacity, scale),
+            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', scale),
+            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', scale),
+            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', scale),
         },
         department,
     };

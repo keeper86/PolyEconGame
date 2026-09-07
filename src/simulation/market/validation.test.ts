@@ -3,14 +3,14 @@ import { clothingResourceType, coalResourceType } from '../planet/resources';
 import { makeManagementFacility, makeStorageFacility } from '../utils/testHelper';
 import { validateBuyBid, validateSellOffer } from './validation';
 
-function makeAssets(deposits: number, volumeCapacity = 1e9, massCapacity = 1e9) {
+function makeAssets(deposits: number, storageScale = 1e9) {
     return {
         deposits,
         storage: makeStorageFacility(
             {
                 department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
             },
-            { volume: volumeCapacity, mass: massCapacity },
+            storageScale,
         ),
     };
 }
@@ -116,21 +116,13 @@ describe('market validation', () => {
         });
 
         it('returns invalid when quantity exceeds available storage capacity', () => {
-            const result = validateBuyBid(
-                { bidPrice: 2.0, bidStorageTarget: 100 },
-                coalResource,
-                makeAssets(1000, 35, 50),
-            );
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, makeAssets(1000, 0));
             expect(result.isValid).toBe(false);
             expect(result.error).toContain('Quantity exceeds available storage capacity');
         });
 
         it('returns valid when quantity equals available storage capacity', () => {
-            const result = validateBuyBid(
-                { bidPrice: 2.0, bidStorageTarget: 50 },
-                coalResource,
-                makeAssets(1000, 35, 50),
-            );
+            const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 50 }, coalResource, makeAssets(1000, 1));
             expect(result.isValid).toBe(true);
         });
 

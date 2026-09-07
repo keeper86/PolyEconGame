@@ -181,19 +181,16 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
     };
 }
 
-export function makeStorageFacility(
-    overrides?: Partial<Storage>,
-    perShellCapacity?: { volume: number; mass: number },
-): Storage {
+export function makeStorageFacility(overrides?: Partial<Storage>, initialScale = 1): Storage {
     const base: Storage = {
         planetId: 'p',
         id: 'storage-p',
         currentInStorage: {},
         escrow: {},
         shells: {
-            solid: makeStorageShell('p', 'storage-p-silo', 'solid'),
-            liquid: makeStorageShell('p', 'storage-p-tank', 'liquid'),
-            pieces: makeStorageShell('p', 'storage-p-warehouse', 'pieces'),
+            solid: makeStorageShell('p', 'storage-p-silo', 'solid', initialScale),
+            liquid: makeStorageShell('p', 'storage-p-tank', 'liquid', initialScale),
+            pieces: makeStorageShell('p', 'storage-p-warehouse', 'pieces', initialScale),
         },
         department: {
             ...makeManagementFacility(),
@@ -206,9 +203,9 @@ export function makeStorageFacility(
     const id = base.id;
     const scale = base.department?.maxScale && base.department.maxScale > 0 ? base.department.maxScale : 1;
     base.shells = {
-        solid: makeStorageShell(planetId, `${id}-silo`, 'solid', perShellCapacity, scale),
-        liquid: makeStorageShell(planetId, `${id}-tank`, 'liquid', perShellCapacity, scale),
-        pieces: makeStorageShell(planetId, `${id}-warehouse`, 'pieces', perShellCapacity, scale),
+        solid: makeStorageShell(planetId, `${id}-silo`, 'solid', scale),
+        liquid: makeStorageShell(planetId, `${id}-tank`, 'liquid', scale),
+        pieces: makeStorageShell(planetId, `${id}-warehouse`, 'pieces', scale),
     };
     return base;
 }

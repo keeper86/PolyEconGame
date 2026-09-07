@@ -11,7 +11,7 @@ import { reconcileShellScale } from '../automaticProductionScale';
 import type { Storage } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 
-function fixture(perShellCapacity = { volume: 1000, mass: 1000 }): {
+function fixture(): {
     planet: ReturnType<typeof makePlanet>;
     agent: ReturnType<typeof makeAgent>;
     state: ReturnType<typeof makeGameState>;
@@ -20,7 +20,7 @@ function fixture(perShellCapacity = { volume: 1000, mass: 1000 }): {
 } {
     const planet = makePlanet({ id: 'p' });
     const agent = makeAgent('a', 'p');
-    const storage = makeStorageFacility({ planetId: 'p', id: 'storage-p', department: null }, perShellCapacity);
+    const storage = makeStorageFacility({ planetId: 'p', id: 'storage-p', department: null });
     storage.shells.solid.scale = 1;
     storage.shells.solid.maxScale = 1;
     const assets = makeAgentPlanetAssets('p', { storage });
