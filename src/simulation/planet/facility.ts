@@ -185,6 +185,10 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
+// One shell-scale of physical container holds the same volume/mass whatever the shape; only the surface
+// topology differs. A shell's total capacity is this per-unit volume/mass scaled by its current scale.
+export const STORAGE_SHELL_CAPACITY = { volume: 200000, mass: 50000 };
+
 export type StorageShell = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
@@ -210,7 +214,7 @@ export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageFo
 // ~zero volume/mass and live in the Storage-level (no-form) ledger. Solid/liquid/pieces hold their
 // own ledger on the matching shell.
 export const makeStorageShell = (planetId: string, id: string, form: StorageForm, scale = 1): StorageShell => {
-    const cap = { volume: 200000, mass: 50000 };
+    const cap = STORAGE_SHELL_CAPACITY;
     return {
         planetId,
         id,

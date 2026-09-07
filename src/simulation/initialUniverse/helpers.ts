@@ -33,10 +33,10 @@ export function makeStorage(opts: {
     planetId: string;
     id: string;
     scale?: number;
-    volumeCapacity?: number;
-    massCapacity?: number;
+    shellScale?: { solid?: number; liquid?: number; pieces?: number };
 }): Storage {
     const scale = opts.scale ?? 1;
+    const shell = opts.shellScale ?? {};
     const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
@@ -46,9 +46,9 @@ export function makeStorage(opts: {
         currentInStorage: {},
         escrow: {},
         shells: {
-            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', scale),
-            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', scale),
-            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', scale),
+            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', shell.solid ?? scale),
+            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', shell.liquid ?? scale),
+            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', shell.pieces ?? scale),
         },
         department,
     };

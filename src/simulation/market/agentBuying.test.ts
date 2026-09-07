@@ -9,7 +9,7 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility, STORAGE_SHELL_CAPACITY } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
@@ -25,10 +25,13 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
     const agent = makeAgent(id, planetId);
 
     agent.assets[planetId].deposits = 1_000_000;
-    agent.assets[planetId].storage = makeStorageFacility({
-        planetId,
-        id: `storage-${planetId}`,
-    });
+    agent.assets[planetId].storage = makeStorageFacility(
+        {
+            planetId,
+            id: `storage-${planetId}`,
+        },
+        20,
+    );
     agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
     return agent;
 }
@@ -485,6 +488,11 @@ describe('automaticPricing — buy side', () => {
             id: 'storage-free',
         });
 
+        // Give the shell scale so mass capacity comfortably holds the full ~1M-unit free-buy drive.
+        const freeStorageScale = Math.ceil(1_000_000 / STORAGE_SHELL_CAPACITY.mass);
+        buyer.assets.p.storage.shells.solid.scale = freeStorageScale;
+        buyer.assets.p.storage.shells.solid.maxScale = freeStorageScale;
+
         // No production facilities, no management, no ships — pure free buy
         const FREE_TARGET = 1_000_000;
         const SMOOTHING_DAYS = 20;
@@ -915,6 +923,10 @@ describe('marketTick — agent buying', () => {
             planetId: 'p',
             id: 'storage-p',
         });
+        // A full shell-scale holds 50,000 mass; 1/1000 of that leaves room for exactly 50 coal, so the
+        // 100-unit delivery settles only for the half that physically fits and pays only for what stored.
+        buyer.assets.p.storage.shells.solid.scale = 1 / 1000;
+        buyer.assets.p.storage.shells.solid.maxScale = buyer.assets.p.storage.shells.solid.scale;
 
         buyer.assets.p.market = {
             sell: {},
@@ -943,13 +955,13 @@ describe('marketTick — agent buying', () => {
 
     it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {
         const buyer = makeSteelProducer();
-        buyer.assets.p.storage = makeStorageFacility(
-            {
-                planetId: 'p',
-                id: 'storage-p',
-            },
-            0,
-        );
+        // No shell scale installed means no physical room to store the arriving coal.
+        buyer.assets.p.storage = makeStorageFacility({
+            planetId: 'p',
+            id: 'storage-p',
+        });
+        buyer.assets.p.storage.shells.solid.scale = 0;
+        buyer.assets.p.storage.shells.solid.maxScale = 0;
         buyer.assets.p.market = {
             sell: {},
             buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidStorageTarget: 100 } },

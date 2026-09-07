@@ -34,8 +34,7 @@ export function seedArbitrageTraderAgents(gameState: GameState): void {
                 const storage = makeStorage({
                     planetId: planet.id,
                     id: `${agentId}_store_${planet.id}`,
-                    volumeCapacity: 5e14,
-                    massCapacity: 5e15,
+                    scale: 4,
                 });
                 const assets = makeAgentPlanetAssets([], storage, null);
                 assets.licenses = { commercial: { acquiredTick: 0, frozen: false } };

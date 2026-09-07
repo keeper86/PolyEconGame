@@ -4,15 +4,14 @@ import { makeManagementFacility, makeStorageFacility } from '../utils/testHelper
 import { validateBuyBid, validateSellOffer } from './validation';
 
 function makeAssets(deposits: number, storageScale = 1e9) {
-    return {
-        deposits,
-        storage: makeStorageFacility(
-            {
-                department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
-            },
-            storageScale,
-        ),
-    };
+    const storage = makeStorageFacility({
+        department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
+    });
+    for (const shell of Object.values(storage.shells)) {
+        shell.scale = storageScale;
+        shell.maxScale = storageScale;
+    }
+    return { deposits, storage };
 }
 
 describe('market validation', () => {

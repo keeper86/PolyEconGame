@@ -19,9 +19,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
     const storage = makeStorage({
         planetId: planetId,
         id: `${recyclerId}_store`,
-        scale: 1,
-        volumeCapacity: 1e6, // services have 0 volume/mass, but we need some capacity
-        massCapacity: 1e6,
+        scale: 1, // services have 0 volume/mass, so the smallest shell with real capacity is enough
     });
 
     const assets = makeAgentPlanetAssets([], storage, null);

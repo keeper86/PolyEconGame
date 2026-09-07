@@ -425,6 +425,13 @@ describe('productionTick — shared stored-resource allocation', () => {
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
+        // These large numerical scales are about proportional shortfall across facilities, not about a
+        // physical shell boundary; give the storage shells generous room so throughput isn't capacity-capped.
+        for (const shell of Object.values(agent.assets.p.storage.shells)) {
+            shell.scale = 1_000_000;
+            shell.maxScale = shell.scale;
+        }
+
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
@@ -482,6 +489,10 @@ describe('productionTick — storage space clamp', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         agent.assets.p.productionFacilities = [facility];
+        // Water (100k units) must fit the liquid shell before this test measures throttling on the
+        // solid product compartment only.
+        agent.assets.p.storage.shells.liquid.scale = 5;
+        agent.assets.p.storage.shells.liquid.maxScale = agent.assets.p.storage.shells.liquid.scale;
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 100000);
         agent.assets.p.workforceDemography[30].secondary.active = 200;
         const gs = makeGameState(planet, [agent, gov]);

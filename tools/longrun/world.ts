@@ -1,4 +1,5 @@
 import { createRecyclerAgent } from '../../src/simulation/agents/recycler';
+import { shellScaleForFacilities } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 import {
     createPopulation,
     humanResourcesScaleForWorkers,
@@ -246,7 +247,13 @@ export function buildBenchmarkWorld(
 
             const hrDepartment = humanResourcesOfficeFacilityType(BENCHMARK_PLANET_ID, `${id}-hr-department`);
             const storageScale = storageScaleForFacilities([fac]);
-            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage`, scale: storageScale });
+            const shellScale = shellScaleForFacilities([fac]);
+            const storage = makeStorage({
+                planetId: BENCHMARK_PLANET_ID,
+                id: `${id}-storage`,
+                scale: storageScale,
+                shellScale,
+            });
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *

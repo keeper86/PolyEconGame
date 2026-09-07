@@ -61,8 +61,7 @@ export function seedShipbuilderAgents(gameState: GameState): void {
         const storage = makeStorage({
             planetId: planet.id,
             id: `${agentId}_store_${planet.id}`,
-            volumeCapacity: 5e14,
-            massCapacity: 5e15,
+            scale: 4,
         });
         const shipyard = makeShipyard(planet.id, agentId);
         shipyard.scale = 4;

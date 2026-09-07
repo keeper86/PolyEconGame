@@ -22,6 +22,8 @@ describe('wasteSurplusOutputs', () => {
     it('flares surplus goods output down to the configured keep level', () => {
         const assets = makeAgentPlanetAssets('p');
         assets.productionFacilities.push(makeWasteFacility());
+        assets.storage.shells.liquid.scale = 30; // chemical is liquid; give enough physical room to hold 1M+ units
+        assets.storage.shells.liquid.maxScale = assets.storage.shells.liquid.scale;
         putIntoStorageFacility(assets.storage, chemicalResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
         const keep = 30 * 100 * 48;
@@ -43,6 +45,8 @@ describe('wasteSurplusOutputs', () => {
                 produces: [{ resource: plasticResourceType, quantity: 10 }],
             }),
         );
+        assets.storage.shells.solid.scale = 40; // plastic is a solid; hold the 1M-unit leftover untouched
+        assets.storage.shells.solid.maxScale = assets.storage.shells.solid.scale;
         putIntoStorageFacility(assets.storage, plasticResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
         expect(queryStorageFacility(assets.storage, plasticResourceType.name)).toBeCloseTo(1_000_000, 6);
