@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
@@ -120,7 +120,7 @@ describe('processHrBufferForAssets', () => {
 
         processHrBufferForAssets(assets);
 
-        expect(assets.storage.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0).toBe(0);
+        expect(queryStorageFacility(assets.storage, humanResourcesServiceResourceType.name)).toBe(0);
         expect(hrFacility.hrBuffer).toBe(1500 - 100);
     });
 

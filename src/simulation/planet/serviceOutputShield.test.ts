@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { putIntoStorageFacility } from './facility';
+import { putIntoStorageFacility, queryStorageFacility } from './facility';
 import { logisticsServiceResourceType } from './services';
 import {
     makeAgent,
@@ -31,7 +31,7 @@ describe('service output shield', () => {
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(1000, 3);
         expect(assets.monthAcc.naturalDepreciationValue).toBeCloseTo(0, 3);
     });
@@ -43,7 +43,7 @@ describe('service output shield', () => {
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(4600, 1);
     });
 
@@ -62,7 +62,7 @@ describe('service output shield', () => {
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(900, 1);
     });
 });

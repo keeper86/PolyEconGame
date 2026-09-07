@@ -7,7 +7,7 @@ import {
     machineryResourceType,
     vehicleResourceType,
 } from '../planet/resources';
-import { putIntoStorageFacility } from '../planet/facility';
+import { getEscrow, putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { marketTick } from './market';
 import { clearUnifiedBids } from './orderBook';
@@ -64,8 +64,7 @@ describe('market escrow — seller-side', () => {
         const seller = makeSellerWithStock(COAL, 100, 1.0);
         collectAgentOffers(agentMap(seller), planet);
 
-        const freeAfterEscrow =
-            seller.assets.p.storage.currentInStorage[COAL]!.quantity - (seller.assets.p.storage.escrow[COAL] ?? 0);
+        const freeAfterEscrow = queryStorageFacility(seller.assets.p.storage, COAL);
         expect(freeAfterEscrow).toBe(0);
     });
 
@@ -76,15 +75,15 @@ describe('market escrow — seller-side', () => {
         const orders = books.get(COAL) ?? [];
         expect(orders).toHaveLength(1);
         expect(orders[0].quantity).toBe(100);
-        expect(seller.assets.p.storage.escrow[COAL]).toBe(100);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(100);
     });
 
     it('goods not sold are released from escrow after a full market tick', () => {
         const seller = makeSellerWithStock(COAL, 100, 999);
         marketTick(agentMap(seller), planet);
 
-        expect(seller.assets.p.storage.escrow[COAL] ?? 0).toBe(0);
-        expect(seller.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0).toBeCloseTo(100, 6);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        expect(queryStorageFacility(seller.assets.p.storage, COAL)).toBeCloseTo(100, 6);
     });
 
     it('sold goods are removed from both escrow and storage', () => {

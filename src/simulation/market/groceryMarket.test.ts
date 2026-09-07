@@ -11,7 +11,7 @@ import {
     logisticsServiceResourceType,
     retailServiceResourceType,
 } from '../planet/services';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import { forEachPopulationCohort } from '../population/population';
 import { agentMap, makeAgent, makeGameState as makeGS, makePlanetWithPopulation } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
@@ -122,7 +122,7 @@ describe('groceryMarketTick', () => {
 
         expect(groceryAgent.assets.p.market?.sell[GROCERY_SERVICE]?.lastSold).toBeDefined();
 
-        const remaining = groceryAgent.assets.p.storage.currentInStorage[GROCERY_SERVICE]?.quantity ?? 0;
+        const remaining = queryStorageFacility(groceryAgent.assets.p.storage, GROCERY_SERVICE);
         expect(remaining).toBeLessThan(500);
     });
 

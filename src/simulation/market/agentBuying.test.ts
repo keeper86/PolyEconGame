@@ -803,8 +803,8 @@ describe('marketTick — agent buying', () => {
 
         marketTick(agentMap(seller, richBuyer, poorBuyer), planet);
 
-        const richCoal = richBuyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
-        const poorCoal = poorBuyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const richCoal = queryStorageFacility(richBuyer.assets.p.storage, COAL);
+        const poorCoal = queryStorageFacility(poorBuyer.assets.p.storage, COAL);
 
         expect(richCoal).toBeGreaterThan(poorCoal);
     });

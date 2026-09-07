@@ -4,6 +4,7 @@ import { advanceTick, seedRng } from './engine';
 import { environmentTick } from './planet/environment';
 
 import type { Agent, Planet } from './planet/planet';
+import { queryStorageFacility } from './planet/facility';
 import { productionTick } from './planet/production';
 import type { EducationLevelType } from './population/education';
 import { populationTick } from './population/populationTick';
@@ -100,9 +101,9 @@ describe('engine basic behavior', () => {
 
         productionTick(makeGameState([planet], [agent]), planet);
 
-        const entry = agent.assets[planet.id].storage.currentInStorage[produceResourceType.name];
-        expect(entry).toBeDefined();
-        expect(entry!.quantity).toBeGreaterThanOrEqual(10);
+        expect(queryStorageFacility(agent.assets[planet.id].storage, produceResourceType.name)).toBeGreaterThanOrEqual(
+            10,
+        );
     });
 
     it('productionTick does remove needed resources from storage', () => {

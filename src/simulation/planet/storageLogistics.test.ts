@@ -6,6 +6,7 @@ import {
     getStorageStarvation,
     inflowPreservation,
     putIntoStorageFacility,
+    queryStorageFacility,
     storagePreservationFactor,
 } from './facility';
 import type { AgentPlanetAssets } from './planet';
@@ -142,7 +143,7 @@ describe('putIntoStorageFacility logistics', () => {
         s1.department!.storageStarvation = 1;
         const accepted = putIntoStorageFacility(s1, iron, 100);
         expect(accepted).toBeCloseTo(100);
-        expect(s1.currentInStorage['Iron Ore']?.quantity).toBeCloseTo(50, 0);
+        expect(queryStorageFacility(s1, 'Iron Ore')).toBeCloseTo(50, 0);
     });
 
     it('debits logisticsBuffer by stored mass', () => {
@@ -207,7 +208,7 @@ describe('storageLogisticsTick', () => {
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        const remaining = storage.currentInStorage['Iron Ore']?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, 'Iron Ore');
         expect(remaining).toBeLessThan(1000);
     });
 
@@ -219,7 +220,7 @@ describe('storageLogisticsTick', () => {
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeLessThan(1000);
     });
 

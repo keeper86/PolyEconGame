@@ -5,6 +5,7 @@ import {
     getAvailableStorageCapacity,
     makeStorageShell,
     putIntoStorageFacility,
+    queryStorageFacility,
     removeFromStorageFacility,
 } from './facility';
 import type { Storage } from './facility';
@@ -42,7 +43,7 @@ describe('putIntoStorageFacility', () => {
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBe(0);
-        expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
+        expect(queryStorageFacility(storage, 'test-resource')).toBe(0);
     });
 
     it('does not store more of a product than its authored compartment allows', () => {
@@ -52,9 +53,9 @@ describe('putIntoStorageFacility', () => {
         storage.shells.solid.current = { volume: 0, mass: 0 };
         storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 50);
-        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
+        expect(queryStorageFacility(storage, resource.name)).toBeCloseTo(50);
         expect(putIntoStorageFacility(storage, resource, 100)).toBeCloseTo(0);
-        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
+        expect(queryStorageFacility(storage, resource.name)).toBeCloseTo(50);
     });
 
     it('a full compartment of one product does not crowd another product compartment', () => {
@@ -64,12 +65,12 @@ describe('putIntoStorageFacility', () => {
         storage.shells.solid.current = { volume: 0, mass: 0 };
         storage.shells.solid.compartments[solid.name] = 0.5;
         putIntoStorageFacility(storage, solid, 50);
-        expect(storage.currentInStorage[solid.name]?.quantity).toBeCloseTo(50);
+        expect(queryStorageFacility(storage, solid.name)).toBeCloseTo(50);
 
         const other = makeResource({ name: 'other', form: 'solid' });
         storage.shells.solid.compartments[other.name] = 0.5;
         expect(putIntoStorageFacility(storage, other, 50)).toBeCloseTo(50);
-        expect(storage.currentInStorage[other.name]?.quantity).toBeCloseTo(50);
+        expect(queryStorageFacility(storage, other.name)).toBeCloseTo(50);
     });
 
     it('caps a put at the remaining room of the product compartment', () => {
@@ -80,7 +81,7 @@ describe('putIntoStorageFacility', () => {
         storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 30);
         expect(putIntoStorageFacility(storage, resource, 50)).toBeCloseTo(20);
-        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
+        expect(queryStorageFacility(storage, resource.name)).toBeCloseTo(50);
     });
 });
 

@@ -6,7 +6,7 @@ import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 const groceryDef = SERVICE_DEFINITIONS.grocery;
 const healthcareDef = SERVICE_DEFINITIONS.healthcare;
 const educationDef = SERVICE_DEFINITIONS.education;
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { Agent, GameState, Planet } from '../planet/planet';
 import { groceryServiceResourceType, healthcareServiceResourceType } from '../planet/services';
 import { nullPopulationCategory } from '../population/population';
@@ -590,8 +590,8 @@ describe('shipTick passenger boarding', () => {
 
         expect(ship.state.type).toBe('passenger_transporting');
         const storage = agent.assets.p1!.storage;
-        const groceryLeft = storage.currentInStorage[groceryServiceResourceType.name]?.quantity ?? 0;
-        const healthcareLeft = storage.currentInStorage[healthcareServiceResourceType.name]?.quantity ?? 0;
+        const groceryLeft = queryStorageFacility(storage, groceryServiceResourceType.name);
+        const healthcareLeft = queryStorageFacility(storage, healthcareServiceResourceType.name);
 
         const maxJitterTicks = maxFlightTicks - Math.ceil((0.9 * 1000) / passengerLiner.speed);
         expect(groceryLeft).toBeLessThanOrEqual(
