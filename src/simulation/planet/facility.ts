@@ -153,6 +153,7 @@ export type ProductionFacility = FacilityBase & {
 };
 
 export type Storage = PlanetaryId & {
+    // TODO: We should at one point replace direct access to this with queryStorageFacility (extending to show freeQuantity and escrow)
     currentInStorage: {
         [resourceName in string]: ResourceQuantity;
     };
@@ -178,9 +179,6 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
-// A storage shell is itself a buildable facility (construction/expansion, maintenance, workers). It
-// carries no logistics service on its own: it uses administrative service and a few (mostly
-// unskilled) staff as its running input, and contributes finite per-form capacity.
 export type StorageShell = FacilityBase & {
     type: 'storage';
     form: StorageForm;
@@ -192,6 +190,7 @@ export type StorageShell = FacilityBase & {
         volume: number;
         mass: number;
     };
+    compartments: { [resourceName: string]: number };
     needs: ResourceQuantity[];
     produces: ResourceQuantity[];
     lastTickResults: LastManagementTickResults;
@@ -224,6 +223,7 @@ export const makeStorageShell = (
         scale,
         capacity: { ...cap },
         current: { volume: 0, mass: 0 },
+        compartments: {},
 
         construction: null,
         lastConstructionCompletedTick: 0,
@@ -453,19 +453,59 @@ export type StorageCapacityState = {
     freeQuantity: number;
 };
 
-// The shell is the single authority for a physical form: its own scale decides effective capacity
-// and its own counters track what is stored. Resources without a shell (services, currency,
-// internal, landBound) carry no physical capacity and are unrestricted here.
+const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
+
+// The products of a given physical form currently held in this entity's storage. These are the
+// products the shell is partitioned among; resources routed by form (solid/liquid/pieces) that have
+// any stored quantity are included.
+export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): string[] => {
+    const names: string[] = [];
+    for (const [name, entry] of Object.entries(storage.currentInStorage)) {
+        if (shellFormOfResource(entry.resource) === form) {
+            names.push(name);
+        }
+    }
+    return names;
+};
+
+// The authored share (ceiling, [0,1]) a product gets of a shell's physical space. Compartments are
+// the authority; a stored product without an authored compartment falls back to an equal split of
+// whatever share of the shell the compartmented products have not already claimed.
+export const computeCompartmentShare = (storage: Storage, shell: StorageShell, resource: Resource): number => {
+    const authored = shell.compartments[resource.name]?.share;
+    if (authored !== undefined) {
+        return Math.max(0, Math.min(1, authored));
+    }
+    const held = getShellHeldResourceNames(storage, shell.form).filter((name) => name !== resource.name);
+    const claimed = held.reduce((sum, name) => sum + (shell.compartments[name]?.share ?? 0), 0);
+    const leftover = Math.max(0, 1 - claimed);
+    const uncontended = held.filter((name) => shell.compartments[name]?.share === undefined).length;
+    const unsharded = uncontended + 1; // this product plus any other un-partitioned held products
+    return unsharded > 0 ? Math.max(0, Math.min(1, leftover / unsharded)) : 0;
+};
+
+// The physical shells each have a finite total capacity (capacity.volume|mass scaled by their own
+// buildable scale). The autoscaler partitions a shell between the products it stores (compartments,
+// each product's share of the shell's space). Every product's own stored inventory is bounded by its
+// compartment, so both the pre-check (production clamp) and the actual write (putIntoStorageFacility)
+// agree on what fits. Resources without a shell (services, currency, internal, landBound) carry no
+// physical capacity and are unrestricted here.
 export const getStorageCapacityState = (storage: Storage, resource: Resource): StorageCapacityState => {
     const form = shellFormOfResource(resource);
 
-    let capacity = { volume: Infinity, mass: Infinity };
-    let used = { volume: 0, mass: 0 };
+    const capacity = { volume: Infinity, mass: Infinity };
+    const used = { volume: 0, mass: 0 };
 
     if (form) {
         const shell = storage.shells[form];
-        capacity = { volume: shell.capacity.volume * shell.scale, mass: shell.capacity.mass * shell.scale };
-        used = { volume: Math.max(0, shell.current.volume), mass: Math.max(0, shell.current.mass) };
+        const ownQuantity = storage.currentInStorage[resource.name]?.quantity ?? 0;
+        const share = computeCompartmentShare(storage, shell, resource);
+        const shellVolume = shell.capacity.volume * shell.scale;
+        const shellMass = shell.capacity.mass * shell.scale;
+        capacity.volume = shellVolume * share;
+        capacity.mass = shellMass * share;
+        used.volume = Math.max(0, ownQuantity * resource.volumePerQuantity);
+        used.mass = Math.max(0, ownQuantity * resource.massPerQuantity);
     }
 
     const freeVolume = Math.max(0, capacity.volume - used.volume);

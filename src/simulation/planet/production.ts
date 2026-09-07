@@ -4,7 +4,6 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SERVICE_DEPRECIATION_COST_MULTIPLIER,
-    TICKS_PER_MONTH,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { EducationLevelType } from '../population/education';
@@ -28,6 +27,7 @@ import type { Facility, ManagementFacility, ProductionFacility, ShipConstruction
 import {
     computeFacilityConditionEfficiency,
     createLastTickResults,
+    getAvailableStorageCapacity,
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
@@ -38,8 +38,8 @@ import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
-import { MIN_SCALE_FRACTION, STORAGE_CAPACITY_MONTHS } from './automaticProductionScale/constants';
-import { getStorageCapacityMonths, isStorageSpaceClampEnabled } from './automaticProductionScale/runtimeConfig';
+import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
+import { isStorageSpaceClampEnabled } from './automaticProductionScale/runtimeConfig';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -334,19 +334,16 @@ export function computeStorageSpaceFactor(facility: Facility, assets: AgentPlane
     const mix = facility.type === 'production' ? facility.productionMix : undefined;
     let factor = 1;
     for (const output of facility.produces) {
-        if (output.resource.form === 'services') {
+        if (output.resource.form === 'services' || output.resource.form === 'internal') {
             continue;
         }
         const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
-        const productionPerTick = totalTemplateOutput * share * facility.scale;
-        if (productionPerTick <= 0) {
+        const producedPerTick = totalTemplateOutput * share * facility.scale;
+        if (producedPerTick <= 0) {
             continue;
         }
-        const capacityMonths = getStorageCapacityMonths() ?? STORAGE_CAPACITY_MONTHS;
-        const capacity = capacityMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
-        const inventory = storage?.currentInStorage[output.resource.name]?.quantity ?? 0;
-        const allowed = Math.max(0, capacity - inventory);
-        factor = Math.min(factor, Math.min(1, allowed / productionPerTick));
+        const freeQuantity = getAvailableStorageCapacity(storage, output.resource);
+        factor = Math.min(factor, Math.min(1, freeQuantity / producedPerTick));
     }
     return Math.max(0, Math.min(1, factor));
 }

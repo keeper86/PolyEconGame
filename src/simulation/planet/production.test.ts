@@ -23,6 +23,7 @@ import {
     waterResourceType,
 } from './resources';
 import { constructionServiceResourceType } from './services';
+import type { AgentPlanetAssets } from './planet';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
 
 describe('productionTick (basic)', () => {
@@ -477,8 +478,6 @@ describe('productionTick — storage space clamp', () => {
         seedRng(12345);
     });
 
-    const virtualShelf = (maxScale: number) => 6 * 30 * maxScale * 1000;
-
     function makeWaterConsumer() {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('clamped-company');
@@ -490,12 +489,21 @@ describe('productionTick — storage space clamp', () => {
             resource: waterResourceType,
             quantity: 100000,
         };
-        agent.assets.p.workforceDemography[30].secondary.active = 10;
+        agent.assets.p.workforceDemography[30].secondary.active = 200;
         const gs = makeGameState(planet, [agent, gov]);
         return { planet, agent, facility, gs };
     }
 
-    it('produces at full efficiency while the output is below the virtual shelf', () => {
+    // Constrain the (default huge) solid shell so Produce can hold at most `capQuantity` units.
+    function capProduceCompartment(assets: AgentPlanetAssets, capQuantity: number) {
+        const vp = produceResourceType.volumePerQuantity;
+        const mp = produceResourceType.massPerQuantity;
+        assets.storage.shells.solid.capacity = { volume: capQuantity * vp, mass: capQuantity * mp };
+        assets.storage.shells.solid.current = { volume: 0, mass: 0 };
+        assets.storage.shells.solid.compartments[produceResourceType.name] = { share: 1 };
+    }
+
+    it('produces at full efficiency while the product compartment has room', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         productionTick(gs, planet);
         const produced = agent.assets.p.storage.currentInStorage[produceResourceType.name]?.quantity ?? 0;
@@ -503,82 +511,68 @@ describe('productionTick — storage space clamp', () => {
         expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
     });
 
-    it('throttles production to the free shelf space when the shelf is nearly full', () => {
+    it('throttles output to the product-compartment free room', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
-        const shelf = virtualShelf(10);
+        capProduceCompartment(agent.assets.p, 6000);
+        // Pre-fill most of the compartment with existing produce.
         agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
-            quantity: shelf - 5000,
+            quantity: 3000,
         };
         productionTick(gs, planet);
         const produced = agent.assets.p.storage.currentInStorage[produceResourceType.name]?.quantity ?? 0;
-        expect(produced).toBeCloseTo(shelf, 0);
+        // 3000 free of this tick, so the 10000 produced is clamped to the free cell (3000).
+        expect(produced).toBeCloseTo(6000, 0);
         expect(facility.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
     });
 
-    it('keeps the production-health efficiency intact so a full output storage cannot block expansion', () => {
+    it('stops producing into a compartment that is already exactly full (no overflow)', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
-        const shelf = virtualShelf(10);
+        capProduceCompartment(agent.assets.p, 6000);
         agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
             resource: produceResourceType,
-            quantity: shelf,
-        };
-        agent.assets.p.market.sell[produceResourceType.name] = {
-            resource: produceResourceType,
-            lastSold: 3000,
+            quantity: 6000,
         };
         productionTick(gs, planet);
-        expect(facility.lastTickResults.overallEfficiency).toBeGreaterThanOrEqual(0.9);
-        expect(facility.lastTickResults.lastProduced[produceResourceType.name]).toBeCloseTo(3000, 0);
+        // The full compartment cannot take this tick's output, so nothing more is put in.
+        const storedAfter = agent.assets.p.storage.currentInStorage[produceResourceType.name]?.quantity ?? 0;
+        expect(storedAfter).toBeCloseTo(6000, 0);
+        expect(facility.lastTickResults.lastProduced[produceResourceType.name]).toBeCloseTo(0, 0);
     });
 
     it('scales input consumption down with the throttled production', () => {
         const { planet, agent, gs } = makeWaterConsumer();
-        const shelf = virtualShelf(10);
-        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
-            resource: produceResourceType,
-            quantity: shelf - 5000,
-        };
+        capProduceCompartment(agent.assets.p, 6000);
         productionTick(gs, planet);
+        // Clamp factor is 6000/10000 = 0.6 → water input 1000/tick becomes 600 consumed.
         const water = agent.assets.p.storage.currentInStorage[waterResourceType.name]?.quantity ?? 0;
-        expect(water).toBeCloseTo(100000 - 500, 0);
+        expect(water).toBeCloseTo(100000 - 600, 0);
     });
 });
 
 describe('computeStorageSpaceFactor', () => {
-    it('allows producing what was sold when the shelf is full', () => {
+    it('returns 1 when the product compartment has ample free room', () => {
         const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
-        const agent = makeAgent('sold-allowance');
-        const shelf = 6 * 30 * 10 * 1000;
-        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
-            resource: produceResourceType,
-            quantity: shelf,
-        };
-        agent.assets.p.market.sell[produceResourceType.name] = {
-            resource: produceResourceType,
-            lastSold: 3000,
-        };
-        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.3, 10);
+        const agent = makeAgent('roomy-compartment');
+        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(1, 10);
     });
 
-    it('takes the minimum factor across multiple outputs', () => {
+    it('takes the minimum factor across multiple solid outputs sharing the solid shell', () => {
         const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
         facility.produces = [
             { resource: produceResourceType, quantity: 1000 },
             { resource: ironOreResourceType, quantity: 1000 },
         ];
         const agent = makeAgent('multi-output');
-        const shelf = 6 * 30 * 10 * 1000;
-        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
-            resource: produceResourceType,
-            quantity: shelf - 5000,
-        };
-        agent.assets.p.storage.currentInStorage[ironOreResourceType.name] = {
-            resource: ironOreResourceType,
-            quantity: 0,
-        };
-        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.5, 10);
+        // Give both products a half-share each of a solid shell that can only fit one of each well.
+        const solidCap = 5000; // each half comp fits 2500 → factor 0.5 at scale 10 (perTick 10000... )
+        agent.assets.p.storage.shells.solid.capacity = { volume: solidCap, mass: solidCap };
+        agent.assets.p.storage.shells.solid.current = { volume: 0, mass: 0 };
+        agent.assets.p.storage.shells.solid.compartments[produceResourceType.name] = { share: 0.5 };
+        agent.assets.p.storage.shells.solid.compartments[ironOreResourceType.name] = { share: 0.5 };
+        // produce massPerQ 1, ironOre massPerQ 1 → each compartment freeQty = 0.5*5000 = 2500 (both by mass)
+        expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.25, 6);
     });
 
     it('returns 1 for facilities without storage outputs', () => {

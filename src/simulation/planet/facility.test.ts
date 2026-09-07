@@ -23,51 +23,10 @@ function makeResource(overrides?: Partial<Resource> & { form?: Resource['form'] 
 }
 
 describe('putIntoStorageFacility', () => {
-    // A single solid-entry setup where the silo is the only authority and its fill is preset so we
-    // don't have to run intermediate puts to build the precondition.
-    function presetSolid(used: number, cap: number): void {
-        storage.shells.solid.capacity = { volume: cap, mass: cap };
-        storage.shells.solid.current = { volume: used, mass: used };
-        const existing = makeResource({ name: 'existing' });
-        storage.currentInStorage = { existing: { resource: existing, quantity: used } };
-    }
     let storage: Storage;
 
     beforeEach(() => {
         storage = makeStorageFacility();
-    });
-
-    it('does not remove stored items when the silo is full', () => {
-        presetSolid(100, 100);
-        const resource = makeResource();
-
-        const stored = putIntoStorageFacility(storage, resource, 50);
-
-        expect(stored).toBe(0);
-        expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
-        expect(storage.shells.solid.current.volume).toBe(100);
-    });
-
-    it('does not add stored items when the silo is overfull', () => {
-        presetSolid(120, 100);
-        const resource = makeResource();
-
-        const stored = putIntoStorageFacility(storage, resource, 50);
-
-        expect(stored).toBe(0);
-        expect(storage.currentInStorage.existing.quantity).toBe(120);
-        expect(storage.shells.solid.current.volume).toBe(120);
-    });
-
-    it('stores only the quantity that fits in the remaining shell capacity', () => {
-        presetSolid(90, 100);
-        const resource = makeResource();
-
-        const stored = putIntoStorageFacility(storage, resource, 50);
-
-        expect(stored).toBeCloseTo(10);
-        expect(storage.currentInStorage['test-resource']?.quantity).toBeCloseTo(10);
-        expect(storage.shells.solid.current.volume).toBeCloseTo(100);
     });
 
     it('stores nothing when the owning shell has not been expanded (scale 0)', () => {
@@ -78,11 +37,50 @@ describe('putIntoStorageFacility', () => {
             pieces: makeStorageShell(storage.planetId, 'ware', 'pieces', { volume: 1e13, mass: 1e13 }),
         };
         const resource = makeResource();
+        storage.shells.solid.compartments[resource.name] = { share: 1 };
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
         expect(stored).toBe(0);
         expect(storage.currentInStorage['test-resource']?.quantity ?? 0).toBe(0);
+    });
+
+    it('does not store more of a product than its authored compartment allows', () => {
+        const resource = makeResource({ name: 'concrete' });
+        const cap = 100;
+        storage.shells.solid.capacity = { volume: cap, mass: cap };
+        storage.shells.solid.current = { volume: 0, mass: 0 };
+        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        putIntoStorageFacility(storage, resource, 50);
+        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
+        expect(putIntoStorageFacility(storage, resource, 100)).toBeCloseTo(0);
+        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
+    });
+
+    it('a full compartment of one product does not crowd another product compartment', () => {
+        const solid = makeResource({ name: 'concrete', form: 'solid' });
+        const cap = 100;
+        storage.shells.solid.capacity = { volume: cap, mass: cap };
+        storage.shells.solid.current = { volume: 0, mass: 0 };
+        storage.shells.solid.compartments[solid.name] = { share: 0.5 };
+        putIntoStorageFacility(storage, solid, 50);
+        expect(storage.currentInStorage[solid.name]?.quantity).toBeCloseTo(50);
+
+        const other = makeResource({ name: 'other', form: 'solid' });
+        storage.shells.solid.compartments[other.name] = { share: 0.5 };
+        expect(putIntoStorageFacility(storage, other, 50)).toBeCloseTo(50);
+        expect(storage.currentInStorage[other.name]?.quantity).toBeCloseTo(50);
+    });
+
+    it('caps a put at the remaining room of the product compartment', () => {
+        const resource = makeResource({ name: 'concrete' });
+        const cap = 100;
+        storage.shells.solid.capacity = { volume: cap, mass: cap };
+        storage.shells.solid.current = { volume: 0, mass: 0 };
+        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        putIntoStorageFacility(storage, resource, 30);
+        expect(putIntoStorageFacility(storage, resource, 50)).toBeCloseTo(20);
+        expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
     });
 });
 
@@ -102,58 +100,56 @@ describe('storage form shells', () => {
         return { storage, resource };
     }
 
-    it('routes solid inflow to the silo shell only', () => {
+    it('an unsized single product may use the whole shell it is stored in', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
-        putIntoStorageFacility(storage, resource, 40);
+        const available = getAvailableStorageCapacity(storage, resource);
+        expect(available).toBeCloseTo(100);
+    });
 
-        expect(storage.shells.solid.current.volume).toBeCloseTo(40);
-        expect(storage.shells.solid.current.mass).toBeCloseTo(40);
-        expect(storage.shells.liquid.current.volume).toBe(0);
-        expect(storage.shells.pieces.current.volume).toBe(0);
-        expect(storage.shells.solid.capacity.volume).toBe(100);
+    it('getAvailableStorageCapacity reports the product compartment free room', () => {
+        const { storage, resource } = withShellCapacity('solid', 100);
+        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        storage.currentInStorage[resource.name] = { resource, quantity: 10 };
+        storage.shells.solid.current = { volume: 10, mass: 10 };
+
+        // Compartment = half of 100 = 50; 10 used leaves 40 for this product.
+        const available = getAvailableStorageCapacity(storage, resource);
+        expect(available).toBeCloseTo(40);
     });
 
     it('form-limited shell creates a hard cap independent of other forms', () => {
-        const { storage, resource: solid } = withShellCapacity('solid', 100);
+        const { storage, resource } = withShellCapacity('solid', 100);
         const liquid = makeResource({ form: 'liquid', volumePerQuantity: 1, massPerQuantity: 1 });
 
-        putIntoStorageFacility(storage, solid, 100);
-        // Liquid is unaffected by the full solid shell because aggregate capacity is huge.
+        storage.shells.solid.compartments[resource.name] = { share: 1 };
+        putIntoStorageFacility(storage, resource, 100);
+        storage.shells.liquid.compartments[liquid.name] = { share: 1 };
         expect(putIntoStorageFacility(storage, liquid, 40)).toBeCloseTo(40);
-        expect(putIntoStorageFacility(storage, solid, 10)).toBeCloseTo(0);
+        expect(putIntoStorageFacility(storage, resource, 10)).toBeCloseTo(0);
         expect(storage.shells.solid.current.volume).toBeCloseTo(100);
     });
 
-    it('degrades inflow once a shell approaches its own capacity, independent of other forms', () => {
+    it('degrades inflow once a compartment approaches its own capacity, unaffected by the sibling', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
-        const sameForm = makeResource({ form: 'solid' });
+        const sameForm = makeResource({ name: 'sibling', form: 'solid' });
+        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        storage.shells.solid.compartments[sameForm.name] = { share: 0.5 };
 
-        putIntoStorageFacility(storage, resource, 60);
-        // First additional solid fits within the shell's remaining 40.
-        expect(putIntoStorageFacility(storage, sameForm, 39)).toBeCloseTo(39);
-        expect(storage.shells.solid.current.volume).toBeCloseTo(99);
-
-        // Only 1 of the requested 10 fits; the rest is hard-refused by the (now full) silo.
-        expect(putIntoStorageFacility(storage, sameForm, 10)).toBeCloseTo(1);
+        putIntoStorageFacility(storage, resource, 50);
+        expect(storage.shells.solid.current.volume).toBeCloseTo(50);
+        expect(putIntoStorageFacility(storage, sameForm, 50)).toBeCloseTo(50);
+        expect(putIntoStorageFacility(storage, resource, 40)).toBeCloseTo(0);
         expect(storage.shells.solid.current.volume).toBeCloseTo(100);
     });
 
     it('remove decrements the owning shell current', () => {
         const { storage, resource } = withShellCapacity('liquid', 1000);
+        storage.shells.liquid.compartments[resource.name] = { share: 1 };
         putIntoStorageFacility(storage, resource, 300);
         const removed = removeFromStorageFacility(storage, resource.name, 120);
 
         expect(removed).toBeCloseTo(120);
         expect(storage.shells.liquid.current.volume).toBeCloseTo(180);
         expect(storage.shells.liquid.current.mass).toBeCloseTo(180);
-    });
-
-    it('getAvailableStorageCapacity returns per-form shell room for bid capping', () => {
-        const { storage, resource } = withShellCapacity('solid', 100);
-        storage.currentInStorage = { already: { resource, quantity: 30 } };
-        storage.shells.solid.current = { volume: 30, mass: 30 };
-
-        const available = getAvailableStorageCapacity(storage, resource);
-        expect(available).toBeCloseTo(70);
     });
 });
