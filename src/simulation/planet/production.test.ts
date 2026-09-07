@@ -13,6 +13,7 @@ import {
     makeProductionFacility,
     makeShipConstructionFacility,
     makeStorageFacility,
+    setStorageResourceQuantity,
 } from '../utils/testHelper';
 import { ironOreDepositResourceType } from './landBoundResources';
 import {
@@ -90,10 +91,7 @@ describe('productionTick (basic)', () => {
         facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 1000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 1000);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -380,10 +378,7 @@ describe('productionTick (basic)', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 150,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.workforceDemography[30].none.active = 20;
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -418,10 +413,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 2;
 
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 720,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 720);
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
@@ -456,10 +448,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         wf[30].none.active = 2;
 
         const initialWater = 500;
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: initialWater,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, initialWater);
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
 
@@ -485,10 +474,7 @@ describe('productionTick — storage space clamp', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 100000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 100000);
         agent.assets.p.workforceDemography[30].secondary.active = 200;
         const gs = makeGameState(planet, [agent, gov]);
         return { planet, agent, facility, gs };
@@ -515,10 +501,7 @@ describe('productionTick — storage space clamp', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         capProduceCompartment(agent.assets.p, 6000);
         // Pre-fill most of the compartment with existing produce.
-        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
-            resource: produceResourceType,
-            quantity: 3000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, produceResourceType, 3000);
         productionTick(gs, planet);
         const produced = queryStorageFacility(agent.assets.p.storage, produceResourceType.name);
         // 3000 free of this tick, so the 10000 produced is clamped to the free cell (3000).
@@ -529,10 +512,7 @@ describe('productionTick — storage space clamp', () => {
     it('stops producing into a compartment that is already exactly full (no overflow)', () => {
         const { planet, agent, facility, gs } = makeWaterConsumer();
         capProduceCompartment(agent.assets.p, 6000);
-        agent.assets.p.storage.currentInStorage[produceResourceType.name] = {
-            resource: produceResourceType,
-            quantity: 6000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, produceResourceType, 6000);
         productionTick(gs, planet);
         // The full compartment cannot take this tick's output, so nothing more is put in.
         const storedAfter = queryStorageFacility(agent.assets.p.storage, produceResourceType.name);
@@ -604,10 +584,7 @@ describe('constructionTick', () => {
 
         agent.assets.p.productionFacilities = [facility];
 
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 80,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 80);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -634,10 +611,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -685,10 +659,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 30,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 30);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -713,10 +684,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -746,10 +714,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -776,10 +741,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 30,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 30);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -808,10 +770,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -846,10 +805,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov], 5);
 
@@ -882,10 +838,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 20,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
 
@@ -924,10 +877,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [f1, f2];
-        agent.assets.p.storage.currentInStorage[constructionServiceResourceType.name] = {
-            resource: constructionServiceResourceType,
-            quantity: 100,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 100);
 
         const gs = makeGameState(planet, [agent, gov]);
 
@@ -1030,10 +980,7 @@ describe('productionTick — humanResourcesDepartment', () => {
         );
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 50,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 50);
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 1;
@@ -1121,10 +1068,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 6000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 6000);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 25;
 
@@ -1155,10 +1099,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         const shipyard = makeShipConstructionFacility({ secondary: 3 }, { id: 'hr-scarce-sy', scale: 9, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
-            resource: steelResourceType,
-            quantity: 1000,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 1000);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].secondary.active = 30;
 
@@ -1186,10 +1127,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         );
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 150,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 10;
 
@@ -1209,10 +1147,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 150,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.hrProductivityMultiplier = 0.5;
         agent.assets.p.workforceDemography[30].none.active = 20;
 
@@ -1244,10 +1179,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
         agent.assets.p.productionFacilities = [prodFacility];
-        agent.assets.p.storage.currentInStorage[waterResourceType.name] = {
-            resource: waterResourceType,
-            quantity: 180,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 180);
 
         agent.assets.p.workforceDemography[30].none.active = 5;
 
@@ -1285,10 +1217,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
 
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
-            resource: steelResourceType,
-            quantity: 60,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 60);
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 9;
@@ -1311,10 +1240,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
 
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
-        agent.assets.p.storage.currentInStorage[steelResourceType.name] = {
-            resource: steelResourceType,
-            quantity: 100,
-        };
+        setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 100);
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);

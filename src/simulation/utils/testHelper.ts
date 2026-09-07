@@ -7,6 +7,9 @@ import {
     createLastTickResults,
     makeStorageShell,
     nullWagePidState,
+    putIntoStorageFacility,
+    queryStorageFacility,
+    removeFromStorageFacility,
     type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
@@ -14,6 +17,7 @@ import {
     type StorageDepartment,
     type Storage,
 } from '../planet/facility';
+import type { Resource } from '../planet/claims';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -207,6 +211,23 @@ export function makeStorageFacility(
         pieces: makeStorageShell(planetId, `${id}-warehouse`, 'pieces', perShellCapacity, scale),
     };
     return base;
+}
+
+export function setStorageResourceQuantity(storage: Storage, resource: Resource, quantity: number): void {
+    const previousDepartment = storage.department;
+    if (!previousDepartment || previousDepartment.storageStarvation !== 0) {
+        storage.department = { storageStarvation: 0 } as Partial<StorageDepartment> as StorageDepartment;
+    }
+
+    const existing = queryStorageFacility(storage, resource.name, false);
+    if (existing > 0) {
+        removeFromStorageFacility(storage, resource.name, existing);
+    }
+    if (quantity > 0) {
+        putIntoStorageFacility(storage, resource, quantity);
+    }
+
+    storage.department = previousDepartment;
 }
 
 export function makeManagementFacility(

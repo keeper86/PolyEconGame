@@ -19,7 +19,7 @@ import {
     TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
-import type { Storage } from '../planet/facility';
+import { putIntoStorageFacility } from '../planet/facility';
 import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
@@ -49,10 +49,12 @@ function makePlanetWithPrice(prices: Record<string, number> = {}) {
     return makePlanet({ marketPrices: prices });
 }
 
-function makeStorageWith(
-    contents: Record<string, { resource: Storage['currentInStorage'][string]['resource']; quantity: number }>,
-) {
-    return makeStorageFacility({ planetId: PLANET_ID, currentInStorage: contents });
+function makeStorageWith(contents: Record<string, { resource: Resource; quantity: number }>) {
+    const storage = makeStorageFacility({ planetId: PLANET_ID });
+    for (const { resource, quantity } of Object.values(contents)) {
+        putIntoStorageFacility(storage, resource, quantity);
+    }
+    return storage;
 }
 
 function makeWaterProducerWithPriorOffer(priorPrice: number, lastSold: number, offerQty: number) {

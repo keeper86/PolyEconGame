@@ -14,6 +14,7 @@ import {
     makeProductionFacility,
     makeShipConstructionFacility,
     makeStorageFacility,
+    setStorageResourceQuantity,
 } from '../utils/testHelper';
 import type { Resource } from './claims';
 import {
@@ -62,7 +63,7 @@ function setup(overrides?: Partial<ProductionFacility>): Setup {
 }
 
 function seedService(storage: Storage, resource: Resource, quantity: number): void {
-    storage.currentInStorage[resource.name] = { resource, quantity };
+    setStorageResourceQuantity(storage, resource, quantity);
 }
 
 function markUnderConstruction(facility: ProductionFacility): void {

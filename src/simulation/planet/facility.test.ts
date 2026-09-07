@@ -9,7 +9,7 @@ import {
     removeFromStorageFacility,
 } from './facility';
 import type { Storage } from './facility';
-import { makeStorageFacility } from '../utils/testHelper';
+import { makeStorageFacility, setStorageResourceQuantity } from '../utils/testHelper';
 import type { StorageForm } from './facility';
 
 function makeResource(overrides?: Partial<Resource> & { form?: Resource['form'] }): Resource {
@@ -31,7 +31,6 @@ describe('putIntoStorageFacility', () => {
     });
 
     it('stores nothing when the owning shell has not been expanded (scale 0)', () => {
-        storage.currentInStorage = {};
         storage.shells = {
             solid: makeStorageShell(storage.planetId, 'silo', 'solid', { volume: 1e13, mass: 1e13 }, 0),
             liquid: makeStorageShell(storage.planetId, 'tank', 'liquid', { volume: 1e13, mass: 1e13 }),
@@ -110,8 +109,7 @@ describe('storage form shells', () => {
     it('getAvailableStorageCapacity reports the product compartment free room', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
         storage.shells.solid.compartments[resource.name] = 0.5;
-        storage.currentInStorage[resource.name] = { resource, quantity: 10 };
-        storage.shells.solid.current = { volume: 10, mass: 10 };
+        setStorageResourceQuantity(storage, resource, 10);
 
         // Compartment = half of 100 = 50; 10 used leaves 40 for this product.
         const available = getAvailableStorageCapacity(storage, resource);

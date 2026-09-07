@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { getCurrencyResourceName } from '../market/currencyResources';
 import type { GameState, AutomatedPricingConfig } from '../planet/planet';
 import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
+import { putIntoStorageFacility } from '../planet/facility';
 import { makeAgent, makeGameState, makeStorageFacility } from '../utils/testHelper';
 import { handleSetBuyBids, handleSetSellOffers } from './marketActions';
 import type { OutboundMessage } from './messages';
@@ -10,11 +11,8 @@ const RESOURCE = 'Iron Ore';
 
 function makeState(): GameState {
     const resource = RESOURCES_BY_NAME.get(RESOURCE)!;
-    const storageFacility = makeStorageFacility({
-        currentInStorage: {
-            [RESOURCE]: { resource, quantity: 100 },
-        },
-    });
+    const storageFacility = makeStorageFacility();
+    putIntoStorageFacility(storageFacility, resource, 100);
     const agent = makeAgent('agent-1', 'p', 'Agent 1', {
         assets: {
             p: {

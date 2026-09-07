@@ -9,6 +9,7 @@ import {
     makePopulationByEducation,
     makeProductionFacility,
     makeStorageFacility,
+    setStorageResourceQuantity,
 } from '../utils/testHelper';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
@@ -81,20 +82,19 @@ function makeSetup(
         },
     );
 
+    const assets = makeAgentPlanetAssets(planet.id, {
+        productionFacilities: [facility],
+    });
+    setStorageResourceQuantity(
+        assets.storage,
+        RESOURCE,
+        3 * 30 * facility.maxScale * (facility.produces[0]?.quantity ?? 1),
+    );
+
     const agent = makeAgent('a1', planet.id, 'Agent 1', {
         automated: true,
         assets: {
-            [planet.id]: makeAgentPlanetAssets(planet.id, {
-                productionFacilities: [facility],
-                storage: makeStorageFacility({
-                    currentInStorage: {
-                        [RESOURCE_NAME]: {
-                            resource: RESOURCE,
-                            quantity: 3 * 30 * facility.maxScale * (facility.produces[0]?.quantity ?? 1),
-                        },
-                    },
-                }),
-            }),
+            [planet.id]: assets,
         },
     });
 
@@ -133,7 +133,7 @@ function makeGameState(agents: Map<string, Agent>): GameState {
 function setStorageQuantity(agents: Map<string, Agent>, quantity: number): void {
     const agent = agents.values().next().value as Agent;
     const assets = agent.assets[Object.keys(agent.assets)[0]];
-    assets.storage.currentInStorage[RESOURCE_NAME] = { resource: RESOURCE, quantity };
+    setStorageResourceQuantity(assets.storage, RESOURCE, quantity);
 }
 /** Create a planet with enough unemployed workers to pass hasSufficientUnemployedWorkers check
  * and with lastProductionCostFloors set so price inflation factor stays below the caution threshold. */

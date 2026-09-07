@@ -10,7 +10,14 @@ import {
 import { calculateCostsForConstruction } from '../planet/facility';
 import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
-import { makeAgent, makeGameState, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
+import {
+    makeAgent,
+    makeGameState,
+    makePlanet,
+    makeProductionFacility,
+    makeStorageFacility,
+    setStorageResourceQuantity,
+} from '../utils/testHelper';
 import { automaticLoanType, computeLoanConditions, grantAutomaticLoan } from './loanConditions';
 import { hasOutstandingEmergencyLoan, makeLoan, totalOutstandingLoans } from './loanTypes';
 
@@ -107,10 +114,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
-        agent.assets[planet.id]!.storage = makeStorageFacility({
-            currentInStorage: { wheat: { resource, quantity: 100 } },
-        });
-        agent.assets[planet.id]!.storage.department = null;
+        const assetStorage = makeStorageFacility();
+        setStorageResourceQuantity(assetStorage, resource, 100);
+        assetStorage.department = null;
+        agent.assets[planet.id]!.storage = assetStorage;
 
         const result = computeLoanConditions(agent, planet);
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
@@ -129,10 +136,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
-        agent.assets[planet.id]!.storage = makeStorageFacility({
-            currentInStorage: { iron: { resource, quantity: 50 } },
-        });
-        agent.assets[planet.id]!.storage.department = null;
+        const assetStorage = makeStorageFacility();
+        setStorageResourceQuantity(assetStorage, resource, 50);
+        assetStorage.department = null;
+        agent.assets[planet.id]!.storage = assetStorage;
 
         const withoutStorage = computeLoanConditions(makeEstablishedAgent(planet, { lastMonthRevenue: 1000 }), planet);
         const withStorage = computeLoanConditions(agent, planet);
@@ -153,10 +160,10 @@ describe('computeLoanConditions', () => {
             massPerQuantity: 1,
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 0, existingLoans: 1 });
-        agent.assets[planet.id]!.storage = makeStorageFacility({
-            currentInStorage: { iron: { resource, quantity: 0 } },
-        });
-        agent.assets[planet.id]!.storage.department = null;
+        const assetStorage = makeStorageFacility();
+        setStorageResourceQuantity(assetStorage, resource, 0);
+        assetStorage.department = null;
+        agent.assets[planet.id]!.storage = assetStorage;
 
         const result = computeLoanConditions(agent, planet);
         expect(result.storageCollateral).toBe(0);
