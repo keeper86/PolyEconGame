@@ -4,7 +4,6 @@ import { advanceTick, seedRng } from './engine';
 import { environmentTick } from './planet/environment';
 
 import type { Agent, Planet } from './planet/planet';
-import { queryStorageFacility } from './planet/facility';
 import { productionTick } from './planet/production';
 import type { EducationLevelType } from './population/education';
 import { populationTick } from './population/populationTick';

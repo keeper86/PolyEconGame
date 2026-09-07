@@ -4,6 +4,7 @@ import { advanceTick, seedRng } from './engine';
 import { totalOutstandingLoans } from './financial/loanTypes';
 import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
 import { constructionServiceResourceType } from './planet/services';
+import { getWholeStorage } from './planet/facility';
 import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
@@ -298,7 +299,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
 
                 const planet = gs.planets.get(planetId);
                 let storageValue = 0;
-                for (const entry of Object.values(assets.storage.currentInStorage)) {
+                for (const [, entry] of getWholeStorage(assets.storage)) {
                     if (entry?.quantity) {
                         const price = planet?.marketPrices[entry.resource.name] ?? 0;
                         storageValue += entry.quantity * price;

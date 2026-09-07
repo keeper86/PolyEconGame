@@ -25,6 +25,7 @@ import {
     totalPopulation,
 } from './testHelper';
 import { NOTICE_PERIOD_MONTHS } from '../constants';
+import { getWholeStorage } from '../planet/facility';
 
 describe('makePopulationCategory', () => {
     it('returns zeroed category', () => {
@@ -236,7 +237,7 @@ describe('makeStorageFacility', () => {
         const sf = makeStorageFacility();
         expect(sf.planetId).toBe('p');
         expect(sf.shells.solid.capacity.volume).toBe(1e13);
-        expect(Object.keys(sf.currentInStorage)).toHaveLength(0);
+        expect(getWholeStorage(sf)).toHaveLength(0);
     });
 });
 

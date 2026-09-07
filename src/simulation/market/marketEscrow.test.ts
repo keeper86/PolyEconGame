@@ -92,8 +92,8 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(seller, buyer), planet);
 
-        expect(seller.assets.p.storage.escrow[COAL] ?? 0).toBe(0);
-        const remaining = seller.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        const remaining = queryStorageFacility(seller.assets.p.storage, COAL, false);
         expect(remaining).toBeCloseTo(40, 6);
     });
 
@@ -113,10 +113,10 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(seller), planet);
 
-        expect(seller.assets.p.storage.escrow[COAL] ?? 0).toBe(0);
-        expect(seller.assets.p.storage.escrow[MACHINERY] ?? 0).toBe(0);
-        expect(seller.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0).toBeCloseTo(100, 6);
-        expect(seller.assets.p.storage.currentInStorage[MACHINERY]?.quantity ?? 0).toBeCloseTo(5, 6);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        expect(getEscrow(seller.assets.p.storage, MACHINERY)).toBe(0);
+        expect(queryStorageFacility(seller.assets.p.storage, COAL, false)).toBeCloseTo(100, 6);
+        expect(queryStorageFacility(seller.assets.p.storage, MACHINERY, false)).toBeCloseTo(5, 6);
     });
 
     it('agent that is both buyer and seller ends tick with zero escrow and zero depositHold', () => {
@@ -136,7 +136,7 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(agent), planet);
 
-        expect(agent.assets.p.storage.escrow[COAL] ?? 0).toBe(0);
+        expect(getEscrow(agent.assets.p.storage, COAL)).toBe(0);
         expect(agent.assets.p.depositHold).toBe(0);
     });
 });
@@ -191,7 +191,7 @@ describe('market escrow — buyer-side deposit hold', () => {
 
         marketTick(agentMap(seller, buyer), planet);
 
-        const bought = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const bought = queryStorageFacility(buyer.assets.p.storage, COAL, false);
         expect(bought).toBe(0);
         expect(buyer.assets.p.deposits).toBe(0);
     });

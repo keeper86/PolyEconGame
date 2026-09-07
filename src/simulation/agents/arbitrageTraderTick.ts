@@ -13,6 +13,7 @@ import { travelTime } from '../ships/shipHandlers';
 import { effectiveShipValue } from '../ships/shipMarket';
 import type { TransportShip } from '../ships/ships';
 import { canCarryResource } from '../ships/ships';
+import { getWholeStorage } from '../planet/facility';
 
 type RouteCandidate = {
     originPlanetId: string;
@@ -271,7 +272,7 @@ function postSellOffers(agent: Agent, gameState: GameState): void {
 
         const loadingResources = loadingByPlanet.get(planetId) ?? new Set<string>();
 
-        for (const [resourceName, entry] of Object.entries(assets.storage.currentInStorage)) {
+        for (const [resourceName, entry] of getWholeStorage(assets.storage)) {
             if (loadingResources.has(resourceName) || entry.quantity <= 0) {
                 continue;
             }

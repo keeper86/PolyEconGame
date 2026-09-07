@@ -1,5 +1,6 @@
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResource } from '@/simulation/market/currencyResources';
 import type { ProductionFacility } from '@/simulation/planet/facility';
+import { getWholeStorage } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import type { ConsumptionInfo } from '@/simulation/market/consumptionSources';
 import { computeConsumptionBreakdown } from '@/simulation/market/consumptionSources';
@@ -184,7 +185,7 @@ export function buildResourceList(
         add(name);
     }
 
-    for (const [name, entry] of Object.entries(storageFacility.currentInStorage)) {
+    for (const [name, entry] of getWholeStorage(storageFacility)) {
         if ((entry?.quantity ?? 0) > 0 && entry.resource.form !== 'internal') {
             add(name);
         }

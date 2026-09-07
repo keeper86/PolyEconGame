@@ -11,6 +11,7 @@ import {
     removeFromStorageFacility,
     storagePreservationFactor,
     totalStoredByShell,
+    getWholeStorage,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
@@ -123,7 +124,7 @@ function applyStorageDegradation(storage: Storage, planet: Planet, assets: Agent
     const ss = storage.department?.storageStarvation ?? 1;
     const preservation = storagePreservationFactor(ss);
 
-    for (const [name, entry] of Object.entries(storage.currentInStorage)) {
+    for (const [name, entry] of getWholeStorage(storage)) {
         if (!entry || entry.quantity <= 0) {
             continue;
         }

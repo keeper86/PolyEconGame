@@ -1,6 +1,6 @@
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
 import type { Facility } from '../planet/facility';
-import { lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
+import { getWholeStorage, lockIntoEscrow, queryStorageFacility, releaseFromEscrow } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from '../planet/productionFacilities';
 import { appendTradeRecord, createShipListing, effectiveShipValue, updateShipEma } from '../ships/shipMarket';
@@ -60,7 +60,9 @@ export function handlePostTransportContract(
         return;
     }
 
-    const storageEntry = assets.storage.currentInStorage[cargo.resource.name];
+    const storageEntry = getWholeStorage(assets.storage).find(
+        ([resourceName]) => resourceName === cargo.resource.name,
+    )?.[1];
     if (!storageEntry) {
         safePostMessage({
             type: 'transportContractPostFailed',
@@ -1200,8 +1202,10 @@ export function handleDispatchShip(
             return;
         }
 
-        const storageEntry = assets.storage.currentInStorage[cargoGoal.resource.name];
-        if (!storageEntry) {
+        const storageTracked = getWholeStorage(assets.storage).some(
+            ([resourceName]) => resourceName === cargoGoal.resource.name,
+        );
+        if (!storageTracked) {
             safePostMessage({
                 type: 'shipDispatchFailed',
                 requestId,

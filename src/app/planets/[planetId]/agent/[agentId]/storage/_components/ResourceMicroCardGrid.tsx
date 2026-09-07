@@ -2,7 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import { queryStorageFacility } from '@/simulation/planet/facility';
+import { getWholeStorage, queryStorageFacility } from '@/simulation/planet/facility';
 import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
@@ -74,7 +74,7 @@ function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCa
 
     const allNames = new Set<string>();
 
-    for (const name of Object.keys(storage.currentInStorage)) {
+    for (const [name] of getWholeStorage(storage)) {
         allNames.add(name);
     }
     for (const name of Object.keys(prodPerTick)) {

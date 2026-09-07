@@ -170,6 +170,7 @@ export type Storage = PlanetaryId & {
 };
 
 export const getStorageScaleBasis = (storage: Storage): number => storage.department?.maxScale ?? 0;
+export const getWholeStorage = (storage: Storage) => Object.entries(storage.currentInStorage);
 
 export type StorageForm = 'solid' | 'liquid' | 'pieces';
 

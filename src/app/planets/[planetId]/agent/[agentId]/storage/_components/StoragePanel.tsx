@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
-import { queryStorageFacility } from '@/simulation/planet/facility';
+import { getWholeStorage, queryStorageFacility } from '@/simulation/planet/facility';
 import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
@@ -115,7 +115,7 @@ function buildStorageEntries(assets: AgentPlanetAssets): StorageResourceEntry[] 
     const allNames = new Set<string>();
 
     // Resources in storage
-    for (const name of Object.keys(storage.currentInStorage)) {
+    for (const [name] of getWholeStorage(storage)) {
         allNames.add(name);
     }
 

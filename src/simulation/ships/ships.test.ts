@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MAX_DISPATCH_TIMEOUT_TICKS } from '../constants';
-import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS, putIntoStorageFacility } from '../planet/facility';
+import { MINIMUM_CONSTRUCTION_TIME_IN_TICKS, putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { GameState } from '../planet/planet';
 import { steelResourceType } from '../planet/resources';
 import { maintenanceServiceResourceType } from '../planet/services';
@@ -331,7 +331,7 @@ describe('transport ship: loading → transporting', () => {
         shipTick(state);
 
         expect(ship.state.type).toBe('transporting');
-        expect(storage.currentInStorage.Steel?.quantity).toBeCloseTo(200, 1);
+        expect(queryStorageFacility(storage, 'Steel', false)).toBeCloseTo(200, 1);
     });
 
     it('stays in loading when cargo is unavailable', () => {
@@ -478,7 +478,7 @@ describe('transport ship: unloading → idle', () => {
         expect(ship.state.type).toBe('idle');
         const shipState = ship.state as unknown as ShipStatusIdle;
         expect(shipState.planetId).toBe('p2');
-        const stored = agent.assets.p2!.storage.currentInStorage.Steel?.quantity ?? 0;
+        const stored = queryStorageFacility(agent.assets.p2!.storage, 'Steel', false);
         expect(stored).toBe(200);
     });
 
@@ -1006,9 +1006,9 @@ describe('transport ship loading: cross-agent storage via posterAgentId', () => 
 
         expect(ship.state.type).toBe('transporting');
 
-        const posterSteelLeft = poster.assets.p1!.storage.currentInStorage.Steel?.quantity ?? 0;
+        const posterSteelLeft = queryStorageFacility(poster.assets.p1!.storage, 'Steel', false);
         expect(posterSteelLeft).toBeCloseTo(300, 1);
-        const carrierSteelLeft = carrier.assets.p1!.storage.currentInStorage.Steel?.quantity ?? 0;
+        const carrierSteelLeft = queryStorageFacility(carrier.assets.p1!.storage, 'Steel', false);
         expect(carrierSteelLeft).toBe(0);
     });
 });
