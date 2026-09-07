@@ -1,10 +1,11 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { Resource } from '../claims';
 import type { ProductionFacility } from '../facility';
-import { shellFormOfResource, type StorageForm } from '../facility';
+import { shellFormOfResource, storageFormKeys, type StorageForm, type Storage } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_TARGET_MONTHS } from './constants';
 import { getStorageTargetMonths } from './runtimeConfig';
+import { compartmentNeedsFromFootprint, resolveShellCells, type ShellCellResolution } from './compartmentAllocator';
 
 export type StorageResidency = {
     name: string;
@@ -85,4 +86,58 @@ export const planShell = (residency: StorageResidency[], baseVolume: number, bas
         cellShares[residency[i].name] = neededDeclared[i] / requiredScale;
     }
     return { requiredScale, cellShares };
+};
+
+// Apply the compartment strategy to one physical shell. Only the produced-goods footprint gets an
+// authored compartment; any other occupant (imports, market buys, buffered inputs without a producer
+// on this agent) stays `undefined` so it keeps the flexible leftover share in computeCompartmentShare
+// and never reserves headroom it cannot actually fill.
+//
+// `requiredScale` is the minimum shell scale at which every declared produced-good target fits; the
+// caller drives `maxScale` toward it the same way it grows any other facility. Compartments whose
+// producer left the agent are dropped so the leftover pool expands.
+export const resolveFormShell = (
+    storage: Storage,
+    form: StorageForm,
+    footprint: StorageResidency[],
+): { resolution: ShellCellResolution; requiredScale: number } => {
+    const shell = storage.shells[form];
+    const needs = compartmentNeedsFromFootprint(shell, footprint);
+    const resolution = resolveShellCells(needs, shell.capacity.volume, shell.capacity.mass, shell.scale);
+
+    const footprintNames = new Set(footprint.map((r) => r.name));
+    for (const name of Object.keys(shell.compartments)) {
+        if (!footprintNames.has(name)) {
+            delete shell.compartments[name];
+        }
+    }
+    for (const res of footprint) {
+        shell.compartments[res.name] = resolution.shares[res.name] ?? 0;
+    }
+
+    const requiredScale = planShell(footprint, shell.capacity.volume, shell.capacity.mass).requiredScale;
+    return { resolution, requiredScale };
+};
+
+// Apply the storage compartment strategy for one agent every tick: every physical shell that holds
+// a produced good is re-partitioned so targets get a reserved cell when the current physical space
+// can actually host them, or (when not) free space is confiscated and waterfilled rather than left to
+// waste behind an unreachable ambition. Non-produced occupants keep the flexible leftover share in
+// computeCompartmentShare and are never over-reserved.
+export const updateAgentShellCompartments = (
+    assets: AgentPlanetAssets,
+    resultPerForm?: Partial<Record<StorageForm, { feasible: boolean; requiredScale: number }>>,
+): Partial<Record<StorageForm, { feasible: boolean; requiredScale: number }>> => {
+    const footprint = footprintPerForm(assets);
+    for (const form of storageFormKeys()) {
+        const residency = footprint[form];
+        if (!residency || residency.length === 0) {
+            continue;
+        }
+        const { resolution, requiredScale } = resolveFormShell(assets.storage, form, residency);
+        if (resultPerForm) {
+            resultPerForm[form] = { feasible: resolution.feasible, requiredScale };
+        }
+    }
+    return resultPerForm ?? {};
 };
