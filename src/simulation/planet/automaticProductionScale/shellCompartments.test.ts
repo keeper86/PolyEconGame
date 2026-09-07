@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Resource } from '../claims';
-import { getStorageCapacityState } from '../facility';
-import type { Storage } from '../facility';
 import { makeStorageFacility } from '../../utils/testHelper';
+import type { Resource } from '../claims';
+import type { Storage } from '../facility';
+import { getStorageCapacityState } from '../facility';
 import { allocateShellCells, resolveFormShell, type StorageResidency } from './shellCompartments';
 
 const makeResource = (name: string, volumePerQuantity: number, massPerQuantity: number): Resource =>

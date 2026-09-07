@@ -1,9 +1,9 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { Resource } from '../claims';
-import type { ProductionFacility, StorageShell } from '../facility';
-import { shellFormOfResource, storageFormKeys, type StorageForm, type Storage } from '../facility';
+import type { ProductionFacility, Storage, StorageShell } from '../facility';
+import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
-import { STORAGE_TARGET_MONTHS } from './constants';
+import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { getStorageTargetMonths } from './runtimeConfig';
 
 export type StorageResidency = {
@@ -20,22 +20,6 @@ export type CellAllocation = {
     requiredScale: number;
 };
 
-const liveResource = (resource: Resource): boolean => resource.volumePerQuantity > 0 || resource.massPerQuantity > 0;
-
-// Physical occupancy of `name` derived from the shell ledger so allocations always match what
-// putIntoStorageFacility has accepted; never stored separately.
-const usedFloor = (shell: StorageShell, name: string): { volume: number; mass: number } => {
-    const entry = shell.currentInStorage[name];
-    if (!entry || entry.quantity <= 0) {
-        return { volume: 0, mass: 0 };
-    }
-    return {
-        volume: entry.quantity * entry.resource.volumePerQuantity,
-        mass: entry.quantity * entry.resource.massPerQuantity,
-    };
-};
-
-// Binding share is the larger of a footprint cell's volume/mass fraction of the shell axis capacities.
 const bindingShare = (volume: number, mass: number, volCap: number, massCap: number): number =>
     Math.max(volume > 0 ? volume / volCap : 0, mass > 0 ? mass / massCap : 0);
 
@@ -49,20 +33,14 @@ const requiredScaleOf = (footprint: StorageResidency[], volCapPerScale: number, 
     return Math.max(1, sum);
 };
 
-// Distribute one scalar share (0..1) of the shell so a cell gets capacity on both axes.
-//
-// If every target fits: each claims its binding share, floored by its occupied stock so a production
-// mix change never clamps away inventory; the leftover stays un-authored as flexible free space.
-//
-// Otherwise the current shell is spatially too small for all targets: cells keep the share their stock
-// locks in and the genuinely free remainder is waterfilled across the still-growable cells, so no
-// headroom idles behind a cell that can no longer accept inflow.
 export const allocateShellCells = (
     shell: StorageShell,
     footprint: StorageResidency[],
     scale: number,
 ): CellAllocation => {
-    const live = footprint.filter((r) => liveResource(r.resource));
+    const live = footprint.filter((r) =>
+        ((resource: Resource): boolean => resource.volumePerQuantity > 0 || resource.massPerQuantity > 0)(r.resource),
+    );
     const volCapPerScale = shell.capacity.volume;
     const massCapPerScale = shell.capacity.mass;
     if (live.length === 0 || volCapPerScale <= 0 || massCapPerScale <= 0 || scale <= 0) {
@@ -74,12 +52,21 @@ export const allocateShellCells = (
 
     const declared = live.map((r) => bindingShare(r.volume, r.mass, volCap, massCap));
     const declaredScale = declared.reduce((a, b) => a + b, 0);
-    const feasible = !declared.some((d) => d > 1) && declaredScale <= 1 + 1e-9;
+    const feasible = declaredScale <= 1;
 
     const shares: Record<string, number> = {};
 
     const lockedList = live.map((r) => {
-        const held = usedFloor(shell, r.name);
+        const held = ((shell: StorageShell, name: string): { volume: number; mass: number } => {
+            const entry = shell.currentInStorage[name];
+            if (!entry || entry.quantity <= 0) {
+                return { volume: 0, mass: 0 };
+            }
+            return {
+                volume: entry.quantity * entry.resource.volumePerQuantity,
+                mass: entry.quantity * entry.resource.massPerQuantity,
+            };
+        })(shell, r.name);
         return Math.min(1, bindingShare(held.volume, held.mass, volCap, massCap));
     });
 
@@ -119,8 +106,8 @@ export const resolveFormShell = (
     return allocation;
 };
 
-export const storageResidencyQuantity = (facility: ProductionFacility, resource: Resource): number => {
-    const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
+export const storageResidencyTarget = (facility: ProductionFacility, resource: Resource): number => {
+    const targetMonths = getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS;
     let target = 0;
     for (const output of facility.produces) {
         if (output.resource.name !== resource.name) {
@@ -138,23 +125,6 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
         liquid: new Map(),
         pieces: new Map(),
     };
-    const bump = (form: StorageForm, resource: Resource, q: number): void => {
-        const name = resource.name;
-        const existing = grouped[form].get(name);
-        if (existing) {
-            existing.targetQuantity += q;
-            existing.volume += q * resource.volumePerQuantity;
-            existing.mass += q * resource.massPerQuantity;
-        } else {
-            grouped[form].set(name, {
-                name,
-                resource,
-                targetQuantity: q,
-                volume: q * resource.volumePerQuantity,
-                mass: q * resource.massPerQuantity,
-            });
-        }
-    };
 
     for (const facility of assets.productionFacilities) {
         for (const output of facility.produces) {
@@ -162,9 +132,23 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
             if (!form) {
                 continue;
             }
-            const q = storageResidencyQuantity(facility, output.resource);
-            if (q > 0) {
-                bump(form, output.resource, q);
+            const target = storageResidencyTarget(facility, output.resource);
+            if (target > 0) {
+                const name = output.resource.name;
+                const existing = grouped[form].get(name);
+                if (existing) {
+                    existing.targetQuantity += target;
+                    existing.volume += target * output.resource.volumePerQuantity;
+                    existing.mass += target * output.resource.massPerQuantity;
+                } else {
+                    grouped[form].set(name, {
+                        name,
+                        resource: output.resource,
+                        targetQuantity: target,
+                        volume: target * output.resource.volumePerQuantity,
+                        mass: target * output.resource.massPerQuantity,
+                    });
+                }
             }
         }
     }
