@@ -11,6 +11,12 @@ describe('FacilitiesMaintenanceDebug', () => {
 
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });
         assets.storage.department = null;
+        // The auto-granted storage shells render their own health row in the debug list. Degrade
+        // them so this test isolates the healthy production facility's '100% / 100% max'/'full'.
+        for (const shell of Object.values(assets.storage.shells)) {
+            shell.maintenanceStatus = 0.5;
+            shell.maxMaintenance = 1;
+        }
 
         render(<FacilitiesMaintenanceDebug assets={assets} />);
 
