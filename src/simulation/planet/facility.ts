@@ -436,12 +436,16 @@ export const computeStorageThroughputMass = (assets: AgentPlanetAssets): number 
     return throughput;
 };
 
-export const queryStorageFacility = (storage: Storage | undefined, resourceName: string): number => {
+export const queryStorageFacility = (
+    storage: Storage | undefined,
+    resourceName: string,
+    subtractEscrow: boolean = true,
+): number => {
     if (!storage) {
         return 0;
     }
     const total = storage.currentInStorage[resourceName]?.quantity ?? 0;
-    const escrowed = storage.escrow[resourceName] ?? 0;
+    const escrowed = subtractEscrow ? (storage.escrow[resourceName] ?? 0) : 0;
     return Math.max(0, total - escrowed);
 };
 
@@ -453,11 +457,6 @@ export type StorageCapacityState = {
     freeQuantity: number;
 };
 
-const clamp01 = (x: number): number => Math.max(0, Math.min(1, x));
-
-// The products of a given physical form currently held in this entity's storage. These are the
-// products the shell is partitioned among; resources routed by form (solid/liquid/pieces) that have
-// any stored quantity are included.
 export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): string[] => {
     const names: string[] = [];
     for (const [name, entry] of Object.entries(storage.currentInStorage)) {
@@ -468,9 +467,6 @@ export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): 
     return names;
 };
 
-// The authored share (ceiling, [0,1]) a product gets of a shell's physical space. Compartments are
-// the authority; a stored product without an authored compartment falls back to an equal split of
-// whatever share of the shell the compartmented products have not already claimed.
 export const computeCompartmentShare = (storage: Storage, shell: StorageShell, resource: Resource): number => {
     const authored = shell.compartments[resource.name];
     if (authored !== undefined) {
@@ -484,12 +480,6 @@ export const computeCompartmentShare = (storage: Storage, shell: StorageShell, r
     return unsharded > 0 ? Math.max(0, Math.min(1, leftover / unsharded)) : 0;
 };
 
-// The physical shells each have a finite total capacity (capacity.volume|mass scaled by their own
-// buildable scale). The autoscaler partitions a shell between the products it stores (compartments,
-// each product's share of the shell's space). Every product's own stored inventory is bounded by its
-// compartment, so both the pre-check (production clamp) and the actual write (putIntoStorageFacility)
-// agree on what fits. Resources without a shell (services, currency, internal, landBound) carry no
-// physical capacity and are unrestricted here.
 export const getStorageCapacityState = (storage: Storage, resource: Resource): StorageCapacityState => {
     const form = shellFormOfResource(resource);
 
@@ -569,6 +559,8 @@ export const lockIntoEscrow = (storage: Storage, resourceName: string, quantity:
     storage.escrow[resourceName] = (storage.escrow[resourceName] ?? 0) + locked;
     return locked;
 };
+
+export const getEscrow = (storage: Storage, resourceName: string): number => storage.escrow[resourceName] ?? 0;
 
 export const releaseFromEscrow = (storage: Storage, resourceName: string, quantity: number): void => {
     const current = storage.escrow[resourceName] ?? 0;

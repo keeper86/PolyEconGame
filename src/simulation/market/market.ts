@@ -7,7 +7,7 @@ import {
     TICKS_PER_MONTH,
 } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
-import { releaseFromEscrow } from '../planet/facility';
+import { getEscrow, releaseFromEscrow } from '../planet/facility';
 import type { BidOrder } from './marketTypes';
 import { clearUnifiedBids } from './orderBook';
 import { collectAgentBids, collectAgentOffers, resetAgentBuyCounters, resetAgentSellCounters } from './orderCollection';
@@ -87,7 +87,7 @@ function clearResourceMarket(
             const assets = ask.agent.assets[planet.id];
             if (assets) {
                 if (process.env.SIM_DEBUG === '1') {
-                    const escrowed = assets.storage.escrow[ask.resource.name] ?? 0;
+                    const escrowed = getEscrow(assets.storage, ask.resource.name);
                     if (escrowed < ask.quantity - EPSILON) {
                         throw new Error(
                             `Escrow mismatch: trying to release ${ask.quantity} but only ${escrowed} escrowed. ` +

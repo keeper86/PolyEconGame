@@ -26,6 +26,7 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '@/simulation/constants';
 import type { BuyDiagnostics } from '@/simulation/planet/planet';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import {
     AlertCircle,
     Anchor,
@@ -207,7 +208,7 @@ export default function BuySection({
     const [buyPricingOpen, setBuyPricingOpen] = useBuyPricingOpenPreference();
     const [buyVolumeOpen, setBuyVolumeOpen] = useBuyVolumeOpenPreference();
 
-    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = queryStorageFacility(assets.storage, resourceName);
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');

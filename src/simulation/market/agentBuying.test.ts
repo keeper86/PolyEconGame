@@ -9,7 +9,7 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
@@ -123,7 +123,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        const inventoryQty = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
 
         // With smoothing, bidStorageTarget should be <= rawTarget and >= inventoryQty
         expect(bid.bidStorageTarget).toBeGreaterThanOrEqual(inventoryQty);
@@ -141,7 +141,7 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        const inventoryQty = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
 
         expect(Math.max(0, bid.bidStorageTarget! - inventoryQty)).toBe(0);
     });
@@ -158,7 +158,7 @@ describe('automaticPricing — buy side', () => {
         // First automaticPricing run: creates the buy entry without autoConfig
         automaticPricing(agentMap(buyer), planet);
 
-        const inventoryQty = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
         const baselineTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
         // With full buffer, the target should be ≤ inventory (smoothing reduces it further)
         expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
@@ -203,7 +203,7 @@ describe('automaticPricing — buy side', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        const inventoryQty = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventoryQty);
         const diagnostics = bid.diagnostics;
@@ -521,7 +521,7 @@ describe('automaticPricing — buy side', () => {
             automaticPricing(agentMap(buyer), planet);
 
             const bid = buyer.assets.p.market!.buy[COAL]!;
-            const inventory = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+            const inventory = queryStorageFacility(buyer.assets.p.storage, COAL);
 
             // diagnostics.shortfall should be ≤ PER_TICK (the smoothed per-tick amount)
             expect(bid.diagnostics).toBeDefined();
@@ -548,7 +548,7 @@ describe('automaticPricing — buy side', () => {
         }
 
         // After 15 ticks at ~50k/tick we should have ~750k inventory
-        const finalInventory = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const finalInventory = queryStorageFacility(buyer.assets.p.storage, COAL);
         expect(finalInventory).toBeGreaterThan(700_000);
         expect(finalInventory).toBeLessThan(800_000);
     });
@@ -592,7 +592,7 @@ describe('automaticPricing — buy side', () => {
         // So shortfall should be 500 (not 1000)
         automaticPricing(agentMap(buyer), planet);
         const bid = buyer.assets.p.market!.buy[COAL]!;
-        const inventory = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const inventory = queryStorageFacility(buyer.assets.p.storage, COAL);
         const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventory);
 
         // When close to target, should buy less than the full per-tick rate
@@ -678,11 +678,11 @@ describe('marketTick — agent buying', () => {
 
         automaticPricing(agentMap(buyer), planet);
 
-        const coalBefore = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalBefore = queryStorageFacility(buyer.assets.p.storage, COAL);
 
         marketTick(agentMap(seller, buyer), planet);
 
-        const coalAfter = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalAfter = queryStorageFacility(buyer.assets.p.storage, COAL);
         expect(coalAfter).toBeGreaterThan(coalBefore);
     });
 
@@ -720,11 +720,11 @@ describe('marketTick — agent buying', () => {
         planet.marketPrices[COAL] = 0.01;
         automaticPricing(agentMap(buyer), planet);
 
-        const coalBefore = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalBefore = queryStorageFacility(buyer.assets.p.storage, COAL);
 
         marketTick(agentMap(seller, buyer), planet);
 
-        const coalAfter = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalAfter = queryStorageFacility(buyer.assets.p.storage, COAL);
         expect(coalAfter).toBe(coalBefore);
     });
 
@@ -881,7 +881,7 @@ describe('marketTick — agent buying', () => {
         marketTick(agentMap(seller, buyer), planet);
 
         expect(buyer.assets.p.deposits).toBeGreaterThanOrEqual(0);
-        const coalBought = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalBought = queryStorageFacility(buyer.assets.p.storage, COAL);
         expect(coalBought).toBeLessThanOrEqual(5);
     });
 
@@ -949,7 +949,7 @@ describe('marketTick — agent buying', () => {
         const depositsBefore = buyer.assets.p.deposits;
         marketTick(agentMap(seller, buyer), planet);
 
-        const coalReceived = buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0;
+        const coalReceived = queryStorageFacility(buyer.assets.p.storage, COAL);
         const depositsSpent = depositsBefore - buyer.assets.p.deposits;
 
         expect(coalReceived).toBeCloseTo(50, 1);
@@ -992,7 +992,7 @@ describe('marketTick — agent buying', () => {
         ]);
 
         expect(buyer.assets.p.deposits + buyer.assets.p.depositHold).toBe(depositsBefore);
-        expect(buyer.assets.p.storage.currentInStorage[COAL]?.quantity ?? 0).toBe(0);
+        expect(queryStorageFacility(buyer.assets.p.storage, COAL)).toBe(0);
         expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
     });
 });

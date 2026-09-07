@@ -4,6 +4,7 @@ import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay
 import { useTRPC } from '@/lib/trpc';
 import { PRICE_FLOOR } from '@/simulation/constants';
 import { validateSellOffer } from '@/simulation/market/validation';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -84,7 +85,7 @@ export function useSellSectionMutations({
     const addPending = useAddPendingAction();
     const pendingActions = usePendingActions(agentId, planetId);
     const resource = getResourceByName(resourceName);
-    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = queryStorageFacility(assets.storage, resourceName);
 
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({

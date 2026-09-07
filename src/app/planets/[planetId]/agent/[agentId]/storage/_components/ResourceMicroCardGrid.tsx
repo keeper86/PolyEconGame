@@ -2,6 +2,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
@@ -118,7 +119,7 @@ function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCa
             continue;
         }
 
-        const stock = storage.currentInStorage[name]?.quantity ?? 0;
+        const stock = queryStorageFacility(storage, name, false);
 
         const toQty = (acc: Record<string, { quantity: number; value: number }>): number => {
             return acc[name]?.quantity ?? 0;

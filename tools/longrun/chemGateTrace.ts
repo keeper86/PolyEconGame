@@ -66,12 +66,11 @@ function main(): void {
                 `crude${num(queryStorageFacility(assets.storageFacility, 'Crude Oil')).toFixed(0)}`,
             );
             for (const out of ['Fuel', 'Plastic', 'Chemical']) {
-                const entry = assets.storageFacility.currentInStorage[out];
                 seg.push(
                     `${out}m${num(mix[out]).toFixed(3)}`,
                     `${out}out${num(last[out]).toFixed(0)}`,
                     `${out}stor${num(queryStorageFacility(assets.storageFacility, out)).toFixed(0)}`,
-                    `${out}tot${num(entry?.quantity ?? 0).toFixed(0)}`,
+                    `${out}tot${num(queryStorageFacility(assets.storageFacility, out, false)).toFixed(0)}`,
                     `${out}sold${num(mk.sell[out]?.lastSold).toFixed(0)}`,
                     `${out}placed${num(mk.sell[out]?.lastPlacedQty).toFixed(0)}`,
                     `${out}ask${num(mk.sell[out]?.offerPrice ?? mk.sell[out]?.lastOfferPrice).toFixed(2)}`,

@@ -1,4 +1,5 @@
 import { RESOURCES_BY_NAME } from '../../simulation/planet/resourceCatalog';
+import { queryStorageFacility } from '../../simulation/planet/facility';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import {
@@ -306,10 +307,11 @@ export const getAgentPlanetStorage = () =>
             if (!agent) {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'Agent not found' });
             }
-            const inStorage = agent.assets?.[input.planetId]?.storage?.currentInStorage ?? {};
+            const storage = agent.assets?.[input.planetId]?.storage;
+            const inStorage = storage?.currentInStorage ?? {};
             const result: Record<string, number> = {};
-            for (const [resourceName, entry] of Object.entries(inStorage)) {
-                const qty = (entry as { quantity?: number })?.quantity ?? 0;
+            for (const resourceName of Object.keys(inStorage)) {
+                const qty = queryStorageFacility(storage, resourceName);
                 if (qty > 0) {
                     result[resourceName] = qty;
                 }

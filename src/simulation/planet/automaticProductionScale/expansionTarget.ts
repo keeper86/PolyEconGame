@@ -1,7 +1,7 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { ResourceQuantity } from '../claims';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
-import { calculateCostsForConstruction, getFacilityType } from '../facility';
+import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from '../facility';
 import type { AgentPlanetAssets, Planet } from '../planet';
 import { DYNAMIC_EXPANSION_CAP_FRACTION, MAX_SCALE_EXPAND_FRACTION, STORAGE_TARGET_MONTHS } from './constants';
 import { getStorageTargetMonths } from './runtimeConfig';
@@ -109,7 +109,7 @@ export function computeDynamicExpansionTarget(
     let maxDemandScale = facility.maxScale;
 
     for (const output of facility.produces) {
-        const inventory = assets.storage?.currentInStorage[output.resource.name]?.quantity ?? 0;
+        const inventory = queryStorageFacility(assets.storage, output.resource.name, false);
         const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
         const target = targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
         const deficit = Math.max(0, target - inventory);

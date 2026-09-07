@@ -20,6 +20,7 @@ import {
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
 } from '@/simulation/constants';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import { AlertCircle, ChevronDown, Package, RotateCcw, Tag } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
@@ -174,7 +175,7 @@ export default function SellSection({
     const [sellPricingOpen, setSellPricingOpen] = useSellPricingOpenPreference();
     const [sellVolumeOpen, setSellVolumeOpen] = useSellVolumeOpenPreference();
 
-    const inventoryQty = assets.storage.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = queryStorageFacility(assets.storage, resourceName);
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
     const isCurrency = resourceName.startsWith('CUR_');

@@ -8,6 +8,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import { CURRENCY_RESOURCE_PREFIX, currencyMapping } from '@/simulation/market/currencyResources';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import { useParams } from 'next/navigation';
 import { useTour } from '@/components/tour/TourContext';
 import React from 'react';
@@ -38,7 +39,7 @@ export default function ResourceAccordionItem({
     const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
         ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
-        : (assets.storage.currentInStorage[resourceName]?.quantity ?? 0);
+        : queryStorageFacility(assets.storage, resourceName);
     const trpc = useTRPC();
 
     const { planetId } = useParams() as { planetId: string };
