@@ -316,10 +316,7 @@ function computeResourceEfficiencyMap(
     return resourceEfficiencyMap;
 }
 
-export function computeStorageSpaceFactor(
-    facility: Facility,
-    assets: AgentPlanetAssets,
-): number {
+export function computeStorageSpaceFactor(facility: Facility, assets: AgentPlanetAssets): number {
     if (!isStorageSpaceClampEnabled()) {
         return 1;
     }
@@ -337,6 +334,9 @@ export function computeStorageSpaceFactor(
     const mix = facility.type === 'production' ? facility.productionMix : undefined;
     let factor = 1;
     for (const output of facility.produces) {
+        if (output.resource.form === 'services') {
+            continue;
+        }
         const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
         const productionPerTick = totalTemplateOutput * share * facility.scale;
         if (productionPerTick <= 0) {
@@ -345,8 +345,7 @@ export function computeStorageSpaceFactor(
         const capacityMonths = getStorageCapacityMonths() ?? STORAGE_CAPACITY_MONTHS;
         const capacity = capacityMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
         const inventory = storage?.currentInStorage[output.resource.name]?.quantity ?? 0;
-        const sold = assets.market?.sell[output.resource.name]?.lastSold ?? 0;
-        const allowed = Math.max(0, capacity - inventory) + sold;
+        const allowed = Math.max(0, capacity - inventory);
         factor = Math.min(factor, Math.min(1, allowed / productionPerTick));
     }
     return Math.max(0, Math.min(1, factor));

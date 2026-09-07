@@ -5,7 +5,9 @@ import {
     QUIT_SENSITIVITY,
     SEARCH_HORIZON_TICKS,
     VACANCY_WAGE_SMOOTHING,
+    WAGE_ACCEPT_FRACTION,
     WAGE_ACCEPT_SCALE,
+    WAGE_DURATION_DECAY,
 } from '../constants';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
@@ -44,6 +46,23 @@ export const outsideIncome = (tightness: number, vacancyWage: number): number =>
 
 export const acceptProbability = (wage: number, threshold: number): number =>
     ACCEPT_BASE / (1 + Math.exp(-(wage - threshold) / WAGE_ACCEPT_SCALE));
+
+// A worker of a given education tier only takes a job that clears their personal
+// reservation, formed from the going wage of their tier (reachableVacancyWage)
+// discounted by how long they'd realistically have to search. Anchoring to the
+// tier's own wage ladder (not to costOfLiving, which lags market-price spikes)
+// and eroding the reservation with longer expected joblessness removes the
+// wage/CoL refusal lock that otherwise turns a goods shortage into a labour
+// collapse. See tools/longrun/labor-market-col-wedge.md.
+export const reservationWage = (
+    reachableTightness: number,
+    reachableVacancyWage: number,
+): number => {
+    const jobProb = jobFindingProbability(reachableTightness);
+    const expectedWaiting = jobProb > 0 ? 1 / jobProb : Number.POSITIVE_INFINITY;
+    const durationDiscount = Math.pow(WAGE_DURATION_DECAY, expectedWaiting);
+    return WAGE_ACCEPT_FRACTION * reachableVacancyWage * durationDiscount;
+};
 
 export const quitPropensity = (wage: number, tightness: number, vacancyWage: number): number => {
     const outside = outsideIncome(tightness, vacancyWage);

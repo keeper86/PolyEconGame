@@ -131,6 +131,12 @@ export const ACCEPT_BASE = 0.05;
 
 export const WAGE_ACCEPT_SCALE = 1.0;
 
+// Worker reservation wage is a fraction of the going (reachable) tier wage,
+// eroded by expected search duration, so that prolonged joblessness drives the
+// reservation DOWN and no CoL/wage lock can keep a worker refusing forever.
+export const WAGE_ACCEPT_FRACTION = 0.8;
+export const WAGE_DURATION_DECAY = 0.8;
+
 export const LOAN_CASH_FLOW_MONTHS = 6;
 
 export const LOAN_COLLATERAL_FACTOR = 1.0;

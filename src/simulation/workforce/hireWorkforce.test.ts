@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { BASE_QUIT_RATE, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
+import { BASE_QUIT_RATE, WAGE_DURATION_DECAY, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 
@@ -26,6 +26,7 @@ import {
     jobFindingProbability,
     outsideIncome,
     quitPropensity,
+    reservationWage,
 } from './laborMarket';
 import { workforceDemographicTick } from './workforceDemographicTick';
 
@@ -67,6 +68,33 @@ describe('labor market helpers', () => {
     it('quitPropensity starts at the base rate and rises with a better outside option', () => {
         expect(quitPropensity(100, 0, 0)).toBe(BASE_QUIT_RATE);
         expect(quitPropensity(100, 1, 200)).toBeGreaterThan(quitPropensity(100, 0, 0));
+    });
+
+    it('reservationWage anchors to the going tier rate and does NOT depend on cost of living', () => {
+        // In a tight market (instant-ish search) the reservation is a fixed FRACTION of the
+        // tier's reachable vacancy wage. costOfLiving is not an input, so a consumer price
+        // spike cannot raise the reservation (the pre-fix refusal lock) on its own.
+        const tight = reservationWage(1.0, 200); // jobFindingProbability(tightness 1)=1 -> discount=WAGE_DURATION_DECAY
+        expect(tight).toBeCloseTo(0.8 * 200 * WAGE_DURATION_DECAY, 6);
+        // A very high tier wage raises the reservation; low tier wage lowers it.
+        expect(reservationWage(1.0, 10000)).toBeGreaterThan(tight);
+    });
+
+    it('reservationWage erodes as jobs get harder to find, so protracted unemployment lowers the bar', () => {
+        // 0.5 reachable tightness => finding prob <1 => expected waiting grows => reservation falls.
+        const instant = reservationWage(1.0, 100);
+        const scarce = reservationWage(0.2, 100);
+        expect(scarce).toBeLessThan(instant);
+        // With essentially no reachable vacancies the reservation collapses so any wage clears it:
+        // workers in deep unemployment eventually take almost any job (no CoL refusal lock).
+        expect(reservationWage(0, 100)).toBeLessThan(0.05);
+        expect(acceptProbability(1, reservationWage(0, 100))).toBeGreaterThan(acceptProbability(1, 100));
+    });
+
+    it('a wage at the going tier rate is accepted in a tight market', () => {
+        const threshold = reservationWage(1.0, 100);
+        // offered wage == the going rate clears the reservation comfortably -> high acceptance
+        expect(acceptProbability(100, threshold)).toBeGreaterThan(0.04);
     });
 });
 
