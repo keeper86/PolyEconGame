@@ -7,7 +7,6 @@ import {
     updateAgentShellCompartments,
     allocateShellCells,
     resolveFormShell,
-    shellScaleForFacilities,
     type StorageResidency,
 } from './shellCompartments';
 
@@ -146,17 +145,33 @@ describe('updateAgentShellCompartments sizing', () => {
         expect(sizing.solid!.requiredScale).toBeGreaterThan(1);
     });
 
-    it('worldgen derives a solid scale for every physical form from a facility’s produces', () => {
-        const steel = makeProdResource('steel', 'solid', 1, 1);
+    it('pre-grants the required shell scale so a world-scale overcapacity becomes feasible immediately', () => {
+        // Iron ore output at 4 production-scales per tick for the whole capacity window needs more than
+        // one storage shell-scale; updateAgentShellCompartments reports that requirement.
+        const storage = makeStorageFacility() as Storage;
+        const ore = makeProdResource('Iron Ore', 'solid', 0.3, 1); // matches catalog-ish densities for mass 1/unit
+        const maxScale = 4;
         const furnace = makeProductionFacility(undefined, {
-            produces: [{ resource: steel, quantity: 1 }],
-            maxScale: 4,
-            scale: 4,
+            produces: [{ resource: ore, quantity: 6_000_000 }],
+            scale: maxScale,
+            maxScale,
         });
-        const scales = shellScaleForFacilities([furnace]);
-        expect(scales.solid).toBeDefined();
-        expect(scales.liquid).toBeUndefined();
-        expect(scales.solid!).toBeGreaterThanOrEqual(1);
+
+        const sizing = updateAgentShellCompartments(
+            makeAgentPlanetAssets('p', { productionFacilities: [furnace], storage }),
+        );
+        expect(sizing.solid!.requiredScale).toBeGreaterThan(1);
+
+        // Emulate the world presizer: install the reported scale onto the shell (ceil stays integer).
+        const solid = storage.shells.solid;
+        solid.scale = Math.ceil(sizing.solid!.requiredScale);
+        solid.maxScale = solid.scale;
+        solid.compartments = {};
+
+        const grown = updateAgentShellCompartments(
+            makeAgentPlanetAssets('p', { productionFacilities: [furnace], storage }),
+        );
+        expect(grown.solid!.feasible).toBe(true);
     });
 });
 

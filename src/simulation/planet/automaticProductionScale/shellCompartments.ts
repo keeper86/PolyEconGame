@@ -1,7 +1,7 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { Resource } from '../claims';
 import type { ProductionFacility, Storage, StorageShell } from '../facility';
-import { shellFormOfResource, STORAGE_SHELL_CAPACITY, storageFormKeys, type StorageForm } from '../facility';
+import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { getStorageTargetMonths } from './runtimeConfig';
@@ -161,22 +161,6 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
         const values = [...grouped[form].values()];
         if (values.length > 0) {
             result[form] = values;
-        }
-    }
-    return result;
-};
-
-// Minimal integer shell scale required per storage form so that the produced footprint fits the shell
-// at world-initialisation, before the reconcile/growth path has run. Uses the same target-month basis
-// and real per-unit capacities the compartment allocator behaves against.
-export const shellScaleForFacilities = (facilities: ProductionFacility[]): Partial<Record<StorageForm, number>> => {
-    const footprint = footprintPerForm({ productionFacilities: facilities } as unknown as AgentPlanetAssets);
-    const result: Partial<Record<StorageForm, number>> = {};
-    for (const form of storageFormKeys()) {
-        const residency = footprint[form];
-        if (residency && residency.length > 0) {
-            const required = requiredScaleOf(residency, STORAGE_SHELL_CAPACITY.volume, STORAGE_SHELL_CAPACITY.mass);
-            result[form] = Math.max(1, Math.ceil(required));
         }
     }
     return result;

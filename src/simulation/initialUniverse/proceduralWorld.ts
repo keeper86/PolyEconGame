@@ -1,5 +1,4 @@
 import { createRecyclerAgent } from '../agents/recycler';
-import { shellScaleForFacilities } from '../planet/automaticProductionScale/shellCompartments';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
@@ -134,13 +133,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             const hrDepartment = humanResourcesOfficeFacilityType(PROC_PLANET_ID, `${id}-hr-department`);
             const storageScale = storageScaleForFacilities([fac]);
-            const shellScale = shellScaleForFacilities([fac]);
-            const storage = makeStorage({
-                planetId: PROC_PLANET_ID,
-                id: `${id}-storage`,
-                scale: storageScale,
-                shellScale,
-            });
+            const storage = makeStorage({ planetId: PROC_PLANET_ID, id: `${id}-storage`, scale: storageScale });
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *

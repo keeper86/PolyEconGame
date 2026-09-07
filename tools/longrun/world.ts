@@ -1,5 +1,4 @@
 import { createRecyclerAgent } from '../../src/simulation/agents/recycler';
-import { shellScaleForFacilities } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 import {
     createPopulation,
     humanResourcesScaleForWorkers,
@@ -7,6 +6,7 @@ import {
     makeDefaultEnvironment,
     makeStorage,
     prefillAgentStorageFromFacilities,
+    presizeAgentShellForFacilities,
     storageScaleForFacilities,
 } from '../../src/simulation/initialUniverse/helpers';
 import { initialMarketPrices } from '../../src/simulation/initialUniverse/initialMarketPrices';
@@ -247,13 +247,7 @@ export function buildBenchmarkWorld(
 
             const hrDepartment = humanResourcesOfficeFacilityType(BENCHMARK_PLANET_ID, `${id}-hr-department`);
             const storageScale = storageScaleForFacilities([fac]);
-            const shellScale = shellScaleForFacilities([fac]);
-            const storage = makeStorage({
-                planetId: BENCHMARK_PLANET_ID,
-                id: `${id}-storage`,
-                scale: storageScale,
-                shellScale,
-            });
+            const storage = makeStorage({ planetId: BENCHMARK_PLANET_ID, id: `${id}-storage`, scale: storageScale });
             const neededWorkers =
                 1.1 *
                 HR_WORLD_BUFFER *
@@ -425,6 +419,7 @@ export function buildBenchmarkWorld(
     };
 
     prefillAgentStorageFromFacilities(gameState);
+    presizeAgentShellForFacilities(gameState);
 
     return { gameState, planet, agents: allAgents };
 }

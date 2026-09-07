@@ -9,7 +9,14 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import type { HRFacility } from '../planet/facility';
-import { makeStorageShell, putIntoStorageFacility, type ProductionFacility, type Storage } from '../planet/facility';
+import {
+    makeStorageShell,
+    putIntoStorageFacility,
+    storageFormKeys,
+    type ProductionFacility,
+    type Storage,
+} from '../planet/facility';
+import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -29,14 +36,8 @@ import {
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
 
-export function makeStorage(opts: {
-    planetId: string;
-    id: string;
-    scale?: number;
-    shellScale?: { solid?: number; liquid?: number; pieces?: number };
-}): Storage {
+export function makeStorage(opts: { planetId: string; id: string; scale?: number }): Storage {
     const scale = opts.scale ?? 1;
-    const shell = opts.shellScale ?? {};
     const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
@@ -46,9 +47,9 @@ export function makeStorage(opts: {
         currentInStorage: {},
         escrow: {},
         shells: {
-            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', shell.solid ?? scale),
-            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', shell.liquid ?? scale),
-            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', shell.pieces ?? scale),
+            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', scale),
+            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', scale),
+            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', scale),
         },
         department,
     };
@@ -140,10 +141,10 @@ export function makeAgent(opts: {
 
 export function prefillAgentStorageFromFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
-        for (const [, assets] of Object.entries(agent.assets)) {
-            const storage = (assets as AgentPlanetAssets).storage;
-            const facilities = (assets as AgentPlanetAssets).productionFacilities;
-            for (const facility of facilities) {
+        for (const [, rawAssets] of Object.entries(agent.assets)) {
+            const assets = rawAssets as AgentPlanetAssets;
+            const storage = assets.storage;
+            for (const facility of assets.productionFacilities) {
                 for (const { resource, quantity } of facility.needs) {
                     if (
                         resource.form === 'services' ||
@@ -166,6 +167,28 @@ export function prefillAgentStorageFromFacilities(gameState: { agents: Map<strin
                     const targetQty = quantity * facility.scale * INPUT_BUFFER_TARGET_TICKS;
                     putIntoStorageFacility(storage, resource, targetQty);
                 }
+            }
+        }
+    }
+}
+
+// Seed-time equivalent of the runtime reconcile step: give each physical shell the scale the
+// compartment allocator reports as required for the agent's produced footprint, so a fresh world does
+// not start under-capacity and has to fight for construction budget before the market matures.
+export function presizeAgentShellForFacilities(gameState: { agents: Map<string, Agent> }): void {
+    for (const agent of gameState.agents.values()) {
+        for (const [, rawAssets] of Object.entries(agent.assets)) {
+            const assets = rawAssets as AgentPlanetAssets;
+            const sizing = updateAgentShellCompartments(assets);
+            for (const form of storageFormKeys()) {
+                const required = sizing[form]?.requiredScale;
+                if (!required) {
+                    continue;
+                }
+                const shell = assets.storage.shells[form];
+                const target = Math.ceil(required);
+                shell.scale = target;
+                shell.maxScale = target;
             }
         }
     }
