@@ -28,6 +28,14 @@ import { constructionServiceResourceType } from './services';
 import type { AgentPlanetAssets } from './planet';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
 
+// The auto-granted storage shells are now operational facilities that also hire. Zero their
+// requirements so worker-allocation tests exercise a single facility with a controlled workforce.
+function quietStorageShells(agent: ReturnType<typeof makeAgent>): void {
+    for (const shell of Object.values(agent.assets.p.storage.shells)) {
+        shell.workerRequirement = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    }
+}
+
 describe('productionTick (basic)', () => {
     beforeEach(() => {
         seedRng(12345);
@@ -1064,6 +1072,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         const agent = makeAgent('test-company');
 
         const facility = makeProductionFacility({ none: 10 }, { id: 'hr-scarce-prod', scale: 2 });
+        quietStorageShells(agent);
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
@@ -1086,6 +1095,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
     it('worker efficiency is limited by available headcount when hrProductivityMultiplier < 1', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('builder');
+        quietStorageShells(agent);
         const shipType: TransportShipType = {
             type: 'transport',
             name: 'HR Scarce Freighter',
@@ -1142,6 +1152,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
     it('reaches full worker efficiency with enough workers when hrProductivityMultiplier < 1', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('hr-penalty');
+        quietStorageShells(agent);
 
         const facility = makeProductionFacility({ none: 10 }, { scale: 1 });
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
@@ -1212,6 +1223,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
     it('consumes building cost proportionally and records lastConsumed', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('builder');
+        quietStorageShells(agent);
         const shipType = makeTestShipType();
 
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
@@ -1295,6 +1307,7 @@ describe('productionTick — shipCompleted ticker events', () => {
     it('emits a shipCompleted event when a ship finishes construction', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('shipbuilder');
+        quietStorageShells(agent);
 
         const shipType = {
             type: 'transport' as const,
@@ -1464,6 +1477,7 @@ describe('productionTick — XP boost effect on production', () => {
     it('XP is averaged across all workers in the same edu category', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('mixed-xp-company');
+        quietStorageShells(agent);
 
         const facility = makeProductionFacility({ secondary: 2 }, { scale: 2 });
         facility.id = 'mixed-xp-fac';

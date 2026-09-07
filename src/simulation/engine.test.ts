@@ -35,6 +35,11 @@ function setActualWorkers(agent: Agent, planetId: string, workers: Partial<Recor
             wf[30][edu as EducationLevelType].active = count;
         }
     }
+    // The auto-granted storage shells are now operational facilities that also hire. Zero their
+    // requirements so these unit tests exercise a single facility with a controlled workforce.
+    for (const shell of Object.values(agent.assets[planetId].storage.shells)) {
+        shell.workerRequirement = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
+    }
 }
 
 describe('engine basic behavior', () => {

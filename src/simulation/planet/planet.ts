@@ -397,7 +397,12 @@ export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean 
             ...assets.shipConstructionFacilities.filter(isFacilityOperating),
         ];
     }
-    return [...assets.productionFacilities, ...manageStorage, ...assets.shipConstructionFacilities, ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : [])];
+    return [
+        ...assets.productionFacilities,
+        ...manageStorage,
+        ...assets.shipConstructionFacilities,
+        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
+    ];
 };
 
 export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {

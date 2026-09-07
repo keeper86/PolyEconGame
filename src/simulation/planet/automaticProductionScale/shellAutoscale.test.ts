@@ -55,14 +55,13 @@ describe('planShell', () => {
         const baseMass = 10000;
         const plan = planShell(resident, baseVolume, baseMass);
 
-        // Each good must still be able to hold its own target in the axis that binds for it:
-        const metalTarget = resident[0].targetQuantity;
         const metalNeed = Math.max(resident[0].volume / baseVolume, resident[0].mass / baseMass);
         // capacity of metal cell (quantity) under the realized scale >= its target
-        expect(metalNeed * baseVolume / plan.requiredScale > 0).toBe(true);
+        expect((metalNeed * baseVolume) / plan.requiredScale > 0).toBe(true);
 
         for (const g of resident) {
-            const qtyByVolume = (plan.cellShares[g.name] * baseVolume * plan.requiredScale) / g.resource.volumePerQuantity;
+            const qtyByVolume =
+                (plan.cellShares[g.name] * baseVolume * plan.requiredScale) / g.resource.volumePerQuantity;
             const qtyByMass = (plan.cellShares[g.name] * baseMass * plan.requiredScale) / g.resource.massPerQuantity;
             expect(Math.min(qtyByVolume, qtyByMass)).toBeGreaterThanOrEqual(g.targetQuantity - 1e-9);
         }
@@ -72,11 +71,7 @@ describe('planShell', () => {
     });
 
     it('compartments never exceed the shell and cover it fully when the shell is (about to be) boundary', () => {
-        const resident = [
-            makeResidency('a', 40, 2, 1),
-            makeResidency('b', 30, 1, 2),
-            makeResidency('c', 10, 5, 5),
-        ];
+        const resident = [makeResidency('a', 40, 2, 1), makeResidency('b', 30, 1, 2), makeResidency('c', 10, 5, 5)];
         const plan = planShell(resident, 1000, 1000);
         const sum = Object.values(plan.cellShares).reduce((a, b) => a + b, 0);
         // A single (not yet full) scale unit holds these comfortably; shares never exceed the shell.
@@ -85,10 +80,7 @@ describe('planShell', () => {
     });
 
     it('splits a boundary-load shell to exactly full when the footprint demands all of it', () => {
-        const resident = [
-            makeResidency('a', 500, 1, 1),
-            makeResidency('b', 500, 1, 1),
-        ];
+        const resident = [makeResidency('a', 500, 1, 1), makeResidency('b', 500, 1, 1)];
         const plan = planShell(resident, 1000, 1000);
         // Each needs volume 500, so both fill one scale exactly: shares sum to 1 on scale 1.
         const sum = Object.values(plan.cellShares).reduce((a, b) => a + b, 0);
@@ -136,10 +128,9 @@ describe('planShell x storage clamp integration', () => {
         // Still at the initial single unit; growth to requiredScale has not completed.
         shell.scale = 1;
         shell.maxScale = 1;
-        shell.compartments['bulk'] = plan.cellShares.bulk;
+        shell.compartments.bulk = plan.cellShares.bulk;
 
         const state = getStorageCapacityState(storage, residencyResource(resident[0]));
         expect(state.capacity.volume).toBeLessThan(resident[0].volume - 1e-6);
     });
 });
-

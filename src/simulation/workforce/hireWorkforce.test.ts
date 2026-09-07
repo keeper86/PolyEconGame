@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { BASE_QUIT_RATE, WAGE_DURATION_DECAY, MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS, SEARCH_HORIZON_TICKS } from '../constants';
+import {
+    BASE_QUIT_RATE,
+    WAGE_DURATION_DECAY,
+    MIN_EMPLOYABLE_AGE,
+    NOTICE_PERIOD_MONTHS,
+    SEARCH_HORIZON_TICKS,
+} from '../constants';
 import { type Agent, type Planet } from '../planet/planet';
 import type { EducationLevelType } from '../population/education';
 

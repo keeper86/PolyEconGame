@@ -54,10 +54,7 @@ export const acceptProbability = (wage: number, threshold: number): number =>
 // and eroding the reservation with longer expected joblessness removes the
 // wage/CoL refusal lock that otherwise turns a goods shortage into a labour
 // collapse. See tools/longrun/labor-market-col-wedge.md.
-export const reservationWage = (
-    reachableTightness: number,
-    reachableVacancyWage: number,
-): number => {
+export const reservationWage = (reachableTightness: number, reachableVacancyWage: number): number => {
     const jobProb = jobFindingProbability(reachableTightness);
     const expectedWaiting = jobProb > 0 ? 1 / jobProb : Number.POSITIVE_INFINITY;
     const durationDiscount = Math.pow(WAGE_DURATION_DECAY, expectedWaiting);
