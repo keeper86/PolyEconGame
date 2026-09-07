@@ -108,12 +108,15 @@ export const resolveFormShell = (
 
 export const storageResidencyTarget = (facility: ProductionFacility, resource: Resource): number => {
     const targetMonths = getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS;
+    // Size for the production level the facility is already expanding toward, not just its current
+    // ceiling, so a freshly-started expansion doesn't outstrip shell space before it completes.
+    const plannedScale = facility.construction?.constructionTargetMaxScale ?? facility.maxScale;
     let target = 0;
     for (const output of facility.produces) {
         if (output.resource.name !== resource.name) {
             continue;
         }
-        target += targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
+        target += targetMonths * TICKS_PER_MONTH * plannedScale * output.quantity;
     }
     return target;
 };
@@ -163,14 +166,20 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
     return result;
 };
 
-// Re-partition every produced-goods shell of an agent each tick. Non-produced occupants stay un-authored
-// and inherit the flexible leftover share via computeCompartmentShare (see facility.ts).
-export const updateAgentShellCompartments = (assets: AgentPlanetAssets): void => {
+// Re-partition every produced-goods shell of an agent each tick, returning the final cell allocation
+// per shell so the caller can grow or shrink a shell via construction once its installed scale drops
+// shy or overshoots the produced footprint. Non-produced occupants stay un-authored and inherit the
+// flexible leftover share via computeCompartmentShare (see facility.ts).
+export const updateAgentShellCompartments = (
+    assets: AgentPlanetAssets,
+): Partial<Record<StorageForm, CellAllocation>> => {
+    const result: Partial<Record<StorageForm, CellAllocation>> = {};
     const footprint = footprintPerForm(assets);
     for (const form of storageFormKeys()) {
         const residency = footprint[form];
         if (residency && residency.length > 0) {
-            resolveFormShell(assets.storage, form, residency);
+            result[form] = resolveFormShell(assets.storage, form, residency);
         }
     }
+    return result;
 };

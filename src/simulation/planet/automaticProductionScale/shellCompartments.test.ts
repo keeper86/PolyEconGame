@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { makeStorageFacility } from '../../utils/testHelper';
+import { makeAgentPlanetAssets, makeProductionFacility, makeStorageFacility } from '../../utils/testHelper';
 import type { Resource } from '../claims';
 import type { Storage } from '../facility';
 import { getStorageCapacityState } from '../facility';
-import { allocateShellCells, resolveFormShell, type StorageResidency } from './shellCompartments';
+import {
+    updateAgentShellCompartments,
+    allocateShellCells,
+    resolveFormShell,
+    type StorageResidency,
+} from './shellCompartments';
 
 const makeResource = (name: string, volumePerQuantity: number, massPerQuantity: number): Resource =>
     ({
@@ -191,5 +196,77 @@ describe('resolveFormShell integration with live capacity', () => {
             expect(state.capacity.volume).toBeGreaterThanOrEqual(r.volume - 1e-6);
             expect(state.capacity.mass).toBeGreaterThanOrEqual(r.mass - 1e-6);
         }
+    });
+});
+describe('updateAgentShellCompartments', () => {
+    it('returns no sizing when nothing is produced by the agent', () => {
+        const storage = makeStorageFacility() as Storage;
+        const assets = makeAgentPlanetAssets('p', { storage });
+        const sizing = updateAgentShellCompartments(assets);
+        expect(Object.keys(sizing)).toHaveLength(0);
+    });
+
+    it('returns a solid allocation flagged infeasible when the footprint outgrows the shell scale', () => {
+        const storage = makeStorageFacility({}, { volume: 5, mass: 5 }) as Storage;
+        storage.shells.solid.scale = 1;
+        storage.shells.solid.maxScale = 1;
+
+        const resource = makeResource('ore', 1, 1);
+        const facility = makeProductionFacility(undefined, {
+            produces: [{ resource, quantity: 10 }],
+            maxScale: 1,
+            scale: 1,
+        });
+        const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility], storage });
+
+        const sizing = updateAgentShellCompartments(assets);
+        const solid = sizing.solid;
+        expect(solid).toBeDefined();
+        expect(solid!.requiredScale).toBeGreaterThan(1);
+        expect(solid!.feasible).toBe(false);
+    });
+
+    it('plans the footprint for a running production expansion, not just the current ceiling', () => {
+        const solidCap = { volume: 5, mass: 5 };
+        const resource = makeResource('ore', 1, 1);
+        const withConstruction = (targetMax: number): ReturnType<typeof makeProductionFacility> =>
+            makeProductionFacility(undefined, {
+                produces: [{ resource, quantity: 10 }],
+                maxScale: 1,
+                scale: 1,
+                construction: {
+                    type: 'expansion',
+                    constructionTargetMaxScale: targetMax,
+                    totalConstructionServiceRequired: 1000,
+                    maximumConstructionServiceConsumption: 10,
+                    progress: 0,
+                    lastTickInvestedConstructionServices: 0,
+                },
+            });
+
+        const currentOnly = makeStorageFacility({}, solidCap) as Storage;
+        currentOnly.shells.solid.scale = 1;
+        currentOnly.shells.solid.maxScale = 1;
+        const sizingCurrent = updateAgentShellCompartments(
+            makeAgentPlanetAssets('p', {
+                productionFacilities: [
+                    makeProductionFacility(undefined, {
+                        produces: [{ resource, quantity: 10 }],
+                        maxScale: 1,
+                        scale: 1,
+                    }),
+                ],
+                storage: currentOnly,
+            }),
+        );
+
+        const expanding = makeStorageFacility({}, solidCap) as Storage;
+        expanding.shells.solid.scale = 1;
+        expanding.shells.solid.maxScale = 1;
+        const sizingExpanding = updateAgentShellCompartments(
+            makeAgentPlanetAssets('p', { productionFacilities: [withConstruction(4)], storage: expanding }),
+        );
+
+        expect(sizingExpanding.solid!.requiredScale).toBeGreaterThan(sizingCurrent.solid!.requiredScale);
     });
 });

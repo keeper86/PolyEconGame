@@ -1,8 +1,8 @@
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { HRFacility, PidState, ProductionFacility } from './facility';
-import { calculateCostsForConstruction, getStorageStarvation } from './facility';
+import type { HRFacility, PidState, ProductionFacility, StorageShell } from './facility';
+import { calculateCostsForConstruction, getStorageStarvation, storageFormKeys } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -69,6 +69,44 @@ function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
     const fillRate = pMax > 0 ? hrDepartment.hrBuffer / pMax : 0;
     return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
+}
+
+const SHELL_BUFFER_FRACTION = 1.5;
+const SHELL_OVERSHOOT_FRACTION = 2;
+
+// Returns the construction budget still available after deciding growth (contraction frees budget).
+export function reconcileShellScale(
+    planet: Planet,
+    agent: Agent,
+    gameState: GameState,
+    assets: AgentPlanetAssets,
+    shell: StorageShell,
+    requiredScale: number,
+    hasOwnConstruction: boolean,
+    remainingConstructionBudget: number,
+): number {
+    if (requiredScale <= 0 || shell.construction !== null) {
+        return remainingConstructionBudget;
+    }
+
+    const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
+
+    if (shell.maxScale < requiredScale) {
+        if (remainingConstructionBudget <= 0) {
+            return remainingConstructionBudget;
+        }
+        const started = initiateCapacityExpansion(shell, assets, planet, hasOwnConstruction, bufferScale);
+        if (!started) {
+            return remainingConstructionBudget;
+        }
+        return Math.max(0, remainingConstructionBudget - shell.construction!.maximumConstructionServiceConsumption);
+    }
+
+    if (shell.maxScale > requiredScale * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
+        processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
+    }
+
+    return remainingConstructionBudget;
 }
 
 type AutoscaleDebugEntry = {
@@ -713,7 +751,24 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             storageDepartment.pidState = stoState;
         }
 
-        updateAgentShellCompartments(assets);
+        const shellSizing = updateAgentShellCompartments(assets);
+
+        for (const form of storageFormKeys()) {
+            const sizing = shellSizing[form];
+            if (!sizing) {
+                continue;
+            }
+            remainingConstructionBudget = reconcileShellScale(
+                planet,
+                agent,
+                gameState,
+                assets,
+                assets.storage.shells[form],
+                sizing.requiredScale,
+                hasOwnConstruction,
+                remainingConstructionBudget,
+            );
+        }
     });
 
     if (isAutoscaleDebugEnabled()) {
