@@ -37,7 +37,7 @@ describe('putIntoStorageFacility', () => {
             pieces: makeStorageShell(storage.planetId, 'ware', 'pieces', { volume: 1e13, mass: 1e13 }),
         };
         const resource = makeResource();
-        storage.shells.solid.compartments[resource.name] = { share: 1 };
+        storage.shells.solid.compartments[resource.name] = 1;
 
         const stored = putIntoStorageFacility(storage, resource, 50);
 
@@ -50,7 +50,7 @@ describe('putIntoStorageFacility', () => {
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
         storage.shells.solid.current = { volume: 0, mass: 0 };
-        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 50);
         expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
         expect(putIntoStorageFacility(storage, resource, 100)).toBeCloseTo(0);
@@ -62,12 +62,12 @@ describe('putIntoStorageFacility', () => {
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
         storage.shells.solid.current = { volume: 0, mass: 0 };
-        storage.shells.solid.compartments[solid.name] = { share: 0.5 };
+        storage.shells.solid.compartments[solid.name] = 0.5;
         putIntoStorageFacility(storage, solid, 50);
         expect(storage.currentInStorage[solid.name]?.quantity).toBeCloseTo(50);
 
         const other = makeResource({ name: 'other', form: 'solid' });
-        storage.shells.solid.compartments[other.name] = { share: 0.5 };
+        storage.shells.solid.compartments[other.name] = 0.5;
         expect(putIntoStorageFacility(storage, other, 50)).toBeCloseTo(50);
         expect(storage.currentInStorage[other.name]?.quantity).toBeCloseTo(50);
     });
@@ -77,7 +77,7 @@ describe('putIntoStorageFacility', () => {
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
         storage.shells.solid.current = { volume: 0, mass: 0 };
-        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 30);
         expect(putIntoStorageFacility(storage, resource, 50)).toBeCloseTo(20);
         expect(storage.currentInStorage[resource.name]?.quantity).toBeCloseTo(50);
@@ -108,7 +108,7 @@ describe('storage form shells', () => {
 
     it('getAvailableStorageCapacity reports the product compartment free room', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
-        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
+        storage.shells.solid.compartments[resource.name] = 0.5;
         storage.currentInStorage[resource.name] = { resource, quantity: 10 };
         storage.shells.solid.current = { volume: 10, mass: 10 };
 
@@ -121,9 +121,9 @@ describe('storage form shells', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
         const liquid = makeResource({ form: 'liquid', volumePerQuantity: 1, massPerQuantity: 1 });
 
-        storage.shells.solid.compartments[resource.name] = { share: 1 };
+        storage.shells.solid.compartments[resource.name] = 1;
         putIntoStorageFacility(storage, resource, 100);
-        storage.shells.liquid.compartments[liquid.name] = { share: 1 };
+        storage.shells.liquid.compartments[liquid.name] = 1;
         expect(putIntoStorageFacility(storage, liquid, 40)).toBeCloseTo(40);
         expect(putIntoStorageFacility(storage, resource, 10)).toBeCloseTo(0);
         expect(storage.shells.solid.current.volume).toBeCloseTo(100);
@@ -132,8 +132,8 @@ describe('storage form shells', () => {
     it('degrades inflow once a compartment approaches its own capacity, unaffected by the sibling', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
         const sameForm = makeResource({ name: 'sibling', form: 'solid' });
-        storage.shells.solid.compartments[resource.name] = { share: 0.5 };
-        storage.shells.solid.compartments[sameForm.name] = { share: 0.5 };
+        storage.shells.solid.compartments[resource.name] = 0.5;
+        storage.shells.solid.compartments[sameForm.name] = 0.5;
 
         putIntoStorageFacility(storage, resource, 50);
         expect(storage.shells.solid.current.volume).toBeCloseTo(50);
@@ -144,7 +144,7 @@ describe('storage form shells', () => {
 
     it('remove decrements the owning shell current', () => {
         const { storage, resource } = withShellCapacity('liquid', 1000);
-        storage.shells.liquid.compartments[resource.name] = { share: 1 };
+        storage.shells.liquid.compartments[resource.name] = 1;
         putIntoStorageFacility(storage, resource, 300);
         const removed = removeFromStorageFacility(storage, resource.name, 120);
 

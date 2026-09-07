@@ -500,7 +500,7 @@ describe('productionTick — storage space clamp', () => {
         const mp = produceResourceType.massPerQuantity;
         assets.storage.shells.solid.capacity = { volume: capQuantity * vp, mass: capQuantity * mp };
         assets.storage.shells.solid.current = { volume: 0, mass: 0 };
-        assets.storage.shells.solid.compartments[produceResourceType.name] = { share: 1 };
+        assets.storage.shells.solid.compartments[produceResourceType.name] = 1;
     }
 
     it('produces at full efficiency while the product compartment has room', () => {
@@ -569,8 +569,8 @@ describe('computeStorageSpaceFactor', () => {
         const solidCap = 5000; // each half comp fits 2500 → factor 0.5 at scale 10 (perTick 10000... )
         agent.assets.p.storage.shells.solid.capacity = { volume: solidCap, mass: solidCap };
         agent.assets.p.storage.shells.solid.current = { volume: 0, mass: 0 };
-        agent.assets.p.storage.shells.solid.compartments[produceResourceType.name] = { share: 0.5 };
-        agent.assets.p.storage.shells.solid.compartments[ironOreResourceType.name] = { share: 0.5 };
+        agent.assets.p.storage.shells.solid.compartments[produceResourceType.name] = 0.5;
+        agent.assets.p.storage.shells.solid.compartments[ironOreResourceType.name] = 0.5;
         // produce massPerQ 1, ironOre massPerQ 1 → each compartment freeQty = 0.5*5000 = 2500 (both by mass)
         expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(0.25, 6);
     });

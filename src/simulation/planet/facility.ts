@@ -472,14 +472,14 @@ export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): 
 // the authority; a stored product without an authored compartment falls back to an equal split of
 // whatever share of the shell the compartmented products have not already claimed.
 export const computeCompartmentShare = (storage: Storage, shell: StorageShell, resource: Resource): number => {
-    const authored = shell.compartments[resource.name]?.share;
+    const authored = shell.compartments[resource.name];
     if (authored !== undefined) {
         return Math.max(0, Math.min(1, authored));
     }
     const held = getShellHeldResourceNames(storage, shell.form).filter((name) => name !== resource.name);
-    const claimed = held.reduce((sum, name) => sum + (shell.compartments[name]?.share ?? 0), 0);
+    const claimed = held.reduce((sum, name) => sum + (shell.compartments[name] ?? 0), 0);
     const leftover = Math.max(0, 1 - claimed);
-    const uncontended = held.filter((name) => shell.compartments[name]?.share === undefined).length;
+    const uncontended = held.filter((name) => shell.compartments[name] === undefined).length;
     const unsharded = uncontended + 1; // this product plus any other un-partitioned held products
     return unsharded > 0 ? Math.max(0, Math.min(1, leftover / unsharded)) : 0;
 };
