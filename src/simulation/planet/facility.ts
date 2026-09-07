@@ -185,15 +185,17 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
+export type StorageBin = {
+    inventory: ResourceQuantity;
+    escrow: number;
+    capacity: number;
+};
+
 export type StorageShell = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
         form: StorageForm;
         capacity: {
-            volume: number;
-            mass: number;
-        };
-        current: {
             volume: number;
             mass: number;
         };
@@ -230,7 +232,6 @@ export const makeStorageShell = (
         maxScale: scale,
         scale,
         capacity: { ...cap },
-        current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
         compartments: {},
@@ -255,18 +256,49 @@ export const makeStorageShell = (
     };
 };
 
+export type UsedSpace = {
+    volume: number;
+    mass: number;
+};
+
+// Physical shell occupancy is not stored separately; it is always derived by folding the shell's own
+// per-resource ledger through each resource's constant volume/mass-per-quantity. Keeping it implicit
+// means capacity and usage can never drift apart.
+const usageOf = (holder: Pick<StorageShell, 'currentInStorage'>): UsedSpace => {
+    const used: UsedSpace = { volume: 0, mass: 0 };
+    for (const entry of Object.values(holder.currentInStorage)) {
+        used.volume += entry.quantity * entry.resource.volumePerQuantity;
+        used.mass += entry.quantity * entry.resource.massPerQuantity;
+    }
+    return used;
+};
+
+export const usageOfShell = (shell: StorageShell): UsedSpace => usageOf(shell);
+
 // Aggregate stored volume/mass across the three physical shells. Used by form-agnostic consumers
 // (e.g. holding costs) that do not care about a single resource's form.
-export const totalStoredByShell = (storage: Storage): { volume: number; mass: number } => {
+export const totalStoredByShell = (storage: Storage): UsedSpace => {
+    const solid = usageOf(storage.shells.solid);
+    const liquid = usageOf(storage.shells.liquid);
+    const pieces = usageOf(storage.shells.pieces);
     return {
-        volume:
-            storage.shells.solid.current.volume +
-            storage.shells.liquid.current.volume +
-            storage.shells.pieces.current.volume,
-        mass:
-            storage.shells.solid.current.mass + storage.shells.liquid.current.mass + storage.shells.pieces.current.mass,
+        volume: solid.volume + liquid.volume + pieces.volume,
+        mass: solid.mass + liquid.mass + pieces.mass,
     };
 };
+
+export function getStorageStarvation(storage: Storage): number {
+    return storage.department?.storageStarvation ?? 1.0;
+}
+
+export function inflowPreservation(ss: number): number {
+    const base = 0.5;
+    return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
+}
+
+export function storagePreservationFactor(ss: number): number {
+    return 1 - 0.05 * Math.pow(ss, 6);
+}
 
 export type ManagementFacility = FacilityBase & {
     type: 'management';
@@ -310,19 +342,6 @@ export type StorageDepartment = ManagementFacility & {
 export type TrainingsDepartment = ManagementFacility & {
     trainingsBuffer: number;
 };
-
-export function getStorageStarvation(storage: Storage): number {
-    return storage.department?.storageStarvation ?? 1.0;
-}
-
-export function inflowPreservation(ss: number): number {
-    const base = 0.5;
-    return 1.0 - 0.9 * base * Math.pow(ss, 6) - 0.1 * base * ss;
-}
-
-export function storagePreservationFactor(ss: number): number {
-    return 1 - 0.05 * Math.pow(ss, 6);
-}
 
 export type ShipConstructionFacility = FacilityBase & {
     type: 'ship_construction';
@@ -394,12 +413,6 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
         resource,
         quantity: current + stored,
     };
-
-    if (state.form) {
-        const shell = storage.shells[state.form];
-        shell.current.volume += stored * resource.volumePerQuantity;
-        shell.current.mass += stored * resource.massPerQuantity;
-    }
 
     if (storage.department) {
         storage.department.storageBuffer -= stored * resource.massPerQuantity;
@@ -571,16 +584,6 @@ export const removeFromStorageFacility = (
     }
     const quantityRemoved = Math.min(currentEntry.quantity, quantityToRemove);
     currentEntry.quantity -= quantityRemoved;
-
-    const physical = holder !== storage;
-    if (physical) {
-        const shell = holder as StorageShell;
-        shell.current.volume = Math.max(
-            0,
-            shell.current.volume - quantityRemoved * currentEntry.resource.volumePerQuantity,
-        );
-        shell.current.mass = Math.max(0, shell.current.mass - quantityRemoved * currentEntry.resource.massPerQuantity);
-    }
 
     if (storage.department) {
         storage.department.storageBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;

@@ -9,6 +9,7 @@ import {
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
+    usageOfShell,
 } from './facility';
 import type { Storage } from './facility';
 import { makeStorageFacility, setStorageResourceQuantity } from '../utils/testHelper';
@@ -51,7 +52,6 @@ describe('putIntoStorageFacility', () => {
         const resource = makeResource({ name: 'concrete' });
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
-        storage.shells.solid.current = { volume: 0, mass: 0 };
         storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 50);
         expect(queryStorageFacility(storage, resource.name)).toBeCloseTo(50);
@@ -63,7 +63,6 @@ describe('putIntoStorageFacility', () => {
         const solid = makeResource({ name: 'concrete', form: 'solid' });
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
-        storage.shells.solid.current = { volume: 0, mass: 0 };
         storage.shells.solid.compartments[solid.name] = 0.5;
         putIntoStorageFacility(storage, solid, 50);
         expect(queryStorageFacility(storage, solid.name)).toBeCloseTo(50);
@@ -78,7 +77,6 @@ describe('putIntoStorageFacility', () => {
         const resource = makeResource({ name: 'concrete' });
         const cap = 100;
         storage.shells.solid.capacity = { volume: cap, mass: cap };
-        storage.shells.solid.current = { volume: 0, mass: 0 };
         storage.shells.solid.compartments[resource.name] = 0.5;
         putIntoStorageFacility(storage, resource, 30);
         expect(putIntoStorageFacility(storage, resource, 50)).toBeCloseTo(20);
@@ -97,7 +95,6 @@ describe('storage form shells', () => {
         const storage = makeStorageFacility();
         const shell = storage.shells[form];
         shell.capacity = { volume: capacity, mass: capacity };
-        shell.current = { volume: 0, mass: 0 };
         const resource = makeResource({ form, volumePerQuantity: 1, massPerQuantity: 1 });
         return { storage, resource };
     }
@@ -127,7 +124,7 @@ describe('storage form shells', () => {
         storage.shells.liquid.compartments[liquid.name] = 1;
         expect(putIntoStorageFacility(storage, liquid, 40)).toBeCloseTo(40);
         expect(putIntoStorageFacility(storage, resource, 10)).toBeCloseTo(0);
-        expect(storage.shells.solid.current.volume).toBeCloseTo(100);
+        expect(usageOfShell(storage.shells.solid).volume).toBeCloseTo(100);
     });
 
     it('degrades inflow once a compartment approaches its own capacity, unaffected by the sibling', () => {
@@ -137,21 +134,21 @@ describe('storage form shells', () => {
         storage.shells.solid.compartments[sameForm.name] = 0.5;
 
         putIntoStorageFacility(storage, resource, 50);
-        expect(storage.shells.solid.current.volume).toBeCloseTo(50);
+        expect(usageOfShell(storage.shells.solid).volume).toBeCloseTo(50);
         expect(putIntoStorageFacility(storage, sameForm, 50)).toBeCloseTo(50);
         expect(putIntoStorageFacility(storage, resource, 40)).toBeCloseTo(0);
-        expect(storage.shells.solid.current.volume).toBeCloseTo(100);
+        expect(usageOfShell(storage.shells.solid).volume).toBeCloseTo(100);
     });
 
-    it('remove decrements the owning shell current', () => {
+    it('remove decrements the owning shell usage', () => {
         const { storage, resource } = withShellCapacity('liquid', 1000);
         storage.shells.liquid.compartments[resource.name] = 1;
         putIntoStorageFacility(storage, resource, 300);
         const removed = removeFromStorageFacility(storage, resource.name, 120);
 
         expect(removed).toBeCloseTo(120);
-        expect(storage.shells.liquid.current.volume).toBeCloseTo(180);
-        expect(storage.shells.liquid.current.mass).toBeCloseTo(180);
+        expect(usageOfShell(storage.shells.liquid).volume).toBeCloseTo(180);
+        expect(usageOfShell(storage.shells.liquid).mass).toBeCloseTo(180);
     });
 });
 

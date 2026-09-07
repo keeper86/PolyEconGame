@@ -493,7 +493,6 @@ describe('productionTick — storage space clamp', () => {
         const vp = produceResourceType.volumePerQuantity;
         const mp = produceResourceType.massPerQuantity;
         assets.storage.shells.solid.capacity = { volume: capQuantity * vp, mass: capQuantity * mp };
-        assets.storage.shells.solid.current = { volume: 0, mass: 0 };
         assets.storage.shells.solid.compartments[produceResourceType.name] = 1;
     }
 
@@ -556,7 +555,6 @@ describe('computeStorageSpaceFactor', () => {
         // Give both products a half-share each of a solid shell that can only fit one of each well.
         const solidCap = 5000; // each half comp fits 2500 → factor 0.5 at scale 10 (perTick 10000... )
         agent.assets.p.storage.shells.solid.capacity = { volume: solidCap, mass: solidCap };
-        agent.assets.p.storage.shells.solid.current = { volume: 0, mass: 0 };
         agent.assets.p.storage.shells.solid.compartments[produceResourceType.name] = 0.5;
         agent.assets.p.storage.shells.solid.compartments[ironOreResourceType.name] = 0.5;
         // produce massPerQ 1, ironOre massPerQ 1 → each compartment freeQty = 0.5*5000 = 2500 (both by mass)
