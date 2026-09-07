@@ -137,7 +137,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
     const inputReserve = new Map<string, number>();
     for (const [resourceName, rate] of consumptionRates) {
-        const resource = RESOURCES_BY_NAME.get(resourceName);
+        const resource = rate.resource;
         if (!resource) {
             console.warn(
                 `automaticPricing: unknown resource "${resourceName}" in consumption rates, skipping input reserve calculation.`,
@@ -145,7 +145,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             continue;
         }
         const bidCfg = resolveBidConfigForResource(assets, resource);
-        const target = rate * bidCfg.inputBufferTargetTicks;
+        const target = rate.quantity * bidCfg.inputBufferTargetTicks;
         inputReserve.set(resourceName, target);
     }
 

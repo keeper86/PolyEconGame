@@ -418,8 +418,8 @@ export function buildBenchmarkWorld(
         bankruptcies: [],
     };
 
-    prefillAgentStorageFromFacilities(gameState);
     presizeAgentShellForFacilities(gameState);
+    prefillAgentStorageFromFacilities(gameState);
 
     return { gameState, planet, agents: allAgents };
 }

@@ -7,6 +7,7 @@ import {
 } from '../planet/facilityMaintenance';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import type { ConsumptionShipInfo } from './consumptionShipInfo';
+import type { Resource, ResourceQuantity } from '../planet/claims';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -199,11 +200,16 @@ export function computeAllConsumptionRates(
     assets: AgentPlanetAssets,
     ships: ConsumptionShipInfo[],
     planetId: string,
-): Map<string, number> {
-    const rates = new Map<string, number>();
+): Map<string, ResourceQuantity> {
+    const rates = new Map<string, ResourceQuantity>();
 
-    const add = (resourceName: string, rate: number) => {
-        rates.set(resourceName, (rates.get(resourceName) ?? 0) + rate);
+    const add = (resource: Resource, rate: number) => {
+        const existing = rates.get(resource.name);
+        if (existing) {
+            existing.quantity += rate;
+        } else {
+            rates.set(resource.name, { resource, quantity: rate });
+        }
     };
 
     const allFacilities = getAllFacilities(assets);
@@ -217,7 +223,7 @@ export function computeAllConsumptionRates(
             if (need.resource.form === 'landBoundResource') {
                 continue;
             }
-            add(need.resource.name, need.quantity * f.scale);
+            add(need.resource, need.quantity * f.scale);
         }
     }
 
@@ -234,27 +240,27 @@ export function computeAllConsumptionRates(
         }
         const ratePerTick = Math.min(1, Math.sqrt(f.scale) / f.produces.buildingTime);
         for (const cost of f.produces.buildingCost) {
-            add(cost.resource.name, cost.quantity * ratePerTick);
+            add(cost.resource, cost.quantity * ratePerTick);
         }
     }
 
     // ── Construction services (any facility with active construction) ──────
     for (const f of allFacilities) {
         if (f.construction !== null) {
-            add(constructionServiceResourceType.name, f.construction.maximumConstructionServiceConsumption);
+            add(constructionServiceResourceType, f.construction.maximumConstructionServiceConsumption);
         }
     }
 
     // ── Maintenance services (any operational facility) ────────────────────
     for (const f of allFacilities) {
         if (isFacilityOperating(f)) {
-            add(maintenanceServiceResourceType.name, facilityMaintenanceConsumptionPerTick(f));
+            add(maintenanceServiceResourceType, facilityMaintenanceConsumptionPerTick(f));
         }
     }
 
     for (const f of allFacilities) {
         if (isFacilityOperating(f) && f.maxMaintenance < 1) {
-            add(constructionServiceResourceType.name, facilityRestorationCapacityPerTick(f));
+            add(constructionServiceResourceType, facilityRestorationCapacityPerTick(f));
         }
     }
 
@@ -271,7 +277,7 @@ export function computeAllConsumptionRates(
         }
         const bld = ship.state.buildingTarget;
         if (bld?.construction) {
-            add(constructionServiceResourceType.name, bld.construction.maximumConstructionServiceConsumption);
+            add(constructionServiceResourceType, bld.construction.maximumConstructionServiceConsumption);
         }
     }
 
@@ -293,7 +299,7 @@ export function computeAllConsumptionRates(
         const alreadyLoaded = ship.state.currentCargo?.quantity ?? 0;
         const remaining = goal.quantity - alreadyLoaded;
         if (remaining > 0) {
-            add(goal.resource.name, remaining);
+            add(goal.resource, remaining);
         }
     }
 

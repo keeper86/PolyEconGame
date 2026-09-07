@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { makeAgentPlanetAssets, makeProductionFacility, makeStorageFacility } from '../../utils/testHelper';
+import {
+    makeAgentPlanetAssets,
+    makeProductionFacility,
+    makeShipConstructionFacility,
+    makeStorageFacility,
+} from '../../utils/testHelper';
 import type { Resource } from '../claims';
 import type { Storage } from '../facility';
 import { STORAGE_SHELL_CAPACITY, getStorageCapacityState } from '../facility';
+import type { TransportShipType } from '../../ships/ships';
 import {
     updateAgentShellCompartments,
     allocateShellCells,
+    footprintPerForm,
     resolveFormShell,
     type StorageResidency,
 } from './shellCompartments';
@@ -172,6 +179,55 @@ describe('updateAgentShellCompartments sizing', () => {
             makeAgentPlanetAssets('p', { productionFacilities: [furnace], storage }),
         );
         expect(grown.solid!.feasible).toBe(true);
+    });
+
+    it('reserves physical room for each production input alongside its output', () => {
+        // A facility that turns ore into metal stores BOTH while it runs (a seed prefill of inputs and a
+        // standing output buffer). The shell footprint must reserve months of each, not just the output.
+        const storage = makeStorageFacility() as Storage;
+        const ore = makeProdResource('ore', 'solid', 1, 0.1);
+        const metal = makeProdResource('metal', 'solid', 0.1, 1);
+        const scale = 3;
+        const facility = makeProductionFacility(undefined, {
+            needs: [{ resource: ore, quantity: 60 }],
+            produces: [{ resource: metal, quantity: 20 }],
+            scale,
+            maxScale: scale,
+        });
+
+        const footprint = footprintPerForm(makeAgentPlanetAssets('p', { productionFacilities: [facility], storage }));
+
+        const solid = footprint.solid ?? [];
+        const byName: Record<string, number> = {};
+        for (const residency of solid) {
+            byName[residency.name] = residency.targetQuantity;
+        }
+        expect(Object.keys(byName).sort()).toEqual(['metal', 'ore']);
+        expect(byName.ore).toBeCloseTo(120 * 60 * scale); // 4 months (120 ticks) of steel-ingot need flow
+        expect(byName.metal).toBeCloseTo(120 * 20 * scale); // 4 months of output flow
+    });
+
+    it('reserves ship-building materials even though a ship itself has no stored footprint', () => {
+        const storage = makeStorageFacility() as Storage;
+        const steel = makeProdResource('steel', 'solid', 0.2, 1);
+        const ship: TransportShipType = {
+            type: 'transport',
+            name: 'Test Ship',
+            scale: 'small',
+            speed: 1,
+            cargoSpecification: { type: 'solid', volume: 1000, mass: 1000 },
+            requiredCrew: { none: 0, primary: 0, secondary: 1, tertiary: 0 },
+            buildingCost: [{ resource: steel, quantity: 1200 }],
+            buildingTime: 120,
+        };
+        const yard = makeShipConstructionFacility(undefined, { shipType: ship });
+
+        const footprint = footprintPerForm(makeAgentPlanetAssets('p', { shipConstructionFacilities: [yard], storage }));
+        const solid = footprint.solid ?? [];
+        const steelResidency = solid.find((r) => r.name === 'steel');
+        expect(steelResidency).toBeDefined();
+        // 4 months (120 ticks) of the per-tick shipbuilding draw of steel (1200 units over 120 ticks).
+        expect(steelResidency!.targetQuantity).toBeCloseTo(120 * 10);
     });
 });
 

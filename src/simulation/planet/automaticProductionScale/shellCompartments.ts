@@ -1,6 +1,6 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { Resource } from '../claims';
-import type { ProductionFacility, Storage, StorageShell } from '../facility';
+import type { Storage, StorageShell } from '../facility';
 import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
@@ -106,22 +106,44 @@ export const resolveFormShell = (
     return allocation;
 };
 
-export const storageResidencyTarget = (facility: ProductionFacility, resource: Resource): number => {
-    const targetMonths = getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS;
-    // Size for the production level the facility is already expanding toward, not just its current
-    // ceiling, so a freshly-started expansion doesn't outstrip shell space before it completes.
-    const plannedScale = facility.construction?.constructionTargetMaxScale ?? facility.maxScale;
-    let target = 0;
-    for (const output of facility.produces) {
-        if (output.resource.name !== resource.name) {
-            continue;
-        }
-        target += targetMonths * TICKS_PER_MONTH * plannedScale * output.quantity;
+// Target months of a resource a shell must hold to cover what a facility touches per tick, applied to
+// every physical resource a facility stores while it runs: production inputs AND outputs, and a
+// ship-builder's material inputs (a ship itself is not a stored good). Reserving both directions keeps
+// the seed-time prefill and steady-state production from overflowing an output-only-sized shell.
+export const residencyMonthsTicks = (): number =>
+    (getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS) * TICKS_PER_MONTH;
+
+const addResidency = (
+    grouped: Record<StorageForm, Map<string, StorageResidency>>,
+    resource: Resource,
+    flowQuantityPerTick: number,
+): void => {
+    const form = shellFormOfResource(resource);
+    if (!form || flowQuantityPerTick <= 0) {
+        return;
     }
-    return target;
+    const target = residencyMonthsTicks() * flowQuantityPerTick;
+    if (target <= 0) {
+        return;
+    }
+    const existing = grouped[form].get(resource.name);
+    if (existing) {
+        existing.targetQuantity += target;
+        existing.volume += target * resource.volumePerQuantity;
+        existing.mass += target * resource.massPerQuantity;
+    } else {
+        grouped[form].set(resource.name, {
+            name: resource.name,
+            resource,
+            targetQuantity: target,
+            volume: target * resource.volumePerQuantity,
+            mass: target * resource.massPerQuantity,
+        });
+    }
 };
 
-// Aggregate each produced good that physically lives in a shell into one per-shape footprint entry.
+// Aggregate every physical resource a facility holds (inputs and outputs/flow sources) into one
+// per-shape footprint entry, so a shell is sized to keep each resource it stores, not just its outputs.
 export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<StorageForm, StorageResidency[]>> => {
     const grouped: Record<StorageForm, Map<string, StorageResidency>> = {
         solid: new Map(),
@@ -130,29 +152,28 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
     };
 
     for (const facility of assets.productionFacilities) {
+        // Size for the production level the facility is already expanding toward, not just its current
+        // ceiling, so a freshly-started expansion doesn't outstrip shell space before it completes.
+        const plannedScale = facility.construction?.constructionTargetMaxScale ?? facility.maxScale;
+        for (const need of facility.needs) {
+            addResidency(grouped, need.resource, need.quantity * plannedScale);
+        }
         for (const output of facility.produces) {
-            const form = shellFormOfResource(output.resource);
-            if (!form) {
-                continue;
-            }
-            const target = storageResidencyTarget(facility, output.resource);
-            if (target > 0) {
-                const name = output.resource.name;
-                const existing = grouped[form].get(name);
-                if (existing) {
-                    existing.targetQuantity += target;
-                    existing.volume += target * output.resource.volumePerQuantity;
-                    existing.mass += target * output.resource.massPerQuantity;
-                } else {
-                    grouped[form].set(name, {
-                        name,
-                        resource: output.resource,
-                        targetQuantity: target,
-                        volume: target * output.resource.volumePerQuantity,
-                        mass: target * output.resource.massPerQuantity,
-                    });
-                }
-            }
+            addResidency(grouped, output.resource, output.quantity * plannedScale);
+        }
+    }
+
+    // A shipyard flows its building materials into storage over the build; the ship it eventually
+    // delivers does not occupy the shell, so only its buildingCost is a stored footprint. The rate
+    // mirrors consumptionSources.ts (sqrt(scale)/buildingTime) so the reserve tracks real usage.
+    for (const facility of assets.shipConstructionFacilities) {
+        const ship = facility.produces;
+        if (!ship || ship.buildingTime <= 0) {
+            continue;
+        }
+        const proportionPerTick = Math.min(1, Math.sqrt(facility.scale) / ship.buildingTime);
+        for (const cost of ship.buildingCost) {
+            addResidency(grouped, cost.resource, cost.quantity * proportionPerTick);
         }
     }
 
@@ -166,10 +187,10 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
     return result;
 };
 
-// Re-partition every produced-goods shell of an agent each tick, returning the final cell allocation
-// per shell so the caller can grow or shrink a shell via construction once its installed scale drops
-// shy or overshoots the produced footprint. Non-produced occupants stay un-authored and inherit the
-// flexible leftover share via computeCompartmentShare (see facility.ts).
+// Re-partition every physical shell of an agent each tick, returning the final cell allocation per shell
+// so the caller can grow or shrink a shell via construction once its installed scale drops shy or
+// overshoots the held footprint. Resources outside the authored footprint (services, land-bound, etc.)
+// stay un-authored and inherit the flexible leftover share via computeCompartmentShare (see facility.ts).
 export const updateAgentShellCompartments = (
     assets: AgentPlanetAssets,
 ): Partial<Record<StorageForm, CellAllocation>> => {
