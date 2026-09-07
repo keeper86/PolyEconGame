@@ -10,8 +10,10 @@ import {
 import { calculateCostsForConstruction } from '../planet/facility';
 import { createEmptyAccumulator, type Agent, type Planet } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
+import { computeFacilitiesValue, constructionValuationPrice } from './assetValuation';
 import {
     makeAgent,
+    makeAgentPlanetAssets,
     makeGameState,
     makePlanet,
     makeProductionFacility,
@@ -51,6 +53,14 @@ function makeEstablishedAgent(
     return a;
 }
 
+// The storage fixture grants every agent three physical shells, which are real capital and so
+// contribute to facility collateral just like production buildings. This models their value.
+function establishedStorageFacilitiesCollateral(planet: Planet): number {
+    const empty = makeAgentPlanetAssets(planet.id);
+    empty.storage.department = null;
+    return computeFacilitiesValue(empty, constructionValuationPrice(planet)) * LOAN_COLLATERAL_FACTOR;
+}
+
 describe('computeLoanConditions', () => {
     it('grants STARTER_LOAN_AMOUNT to a brand-new agent (starterLoanTaken=false)', () => {
         const planet = makePlanet();
@@ -58,7 +68,9 @@ describe('computeLoanConditions', () => {
         agent.assets[planet.id]!.storage.department = null;
         const result = computeLoanConditions(agent, planet);
         expect(result.isNewAgent).toBe(true);
-        expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT);
+        expect(result.maxLoanAmount).toBe(
+            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet)),
+        );
     });
 
     it('does NOT use starter path when starterLoanTaken=true', () => {
@@ -93,14 +105,17 @@ describe('computeLoanConditions', () => {
         });
         const result = computeLoanConditions(agent, planet);
         expect(result.maxLoanAmount).toBe(0);
-        expect(result.bankruptcyTrigger).toBe(BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + 6 * 100));
+        const cap = STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) + 6 * 100;
+        expect(result.bankruptcyTrigger).toBe(Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * cap));
     });
 
     it('keeps the starter loan as a floor for maxLoanAmount when negative cash flow leaves headroom', () => {
         const planet = makePlanet();
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
         const result = computeLoanConditions(agent, planet);
-        expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT - 1);
+        expect(result.maxLoanAmount).toBe(
+            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) - 1),
+        );
     });
 
     it('cash-flow negative with storage: storageCollateral is computed but not included in maxLoanAmount', () => {
@@ -122,7 +137,9 @@ describe('computeLoanConditions', () => {
         const result = computeLoanConditions(agent, planet);
         const expectedCollateral = 100 * 10 * LOAN_COLLATERAL_FACTOR;
         expect(result.storageCollateral).toBeCloseTo(expectedCollateral);
-        expect(result.maxLoanAmount).toBe(STARTER_LOAN_AMOUNT - 1);
+        expect(result.maxLoanAmount).toBe(
+            Math.floor(STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) - 1),
+        );
     });
 
     it('storage collateral is computed but not added to credit limit for profitable agents', () => {
@@ -192,9 +209,9 @@ describe('computeLoanConditions', () => {
             existingLoans: 12345,
         });
         const result = computeLoanConditions(agent, planet);
-        expect(result.bankruptcyTrigger).toBe(
-            Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + LOAN_CASH_FLOW_MONTHS * 50)),
-        );
+        const capacity =
+            STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet) + LOAN_CASH_FLOW_MONTHS * 50;
+        expect(result.bankruptcyTrigger).toBe(Math.floor(BANKRUPTCY_TRIGGER_MULTIPLE * capacity));
     });
 
     it('keeps the bankruptcy trigger independent of existing loans', () => {
@@ -205,7 +222,9 @@ describe('computeLoanConditions', () => {
             computeLoanConditions(heavyDebt, planet).bankruptcyTrigger,
         );
         expect(computeLoanConditions(heavyDebt, planet).bankruptcyTrigger).toBe(
-            BANKRUPTCY_TRIGGER_MULTIPLE * STARTER_LOAN_AMOUNT,
+            Math.floor(
+                BANKRUPTCY_TRIGGER_MULTIPLE * (STARTER_LOAN_AMOUNT + establishedStorageFacilitiesCollateral(planet)),
+            ),
         );
     });
 
@@ -275,7 +294,9 @@ describe('computeLoanConditions', () => {
 
         const csPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
         const completedCS = calculateCostsForConstruction('raw', 0, 1).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
-        expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
+        expect(result.facilitiesCollateral).toBe(
+            Math.floor(establishedStorageFacilitiesCollateral(planet) + completedCS * csPrice * LOAN_COLLATERAL_FACTOR),
+        );
     });
 
     it('caps construction service price at 2× the cost floor', () => {
@@ -291,6 +312,8 @@ describe('computeLoanConditions', () => {
 
         const csPrice = 2 * planet.lastProductionCostFloors[constructionServiceResourceType.name];
         const completedCS = calculateCostsForConstruction('raw', 0, 1).cost * RECYCLER_BASE_RECOVERY_EFFICIENCY;
-        expect(result.facilitiesCollateral).toBe(Math.floor(completedCS * csPrice * LOAN_COLLATERAL_FACTOR));
+        expect(result.facilitiesCollateral).toBe(
+            Math.floor(establishedStorageFacilitiesCollateral(planet) + completedCS * csPrice * LOAN_COLLATERAL_FACTOR),
+        );
     });
 });

@@ -152,27 +152,32 @@ export type ProductionFacility = FacilityBase & {
     pidState?: PidState | null;
 };
 
-export type Storage = PlanetaryId & {
-    // TODO: We should at one point replace direct access to this with queryStorageFacility (extending to show freeQuantity and escrow)
+type ResourceAmountLedger = {
     currentInStorage: {
         [resourceName in string]: ResourceQuantity;
     };
-
     escrow: { [resourceName in string]: number };
-
-    shells: {
-        solid: StorageShell;
-        liquid: StorageShell;
-        pieces: StorageShell;
-    };
-
-    department: StorageDepartment | null;
 };
 
+export type Storage = PlanetaryId &
+    ResourceAmountLedger & {
+        shells: {
+            solid: StorageShell;
+            liquid: StorageShell;
+            pieces: StorageShell;
+        };
+
+        department: StorageDepartment | null;
+    };
+
 export const getStorageScaleBasis = (storage: Storage): number => storage.department?.maxScale ?? 0;
-export const getWholeStorage = (storage: Storage) => Object.entries(storage.currentInStorage);
 
 export type StorageForm = 'solid' | 'liquid' | 'pieces';
+
+// Solid/liquid/pieces are physically stored in the matching shell's own ledger. Everything else
+// (services, currency, internal, landBoundResource) has ~zero volume/mass and lives in the
+// Storage-level (no-form) ledger.
+export const storageFormKeys: () => StorageForm[] = () => ['solid', 'liquid', 'pieces'];
 
 export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     solid: 'Silo',
@@ -180,22 +185,23 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
     pieces: 'Warehouse',
 };
 
-export type StorageShell = FacilityBase & {
-    type: 'storage';
-    form: StorageForm;
-    capacity: {
-        volume: number;
-        mass: number;
+export type StorageShell = FacilityBase &
+    ResourceAmountLedger & {
+        type: 'storage';
+        form: StorageForm;
+        capacity: {
+            volume: number;
+            mass: number;
+        };
+        current: {
+            volume: number;
+            mass: number;
+        };
+        compartments: { [resourceName: string]: number };
+        needs: ResourceQuantity[];
+        produces: ResourceQuantity[];
+        lastTickResults: LastManagementTickResults;
     };
-    current: {
-        volume: number;
-        mass: number;
-    };
-    compartments: { [resourceName: string]: number };
-    needs: ResourceQuantity[];
-    produces: ResourceQuantity[];
-    lastTickResults: LastManagementTickResults;
-};
 
 export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageForm | null => {
     if (resource.form === 'solid' || resource.form === 'liquid' || resource.form === 'pieces') {
@@ -205,7 +211,8 @@ export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageFo
 };
 
 // services, currency, internal and landBoundResource are not stored in a physical shell; they have
-// ~zero volume/mass. Solid/liquid/pieces route to the matching shell.
+// ~zero volume/mass and live in the Storage-level (no-form) ledger. Solid/liquid/pieces hold their
+// own ledger on the matching shell.
 export const makeStorageShell = (
     planetId: string,
     id: string,
@@ -224,6 +231,8 @@ export const makeStorageShell = (
         scale,
         capacity: { ...cap },
         current: { volume: 0, mass: 0 },
+        currentInStorage: {},
+        escrow: {},
         compartments: {},
 
         construction: null,
@@ -338,11 +347,30 @@ export const createLastTickResults = (): LastTickResults => ({
     lastConsumed: {},
 });
 
+type LedgerHolder = StorageShell | Storage;
+
+const ledgerForResource = (storage: Storage, resource: Pick<Resource, 'form'>): LedgerHolder => {
+    const form = shellFormOfResource(resource);
+    return form ? storage.shells[form] : storage;
+};
+
+const storageLedgerHolding = (storage: Storage, resourceName: string): LedgerHolder => {
+    for (const form of storageFormKeys()) {
+        const shell = storage.shells[form];
+        if (shell.currentInStorage[resourceName] || shell.escrow[resourceName] !== undefined) {
+            return shell;
+        }
+    }
+    return storage;
+};
+
 export const putIntoStorageFacility = (storage: Storage, resource: Resource, additionalQuantity: number): number => {
     const ss = getStorageStarvation(storage);
     const effectiveQuantity = additionalQuantity * inflowPreservation(ss);
 
-    const current = storage.currentInStorage[resource.name]?.quantity || 0;
+    const holder = ledgerForResource(storage, resource);
+
+    const current = holder.currentInStorage[resource.name]?.quantity || 0;
 
     const state = getStorageCapacityState(storage, resource);
 
@@ -362,7 +390,7 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
     const overallRestriction = Math.min(volumeRestriction, massRestriction);
     const stored = effectiveQuantity * overallRestriction;
 
-    storage.currentInStorage[resource.name] = {
+    holder.currentInStorage[resource.name] = {
         resource,
         quantity: current + stored,
     };
@@ -445,9 +473,23 @@ export const queryStorageFacility = (
     if (!storage) {
         return 0;
     }
-    const total = storage.currentInStorage[resourceName]?.quantity ?? 0;
-    const escrowed = subtractEscrow ? (storage.escrow[resourceName] ?? 0) : 0;
+    const holder = storageLedgerHolding(storage, resourceName);
+    const total = holder.currentInStorage[resourceName]?.quantity ?? 0;
+    const escrowed = subtractEscrow ? (holder.escrow[resourceName] ?? 0) : 0;
     return Math.max(0, total - escrowed);
+};
+
+export const getWholeStorage = (storage: Storage): [string, ResourceQuantity][] => {
+    const entries: [string, ResourceQuantity][] = [];
+    for (const [name, entry] of Object.entries(storage.currentInStorage)) {
+        entries.push([name, entry]);
+    }
+    for (const form of storageFormKeys()) {
+        for (const [name, entry] of Object.entries(storage.shells[form].currentInStorage)) {
+            entries.push([name, entry]);
+        }
+    }
+    return entries;
 };
 
 export type StorageCapacityState = {
@@ -459,13 +501,7 @@ export type StorageCapacityState = {
 };
 
 export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): string[] => {
-    const names: string[] = [];
-    for (const [name, entry] of Object.entries(storage.currentInStorage)) {
-        if (shellFormOfResource(entry.resource) === form) {
-            names.push(name);
-        }
-    }
-    return names;
+    return Object.keys(storage.shells[form].currentInStorage);
 };
 
 export const computeCompartmentShare = (storage: Storage, shell: StorageShell, resource: Resource): number => {
@@ -489,7 +525,7 @@ export const getStorageCapacityState = (storage: Storage, resource: Resource): S
 
     if (form) {
         const shell = storage.shells[form];
-        const ownQuantity = storage.currentInStorage[resource.name]?.quantity ?? 0;
+        const ownQuantity = shell.currentInStorage[resource.name]?.quantity ?? 0;
         const share = computeCompartmentShare(storage, shell, resource);
         const shellVolume = shell.capacity.volume * shell.scale;
         const shellMass = shell.capacity.mass * shell.scale;
@@ -528,16 +564,17 @@ export const removeFromStorageFacility = (
     if (!storage) {
         return 0;
     }
-    const currentEntry = storage.currentInStorage[resourceName];
+    const holder = storageLedgerHolding(storage, resourceName);
+    const currentEntry = holder.currentInStorage[resourceName];
     if (!currentEntry) {
         return 0;
     }
     const quantityRemoved = Math.min(currentEntry.quantity, quantityToRemove);
     currentEntry.quantity -= quantityRemoved;
 
-    const form = shellFormOfResource(currentEntry.resource);
-    if (form) {
-        const shell = storage.shells[form];
+    const physical = holder !== storage;
+    if (physical) {
+        const shell = holder as StorageShell;
         shell.current.volume = Math.max(
             0,
             shell.current.volume - quantityRemoved * currentEntry.resource.volumePerQuantity,
@@ -557,24 +594,28 @@ export const lockIntoEscrow = (storage: Storage, resourceName: string, quantity:
     if (locked <= 0) {
         return 0;
     }
-    storage.escrow[resourceName] = (storage.escrow[resourceName] ?? 0) + locked;
+    const holder = storageLedgerHolding(storage, resourceName);
+    holder.escrow[resourceName] = (holder.escrow[resourceName] ?? 0) + locked;
     return locked;
 };
 
-export const getEscrow = (storage: Storage, resourceName: string): number => storage.escrow[resourceName] ?? 0;
+export const getEscrow = (storage: Storage, resourceName: string): number =>
+    storageLedgerHolding(storage, resourceName).escrow[resourceName] ?? 0;
 
 export const releaseFromEscrow = (storage: Storage, resourceName: string, quantity: number): void => {
-    const current = storage.escrow[resourceName] ?? 0;
-    storage.escrow[resourceName] = Math.max(0, current - quantity);
+    const holder = storageLedgerHolding(storage, resourceName);
+    const current = holder.escrow[resourceName] ?? 0;
+    holder.escrow[resourceName] = Math.max(0, current - quantity);
 };
 
 export const transferFromEscrow = (storage: Storage, resourceName: string, quantity: number): number => {
-    const escrowed = storage.escrow[resourceName] ?? 0;
+    const holder = storageLedgerHolding(storage, resourceName);
+    const escrowed = holder.escrow[resourceName] ?? 0;
     const transferred = Math.min(escrowed, quantity);
     if (transferred <= 0) {
         return 0;
     }
-    storage.escrow[resourceName] = escrowed - transferred;
+    holder.escrow[resourceName] = escrowed - transferred;
     removeFromStorageFacility(storage, resourceName, transferred);
     return transferred;
 };

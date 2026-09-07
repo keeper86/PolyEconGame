@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Resource } from './claims';
 import {
     getAvailableStorageCapacity,
+    getEscrow,
+    lockIntoEscrow,
     makeStorageShell,
     putIntoStorageFacility,
     queryStorageFacility,
@@ -150,5 +152,59 @@ describe('storage form shells', () => {
         expect(removed).toBeCloseTo(120);
         expect(storage.shells.liquid.current.volume).toBeCloseTo(180);
         expect(storage.shells.liquid.current.mass).toBeCloseTo(180);
+    });
+});
+
+describe('per-shell resource ledgers', () => {
+    it('stores physical resources in the ledger of the matching shell', () => {
+        const storage = makeStorageFacility();
+        storage.shells.solid.compartments['test-resource'] = 1;
+
+        putIntoStorageFacility(storage, makeResource(), 50);
+
+        expect(storage.shells.solid.currentInStorage['test-resource']?.quantity).toBeCloseTo(50);
+        expect(storage.shells.liquid.currentInStorage['test-resource']).toBeUndefined();
+        expect(storage.currentInStorage['test-resource']).toBeUndefined();
+        expect(queryStorageFacility(storage, 'test-resource')).toBeCloseTo(50);
+    });
+
+    it('locks and releases escrow for physical resources on the owning shell ledger', () => {
+        const storage = makeStorageFacility();
+        storage.shells.solid.compartments['test-resource'] = 1;
+        putIntoStorageFacility(storage, makeResource(), 100);
+
+        const locked = lockIntoEscrow(storage, 'test-resource', 40);
+
+        expect(locked).toBeCloseTo(40);
+        expect(storage.shells.solid.escrow['test-resource']).toBeCloseTo(40);
+        expect(storage.escrow['test-resource']).toBeUndefined();
+        expect(getEscrow(storage, 'test-resource')).toBeCloseTo(40);
+        // locked quantity is no longer freely available
+        expect(queryStorageFacility(storage, 'test-resource')).toBeCloseTo(60);
+    });
+
+    it('tracks no-form (volume-less) resources on the Storage-level ledger', () => {
+        const storage = makeStorageFacility();
+        const service = makeResource({ form: 'services', volumePerQuantity: 0, massPerQuantity: 0 });
+
+        putIntoStorageFacility(storage, service, 25);
+        lockIntoEscrow(storage, service.name, 5);
+
+        expect(storage.currentInStorage[service.name]?.quantity).toBeCloseTo(25);
+        expect(storage.escrow[service.name]).toBeCloseTo(5);
+        expect(storage.shells.solid.currentInStorage[service.name]).toBeUndefined();
+        expect(queryStorageFacility(storage, service.name)).toBeCloseTo(20);
+    });
+
+    it('removes physical quantities from the shell that holds them', () => {
+        const storage = makeStorageFacility();
+        storage.shells.solid.compartments['test-resource'] = 1;
+        setStorageResourceQuantity(storage, makeResource(), 60);
+
+        const removed = removeFromStorageFacility(storage, 'test-resource', 20);
+
+        expect(removed).toBeCloseTo(20);
+        expect(storage.shells.solid.currentInStorage['test-resource']?.quantity).toBeCloseTo(40);
+        expect(queryStorageFacility(storage, 'test-resource')).toBeCloseTo(40);
     });
 });

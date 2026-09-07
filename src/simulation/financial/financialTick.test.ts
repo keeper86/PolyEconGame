@@ -755,8 +755,8 @@ describe('loan interest and bankruptcy', () => {
     });
 
     it('classifies a wage loan beyond loan conditions as emergency without bankruptcy', () => {
-        addWorker(agent.assets[planet.id]!, 25, 'none', 7000);
-        addEmployed(planet, 25, 'none', 7000);
+        addWorker(agent.assets[planet.id]!, 25, 'none', 10_000);
+        addEmployed(planet, 25, 'none', 10_000);
         agent.assets[planet.id]!.wagePerEdu.none = 1;
         agent.assets[planet.id]!.deposits = 1;
         agent.assets[planet.id]!.activeLoans = [makeLoan('emergency', 600_000, 0.05, 1, 361, true)];

@@ -17,6 +17,7 @@ import {
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_IMAX,
+    STORAGE_TARGET_MONTHS,
     computeDynamicExpansionTarget,
     computeFacilityStorageSignal,
     computePidDelta,
@@ -195,8 +196,9 @@ describe('service buffer fill dynamics', () => {
     });
 });
 
-describe('computeFacilityStorageSignal (3-month own-production storage error)', () => {
-    const target = 3 * 30 * 100;
+describe('computeFacilityStorageSignal (own-production storage error)', () => {
+    // Storage target is STORAGE_TARGET_MONTHS (2) months × 30 ticks/month × maxScale 1 × produce 100/tick.
+    const target = STORAGE_TARGET_MONTHS * 30 * 100;
 
     function makeStorageFixture(overrides?: { inventory?: number; producesTwoOutputs?: boolean }): {
         facility: ProductionFacility;

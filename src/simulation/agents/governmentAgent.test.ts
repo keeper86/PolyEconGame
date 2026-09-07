@@ -12,10 +12,13 @@ import {
 } from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
 import { constructionServiceResourceType } from '../planet/services';
+import { computeFacilitiesValue, constructionValuationPrice } from '../financial/assetValuation';
+import type { Planet } from '../planet/planet';
 import { makeLoan, totalOutstandingLoans } from '../financial/loanTypes';
 import { checkMonetaryConservation } from '../invariants';
 import {
     makeAgent,
+    makeAgentPlanetAssets,
     makeGameState,
     makeGovernmentAgent,
     makePlanet,
@@ -57,6 +60,14 @@ function completedFacilityValue(csPrice: number): number {
     return completedCS * csPrice;
 }
 
+// A company's three storage shells are physical capital and count in its facility valuation. This
+// isolates their constant contribution at the planet's current construction-service valuation price.
+function storageShellCapital(planet: Planet): number {
+    const assets = makeAgentPlanetAssets(PLANET_ID);
+    assets.storage.department = null;
+    return computeFacilitiesValue(assets, constructionValuationPrice(planet));
+}
+
 describe('wealthTaxAllowance', () => {
     it('returns the base allowance at the initial construction price', () => {
         const { planet } = setupWorld();
@@ -95,8 +106,10 @@ describe('computeWealthTax', () => {
     it('taxes WEALTH_TAX_MONTHLY_RATE on the net worth above the allowance', () => {
         const { gameState, planet, company } = setupWorld(2_000_000_000);
         const tax = computeWealthTax(company, planet, gameState.shipCapitalMarket);
-        expect(tax).toBeCloseTo((2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE);
-        expect(tax).toBeCloseTo(2 * 416_666.67, 1);
+        const expectedTax =
+            Math.max(0, 2_000_000_000 + storageShellCapital(planet) - wealthTaxAllowance(planet)) *
+            WEALTH_TAX_MONTHLY_RATE;
+        expect(tax).toBeCloseTo(expectedTax);
     });
 
     it('never taxes the government, the recycler, or role agents', () => {
@@ -120,8 +133,8 @@ describe('computeWealthTax', () => {
         planet.lastProductionCostFloors[constructionServiceResourceType.name] = 10;
 
         const netWorth = computeCompanyNetWorth(company, planet, gameState.shipCapitalMarket);
-        expect(netWorth).toBeCloseTo(completedFacilityValue(20));
-        expect(netWorth).not.toBeCloseTo(completedFacilityValue(100));
+        expect(netWorth).toBeCloseTo(completedFacilityValue(20) + storageShellCapital(planet));
+        expect(netWorth).not.toBeCloseTo(completedFacilityValue(100) + storageShellCapital(planet));
     });
 });
 
@@ -133,7 +146,9 @@ describe('collectWealthTax', () => {
 
         const total = collectWealthTax(gameState, planet);
 
-        const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
+        const expectedTax =
+            Math.max(0, 2_000_000_000 + storageShellCapital(planet) - wealthTaxAllowance(planet)) *
+            WEALTH_TAX_MONTHLY_RATE;
         expect(total).toBeCloseTo(expectedTax);
         expect(company.assets[PLANET_ID]!.monthAcc.wealthTaxPaid).toBeCloseTo(expectedTax);
         expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(companyBefore - total);
@@ -173,7 +188,9 @@ describe('governmentTick', () => {
 
         governmentTick(gameState, planet, gov);
 
-        const expectedTax = (2_000_000_000 - WEALTH_TAX_ALLOWANCE) * WEALTH_TAX_MONTHLY_RATE;
+        const expectedTax =
+            Math.max(0, 2_000_000_000 + storageShellCapital(planet) - wealthTaxAllowance(planet)) *
+            WEALTH_TAX_MONTHLY_RATE;
         expect(gov.assets[PLANET_ID]!.deposits).toBeCloseTo(expectedTax);
         expect(planet.bank.householdDeposits).toBe(householdBefore);
         expect(company.assets[PLANET_ID]!.deposits).toBeCloseTo(2_000_000_000 - expectedTax);

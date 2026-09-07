@@ -23,7 +23,7 @@ import {
     findMaxScaleForLandboundResources,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import { DYNAMIC_EXPANSION_CAP_FRACTION } from './automaticProductionScale/constants';
+import { DYNAMIC_EXPANSION_CAP_FRACTION, STORAGE_TARGET_MONTHS } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { constructionServiceResourceType } from './services';
@@ -85,10 +85,12 @@ function makeSetup(
     const assets = makeAgentPlanetAssets(planet.id, {
         productionFacilities: [facility],
     });
+    // Fill storage up to the current own-production target (STORAGE_TARGET_MONTHS months) so the
+    // baseline storage signal is ~0 rather than oversupplied against the (now shorter) target.
     setStorageResourceQuantity(
         assets.storage,
         RESOURCE,
-        3 * 30 * facility.maxScale * (facility.produces[0]?.quantity ?? 1),
+        STORAGE_TARGET_MONTHS * 30 * facility.maxScale * (facility.produces[0]?.quantity ?? 1),
     );
 
     const agent = makeAgent('a1', planet.id, 'Agent 1', {

@@ -66,6 +66,14 @@ function seedService(storage: Storage, resource: Resource, quantity: number): vo
     setStorageResourceQuantity(storage, resource, quantity);
 }
 
+// The auto-granted storage shells are themselves operating capital and so wear + consume the same
+// Maintenance pool every tick. Freeze them so a test can isolate the single facility under repair.
+function quietStorageShells(storage: Storage): void {
+    for (const shell of Object.values(storage.shells)) {
+        shell.maxMaintenance = 0;
+    }
+}
+
 function markUnderConstruction(facility: ProductionFacility): void {
     facility.construction = {
         type: 'new',
@@ -202,6 +210,7 @@ describe('facilityMaintenanceTick', () => {
 
     it('repairs maintenanceStatus from Maintenance service up to the per-tick cap', () => {
         const { gameState, planet, facility, storage } = setup();
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         seedService(
@@ -276,6 +285,7 @@ describe('facilityMaintenanceTick', () => {
     it('scales maintenance service consumption with facility scale', () => {
         const scale = 10;
         const { gameState, planet, facility, storage } = setup({ scale });
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         seedService(
@@ -319,6 +329,7 @@ describe('facilityMaintenanceTick', () => {
 
     it('records maintenance repair consumption in accounting', () => {
         const { gameState, planet, agent, facility, storage } = setup();
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         planet.marketPrices[maintenanceServiceResourceType.name] = MAINTENANCE_PRICE;
