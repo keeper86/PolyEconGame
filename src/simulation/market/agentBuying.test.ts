@@ -9,15 +9,19 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { getAvailableStorageCapacity, putIntoStorageFacility, queryStorageFacility, STORAGE_SHELL_CAPACITY } from '../planet/facility';
 import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
+import {
+    getAvailableStorageCapacity,
+    putIntoStorageFacility,
+    queryStorageFacility,
+    STORAGE_SHELL_CAPACITY,
+} from '../planet/facility';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
 import { agentMap, makeAgent, makePlanet, makePlanetWithPopulation, makeStorageFacility } from '../utils/testHelper';
 import { automaticPricing } from './automaticPricing';
 import { marketTick } from './market';
-import { settleAgentBuyers } from './settlement';
 
 const COAL = coalResourceType.name;
 const FOOD = produceResourceType.name;
@@ -960,4 +964,3 @@ describe('marketTick — agent buying', () => {
         expect(bid.lastEffectiveQty ?? 0).toBeCloseTo(coalConditioned, 0);
     });
 });
-

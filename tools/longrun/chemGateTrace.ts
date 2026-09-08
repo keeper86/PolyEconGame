@@ -63,14 +63,14 @@ function main(): void {
                 `we${wvals.length ? num(Math.min(...wvals)).toFixed(3) : 'none'}`,
                 `crudeEff${crudeEff === undefined ? 'none' : num(crudeEff).toFixed(3)}`,
                 `cond${num(fac.maintenanceStatus).toFixed(3)}`,
-                `crude${num(queryStorageFacility(assets.storageFacility, 'Crude Oil')).toFixed(0)}`,
+                `crude${num(queryStorageFacility(assets.storage, 'Crude Oil')).toFixed(0)}`,
             );
             for (const out of ['Fuel', 'Plastic', 'Chemical']) {
                 seg.push(
                     `${out}m${num(mix[out]).toFixed(3)}`,
                     `${out}out${num(last[out]).toFixed(0)}`,
-                    `${out}stor${num(queryStorageFacility(assets.storageFacility, out)).toFixed(0)}`,
-                    `${out}tot${num(queryStorageFacility(assets.storageFacility, out, false)).toFixed(0)}`,
+                    `${out}stor${num(queryStorageFacility(assets.storage, out)).toFixed(0)}`,
+                    `${out}tot${num(queryStorageFacility(assets.storage, out, false)).toFixed(0)}`,
                     `${out}sold${num(mk.sell[out]?.lastSold).toFixed(0)}`,
                     `${out}placed${num(mk.sell[out]?.lastPlacedQty).toFixed(0)}`,
                     `${out}ask${num(mk.sell[out]?.offerPrice ?? mk.sell[out]?.lastOfferPrice).toFixed(2)}`,

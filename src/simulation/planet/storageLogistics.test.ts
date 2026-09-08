@@ -140,7 +140,7 @@ describe('per-form storage starvation', () => {
         const assets = makeAssets();
         const storage = assets.storage;
         storage.shells.solid.compartments['Iron Ore'] = 1;
-        storage.shells.liquid.compartments['Water'] = 1;
+        storage.shells.liquid.compartments.Water = 1;
         storage.shells.solid.storageStarvation = 1;
         storage.shells.liquid.storageStarvation = 0;
         putIntoStorageFacility(storage, solidIron, 1000);

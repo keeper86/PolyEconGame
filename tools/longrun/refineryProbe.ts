@@ -63,13 +63,13 @@ function main(): void {
                 `oe${num(res?.overallEfficiency).toFixed(2)}`,
                 `workers${num(assets.usedWorkers).toFixed(0)}`,
                 `sig${num(pid?.smoothedSignal).toFixed(2)}`,
-                `crude${num(queryStorageFacility(assets.storageFacility, 'Crude Oil')).toFixed(0)}`,
+                `crude${num(queryStorageFacility(assets.storage, 'Crude Oil')).toFixed(0)}`,
             ];
             for (const out of ['Fuel', 'Plastic', 'Chemical']) {
                 seg.push(
                     `${out}Mix${num(mix[out]).toFixed(3)}`,
                     `${out}Out${num(last[out]).toFixed(0)}`,
-                    `${out}Stor${num(queryStorageFacility(assets.storageFacility, out)).toFixed(0)}`,
+                    `${out}Stor${num(queryStorageFacility(assets.storage, out)).toFixed(0)}`,
                     `${out}Ask${num(mk.sell[out]?.offerPrice ?? mk.sell[out]?.lastOfferPrice).toFixed(2)}`,
                     `${out}Sold${num(mk.sell[out]?.lastSold).toFixed(0)}`,
                     `${out}Placed${num(mk.sell[out]?.lastPlacedQty).toFixed(0)}`,

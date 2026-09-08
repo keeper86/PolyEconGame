@@ -110,7 +110,7 @@ export function buildResourceList(
         productionFacilities: facilities,
         humanResourcesDepartment,
         shipConstructionFacilities,
-        storage: storageFacility,
+        storage,
         market,
     } = assets;
     const buyBids = market?.buy ?? {};
@@ -160,8 +160,8 @@ export function buildResourceList(
         }
     }
 
-    if (storageFacility.department) {
-        for (const { resource } of storageFacility.department.needs) {
+    if (storage.department) {
+        for (const { resource } of storage.department.needs) {
             if (resource.form === 'landBoundResource' || resource.form === 'internal') {
                 continue;
             }
@@ -185,7 +185,7 @@ export function buildResourceList(
         add(name);
     }
 
-    for (const [name, entry] of getWholeStorage(storageFacility)) {
+    for (const [name, entry] of getWholeStorage(storage)) {
         if ((entry?.quantity ?? 0) > 0 && entry.resource.form !== 'internal') {
             add(name);
         }

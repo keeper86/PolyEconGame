@@ -48,7 +48,7 @@ function collect(gameState: GameState, planetId: string): Record<string, Entry[]
 }
 
 function storageOf(assets: any, name: string): number {
-    return queryStorageFacility(assets.storageFacility, name);
+    return queryStorageFacility(assets.storage, name);
 }
 
 function market(assets: any): { sell: Record<string, any>; buy: Record<string, any> } {

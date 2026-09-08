@@ -18,7 +18,7 @@ function agentConstructionConsumption(agent: Agent, planetId: string): { project
     const all = [
         ...assets.productionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-        ...(assets.storageFacility?.department ? [assets.storageFacility.department] : []),
+        ...(assets.storage?.department ? [assets.storage.department] : []),
     ];
     for (const f of all) {
         if (f.construction !== null) {

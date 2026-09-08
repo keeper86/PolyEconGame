@@ -93,12 +93,20 @@ describe('market validation', () => {
         });
 
         it('returns valid for pieces resource with integer quantity', () => {
-            const result = validateBuyBid({ bidPrice: 10, bidStorageTarget: 5 }, clothingResource, clothingAssets(1000));
+            const result = validateBuyBid(
+                { bidPrice: 10, bidStorageTarget: 5 },
+                clothingResource,
+                clothingAssets(1000),
+            );
             expect(result.isValid).toBe(true);
         });
 
         it('returns valid for pieces resource with fractional quantity', () => {
-            const result = validateBuyBid({ bidPrice: 10, bidStorageTarget: 5.5 }, clothingResource, clothingAssets(1000));
+            const result = validateBuyBid(
+                { bidPrice: 10, bidStorageTarget: 5.5 },
+                clothingResource,
+                clothingAssets(1000),
+            );
             expect(result.isValid).toBe(true);
         });
 

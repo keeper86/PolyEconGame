@@ -36,6 +36,35 @@ function quietStorageShells(agent: ReturnType<typeof makeAgent>): void {
     }
 }
 
+function authorFacilityFootprint(assets: AgentPlanetAssets): void {
+    const visit = (resourceName: string, form: string) => {
+        if (form !== 'solid' && form !== 'liquid' && form !== 'pieces') {
+            return;
+        }
+        assets.storage.shells[form].compartments[resourceName] = 1;
+    };
+    for (const facility of assets.productionFacilities) {
+        for (const flow of facility.needs) {
+            visit(flow.resource.name, flow.resource.form);
+        }
+        for (const flow of facility.produces) {
+            visit(flow.resource.name, flow.resource.form);
+        }
+    }
+    for (const fac of assets.shipConstructionFacilities) {
+        if (fac.produces) {
+            for (const flow of fac.produces.buildingCost) {
+                visit(flow.resource.name, flow.resource.form);
+            }
+        }
+    }
+    if (assets.humanResourcesDepartment) {
+        for (const flow of assets.humanResourcesDepartment.needs) {
+            visit(flow.resource.name, flow.resource.form);
+        }
+    }
+}
+
 describe('productionTick (basic)', () => {
     beforeEach(() => {
         seedRng(12345);
@@ -51,6 +80,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -99,6 +129,7 @@ describe('productionTick (basic)', () => {
         facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 1000);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
@@ -125,6 +156,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -168,6 +200,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].primary.active = 1;
 
@@ -216,6 +249,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -287,6 +321,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -347,6 +382,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 2;
 
@@ -386,6 +422,7 @@ describe('productionTick (basic)', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.workforceDemography[30].none.active = 20;
 
@@ -424,6 +461,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 720);
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
+        authorFacilityFootprint(agent.assets.p);
 
         // These large numerical scales are about proportional shortfall across facilities, not about a
         // physical shell boundary; give the storage shells generous room so throughput isn't capacity-capped.
@@ -466,6 +504,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, initialWater);
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
+        authorFacilityFootprint(agent.assets.p);
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -489,6 +528,7 @@ describe('productionTick — storage space clamp', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         // Water (100k units) must fit the liquid shell before this test measures throttling on the
         // solid product compartment only.
         agent.assets.p.storage.shells.liquid.scale = 5;
@@ -600,6 +640,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
 
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 80);
 
@@ -628,6 +669,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -653,6 +695,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -701,6 +744,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -731,6 +775,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -758,6 +803,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 30);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -787,6 +833,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -822,6 +869,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov], 5);
@@ -855,6 +903,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -894,6 +943,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [f1, f2];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 100);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -1086,6 +1136,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 6000);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 25;
@@ -1167,6 +1218,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.hrProductivityMultiplier = 0.5;
         agent.assets.p.workforceDemography[30].none.active = 20;
@@ -1199,6 +1251,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
         agent.assets.p.productionFacilities = [prodFacility];
+        authorFacilityFootprint(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 180);
 
         agent.assets.p.workforceDemography[30].none.active = 5;
@@ -1402,6 +1455,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
 
         wf[30].secondary.active = 1;
@@ -1449,6 +1503,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -1494,6 +1549,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
+        authorFacilityFootprint(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
 
         wf[30].secondary.active = 1;

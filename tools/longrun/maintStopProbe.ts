@@ -65,9 +65,9 @@ function main(): void {
                 `workers${num(assets.usedWorkers).toFixed(0)}`,
             ];
             for (const inp of ['Steel', 'Electronics', 'Plastic']) {
-                seg.push(`${inp}st${num(queryStorageFacility(assets.storageFacility, inp)).toFixed(0)}`);
+                seg.push(`${inp}st${num(queryStorageFacility(assets.storage, inp)).toFixed(0)}`);
             }
-            seg.push(`maintStor${num(queryStorageFacility(assets.storageFacility, 'Maintenance')).toFixed(0)}`);
+            seg.push(`maintStor${num(queryStorageFacility(assets.storage, 'Maintenance')).toFixed(0)}`);
             seg.push(`ask${num(offer?.offerPrice ?? offer?.lastOfferPrice).toFixed(2)}`, `sold${num(offer?.lastSold).toFixed(0)}`, `placed${num(offer?.lastPlacedQty).toFixed(0)}`, `retain${num(offer?.offerRetainment).toFixed(0)}`);
             seg.push(`mkP${num(mkt?.clearingPrice).toFixed(2)}`, `mkVol${num(mkt?.totalVolume).toFixed(0)}`, `mkSup${num(mkt?.totalSupply).toFixed(0)}`, `mkUnf${num(mkt?.unfilledDemand).toFixed(0)}`);
             rows.push(seg.join('\t'));

@@ -46,7 +46,7 @@ function main(): void {
                 continue;
             }
             const diag = offer.diagnostics as Record<string, number> | undefined;
-            const inv = queryStorageFacility(assets.storageFacility, 'Chemical');
+            const inv = queryStorageFacility(assets.storage, 'Chemical');
             const costFloor = planet.lastProductionCostFloors['Chemical'] ?? 0;
             const seg = [
                 String(t),

@@ -69,14 +69,14 @@ function main(): void {
                 ];
                 if (label === 'M') {
                     for (const inp of INPUTS) {
-                        seg.push(`st${inp.slice(0, 3)}:${num(queryStorageFacility(assets.storageFacility, inp)).toFixed(0)}`);
+                        seg.push(`st${inp.slice(0, 3)}:${num(queryStorageFacility(assets.storage, inp)).toFixed(0)}`);
                         seg.push(`bp${inp.slice(0, 3)}:${num(mk.buy[inp]?.bidPrice).toFixed(2)}`);
                         seg.push(`lb${inp.slice(0, 3)}:${num(mk.buy[inp]?.lastBought).toFixed(0)}`);
                     }
                     seg.push(`sig${num(pid?.smoothedSignal).toFixed(2)}`, `eI${num(pid?.expansionIntegral).toFixed(1)}`, `cI${num(pid?.contractionIntegral).toFixed(1)}`, `w${num(assets.usedWorkers).toFixed(0)}`);
                 }
                 if (label === 'R') {
-                    seg.push(`stCrude${num(queryStorageFacility(assets.storageFacility, 'Crude Oil')).toFixed(0)}`);
+                    seg.push(`stCrude${num(queryStorageFacility(assets.storage, 'Crude Oil')).toFixed(0)}`);
                     seg.push(`bpCrude${num(mk.buy['Crude Oil']?.bidPrice).toFixed(3)}`);
                     seg.push(`lbCrude${num(mk.buy['Crude Oil']?.lastBought).toFixed(0)}`);
                     seg.push(`sig${num(pid?.smoothedSignal).toFixed(2)}`, `eI${num(pid?.expansionIntegral).toFixed(1)}`, `cI${num(pid?.contractionIntegral).toFixed(1)}`, `w${num(assets.usedWorkers).toFixed(0)}`);

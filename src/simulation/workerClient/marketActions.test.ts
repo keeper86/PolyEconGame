@@ -11,13 +11,13 @@ const RESOURCE = 'Iron Ore';
 
 function makeState(): GameState {
     const resource = RESOURCES_BY_NAME.get(RESOURCE)!;
-    const storageFacility = makeStorageFacility();
-    putIntoStorageFacility(storageFacility, resource, 100);
+    const storage = makeStorageFacility();
+    putIntoStorageFacility(storage, resource, 100);
     const agent = makeAgent('agent-1', 'p', 'Agent 1', {
         assets: {
             p: {
                 ...makeAgent('agent-1', 'p').assets.p,
-                storage: storageFacility,
+                storage,
             },
         },
     });
