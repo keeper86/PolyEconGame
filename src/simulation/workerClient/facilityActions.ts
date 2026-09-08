@@ -1,7 +1,8 @@
 import { processFacilityContraction } from '../agents/recycler';
 import type { HRFacility, ProductionFacility, StorageDepartment } from '../planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
+import { calculateCostsForConstruction, getFacilityType, storageFormKeys } from '../planet/facility';
 import type { GameState } from '../planet/planet';
+import type { AgentPlanetAssets } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
 import {
     HR_DEPARTMENT_NAME,
@@ -12,6 +13,21 @@ import {
 } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import type { OutboundMessage, PendingAction } from './messages';
+
+export const storageShellById = (
+    assets: AgentPlanetAssets | undefined,
+    facilityId: string,
+): AgentPlanetAssets['storage']['shells'][keyof AgentPlanetAssets['storage']['shells']] | undefined => {
+    if (!assets) {
+        return undefined;
+    }
+    for (const form of storageFormKeys()) {
+        if (assets.storage.shells[form].id === facilityId) {
+            return assets.storage.shells[form];
+        }
+    }
+    return undefined;
+};
 
 export function handleBuildFacility(
     state: GameState,
@@ -123,7 +139,8 @@ export function handleExpandFacility(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
-        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined);
+        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityExpandFailed',
@@ -206,7 +223,8 @@ export function handleSetFacilityScale(
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
         (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
-        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityScaleSetFailed',
@@ -253,7 +271,8 @@ export function handleContractFacility(
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
         (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
-        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityContractFailed',

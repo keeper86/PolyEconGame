@@ -22,6 +22,11 @@ import {
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
 } from '../constants';
+import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
+import {
+    getServiceFillRateTarget,
+    getServiceSellThroughTarget,
+} from '../planet/automaticProductionScale/runtimeConfig';
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import {
@@ -35,15 +40,9 @@ import type {
     AutomatedPricingConfig,
     Planet,
 } from '../planet/planet';
-import {
-    getServiceFillRateTarget,
-    getServiceSellThroughTarget,
-} from '../planet/automaticProductionScale/runtimeConfig';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
-import { RESOURCES_BY_NAME } from '../planet/resourceCatalog';
-import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
-import { computeAllConsumptionRates } from './consumptionSources';
 import { toConsumptionShipInfo } from './consumptionShipInfo';
+import { computeAllConsumptionRates } from './consumptionSources';
 import { buyVolumeFraction, sellVolumeFraction } from './volumeFraction';
 
 export { buyVolumeFraction, sellVolumeFraction };

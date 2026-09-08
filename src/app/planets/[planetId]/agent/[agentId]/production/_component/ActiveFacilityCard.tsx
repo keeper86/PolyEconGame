@@ -11,7 +11,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
-import type { ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
+import type { ManagementFacility, ProductionFacility, StorageShell } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType, isFacilityOperating } from '@/simulation/planet/facility';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
@@ -36,7 +36,7 @@ export function ActiveFacilityCard({
     headerBadge,
     dataTour,
 }: {
-    facility: ProductionFacility | ManagementFacility;
+    facility: ProductionFacility | ManagementFacility | StorageShell;
     agentId: string;
     planetId: string;
     constructionServicePrice: number;
