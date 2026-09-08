@@ -241,7 +241,7 @@ function produceOutputs(
             const stored = putIntoStorageFacility(storage, output.resource, produced);
             if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(
-                    `Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}. storage: ${storage.department?.storageStarvation} scale: ${facility.scale} / ${facility.maxScale}`,
+                    `Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}. storage: ${storage.department?.transportStarvation} scale: ${facility.scale} / ${facility.maxScale}`,
                 );
             }
         }

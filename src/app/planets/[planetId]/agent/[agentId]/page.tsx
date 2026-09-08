@@ -80,7 +80,7 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
     const hrDemand = assets.usedWorkers;
     const hrBufRatio = hrDemand > 0 ? (hr?.hrBuffer ?? 0) / hrDemand : Number.POSITIVE_INFINITY;
     const stoDemand = computeStorageThroughputMass(assets);
-    const stoBufRatio = stoDemand > 0 ? (stoDept?.storageBuffer ?? 0) / stoDemand : Number.POSITIVE_INFINITY;
+    const stoBufRatio = stoDemand > 0 ? (stoDept?.transportBuffer ?? 0) / stoDemand : Number.POSITIVE_INFINITY;
 
     const entry = (label: string, value: string) => (
         <span>
@@ -129,8 +129,8 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
                 ) : (
                     <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
                         {entry('Scale', `${fmt(stoDept.scale)} / ${fmt(stoDept.maxScale)}`)}
-                        {entry('storageBuffer', fmt(stoDept.storageBuffer))}
-                        {entry('starvation', (stoDept.storageStarvation ?? 0).toFixed(4))}
+                        {entry('transportBuffer', fmt(stoDept.transportBuffer))}
+                        {entry('starvation', (stoDept.transportStarvation ?? 0).toFixed(4))}
                         {entry('Buffer/Demand', isFinite(stoBufRatio) ? stoBufRatio.toFixed(2) : '∞')}
                         {entry('Eff', pct(stoDept.lastTickResults.overallEfficiency))}
                         {entry('WageCosts', fmt(stoDept.lastTickResults.wageCosts))}

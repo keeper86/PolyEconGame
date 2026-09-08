@@ -2,7 +2,7 @@ import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { HRFacility, PidState, ProductionFacility, StorageShell } from './facility';
-import { calculateCostsForConstruction, getStorageStarvation, storageFormKeys } from './facility';
+import { calculateCostsForConstruction, getTransportStarvation, storageFormKeys } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -388,7 +388,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             facility.scale = newScale;
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
-            const storageHealthy = getStorageStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
+            const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
             const atMaxScale = facility.scale >= facility.maxScale * 0.999;
             const atMinScale = facility.scale <= MIN_SCALE_FRACTION * facility.maxScale * 1.001;

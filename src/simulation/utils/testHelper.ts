@@ -194,8 +194,8 @@ export function makeStorageFacility(overrides?: Partial<Storage>, initialScale =
         },
         department: {
             ...makeManagementFacility(),
-            storageBuffer: 0,
-            storageStarvation: 0,
+            transportBuffer: 0,
+            transportStarvation: 0,
         } as StorageDepartment,
         ...overrides,
     };
@@ -212,8 +212,8 @@ export function makeStorageFacility(overrides?: Partial<Storage>, initialScale =
 
 export function setStorageResourceQuantity(storage: Storage, resource: Resource, quantity: number): void {
     const previousDepartment = storage.department;
-    if (!previousDepartment || previousDepartment.storageStarvation !== 0) {
-        storage.department = { storageStarvation: 0 } as Partial<StorageDepartment> as StorageDepartment;
+    if (!previousDepartment || previousDepartment.transportStarvation !== 0) {
+        storage.department = { transportStarvation: 0 } as Partial<StorageDepartment> as StorageDepartment;
     }
 
     const existing = queryStorageFacility(storage, resource.name, false);

@@ -64,7 +64,7 @@ export function makeAgentPlanetAssets(
         hrDepartment.hrBuffer = PRODUCED_HR_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
     }
     if (storage.department && storage.department.construction === null) {
-        storage.department.storageBuffer =
+        storage.department.transportBuffer =
             PRODUCED_STORAGE_QUANTITY * storage.department.scale * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
     }
     return {

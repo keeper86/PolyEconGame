@@ -286,7 +286,7 @@ function StorageConstructionCard({
     );
 }
 
-export default function StorageDepartment({
+export default function LogisticsDepartment({
     agentId,
     planetId,
     assets,
@@ -325,8 +325,8 @@ export default function StorageDepartment({
 
     const storageDemand = useMemo(() => computeStorageThroughputMass(assets), [assets]);
     const status = useMemo(
-        () => storageBufferStatus(department?.storageBuffer ?? 0, storageDemand),
-        [department?.storageBuffer, storageDemand],
+        () => storageBufferStatus(department?.transportBuffer ?? 0, storageDemand),
+        [department?.transportBuffer, storageDemand],
     );
     const statusConfig = STORAGE_STATUS_CONFIG[status];
 
@@ -358,7 +358,7 @@ export default function StorageDepartment({
             const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
             const globalMin = limitingEfficiency(results);
             const eff = results.overallEfficiency;
-            const buffer = department.storageBuffer ?? 0;
+            const buffer = department.transportBuffer ?? 0;
 
             return (
                 <ActiveFacilityCard
@@ -405,7 +405,7 @@ export default function StorageDepartment({
                             department.scale
                         }
                     >
-                        <StorageStarvationBar ss={department.storageStarvation ?? 0} />
+                        <StorageStarvationBar ss={department.transportStarvation ?? 0} />
                     </StorageBalanceRow>
                 </ActiveFacilityCard>
             );

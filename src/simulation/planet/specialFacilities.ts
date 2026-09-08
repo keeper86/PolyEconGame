@@ -96,8 +96,8 @@ export const logisticsDepartmentFacilityType = (planetId: string, id: string): S
     ],
     produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
-    storageBuffer: 0,
-    storageStarvation: 0,
+    transportBuffer: 0,
+    transportStarvation: 0,
 });
 // service shield for production
 // increased buffer for storageServiceResourceType

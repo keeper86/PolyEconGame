@@ -1068,7 +1068,7 @@ describe('updateAgentProductionScale', () => {
             },
         });
         const agent = agents.values().next().value as Agent;
-        agent.assets[planet.id].storage.department!.storageStarvation = 0.5;
+        agent.assets[planet.id].storage.department!.transportStarvation = 0.5;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
@@ -2002,7 +2002,7 @@ describe('computeStorageSignal', () => {
         const storage = makeStorageFacility();
         storage.department!.maxScale = 1;
         storage.department!.scale = 1;
-        storage.department!.storageBuffer = 0;
+        storage.department!.transportBuffer = 0;
 
         const signal = computeStorageSignal(storage.department!);
         expect(signal).toBeCloseTo(1, 5);
@@ -2013,7 +2013,7 @@ describe('computeStorageSignal', () => {
         storage.department!.maxScale = 1;
         storage.department!.scale = 1;
         const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
-        storage.department!.storageBuffer = maxBuffer;
+        storage.department!.transportBuffer = maxBuffer;
 
         const signal = computeStorageSignal(storage.department!);
         expect(signal).toBeLessThan(0);
@@ -2024,7 +2024,7 @@ describe('computeStorageSignal', () => {
         storage.department!.maxScale = 1;
         storage.department!.scale = 1;
         const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
-        storage.department!.storageBuffer = maxBuffer * STORAGE_TARGET_FILL_RATE;
+        storage.department!.transportBuffer = maxBuffer * STORAGE_TARGET_FILL_RATE;
 
         const signal = computeStorageSignal(storage.department!);
         expect(Math.abs(signal)).toBeLessThan(0.001);
@@ -2034,7 +2034,7 @@ describe('computeStorageSignal', () => {
         const storage = makeStorageFacility();
         storage.department!.maxScale = 0;
         storage.department!.scale = 0;
-        storage.department!.storageBuffer = 100;
+        storage.department!.transportBuffer = 100;
 
         const signal = computeStorageSignal(storage.department!);
         expect(signal).toBe(1);
@@ -2044,7 +2044,7 @@ describe('computeStorageSignal', () => {
         const storage = makeStorageFacility();
         storage.department!.maxScale = 1;
         storage.department!.scale = 1;
-        storage.department!.storageBuffer = -100000;
+        storage.department!.transportBuffer = -100000;
 
         const signal = computeStorageSignal(storage.department!);
         expect(signal).toBeGreaterThanOrEqual(-1);
@@ -2056,7 +2056,7 @@ describe('computeStorageSignal', () => {
         storage.department!.maxScale = 1;
         storage.department!.scale = 1;
         const maxBuffer = 1 * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
-        storage.department!.storageBuffer = maxBuffer * 0.99;
+        storage.department!.transportBuffer = maxBuffer * 0.99;
 
         const signal = computeStorageSignal(storage.department!);
         expect(signal).toBeLessThan(0);
@@ -2069,7 +2069,7 @@ describe('computeStorageExpansionTarget', () => {
         const storage = makeStorageFacility();
         storage.department!.maxScale = maxScale;
         storage.department!.scale = maxScale;
-        storage.department!.storageBuffer = storageBuffer;
+        storage.department!.transportBuffer = storageBuffer;
 
         const planet = makePlanet();
         const assets = makeAgentPlanetAssets('p', {

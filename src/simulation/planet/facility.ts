@@ -1,4 +1,4 @@
-import { FACILITY_CONDITION_EFFICIENCY_EXPONENT } from '../constants';
+import { FACILITY_CONDITION_EFFICIENCY_EXPONENT, STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
 import type { EducationLevelType } from '../population/education';
 import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
@@ -200,8 +200,12 @@ export type StorageShell = FacilityBase &
         compartments: { [resourceName: string]: number };
         needs: ResourceQuantity[];
         produces: ResourceQuantity[];
+        storageBuffer: number;
+        storageStarvation: number;
         lastTickResults: LastManagementTickResults;
     };
+
+export const SHELL_STORAGE_SERVICE_QUANTITY = 20000;
 
 export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageForm | null => {
     if (resource.form === 'solid' || resource.form === 'liquid' || resource.form === 'pieces') {
@@ -241,7 +245,9 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         workerRequirement: { none: 5, primary: 5, secondary: 0, tertiary: 0 },
 
         needs: [{ resource: administrativeServiceResourceType, quantity: 1 }],
-        produces: [{ resource, quantity: 2 }],
+        produces: [{ resource, quantity: SHELL_STORAGE_SERVICE_QUANTITY }],
+        storageBuffer: SHELL_STORAGE_SERVICE_QUANTITY * scale * STORAGE_BUFFER_CAPACITY_MULTIPLIER,
+        storageStarvation: 0,
         lastTickResults: {
             ...createLastTickResults(),
             lastProduced: {},
@@ -257,7 +263,7 @@ export type UsedSpace = {
 // Physical shell occupancy is not stored separately; it is always derived by folding the shell's own
 // per-resource ledger through each resource's constant volume/mass-per-quantity. Keeping it implicit
 // means capacity and usage can never drift apart.
-const usageOf = (holder: Pick<StorageShell, 'currentInStorage'>): UsedSpace => {
+export const usageOfShell = (holder: Pick<StorageShell, 'currentInStorage'>): UsedSpace => {
     const used: UsedSpace = { volume: 0, mass: 0 };
     for (const entry of Object.values(holder.currentInStorage)) {
         used.volume += entry.quantity * entry.resource.volumePerQuantity;
@@ -266,22 +272,24 @@ const usageOf = (holder: Pick<StorageShell, 'currentInStorage'>): UsedSpace => {
     return used;
 };
 
-export const usageOfShell = (shell: StorageShell): UsedSpace => usageOf(shell);
-
 // Aggregate stored volume/mass across the three physical shells. Used by form-agnostic consumers
 // (e.g. holding costs) that do not care about a single resource's form.
 export const totalStoredByShell = (storage: Storage): UsedSpace => {
-    const solid = usageOf(storage.shells.solid);
-    const liquid = usageOf(storage.shells.liquid);
-    const pieces = usageOf(storage.shells.pieces);
+    const solid = usageOfShell(storage.shells.solid);
+    const liquid = usageOfShell(storage.shells.liquid);
+    const pieces = usageOfShell(storage.shells.pieces);
     return {
         volume: solid.volume + liquid.volume + pieces.volume,
         mass: solid.mass + liquid.mass + pieces.mass,
     };
 };
 
-export function getStorageStarvation(storage: Storage): number {
-    return storage.department?.storageStarvation ?? 1.0;
+export function getTransportStarvation(storage: Storage): number {
+    return storage.department?.transportStarvation ?? 0;
+}
+
+export function getFormStorageStarvation(storage: Storage, form: StorageForm): number {
+    return storage.shells[form].storageStarvation;
 }
 
 export function inflowPreservation(ss: number): number {
@@ -328,8 +336,8 @@ export type HRFacility = ManagementFacility & {
     wagePidState: Record<EducationLevelType, WagePidState>;
 };
 export type StorageDepartment = ManagementFacility & {
-    storageBuffer: number;
-    storageStarvation: number;
+    transportBuffer: number;
+    transportStarvation: number;
 };
 
 export type TrainingsDepartment = ManagementFacility & {
@@ -377,7 +385,7 @@ const storageLedgerHolding = (storage: Storage, resourceName: string): LedgerHol
 };
 
 export const putIntoStorageFacility = (storage: Storage, resource: Resource, additionalQuantity: number): number => {
-    const ss = getStorageStarvation(storage);
+    const ss = getTransportStarvation(storage);
     const effectiveQuantity = additionalQuantity * inflowPreservation(ss);
 
     const holder = ledgerForResource(storage, resource);
@@ -408,7 +416,7 @@ export const putIntoStorageFacility = (storage: Storage, resource: Resource, add
     };
 
     if (storage.department) {
-        storage.department.storageBuffer -= stored * resource.massPerQuantity;
+        storage.department.transportBuffer -= stored * resource.massPerQuantity;
     }
 
     return additionalQuantity * overallRestriction;
@@ -579,7 +587,7 @@ export const removeFromStorageFacility = (
     currentEntry.quantity -= quantityRemoved;
 
     if (storage.department) {
-        storage.department.storageBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
+        storage.department.transportBuffer -= quantityRemoved * currentEntry.resource.massPerQuantity;
     }
 
     return quantityRemoved;

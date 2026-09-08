@@ -5,7 +5,7 @@ import { validateBuyBid, validateSellOffer } from './validation';
 
 function makeAssets(deposits: number, storageScale = 1e9) {
     const storage = makeStorageFacility({
-        department: { ...makeManagementFacility(), storageBuffer: 0, storageStarvation: 0 },
+        department: { ...makeManagementFacility(), transportBuffer: 0, transportStarvation: 0 },
     });
     for (const shell of Object.values(storage.shells)) {
         shell.scale = storageScale;

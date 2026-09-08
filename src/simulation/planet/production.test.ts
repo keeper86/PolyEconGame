@@ -920,8 +920,8 @@ describe('productionTick — storage department', () => {
             id: 'storage-p',
             department: {
                 ...makeManagementFacility({ none: 1 }, { id: 'storage-dept' }),
-                storageBuffer: 0,
-                storageStarvation: 0,
+                transportBuffer: 0,
+                transportStarvation: 0,
             },
         });
 
@@ -960,8 +960,8 @@ describe('productionTick — storage department', () => {
                         },
                     },
                 ),
-                storageBuffer: 0,
-                storageStarvation: 0,
+                transportBuffer: 0,
+                transportStarvation: 0,
             },
         });
 

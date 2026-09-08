@@ -15,8 +15,8 @@ describe('service output shield', () => {
         const facility = makeProductionFacility();
         facility.lastTickResults.lastProduced[logisticsServiceResourceType.name] = outputPerTick;
         const storage = makeStorageFacility();
-        storage.department!.storageBuffer = 1e6;
-        storage.department!.storageStarvation = 0;
+        storage.department!.transportBuffer = 1e6;
+        storage.department!.transportStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
             storage: storage,
@@ -51,8 +51,8 @@ describe('service output shield', () => {
         const facility = makeProductionFacility();
         facility.lastTickResults.lastConsumed[logisticsServiceResourceType.name] = 1000;
         const storage = makeStorageFacility();
-        storage.department!.storageBuffer = 1e6;
-        storage.department!.storageStarvation = 0;
+        storage.department!.transportBuffer = 1e6;
+        storage.department!.transportStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
             storage: storage,
