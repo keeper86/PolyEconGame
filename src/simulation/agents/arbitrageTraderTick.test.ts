@@ -71,6 +71,8 @@ function makeTwoPlanetState(opts?: {
             'p-dest': assetsDest,
         },
     });
+    assetsOrigin.storage.shells.solid.compartments['Steel'] = 1;
+    assetsDest.storage.shells.solid.compartments['Steel'] = 1;
 
     const ship = createShip(SHIP_TYPE, 0, 'Trader Ship', pOrigin) as TransportShip;
     agent.ships.push(ship);

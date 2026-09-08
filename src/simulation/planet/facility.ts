@@ -514,21 +514,9 @@ export type StorageCapacityState = {
     freeQuantity: number;
 };
 
-export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): string[] => {
-    return Object.keys(storage.shells[form].currentInStorage);
-};
-
-export const computeCompartmentShare = (storage: Storage, shell: StorageFacility, resource: Resource): number => {
+export const computeCompartmentShare = (shell: StorageFacility, resource: Resource): number => {
     const authored = shell.compartments[resource.name];
-    if (authored !== undefined) {
-        return Math.max(0, Math.min(1, authored));
-    }
-    const held = getShellHeldResourceNames(storage, shell.form).filter((name) => name !== resource.name);
-    const claimed = held.reduce((sum, name) => sum + (shell.compartments[name] ?? 0), 0);
-    const leftover = Math.max(0, 1 - claimed);
-    const uncontended = held.filter((name) => shell.compartments[name] === undefined).length;
-    const unsharded = uncontended + 1; // this product plus any other un-partitioned held products
-    return unsharded > 0 ? Math.max(0, Math.min(1, leftover / unsharded)) : 0;
+    return Math.max(0, Math.min(1, authored ?? 0));
 };
 
 export const getStorageCapacityState = (storage: Storage, resource: Resource): StorageCapacityState => {
@@ -540,7 +528,7 @@ export const getStorageCapacityState = (storage: Storage, resource: Resource): S
     if (form) {
         const shell = storage.shells[form];
         const ownQuantity = shell.currentInStorage[resource.name]?.quantity ?? 0;
-        const share = computeCompartmentShare(storage, shell, resource);
+        const share = computeCompartmentShare(shell, resource);
         const shellVolume = shell.capacity.volume * shell.scale;
         const shellMass = shell.capacity.mass * shell.scale;
         capacity.volume = shellVolume * share;

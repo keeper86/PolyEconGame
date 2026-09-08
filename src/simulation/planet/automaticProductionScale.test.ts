@@ -26,6 +26,7 @@ import {
 import { DYNAMIC_EXPANSION_CAP_FRACTION, STORAGE_TARGET_MONTHS } from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
+import { shellFormOfResource } from './facility';
 import { constructionServiceResourceType } from './services';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
 import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
@@ -85,6 +86,12 @@ function makeSetup(
     const assets = makeAgentPlanetAssets(planet.id, {
         productionFacilities: [facility],
     });
+    // Author an explicit compartment for the produced resource so the baseline inventory used to anchor
+    // the storage signal (~0 error at target) is physically storable under the explicit-compartment model.
+    const produceForm = shellFormOfResource(RESOURCE);
+    if (produceForm) {
+        assets.storage.shells[produceForm].compartments[RESOURCE.name] = 1;
+    }
     // Fill storage up to the current own-production target (STORAGE_TARGET_MONTHS months) so the
     // baseline storage signal is ~0 rather than oversupplied against the (now shorter) target.
     setStorageResourceQuantity(

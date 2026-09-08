@@ -19,7 +19,7 @@ import {
     TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, shellFormOfResource } from '../planet/facility';
 import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
@@ -52,6 +52,10 @@ function makePlanetWithPrice(prices: Record<string, number> = {}) {
 function makeStorageWith(contents: Record<string, { resource: Resource; quantity: number }>) {
     const storage = makeStorageFacility({ planetId: PLANET_ID });
     for (const { resource, quantity } of Object.values(contents)) {
+        const form = shellFormOfResource(resource);
+        if (form) {
+            storage.shells[form].compartments[resource.name] = 1;
+        }
         putIntoStorageFacility(storage, resource, quantity);
     }
     return storage;

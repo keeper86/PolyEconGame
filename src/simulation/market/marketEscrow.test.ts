@@ -7,7 +7,7 @@ import {
     machineryResourceType,
     vehicleResourceType,
 } from '../planet/resources';
-import { getEscrow, putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
+import { getEscrow, putIntoStorageFacility, queryStorageFacility, shellFormOfResource } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { marketTick } from './market';
 import { clearUnifiedBids } from './orderBook';
@@ -16,12 +16,23 @@ import { collectAgentBids, collectAgentOffers } from './orderCollection';
 const COAL = coalResourceType.name;
 const MACHINERY = machineryResourceType.name;
 
+function authorizeResource(storage: ReturnType<typeof makeStorageFacility>, resourceName: string): void {
+    const resource = [coalResourceType, vehicleResourceType, machineryResourceType, clothingResourceType].find(
+        (r) => r.name === resourceName,
+    )!;
+    const form = shellFormOfResource(resource);
+    if (form) {
+        storage.shells[form].compartments[resource.name] = 1;
+    }
+}
+
 function makeSellerWithStock(resourceName: string, stock: number, askPrice: number, id = 'seller'): Agent {
     const resource = [coalResourceType, vehicleResourceType, machineryResourceType, clothingResourceType].find(
         (r) => r.name === resourceName,
     )!;
     const agent = makeAgent(id, 'p');
     agent.assets.p.storage = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
+    authorizeResource(agent.assets.p.storage, resourceName);
     putIntoStorageFacility(agent.assets.p.storage, resource, stock);
     agent.assets.p.market = {
         sell: {
@@ -45,6 +56,7 @@ function makeBuyerWithDeposits(
     const agent = makeAgent(id, 'p');
     agent.assets.p.deposits = deposits;
     agent.assets.p.storage = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
+    authorizeResource(agent.assets.p.storage, resourceName);
     agent.assets.p.market = {
         sell: {},
         buy: { [resourceName]: { resource, bidPrice: price, bidStorageTarget: qty } },
@@ -100,6 +112,8 @@ describe('market escrow — seller-side', () => {
     it('agent selling two resources has zero escrow for both after a full tick', () => {
         const seller = makeAgent('seller', 'p');
         seller.assets.p.storage = makeStorageFacility({ planetId: 'p', id: 'storage-seller' });
+        authorizeResource(seller.assets.p.storage, COAL);
+        authorizeResource(seller.assets.p.storage, MACHINERY);
         putIntoStorageFacility(seller.assets.p.storage, coalResourceType, 100);
         putIntoStorageFacility(seller.assets.p.storage, machineryResourceType, 5);
         seller.assets.p.market = {

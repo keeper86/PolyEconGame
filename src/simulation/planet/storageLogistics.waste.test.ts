@@ -24,6 +24,7 @@ describe('wasteSurplusOutputs', () => {
         assets.productionFacilities.push(makeWasteFacility());
         assets.storage.shells.liquid.scale = 30; // chemical is liquid; give enough physical room to hold 1M+ units
         assets.storage.shells.liquid.maxScale = assets.storage.shells.liquid.scale;
+        assets.storage.shells.liquid.compartments[chemicalResourceType.name] = 1;
         putIntoStorageFacility(assets.storage, chemicalResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
         const keep = 30 * 100 * 48;
@@ -33,6 +34,7 @@ describe('wasteSurplusOutputs', () => {
     it('does not touch inventory below the keep level', () => {
         const assets = makeAgentPlanetAssets('p');
         assets.productionFacilities.push(makeWasteFacility());
+        assets.storage.shells.liquid.compartments[fuelResourceType.name] = 1;
         putIntoStorageFacility(assets.storage, fuelResourceType, 5_000);
         wasteSurplusOutputs(assets);
         expect(queryStorageFacility(assets.storage, fuelResourceType.name)).toBeCloseTo(5_000, 6);
@@ -47,6 +49,7 @@ describe('wasteSurplusOutputs', () => {
         );
         assets.storage.shells.solid.scale = 40; // plastic is a solid; hold the 1M-unit leftover untouched
         assets.storage.shells.solid.maxScale = assets.storage.shells.solid.scale;
+        assets.storage.shells.solid.compartments[plasticResourceType.name] = 1;
         putIntoStorageFacility(assets.storage, plasticResourceType, 1_000_000);
         wasteSurplusOutputs(assets);
         expect(queryStorageFacility(assets.storage, plasticResourceType.name)).toBeCloseTo(1_000_000, 6);

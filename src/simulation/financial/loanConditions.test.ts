@@ -130,6 +130,7 @@ describe('computeLoanConditions', () => {
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 0, lastMonthWages: 100, existingLoans: 1 });
         const assetStorage = makeStorageFacility();
+        assetStorage.shells.solid.compartments[resource.name] = 1;
         setStorageResourceQuantity(assetStorage, resource, 100);
         assetStorage.department = null;
         agent.assets[planet.id]!.storage = assetStorage;
@@ -154,6 +155,7 @@ describe('computeLoanConditions', () => {
         };
         const agent = makeEstablishedAgent(planet, { lastMonthRevenue: 1000, lastMonthWages: 0 });
         const assetStorage = makeStorageFacility();
+        assetStorage.shells.solid.compartments[resource.name] = 1;
         setStorageResourceQuantity(assetStorage, resource, 50);
         assetStorage.department = null;
         agent.assets[planet.id]!.storage = assetStorage;

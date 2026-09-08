@@ -99,10 +99,13 @@ describe('storage form shells', () => {
         return { storage, resource };
     }
 
-    it('an unsized single product may use the whole shell it is stored in', () => {
+    it('an un-authored product has no available capacity until explicitly compartmented', () => {
         const { storage, resource } = withShellCapacity('solid', 100);
         const available = getAvailableStorageCapacity(storage, resource);
-        expect(available).toBeCloseTo(100);
+        expect(available).toBeCloseTo(0);
+
+        storage.shells.solid.compartments[resource.name] = 1;
+        expect(getAvailableStorageCapacity(storage, resource)).toBeCloseTo(100);
     });
 
     it('getAvailableStorageCapacity reports the product compartment free room', () => {

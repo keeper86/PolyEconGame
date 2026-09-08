@@ -315,6 +315,7 @@ describe('transport ship: loading → transporting', () => {
         const agent = makeAgent('a1', 'p1');
         const ship = makeTransportShip('S1', 'p1');
         const storage = agent.assets.p1!.storage;
+        storage.shells.solid.compartments['Steel'] = 1;
         putIntoStorageFacility(storage, steelResourceType, 500);
 
         ship.state = {
@@ -463,6 +464,7 @@ describe('transport ship: unloading → idle', () => {
     it('dumps cargo into storage and transitions to idle', () => {
         const agent = makeAgent('a1', 'p1');
         agent.assets.p2 = makeAgentPlanetAssets('p2');
+        agent.assets.p2.storage.shells.solid.compartments['Steel'] = 1;
         const ship = makeTransportShip('S1', 'p1');
         ship.state = {
             type: 'unloading',
@@ -984,6 +986,7 @@ describe('transport ship loading: cross-agent storage via posterAgentId', () => 
     it('loads cargo from posterAgent storage, not carrier storage', () => {
         const poster = makeAgent('poster', 'p1');
         const carrier = makeAgent('carrier', 'p1');
+        poster.assets.p1!.storage.shells.solid.compartments['Steel'] = 1;
 
         putIntoStorageFacility(poster.assets.p1!.storage, steelResourceType, 500);
 

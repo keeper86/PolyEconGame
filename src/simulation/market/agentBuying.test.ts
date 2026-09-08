@@ -9,7 +9,8 @@ import {
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
 } from '../constants';
-import { putIntoStorageFacility, queryStorageFacility, STORAGE_SHELL_CAPACITY } from '../planet/facility';
+import { getAvailableStorageCapacity, putIntoStorageFacility, queryStorageFacility, STORAGE_SHELL_CAPACITY } from '../planet/facility';
+import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
 import { agriculturalFacility, ironSmelter } from '../planet/productionFacilities';
 import { coalResourceType, produceResourceType, steelResourceType } from '../planet/resources';
@@ -33,6 +34,9 @@ function makeSteelProducer(id = 'steel-producer', planetId = 'p'): Agent {
         20,
     );
     agent.assets[planetId].productionFacilities = [ironSmelter(planetId, 'steel-fac-1')];
+    // Author the shell compartments that a real production tick would derive from the iron smelter's
+    // coal input and steel output, so stored goods always have explicit physical room.
+    updateAgentShellCompartments(agent.assets[planetId]);
     return agent;
 }
 
@@ -42,6 +46,7 @@ function makeCoalSeller(coalStock: number, askPrice: number, id = 'coal-seller',
         planetId,
         id: `storage-${planetId}-coal`,
     });
+    agent.assets[planetId].storage.shells.solid.compartments[COAL] = 1;
     putIntoStorageFacility(agent.assets[planetId].storage, coalResourceType, coalStock);
     agent.assets[planetId].market = {
         sell: {
@@ -492,6 +497,7 @@ describe('automaticPricing — buy side', () => {
         const freeStorageScale = Math.ceil(1_000_000 / STORAGE_SHELL_CAPACITY.mass);
         buyer.assets.p.storage.shells.solid.scale = freeStorageScale;
         buyer.assets.p.storage.shells.solid.maxScale = freeStorageScale;
+        buyer.assets.p.storage.shells.solid.compartments[COAL] = 1;
 
         // No production facilities, no management, no ships — pure free buy
         const FREE_TARGET = 1_000_000;
@@ -559,6 +565,7 @@ describe('automaticPricing — buy side', () => {
             planetId: 'p',
             id: 'storage-free-2',
         });
+        buyer.assets.p.storage.shells.solid.compartments[COAL] = 1;
 
         const FREE_TARGET = 10_000;
         const SMOOTHING_DAYS = 10;
@@ -914,30 +921,30 @@ describe('marketTick — agent buying', () => {
         expect(householdFoodAfter).toBeGreaterThanOrEqual(householdFoodBefore);
     });
 
-    it('buyer only pays for what was stored and bid is zeroed out when storage is full at settlement', () => {
+    it('a bid whose target exceeds the authored compartment is capped at collection and settles cleanly', () => {
         const seller = makeCoalSeller(3000, 1.0);
         const buyer = makeSteelProducer();
-        buyer.assets.p.deposits = 1_000_000;
-
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-p',
-        });
-        // A full shell-scale holds 50,000 mass; 1/1000 of that leaves room for exactly 50 coal, so the
-        // 100-unit delivery settles only for the half that physically fits and pays only for what stored.
-        buyer.assets.p.storage.shells.solid.scale = 1 / 1000;
-        buyer.assets.p.storage.shells.solid.maxScale = buyer.assets.p.storage.shells.solid.scale;
+        // Rebuild storage without footprint authoring, then author a deliberately small coal compartment
+        // (1/25 of the full 50k-mass shell) so the 100-unit target cannot physically fit end to end.
+        const storage = makeStorageFacility({ planetId: 'p', id: 'storage-p' });
+        storage.shells.solid.compartments[COAL] = 1 / 25;
+        buyer.assets.p.storage = storage;
 
         buyer.assets.p.market = {
             sell: {},
             buy: {
                 [COAL]: {
                     resource: coalResourceType,
-                    bidPrice: 5.0,
-                    bidStorageTarget: 100,
+                    bidPrice: 1.0,
+                    bidStorageTarget: 1_000_000,
                 },
             },
         };
+
+        // The compartment limits how much the delivery can be capped to at collection, so every placed
+        // bid is fully storable and never needs a settlement refund. Read that limit via the same free
+        // capacity API the bid validation uses.
+        const coalConditioned = getAvailableStorageCapacity(storage, coalResourceType);
 
         const depositsBefore = buyer.assets.p.deposits;
         marketTick(agentMap(seller, buyer), planet);
@@ -945,47 +952,12 @@ describe('marketTick — agent buying', () => {
         const coalReceived = queryStorageFacility(buyer.assets.p.storage, COAL);
         const depositsSpent = depositsBefore - buyer.assets.p.deposits;
 
-        expect(coalReceived).toBeCloseTo(50, 1);
+        expect(coalReceived).toBeCloseTo(coalConditioned, 0);
         expect(depositsSpent).toBeCloseTo(coalReceived * 1.0, 5);
 
-        expect(buyer.assets.p.market!.buy[COAL]!.bidStorageTarget).toBe(100);
-
-        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBeUndefined();
-    });
-
-    it('settlement zeros out bid and sets storageFullWarning when goods arrive but storage is already full', () => {
-        const buyer = makeSteelProducer();
-        // No shell scale installed means no physical room to store the arriving coal.
-        buyer.assets.p.storage = makeStorageFacility({
-            planetId: 'p',
-            id: 'storage-p',
-        });
-        buyer.assets.p.storage.shells.solid.scale = 0;
-        buyer.assets.p.storage.shells.solid.maxScale = 0;
-        buyer.assets.p.market = {
-            sell: {},
-            buy: { [COAL]: { resource: coalResourceType, bidPrice: 5.0, bidStorageTarget: 100 } },
-        };
-
-        const holdAmount = 500;
-        buyer.assets.p.deposits = 1_000_000 - holdAmount;
-        buyer.assets.p.depositHold = holdAmount;
-        const depositsBefore = buyer.assets.p.deposits + buyer.assets.p.depositHold;
-
-        settleAgentBuyers(planet, [
-            {
-                agent: buyer,
-                resource: coalResourceType,
-                bidPrice: 5.0,
-                quantity: 100,
-                filled: 100,
-                cost: 500,
-                remainingDeposits: buyer.assets.p.deposits,
-            },
-        ]);
-
-        expect(buyer.assets.p.deposits + buyer.assets.p.depositHold).toBe(depositsBefore);
-        expect(queryStorageFacility(buyer.assets.p.storage, COAL)).toBe(0);
-        expect(buyer.assets.p.market!.buy[COAL]!.storageFullWarning).toBe(true);
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.storageFullWarning).toBeUndefined();
+        expect(bid.lastEffectiveQty ?? 0).toBeCloseTo(coalConditioned, 0);
     });
 });
+

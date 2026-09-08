@@ -107,44 +107,26 @@ export function settleAgentBuyers(planet: Planet, agentBids: AgentBidOrder[]): v
         assets.depositHold -= holdConsumed;
 
         const actuallyStored = putIntoStorageFacility(assets.storage, bid.resource, bid.filled);
-        const storageFull = actuallyStored < bid.filled;
 
-        const costForStored = bid.filled > 0 ? bid.cost * (actuallyStored / bid.filled) : 0;
-        const costRefunded = bid.cost - costForStored;
-
-        assets.monthAcc.purchases += costForStored;
-        assets.monthAcc.boughtResources[bid.resource.name] = {
-            quantity: (assets.monthAcc.boughtResources[bid.resource.name]?.quantity ?? 0) + actuallyStored,
-            value: (assets.monthAcc.boughtResources[bid.resource.name]?.value ?? 0) + costForStored,
-        };
-
-        if (costRefunded > 0) {
-            if (process.env.SIM_DEBUG === '1') {
-                throw new Error(
-                    `Monetary conservation violation: costRefunded=${costRefunded} > 0. ` +
-                        `bid.cost=${bid.cost}, costForStored=${costForStored}, ` +
-                        `bid.filled=${bid.filled}, actuallyStored=${actuallyStored}, ` +
-                        `agent=${bid.agent.id}, resource=${bid.resource.name}`,
-                );
-            }
-            assets.deposits += costRefunded;
+        if (process.env.SIM_DEBUG === '1' && actuallyStored < bid.filled) {
+            throw new Error(
+                `Settlement stored less than the bid filled: agent=${bid.agent.id} resource=${bid.resource.name} ` +
+                    `filled=${bid.filled}, actuallyStored=${actuallyStored}. Bids must be sized to a definitive ` +
+                    `compartment so every placement is fully storable; a shortfall here means order validation no ` +
+                    `longer reserves enough storage capacity.`,
+            );
         }
+
+        assets.monthAcc.purchases += bid.cost;
+        assets.monthAcc.boughtResources[bid.resource.name] = {
+            quantity: (assets.monthAcc.boughtResources[bid.resource.name]?.quantity ?? 0) + bid.filled,
+            value: (assets.monthAcc.boughtResources[bid.resource.name]?.value ?? 0) + bid.cost,
+        };
 
         const buyState = assets.market?.buy[bid.resource.name];
         if (buyState) {
-            buyState.lastBought = (buyState.lastBought ?? 0) + actuallyStored;
-            buyState.lastSpent = (buyState.lastSpent ?? 0) + costForStored;
-
-            if (storageFull) {
-                if (process.env.SIM_DEBUG === '1') {
-                    console.warn(
-                        `[settlement] storageFull reached for agent=${bid.agent.id} resource=${bid.resource.name}. ` +
-                            `This should have been prevented by order validation. ` +
-                            `actuallyStored=${actuallyStored}, bid.filled=${bid.filled}`,
-                    );
-                }
-                buyState.storageFullWarning = true;
-            }
+            buyState.lastBought = (buyState.lastBought ?? 0) + bid.filled;
+            buyState.lastSpent = (buyState.lastSpent ?? 0) + bid.cost;
         }
     }
 }

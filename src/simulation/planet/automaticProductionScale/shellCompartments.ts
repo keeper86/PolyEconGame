@@ -189,8 +189,8 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
 
 // Re-partition every physical shell of an agent each tick, returning the final cell allocation per shell
 // so the caller can grow or shrink a shell via construction once its installed scale drops shy or
-// overshoots the held footprint. Resources outside the authored footprint (services, land-bound, etc.)
-// stay un-authored and inherit the flexible leftover share via computeCompartmentShare (see facility.ts).
+// overshoots the held footprint. Only resources in the authored footprint receive a compartment; anything
+// else has no allocated capacity until it is explicitly authored (see facility.ts computeCompartmentShare).
 export const updateAgentShellCompartments = (
     assets: AgentPlanetAssets,
 ): Partial<Record<StorageForm, CellAllocation>> => {

@@ -28,7 +28,7 @@ describe('consumptionSources — facility restoration demand', () => {
 
         const rates = computeAllConsumptionRates(assets, [], 'p');
 
-        expect(rates.get(constructionServiceResourceType.name)).toBeCloseTo(
+        expect(rates.get(constructionServiceResourceType.name)?.quantity ?? 0).toBeCloseTo(
             facilityRestorationCapacityPerTick(facility),
             10,
         );
@@ -59,7 +59,7 @@ describe('consumptionSources — facility restoration demand', () => {
 
         const rates = computeAllConsumptionRates(assets, [], 'p');
 
-        expect(rates.get(constructionServiceResourceType.name)).toBeCloseTo(20, 10);
+        expect(rates.get(constructionServiceResourceType.name)?.quantity ?? 0).toBeCloseTo(20, 10);
     });
 
     it('lists restoration as a Construction-service breakdown source', () => {
