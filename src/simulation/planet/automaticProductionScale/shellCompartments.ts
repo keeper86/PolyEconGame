@@ -1,6 +1,6 @@
 import { TICKS_PER_MONTH } from '../../constants';
 import type { Resource } from '../claims';
-import type { Storage, StorageShell } from '../facility';
+import type { Storage, StorageFacility } from '../facility';
 import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
@@ -34,7 +34,7 @@ const requiredScaleOf = (footprint: StorageResidency[], volCapPerScale: number, 
 };
 
 export const allocateShellCells = (
-    shell: StorageShell,
+    shell: StorageFacility,
     footprint: StorageResidency[],
     scale: number,
 ): CellAllocation => {
@@ -57,7 +57,7 @@ export const allocateShellCells = (
     const shares: Record<string, number> = {};
 
     const lockedList = live.map((r) => {
-        const held = ((shell: StorageShell, name: string): { volume: number; mass: number } => {
+        const held = ((shell: StorageFacility, name: string): { volume: number; mass: number } => {
             const entry = shell.currentInStorage[name];
             if (!entry || entry.quantity <= 0) {
                 return { volume: 0, mass: 0 };

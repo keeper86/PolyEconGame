@@ -162,9 +162,9 @@ type ResourceAmountLedger = {
 export type Storage = PlanetaryId &
     ResourceAmountLedger & {
         shells: {
-            solid: StorageShell;
-            liquid: StorageShell;
-            pieces: StorageShell;
+            solid: StorageFacility;
+            liquid: StorageFacility;
+            pieces: StorageFacility;
         };
 
         department: StorageDepartment | null;
@@ -189,7 +189,7 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
 // topology differs. A shell's total capacity is this per-unit volume/mass scaled by its current scale.
 export const STORAGE_SHELL_CAPACITY = { volume: 200000, mass: 50000 };
 
-export type StorageShell = FacilityBase &
+export type StorageFacility = FacilityBase &
     ResourceAmountLedger & {
         type: 'storage';
         form: StorageForm;
@@ -217,7 +217,7 @@ export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageFo
 // services, currency, internal and landBoundResource are not stored in a physical shell; they have
 // ~zero volume/mass and live in the Storage-level (no-form) ledger. Solid/liquid/pieces hold their
 // own ledger on the matching shell.
-export const makeStorageShell = (planetId: string, id: string, form: StorageForm, scale = 1): StorageShell => {
+export const makeStorageShell = (planetId: string, id: string, form: StorageForm, scale = 1): StorageFacility => {
     const cap = STORAGE_SHELL_CAPACITY;
     const resource = getStorageResourceByForm(form);
     return {
@@ -263,7 +263,7 @@ export type UsedSpace = {
 // Physical shell occupancy is not stored separately; it is always derived by folding the shell's own
 // per-resource ledger through each resource's constant volume/mass-per-quantity. Keeping it implicit
 // means capacity and usage can never drift apart.
-export const usageOfShell = (holder: Pick<StorageShell, 'currentInStorage'>): UsedSpace => {
+export const usageOfShell = (holder: Pick<StorageFacility, 'currentInStorage'>): UsedSpace => {
     const used: UsedSpace = { volume: 0, mass: 0 };
     for (const entry of Object.values(holder.currentInStorage)) {
         used.volume += entry.quantity * entry.resource.volumePerQuantity;
@@ -352,7 +352,7 @@ export type ShipConstructionFacility = FacilityBase & {
     lastTickResults: LastTickResults;
 };
 
-export type Facility = ProductionFacility | ManagementFacility | StorageShell | ShipConstructionFacility;
+export type Facility = ProductionFacility | ManagementFacility | StorageFacility | ShipConstructionFacility;
 
 export const createLastTickResults = (): LastTickResults => ({
     overallEfficiency: 0,
@@ -367,7 +367,7 @@ export const createLastTickResults = (): LastTickResults => ({
     lastConsumed: {},
 });
 
-type LedgerHolder = StorageShell | Storage;
+type LedgerHolder = StorageFacility | Storage;
 
 const ledgerForResource = (storage: Storage, resource: Pick<Resource, 'form'>): LedgerHolder => {
     const form = shellFormOfResource(resource);
@@ -518,7 +518,7 @@ export const getShellHeldResourceNames = (storage: Storage, form: StorageForm): 
     return Object.keys(storage.shells[form].currentInStorage);
 };
 
-export const computeCompartmentShare = (storage: Storage, shell: StorageShell, resource: Resource): number => {
+export const computeCompartmentShare = (storage: Storage, shell: StorageFacility, resource: Resource): number => {
     const authored = shell.compartments[resource.name];
     if (authored !== undefined) {
         return Math.max(0, Math.min(1, authored));

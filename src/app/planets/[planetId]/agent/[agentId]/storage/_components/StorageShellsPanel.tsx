@@ -12,14 +12,14 @@ import {
     storageFormKeys,
     STORAGE_SHELL_FORM_NAMES,
     usageOfShell,
-    type StorageShell,
+    type StorageFacility,
 } from '@/simulation/planet/facility';
 import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import React, { useMemo } from 'react';
 
-function ShellCapacitySection({ shell }: { shell: StorageShell }): React.ReactElement {
+function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
     const used = usageOfShell(shell);
     const capacity = { volume: shell.capacity.volume * shell.scale, mass: shell.capacity.mass * shell.scale };
     const volumePct = capacity.volume > 0 ? Math.min(1, used.volume / capacity.volume) : 0;

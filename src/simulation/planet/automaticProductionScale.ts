@@ -1,7 +1,7 @@
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { HRFacility, PidState, ProductionFacility, StorageShell } from './facility';
+import type { HRFacility, PidState, ProductionFacility, StorageFacility } from './facility';
 import { calculateCostsForConstruction, getTransportStarvation, storageFormKeys } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
@@ -80,7 +80,7 @@ export function reconcileShellScale(
     agent: Agent,
     gameState: GameState,
     assets: AgentPlanetAssets,
-    shell: StorageShell,
+    shell: StorageFacility,
     requiredScale: number,
     hasOwnConstruction: boolean,
     remainingConstructionBudget: number,
