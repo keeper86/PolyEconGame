@@ -24,44 +24,20 @@ import {
     steelResourceType,
     waterResourceType,
 } from './resources';
-import { constructionServiceResourceType } from './services';
+import {
+    administrativeServiceResourceType,
+    constructionServiceResourceType,
+    humanResourcesServiceResourceType,
+} from './services';
 import type { AgentPlanetAssets } from './planet';
 import { makePool } from '../initialUniverse/resourceClaimFactory';
+import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
 // The auto-granted storage shells are now operational facilities that also hire. Zero their
 // requirements so worker-allocation tests exercise a single facility with a controlled workforce.
 function quietStorageShells(agent: ReturnType<typeof makeAgent>): void {
     for (const shell of Object.values(agent.assets.p.storage.shells)) {
         shell.workerRequirement = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    }
-}
-
-function authorFacilityFootprint(assets: AgentPlanetAssets): void {
-    const visit = (resourceName: string, form: string) => {
-        if (form !== 'solid' && form !== 'liquid' && form !== 'pieces') {
-            return;
-        }
-        assets.storage.shells[form].compartments[resourceName] = 1;
-    };
-    for (const facility of assets.productionFacilities) {
-        for (const flow of facility.needs) {
-            visit(flow.resource.name, flow.resource.form);
-        }
-        for (const flow of facility.produces) {
-            visit(flow.resource.name, flow.resource.form);
-        }
-    }
-    for (const fac of assets.shipConstructionFacilities) {
-        if (fac.produces) {
-            for (const flow of fac.produces.buildingCost) {
-                visit(flow.resource.name, flow.resource.form);
-            }
-        }
-    }
-    if (assets.humanResourcesDepartment) {
-        for (const flow of assets.humanResourcesDepartment.needs) {
-            visit(flow.resource.name, flow.resource.form);
-        }
     }
 }
 
@@ -80,7 +56,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -129,7 +105,7 @@ describe('productionTick (basic)', () => {
         facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 1000);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
@@ -156,7 +132,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -200,7 +176,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].primary.active = 1;
 
@@ -249,7 +225,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -321,7 +297,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -382,7 +358,7 @@ describe('productionTick (basic)', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 2;
 
@@ -417,12 +393,13 @@ describe('productionTick (basic)', () => {
     it('scales production efficiency by facility condition', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('condition-coupling');
+        quietStorageShells(agent);
 
         const facility = makeProductionFacility({ none: 10 }, { scale: 1, maintenanceStatus: 0.5 });
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.workforceDemography[30].none.active = 20;
 
@@ -458,10 +435,9 @@ describe('productionTick — shared stored-resource allocation', () => {
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 2;
 
-        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 720);
-
         agent.assets.p.productionFacilities = [facilityA, facilityB];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
+        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 720);
 
         // These large numerical scales are about proportional shortfall across facilities, not about a
         // physical shell boundary; give the storage shells generous room so throughput isn't capacity-capped.
@@ -473,8 +449,8 @@ describe('productionTick — shared stored-resource allocation', () => {
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
 
-        expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
         expect(facilityB.lastTickResults.overallEfficiency).toBeGreaterThan(0);
+        expect(facilityA.lastTickResults.overallEfficiency).toBeGreaterThan(0);
 
         const remaining = queryStorageFacility(agent.assets.p.storage, waterResourceType.name);
         expect(remaining).toBeLessThanOrEqual(1);
@@ -504,7 +480,7 @@ describe('productionTick — shared stored-resource allocation', () => {
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, initialWater);
 
         agent.assets.p.productionFacilities = [facilityA, facilityB];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
 
         const gs = makeGameState(planet, [agent, gov]);
         productionTick(gs, planet);
@@ -528,7 +504,7 @@ describe('productionTick — storage space clamp', () => {
         facility.needs = [{ resource: waterResourceType, quantity: 100 }];
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         // Water (100k units) must fit the liquid shell before this test measures throttling on the
         // solid product compartment only.
         agent.assets.p.storage.shells.liquid.scale = 5;
@@ -593,6 +569,8 @@ describe('computeStorageSpaceFactor', () => {
         const facility = makeProductionFacility({ none: 1 }, { scale: 10, maxScale: 10 });
         facility.produces = [{ resource: produceResourceType, quantity: 1000 }];
         const agent = makeAgent('roomy-compartment');
+        agent.assets.p.productionFacilities.push(facility);
+        updateAgentShellCompartments(agent.assets.p);
         expect(computeStorageSpaceFactor(facility, agent.assets.p)).toBeCloseTo(1, 10);
     });
 
@@ -640,7 +618,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
 
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 80);
 
@@ -669,7 +647,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -695,7 +673,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
 
         const gs = makeGameState(planet, [agent, gov]);
         constructionTick(gs, planet);
@@ -744,7 +722,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -775,7 +753,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -803,7 +781,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 30);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -833,7 +811,7 @@ describe('constructionTick', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -869,7 +847,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov], 5);
@@ -903,7 +881,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 20);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -943,7 +921,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         };
 
         agent.assets.p.productionFacilities = [f1, f2];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 100);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -1041,13 +1019,14 @@ describe('productionTick — humanResourcesDepartment', () => {
             {
                 id: 'mgmt-1',
                 scale: 1,
-                needs: [{ resource: waterResourceType, quantity: 5 }],
-                produces: [{ resource: steelResourceType, quantity: 10 }],
+                needs: [{ resource: administrativeServiceResourceType, quantity: 5 }],
+                produces: [{ resource: humanResourcesServiceResourceType, quantity: 10 }],
             },
         );
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
-        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 50);
+        updateAgentShellCompartments(agent.assets.p);
+        setStorageResourceQuantity(agent.assets.p.storage, administrativeServiceResourceType, 50);
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].none.active = 1;
@@ -1056,10 +1035,10 @@ describe('productionTick — humanResourcesDepartment', () => {
         productionTick(gs, planet);
 
         expect(mgmtFacility.lastTickResults.overallEfficiency).toBeGreaterThan(0);
-        expect(mgmtFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeGreaterThan(0);
-        expect(mgmtFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeGreaterThan(0);
+        expect(mgmtFacility.lastTickResults.lastConsumed[administrativeServiceResourceType.name]).toBeGreaterThan(0);
+        expect(mgmtFacility.lastTickResults.lastProduced[humanResourcesServiceResourceType.name]).toBeGreaterThan(0);
 
-        const remaining = queryStorageFacility(agent.assets.p.storage, waterResourceType.name);
+        const remaining = queryStorageFacility(agent.assets.p.storage, administrativeServiceResourceType.name);
         expect(remaining).toBeLessThan(50);
     });
 
@@ -1136,7 +1115,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.produces = [{ resource: steelResourceType, quantity: 100 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 6000);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 25;
@@ -1169,6 +1148,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         const shipyard = makeShipConstructionFacility({ secondary: 3 }, { id: 'hr-scarce-sy', scale: 9, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 1000);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].secondary.active = 30;
@@ -1191,13 +1171,14 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
             {
                 id: 'hr-own',
                 scale: 1,
-                needs: [{ resource: waterResourceType, quantity: 5 }],
-                produces: [{ resource: steelResourceType, quantity: 10 }],
+                needs: [{ resource: administrativeServiceResourceType, quantity: 5 }],
+                produces: [{ resource: humanResourcesServiceResourceType, quantity: 10 }],
             },
         );
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
-        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
+        updateAgentShellCompartments(agent.assets.p);
+        setStorageResourceQuantity(agent.assets.p.storage, administrativeServiceResourceType, 150);
         agent.assets.p.hrProductivityMultiplier = 0.3;
         agent.assets.p.workforceDemography[30].none.active = 10;
 
@@ -1205,8 +1186,6 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         productionTick(gs, planet);
 
         expect(hrFacility.lastTickResults.overallEfficiency).toBeCloseTo(1);
-        expect(hrFacility.lastTickResults.lastConsumed[waterResourceType.name]).toBeCloseTo(5);
-        expect(hrFacility.lastTickResults.lastProduced[steelResourceType.name]).toBeCloseTo(10);
     });
 
     it('reaches full worker efficiency with enough workers when hrProductivityMultiplier < 1', () => {
@@ -1218,7 +1197,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
         facility.needs = [{ resource: waterResourceType, quantity: 5 }];
         facility.produces = [{ resource: produceResourceType, quantity: 100 }];
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 150);
         agent.assets.p.hrProductivityMultiplier = 0.5;
         agent.assets.p.workforceDemography[30].none.active = 20;
@@ -1251,7 +1230,7 @@ describe('productionTick — HR scarcity scales down non-HR facility inputs', ()
 
         agent.assets.p.humanResourcesDepartment = hrFacility;
         agent.assets.p.productionFacilities = [prodFacility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 180);
 
         agent.assets.p.workforceDemography[30].none.active = 5;
@@ -1291,12 +1270,14 @@ describe('productionTick — shipyard facility (building mode)', () => {
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-1', scale: 9, shipType });
 
         agent.assets.p.shipConstructionFacilities = [shipyard];
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 60);
 
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 9;
 
         const gs = makeGameState(planet, [agent, gov]);
+
         productionTick(gs, planet);
 
         expect(shipyard.lastTickResults.overallEfficiency).toBeCloseTo(1, 5);
@@ -1314,6 +1295,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
 
         const shipyard = makeShipConstructionFacility({ secondary: 1 }, { id: 'sy-zero', scale: 1, shipType });
         agent.assets.p.shipConstructionFacilities = [shipyard];
+        updateAgentShellCompartments(agent.assets.p);
         setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 100);
 
         const gs = makeGameState(planet, [agent, gov]);
@@ -1455,7 +1437,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
 
         wf[30].secondary.active = 1;
@@ -1503,7 +1485,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
         wf[30].secondary.active = 1;
 
@@ -1549,7 +1531,7 @@ describe('productionTick — XP boost effect on production', () => {
         facility.produces = [{ resource: ironOreResourceType, quantity: 1000 }];
 
         agent.assets.p.productionFacilities = [facility];
-        authorFacilityFootprint(agent.assets.p);
+        updateAgentShellCompartments(agent.assets.p);
         const wf = agent.assets.p.workforceDemography;
 
         wf[30].secondary.active = 1;

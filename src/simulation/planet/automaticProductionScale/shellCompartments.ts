@@ -163,9 +163,6 @@ export const footprintPerForm = (assets: AgentPlanetAssets): Partial<Record<Stor
         }
     }
 
-    // A shipyard flows its building materials into storage over the build; the ship it eventually
-    // delivers does not occupy the shell, so only its buildingCost is a stored footprint. The rate
-    // mirrors consumptionSources.ts (sqrt(scale)/buildingTime) so the reserve tracks real usage.
     for (const facility of assets.shipConstructionFacilities) {
         const ship = facility.produces;
         if (!ship || ship.buildingTime <= 0) {
