@@ -11,7 +11,7 @@ import {
 } from './facility';
 import type { AgentPlanetAssets } from './planet';
 import { createEmptyDemographicEventCounters } from './planet';
-import { logisticsServiceResourceType, storageServiceResourceType } from './services';
+import { internalLogisticsServiceResourceType, logisticsServiceResourceType } from './services';
 import { storageLogisticsTick } from './storageLogistics';
 
 function makeResource(name: string, massPerQty = 1, volumePerQty = 0): Resource {
@@ -192,7 +192,7 @@ describe('storageLogisticsTick', () => {
         const assets = makeAssetsWithStorage();
         const dept = assets.storage.department!;
         dept.storageBuffer = -100;
-        putIntoStorageFacility(assets.storage, storageServiceResourceType, 500);
+        putIntoStorageFacility(assets.storage, internalLogisticsServiceResourceType, 500);
         const planet = makePlanet();
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
         storageLogisticsTick(new Map([['a', agent]]), planet);

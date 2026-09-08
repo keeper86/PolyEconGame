@@ -1,4 +1,5 @@
 import type { Resource } from './claims';
+import type { StorageForm } from './facility';
 
 const internalResourceDefault = {
     form: 'internal' as const,
@@ -12,9 +13,37 @@ export const humanResourcesServiceResourceType: Resource = {
     name: 'Human Resources',
 };
 
-export const storageServiceResourceType: Resource = {
+export const solidStorageServiceResourceType: Resource = {
     ...internalResourceDefault,
-    name: 'Storage',
+    name: 'Solid Storage Services',
+};
+
+export const liquidStorageServiceResourceType: Resource = {
+    ...internalResourceDefault,
+    name: 'Liquid Storage Services',
+};
+
+export const piecesStorageServiceResourceType: Resource = {
+    ...internalResourceDefault,
+    name: 'Pieces Storage Services',
+};
+
+export const getStorageResourceByForm = (form: StorageForm): Resource => {
+    switch (form) {
+        case 'solid':
+            return solidStorageServiceResourceType;
+        case 'liquid':
+            return liquidStorageServiceResourceType;
+        case 'pieces':
+            return piecesStorageServiceResourceType;
+        default:
+            return internalLogisticsServiceResourceType;
+    }
+};
+
+export const internalLogisticsServiceResourceType: Resource = {
+    ...internalResourceDefault,
+    name: 'Logistics Services',
 };
 
 export const trainingServiceResourceType: Resource = {

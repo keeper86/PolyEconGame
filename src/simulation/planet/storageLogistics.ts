@@ -7,15 +7,15 @@ import {
 } from '../constants';
 import type { Storage } from './facility';
 import {
+    getWholeStorage,
     queryStorageFacility,
     removeFromStorageFacility,
     storagePreservationFactor,
     totalStoredByShell,
-    getWholeStorage,
 } from './facility';
 import type { Agent, AgentPlanetAssets, Planet } from './planet';
 import { hasActiveLicense } from './planet';
-import { storageServiceResourceType, ALL_SERVICE_RESOURCE_TYPE_NAMES } from './services';
+import { ALL_SERVICE_RESOURCE_TYPE_NAMES, internalLogisticsServiceResourceType } from './services';
 import { PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet): void {
@@ -60,7 +60,7 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
         return;
     }
 
-    const produced = pullStorageServiceFromStorage(storage);
+    const produced = pullInternalLogisticsServiceFromStorage(storage);
     dept.storageBuffer += produced;
 
     dept.storageBuffer -= totalStoredByShell(storage).mass * SR_HOLDING_COST_PER_TON;
@@ -96,12 +96,12 @@ function processStorageLogistics(assets: AgentPlanetAssets, planet: Planet): voi
     applyStorageDegradation(storage, planet, assets);
 }
 
-function pullStorageServiceFromStorage(storage: Storage): number {
-    const available = queryStorageFacility(storage, storageServiceResourceType.name);
+function pullInternalLogisticsServiceFromStorage(storage: Storage): number {
+    const available = queryStorageFacility(storage, internalLogisticsServiceResourceType.name);
     if (available <= 0) {
         return 0;
     }
-    return removeFromStorageFacility(storage, storageServiceResourceType.name, available);
+    return removeFromStorageFacility(storage, internalLogisticsServiceResourceType.name, available);
 }
 
 function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {

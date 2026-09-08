@@ -4,7 +4,7 @@ import type { ShipType } from '../ships/ships';
 import type { Resource, ResourceQuantity, TradableResourceProcessLevel } from './claims';
 import type { AgentPlanetAssets, PlanetaryId } from './planet';
 import type { RESOURCE_LEVELS } from './resourceCatalog';
-import { administrativeServiceResourceType } from './services';
+import { administrativeServiceResourceType, getStorageResourceByForm } from './services';
 
 type ConstructionState = {
     type: 'new' | 'expansion';
@@ -215,6 +215,7 @@ export const shellFormOfResource = (resource: Pick<Resource, 'form'>): StorageFo
 // own ledger on the matching shell.
 export const makeStorageShell = (planetId: string, id: string, form: StorageForm, scale = 1): StorageShell => {
     const cap = STORAGE_SHELL_CAPACITY;
+    const resource = getStorageResourceByForm(form);
     return {
         planetId,
         id,
@@ -237,10 +238,10 @@ export const makeStorageShell = (planetId: string, id: string, form: StorageForm
         lastTickRestorationConsumption: 0,
         powerConsumptionPerTick: 0.5,
         pollutionPerTick: { air: 0, water: 0, soil: 0 },
-        workerRequirement: { none: 2, primary: 0, secondary: 0, tertiary: 0 },
+        workerRequirement: { none: 5, primary: 5, secondary: 0, tertiary: 0 },
 
-        needs: [{ resource: administrativeServiceResourceType, quantity: 40 }],
-        produces: [],
+        needs: [{ resource: administrativeServiceResourceType, quantity: 1 }],
+        produces: [{ resource, quantity: 2 }],
         lastTickResults: {
             ...createLastTickResults(),
             lastProduced: {},

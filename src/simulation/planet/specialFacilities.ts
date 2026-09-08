@@ -12,7 +12,6 @@ import {
     educationServiceResourceType,
     humanResourcesServiceResourceType,
     logisticsServiceResourceType,
-    storageServiceResourceType,
     trainingServiceResourceType,
 } from './services';
 
@@ -94,7 +93,7 @@ export const logisticsDepartmentFacilityType = (planetId: string, id: string): S
         { resource: administrativeServiceResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 50 },
     ],
-    produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
+    produces: [{ resource: logisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
     storageBuffer: 0,
     storageStarvation: 0,
