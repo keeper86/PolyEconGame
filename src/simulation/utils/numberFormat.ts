@@ -1,6 +1,6 @@
 const EPSILON = 1e-3;
 
-export function formatNumbers(n: number | null | undefined, dimension: number = 1): string {
+export function formatNumbers(n: number | null | undefined): string {
     if (n == null || !isFinite(n)) {
         return '—';
     }
@@ -14,20 +14,14 @@ export function formatNumbers(n: number | null | undefined, dimension: number = 
     let currentNumber = n;
     let currentSuffix = '';
     const abbreviations: [number, string][] = [
-        [1_000_000_000_000_000_000_000 ** dimension, 'S'],
-        [1_000_000_000_000_000_000 ** dimension, 'Qt'],
-        [1_000_000_000_000_000 ** dimension, 'Q'],
-        [1_000_000_000_000 ** dimension, 'T'],
-        [1_000_000_000 ** dimension, 'B'],
-        [1_000_000 ** dimension, 'M'],
-        [1_000 ** dimension, 'k'],
+        [1_000_000_000_000_000_000_000, 'Z'],
+        [1_000_000_000_000_000_000, 'E'],
+        [1_000_000_000_000_000, 'P'],
+        [1_000_000_000_000, 'T'],
+        [1_000_000_000, 'B'],
+        [1_000_000, 'M'],
+        [1_000, 'k'],
     ];
-    if (dimension >= 2) {
-        abbreviations.push([1_00 ** dimension, 'h']);
-    }
-    if (dimension >= 3) {
-        abbreviations.push([1_0 ** dimension, 'da']);
-    }
     for (const [value, suffix] of abbreviations) {
         if (Math.abs(n) * 1.05 >= value) {
             currentSuffix = suffix;

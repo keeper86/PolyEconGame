@@ -1,23 +1,30 @@
 'use client';
 
 import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
+import { limitingEfficiency } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { PRICE_FLOOR } from '@/simulation/constants';
+import { PRICE_FLOOR, SR_HOLDING_COST_PER_TON } from '@/simulation/constants';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import {
     storageFormKeys,
     STORAGE_SHELL_FORM_NAMES,
     usageOfShell,
+    SHELL_STORAGE_SERVICE_QUANTITY,
     type StorageFacility,
 } from '@/simulation/planet/facility';
 import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import React, { useMemo } from 'react';
+import { RiArrowRightBoxFill } from 'react-icons/ri';
+import { StorageBalanceRow } from './StorageBalanceRow';
+import { StorageBufferGauge } from './StorageBufferGauge';
+import { StorageStarvationBar } from './StorageStarvationBar';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
     const used = usageOfShell(shell);
@@ -71,6 +78,61 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
     );
 }
 
+function ShellIoSection({
+    shell,
+    demand,
+    planetId,
+    agentId,
+}: {
+    shell: StorageFacility;
+    demand: number;
+    planetId: string;
+    agentId: string;
+}): React.ReactElement {
+    const results = shell.lastTickResults;
+    const needsCount = shell.needs.length || 1;
+    const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
+    const globalMin = limitingEfficiency(results);
+    const eff = results.overallEfficiency;
+    const buffer = shell.storageBuffer ?? 0;
+
+    return (
+        <>
+            <div className='grid w-full items-center gap-x-2' style={{ gridTemplateColumns }}>
+                <div className='flex flex-wrap gap-1.5 justify-center'>
+                    {shell.needs.map(({ resource, quantity }) => {
+                        const resEff = results.resourceEfficiency[resource.name] ?? 0;
+                        return (
+                            <ProductQuantity
+                                key={resource.name}
+                                resource={resource}
+                                quantity={quantity * shell.scale * eff}
+                                efficiency={resEff}
+                                isLimiting={resEff <= globalMin && globalMin < 0.99}
+                                planetId={planetId}
+                                agentId={agentId}
+                            />
+                        );
+                    })}
+                </div>
+                <RiArrowRightBoxFill
+                    className={`shrink-0 h-8 w-8 ${shell.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
+                />
+                <div className='flex justify-center'>
+                    <StorageBufferGauge buffer={buffer} demand={demand} facility={shell} servicePerScale='shell' />
+                </div>
+            </div>
+            <StorageBalanceRow
+                demand={demand}
+                buffer={buffer}
+                production={eff * SHELL_STORAGE_SERVICE_QUANTITY * shell.scale}
+            >
+                <StorageStarvationBar ss={shell.storageStarvation ?? 0} scope='shell' />
+            </StorageBalanceRow>
+        </>
+    );
+}
+
 export default function StorageShellsPanel({
     assets,
     agentId,
@@ -94,9 +156,10 @@ export default function StorageShellsPanel({
     );
 
     return (
-        <div className='space-y-3'>
+        <>
             {storageFormKeys().map((form) => {
                 const shell = assets.storage.shells[form];
+                const demand = usageOfShell(shell).mass * SR_HOLDING_COST_PER_TON;
                 return (
                     <ActiveFacilityCard
                         key={shell.id}
@@ -113,9 +176,10 @@ export default function StorageShellsPanel({
                         dataTour={`storage-shell-${form}`}
                     >
                         <ShellCapacitySection shell={shell} />
+                        <ShellIoSection shell={shell} demand={demand} planetId={planetId} agentId={agentId} />
                     </ActiveFacilityCard>
                 );
             })}
-        </div>
+        </>
     );
 }

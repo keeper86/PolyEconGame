@@ -172,7 +172,8 @@ function StorageBuildCard({
                         <StorageBufferGauge
                             buffer={0}
                             demand={storageDemand}
-                            department={entry}
+                            facility={entry}
+                            servicePerScale='department'
                             maxScaleOverride={previewScale}
                         />
                     </div>
@@ -273,7 +274,8 @@ function StorageConstructionCard({
                     <StorageBufferGauge
                         buffer={0}
                         demand={storageDemand}
-                        department={facility}
+                        facility={facility}
+                        servicePerScale='department'
                         maxScaleOverride={targetScale}
                     />
                 </div>
@@ -392,7 +394,12 @@ export default function LogisticsDepartment({
                             className={`shrink-0 h-8 w-8 ${department.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
                         />
                         <div className='flex justify-center'>
-                            <StorageBufferGauge buffer={buffer} demand={storageDemand} department={department} />
+                            <StorageBufferGauge
+                                buffer={buffer}
+                                demand={storageDemand}
+                                facility={department}
+                                servicePerScale='department'
+                            />
                         </div>
                     </div>
 

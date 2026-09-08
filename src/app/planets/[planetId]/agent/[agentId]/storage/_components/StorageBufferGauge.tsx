@@ -2,8 +2,8 @@
 
 import { formatNumberWithUnit } from '@/lib/utils';
 import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '@/simulation/constants';
-import type { ManagementFacility } from '@/simulation/planet/facility';
 import { PRODUCED_STORAGE_QUANTITY } from '@/simulation/planet/specialFacilities';
+import { SHELL_STORAGE_SERVICE_QUANTITY } from '@/simulation/planet/facility';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 import { getRadialNudge, resolveTickLabels, resolveZones, type TickLabelCandidate } from '../../_component/gaugeTicks';
@@ -15,20 +15,25 @@ const ZONE_BLUE = '#3b82f6';
 
 const tickStyle = 'text-outline-strong text-xs text-muted-foreground inline-block';
 
+type BufferFacility = { maxScale: number };
+
 export function StorageBufferGauge({
     buffer,
     demand,
-    department,
+    facility,
+    servicePerScale,
     maxScaleOverride,
 }: {
     buffer: number;
     demand: number;
-    department: ManagementFacility;
+    facility: BufferFacility;
+    servicePerScale: 'department' | 'shell';
     maxScaleOverride?: number;
 }): React.ReactElement {
     const { maxValue, subArcs, ticks } = useMemo(() => {
-        const scale = maxScaleOverride ?? department.maxScale;
-        const maxValue = scale * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
+        const scale = maxScaleOverride ?? facility.maxScale;
+        const perScale = servicePerScale === 'shell' ? SHELL_STORAGE_SERVICE_QUANTITY : PRODUCED_STORAGE_QUANTITY;
+        const maxValue = scale * perScale * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
         const subArcs = resolveZones(
             [
                 { from: 0, to: demand, color: ZONE_RED },
@@ -98,7 +103,7 @@ export function StorageBufferGauge({
         }));
 
         return { maxValue, subArcs, ticks };
-    }, [demand, department.maxScale, maxScaleOverride]);
+    }, [demand, facility.maxScale, servicePerScale, maxScaleOverride]);
 
     return (
         <div className='flex flex-col items-center gap-1 py-2 translate-y-[-1px]'>
