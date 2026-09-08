@@ -583,3 +583,65 @@ describe('handleCancelConstruction — shipyard not under construction', () => {
         });
     });
 });
+
+describe('handleCancelConstruction — storage shell expansion', () => {
+    it('clears construction on the shell but keeps the shell', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = company.assets[planet.id].storage.shells.solid;
+        solid.construction = {
+            type: 'expansion',
+            progress: 0,
+            constructionTargetMaxScale: solid.maxScale + 1,
+            totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+            maximumConstructionServiceConsumption: 1,
+            lastTickInvestedConstructionServices: 0,
+        };
+        const { messages, post } = makeMessages();
+
+        handleCancelConstruction(
+            gameState,
+            {
+                type: 'cancelConstruction',
+                requestId: 'r13',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+            },
+            post,
+        );
+
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatchObject({
+            type: 'constructionCancelled',
+            facilityId: solid.id,
+        });
+        expect(company.assets[planet.id].storage.shells.solid).toBe(solid);
+        expect(company.assets[planet.id].storage.shells.solid.construction).toBeNull();
+    });
+});
+
+describe('handleCancelConstruction — storage shell not under construction', () => {
+    it('fails when the shell has no active construction', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = company.assets[planet.id].storage.shells.solid;
+        solid.construction = null;
+        const { messages, post } = makeMessages();
+
+        handleCancelConstruction(
+            gameState,
+            {
+                type: 'cancelConstruction',
+                requestId: 'r14',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'constructionCancelFailed',
+            reason: 'Facility is not under construction',
+        });
+    });
+});

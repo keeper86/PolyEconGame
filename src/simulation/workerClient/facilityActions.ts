@@ -628,8 +628,12 @@ export function handleCancelConstruction(
         facilityIndex === -1 && !isHumanResources && !isStorageDepartment
             ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId)
             : -1;
+    const storageShell =
+        facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1
+            ? storageShellById(assets, facilityId)
+            : undefined;
 
-    if (facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1) {
+    if (facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1 && !storageShell) {
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
@@ -661,6 +665,24 @@ export function handleCancelConstruction(
                 `[worker] Agent '${agentId}' cancelled expansion of shipyard '${facilityId}' on planet '${planetId}'`,
             );
         }
+        safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId, processedAtTick: state.tick });
+        return;
+    }
+
+    if (storageShell) {
+        if (!storageShell.construction) {
+            safePostMessage({
+                type: 'constructionCancelFailed',
+                requestId,
+                reason: 'Facility is not under construction',
+                processedAtTick: state.tick,
+            });
+            return;
+        }
+        // Storage shells are permanent facilities and are never created via 'new' construction, only
+        // expanded, so cancellation always clears the expansion rather than removing the shell.
+        storageShell.construction = null;
+        console.log(`[worker] Agent '${agentId}' cancelled expansion of storage shell '${facilityId}' on planet '${planetId}'`);
         safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId, processedAtTick: state.tick });
         return;
     }

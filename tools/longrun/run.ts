@@ -11,7 +11,6 @@ import {
     setServiceFillRateTarget,
     setServiceFlowDecayTarget,
     setServiceSellThroughTarget,
-    setStorageCapacityMonths,
     setStorageSpaceClampEnabled,
     setStorageTargetMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
@@ -449,11 +448,6 @@ async function main(): Promise<void> {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
     }
-    const storageCapacityMonthsArg = arg('storageCapacityMonths');
-    if (storageCapacityMonthsArg !== undefined) {
-        setStorageCapacityMonths(Number(storageCapacityMonthsArg));
-        console.log(`goods storage max buffer overridden to ${storageCapacityMonthsArg} months`);
-    }
     const serviceSellThroughArg = arg('serviceSellThrough');
     if (serviceSellThroughArg !== undefined) {
         setServiceSellThroughTarget(Number(serviceSellThroughArg));
@@ -549,7 +543,7 @@ async function main(): Promise<void> {
     const summary = {
         scenario: scenario.name,
         description: scenario.description,
-        seed: scenario.seed,
+        seed: seedOverride ?? scenario.seed,
         years,
         resumedFromTick: startTick > 0 ? startTick : null,
         msPerTick,

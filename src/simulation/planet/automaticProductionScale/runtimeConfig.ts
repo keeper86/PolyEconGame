@@ -4,7 +4,6 @@ let pidOutMaxUp: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
-let storageCapacityMonths: number | null = null;
 let serviceSellThroughTarget: number | null = null;
 let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
@@ -35,10 +34,6 @@ export const setStorageTargetMonths = (value: number | null): void => {
     storageTargetMonths = value;
 };
 
-export const setStorageCapacityMonths = (value: number | null): void => {
-    storageCapacityMonths = value;
-};
-
 export const setServiceSellThroughTarget = (value: number | null): void => {
     serviceSellThroughTarget = value;
 };
@@ -65,7 +60,6 @@ export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
 export const getExpansionIntegralThreshold = (): number | null => expansionIntegralThreshold;
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
-export const getStorageCapacityMonths = (): number | null => storageCapacityMonths;
 export const getServiceSellThroughTarget = (): number | null => serviceSellThroughTarget;
 export const getServiceFillRateTarget = (): number | null => serviceFillRateTarget;
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
