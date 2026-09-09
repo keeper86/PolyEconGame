@@ -21,6 +21,7 @@ import { getRngState, setRngState } from '../../src/simulation/utils/stochasticR
 import type { GameState } from '../../src/simulation/planet/planet';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, yearlySeries } from './report';
+import { mineWorkerProbe } from './mineWorkerProbe';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
     buildScaleComparison,
@@ -307,6 +308,9 @@ async function runScenario(
             prevPopulation = sample.totalPopulation;
             monthly.push(sample);
             appendCsvRows(path.join(outDir, 'series.csv'), METRIC_KEYS, [sample]);
+            if (process.env.MINE_PROBE === '1') {
+                mineWorkerProbe(gameState, outDir);
+            }
             if (sample.totalPopulation < 1) {
                 abortReason = `population extinct at y${(t / TICKS_PER_YEAR).toFixed(2)}`;
                 console.log(`[${scenario.name}] ${abortReason}, aborting run`);
