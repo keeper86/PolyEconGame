@@ -101,10 +101,11 @@ const gauss = (mean: number, std: number) =>
     Math.sqrt(-2 * Math.log(nextRandom())) * Math.cos(2 * Math.PI * nextRandom()) * std + mean;
 
 export function generateAgentPersonality(costSpringStrength = 0.5): AgentPersonality {
-    const priceAdjustmentAggressivenessUp = Math.max(1.005, 1.025 + 0.05 * gauss(0.5, 0.2));
-    const priceAdjustmentAggressivenessDown = Math.min(0.995, 0.975 - 0.05 * gauss(0.5, 0.2));
+    const rndParameter = 0.05 * gauss(0.5, 0.2);
+    const priceAdjustmentAggressivenessUp = Math.max(1.005, 1.025 + rndParameter);
+    const priceAdjustmentAggressivenessDown = Math.min(0.995, 0.975 - rndParameter);
     const sellPriceAgressiveness = Math.max(1.0, 1.5);
-    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE;
+    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE-1;
 
     return {
         buyAutoConfig: {

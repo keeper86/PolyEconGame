@@ -1,4 +1,5 @@
 import { createRecyclerAgent } from '../agents/recycler';
+import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import type { ProductionFacility } from '../planet/facility';
 import {
     arableLandResourceType,
@@ -13,16 +14,21 @@ import {
     waterSourceResourceType,
 } from '../planet/landBoundResources';
 import type { Agent, AutomatedPricingConfig, Planet } from '../planet/planet';
-import { LOAN_INTEREST_RATE_PER_YEAR } from '../constants';
 import {
     ALL_PRODUCTION_FACILITY_ENTRIES,
     neededWorkersByFacility,
     type FacilityType,
 } from '../planet/productionFacilities';
+import { constructionServiceResourceType } from '../planet/services';
 import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../planet/specialFacilities';
-import { humanResourcesScaleForWorkers, storageScaleForFacilities } from './helpers';
-import { FACILITY_SCALE_PER_BILLION, TARGET_SCALE_PER_AGENT } from './targets';
-import { createPopulation, makeAgent, makeDefaultEnvironment, makeStorage } from './helpers';
+import {
+    createPopulation,
+    humanResourcesScaleForWorkers,
+    makeAgent,
+    makeDefaultEnvironment,
+    makeStorage,
+    storageScaleForFacilities,
+} from './helpers';
 import { initialMarketPrices } from './initialMarketPrices';
 import {
     buildBuyAutoConfigForResource,
@@ -31,7 +37,7 @@ import {
 } from './personalities';
 import { getNamesFor } from './preConfiguredCompanies';
 import { makePool } from './resourceClaimFactory';
-import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
+import { FACILITY_SCALE_PER_BILLION, TARGET_SCALE_PER_AGENT } from './targets';
 
 export const PROC_PLANET_ID = 'earth';
 const GOV = 'earth-government';
@@ -165,16 +171,15 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
 
             for (const { resource } of fac.produces) {
                 if (!assets.market.sell[resource.name]) {
-                    if (resource.name === groceryServiceResourceType.name) {
-                        const groceryStrategy: AutomatedPricingConfig = {
-                            priceAdjustMaxUp: 1.02,
-                            priceAdjustMaxDown: 0.98,
-                            targetSellThrough: 0.8,
+                    if (resource.form === 'services') {
+                        const serviceStrategy: AutomatedPricingConfig = {
+                            ...personality.sellAutoConfig,
+                            targetSellThrough: 0.9,
                         };
                         assets.market.sell[resource.name] = {
                             resource,
                             automated: true,
-                            autoConfig: groceryStrategy,
+                            autoConfig: serviceStrategy,
                         };
                     } else {
                         assets.market.sell[resource.name] = {
@@ -190,6 +195,7 @@ export function buildProceduralWorld(): { planet: Planet; agents: Agent[] } {
                 if (resource.form === 'landBoundResource') {
                     continue;
                 }
+
                 if (!assets.market.buy[resource.name]) {
                     assets.market.buy[resource.name] = {
                         resource,
