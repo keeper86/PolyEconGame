@@ -22,6 +22,7 @@ import type { GameState } from '../../src/simulation/planet/planet';
 import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, yearlySeries } from './report';
 import { mineWorkerProbe } from './mineWorkerProbe';
+import { groceryFlowProbe, startGroceryProbe } from './groceryFlowProbe';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
     buildScaleComparison,
@@ -280,6 +281,11 @@ async function runScenario(
 
     console.log(`[${scenario.name}] starting…`);
 
+    if (process.env.GROCERY_PROBE === '1') {
+        startGroceryProbe(outDir);
+        console.log(`[${scenario.name}] groceryFlowProbe active: drips per tick every tick into ${path.join(outDir, 'groceryFlow.csv')}`);
+    }
+
     let lastCompletedTick = startTick;
     let abortReason = '';
     const t0 = process.hrtime.bigint();
@@ -299,6 +305,9 @@ async function runScenario(
         gameState.tick = t;
         advanceTick(gameState);
         lastCompletedTick = t;
+        if (process.env.GROCERY_PROBE === '1') {
+            groceryFlowProbe(gameState, outDir);
+        }
         if (t % 30 === 0) {
             await new Promise<void>((resolve) => setImmediate(resolve));
         }

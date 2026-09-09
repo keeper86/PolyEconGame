@@ -43,7 +43,6 @@ import {
 import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../../src/simulation/planet/specialFacilities';
 import {
     constructionServiceResourceType,
-    groceryServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import type { EducationLevelType } from '../../src/simulation/population/education';
@@ -280,13 +279,14 @@ export function buildBenchmarkWorld(
                 if (assets.market.sell[resource.name]) {
                     continue;
                 }
-                if (resource.name === groceryServiceResourceType.name) {
-                    const groceryStrategy: AutomatedPricingConfig = {
-                        priceAdjustMaxUp: 1.02,
-                        priceAdjustMaxDown: 0.98,
-                        targetSellThrough: 0.8,
+                if (resource.form === 'services') {
+                    // Match initialUniverse/proceduralWorld: services clear harder than goods
+                    // (targetSellThrough 0.9 merged over the agent's own sell config).
+                    assets.market.sell[resource.name] = {
+                        resource,
+                        automated: true,
+                        autoConfig: { ...personality.sellAutoConfig, targetSellThrough: 0.9 },
                     };
-                    assets.market.sell[resource.name] = { resource, automated: true, autoConfig: groceryStrategy };
                 } else {
                     assets.market.sell[resource.name] = {
                         resource,
