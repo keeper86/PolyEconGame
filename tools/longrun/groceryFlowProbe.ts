@@ -122,8 +122,53 @@ interface FleetRefs {
     beverage: FleetAcc;
 }
 
+let mixHeaderShown = false;
+function appendRefineryMixRow(gameState: GameState, outDir: string): void {
+    const file = path.join(outDir, 'refineryMix.csv');
+    if (!mixHeaderShown) {
+        writeFileSync(file, 'tick|agent|scale|output|free_m|keep_m|deficit|mix\n');
+        mixHeaderShown = true;
+    }
+    for (const agent of gameState.agents.values()) {
+        for (const assets of Object.values(agent.assets)) {
+            if (!assets) {
+                continue;
+            }
+            for (const fac of getAllFacilities(assets, false)) {
+                if (fac.type !== 'production') {
+                    continue;
+                }
+                const p = fac as ProductionFacility;
+                if (!p.outputFlexible || !p.productionMix) {
+                    continue;
+                }
+                const keepTicks = p.wasteSurplusTicks ?? 30;
+                const mix = p.productionMix;
+                for (const o of p.produces) {
+                    const q = o.quantity;
+                    const free = queryStorageFacility(assets.storage, o.resource.name);
+                    const keep = keepTicks * p.maxScale * q;
+                    const deficit = keep > 0 ? Math.max(0, Math.min(1, (keep - free) / keep)) : 0;
+                    const line = [
+                        String(gameState.tick),
+                        agent.id,
+                        p.scale.toFixed(0),
+                        o.resource.name,
+                        (free / 1e6).toFixed(1),
+                        (keep / 1e6).toFixed(1),
+                        deficit.toFixed(3),
+                        (mix[o.resource.name] ?? 0).toFixed(4),
+                    ].join('|');
+                    appendFileSync(file, line + '\n');
+                }
+            }
+        }
+    }
+}
+
 export function groceryFlowProbe(gameState: GameState, outDir: string): void {
     const refs: FleetRefs = { grocery: zeroFleet(), foodProc: zeroFleet(), beverage: zeroFleet() };
+
     for (const agent of gameState.agents.values()) {
         for (const assets of Object.values(agent.assets)) {
             if (!assets) {
@@ -172,9 +217,11 @@ export function groceryFlowProbe(gameState: GameState, outDir: string): void {
         (res.produce / 1e6).toFixed(3),
     ];
     appendFileSync(file, row.join(',') + '\n');
+    appendRefineryMixRow(gameState, outDir);
 }
 
 export function startGroceryProbe(outDir: string): void {
+    mixHeaderShown = false;
     mkdirSync(outDir, { recursive: true });
     writeFileSync(
         path.join(outDir, 'groceryFlow.csv'),
