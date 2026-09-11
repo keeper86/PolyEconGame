@@ -524,7 +524,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(100);
         expect(planet.bank!.loans).toBe(100);
@@ -536,7 +536,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(0);
         expect(agent.assets[planet.id]!.deposits).toBe(900);
@@ -550,7 +550,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 30;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(agent.assets[planet.id]!.deposits).toBe(0);
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
@@ -565,7 +565,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.deposits = 100;
         planet.bank!.householdDeposits = 70;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         const firmDeposits = agent.assets[planet.id]!.deposits;
         const residual = planet.bank!.householdDeposits + firmDeposits - planet.bank!.loans;
@@ -582,7 +582,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 100;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(20);
         expect(agent.assets[planet.id]!.deposits).toBe(20);
@@ -600,7 +600,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 100;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(70);
         expect(agent.assets[planet.id]!.deposits).toBe(0);
@@ -613,7 +613,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent), planet, 1000);
+        maturesLoans(agentMap(agent), planet, 1000, makeGameState([planet], [agent]));
 
         expect(totalOutstandingLoans(agent.assets[planet.id]!.activeLoans)).toBe(100);
         expect(planet.bank!.loans).toBe(100);
@@ -628,7 +628,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent, agent2), planet, 100);
+        maturesLoans(agentMap(agent, agent2), planet, 100, makeGameState([planet], [agent, agent2]));
 
         expect(planet.bank!.loans).toBe(0);
     });
@@ -644,7 +644,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 300;
         planet.bank!.deposits = 3000;
 
-        maturesLoans(agentMap(agent, agent2), planet, 50);
+        maturesLoans(agentMap(agent, agent2), planet, 50, makeGameState([planet], [agent, agent2]));
 
         expect(planet.bank!.loans).toBe(300);
     });
@@ -655,7 +655,7 @@ describe('enforceLoanMaturities', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(bankEquity(planet.bank!)).toBe(planet.bank!.loans - planet.bank!.deposits);
     });
@@ -678,7 +678,7 @@ describe('loan interest and bankruptcy', () => {
         agent.assets[planet.id]!.deposits = 3600;
         planet.bank!.deposits = 3600;
 
-        maturesLoans(agentMap(agent), planet, 1);
+        maturesLoans(agentMap(agent), planet, 1, makeGameState([planet], [agent]));
 
         expect(agent.assets[planet.id]!.deposits).toBe(3599.5);
         expect(agent.assets[planet.id]!.monthAcc.interestPaid).toBeCloseTo(0.5, 6);
@@ -698,7 +698,7 @@ describe('loan interest and bankruptcy', () => {
         planet.bank!.loans = 7200;
         planet.bank!.deposits = 1000;
 
-        maturesLoans(agentMap(agent), planet, 1);
+        maturesLoans(agentMap(agent), planet, 1, makeGameState([planet], [agent]));
 
         expect(planet.bank!.interestCollected).toBeCloseTo(1.5, 6);
         expect(agent.assets[planet.id]!.deposits).toBe(998.5);
@@ -710,7 +710,7 @@ describe('loan interest and bankruptcy', () => {
         planet.bank!.loans = 3600;
         planet.bank!.deposits = 0;
 
-        maturesLoans(agentMap(agent), planet, 1);
+        maturesLoans(agentMap(agent), planet, 1, makeGameState([planet], [agent]));
 
         expect(planet.bank!.interestCollected).toBeCloseTo(0.5, 6);
         const rollover = agent.assets[planet.id]!.activeLoans.find((l) => l.type === 'rollover');
@@ -728,7 +728,7 @@ describe('loan interest and bankruptcy', () => {
         govPlanet.bank!.loans = 5_000_000_000;
         govPlanet.bank!.deposits = 5_000_000_000;
 
-        maturesLoans(agentMap(gov), govPlanet, 1);
+        maturesLoans(agentMap(gov), govPlanet, 1, makeGameState([govPlanet], [gov]));
 
         expect(gov.assets[govPlanet.id]!.deposits).toBe(5_000_000_000);
         expect(govPlanet.bank!.deposits).toBe(5_000_000_000);
@@ -904,7 +904,7 @@ describe('loan interest and bankruptcy', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 30;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         expect(hasOutstandingEmergencyLoan(agent.assets[planet.id]!.activeLoans)).toBe(true);
         expect(planet.bank!.bankruptcies).toBe(0);
@@ -917,7 +917,7 @@ describe('loan interest and bankruptcy', () => {
         planet.bank!.loans = 100;
         planet.bank!.deposits = 0;
 
-        maturesLoans(agentMap(agent), planet, 100);
+        maturesLoans(agentMap(agent), planet, 100, makeGameState([planet], [agent]));
 
         const rollover = agent.assets[planet.id]!.activeLoans.find((l) => l.type === 'rollover');
         expect(rollover).toBeDefined();
@@ -1035,7 +1035,7 @@ describe('money conservation', () => {
 
         assertConserved(gameState, planet);
 
-        maturesLoans(agentMap(agent), planet, 50);
+        maturesLoans(agentMap(agent), planet, 50, makeGameState([planet], [agent]));
 
         expect(planet.bank.interestCollected).toBeGreaterThan(0);
         assertConserved(gameState, planet);

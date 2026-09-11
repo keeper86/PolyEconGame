@@ -132,7 +132,7 @@ export function advanceTick(gameState: GameState) {
             if (profile.isEnabled) {
                 t = profile.mark();
             }
-            maturesLoans(gameState.agents, planet, gameState.tick);
+            maturesLoans(gameState.agents, planet, gameState.tick, gameState);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('maturesLoans', '  maturesLoans', t);
             }

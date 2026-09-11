@@ -16,6 +16,8 @@ import { getAllFacilities } from '../../src/simulation/planet/planet';
 import { queryStorageFacility } from '../../src/simulation/planet/facility';
 import type { ProductionFacility } from '../../src/simulation/planet/facility';
 import { TICKS_PER_YEAR } from '../../src/simulation/constants';
+import { educationLevelKeys } from '../../src/simulation/population/education';
+import { sumSlotFillByEdu } from '../../src/simulation/workforce/workforceAggregates';
 
 const GROCERY = 'Grocery Chain';
 const FOODPROC = 'Food Processor';
@@ -166,6 +168,157 @@ function appendRefineryMixRow(gameState: GameState, outDir: string): void {
     }
 }
 
+let bevHeaderShown = false;
+function appendBeverageInputs(gameState: GameState, outDir: string): void {
+    const file = path.join(outDir, 'beverageInputs.csv');
+    if (!bevHeaderShown) {
+        writeFileSync(file, 'tick|agent|scale|overallEff|' + 'need:onHandM:reqM:resEff|'.repeat(1) + 'needs\n');
+        bevHeaderShown = true;
+    }
+    for (const agent of gameState.agents.values()) {
+        for (const assets of Object.values(agent.assets)) {
+            if (!assets) {
+                continue;
+            }
+            for (const fac of getAllFacilities(assets, false)) {
+                if (fac.type !== 'production') {
+                    continue;
+                }
+                const p = fac as ProductionFacility;
+                if (p.name !== 'Beverage Plant') {
+                    continue;
+                }
+                const res = p.lastTickResults;
+                const parts: string[] = [];
+                for (const need of p.needs) {
+                    const onHand = queryStorageFacility(assets.storage, need.resource.name);
+                    const req = need.quantity * p.scale;
+                    const eff = res?.resourceEfficiency?.[need.resource.name];
+                    parts.push(`${need.resource.name} ${(onHand / 1e6).toFixed(1)}/${(req / 1e6).toFixed(2)}:eff=${eff === undefined ? 'na' : eff.toFixed(3)}`);
+                }
+                const line = [
+                    String(gameState.tick),
+                    agent.id,
+                    p.scale.toFixed(0),
+                    (res?.overallEfficiency ?? -1).toFixed(3),
+                    parts.join(' ; '),
+                ].join('|');
+                appendFileSync(file, line + '\n');
+            }
+        }
+    }
+}
+
+let agriHeaderShown = false;
+function appendAgriculturalInputs(gameState: GameState, outDir: string): void {
+    const file = path.join(outDir, 'agriculturalInputs.csv');
+    if (!agriHeaderShown) {
+        writeFileSync(file, 'tick|agent|scale|overallEff|needs\n');
+        agriHeaderShown = true;
+    }
+    for (const agent of gameState.agents.values()) {
+        for (const assets of Object.values(agent.assets)) {
+            if (!assets) {
+                continue;
+            }
+            for (const fac of getAllFacilities(assets, false)) {
+                if (fac.type !== 'production') {
+                    continue;
+                }
+                const p = fac as ProductionFacility;
+                if (p.name !== 'Agricultural Facility') {
+                    continue;
+                }
+                const res = p.lastTickResults;
+                const parts: string[] = [];
+                for (const need of p.needs) {
+                    const isLand = need.resource.form === 'landBoundResource';
+                    const onHand = isLand ? -1 : queryStorageFacility(assets.storage, need.resource.name);
+                    const req = need.quantity * p.scale;
+                    const eff = res?.resourceEfficiency?.[need.resource.name];
+                    const oh = isLand ? 'land' : (onHand / 1e6).toFixed(1);
+                    parts.push(`${need.resource.name} ${oh}/${(req / 1e6).toFixed(2)}:eff=${eff === undefined ? 'na' : eff.toFixed(3)}`);
+                }
+                const we = res?.workerEfficiency ?? {};
+                const weStr = `wk[${educationLevelKeys.map((e) => `${e}=${we[e] === undefined ? 'na' : we[e].toFixed(3)}`).join(',')}]`;
+                const slotFill = sumSlotFillByEdu(assets);
+                const slotCap = assets.totalSlotCapacity ?? {};
+                const alloc = assets.allocatedWorkers ?? {};
+                const wage = assets.wagePerEdu ?? {};
+                const fmt4 = (o: Record<string, number | undefined>): string =>
+                    educationLevelKeys.map((e) => `${e}=${o[e] === undefined ? 'na' : Math.round(o[e] as number)}`).join(',');
+                const labor = `fill[${fmt4(slotFill as Record<string, number | undefined>)}] cap[${fmt4(slotCap as Record<string, number | undefined>)}] alloc[${fmt4(alloc as Record<string, number | undefined>)}] wage[${educationLevelKeys.map((e) => `${e}=${wage[e] === undefined ? 'na' : (wage[e] as number).toFixed(2)}`).join(',')}]`;
+                const line = [
+                    String(gameState.tick),
+                    agent.id,
+                    p.scale.toFixed(0),
+                    (res?.overallEfficiency ?? -1).toFixed(3),
+                    weStr,
+                    labor,
+                    parts.join(' ; '),
+                ].join('|');
+                appendFileSync(file, line + '\n');
+            }
+        }
+    }
+}
+
+let agriWfHeaderShown = false;
+function appendAgriWorkforce(gameState: GameState, outDir: string): void {
+    const file = path.join(outDir, 'agriWorkforce.csv');
+    if (!agriWfHeaderShown) {
+        writeFileSync(file, 'tick|agent|scale|edu|active|onboarding|volDepart|fired|retired|slotCap|wage\n');
+        agriWfHeaderShown = true;
+    }
+    for (const agent of gameState.agents.values()) {
+        for (const assets of Object.values(agent.assets)) {
+            if (!assets) {
+                continue;
+            }
+            const hasAgri = getAllFacilities(assets, false).some(
+                (f) => f.type === 'production' && (f as ProductionFacility).name === 'Agricultural Facility',
+            );
+            if (!hasAgri) {
+                continue;
+            }
+            const wf = assets.workforceDemography;
+            for (const edu of educationLevelKeys) {
+                let active = 0;
+                let onboarding = 0;
+                let volDepart = 0;
+                let fired = 0;
+                let retired = 0;
+                if (wf) {
+                    for (const cohort of wf) {
+                        const c = cohort[edu];
+                        active += c.active;
+                        onboarding += c.onboarding.reduce((a, b) => a + b, 0);
+                        volDepart += c.voluntaryDeparting.reduce((a, b) => a + b, 0);
+                        fired += c.departingFired.reduce((a, b) => a + b, 0);
+                        retired += c.departingRetired.reduce((a, b) => a + b, 0);
+                    }
+                }
+                const cap = assets.totalSlotCapacity?.[edu] ?? 0;
+                const wage = assets.wagePerEdu?.[edu] ?? 0;
+                const line = [
+                    String(gameState.tick),
+                    agent.id,
+                    cap.toFixed(0),
+                    edu,
+                    active.toFixed(0),
+                    onboarding.toFixed(0),
+                    volDepart.toFixed(0),
+                    fired.toFixed(0),
+                    retired.toFixed(0),
+                    cap.toFixed(0),
+                    wage.toFixed(2),
+                ].join('|');
+                appendFileSync(file, line + '\n');
+            }
+        }
+    }
+}
+
 export function groceryFlowProbe(gameState: GameState, outDir: string): void {
     const refs: FleetRefs = { grocery: zeroFleet(), foodProc: zeroFleet(), beverage: zeroFleet() };
 
@@ -218,10 +371,16 @@ export function groceryFlowProbe(gameState: GameState, outDir: string): void {
     ];
     appendFileSync(file, row.join(',') + '\n');
     appendRefineryMixRow(gameState, outDir);
+    appendBeverageInputs(gameState, outDir);
+    appendAgriculturalInputs(gameState, outDir);
+    appendAgriWorkforce(gameState, outDir);
 }
 
 export function startGroceryProbe(outDir: string): void {
     mixHeaderShown = false;
+    bevHeaderShown = false;
+    agriHeaderShown = false;
+    agriWfHeaderShown = false;
     mkdirSync(outDir, { recursive: true });
     writeFileSync(
         path.join(outDir, 'groceryFlow.csv'),

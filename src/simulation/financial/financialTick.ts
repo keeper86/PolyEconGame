@@ -9,7 +9,7 @@ import type { Agent, AgentPlanetAssets, GameState, Planet } from '../planet/plan
 import type { EducationLevelType } from '../population/education';
 import { educationLevelKeys } from '../population/education';
 import type { Loan } from './loanTypes';
-import { grantLoan, hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
+import { hasOutstandingEmergencyLoan, repayLoansEmergencyFirst, totalOutstandingLoans } from './loanTypes';
 import { grantAutomaticLoan } from './loanConditions';
 import { creditWageIncome } from './wealthOps';
 
@@ -165,7 +165,7 @@ export function preProductionFinancialTick(
     }
 }
 
-function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: number, gameState: GameState): void {
     const bank = planet.bank;
     let collected = 0;
     agents.forEach((agent) => {
@@ -188,8 +188,10 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
         const debit = Math.min(interestDue, assets.deposits);
         if (debit < interestDue) {
             const uncovered = interestDue - debit;
-            const rolloverType = hasOutstandingEmergencyLoan(assets.activeLoans) ? 'emergency' : 'rollover';
-            grantLoan(assets, bank, uncovered, rolloverType, tick);
+            const result = grantAutomaticLoan(gameState, agent, planet, uncovered, 'rollover', tick);
+            if (result.kind === 'bankrupt') {
+                return;
+            }
         }
 
         assets.deposits -= interestDue;
@@ -201,10 +203,10 @@ function collectLoanInterest(agents: Map<string, Agent>, planet: Planet, tick: n
     bank.profit += collected;
 }
 
-export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number): void {
+export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: number, gameState: GameState): void {
     const bank = planet.bank;
 
-    collectLoanInterest(agents, planet, tick);
+    collectLoanInterest(agents, planet, tick, gameState);
 
     agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -230,11 +232,17 @@ export function maturesLoans(agents: Map<string, Agent>, planet: Planet, tick: n
         const totalDue = maturedLoans.reduce((sum, l) => sum + l.remainingPrincipal, 0);
 
         // If deposits are insufficient, borrow the shortfall so the agent can repay.
-        // An emergency loan rolls over as an emergency loan so the warning persists.
+        // Routed through the collateral checker so an over-capacity renewal escalates to
+        // emergency/restructuring instead of minting unbounded principal. An emergency
+        // renewal keeps its emergency flag so the warning persists.
         const shortfall = totalDue - assets.deposits;
         if (shortfall > 0) {
-            const rolloverType = hasOutstandingEmergencyLoan(maturedLoans) ? 'emergency' : 'rollover';
-            remainingLoans.push(grantLoan(assets, bank, shortfall, rolloverType, tick));
+            const rolloverPurpose = hasOutstandingEmergencyLoan(maturedLoans) ? 'emergency' : 'rollover';
+            const result = grantAutomaticLoan(gameState, agent, planet, shortfall, rolloverPurpose, tick);
+            if (result.kind === 'bankrupt') {
+                return;
+            }
+            remainingLoans.push(result.loan);
         }
 
         assets.deposits -= totalDue;
