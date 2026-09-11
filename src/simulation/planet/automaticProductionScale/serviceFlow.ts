@@ -12,14 +12,16 @@ export function isFlowControlledServiceFacility(facility: ProductionFacility): b
 
 export function serviceFlowError(decayShare: number, unfilledEMA: number, decayTarget: number): number {
     const target = Math.max(0.01, Math.min(0.99, decayTarget));
+    // Production needed to replace decayed stock is not new demand. Steady state is
+    // produced == consumed + decayed, i.e. unfilled demand exactly covers the decay share.
+    // Expansion is therefore driven by the NET demand: unfilled demand beyond replacement.
+    const unfilledNorm = Math.min(1, unfilledEMA / SERVICE_FLOW_UNFILLED_SATURATION);
+    const netDemand = unfilledNorm - decayShare;
     if (decayShare > target) {
         const over = Math.min(1, (decayShare - target) / (1 - target));
-        return -over;
+        return Math.max(-1, Math.min(0, netDemand - over));
     }
-    if (unfilledEMA > 1e-6) {
-        return Math.min(1, unfilledEMA / SERVICE_FLOW_UNFILLED_SATURATION);
-    }
-    return 0;
+    return Math.max(-1, Math.min(1, netDemand));
 }
 
 export type ServiceFlowSignal = {

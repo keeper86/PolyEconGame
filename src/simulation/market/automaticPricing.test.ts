@@ -6,6 +6,7 @@ import {
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
@@ -188,8 +189,11 @@ describe('resolveBidConfig — config resolution', () => {
         const bid = agent.assets[PLANET_ID].market?.buy[goodsResource.name];
         expect(bid).toBeDefined();
 
-        // With empty storage and smoothing: baseRate = 10, smoothed = 10 * (1 + 2) = 30
-        expect(bid!.bidStorageTarget).toBeCloseTo(10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA), 0);
+        // With empty storage: baseRate 10 * (1 + 2) = 30 smoothing plus refill term rawTarget/refillTicks
+        expect(bid!.bidStorageTarget).toBeCloseTo(
+            10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + (10 * INPUT_BUFFER_TARGET_TICKS) / INPUT_BUFFER_REFILL_TICKS,
+            0,
+        );
     });
 
     it('buy-side with undefined config picks service defaults for services resources', () => {

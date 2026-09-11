@@ -10,6 +10,7 @@ import {
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
@@ -417,7 +418,9 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             resource.form !== 'services'
         ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
+            const refillRate = totalShortfall / INPUT_BUFFER_REFILL_TICKS;
+            const smoothedDemand =
+                baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio)) + refillRate;
             totalShortfall = Math.min(totalShortfall, smoothedDemand);
         }
 

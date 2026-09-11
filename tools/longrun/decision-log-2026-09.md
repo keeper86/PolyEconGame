@@ -277,3 +277,475 @@ behavioural failure - it is capacity. Facts from unif150-wage60 metrics:
   (B) maintenance-side: don't let ONE input shortfall hard-zero a planet-critical service - floor/apportion
       the efficiency so a plastic dip degrades repairs proportionally rather than killing all upkeep.
 
+
+
+## Decisive result (2026-09-09): the credit-money loop ALONE kills; net-demand service fix only delays
+Implemented the principled service-flow fix: `serviceFlowError` now drives expansion by NET demand
+(`unfilledNorm - decayShare`) instead of "any unfilled demand". Replacement-of-decay no longer justifies
+new capacity; steady state (unfilled ~ decay) gives zero error; decay > target still contracts. All 1763
+tests pass. Then ran two 1% runs with the fix (seed 1001, 8B pop, bands off):
+- scout: singleAgent (1 agent/product, 42 agents), 600y -> extinct at y74.6 (pop 10.7B peak -> 0).
+- full: competitive-6agent (242 agents), 6000y -> extinct at y256.9 (pop 33.1B peak -> 0).
+(Control before the fix died at y159.75; so the fix DELAYED competitive collapse ~160->257 but did NOT
+prevent it. The monopoly world dies EARLIER, so intra-product competition is not the driver.)
+
+Scout death is a runaway price/wealth hyperinflation -> famine, NOT a labor-satisfiability collapse:
+- y60-67 healthy-ish but meanWealth oscillates 3.7..460 and foodPrice swings 14..134 (unstable).
+- y68: grocery starvation 0.47, healthcare starvation 0.89, fatalFraction 0.037 -> 108M deaths/month.
+- y69-73: foodPrice 533 -> 2360 -> 581 -> 5820, groceryFillRate 0.43/0.48/0.32, fatal 0.51 at y73.
+- y74: total starvation, pop -> 250k. bankDeposits 2.18e15, foodPrice 11350, priceLevelServices 11740,
+  wagePrimary ~7-27 => REAL WAGES COLLAPSE.
+Financials (scout): bankDeposits 1.5e12(y1) -> 2.75e14(y65) -> 2.18e15(y74); bankLoans lags deposits;
+bankEquity = loans - deposits deeply negative and ~ -cumulative debtWriteOffs throughout the slow burn.
+
+ROOT CAUSE (accounting leak): `terminateAndRefound` (bankruptcy.ts) and `liquidation.ts` do
+`bank.writeOffs += writtenOff; bank.loans -= writtenOff;` WITHOUT any `bank.deposits -=`.
+So the loan ASSET is destroyed while the deposits created when that loan was granted remain in
+circulation (held by workers/suppliers). Money supply (deposits) is NOT reduced => each write-off
+injects net money. bankEquity = loans - deposits therefore goes unboundedly negative (bank eats the loss
+with no capital constraint), and deposits/GDP climbs 0.27 -> 4.4+ => hyperinflation => famine => extinction.
+The monetary-conservation invariant still passes because it only checks Sum(deposits) == bank.deposits,
+not that write-offs are money-neutral. This is a SEPARATE, SUFFICIENT collapse mechanism from the
+service-bloat / maintenance min()-gate chain, and it is interest-driven because interest forces the
+rollover -> emergency -> write-off -> re-grant cycle that re-creates fresh deposits every iteration.
+NEXT: decide treatment - (a) remove money on write-off (bank.deposits -= writtenOff, i.e. bank is a money
+sink), (b) bank capital constraint so banks stop lending when equity < 0, (c) tax/transfer recycling to
+destroy the excess. Then re-run scout to confirm the y74 wall moves.
+
+
+## Interest is NOT the driver (2026-09-09): 0% scout dies at the same point as 1%
+Ran the scout (singleAgent, 8B pop, resourceMultiplier 100, net-demand service fix, bands off) with
+--interestRate=0. Result: STILL extinct, at y73 (1% scout died y74; comp6 died y257). loanInterestCollected
+is exactly 0 for the whole run, yet:
+- debtWriteOffs accumulate to 1.25e14 by y70.
+- bankDeposits grow 1.5e12 -> 2.8e14 (187x) while gdpAnnual grows only ~2x.
+- foodPrice 3.3 -> 1347, priceLevelServices 7 -> 1578, wagePrimary ~4 => real wages collapse.
+- y72 grocery starvation 0.74, y73 0.995 => extinct (pop 367k).
+
+EXACT MONEY IDENTITY (same at 0% and 1%): deposits = loans + writeOffs. The column (deposits - loans)
+tracks cumulative writeOffs almost exactly at every year (y50: 8.46e13 vs 8.56e13; y68: 1.229e14 vs 1.245e14;
+y72: 1.231e14 vs 1.247e14). So the entire excess money supply IS the cumulative write-offs.
+Mechanism: an agent borrows (predominantly bufferCoverage auto-loans: 7.8e11 -> 1.04e14, the largest
+category), spends the deposits into the economy, cannot repay, rolls over (rolloverLoanPrincipal ~2e13,
+~30 companies with rollover loans), and is eventually bankrupted/refounded; terminateAndRefound and
+liquidation do `loans -= writtenOff` but NEVER `deposits -= writtenOff`, so the deposits created by the
+loan remain in circulation while the loan claim vanishes => money supply grows by exactly the write-off
+amount, unbounded => hyperinflation => famine => extinction. This is INDEPENDENT of the interest rate.
+Interest is a red herring for the collapse timing (0% y73, 1% y74). The real driver is the automatic
+wage/buffer-coverage lending + write-off cycle. NEXT: fix money conservation on write-off (destroy the
+deposits) OR stop the auto-lending from creating unrepayable principal, then re-run the scout.
+
+
+## Refinement (2026-09-09): money grows gently as expected; the price level explodes because REAL OUTPUT is bang-bang
+Answering "why no gentle inflation": because inflation is M/Y and Y is violently unstable, not M.
+0% scout, annual money-supply growth is smooth: +5.2/+2.5/+2.4/+5.7/+1.5/+0.3/+3.2/+2.6/+5.8/+6.9/+5.6 %/yr
+(y61..71). Real gdpAnnual swings +115/-56/+45/-53/-37/+159/-33/+131/+185/-49/-84/-96 % over the same years.
+M/Y sits at a mild 2-5 for ~60 years (the gentle-inflation regime we expect) and only explodes to 259 when
+Y collapses at y73 -> hyperinflation -> famine.
+Root of the Y swings: production is bang-bang - maintFacilityOutput alternates ~4.1e7 <-> 0 (exactly 0 at
+y69), ironSmelterOutput swings 5x (3.3e7 <-> 1.5e8). Full economy-wide upkeep gating to zero on a single
+input shortfall (the known min()-efficiency gate) plus expansion/contraction overshoot drive it.
+Also: write-offs PLATEAU late (8.6e13 flat y50-53, 1.245e14 flat y66-73) while bankLoans JUMPS +13%/yr -
+so the terminal spiral is NEW lending (bufferCoverage/wageCoverage auto-loans chasing rising nominal needs)
+creating deposits directly, i.e. a lending<->price feedback, not additional write-offs.
+Revised causal model: (1) write-off leak => steady ~4-6%/yr money growth => mild inflation [real but not
+fatal alone]; (2) interest irrelevant at this horizon (0% y73 vs 1% y74); (3) collapse trigger = real-output
+instability (bang-bang production / maintenance output hitting 0), amplified by the auto-lender's nominal
+feedback. Next targets, in order: (a) production stability (why maint output gates to exactly 0), (b) the
+write-off/auto-lending money leak as an amplifier, (c) the debug invariant that currently cannot detect any
+of this.
+
+
+## ROOT CAUSE of production instability (2026-09-09): multi-output facilities use max() over per-output
+## storage errors, so one underpriced byproduct whipsaws the whole facility across ALL outputs
+The per-tick tickProbe (tools/longrun/tickProbe.ts, TICK_PROBE=1) on the singleAgent 0% run shows it
+unambiguously. The Oil Refinery has 3 outputs with independent storage errors:
+  err(Fuel) = -0.333 (over-stocked), err(Plastic) = -0.05..-0.33 (over-stocked), err(Chemical) = +0.13..+0.18
+  (UNDER-stocked). computeFacilityStorageSignal returns maxError = MAX over outputs = +0.17 (chemical),
+  so the refinery EXPANDS because chemical is short - even though plastic is already over target.
+Verified: maxError == simStorageSignal for 100%% of 5224 sampled refinery ticks, so the probe reads the
+real signal. The refinery scale then ramps to its max cap and floods plastic/fuel to the price floor.
+Then chemical becomes over-stocked too, maxError flips negative, and the facility CONTRACTS - but the PID
+contraction is rate-limited (PID_OUT_MAX_DOWN=0.01/tick = 1%%/tick) while the expansion was up to 10%%/tick
+(PID_OUT_MAX_UP=0.1), so it crashes from 1.06e7 -> 8.4e6 -> 5.2e6 -> 2.1e6 -> 1.06e6 (MIN_SCALE floor) in
+~4 months. During that contraction plastic is starved: fillRatePlastic = 0, plasticPrice 0.01 -> 0.70 ->
+2.08 -> 15.1 -> 53.3 (5333x). Maintenance's plastic input -> 0 -> the min()-efficiency gate zeroes
+maintenance output -> planet-wide upkeep stops -> real-output bang-bang -> hyperinflation (M/Y) -> famine.
+Sequence observed monthly: y68.25 plasticPrice 0.375 -> y68.5 0.01 (glut, floor) -> signal goes negative ->
+y68.83 scale 2.07e6 -> y69.0 1.06e6 (floor) -> y69.25 plasticPrice 15 -> y69.33 53 -> maintenance output 0.
+Conclusion: the instabilities are NOT fundamentally a PID-tuning dilemma (fast vs slow). They are caused by
+using max() across a multi-output facility's storage errors, which lets ONE byproduct's deficit drive
+expansion/contraction of the entire facility and the other products (plastic = maintenance's sole input)
+into alternating glut/famine. Fix directions to evaluate:
+ (A) per-output control: decide scale from a weighted/min-abs measure or from aggregate profitability, not
+     max() of independent storage errors; or
+ (B) split flexible outputs so each product's supply can be steered independently (the refinery currently
+     cannot produce plastic without also producing fuel+chemical); or
+ (C) give the critical downstream (maintenance) a hard supply priority / larger buffer so a 1-2 year
+     plastic price swing cannot zero a planet-critical service.
+
+## Confirmed quantitatively (2026-09-09): the refinery is a CHEMICAL controller; plastic is a stowaway
+Per-tick probe statistics (singleAgent 0%, y0-16, 5824 refinery ticks):
+- which output sets maxError: chemical 5807 (99.7%%), plastic 16, fuel 1. So the refinery's production
+  scale is de facto controlled by CHEMICAL demand alone.
+- 39.1%% of ticks have smoothedSignal>0 while plastic is already OVER its storage target (expanding into a
+  plastic glut); 0 ticks have signal<0 while chemical is under target (max() never lets plastic veto).
+- Only the Oil Refinery is multi-output (verified by enumerating all facility factories: exactly one has
+  produces.length>1). So this is a single, isolated design defect with an outsized blast radius because
+  plastic is maintenance's sole material input and maintenance is planet-critical via the min() gate.
+Fix targeting is therefore narrow and high-leverage. Candidate fixes (to be tested, one at a time):
+ 1. Change computeFacilityStorageSignal for multi-output facilities to not use max(): e.g. scale on the
+    WEIGHTED mean of per-output errors, or on the minimum (most urgent shortage) only when all others are
+    not already over-stocked, or on the aggregate storage deficit in currency terms (value-weighted).
+ 2. Give each output its own expansion/contraction authority for flexible facilities (produce more of the
+    short product, less of the glut product) rather than moving total scale.
+ 3. Make the primary consumer (maintenance) resilient: hold a much larger plastic buffer, or floor the
+    efficiency so a plastic dip degrades upkeep proportionally instead of zeroing it (the min() gate).
+Note the two amplifiers already known: PID_OUT_MAX_UP=0.1 vs PID_OUT_MAX_DOWN=0.01 (10:1 asymmetric rate)
+and the hard MIN_SCALE_FRACTION=0.1 floor / 10%% expansion cap, both of which turn a control error into a
+large, slow-to-reverse scale excursion.
+
+## CORRECTION (2026-09-09): refinery max() causes the mid-run OSCILLATIONS, but the TERMINAL death is a
+grocery-starvation workforce collapse, NOT a plastic shortage
+Per-tick evidence from v1 probe + series at the terminal (singleAgent 0%, y72.5-73.6):
+- Maintenance at terminal: scale 100%% of cap, maintInputEfficiencyPlastic=1, Steel=1, Electronics=1,
+  plastic buffer FULL at 1.34e8, resourceEfficiency=1 - but workerEfficiency=0 -> overallEfficiency=0 ->
+  output 0. So maintenance dies from ZERO WORKERS, not from missing plastic. My earlier plastic story was
+  the cause of the oscillations, not of the extinction.
+- The trigger before that: groceryFillRate oscillates to exactly 0 repeatedly (y70.33, y70.92, ...) with
+  avgGroceryStarvation 0.44-0.67, and groceryTotalSupply (= Produce) is bang-bang: 2.6e8 -> 3.1e8 -> 0 ->
+  5.5e8 -> 9.3e8 -> 1.4e9 -> 2.1e9 -> 3.4e8 -> 2.6e8 -> 0 while agriculturalFacilityScale is CONSTANT at
+  its max (1.02e6). So the agricultural facility output is being gated to zero intermittently by ONE of its
+  inputs (needs: arableLand 30, water 100, pesticide 10) or by workers.
+- Consequence chain: produce supply 0 -> grocery fill 0 -> mass starvation (avgGroceryStarvation hits 0.44+
+  at y71.2) -> deaths exceed births, pop falls 11.0B -> 9.7B -> 8.6B -> ... -> employed collapses
+  5.9B -> 3.0B -> 0.9B -> maintenance workerEfficiency 0.94 -> 0.045 -> 0 -> upkeep stops -> cascade ->
+  extinction y73.6.
+So there are TWO distinct instability layers:
+  (1) the refinery max()-over-outputs control defect -> plastic/fuel/chemical glut-famine cycles (mid-run,
+      real, causes large price swings and the 45%%-at-cap / 12%%-at-floor bang-bang), and
+  (2) an intermittent hard-zero of the AGRICULTURAL facility's output (the lifeline food producer) which
+      starves the population and destroys the workforce -> terminal extinction. The 0% vs 1%% runs die at
+      the same place because this is not monetary and not interest-related.
+NEXT: identify which agricultural input (water/pesticide/arableLand) or worker class goes to zero, via the
+v2 tick probe (TARGETS now include Agricultural Facility, Water Facility, Pesticide Plant; capture of
+inEff0/1/2 + workerEffWorst). Then fix that gate.
+
+## FULL CAUSAL CHAIN of the y73 extinction (2026-09-09) - the refinery max() defect propagates up the food chain
+The single root is the Oil Refinery's max()-over-outputs scale control, because the refinery is the ONLY
+source of CHEMICAL, and chemical -> pesticide -> agriculture -> food -> population -> workforce.
+Linked single-producer chain (all facilities have exactly one producer in the 1-agent world):
+  Oil Refinery (produces Fuel/Plastic/Chemical, scale driven by MAX err, 99.7%% of ticks = chemical err)
+    -> chemical   -> Pesticide Plant (needs chemical 60 + water)
+    -> plastic    -> Maintenance Facility
+  Pesticide Plant -> pesticide -> Agricultural Facility (needs arableLand 30 + water 100 + pesticide 10)
+  Agricultural Facility -> produce -> Grocery Chain -> population food
+  Produce -> Pharma Plant too.
+Observed monthly co-movement at the terminal (scout0) - a limit cycle that DRAINS the grocery buffer:
+  y68.0  chemPrice 15.3  refinery 1.06e7(max)  pest 3.44e5  agri 4.5e5   buffer 0.99  foodPrice 17
+  y68.9  chemPrice 54.5  refinery 1.06e6(FLOOR, -10x) pest 2.18e5 agri 1.02e5(-10x) buffer 1.00 foodPrice 33
+  y69.2  chemPrice 59.1  refinery 1.06e6  pest 3.44e4(-10x)  agri 1.02e6  buffer 1.00  foodPrice 58
+  y69.7  chemPrice 76.4  refinery 3.78e6  pest 3.79e5  agri 1.02e6  buffer 0.91  foodPrice 82
+  y70.0  chemPrice 56.6  refinery 1.06e7(MAX) pest 3.79e5  agri 1.02e6  buffer 0.36  foodPrice 193
+  y70.3  chemPrice 61.7  refinery 8.62e6  pest 3.78e4  agri 1.02e6  buffer 0.33  foodPrice 291
+Each refinery swing (-10x to floor, then back to max) collapses pesticide output ~10x, which collapses
+agricultural output ~10x, which zeroes produce supply -> grocery fill 0. Early on the grocery buffer
+(0.98-1.0 through y69) absorbs these fill-0 months (first occurrences y44.58, y44.67, y57.5 - all
+survived). After y69.75 the buffer is drained below 0.4 and the NEXT cycle starves the population:
+  y70.33 groceryBuffer 0.325, y71 starvation 0.44+, pop 11.0B -> 9.7B -> 8.6B ..., employed 5.9B -> 0.9B,
+  maintenance workerEfficiency 0.94 -> 0.045 -> 0, upkeep stops, extinction y73.6.
+So the same defect that produces the mid-run price oscillations also produces the terminal extinction;
+the difference is only whether the buffer happens to absorb the current cycle. Why it stopped absorbing
+after y69: the amplitude grew with total throughput (population/scale grow ~40%% while the buffer is a
+fixed 3-month stock) and the cycles began to align instead of being isolated single-month blips.
+This also explains why 0%% and 1%% interest die at the same time: the mechanism is entirely real-sector.
+
+## Tick-level confirmation (2026-09-09): the hard zeros are INTERMEDIATE-GOOD OUT-OF-STOCK, from y6 on
+v2 tick probe (TARGETS include Pesticide Plant / Agricultural Facility / Water Facility; captures per-input
+efficiencies and workerEffWorst):
+- Pesticide Plant: chemEff = 0.0000 with workerEffWorst = 1.0 and scaleFrac = 1.0 at ticks 224,225,229-
+  242,... i.e. it is INPUT-starved with a full workforce and full operating scale. chemical inventory is
+  literally 0 for stretches. Occurs from y0.6 onward.
+- Agricultural Facility: pestEff = 0.0000 while arableLand=1.0, water=1.0, workerEff=1.0 (e.g. ticks 2179,
+  2183, 2187, 2188, 3390-3394). So agriculture is PESTICIDE-starved with everything else fine. From y6 on.
+- Note resourceEfficiency = min(1, fairShare/required) is proportional, so it reaches exactly 0 only when
+  the input inventory is exactly 0 - there is no artificial min()-gate here; the zero is genuine
+  out-of-stock of an intermediate good.
+Conclusion: the chain run is Refinery chemical (single source, oscillating max()-controlled scale) ->
+Pesticide Plant 0 chemical -> Agricultural Facility 0 pesticide -> produce 0 -> grocery fill 0. This is
+present from y6 and is absorbed by buffers (grocery buffer 0.98-1.0) for ~65 years, then fails at y70 when
+the buffer can no longer absorb a trough. Both 0%% and 1%% interest runs die identically, confirming the
+mechanism is real-sector and not monetary.
+## CONCLUSION of the instability investigation (2026-09-09): it is a 1-tick out-of-stock, not a PID tuning problem
+Terminal tick-level evidence (v2 probe, y70.3-71.4, maintenance + grocery at 100% scale, workerEff = 1.0):
+  Maintenance Facility: inEff(steel) alternates 1.0 -> 0.0 -> 1.0 -> 0.0 every 1-3 ticks, wkEff = 1.0,
+    scaleFrac = 1.0, signal ~0. Its output therefore toggles between full and ZERO every few ticks.
+  Grocery Chain: inEff(processed food) alternates 1.0 -> 0.883 -> 0.50 -> 0.00 -> 0.47 -> 0.44 -> 0.00 ...
+    with wkEff 0.8-0.99. Same toggling.
+Mechanism: computeResourceEfficiencyMap uses
+    required  = need.quantity * facility.scale          (grows with scale)
+    available = queryStorageFacility(storage, name)      (agent-level stock)
+    fairShare = (required / totalDemand) * available
+    resourceEfficiency = min(1, fairShare / required)
+and production multiplies output by overallEfficiency = min(workerEff, ...resourceEff, conditionEff).
+If the input stock is momentarily 0 (because the upstream output arrives in batches / the same storage is
+drawn by several facilities), resourceEfficiency is EXACTLY 0 and the facility produces NOTHING that tick.
+With scale at max the per-tick required draw is huge, so the stock is repeatedly drained to 0 between
+arrivals -> the facility strobes on/off at a 1-3 tick cadence instead of producing smoothly at a reduced
+rate. That strobe is the "production instability" we set out to explain.
+Why the buffers do not save it: the 3-month storage target applies to the PRODUCER's output inventory; the
+CONSUMER's input availability is instantaneous, so a producer cadence mismatch is not smoothed anywhere
+except by the consumer's own storage, which is being drained every tick at full scale.
+Why smaller buffers previously killed it earlier: they reduce exactly that consumer-side smoothing, so with
+a small buffer the input stock is 0 even more often and the strobe dominates sooner. This is precisely the
+"PID / buffer dilemma" the user described, and the correct fix is NOT to retune the PID: it is to stop a
+1-tick stock-out from turning into a 100% output outage.
+## CONFIRMED ROOT of the input strobe (2026-09-09): the per-tick purchase cap has ZERO headroom over consumption
+User hypothesis: "the input buffer should not be empty; even clearing every third tick should be enough if we
+buy on average more than 3 ticks worth of inputs. We can increase the amount bought per tick."
+This is correct, and the code confirms why it currently cannot work.
+
+In automaticPricing.ts the agent's per-tick input purchase is capped:
+    let totalShortfall = Math.max(0, storageTarget - currentInventory);
+    const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
+    if (baseRateConsumption > EPSILON && storageTarget > EPSILON && totalShortfall > EPSILON && not services) {
+        const fillRatio = Math.min(1, currentInventory / storageTarget);
+        const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
+        totalShortfall = Math.min(totalShortfall, smoothedDemand);      // <-- the cap
+    }
+and the order quantity is exactly this shortfall (bidStorageTarget = currentInventory + totalShortfall).
+
+Now substitute the maintenance steel case with defaults (INPUT_BUFFER_TARGET_TICKS = 30,
+INVENTORY_SMOOTHING_MAX_EXTRA = 2, need 10 per tick per unit scale):
+    storageTarget          = 10 * scale * 30 = 300 * scale
+    baseRateConsumption    = storageTarget / 30 = 10 * scale   == EXACTLY the per-tick consumption
+    cap at fillRatio = 1.0 : baseRate * (1 + 2*0)   = 1.0x consumption   -> NO refill headroom at all
+    cap at fillRatio = 0.9 : baseRate * (1 + 2*0.1) = 1.2x consumption
+    cap at fillRatio = 0.5 : baseRate * (1 + 2*0.5) = 2.0x consumption
+    cap at fillRatio = 0.0 : baseRate * (1 + 2*1.0) = 3.0x consumption
+Because the cap is only greater than 1x when the buffer is ALREADY below target, the buffer is a one-way
+ratchet: any consumption burst pushes it down, and the refill rate is barely above consumption, so it never
+recovers. The smoothing term only helps in proportion to how empty the buffer already is.
+
+EMPIRICAL PROOF that this is rationing and NOT a market supply problem (scout0 series, y60-63):
+    steelUnsoldSupply = 7.7e8 .. 2.3e9 (a 3-30x GLUT, unsold steel sitting in the market)
+    steelFillRate oscillates 0.05 .. 1.0
+    maintSteelBuffer falls 7.45e7 -> 5.14e6 -> 0 and maintFillRate oscillates 0.37 .. 0.92
+So the maintenance facility cannot obtain steel while hundreds of millions of units go unsold: the bid cap,
+not availability, is the binding constraint. Same pattern for grocery processed food (inEff alternates
+1.0/0.0 every 1-3 ticks) and every other input-consuming facility.
+And maintFillRate is 0.40-0.87 for the WHOLE run (even y50, fully healthy regime) - i.e. upkeep has been
+chronically 15-60%% short of steady-state demand from the start, not just at the end. The y70 death is when
+the accumulated grocery/maintenance shortfall finally tips into famine.
+
+FIX (matches the user's proposal): give the input purchase real headroom over consumption instead of only
+when the buffer is nearly empty - e.g. make the per-tick purchase order a multiple of baseRateConsumption
+(a few ticks' worth, so that buying on average >3 ticks of consumption per clearing tolerates every-third-
+tick clearing), or raise INPUT_BUFFER_TARGET_TICKS' effective buy rate / INVENTORY_SMOOTHING_MAX_EXTRA so the
+cap at normal fill is comfortably > 1x consumption. To be implemented and A/B tested.
+
+ 1. Do not let resourceEfficiency hit 0 from a momentary stock-out: allocate consumption from a smoothed /
+    rate-limited input budget, or floor the efficiency to a proportional value derived from the fraction of
+    the tick the input was available (i.e. carry a small input buffer inside the facility rather than
+    re-requiring the full per-tick quantity from agent storage).
+ 2. Give consuming facilities an explicit input buffer (like the maintenance steel/electronics/plastic
+    buffers already modelled in metrics) that is filled from storage and consumed from, decoupling
+    consumption cadence from arrival cadence.
+ 3. Ensure the producer's output cadence matches the consumer's consumption cadence for intermediate goods
+    (or batch production monthly so arrivals line up with consumption).
+
+ 1. Refinery scale must not be driven by max() across its three outputs (it de-facto controls on chemical
+    alone, 99.7%% of ticks) and must not swing 10x. This is the root.
+ 2. Intermediate goods in a single-producer -> single-consumer chain need a real buffer or a producer-side
+    floor: the consumer going to exactly 0 input (and its output to exactly 0) is what turns a supply
+    wobble into a famine.
+ 3. A critical consumer (agriculture/grocery) should not have its output gated to exactly 0 by a shortfall
+    of a substitutable or non-critical input like pesticide - proportional degradation would be survivable.
+
+## FIX APPLIED and A/B VERIFIED (2026-09-09): input purchase now has real refill headroom
+Change: src/simulation/constants.ts adds INPUT_BUFFER_REFILL_TICKS = 10; automaticPricing.ts caps the
+per-tick input purchase at
+    smoothedDemand = baseRateConsumption * (1 + inventorySmoothingMaxExtra * (1 - fillRatio))
+                     + totalShortfall / INPUT_BUFFER_REFILL_TICKS
+Previously the first term alone was the whole cap, which at fillRatio = 1 equals exactly 1x consumption
+(zero refill headroom). The added term lets the buffer always recover: a 30-tick buffer refills in
+INPUT_BUFFER_REFILL_TICKS ticks instead of never.
+Updated 4 tests that asserted the old formula (agentBuying x2, supplyChain x1, automaticPricing x1) and
+imported the new constant. tsc --noEmit clean; full suite 1763 passed.
+
+A/B on the same scout config (singleAgent, 8B, resourceMultiplier 100, interestRate 0, 90y, TICK_PROBE=1):
+  metric                            baseline (v2)      refillfix
+  run outcome                       died y73.6         COMPLETED 90y, pop 8.45B and rising
+  groceryBuffer @y65-89             -> 0.000004        stays 0.98-0.99 (no famine)
+  foodPrice range                   9 .. 1347          5 .. 107 (falling)
+  maintenance zero-output ticks     6.5%%               2.8%%
+  maintenance mean efficiency       0.912              0.965
+  maintenance ticks below 0.9       10.5%%              4.6%%
+  AGRICULTURE zero-output ticks     3.25%%             0.31%%   (10x better)
+  agri mean efficiency              0.824              0.829
+Verdict: the real-sector famine mechanism is effectively removed - the lifeline food chain no longer
+strobes to zero, the grocery buffer never drains, and food price stays stable instead of hyperinflating.
+
+NEW issue revealed by the fix (a different channel, not a regression):
+  baseline deposits/gdp  0.9 .. 6.8 ;  refillfix deposits/gdp  13 .. 49
+  baseline debtWriteOffs 1.2e14     ;  refillfix debtWriteOffs 5.3e14
+Buying more inputs requires more working capital -> more bufferCoverage/wageCoverage auto-loans -> MORE
+money creation -> money supply grows much faster relative to real GDP. The fix therefore trades the famine
+collapse for a stronger monetary inflation. Population plateaus ~8.4B instead of growing past 10B,
+consistent with real growth being suppressed by the higher price level.
+Remaining collapse risk is now squarely the credit-money channel (auto-lending creates deposits against
+unrepayable principal; write-offs never destroy them) - now cleanly isolated from real-sector noise.
+
+## 6000y scout with the refill fix, 0.5%% interest (2026-09-09): death moved y73.6 -> y84, mechanism CHANGED
+Run: singleAgent, 8B pop, resourceMultiplier 100, --interestRate=0.005, 6000y, bands off, refill fix active.
+Outcome: grew to 11.79B (y80, condition 0.98), then died y84 (pop 4.3B -> extinct, run aborted early).
+
+COMPARISON
+                                  pre-fix scout0        refillfix (this run)
+  death                           y73.6                 y84
+  peak population                 11.33B                11.79B
+  famine trigger                  input strobe          monetary inflation
+  avgGroceryStarvation pre-death  rising to 1.0         ~0 right up to y80
+  groceryBuffer before death      0.000004              0.65-0.99 (healthy for 80 years)
+The refill fix did its job: for 80 years the grocery buffer never drained and there was effectively no
+starvation. The old real-sector famine mechanism is gone.
+
+NEW/REMAINING MECHANISM = the credit-money channel (now isolated and clearly visible)
+  deposits/gdp      0.22 (y1) -> 2.5 -> 2.8 (y50) -> 5.9 (y60) -> 4.2 (y75) -> 5.1 (y78)
+  debtWriteOffs     2.2e11 -> 2.18e14 accumulated
+  loanInterestCollected  3.3e9/yr (y1) -> 1.42e13/yr (y84)  (4200x)
+  priceLevelRaw     1.6 -> 8.7 (y70) -> 16.0 (y80) -> 223 (y84)
+  foodPrice         3.9 -> 34 (y70) -> 280 (y80) -> 1084 (y84)
+  waterPrice        1.1 -> 15.6 (y70) -> 8.5 (y80) -> 124 (y84)
+Death sequence at y79.9-84: avgHealthcareStarvation climbs 0.02 -> 0.24 -> 0.38 -> 0.48 -> 0.81 -> 0.99,
+then avgGroceryStarvation follows to 1.0; groceryBuffer 0.14 -> 0.005; deaths this month 1.5e7 -> 2.96e8
+vs births 2.07e7 -> 4.5e6. So it is again starvation, but HEALTHCARE-first and driven by a broad price
+detonation (all prices x10-15) rather than by an input stock-out.
+
+Verdict: with the real-sector starve removed, the binding constraint is now the money supply growing far
+faster than real output (deposits/gdp 0.2 -> 5+ and climbing) via the auto-lending + write-off loop. At 0.5%%
+interest this still compounds enough over 80 years to detonate prices. NEXT: address the credit-money channel
+(auto-loan principal that cannot be repaid, and write-offs that never destroy the deposits they created).
+
+## WHY the inflation happened and WHY population could not buy (2026-09-09) - full picture
+Instrument: tools/longrun/groceryPricingDiag.ts replays the refillfix-6000y checkpoint (y50) to y79.5 and
+dumps the grocery offer's per-tick price state. Findings below are measured, not inferred.
+
+### (1) The money went to COMPANIES, not households - the demand side died first
+householdDeposits / bankDeposits over the run:
+    y20 23.0%%   y40 13.5%%   y60 3.1%%   y70 4.0%%   y78 5.5%%   y80 0.21%%
+bankDeposits reaches 3.6e14 while householdDeposits is only 7.5e11 - i.e. 99.8%% of the money supply is in
+COMPANY/agent accounts and effectively none in households. meanWealth and medianWealth oscillate violently
+(1616/238 -> 2178/1031 -> 63/56) because household purchasing power is only the current wage flow, not a
+stock. So the population could not buy not because money did not exist, but because the money created by
+the credit loop accumulated in firm balance sheets while households' real purchasing power was eroded.
+
+### (2) The price does NOT rise on falling sell-through - the COST SPRING overrides the signal
+This was the user's specific question. The sell-through term behaves correctly:
+    sellThroughFactor(smoothedST, target=0.6, maxUp=1.05, maxDown=0.95)
+    sellThrough 0.15 -> baseFactor 0.9625  (price SHOULD fall 3.75%%/tick)
+But automaticPricing.adjustOfferPrice adds a cost spring:
+    deviation = sqrt(max(0, brakeZoneTop/price - 1)),  brakeZoneTop = costFloor * 1.5
+    netFactor = baseFactor + costSpringStrength * SPRING_NORMALIZATION * deviation
+    (costSpringStrength = 0.5, SPRING_NORMALIZATION = 1/7)
+Measured grocery rows (tick 28425): offerPrice 8.4215, costFloor 6.561, deviation 0.4023,
+baseFactor 0.9654, netFactor 0.9942. So the spring adds +0.0287, cancelling ~76%% of the -0.0375 discount.
+Detailed table of the net effect at typical price/floor ratios (sell-through fixed at 0.15):
+    price/costFloor  deviation  spring   base     net      result
+    1.100            0.6030    +0.0431  0.9625   1.0056   price RISES despite sell-through 0.15
+    1.200            0.5000    +0.0357  0.9625   0.9982   falls 0.18%%/tick (20x too slow)
+    1.284            0.4102    +0.0293  0.9625   0.9918   falls ~1%%/tick
+    1.500            0.0000     0.0000  0.9625   0.9625   normal
+    2.000            0.0000     0.0000  0.9625   0.9625   normal
+The grocery price sat at price/costFloor ~1.22-1.28 - exactly inside the brake zone - so it was pinned
+just above cost while sell-through fell to 0.14-0.16. The offer inventory therefore ballooned
+(5.4e8 -> 2.4e9) and never cleared, oscillating in a ~1-year limit cycle (glut: netFactor ~1.0 frozen,
+squeeze: sell-through 0.9, netFactor 1.02). Net effect: the market cannot clear by price.
+So the answer to "shouldn't price stop rising when sell-through drops?" is: the sell-through rule does the
+right thing, but the cost-floor spring is strong enough in the brake zone (below ~1.5x cost floor) to
+cancel or reverse it. Below ~1.11x cost floor the spring wins outright and the price rises on collapsing
+demand.
+
+### (3) Combined causal chain of the y84 extinction
+  credit-money loop (auto-loans create deposits; write-offs never destroy them)
+    -> bankDeposits grows to 3.6e14, deposits/gdp 0.2 -> 5+, loanInterest 3.3e9/yr -> 1.42e13/yr
+    -> new money lands in COMPANY deposits (hh share 23%% -> 0.2%%)
+    -> households have only wage flow; prices pinned by the cost spring cannot clear the goods
+    -> grocery sell-through collapses, inventory balloons, groceryBuffer drains (0.99 -> 0.005)
+    -> avgHealthcareStarvation 0.02 -> 0.99, then avgGroceryStarvation -> 1.0
+    -> deaths 1.5e7 -> 2.96e8/month vs births 2.07e7 -> 4.5e6 -> extinction y84.
+Two independent defects compound here: (a) the credit-money leak puts the money in the wrong hands, and
+(b) the cost spring prevents the price from clearing the market when demand falls.
+
+### (4) WAGES do not track PRICES - the affordability ratio collapses
+Measured wage/costOfLiving (how many wage-units one cost-of-living unit costs):
+    y1 2.40 | y10 7.44 | y30 3.31 | y50 1.69 | y70 2.30 | y75 1.24 | y79 0.87 | y80 0.33
+priceLevelServices ran 10 -> 354 while wagePrimary ran 1.27 -> 5.79 (4.5x vs 35x).
+Cause (automaticWageAdjustment, automaticWorkerAllocation.ts):
+    affordable   = lastMonth.revenue - purchases - claimPayments
+    rawCeiling   = affordable / totalWorkersTicks
+    _smoothedWageCeiling = 0.1 * rawCeiling + 0.9 * prev     (WAGE_CEILING_SMOOTHING = 0.1)
+    targetWage   = WAGE_SHARE * ceiling = 0.6 * ceiling      (WAGE_SHARE = 0.6)
+So wages are anchored to the firm's SMOOTHED residual cash flow (a ~10-month time constant) and to only 60%%
+of it. They are not indexed to the price level at all, so when the credit-money loop inflates prices the wage
+side lags and real household income collapses. (MAX_WAGE = 1000 was never binding; max observed wage 32.7.)
+
+### SUMMARY of the y84 collapse - two defects compounding
+1. CREDIT-MONEY LEAK (money created, wrongly allocated): auto-loans credit deposits; write-offs destroy the
+   loan but never the deposits. bankDeposits -> 3.6e14, deposits/gdp 0.2 -> 5+, interest 3.3e9 -> 1.42e13/yr.
+   The new money lands in COMPANY deposits: householdDeposits/bankDeposits falls 23%% -> 0.2%%.
+2. PRICE CANNOT CLEAR + WAGES DO NOT FOLLOW: with demand falling, the grocery sell-through rule correctly
+   cuts the price (0.9625/tick at sell-through 0.15) but the cost-floor spring adds back up to +0.043/tick
+   in the brake zone (below 1.5x cost floor), so netFactor is ~0.998 at price/floor ~1.2 and >1 below
+   ~1.11 - i.e. the price is pinned just above cost and the glut (2.4e9 units) never clears. Meanwhile
+   wages are anchored to smoothed firm cash flow (60%%, 90%%-smoothed), so they fall behind the price level
+   and wage/costOfLiving drops to 0.33.
+Result: households cannot buy (no money share, and wages below cost of living), the market cannot clear by
+price, grocery inventory balloons and the groceryBuffer drains -> healthcare then grocery starvation ->
+deaths 2.96e8/month vs births 4.5e6 -> extinction y84.
+The refill fix is NOT implicated: it removed the earlier input-strobe famine (survived to y84 instead of
+y73.6, grocery buffer healthy for 80 years) and thereby exposed these two independent monetary/price defects.
+
+### (5) The wage "recovery" is not slow - the wage rule is actively driving wages the WRONG WAY
+Instrument: a per-year dump of the wage-adjustment internals (ceiling/target/avgWage/pull/penalty/pressure)
+replayed from the refillfix-6000y checkpoint to y80. Result: `pressure` is NEGATIVE in the large majority of
+years, so the rule is pushing wages DOWN while prices are rising.
+Measured rows (per-year averages over all automated agents):
+  year  ceiling   target   avgWage   pull     penalty   pressure   stepRaw   maxStep
+  51    2.53      2.43     2.34     -1.262    0.612    -1.744     -0.818    0.0117
+  64   -2.68      5.44     2.76     -1.540    0.762    -2.086     -1.153    0.0138
+  70    1.25      4.79     4.47     -3.794    1.909    -5.691     -5.087    0.0223
+  72   -2.72      4.31     4.23     -1.870    0.930    -2.596     -2.196    0.0211
+  80   -0.45      2.11     2.28     -0.225    0.091    -0.289     -0.132    0.0114
+
+Mechanism (automaticWorkerAllocation.automaticWageAdjustment):
+    rawCeiling = (revenue - purchases - claimPayments) / totalWorkersTicks
+    ceiling    = 0.1 * rawCeiling + 0.9 * prev        # smoothed, ~10-month lag
+    targetWage = WAGE_SHARE * ceiling = 0.6 * ceiling
+    bargainingPull = WAGE_BARGAINING_GAIN * (targetWage - avgWage) / ceiling
+    springPenalty  = SPRING_K * max(0, (avgWage - ceiling) / ceiling)
+    pressure       = shortage^2 + bargainingPull - springPenalty
+    step           = clamp(WAGE_FEEDBACK_GAIN * current * pressure, +/- WAGE_ADJUSTMENT_RATE * current)
+THE CONTROL IS INVERTED / NON-MONOTONIC IN A WIDE BAND. Two separate defects:
+ a) `ceiling` can be NEGATIVE (firms with negative residual cash in the month: observed -9.91, -2.72, -2.68,
+    -0.90, -0.45). Dividing by a negative ceiling flips the sign of bargainingPull, and the springPenalty
+    then also misbehaves. The wage rule is undefined/unstable whenever affordable <= 0.
+ b) Even for positive ceiling, the target is 0.6*ceiling, so bargainingPull is only positive when
+    0.6*ceiling > avgWage, i.e. ceiling > avgWage/0.6 ~ 3.8. The economy sat at ceiling 0.5-3.4 for most of
+    the run, i.e. BELOW that threshold, so the rule commanded wage CUTS while prices rose.
+Demonstration of the non-monotonicity (avgWage fixed at 2.28, as observed at y80):
+    ceiling -9.91 -> pressure +0.129 (raise)      ceiling +0.50 -> pressure -5.740 (LOWER strongly)
+    ceiling -0.45 -> pressure +2.844 (raise)      ceiling +1.25 -> pressure -1.636 (lower)
+    ceiling +9.38 -> pressure +0.357 (raise)      ceiling +2.53 -> pressure -0.301 (lower)
+So the direction of the wage signal flips as the ceiling crosses zero and again around ~3.8, which is exactly
+where the economy operates. This is a structural defect of the rule, not a missing time constant, and it is
+NOT fixed by making the adjustment faster (the maxStep is not even binding).
+
+ANSWER TO THE QUESTION: the wage recovery is not merely too slow. The rule
+  (i) is not anchored to the price level at all,
+  (ii) uses a target of only 60%% of the smoothed affordable ceiling, so it targets a wage far below what
+       firms can actually pay (observed avgWage ~0.25 of ceiling), and
+  (iii) INVERTS / breaks whenever the ceiling is negative or below avgWage/0.6, which was the normal
+       regime - so for most of the run it pushed wages DOWN.
+The maxStep (WAGE_ADJUSTMENT_RATE) was never the binding constraint (maxStep ~0.01-0.03 vs stepRaw often
+larger in magnitude and negative).

@@ -8,6 +8,7 @@ import { computePidDelta, getDefaultPidState } from './pidController';
 import {
     SERVICE_FLOW_DECAY_TARGET,
     SERVICE_FLOW_EMA_ALPHA,
+    SERVICE_FLOW_UNFILLED_SATURATION,
     isFlowControlledServiceFacility,
     serviceFlowError,
     updateServiceFlowSignal,
@@ -85,25 +86,31 @@ describe('isFlowControlledServiceFacility', () => {
     });
 });
 
-describe('serviceFlowError (decay-target controller)', () => {
+describe('serviceFlowError (net-demand controller)', () => {
     const T = SERVICE_FLOW_DECAY_TARGET;
 
     it('is neutral when nothing of what we produce decays away and demand is served', () => {
         expect(serviceFlowError(0, 0, T)).toBe(0);
     });
 
-    it('is neutral when decay equals the tolerated target and demand is served', () => {
-        expect(serviceFlowError(T, 0, T)).toBe(0);
+    it('is neutral when unfilled demand exactly covers the decay share (steady state)', () => {
+        // produced == consumed + decayed  =>  unfilledNorm == decayShare
+        expect(serviceFlowError(0.2, 0.2 * SERVICE_FLOW_UNFILLED_SATURATION, T)).toBeCloseTo(0, 5);
     });
 
-    it('expands into unfilled demand while decay stays at or under target', () => {
-        expect(serviceFlowError(0.1, 0.3, T)).toBe(1);
-        expect(serviceFlowError(0.05, 0.1, T)).toBeCloseTo(0.4, 5);
+    it('contracts when output decays but demand is fully served (replacement, not new demand)', () => {
+        expect(serviceFlowError(0.3, 0, T)).toBeCloseTo(-0.3, 5);
+    });
+
+    it('expands into unfilled demand beyond the decay share', () => {
+        expect(serviceFlowError(0.1, 0.3, T)).toBeCloseTo(0.9, 5);
+        expect(serviceFlowError(0.05, 0.1, T)).toBeCloseTo(0.35, 5);
     });
 
     it('contracts when decay exceeds the tolerated share even if demand is unfilled', () => {
         const over = 0.6;
-        const expected = -(over - T) / (1 - T);
+        const net = 1 - over;
+        const expected = Math.min(0, net - (over - T) / (1 - T));
         expect(serviceFlowError(over, 0.3, T)).toBeCloseTo(expected, 5);
     });
 
@@ -112,8 +119,8 @@ describe('serviceFlowError (decay-target controller)', () => {
     });
 
     it('honors an override decay target', () => {
-        expect(serviceFlowError(0.4, 0, 0.6)).toBe(0);
-        expect(serviceFlowError(0.8, 0, 0.6)).toBeCloseTo(-(0.8 - 0.6) / 0.4, 5);
+        expect(serviceFlowError(0.4, 0, 0.6)).toBeCloseTo(-0.4, 5);
+        expect(serviceFlowError(0.8, 0, 0.6)).toBe(-1);
     });
 });
 
@@ -131,7 +138,7 @@ describe('updateServiceFlowSignal', () => {
         expect(signal?.decayedEMA).toBeCloseTo(5, 5);
         expect(signal?.decayShare).toBeCloseTo(0.05, 5);
         expect(signal?.unfilledEMA).toBeCloseTo(0.3, 5);
-        expect(signal?.error).toBe(1);
+        expect(signal?.error).toBeCloseTo(0.95, 5);
         expect(state.flowProducedEMA).toBeCloseTo(100, 5);
         expect(state.flowDecayedEMA).toBeCloseTo(5, 5);
     });
@@ -194,14 +201,15 @@ describe('flow-driven service scale responds to decay share', () => {
         expect(facility.scale).toBeCloseTo(facility.maxScale);
     });
 
-    it('holds the operating scale when decay is within the target and demand is served', () => {
+    it('holds the operating scale when unfilled demand covers the decay share (steady state)', () => {
         const facility = makeMaintenanceFacility();
         const assets = makeAgentPlanetAssets('p');
         const planet = makePlanet();
-        setMarketResult(planet, maintenanceServiceResourceType.name, 0);
+        // decayShare 0.2, unfilled fraction = 0.2 * saturation -> net demand ~ 0
+        setMarketResult(planet, maintenanceServiceResourceType.name, 0.2 * 0.25);
         const state = getDefaultPidState();
         for (let tick = 0; tick < 5_000; tick++) {
-            setFlowRaw(facility, assets, 100, 30, maintenanceServiceResourceType.name);
+            setFlowRaw(facility, assets, 100, 20, maintenanceServiceResourceType.name);
             const signal = updateServiceFlowSignal(facility, assets, planet, state);
             const delta = computePidDelta(signal!.error, state) * facility.maxScale;
             facility.scale = Math.max(
@@ -211,6 +219,26 @@ describe('flow-driven service scale responds to decay share', () => {
         }
         expect(facility.scale).toBeGreaterThan(90);
     });
+
+    it('contracts the operating scale when output decays while demand is fully served', () => {
+        const facility = makeMaintenanceFacility();
+        const assets = makeAgentPlanetAssets('p');
+        const planet = makePlanet();
+        setMarketResult(planet, maintenanceServiceResourceType.name, 0);
+        const state = getDefaultPidState();
+        for (let tick = 0; tick < 5_000; tick++) {
+            // 30% of output rots, nothing unfilled -> producing just to cover decay, no real demand
+            setFlowRaw(facility, assets, 100, 30, maintenanceServiceResourceType.name);
+            const signal = updateServiceFlowSignal(facility, assets, planet, state);
+            const delta = computePidDelta(signal!.error, state) * facility.maxScale;
+            facility.scale = Math.max(
+                facility.maxScale * MIN_SCALE_FRACTION,
+                Math.min(facility.maxScale, facility.scale + delta),
+            );
+        }
+        expect(facility.scale).toBeLessThan(90);
+    });
+
 
     it('exposes the flow state on the pid state for hysteresis', () => {
         const facility = makeMaintenanceFacility();

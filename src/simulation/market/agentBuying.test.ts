@@ -4,6 +4,7 @@ import {
     BID_OFFER_MAX_COST_MULTIPLIER,
     DEFAULT_COST_SPRING_STRENGTH,
     INPUT_BUFFER_TARGET_TICKS,
+    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_CEIL,
     SPRING_NORMALIZATION,
@@ -112,10 +113,27 @@ describe('automaticPricing — buy side', () => {
         const bid = buyer.assets.p.market!.buy[COAL]!;
 
         expect(bid.bidStorageTarget).toBeGreaterThan(0);
-        // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
+        // With empty storage: baseRate * (1 + smoothingMaxExtra) plus the refill term shortfall / refillTicks
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
-        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        const smoothedTarget =
+            baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
         expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
+    });
+
+    it('bids above the consumption rate even near a full buffer so the buffer can recover', () => {
+        const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
+        const consumptionPerTick = coalNeed.quantity * facility.scale;
+        const storageTarget = consumptionPerTick * INPUT_BUFFER_TARGET_TICKS;
+
+        putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, storageTarget * 0.95);
+
+        planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
+        automaticPricing(agentMap(buyer), planet);
+
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        expect(bid.bidStorageTarget).toBeGreaterThan(consumptionPerTick);
     });
 
     it('keeps bidStorageTarget proportional when storage has some inventory', () => {
@@ -425,7 +443,8 @@ describe('automaticPricing — buy side', () => {
         const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
         const rawTarget = coalNeed.quantity * facility.scale * 60; // using custom 60 ticks
         const baseRate = rawTarget / 60;
-        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        const smoothedTarget =
+            baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
         planet.lastProductionCostFloors[COAL] = planet.marketPrices[COAL];
         automaticPricing(agentMap(buyer), planet);
         expect(bid.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);

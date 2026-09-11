@@ -23,6 +23,7 @@ import { METRIC_KEYS, sampleMetrics, type MetricMap } from './metrics';
 import { formatDuration, printYearly, yearlySeries } from './report';
 import { mineWorkerProbe } from './mineWorkerProbe';
 import { groceryFlowProbe, startGroceryProbe } from './groceryFlowProbe';
+import { startTickProbe, tickProbe, tickProbeEnabled } from './tickProbe';
 import { getScenario, SCENARIOS, type MetricBand, type Scenario } from './scenarios';
 import {
     buildScaleComparison,
@@ -285,6 +286,10 @@ async function runScenario(
         startGroceryProbe(outDir);
         console.log(`[${scenario.name}] groceryFlowProbe active: drips per tick every tick into ${path.join(outDir, 'groceryFlow.csv')}`);
     }
+    if (tickProbeEnabled()) {
+        startTickProbe(outDir);
+        console.log(`[${scenario.name}] tickProbe active: per-tick scale/signal capture into ${path.join(outDir, 'tickProbe.csv')}`);
+    }
 
     let lastCompletedTick = startTick;
     let abortReason = '';
@@ -307,6 +312,9 @@ async function runScenario(
         lastCompletedTick = t;
         if (process.env.GROCERY_PROBE === '1') {
             groceryFlowProbe(gameState, outDir);
+        }
+        if (tickProbeEnabled()) {
+            tickProbe(gameState, outDir);
         }
         if (t % 30 === 0) {
             await new Promise<void>((resolve) => setImmediate(resolve));
