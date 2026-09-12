@@ -175,6 +175,10 @@ export function prefillAgentStorageFromFacilities(gameState: { agents: Map<strin
 // Seed-time equivalent of the runtime reconcile step: give each physical shell the scale the
 // compartment allocator reports as required for the agent's produced footprint, so a fresh world does
 // not start under-capacity and has to fight for construction budget before the market matures.
+// The allocator runs a second time because it derives shares from the shell's current scale: the first
+// pass reports the required scale while the shell is still undersized and may fall back to equal shares
+// that do not match the footprint, so re-allocating after the resize leaves the prefill with the final
+// compartment split instead of a stale one.
 export function presizeAgentShellForFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
         for (const [, rawAssets] of Object.entries(agent.assets)) {
@@ -190,6 +194,7 @@ export function presizeAgentShellForFacilities(gameState: { agents: Map<string, 
                 shell.scale = target;
                 shell.maxScale = target;
             }
+            updateAgentShellCompartments(assets);
         }
     }
 }

@@ -176,10 +176,11 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
             // letting cohorts accumulate spendable cash that prices suddenly.
             const dailyInsurance = rate * base;
             const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
-            if (category.wealth.mean >= wealthCap) {
+            const payment = Math.min(dailyInsurance, wealthCap - category.wealth.mean);
+            if (payment <= 0) {
                 return;
             }
-            total += distributeWealthChangeTracked(planet.population.demography, age, occ, edu, dailyInsurance);
+            total += distributeWealthChangeTracked(planet.population.demography, age, occ, edu, payment);
         });
     }
     if (total <= 0) {

@@ -291,6 +291,23 @@ describe('governmentSupportTick', () => {
         expect(spent).toBe(0);
         expect(gov.assets[PLANET_ID]!.deposits).toBe(10_000_000);
     });
+
+    it('tops a nearly-capped cohort up to the wealth cap instead of overshooting it', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeUnemployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
+        const wealthCap = 5 * dailyInsurance;
+        const cat = planet.population.demography[70].unoccupied.none;
+        cat.wealth = { mean: wealthCap - dailyInsurance / 4, variance: 0 };
+
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeCloseTo((dailyInsurance / 4) * cat.total);
+        expect(cat.wealth.mean).toBeCloseTo(wealthCap);
+    });
 });
 
 describe('collectPopulationWealthTax', () => {
