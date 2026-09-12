@@ -239,7 +239,6 @@ describe('flow-driven service scale responds to decay share', () => {
         expect(facility.scale).toBeLessThan(90);
     });
 
-
     it('exposes the flow state on the pid state for hysteresis', () => {
         const facility = makeMaintenanceFacility();
         const assets = makeAgentPlanetAssets('p');

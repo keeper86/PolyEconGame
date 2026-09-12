@@ -682,7 +682,9 @@ export function handleCancelConstruction(
         // Storage shells are permanent facilities and are never created via 'new' construction, only
         // expanded, so cancellation always clears the expansion rather than removing the shell.
         storageShell.construction = null;
-        console.log(`[worker] Agent '${agentId}' cancelled expansion of storage shell '${facilityId}' on planet '${planetId}'`);
+        console.log(
+            `[worker] Agent '${agentId}' cancelled expansion of storage shell '${facilityId}' on planet '${planetId}'`,
+        );
         safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId, processedAtTick: state.tick });
         return;
     }

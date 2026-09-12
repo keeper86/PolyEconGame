@@ -15,7 +15,21 @@ export {
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
+export {
+    applySoftScaleFloor,
+    computeFacilityStorageSignal,
+    softClip,
+} from './automaticProductionScale/signalComputation';
+export {
+    assertStabilityConditions,
+    checkCapacityCoversTarget,
+    checkLimitCycleBand,
+    checkSymmetricRateLimit,
+    correctionTimeTicks,
+    evaluateStabilityConditions,
+    limitCycleRatio,
+    storageLeadTimeTicks,
+} from './automaticProductionScale/stabilityConditions';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -36,6 +50,7 @@ import {
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    SOFT_MIN_SCALE_RANGE,
     STORAGE_CONTRACTION_RATE,
     STORAGE_EXPANSION_RATE,
     STORAGE_STARVATION_EXPANSION_MAX,
@@ -43,6 +58,8 @@ import {
 import {
     getContractionIntegralThreshold,
     getExpansionIntegralThreshold,
+    getMinScaleFraction,
+    getSoftMinScaleRange,
 } from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -58,7 +75,7 @@ import {
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
-import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
+import { applySoftScaleFloor, computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
@@ -381,9 +398,11 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
-            const newScale = Math.max(
-                facility.maxScale * MIN_SCALE_FRACTION,
+            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
+            const newScale = applySoftScaleFloor(
                 Math.min(facility.maxScale, facility.scale + delta),
+                minScale,
+                facility.maxScale * (getSoftMinScaleRange() ?? SOFT_MIN_SCALE_RANGE),
             );
             facility.scale = newScale;
 
@@ -391,7 +410,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
             const atMaxScale = facility.scale >= facility.maxScale * 0.999;
-            const atMinScale = facility.scale <= MIN_SCALE_FRACTION * facility.maxScale * 1.001;
+            const atMinScale = facility.scale <= minScale;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
                 state.expansionIntegral = Math.min(

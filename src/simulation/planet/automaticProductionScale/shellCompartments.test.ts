@@ -7,6 +7,7 @@ import {
 } from '../../utils/testHelper';
 import type { Resource } from '../claims';
 import type { Storage } from '../facility';
+import { STORAGE_CAPACITY_MONTHS } from './constants';
 import { STORAGE_SHELL_CAPACITY, getStorageCapacityState } from '../facility';
 import type { TransportShipType } from '../../ships/ships';
 import {
@@ -203,8 +204,9 @@ describe('updateAgentShellCompartments sizing', () => {
             byName[residency.name] = residency.targetQuantity;
         }
         expect(Object.keys(byName).sort()).toEqual(['metal', 'ore']);
-        expect(byName.ore).toBeCloseTo(120 * 60 * scale); // 4 months (120 ticks) of steel-ingot need flow
-        expect(byName.metal).toBeCloseTo(120 * 20 * scale); // 4 months of output flow
+        const residencyTicks = STORAGE_CAPACITY_MONTHS * 30;
+        expect(byName.ore).toBeCloseTo(residencyTicks * 60 * scale);
+        expect(byName.metal).toBeCloseTo(residencyTicks * 20 * scale);
     });
 
     it('reserves ship-building materials even though a ship itself has no stored footprint', () => {
@@ -226,8 +228,7 @@ describe('updateAgentShellCompartments sizing', () => {
         const solid = footprint.solid ?? [];
         const steelResidency = solid.find((r) => r.name === 'steel');
         expect(steelResidency).toBeDefined();
-        // 4 months (120 ticks) of the per-tick shipbuilding draw of steel (1200 units over 120 ticks).
-        expect(steelResidency!.targetQuantity).toBeCloseTo(120 * 10);
+        expect(steelResidency!.targetQuantity).toBeCloseTo(STORAGE_CAPACITY_MONTHS * 30 * 10);
     });
 });
 

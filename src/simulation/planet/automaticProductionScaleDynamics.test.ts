@@ -17,11 +17,16 @@ import {
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_IMAX,
+    PID_OUT_MAX_DOWN,
+    PID_OUT_MAX_UP,
+    STORAGE_CAPACITY_MONTHS,
     STORAGE_TARGET_MONTHS,
+    applySoftScaleFloor,
     computeDynamicExpansionTarget,
     computeFacilityStorageSignal,
     computePidDelta,
     getDefaultPidState,
+    softClip,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import type { ProductionFacility } from './facility';
@@ -218,10 +223,10 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
     it('is positive when the storage is below the 3-month target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(0.5, 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBe(-1);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
     });
 
     it('is zero when the storage is exactly at the 3-month target', () => {
@@ -241,7 +246,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(0.75, 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -284,6 +289,134 @@ describe('PID utilization response', () => {
         expect(state.integral).toBeGreaterThanOrEqual(-PID_IMAX);
         expect(state.integral).toBeLessThanOrEqual(PID_IMAX);
     });
+    describe('soft clip removes the describing-function gain collapse', () => {
+        it('attenuates a saturated error instead of pinning it at the clamp', () => {
+            expect(softClip(0.5)).toBeCloseTo(Math.tanh(0.5), 10);
+            expect(softClip(1)).toBeLessThan(0.77);
+            expect(softClip(1)).toBeGreaterThan(0.76);
+            expect(softClip(-1)).toBeGreaterThan(-0.77);
+            expect(softClip(-1)).toBeLessThan(-0.76);
+            expect(softClip(Number.POSITIVE_INFINITY)).toBe(1);
+            expect(softClip(Number.NEGATIVE_INFINITY)).toBe(-1);
+        });
+
+        it('keeps the small-signal gain at unity so the loop stays in the linear region', () => {
+            for (const value of [0.01, 0.05, 0.1, 0.2]) {
+                expect(softClip(value) / value).toBeGreaterThan(0.98);
+            }
+        });
+
+        it('converges to a constant scale under a constant saturating error instead of limit cycling', () => {
+            const { facility, assets } = makeStorageSignalFixture(0);
+            const state = getDefaultPidState();
+            const error = computeFacilityStorageSignal(facility, assets).maxError;
+            expect(error).toBeCloseTo(Math.tanh(1), 5);
+
+            const afterSettling = facility.scale;
+            for (let tick = 0; tick < 2_000; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+            }
+            expect(facility.scale).toBeCloseTo(afterSettling, 9);
+        });
+
+        it('drives scale monotonically once the proportional term alone can hold it', () => {
+            const { facility, assets } = makeStorageSignalFixture(0);
+            const state = getDefaultPidState();
+            const trajectory: number[] = [];
+            for (let tick = 0; tick < 30; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+                trajectory.push(facility.scale);
+            }
+            const diffs = trajectory.slice(1).map((value, index) => value - trajectory[index]);
+            expect(diffs.every((diff) => diff >= 0)).toBe(true);
+            expect(diffs.every((diff) => diff <= PID_OUT_MAX_UP * facility.maxScale + 1e-9)).toBe(true);
+        });
+
+        it('never overshoots the rate limit in either direction', () => {
+            expect(PID_OUT_MAX_UP).toBe(PID_OUT_MAX_DOWN);
+            const { facility, assets } = makeStorageSignalFixture(3 * 30 * 100 * 0.5);
+            const state = getDefaultPidState();
+            let previous = facility.scale;
+            for (let tick = 0; tick < 500; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+                expect(Math.abs(facility.scale - previous)).toBeLessThanOrEqual(
+                    PID_OUT_MAX_UP * facility.maxScale + 1e-9,
+                );
+                previous = facility.scale;
+            }
+        });
+    });
+});
+
+describe('soft scale floor keeps the contracting direction responsive', () => {
+    const floor = 0.1;
+    const range = 0.05;
+
+    it('leaves scale untouched at or above the floor', () => {
+        expect(applySoftScaleFloor(0.5, floor, range)).toBe(0.5);
+        expect(applySoftScaleFloor(floor, floor, range)).toBe(floor);
+    });
+
+    it('keeps a stronger negative command producing a lower scale instead of discarding it', () => {
+        const mild = applySoftScaleFloor(floor - 0.01, floor, range);
+        const strong = applySoftScaleFloor(floor - 0.2, floor, range);
+        const extreme = applySoftScaleFloor(floor - 5, floor, range);
+        expect(strong).toBeLessThan(mild);
+        expect(extreme).toBeLessThan(strong);
+    });
+
+    it('stays above zero so scale remains representable', () => {
+        for (const command of [0.1, 1, 10, 1000]) {
+            const result = applySoftScaleFloor(floor - command, floor, range);
+            expect(result).toBeGreaterThan(0);
+            expect(result).toBeLessThan(floor);
+        }
+    });
+
+    it('is continuous at the floor boundary', () => {
+        const justAbove = applySoftScaleFloor(floor + 1e-9, floor, range);
+        const justBelow = applySoftScaleFloor(floor - 1e-9, floor, range);
+        expect(Math.abs(justAbove - justBelow)).toBeLessThan(1e-8);
+    });
+
+    it('bounds the distance scale can travel below the floor by the range', () => {
+        const deepest = applySoftScaleFloor(Number.NEGATIVE_INFINITY, floor, range);
+        expect(deepest).toBeCloseTo(floor - range, 9);
+    });
+
+    it('drives scale down monotonically under a sustained negative command without a rebound', () => {
+        const minScale = 0.1;
+        const softRange = 0.05;
+        let scale = 1;
+        const trajectory: number[] = [];
+        for (let tick = 0; tick < 400; tick++) {
+            const commanded = scale - 0.005;
+            scale = applySoftScaleFloor(Math.min(1, commanded), minScale, softRange);
+            trajectory.push(scale);
+        }
+        const diffs = trajectory.slice(1).map((value, index) => value - trajectory[index]);
+        expect(diffs.every((diff) => diff <= 1e-12)).toBe(true);
+        expect(trajectory[trajectory.length - 1]).toBeLessThan(minScale);
+        expect(trajectory[trajectory.length - 1]).toBeGreaterThan(0);
+    });
+});
+
+describe('storage lead time keeps the loop out of the limit-cycle band', () => {
+    it('holds Tw >= 0.5 * Tp as required by Spiegler & Naim Eq. 22', () => {
+        const tp = STORAGE_TARGET_MONTHS * 30;
+        const tw = 1 / PID_OUT_MAX_UP;
+        expect(tw).toBeGreaterThanOrEqual(0.5 * tp);
+    });
+
+    it('keeps the target above the capacity horizon so shells can hold the buffer', () => {
+        expect(STORAGE_TARGET_MONTHS).toBeLessThanOrEqual(STORAGE_CAPACITY_MONTHS);
+    });
 });
 
 describe('capacity expansion arming', () => {
@@ -325,7 +458,7 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
         const assets = makeAgentPlanetAssets(planet.id, {
             productionFacilities: [facility],
         });
-        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, 9000);
+        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, STORAGE_TARGET_MONTHS * 30 * 100);
 
         const target = computeDynamicExpansionTarget(facility, assets, planet, true, Infinity);
 

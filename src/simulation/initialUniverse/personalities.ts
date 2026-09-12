@@ -105,7 +105,7 @@ export function generateAgentPersonality(costSpringStrength = 0.5): AgentPersona
     const priceAdjustmentAggressivenessUp = Math.max(1.005, 1.025 + rndParameter);
     const priceAdjustmentAggressivenessDown = Math.min(0.995, 0.975 - rndParameter);
     const sellPriceAgressiveness = Math.max(1.0, 1.5);
-    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE-1;
+    const buyPriceAgressiveness = BID_ANCHOR_MULTIPLE - 1;
 
     return {
         buyAutoConfig: {

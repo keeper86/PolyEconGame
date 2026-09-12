@@ -23,7 +23,11 @@ import {
     findMaxScaleForLandboundResources,
     updateAgentProductionScale,
 } from './automaticProductionScale';
-import { DYNAMIC_EXPANSION_CAP_FRACTION, STORAGE_TARGET_MONTHS } from './automaticProductionScale/constants';
+import {
+    DYNAMIC_EXPANSION_CAP_FRACTION,
+    MIN_SCALE_FRACTION,
+    STORAGE_TARGET_MONTHS,
+} from './automaticProductionScale/constants';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { shellFormOfResource } from './facility';
@@ -108,6 +112,10 @@ function makeSetup(
     });
 
     return { agents: new Map([[agent.id, agent]]), facility };
+}
+
+function oversupplyQuantity(maxScale: number): number {
+    return STORAGE_TARGET_MONTHS * 30 * maxScale * 100 * 2;
 }
 
 function makeOversupplySetup(
@@ -204,7 +212,7 @@ describe('updateAgentProductionScale', () => {
     it('scales down when oversupplied', () => {
         const planet = makePlanetWithAvg(makeMarketResult({}));
         const { agents, facility } = makeOversupplySetup(planet);
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -215,7 +223,7 @@ describe('updateAgentProductionScale', () => {
     it('contracts when strongly oversupplied even when profitable', () => {
         const planet = makePlanetWithAvg(makeMarketResult({}));
         const { agents, facility } = makeOversupplySetup(planet, undefined, { sold: 0 });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         facility.lastTickResults.revenue = 1000;
         const initial = facility.scale;
 
@@ -227,7 +235,7 @@ describe('updateAgentProductionScale', () => {
     it('contracts when the storage sits far above the 3-month target', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 20, totalDemand: 100 }));
         const { agents, facility } = makeOversupplySetup(planet, undefined, { produced: 100, sold: 20 });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -298,13 +306,15 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).not.toBeNull();
     });
 
-    it('clamps scale to the minimum floor when already at very low scale and oversupplied', () => {
+    it('approaches the minimum floor smoothly instead of clamping onto it from below', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
+        const floor = facility.maxScale * MIN_SCALE_FRACTION;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBe(facility.maxScale * 0.1);
+        expect(facility.scale).toBeLessThan(floor);
+        expect(facility.scale).toBeGreaterThan(0);
     });
 
     it('clamps scale to maxScale when over-demanded', () => {
@@ -714,7 +724,7 @@ describe('updateAgentProductionScale', () => {
                 lastTickInvestedConstructionServices: 0,
             },
         });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         facility.lastTickResults.wageCosts = 100;
         const initial = facility.scale;
 
@@ -790,7 +800,7 @@ describe('updateAgentProductionScale', () => {
                 smoothedSignal: 0,
             },
         });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         facility.lastTickResults.wageCosts = 1000;
         const before = facility.pidState!.contractionIntegral;
 
@@ -813,7 +823,7 @@ describe('updateAgentProductionScale', () => {
                 smoothedSignal: 0,
             },
         });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         facility.lastTickResults.wageCosts = 1000;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -841,7 +851,7 @@ describe('updateAgentProductionScale', () => {
     it('scales down when the storage sits above the 3-month target', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
-        setStorageQuantity(agents, 18000);
+        setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
         const initial = facility.scale;
 
         updateAgentProductionScale(makeGameState(agents), planet);
@@ -1026,12 +1036,12 @@ describe('updateAgentProductionScale', () => {
         };
 
         const N = 20;
+        const singleStepScale = facility.maxScale * 0.1 + PID_KP * Math.tanh(0.2) * facility.maxScale;
         for (let i = 0; i < N; i++) {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        const minExpected = facility.maxScale * 0.1 + (N - 1) * PID_KP * 0.2 * facility.maxScale;
-        expect(facility.scale).toBeGreaterThan(minExpected);
+        expect(facility.scale).toBeGreaterThan(singleStepScale);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1228,8 +1238,8 @@ describe('updateAgentProductionScale', () => {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        // Scale should not have crashed to 10% — the slow-down rate (PID_OUT_MAX_DOWN = 0.02) prevents
-        // the full 0.1 per-tick drop from oversupply ticks from overwhelming the 0.1 per-tick build-up
+        // Scale should not have crashed to 10% — the slow-down rate (PID_OUT_MAX_DOWN) prevents
+        // the per-tick drop from oversupply ticks from overwhelming the per-tick build-up
         expect(facility.scale).toBeGreaterThan(0.3);
     });
 
@@ -1240,7 +1250,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.pidState!.smoothedSignal).toBe(1);
+        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(1), 5);
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {

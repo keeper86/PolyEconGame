@@ -749,3 +749,404 @@ ANSWER TO THE QUESTION: the wage recovery is not merely too slow. The rule
        regime - so for most of the run it pushed wages DOWN.
 The maxStep (WAGE_ADJUSTMENT_RATE) was never the binding constraint (maxStep ~0.01-0.03 vs stepRaw often
 larger in magnitude and negative).
+
+## Which node drives it? NOT the chemical/pesticide/agri starvation (measured, 2026-09-09)
+Hypothesis tested: agri oscillates because chemical (refinery, multi-output) -> pesticide -> agri starves it.
+Instrument: tmp_chainprobe.ts replays refillfix-6000y from its y50 checkpoint through y80.2 at 6-tick
+resolution for Oil Refinery / Pesticide Plant / Agricultural Facility / Food Processor, capturing per-input
+efficiencies, worst worker efficiency, overallEfficiency, PID signal, sell-through, price and cost floor.
+
+RESULT - the starvation hypothesis is FALSE for this run:
+  facility                 n     inputZero      workerZero   outputZero
+  Oil Refinery            373    0.0%%           0.0%%         0.0%%
+  Agricultural Facility   373    0.0%%           0.0%%         0.0%%
+  Pesticide Plant         373    1.6%%           0.0%%         1.6%%
+  Food Processor          373    1.6%%           0.0%%         1.6%%
+Agricultural Facility is NEVER input-starved (arable/water/pesticide all 1.0000 in every sample) and has no
+worker deficit. The refinery is never short of crude. So agri does not oscillate because it is starved.
+
+WHAT IS ACTUALLY HAPPENING - a shared, undamped control-law limit cycle:
+  facility                 median sellThrough   median price/costFloor   scale swing
+  Food Processor           -0.068               0.001                    11.0x
+  Agricultural Facility     0.025               1.030                    10.3x
+  Pesticide Plant           0.000               1.017                    11.0x
+  Oil Refinery              0.020               0.950                    10.5x
+Every node in the chain (a) sells essentially nothing (demand has collapsed), (b) has its price pinned at
+the cost floor (ratio 0.95-1.03) so the glut can never clear, and (c) swings its operating scale ~10x.
+Agricultural Facility detail: maxScale is CONSTANT at 1.205e6 while scale swings 1.47e5 <-> 1.205e6 (8x);
+inputs 1.0/1.0/1.0 throughout; offerPrice ~= costFloor (7.91 vs 7.22, 15.57 vs 14.65); sellThrough 0.0000-
+0.09; output inventory ~1.2-1.7e10. So it is producing into a glut it cannot sell, at a price the cost
+spring will not allow to fall, while its storage PID hunts for a target it can never reach.
+
+WHY THIS MATTERS FOR THE CAPACITY/JOBS PROBLEM:
+Agri maxScale = 1.205e6 while its normal operating scale is ~1.5e5. The expansion logic ratcheted maxScale up
+during the boom phases, so the planet's total job-slot capacity is sized for a scale that is almost never
+operated. Measured: total slot capacity grew 2.31e9 -> 1.35e10 (5.8x) while employed grew 3.25e9 -> 6.13e9
+(1.9x), flipping employed/capacity from 1.41 (workers surplus) to 0.455 (jobs far exceed workers), with
+fillPrimary at 0.27 and tightnessPrimary at 71. THAT is the satisfiability problem, and it is caused by
+maxScale ratcheting, not by the service-sector bloat (services are now flat: svc scale per capita 9.2e5 ->
+1.07e6 over 80y, i.e. 1.16x, confirming the net-demand serviceFlowError fix worked).
+
+So the causal order is: cost-floor spring pins prices -> gluts never clear -> storage PIDs hunt -> expansions
+ratchet maxScale up during booms -> planet job capacity outgrows the workforce -> unsatisfiable labour demand
+-> fillRates fall -> output and wages fall -> inflation (money) then starves households.
+
+## Applying Spiegler & Naim (describing function / limit cycles), 2026-09-09
+Reference: V. L. M. Spiegler, M. M. Naim, "Investigating sustained oscillations in nonlinear production and
+inventory control models". See tools/longrun/letter-to-spiegler-naim-2026-09.md for the full mapping.
+
+Their result that applies: for an APIOBPCS-like controller, the CLIP (saturation) in the ordering rule causes
+STABLE limit cycles even with constant demand, via a describing-function gain that collapses from 1 to 0.5 as
+the input amplitude passes the clip's linear range. The stability boundary is a RATIO condition (their Eq.
+21/22): limit cycles for 0.5*Tp <= Tw <= Tp, amplitude growing as Tw falls toward 0.5*Tp, unstable below.
+
+Our numbers against that:
+  - error := clamp(error, -1, +1) -> signal sat at the clamp permanently during the oscillation
+    (measured: agri signal at the clamp while scale swings 1.47e5 <-> 1.205e6, inputs 1.0/1.0/1.0, sellThrough ~0)
+  - PID_OUT_MAX_UP = 0.1 of full scale per tick, storage lead-time horizon Tp = 3 months = 90 ticks
+    -> Tw/Tp ~ 0.11, i.e. ~5x BELOW the 0.5 lower edge = inside their "possibly unstable" region
+  - rate limit was ASYMMETRIC 10:1 (up 0.1, down 0.01) -> the multi-valued describing function case they
+    flag as less accurate and relaxation-oscillation-like; matches our 4-month ramp + fast crash shape
+
+Changes applied:
+  1. signalComputation.ts: clamp(x,-1,1) -> tanh(x) (soft saturation). The loop now stays in the linear
+     region where the describing-function gain is ~1, which removes the limit cycle by construction rather
+     than by tuning. The storage error is a normalized fraction so tanh preserves small-signal behaviour.
+  2. constants.ts: PID_OUT_MAX_UP 0.1 -> 0.01, now EQUAL to PID_OUT_MAX_DOWN. This (a) symmetrises the rate
+     limit, removing the relaxation-oscillator asymmetry, and (b) raises the effective Tw by 10x, moving the
+     ratio from ~0.11 toward the region where a bounded response is expected.
+  3. New tests in automaticProductionScaleDynamics.test.ts pinning the paper's Fig. 7a-vs-7b discriminator:
+     constant saturating error must converge to a CONSTANT scale (no sustained cycle), scale motion must be
+     monotone, per-tick motion must never exceed the rate limit, and small-signal gain must stay at unity.
+
+Tests updated for the new contract (the old assertions encoded the hard-clamp value):
+  automaticProductionScaleDynamics.test.ts (tanh(0.5), tanh(-1), tanh(0.75)),
+  automaticProductionScale.test.ts (smoothedSignal tanh(1), integral-vs-single-step comparison).
+Full suite: 118 files, 1769 passed, 1 skipped; npx tsc --noEmit clean.
+
+Acceptance test: singleAgent 90y run (out=softclip-90y). Passes if the ~10x co-swing of agri/pesticide/
+refinery/food-processor is gone AND employed/capacity stops collapsing (it was 1.41 -> 0.455 over 80y in
+refillfix-6000y). Per the paper's Section 6 point 3 the maxScale ratchet should be a SYMPTOM; if it does not
+shrink once the oscillation is removed, the single-nonlinearity assumption fails for us and the cost-floor
+price spring is a genuinely independent second oscillator.
+
+### Acceptance test result: softclip-90y (singleAgent, 90y)
+Survived the full 90 years. Population 9.8e6 -> 1.62e7 (+65%%), facility condition ~0.99 throughout.
+Previous runs (refillfix-6000y) died at y84 with a population collapse; the pre-refill-fix one died at y73.6.
+
+employed/slotCapacity, the satisfiability ratio that previously collapsed (1.41 -> 0.455 over 80y):
+    y20-35  1.4651
+    y40-55  1.4323
+    y70-88  1.3899
+Flat at ~1.4 with no downward drift. THE CAPACITY-vs-WORKFORCE COLLAPSE IS GONE.
+This confirms Spiegler & Naim Section 6 point 3 for us: the maxScale ratchet was largely a SYMPTOM of the
+cycle (expansion integral accumulating while scale sat at the ceiling during the boom half).
+
+Operating-scale swing, same windows:
+    facility            y20-35   y40-55   y70-88   trend
+    agriculturalFacility 11.04x   6.55x    5.01x   shrinking
+    foodProcessor         3.51x   2.11x    1.68x   shrinking
+    oilRefinery          11.41x  11.45x   11.38x   FLAT - unfixed
+    pesticidePlant       11.76x  10.26x   11.73x   FLAT - unfixed
+Versus the hard-clip run over y30-48: agri 12.32x -> 6.81x, foodProcessor 8.92x -> 2.84x, refinery 14.86x ->
+11.62x, pesticide 11.00x -> 11.81x. So the soft clip fixed the two nodes whose cycle was driven by the
+describing-function gain collapse, and did nothing for the two that are not.
+
+Why refinery and pesticide survive: their price/cost-floor ratio still reaches the floor. In y25-48 the
+price/cost ratio sits in a bounded band for most facilities (clothingFactory 0.86, maintenanceFacility 0.94,
+beveragePlant 0.95, itDevicesFactory 0.97) but oilRefinery reaches 0.0129 and pesticidePlant 0.7361 - i.e.
+these two prices are still being driven INTO the cost floor, so the cost-floor spring is still the binding
+nonlinearity for them. Before the fix the ratio was pinned at the floor for ALL of agri/pesticide/refinery/
+foodProcessor at 0.95-1.03 while the scale swung 10x; now the price channel has recovered its freedom almost
+everywhere except these two.
+
+CONCLUSION for the letter's point 1: the single-nonlinearity assumption does NOT hold for us. We removed the
+clip nonlinearity and two of four coupled oscillators died and the capacity drift disappeared, while two
+others were untouched - which is what independent-coexistence of a second oscillator looks like. The
+cost-floor price spring is the remaining candidate and is now the next target.
+
+## STORAGE_TARGET_MONTHS as Tp, and the two-knob relation (2026-09-09)
+Spiegler & Naim Eq. 21/22 says the stability boundary is a RATIO: limit cycles for
+    0.5*Tp <= Tw <= Tp,   amplitude growing as Tw falls toward 0.5*Tp, unstable below.
+In our loop Tp = STORAGE_TARGET_MONTHS * 30 (own-capacity output horizon) and Tw = 1/PID_OUT_MAX_UP.
+
+FIRST ATTEMPT (wrong direction, caught by the new guard test): raising STORAGE_TARGET_MONTHS alone
+makes the ratio WORSE, because a longer horizon demands a SLOWER correction. With PID_OUT_MAX_UP=0.01
+(Tw=100):
+    months= 3  Tp= 90  Tw/Tp=1.11  compliant
+    months= 9  Tp=270  Tw/Tp=0.37  IN the limit-cycle band
+    months=18  Tp=540  Tw/Tp=0.19  IN the band
+The guard test 'holds Tw >= 0.5 * Tp' failed and prevented a 25-hour run from being wasted.
+Max STORAGE_TARGET_MONTHS satisfying the bound at Tw=100 is 6.67.
+
+SECOND ATTEMPT (the actual change): raise the horizon AND slow the correction together.
+    STORAGE_TARGET_MONTHS  3 -> 12   (Tp 90 -> 360, 0.5*Tp = 180)
+    STORAGE_CAPACITY_MONTHS 4 -> 13  (shell residency follows the target via residencyMonthsTicks)
+    PID_OUT_MAX_UP/DOWN    0.01 -> 0.005  (Tw 100 -> 200, now 200 >= 180, inside the stable region)
+Both rate limits stay SYMMETRIC. Guard tests added so the ratio cannot silently regress:
+  'holds Tw >= 0.5 * Tp as required by Spiegler & Naim Eq. 22'
+  'keeps the target above the capacity horizon so shells can hold the buffer'
+
+EFFECT, singleAgent 6000y run, out=stable6000y (measured to y70):
+    facility              y8-20   y25-35  y40-47
+    oilRefinery           1.09x   1.28x   1.17x   FIXED (was 11.4x)
+    foodProcessor         9.70x   4.58x   4.19x   improved
+    agriculturalFacility 10.81x   9.54x  10.97x   unfixed
+    pesticidePlant       10.00x  10.00x  10.28x   unfixed
+    loggingCamp          10.26x  10.98x  10.00x   unfixed
+    copperMine           10.63x  11.80x  11.52x   unfixed
+The multi-output node (oilRefinery) that we suspected was the coupling hub is now completely stable. The
+nodes that still swing at ~10x are those whose price is still driven into the cost floor.
+
+NOT CURED - the capacity drift returns:
+    employed/capacity   y8-20 1.5385 | y25-35 1.3601 | y40-47 1.2748
+drifting down at the same signature as the original failure. So the clip+rate fix removes the oscillation in
+the nodes it controls but the residual ~10x swing in the remaining nodes STILL rectifies into maxScale. This
+is the letter's point 1 confirmed a second time: independent nonlinearities coexist, and the cost-floor
+spring is the remaining one. It must be fixed before the capacity drift can be expected to stop.
+
+Tests hardcoded against the old constants were made constant-derived rather than re-pinned:
+  shellCompartments.test.ts (STORAGE_CAPACITY_MONTHS), automaticProductionScale.test.ts
+  (oversupplyQuantity helper replacing 18000), automaticProductionScaleDynamics.test.ts (target from constant).
+Full suite: 118 files, 1771 passed, 1 skipped; npx tsc --noEmit clean.
+
+## Which sector over-expands? None specifically - it is whichever facility still oscillates (2026-09-09)
+Question: the old failure had SERVICES expanding over the top. Is it the same now?
+Answer: NO. Measured on stable6000y (singleAgent 6000y, checkpoint series to y133).
+
+l) Growth of operating scale, y5-15 -> y115-133 (all 40 facility types, top and bottom):
+    oilWell 5.81x, logisticsHub 5.40x, ironSmelter 5.24x, oilRefinery 4.73x, electronicsFactory 4.64x,
+    cementPlant 4.18x, itDevicesFactory 4.15x, vehicleFactory 4.14x, machineryFactory 3.78x ...
+    ... maintenanceFacility 2.99x, retailChain 2.32x, hospital 2.14x, groceryChain 1.91x,
+    educationCenter 1.87x, agriculturalFacility 1.99x, foodProcessor 1.98x, pesticidePlant 1.72x
+The top growers are all GOODS / upstream-industrial (extractive -> processing -> capital goods). Services are
+mid-to-low, and the whole food chain sits at the BOTTOM. So the service-bloat mode is gone.
+
+m) But growth alone is not the discriminator. Cross-tabulating growth against the residual oscillation
+   (swing of operating scale, y110-133) gives a near-perfect correspondence:
+    facility                growth    swing(y110-133)
+    oilWell                 5.81x     12.03x   <- oscillates, grows most
+    ironSmelter             5.24x     11.00x   <- oscillates
+    electronicsFactory      4.64x     15.28x   <- oscillates
+    agriculturalFacility    1.99x     10.53x   <- oscillates
+    oilRefinery             4.73x      1.41x   <- STABLE
+    maintenanceFacility     2.99x      1.22x   <- STABLE
+    hospital                2.14x      1.52x   <- STABLE
+    groceryChain            1.91x      1.39x   <- STABLE
+The facilities that stopped oscillating (refinery etc, per the Tp work) also STOPPED over-expanding, even
+though oilRefinery grew 4.73x in scale. The facilities that still oscillate are exactly the ones that
+overtake their customer base.
+
+n) Two independent measures of the same event:
+    window     oscSectorsSum   stableSectorsSum   ratio    employed/capacity
+    y8-20         6229             8771           0.710     1.5385
+    y50-70       1.098e4          1.357e4         0.809     1.1740
+    y80-100      1.809e4          1.785e4         1.014     0.9657
+    y110-133     3.278e4          2.721e4         1.205     0.8277
+The oscillating sectors overtake the stable ones (0.71 -> 1.20) exactly as the capacity ratio falls
+(1.54 -> 0.83). The two curves are the same event.
+
+CONCLUSION: the guilty sector is NOT a sector, it is the DUTY CYCLE. Whichever facility still limit-cycles
+spends the boom half of its cycle sitting at maxScale, which accumulates expansionIntegral and ratchets
+maxScale up; a facility that does not oscillate never sits saturated and never ratchets. This is the letter's
+point 1 and the paper's Section 6 point 3 exactly. It also means the fix is NOT a per-sector cap: fixing the
+remaining oscillators removes the ratchet automatically, as oilRefinery/hospital/maintenance/grocery already
+demonstrate. Whether the cost-floor price spring is the remaining oscillator is the next check.
+
+CAVEAT on the labor guard: shortage DOES scale the expansion down (EXPANSION_WORKER_RESERVE_MARGIN and the
+unemployed-workers gate) but cannot stop it, because the gate is evaluated at the moment the integral crosses
+threshold - and an oscillating facility spends enough ticks at maxScale with positive signal to cross it
+repeatedly. A rate-limited or budget-gated ratchet still ratchets, just slower. So the guard changes the rate
+of the failure, not its existence; that is consistent with the observed slow monotone drift rather than a
+collapse.
+
+## The remaining oscillator is MIN_SCALE_FRACTION (2026-09-09)
+Probe: tmp_oscident.ts replayed stable6000y from its y200 checkpoint over y200-212 at tick resolution,
+capturing scale/maxScale/util, storage signal, inventory/target, per-input efficiency, overallEfficiency,
+unfilled fraction, price, cost floor and demand for 8 facilities (5 known oscillators, 3 known stable).
+
+Discriminator found. Fraction of ticks pinned AT the MIN_SCALE floor (util <= 0.101):
+    facility                  atFloor%   atMax%    swing
+    Oil_Well                    18.6%     61.0%   11.30x
+    Electronics_Factory         17.9%     17.0%   10.79x
+    Iron_Smelter                14.4%     13.4%   10.26x
+    Pesticide_Plant             13.8%     23.2%   12.12x
+    Agricultural_Facility        3.3%     25.9%   10.98x
+    Oil_Refinery                 0.0%    100.0%    1.15x  <- stable
+    Hospital                     0.0%      7.8%    1.32x  <- stable
+    Maintenance_Facility         0.0%     91.2%    1.11x  <- stable
+Perfect separation: every oscillator visits the floor for 3-19% of ticks, every stable facility 0.0%.
+
+Being pinned at the CEILING is harmless: Oil_Refinery sits at maxScale for 100% of ticks with a 1.15x swing
+and Maintenance Facility for 91.2% with 1.11x. It is specifically the FLOOR that breaks the loop.
+
+Mechanism: MIN_SCALE_FRACTION = 0.1 is a hard CLIP on the control output (scale), not on the error signal.
+When the controller commands contraction the floor clamps it, so the loop gain in the contracting direction
+collapses exactly as it did with the old error clamp - this is the THIRD nonlinearity, and it is the one my
+tanh change did not touch (tanh fixed the clip on the signal; the floor clips the actuator). The facility then
+HANGS at the floor while inventory rebuilds, then jumps back up: a sawtooth.
+Confirming measurement: of the ticks spent at the floor, the signal is NEGATIVE 98.4% of the time
+(Oil_Well 790/803, Electronics 747/773). A negative command is being clamped, i.e. the floor is active and
+binding, not merely touched.
+
+Corollary: the ~11x swing amplitude is SET BY THE FLOOR CONSTANT, not by the dynamics. 1/MIN_SCALE_FRACTION
+= 10, and the observed swings are 10.3-12.1x. The oscillation amplitude is a parameter of the clip.
+
+Also measured and DISCONFIRMED as the primary cause:
+  - cost floor: the goods oscillators do sit at price/floor 0.93-1.01 (pesticide 0.986, iron smelter 0.933,
+    agri 1.008, electronics 1.009) BUT Oil_Well oscillates 11.30x with price/floor = 1.187, i.e. ABOVE the
+    floor. So the price floor is a co-symptom, not the driver.
+  - inventory setpoint: oscillators sit at inv/target 0.98-1.01 with signal ~0.00, stable facilities at
+    signal 0.67-0.76 with inv/target 0.004-0.33. The oscillators are parked on their own setpoint where the
+    controller has no restoring force, which is what lets the floor-clip cycle run.
+  - corr(scale, inv/target) is NEGATIVE for oscillators (Oil_Well -0.725, Agri -0.232) and POSITIVE for the
+    stable ones (Refinery +0.839, Hospital +0.708). For the oscillators the scale is not tracking inventory.
+
+NEXT: this is a fixable clip, same class as the one already fixed. Candidate - remove the hard floor and let
+scale approach zero smoothly (the soft-clip treatment applied to the actuator), or make the floor a soft
+asymptote. Must keep scale > 0 because the storage target is proportional to maxScale, not scale, so a zero
+scale is representable. Guard with the same style of regression test: a sustained negative command must drive
+scale down MONOTONICALLY toward its bound without a rebound.
+
+## Applying the soft scale floor (2026-09-09)
+Change: the hard `Math.max(maxScale * MIN_SCALE_FRACTION, ...)` actuator clamp in the autoscale loop is
+replaced by a soft floor. Above the floor it is the identity (normal operation unchanged); below it the excess
+is squashed through tanh instead of being discarded:
+
+    applySoftScaleFloor(scale, floor, range):
+        if scale >= floor: return scale
+        excess = floor - scale
+        return floor - range * tanh(excess / range)
+
+with SOFT_MIN_SCALE_RANGE = 0.05 (new constant) and range = maxScale * SOFT_MIN_SCALE_RANGE.
+
+Why: MIN_SCALE_FRACTION = 0.1 was a hard CLIP on the control OUTPUT, so a negative command hit a wall and the
+loop lost gain in the contracting direction. Measured at the y200 checkpoint: every oscillating facility spent
+3-19%% of ticks pinned at that floor with a NEGATIVE signal 98.4%% of the time, while every stable facility
+spent 0.0%% there. Pinned at the CEILING is harmless (Oil_Refinery 100%% at maxScale, swing 1.15x). The swing
+amplitude matched 1/0.1 = 10 (observed 10.3-12.1x), i.e. it was a property of the clip, not the dynamics.
+
+Properties the new floor guarantees (all covered by tests):
+  - identity at/above the floor, continuous across the boundary
+  - a stronger negative command always yields a lower scale (authority retained)
+  - bounded below by floor - range, so scale stays > 0 and representable
+  - sustained negative command drives scale down monotonically with no rebound
+atMinScale is now `scale <= minScale` (was `<= MIN_SCALE_FRACTION * maxScale * 1.001`) so the contraction
+integral still arms when scale sits in the soft region.
+
+`production.ts` still uses MIN_SCALE_FRACTION for its one-off construction-completion seed
+(`max(MIN_SCALE_FRACTION, scaleFraction)`) - intentionally left alone, it is not the control loop.
+
+Tests updated for the new contract (the old assertion REQUIRED the jump onto the floor):
+  'clamps scale to the minimum floor...' -> 'approaches the minimum floor smoothly instead of clamping onto it
+  from below'. New describe block 'soft scale floor keeps the contracting direction responsive' with 6 tests.
+Full suite: 119 files, 1784 passed, 1 skipped; npx tsc --noEmit clean.
+
+CONTROL EXPERIMENT: stable6000y (hard floor) is left running as the control; softfloor-6000y is the treatment.
+Expected if the diagnosis is right: the 3-19%% at-floor occupancy goes to ~0, the ~10-12x swings collapse, and
+the employed/capacity ratio stops drifting down. If the swings persist, the floor was not the driver.
+
+### Soft-floor run: first read at y35 - INCONCLUSIVE, do not judge yet
+softfloor-6000y vs stable6000y (control), y8-20 window (the only overlapping window so far):
+    facility               control   softfloor
+    oilWell                 4.28x     2.85x   better
+    ironSmelter             2.59x     1.24x   better
+    oilRefinery             1.09x     1.24x   both fine
+    hospital                1.61x     1.62x   same
+    electronicsFactory      5.10x    15.41x   worse
+    agriculturalFacility   10.81x    14.79x   worse
+    pesticidePlant         10.00x    14.41x   worse
+Two improved, three worse, one unchanged. This is NOT the clean swing collapse the diagnosis predicted, but it
+also cannot be read as a refutation yet, for two reasons:
+  1. The window is the startup transient. The mechanism was diagnosed at y200+ on the control; at y35 the seed
+     scale is still settling in both runs. The control's own y8-20 numbers (10.81x agri) are noisier than its
+     y200+ numbers.
+  2. Absolute scale ranges are NOT comparable across the two runs at different times, because both runs grow
+     monotonically. Comparing control-y281 ranges against softfloor-y35 ranges is invalid and was not done.
+
+What IS needed before any conclusion: the same measurement at a matched epoch. The control is at y281 and its
+y200 checkpoint exists; softfloor-6000y reaches its first checkpoint at y200 (roughly 1.5h). At that point
+re-run the at-floor occupancy measurement (tmp_oscident.ts style) on the softfloor checkpoint and compare
+against the control's measured 3.3-18.6%% at-floor occupancy and 10.3-12.1x swings.
+
+Decision rule stated in advance: if at-floor occupancy at the matched epoch is near 0%% AND the swings collapse,
+the diagnosis is confirmed. If at-floor occupancy is near 0%% but the swings persist, the floor was necessary
+but not sufficient (a fourth nonlinearity exists). If at-floor occupancy is still high, the soft floor is not
+actually binding where the hard floor was, i.e. the implementation did not change the behaviour.
+
+Also noted: electronicsFactory getting WORSE (5.10x -> 15.41x) is the single most suspicious data point and
+should be checked first at the matched epoch. It had inv/target ~1.003 and signal ~-0.003, i.e. parked exactly
+on its setpoint.
+
+### Soft-floor result at y68: MY DIAGNOSIS WAS WRONG IN AN IMPORTANT WAY
+Matched-window comparison (three windows, so this is not a transient artefact):
+    facility               control y8-20 / y25-45 / y55-68    softfloor y8-20 / y25-45 / y55-68
+    oilRefinery            1.09 / 1.59 / 1.28                  1.24 / 1.22 / 1.08     equal or better
+    electronicsFactory     5.10 / 12.11 / 6.78                15.41 / 9.27 / 7.26    converges
+    oilWell                4.28 / 3.78 / 6.06                 2.85 / 3.17 / 8.92     oscillates both
+    agriculturalFacility  10.81 / 10.97 / 12.08              14.79 / 14.53 / 14.12   WORSE
+    pesticidePlant        10.00 / 10.28 / 10.26              14.41 / 14.76 / 14.41   WORSE
+    employed/capacity      1.5385 / 1.3417 / 1.1681           1.5034 / 1.3487 / 1.2573  BETTER
+
+WHAT THE FLOOR ACTUALLY CONTROLS - the amplitude, not the existence of the cycle:
+    effective floor   predicted amplitude   observed amplitude
+    0.10 (hard)       10.0                  10.0-12.1
+    ~0.058 (soft)     17.3                  14.1-17.3
+obs at matched epoch: agriculturalFacility 17.27x, pesticidePlant 15.45x, oilWell 8.92x, foodProcessor 5.25x.
+The soft floor let scale fall to 0.05*maxScale instead of 0.1*maxScale, so the EXCURSION DEPTH roughly doubled and
+the swings got about 1.7x larger. The floor sets the amplitude of the limit cycle, in direct proportion to
+1/floor. Lowering the floor made the oscillation BIGGER, not smaller.
+
+CORRECTION to the earlier claim: I wrote that MIN_SCALE_FRACTION "IS the remaining oscillator". That is wrong.
+The correct statement is: the floor determines the AMPLITUDE (depth) of the excursion, while something else
+determines that the cycle exists at all. Evidence: the at-floor occupancy was a perfect discriminator between
+oscillating and stable facilities (3-19%% vs 0.0%%) and the signal was negative 98.4%% of the time at the floor
+- both still true - but removing the hard clip did NOT stop the cycling, it only changed the depth. A facility
+parked on its setpoint with no restoring force will use whatever excursion range the actuator affords it.
+
+WHAT IS STILL GAINED: employed/capacity is consistently better at every window (1.2573 vs 1.1681 at y55-68,
+and the gap widens). Continuing the run is worthwhile for that alone, and it is the metric that actually
+determines whether the economy survives.
+
+WHAT THIS POINTS TO NEXT: the oscillator exists because the facilities sit at inv/target ~1.00 with signal
+~0.00 (electronics 1.003/-0.003, agri 0.981/0.019, pesticide 0.990/0.010) - ON their setpoint, where a PID has
+no restoring force and the derivative term dominates. The stable ones sit far from setpoint with a strong
+steady signal (refinery inv/target 0.327 signal 0.672, hospital 0.004/0.760, maintenance 0.012/0.756). So the
+next suspect is the SETPOINT ITSELF: a target that the facility can always reach and then hover on is an
+unstable equilibrium for this controller. The excursion depth was just a symptom I mistook for the cause.
+
+## The amplitude law is confirmed at three points; floor=0.25 is the best run so far (2026-09-09)
+Operating-scale swing, window y6-20, all four runs (control = hard floor 0.10):
+    facility               control   softfloor   floor25   setpoint
+    agriculturalFacility   10.81x    14.79x      4.21x     3.88x
+    pesticidePlant         10.00x    14.41x      4.41x    15.79x
+    electronicsFactory      5.10x    15.41x      4.84x     5.58x
+    oilWell                 4.28x     2.85x      2.54x     2.62x
+    ironSmelter             2.59x     1.30x      1.05x     1.21x
+    oilRefinery             1.09x     1.24x      1.09x     1.00x
+    employed/capacity       1.5373    1.5168     1.5562    1.5501
+
+THE AMPLITUDE LAW: swing ~= 1/effectiveFloor, confirmed at three independent floor values:
+    effective floor 0.10 (hard)   -> predicted 10.0   -> observed 10.0-12.1
+    effective floor ~0.058 (soft) -> predicted ~17    -> observed 14.1-17.3
+    effective floor 0.25 (floor25) -> predicted 4.0   -> observed 4.2-4.8
+This is a clean, predictive quantitative relationship. The floor sets the excursion depth in direct proportion
+to 1/floor and nothing else about the cycle changes.
+
+floor25 is the best run on the capacity metric so far (employed/capacity 1.5562 vs control 1.5373 at y6-20),
+but see the caveat below before trusting that.
+
+setpoint (--storageTargetScaleAnchored=on): logged as a FALSIFICATION test, not a fix. The user correctly
+predicted the sign: scale -> target = f(scale) -> target easier to meet -> less recovery pressure -> scale
+falls further, i.e. positive feedback, so it should ratchet down or behave erratically rather than stabilise.
+Early data is consistent with that: condition 0.886 at y8 (lowest of all four runs, control is 0.996), and
+while agri improved to 3.88x, pesticide got WORSE at 15.79x. If it stabilises anyway, the park-on-setpoint
+mechanism is not what I think it is.
+
+METRIC DEFECT FOUND (pre-existing, affects all runs, not introduced here): fillPrimary exceeds 1.0 in 141/191
+samples of floor25-6000y (max 1.2222). slotsFilledPrimary genuinely exceeds capacityPrimary (tick 90:
+1444327 filled vs 1283490 capacity). So the two are counted over different populations or at different times.
+metrics.ts:1219 computes fillPrimary as slotsFilledByEdu/capacityByEdu, which is only coherent if both come
+from the same slot universe. NOT patched: changing it now would invalidate the cross-run comparison, and it is
+orthogonal to the oscillation question. Logged for a separate investigation. employed/capacity is computed
+consistently from employed and the two slot-capacity fields and is used for all cross-run comparisons instead.

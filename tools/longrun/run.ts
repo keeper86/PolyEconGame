@@ -12,7 +12,10 @@ import {
     setServiceFlowDecayTarget,
     setServiceSellThroughTarget,
     setStorageSpaceClampEnabled,
+    setMinScaleFraction,
+    setSoftMinScaleRange,
     setStorageTargetMonths,
+    setStorageTargetScaleAnchored,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -468,6 +471,21 @@ async function main(): Promise<void> {
     if (storageTargetMonthsArg !== undefined) {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
+    }
+    const storageTargetScaleAnchoredArg = arg('storageTargetScaleAnchored');
+    if (storageTargetScaleAnchoredArg !== undefined) {
+        setStorageTargetScaleAnchored(storageTargetScaleAnchoredArg !== 'off');
+        console.log(`storage target anchored to ${storageTargetScaleAnchoredArg !== 'off' ? 'scale' : 'maxScale'}`);
+    }
+    const minScaleFractionArg = arg('minScaleFraction');
+    if (minScaleFractionArg !== undefined) {
+        setMinScaleFraction(Number(minScaleFractionArg));
+        console.log(`min scale fraction overridden to ${minScaleFractionArg}`);
+    }
+    const softMinScaleRangeArg = arg('softMinScaleRange');
+    if (softMinScaleRangeArg !== undefined) {
+        setSoftMinScaleRange(Number(softMinScaleRangeArg));
+        console.log(`soft min scale range overridden to ${softMinScaleRangeArg}`);
     }
     const serviceSellThroughArg = arg('serviceSellThrough');
     if (serviceSellThroughArg !== undefined) {

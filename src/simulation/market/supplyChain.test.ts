@@ -125,8 +125,7 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         // With empty storage: baseRate * (1 + smoothingMaxExtra) plus the refill term shortfall / refillTicks
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
-        const smoothedTarget =
-            baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
         expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 
