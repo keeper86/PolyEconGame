@@ -2339,3 +2339,29 @@ function assetsDeposits(agents: Map<string, Agent>, planet: Planet, amount: numb
         }
     }
 }
+
+describe('updateAgentProductionScale shell compartments for non-automated agents', () => {
+    it('authors shell compartments without starting any shell construction', () => {
+        const planet = makePlanet();
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [
+                makeProductionFacility({}, { maxScale: 1, scale: 1, produces: [{ resource: RESOURCE, quantity: 1 }] }),
+            ],
+        });
+        const agent = makeAgent('manual', planet.id, 'Manual', {
+            automated: false,
+            assets: { [planet.id]: assets },
+        });
+        const gameState = { agents: new Map([[agent.id, agent]]) } as unknown as GameState;
+        const shell = assets.storage.shells.solid;
+        const scaleBefore = shell.scale;
+
+        expect(shell.compartments[RESOURCE_NAME]).toBeUndefined();
+
+        updateAgentProductionScale(gameState, planet);
+
+        expect(shell.compartments[RESOURCE_NAME]).toBeGreaterThan(0);
+        expect(shell.construction).toBeNull();
+        expect(shell.scale).toBe(scaleBefore);
+    });
+});
