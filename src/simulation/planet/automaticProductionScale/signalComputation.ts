@@ -39,19 +39,3 @@ export function computeFacilityStorageSignal(
 export function softClip(value: number): number {
     return Math.tanh(value);
 }
-
-/**
- * Soft counterpart of the hard `max(minScale, scale + delta)` clamp. Above the floor this is
- * the identity, so normal operation is unchanged. Below it, the excess is squashed through a
- * tanh instead of being discarded, which keeps the contracting direction responsive: a
- * stronger negative command still produces a lower scale all the way to zero, rather than
- * being clipped away at the boundary. That is what removes the sawtooth whose amplitude is
- * set by 1/MIN_SCALE_FRACTION.
- */
-export function applySoftScaleFloor(scale: number, floor: number, range: number): number {
-    if (scale >= floor) {
-        return scale;
-    }
-    const excess = floor - scale;
-    return floor - range * softClip(excess / range);
-}

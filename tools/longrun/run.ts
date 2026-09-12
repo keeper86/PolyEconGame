@@ -13,7 +13,6 @@ import {
     setServiceSellThroughTarget,
     setStorageSpaceClampEnabled,
     setMinScaleFraction,
-    setSoftMinScaleRange,
     setStorageTargetMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
@@ -475,11 +474,6 @@ async function main(): Promise<void> {
     if (minScaleFractionArg !== undefined) {
         setMinScaleFraction(Number(minScaleFractionArg));
         console.log(`min scale fraction overridden to ${minScaleFractionArg}`);
-    }
-    const softMinScaleRangeArg = arg('softMinScaleRange');
-    if (softMinScaleRangeArg !== undefined) {
-        setSoftMinScaleRange(Number(softMinScaleRangeArg));
-        console.log(`soft min scale range overridden to ${softMinScaleRangeArg}`);
     }
     const serviceSellThroughArg = arg('serviceSellThrough');
     if (serviceSellThroughArg !== undefined) {

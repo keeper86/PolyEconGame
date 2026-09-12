@@ -1,20 +1,16 @@
 export const MAX_SCALE_EXPAND_FRACTION = 0.025;
 export const EXPANSION_WORKING_CAPITAL_TICKS = 20;
-export const EXPANSION_STORAGE_FREE_FRACTION = 0.9;
 export const HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER = 0.9;
 export const STORAGE_STARVATION_EXPANSION_MAX = 0.05;
 
-export const MIN_SCALE_FRACTION = 0.1;
-
 /**
- * The hard MIN_SCALE_FRACTION floor clips a negative control command, which collapses the
- * loop gain in the contracting direction and produces a sawtooth whose amplitude is set by
- * 1/MIN_SCALE_FRACTION rather than by the dynamics. This soft floor keeps authority as
- * scale approaches zero: it asymptotes toward zeroScaleFraction instead of clamping, so the
- * actuator never loses gain. Commands are mapped through it only when they would take scale
- * below the linear region.
+ * Dev default floor. Setting this above the 0.1 that produced the original sawtooth is a
+ * deliberate trade: the operating-scale swing of a facility that still cycles follows
+ * 1/floor (measured at 0.10 -> 10-12x, ~0.058 -> 14-17x, 0.25 -> 4.2-4.8x), so a higher
+ * floor bounds the excursion. The cost is that a facility can never idle below this
+ * fraction of its capacity, i.e. contraction authority is given up to buy a smaller swing.
  */
-export const SOFT_MIN_SCALE_RANGE = 0.05;
+export const MIN_SCALE_FRACTION = 0.25;
 
 export const PID_KP = 0.1;
 

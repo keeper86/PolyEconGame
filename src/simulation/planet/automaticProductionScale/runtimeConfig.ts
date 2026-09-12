@@ -5,7 +5,6 @@ let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
 let minScaleFraction: number | null = null;
-let softMinScaleRange: number | null = null;
 let serviceSellThroughTarget: number | null = null;
 let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
@@ -34,10 +33,6 @@ export const setMinScaleFraction = (value: number | null): void => {
     minScaleFraction = value;
 };
 
-export const setSoftMinScaleRange = (value: number | null): void => {
-    softMinScaleRange = value;
-};
-
 export const setServiceSellThroughTarget = (value: number | null): void => {
     serviceSellThroughTarget = value;
 };
@@ -57,7 +52,6 @@ export const getExpansionIntegralThreshold = (): number | null => expansionInteg
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
 export const getMinScaleFraction = (): number | null => minScaleFraction;
-export const getSoftMinScaleRange = (): number | null => softMinScaleRange;
 export const getServiceSellThroughTarget = (): number | null => serviceSellThroughTarget;
 export const getServiceFillRateTarget = (): number | null => serviceFillRateTarget;
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;

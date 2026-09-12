@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
 import { computeStorageSpaceFactor, constructionTick, productionTick } from './production';
+import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
 import { queryStorageFacility } from './facility';
 
 import type { TransportShipType } from '../ships/ships';
@@ -705,7 +706,7 @@ describe('constructionTick', () => {
         expect(mgmtFacility.construction!.progress).toBe(30);
     });
 
-    it('preserves non-zero scale when expansion completes while facility is at the PID minimum (10%)', () => {
+    it('preserves non-zero scale when expansion completes while facility is at the PID minimum', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
 
@@ -730,10 +731,8 @@ describe('constructionTick', () => {
 
         expect(facility.construction).toBeNull();
         expect(facility.maxScale).toBe(200);
-        // scaleFraction was 0.1 (10%) which previously rounded to 0.0 -> new scale would be 0.
-        // After fix the scale is at least 10% of the new maxScale.
         expect(facility.scale).toBeGreaterThan(0);
-        expect(facility.scale).toBeCloseTo(20, 5);
+        expect(facility.scale).toBeCloseTo(200 * MIN_SCALE_FRACTION, 5);
     });
 
     it('preserves scale proportion when expansion completes at 50% of old maxScale', () => {

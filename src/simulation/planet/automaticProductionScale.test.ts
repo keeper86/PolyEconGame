@@ -306,15 +306,14 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).not.toBeNull();
     });
 
-    it('approaches the minimum floor smoothly instead of clamping onto it from below', () => {
+    it('clamps scale up to the minimum floor when already below it', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
         const floor = facility.maxScale * MIN_SCALE_FRACTION;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeLessThan(floor);
-        expect(facility.scale).toBeGreaterThan(0);
+        expect(facility.scale).toBeGreaterThanOrEqual(floor);
     });
 
     it('clamps scale to maxScale when over-demanded', () => {

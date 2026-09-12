@@ -1186,3 +1186,94 @@ no restoring force and the excursion is driven by the tiny residual error integr
 not fixed. But it is much less harmful than I claimed: it does not kill the economy, it bounds the operating
 range, and its amplitude is fully explained by 1/effectiveFloor. The priority is now balancing the ~0.67 slot
 utilisation, not chasing the oscillation.
+
+## Clean-up + low-worker recipe run (2026-09-09)
+
+REMOVED dead runtime overrides (verified zero callers before deleting):
+  - setStorageTargetScaleAnchored / getStorageTargetScaleAnchored + backing var: the scale-anchored setpoint
+experiment. Reverted signalComputation.ts to the plain maxScale anchor. Confirmed by the setpoint run (see above)
+that scale-anchoring fails in the predicted direction, so it is not a candidate fix.
+  - setPidOutMaxUp: declared, never called anywhere.
+  - ServiceGoods{SellThrough,FillRate}Target (2 vars + 2 setters + 2 getters): entirely unused.
+Kept: setPidOutMaxDown (live, wired to --pidDown), setMinScaleFraction/setSoftMinScaleRange (live experiments),
+and all service targets that automaticPricing.ts actually reads. npx tsc --noEmit clean afterwards.
+
+LOW-WORKER RECIPES: the user reduced workerRequirement across ~39 facilities (total worker-sum now 2705).
+Example: Agricultural Facility 10/25/15 -> 10/20/10. New run lowworker-6000y launched with the committed
+constants (hard floor 0.10, STORAGE_TARGET_MONTHS 12, symmetric PID_OUT_MAX_UP/DOWN 0.005) so it is directly
+comparable to softfloor-6000y.
+
+HR WARNING INVESTIGATED - it is MISTUNED, NOT A FAILURE. hrBuffer.ts:72 warns when
+demand > maxDailyHROutput * 2.5. The system's NORMAL operating point is 2.55-2.58, i.e. permanently just past
+the threshold, so the warning is spurious by construction:
+  - control y445: demand 20_326_609, max daily 7_950_000, ratio 2.5568
+  - lowworker y1: demand 104_188, max daily 40_706, ratio 2.5595
+Same ratio at y1 of a fresh run, so it is a property of the initial setup, not of long-run degradation.
+The HR department is designed to run at ~2.5x its own production rate and cover the difference from its
+hrBuffer reservoir; that is normal.
+The 1011-warning burst in the control spans log lines 445-1465, which lies entirely BETWEEN the y444 and y445
+progress prints, and the run continued normally afterwards (y445-y449 all present, pop 128.3e6 -> 131.3e6).
+So it was a ONE-YEAR transient during a growth burst, not a wedge and not a new failure mode. An earlier reading
+of mine that the control had wedged was wrong.
+Recommendation (not applied, would disturb running comparisons): raise the threshold or drop the warning.
+
+This is also evidence FOR the low-worker recipe change: the HR department momentarily saturating during a growth
+burst is exactly the capacity-vs-workforce pressure the recipe reduction relieves.
+
+## Dev config set to floor 0.25; setpoint run DIED (2026-09-09)
+
+DEV DEFAULTS now (committed constants, no CLI override needed):
+    MIN_SCALE_FRACTION   = 0.25   (was 0.1)
+    SOFT_MIN_SCALE_RANGE = 0      (hard floor, i.e. the measured configuration)
+    STORAGE_TARGET_MONTHS = 12
+    PID_OUT_MAX_UP/DOWN   = 0.005 (symmetric)
+Rationale recorded in the constants comments: the swing of a facility that still cycles follows 1/floor
+(0.10 -> 10-12x, ~0.058 -> 14-17x, 0.25 -> 4.2-4.8x), so 0.25 bounds the excursion to ~4x. The cost is stated
+explicitly: a facility can never idle below 25%% of capacity, so contraction authority is traded for a smaller
+swing. applySoftScaleFloor now treats a non-positive range as the hard clamp, so the soft path stays available
+via --softMinScaleRange without being the default.
+Tests updated for the new default: the old assertions encoded floor 0.1
+(production.test.ts 'preserves non-zero scale ... (10%%)' now derives from MIN_SCALE_FRACTION and dropped the
+hardcoded 10%% from its title; automaticProductionScale.test.ts 'clamps scale up to the minimum floor when
+already below it'; plus a new unit test that a non-positive range degenerates to the hard clamp).
+Full suite: 119 files, 1786 passed, 1 skipped; npx tsc --noEmit clean.
+
+SETPOINT RUN DIED - first extinction of this investigation. Population trajectory:
+    y0.1  9.80e6   y35.1 1.173e7 (peak growth)
+    y36.8 7.36e6   <- step drop
+    y82.0 9.60e6
+    y83.4 9.00e6   y85.1 7.46e6   y86.8 7.51e6   y88.4 5.23e6   y89.8 0
+Final population is exactly zero. So scale-anchoring does NOT produce the slow monotone decline it appeared to
+early on; it produces a growth phase followed by a cliff. Mechanism: once scale collapses, target = f(scale)
+collapses with it, so the error can never become positive enough to rebuild, and the facility ratchets to zero.
+This is the user's predicted positive feedback, confirmed to its conclusion. The oscillation is a SURVIVABLE
+failure; this was not.
+
+NOTE on the earlier 'slow steady decline' observation: that was real in the first ~35 years but it was the
+run-up, not the attractor. Between y36.8 and y82.9 it actually RECOVERED from 7.36e6 to 9.60e6 before the final
+cliff. So the shape was not monotone decline after all - worth remembering before trusting an early trend.
+
+## Soft floor REMOVED (2026-09-09)
+The soft scale floor experiment is deleted: applySoftScaleFloor, SOFT_MIN_SCALE_RANGE,
+setSoftMinScaleRange/getSoftMinScaleRange and the --softMinScaleRange CLI arg are all gone, and the one call
+site in automaticProductionScale.ts is back to the plain hard clamp:
+    const newScale = Math.max(minScale, Math.min(facility.maxScale, facility.scale + delta));
+Rationale: the soft floor was a consequence of a MISDIAGNOSIS. I had claimed MIN_SCALE_FRACTION was itself the
+third oscillator; measured across three floor values the truth is that the floor only sets the AMPLITUDE of the
+excursion (swing ~= 1/floor), while the existence of the cycle is determined by something else. Keeping dormant
+code named "soft floor" would lead a future reader to assume it was the fix. The measured configuration - a
+HARD floor at 0.25 - is what we want, so it is now the only path.
+setMinScaleFraction/--minScaleFraction is retained: it is genuinely useful for sweeping the floor, which is how
+the 1/floor amplitude law was established in the first place.
+
+FINAL EFFECTIVE DEV CONFIG (committed, no CLI args required):
+    MIN_SCALE_FRACTION    = 0.25   -> bounds the swing of any facility that still cycles to ~4x
+    STORAGE_TARGET_MONTHS = 12     -> Tp = 360 ticks
+    PID_OUT_MAX_UP/DOWN   = 0.005  -> Tw = 200 ticks, so Tw/Tp = 0.556 > 0.5 (Spiegler & Naim band satisfied)
+    softClip (tanh) on the storage error is KEPT - that one was a real fix, not part of the misdiagnosis.
+Full suite: 119 files, 1779 passed, 1 skipped; npx tsc --noEmit clean.
+
+RUN RELATIONSHIPS worth keeping straight:
+    floor25-6000y   ran on floor 0.25 / hard, BEFORE the recipe change  -> control for the new default
+    lowworker-6000y runs on floor 0.25 / hard, WITH the reduced recipes -> the comparison pair
+    stable6000y/softfloor-6000y used floor 0.10 and are now historical (pre-default-change)

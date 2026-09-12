@@ -15,11 +15,7 @@ export {
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export {
-    applySoftScaleFloor,
-    computeFacilityStorageSignal,
-    softClip,
-} from './automaticProductionScale/signalComputation';
+export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
 export {
     assertStabilityConditions,
     checkCapacityCoversTarget,
@@ -50,7 +46,6 @@ import {
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
-    SOFT_MIN_SCALE_RANGE,
     STORAGE_CONTRACTION_RATE,
     STORAGE_EXPANSION_RATE,
     STORAGE_STARVATION_EXPANSION_MAX,
@@ -59,7 +54,6 @@ import {
     getContractionIntegralThreshold,
     getExpansionIntegralThreshold,
     getMinScaleFraction,
-    getSoftMinScaleRange,
 } from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -75,7 +69,7 @@ import {
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
-import { applySoftScaleFloor, computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
+import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
@@ -399,11 +393,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
             const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
-            const newScale = applySoftScaleFloor(
-                Math.min(facility.maxScale, facility.scale + delta),
-                minScale,
-                facility.maxScale * (getSoftMinScaleRange() ?? SOFT_MIN_SCALE_RANGE),
-            );
+            const newScale = Math.max(minScale, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;

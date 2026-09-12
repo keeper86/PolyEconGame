@@ -21,7 +21,6 @@ import {
     PID_OUT_MAX_UP,
     STORAGE_CAPACITY_MONTHS,
     STORAGE_TARGET_MONTHS,
-    applySoftScaleFloor,
     computeDynamicExpansionTarget,
     computeFacilityStorageSignal,
     computePidDelta,
@@ -351,59 +350,6 @@ describe('PID utilization response', () => {
                 previous = facility.scale;
             }
         });
-    });
-});
-
-describe('soft scale floor keeps the contracting direction responsive', () => {
-    const floor = 0.1;
-    const range = 0.05;
-
-    it('leaves scale untouched at or above the floor', () => {
-        expect(applySoftScaleFloor(0.5, floor, range)).toBe(0.5);
-        expect(applySoftScaleFloor(floor, floor, range)).toBe(floor);
-    });
-
-    it('keeps a stronger negative command producing a lower scale instead of discarding it', () => {
-        const mild = applySoftScaleFloor(floor - 0.01, floor, range);
-        const strong = applySoftScaleFloor(floor - 0.2, floor, range);
-        const extreme = applySoftScaleFloor(floor - 5, floor, range);
-        expect(strong).toBeLessThan(mild);
-        expect(extreme).toBeLessThan(strong);
-    });
-
-    it('stays above zero so scale remains representable', () => {
-        for (const command of [0.1, 1, 10, 1000]) {
-            const result = applySoftScaleFloor(floor - command, floor, range);
-            expect(result).toBeGreaterThan(0);
-            expect(result).toBeLessThan(floor);
-        }
-    });
-
-    it('is continuous at the floor boundary', () => {
-        const justAbove = applySoftScaleFloor(floor + 1e-9, floor, range);
-        const justBelow = applySoftScaleFloor(floor - 1e-9, floor, range);
-        expect(Math.abs(justAbove - justBelow)).toBeLessThan(1e-8);
-    });
-
-    it('bounds the distance scale can travel below the floor by the range', () => {
-        const deepest = applySoftScaleFloor(Number.NEGATIVE_INFINITY, floor, range);
-        expect(deepest).toBeCloseTo(floor - range, 9);
-    });
-
-    it('drives scale down monotonically under a sustained negative command without a rebound', () => {
-        const minScale = 0.1;
-        const softRange = 0.05;
-        let scale = 1;
-        const trajectory: number[] = [];
-        for (let tick = 0; tick < 400; tick++) {
-            const commanded = scale - 0.005;
-            scale = applySoftScaleFloor(Math.min(1, commanded), minScale, softRange);
-            trajectory.push(scale);
-        }
-        const diffs = trajectory.slice(1).map((value, index) => value - trajectory[index]);
-        expect(diffs.every((diff) => diff <= 1e-12)).toBe(true);
-        expect(trajectory[trajectory.length - 1]).toBeLessThan(minScale);
-        expect(trajectory[trajectory.length - 1]).toBeGreaterThan(0);
     });
 });
 
