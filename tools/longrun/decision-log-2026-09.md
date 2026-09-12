@@ -1150,3 +1150,39 @@ metrics.ts:1219 computes fillPrimary as slotsFilledByEdu/capacityByEdu, which is
 from the same slot universe. NOT patched: changing it now would invalidate the cross-run comparison, and it is
 orthogonal to the oscillation question. Logged for a separate investigation. employed/capacity is computed
 consistently from employed and the two slot-capacity fields and is used for all cross-run comparisons instead.
+
+## CORRECTION: the capacity ratio does NOT collapse - it equilibrates (2026-09-09)
+Earlier I called the employed/capacity decline a "collapse" and extrapolated it to a wall. The longer control run
+refutes that. Control (stable6000y, hard floor 0.10), employed/capacity by window:
+    y 10-  30  1.4863
+    y 70-  90  1.1026
+    y130- 150  0.8208
+    y190- 210  0.8003
+    y250- 270  0.6641   <- minimum
+    y310- 330  0.6740
+    y370- 390  0.6843   <- flat / slightly recovering for 140 years
+It bottoms at ~0.66 around y250 and then STAYS there. The decline was a transient settling, not an unbounded
+divergence, and my extrapolation was wrong.
+
+NO DEATHS. Minimum population over the whole series vs the start value:
+    control(hard .10)  min/start = 1.000   (y421, pop 9.8e6 -> 1.118e8, 11.41x, condition 0.948)
+    softfloor(.05)     min/start = 1.000   (y173, 2.70x)
+    floor25(.25)       min/start = 1.000   (y74,  1.51x)
+    setpoint(scale)    min/start = 0.732   (y61, pop 8.54e6, FALLING, condition 0.865)  <- the only failure
+groceryFillRate = 1.000 in every window of every run. No famine anywhere.
+
+So the old extinction (y73.6 pre-refill-fix, y84 post-refill-fix) is gone from all three main runs, and the
+control - which needs none of the floor work - is 421 years in and growing. The stable state has a persistent
+~33%% of job slots unfilled (emp/cap ~0.67), i.e. capital is built that is never fully staffed. That is a
+balance/design question, not a stability bug: it is stable, not diverging.
+
+setpoint (--storageTargetScaleAnchored=on) confirms the user's predicted sign: scale -> target=f(scale) ->
+target easier to meet -> less recovery pressure -> scale falls further. Population is DOWN 13%% from start with
+the worst condition of any run. Logged as a falsification test that failed in the predicted direction, which
+rules out scale-anchoring as a fix and validates the mechanism.
+
+REVISED STATUS: the third oscillator (facility parked at error~0 with signal ~0.01-0.03, so the P term gives
+no restoring force and the excursion is driven by the tiny residual error integrating over ~100 ticks) is still
+not fixed. But it is much less harmful than I claimed: it does not kill the economy, it bounds the operating
+range, and its amplitude is fully explained by 1/effectiveFloor. The priority is now balancing the ~0.67 slot
+utilisation, not chasing the oscillation.

@@ -15,7 +15,6 @@ import {
     setMinScaleFraction,
     setSoftMinScaleRange,
     setStorageTargetMonths,
-    setStorageTargetScaleAnchored,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -471,11 +470,6 @@ async function main(): Promise<void> {
     if (storageTargetMonthsArg !== undefined) {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
-    }
-    const storageTargetScaleAnchoredArg = arg('storageTargetScaleAnchored');
-    if (storageTargetScaleAnchoredArg !== undefined) {
-        setStorageTargetScaleAnchored(storageTargetScaleAnchoredArg !== 'off');
-        console.log(`storage target anchored to ${storageTargetScaleAnchoredArg !== 'off' ? 'scale' : 'maxScale'}`);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {
