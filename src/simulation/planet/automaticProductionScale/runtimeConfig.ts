@@ -1,6 +1,6 @@
 let storageSpaceClampEnabled = true;
 let pidOutMaxDown: number | null = null;
-let pidOutMaxUp: number | null = null;
+const pidOutMaxUp: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
