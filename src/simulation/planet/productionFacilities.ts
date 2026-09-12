@@ -257,7 +257,6 @@ const copperSmelter = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: copperResourceType, quantity: 100 }],
 });
 
-const OIL_REFINERY_WASTE_SURPLUS_TICKS = 120;
 const REFINERY_OUTPUT_FLEXIBLE = (process.env.REFINERY_OUTPUT_FLEXIBLE ?? '0') === '1';
 
 export const oilRefinery = (planetId: string, id: string): ProductionFacility => ({
@@ -279,7 +278,6 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
         { resource: chemicalResourceType, quantity: 48 },
     ],
     outputFlexible: REFINERY_OUTPUT_FLEXIBLE,
-    wasteSurplusTicks: OIL_REFINERY_WASTE_SURPLUS_TICKS,
 });
 
 const sawmill = (planetId: string, id: string): ProductionFacility => ({

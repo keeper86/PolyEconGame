@@ -11,7 +11,7 @@ import {
     WEALTH_TAX_MONTHLY_RATE,
 } from '../constants';
 import { calculateCostsForConstruction } from '../planet/facility';
-import { constructionServiceResourceType } from '../planet/services';
+import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
 import { computeFacilitiesValue, constructionValuationPrice } from '../financial/assetValuation';
 import type { Planet } from '../planet/planet';
 import { makeLoan, totalOutstandingLoans } from '../financial/loanTypes';
@@ -32,7 +32,11 @@ import {
     computeWealthTax,
     governmentSupportTick,
     governmentTick,
+    INSURANCE_WEALTH_CAP_DAYS,
     setPopulationWealthTaxEnabled,
+    setSupportEmployed,
+    setSupportFoodAffordabilityMultiplier,
+    setSupportWealthCapDays,
     setWealthTaxAllowance,
     wealthTaxAllowance,
 } from './governmentAgent';
@@ -307,6 +311,74 @@ describe('governmentSupportTick', () => {
 
         expect(spent).toBeCloseTo((dailyInsurance / 4) * cat.total);
         expect(cat.wealth.mean).toBeCloseTo(wealthCap);
+    });
+
+    function makeEmployedPlanet(gov: ReturnType<typeof makeGovernmentAgent>): ReturnType<typeof makePlanet> {
+        const planet = makePlanet({ governmentId: gov.id });
+        const cat = planet.population.demography[40].employed.none;
+        cat.total = 1000;
+        cat.wealth = { mean: 0, variance: 0 };
+        return planet;
+    }
+
+    afterEach(() => {
+        setSupportEmployed(false);
+        setSupportWealthCapDays(INSURANCE_WEALTH_CAP_DAYS);
+        setSupportFoodAffordabilityMultiplier(0);
+    });
+
+    it('pays nothing to employed cohorts by default', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeEmployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        expect(governmentSupportTick(gameState, planet)).toBe(0);
+    });
+
+    it('pays employed cohorts when support is extended to them', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeEmployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+
+        setSupportEmployed(true);
+        const spent = governmentSupportTick(gameState, planet);
+
+        expect(spent).toBeGreaterThan(0);
+        expect(planet.population.demography[40].employed.none.wealth.mean).toBeGreaterThan(0);
+    });
+
+    it('raises every cohort to a food-affordability floor independent of wage rates', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeEmployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        planet.marketPrices[groceryServiceResourceType.name] = 40;
+
+        setSupportFoodAffordabilityMultiplier(0.1);
+        const spent = governmentSupportTick(gameState, planet);
+
+        const expectedDaily = 0.1 * 40;
+        expect(spent).toBeGreaterThan(0);
+        expect(planet.population.demography[40].employed.none.wealth.mean).toBeCloseTo(expectedDaily);
+    });
+
+    it('lets a larger wealth cap release cohorts the 5-day cap would have excluded', () => {
+        const gov = makeGovernmentAgent('gov-1', PLANET_ID);
+        const planet = makeEmployedPlanet(gov);
+        gov.assets[PLANET_ID]!.deposits = 100_000_000_000;
+        const gameState = makeGameState([planet], [gov, planet.recycler]);
+        const cat = planet.population.demography[40].employed.none;
+
+        setSupportEmployed(true);
+        const dailyInsurance = 0.5 * (planet.wagePerEdu.none ?? 1);
+        cat.wealth = { mean: 6 * dailyInsurance, variance: 0 };
+
+        expect(governmentSupportTick(gameState, planet)).toBe(0);
+
+        setSupportWealthCapDays(30);
+        expect(governmentSupportTick(gameState, planet)).toBeGreaterThan(0);
     });
 });
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '../../src/simulation/constants';
 import { advanceTick, seedRng } from '../../src/simulation/engine';
-import { setPopulationWealthTaxEnabled, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
+import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAffordabilityMultiplier, setSupportWealthCapDays, setWealthTaxAllowance } from '../../src/simulation/agents/governmentAgent';
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
@@ -258,6 +258,12 @@ async function runScenario(
         }
         monthly.push(...(readCsv(path.join(outDir, 'series.csv')) as MetricMap[]));
         scaleGaps.push(...(readCsv(path.join(outDir, 'scaleGaps.csv')) as Array<Record<string, number>>));
+        if (!fs.existsSync(path.join(outDir, 'series.csv'))) {
+            writeCsvHeader(path.join(outDir, 'series.csv'), METRIC_KEYS);
+        }
+        if (!fs.existsSync(path.join(outDir, 'scaleGaps.csv'))) {
+            writeCsvHeader(path.join(outDir, 'scaleGaps.csv'), GAP_METRIC_KEYS);
+        }
         console.log(
             `[${scenario.name}] resuming from checkpoint tick ${startTick} ` +
                 `(y${(startTick / TICKS_PER_YEAR).toFixed(1)}), ${monthly.length} samples already recorded`,
@@ -504,6 +510,20 @@ async function main(): Promise<void> {
     const wealthTaxAllowanceArg = arg('wealthTaxAllowance');
     if (wealthTaxAllowanceArg !== undefined) {
         setWealthTaxAllowance(Number(wealthTaxAllowanceArg));
+    }
+    if (process.argv.includes('--supportEmployed')) {
+        setSupportEmployed(true);
+        console.log('government support extended to employed cohorts');
+    }
+    const supportWealthCapDaysArg = arg('supportWealthCapDays');
+    if (supportWealthCapDaysArg !== undefined) {
+        setSupportWealthCapDays(Number(supportWealthCapDaysArg));
+        console.log(`government support wealth cap overridden to ${supportWealthCapDaysArg} days`);
+    }
+    const supportFoodAffordabilityArg = arg('supportFoodAffordability');
+    if (supportFoodAffordabilityArg !== undefined) {
+        setSupportFoodAffordabilityMultiplier(Number(supportFoodAffordabilityArg));
+        console.log(`government support food affordability floor set to ${supportFoodAffordabilityArg} x food price/day`);
     }
     const resourceMultiplierArg = arg('resourceMultiplier');
     if (resourceMultiplierArg !== undefined) {

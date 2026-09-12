@@ -428,6 +428,43 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         expect(offer.offerPrice).toBeGreaterThan(10);
     });
 
+    it('amplifies without bound as the price approaches the floor from above', () => {
+        const priceNearFloor = 0.0602;
+        const costFloor = 33.67;
+        const offer = {
+            resource: goodsResource,
+            offerPrice: priceNearFloor,
+            lastSold: 0.001,
+            autoConfig: {
+                automatedCostFloorBuffer: 1.5,
+                costSpringStrength: 0.5,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, priceNearFloor, costFloor);
+
+        expect(offer.diagnostics!.costSpringDeviation).toBeGreaterThan(28);
+        expect(offer.diagnostics!.costSpringDeviation).toBeCloseTo(
+            Math.sqrt((costFloor * 1.5) / priceNearFloor - 1),
+            6,
+        );
+
+        const atFloor = {
+            resource: goodsResource,
+            offerPrice: 0.01,
+            lastSold: 0.001,
+            autoConfig: {
+                automatedCostFloorBuffer: 1.5,
+                costSpringStrength: 0.5,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(atFloor, 100, 0.01, costFloor);
+        expect(atFloor.diagnostics!.costSpringDeviation).toBeGreaterThan(
+            offer.diagnostics!.costSpringDeviation,
+        );
+    });
+
     it('is inactive at or above the buffer, so sell-through feedback governs', () => {
         const offer = {
             resource: goodsResource,

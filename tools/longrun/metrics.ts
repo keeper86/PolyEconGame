@@ -36,6 +36,7 @@ import {
     ALL_SERVICE_RESOURCE_TYPE_NAMES,
 } from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
+import { computeEnvironmentalMortality, mortalityComponentsPerTick } from '../../src/simulation/population/mortality';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
 import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
@@ -206,6 +207,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let healthcareStarvationWeighted = 0;
     let deathsLastMonth = 0;
     let deathsThisMonth = 0;
+    let deathsBaseline = 0;
+    let deathsStarvation = 0;
+    let deathsEnvironment = 0;
+    let deathsWorkforce = 0;
+    const environmentalMortality = computeEnvironmentalMortality(planet.environment);
     let maxGroceryStarvation = 0;
     let starvationMild = 0;
     let starvationSevere = 0;
@@ -213,7 +219,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let wealthWeighted = 0;
     const wealthEntries: Array<{ mean: number; count: number }> = [];
 
-    for (const cohort of planet.population.demography) {
+    for (let age = 0; age < planet.population.demography.length; age++) {
+        const cohort = planet.population.demography[age];
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
                 const cat = cohort[occ][edu];
@@ -226,6 +233,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 healthcareStarvationWeighted += cat.total * cat.services.healthcare.starvationLevel;
                 deathsLastMonth += cat.deaths.countLastMonth;
                 deathsThisMonth += cat.deaths.countThisMonth;
+                if (occ === 'employed') {
+                    deathsWorkforce += cat.deaths.countThisMonth;
+                } else {
+                    const components = mortalityComponentsPerTick(starvation, environmentalMortality, age);
+                    deathsBaseline += cat.total * components.baseline;
+                    deathsStarvation += cat.total * components.starvation;
+                    deathsEnvironment += cat.total * components.environment;
+                }
                 wealthWeighted += cat.total * cat.wealth.mean;
                 wealthEntries.push({ mean: cat.wealth.mean, count: cat.total });
                 if (starvation > maxGroceryStarvation) {
@@ -1232,6 +1247,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         starvationFatalFraction: totalPopulation > 0 ? starvationFatal / totalPopulation : 0,
         deathsLastMonth,
         deathsThisMonth,
+        deathsBaselinePerTick: deathsBaseline,
+        deathsStarvationPerTick: deathsStarvation,
+        deathsEnvironmentPerTick: deathsEnvironment,
+        deathsEmployedThisMonth: deathsWorkforce,
         birthsThisMonth: 0,
         meanWealth,
         medianWealth,
@@ -1584,6 +1603,10 @@ export const METRIC_KEYS: string[] = [
     'starvationFatalFraction',
     'deathsLastMonth',
     'deathsThisMonth',
+    'deathsBaselinePerTick',
+    'deathsStarvationPerTick',
+    'deathsEnvironmentPerTick',
+    'deathsEmployedThisMonth',
     'birthsThisMonth',
     'meanWealth',
     'medianWealth',
