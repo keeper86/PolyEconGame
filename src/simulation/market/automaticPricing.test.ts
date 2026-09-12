@@ -6,6 +6,7 @@ import {
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
@@ -19,7 +20,7 @@ import {
     TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
-import type { StorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, shellFormOfResource } from '../planet/facility';
 import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
@@ -40,7 +41,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
 } from '../planet/services';
-import { storageDepartmentFacilityType } from '../planet/specialFacilities';
+import { logisticsDepartmentFacilityType } from '../planet/specialFacilities';
 
 const PLANET_ID = 'p';
 const WATER = waterResourceType.name;
@@ -49,10 +50,16 @@ function makePlanetWithPrice(prices: Record<string, number> = {}) {
     return makePlanet({ marketPrices: prices });
 }
 
-function makeStorageWith(
-    contents: Record<string, { resource: StorageFacility['currentInStorage'][string]['resource']; quantity: number }>,
-) {
-    return makeStorageFacility({ planetId: PLANET_ID, currentInStorage: contents });
+function makeStorageWith(contents: Record<string, { resource: Resource; quantity: number }>) {
+    const storage = makeStorageFacility({ planetId: PLANET_ID });
+    for (const { resource, quantity } of Object.values(contents)) {
+        const form = shellFormOfResource(resource);
+        if (form) {
+            storage.shells[form].compartments[resource.name] = 1;
+        }
+        putIntoStorageFacility(storage, resource, quantity);
+    }
+    return storage;
 }
 
 function makeWaterProducerWithPriorOffer(priorPrice: number, lastSold: number, offerQty: number) {
@@ -64,7 +71,7 @@ function makeWaterProducerWithPriorOffer(priorPrice: number, lastSold: number, o
 
     const agent = makeAgent('co', PLANET_ID);
     agent.assets[PLANET_ID].productionFacilities = [facility];
-    agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+    agent.assets[PLANET_ID].storage = makeStorageWith({
         [WATER]: { resource: waterResourceType, quantity: offerQty },
     });
     agent.assets[PLANET_ID].market = {
@@ -182,8 +189,11 @@ describe('resolveBidConfig — config resolution', () => {
         const bid = agent.assets[PLANET_ID].market?.buy[goodsResource.name];
         expect(bid).toBeDefined();
 
-        // With empty storage and smoothing: baseRate = 10, smoothed = 10 * (1 + 2) = 30
-        expect(bid!.bidStorageTarget).toBeCloseTo(10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA), 0);
+        // With empty storage: baseRate 10 * (1 + 2) = 30 smoothing plus refill term rawTarget/refillTicks
+        expect(bid!.bidStorageTarget).toBeCloseTo(
+            10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + (10 * INPUT_BUFFER_TARGET_TICKS) / INPUT_BUFFER_REFILL_TICKS,
+            0,
+        );
     });
 
     it('buy-side with undefined config picks service defaults for services resources', () => {
@@ -222,7 +232,7 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [produceResourceType.name]: { resource: produceResourceType, quantity: 5_000 },
         });
 
@@ -246,7 +256,7 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [producer, consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [produceResourceType.name]: { resource: produceResourceType, quantity: 65_000 },
         });
 
@@ -266,7 +276,7 @@ describe('automaticPricing — sell offer respects own input reserves', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [producer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [waterResourceType.name]: { resource: waterResourceType, quantity: 3_000 },
         });
 
@@ -289,7 +299,7 @@ describe('automaticPricing — offer price tâtonnement', () => {
         const planet = makePlanetWithPrice({ [WATER]: 5 });
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [WATER]: { resource: waterResourceType, quantity: 200 },
         });
 
@@ -456,6 +466,26 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         // sold 0 < target → factor = maxDown → price falls
         expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
     });
+
+    it('disables the cost spring for saturated products so surplus can clear', () => {
+        const offer = {
+            resource: goodsResource,
+            offerPrice: 10,
+            lastSold: 30,
+            autoConfig: {
+                automatedCostFloorBuffer: 2,
+                costSpringStrength: 0.05,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, 10, 20, true);
+
+        // Same configuration as the "pushes the price up below the buffer" case,
+        // but saturation removes the spring: price must fall on weak sell-through.
+        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
+        expect(offer.diagnostics!.netFactor).toBeCloseTo(offer.diagnostics!.baseFactor, 10);
+        expect(offer.offerPrice).toBeLessThan(10);
+    });
 });
 
 // ── Sell-side config override tests ──────────────────────────────────────────
@@ -534,7 +564,7 @@ describe('automaticPricing — EMA smoothing', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].market = {
             sell: {},
@@ -608,7 +638,7 @@ describe('automaticPricing — sell-side config overrides', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [WATER]: { resource: waterResourceType, quantity: 10 },
         });
         agent.assets[PLANET_ID].market = {
@@ -690,7 +720,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
         const agent = makeAgent('co', PLANET_ID);
         agent.automated = true;
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [clothingResourceType.name]: { resource: clothingResourceType, quantity: 0.22 },
             [fabricResourceType.name]: { resource: fabricResourceType, quantity: 500 },
         });
@@ -713,7 +743,7 @@ describe('automaticPricing — pieces resource quantities are continuous', () =>
         agent.automated = true;
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({});
+        agent.assets[PLANET_ID].storage = makeStorageWith({});
 
         automaticPricing(new Map([['co', agent]]), planet);
 
@@ -750,7 +780,7 @@ describe('automaticPricing — sell-side pricing feedback', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageWith({
+        agent.assets[PLANET_ID].storage = makeStorageWith({
             [clothingResourceType.name]: { resource: clothingResourceType, quantity: 1000 },
         });
         agent.assets[PLANET_ID].market = {
@@ -801,7 +831,7 @@ describe('automaticPricing — bid diagnostics for dropped demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].market = {
             sell: {},
@@ -841,8 +871,8 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -867,8 +897,8 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
         // prior bid at the high market price → the ceiling spring has room to pull it down
         agent.assets[PLANET_ID].market = {
@@ -916,8 +946,8 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -943,8 +973,8 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -972,8 +1002,8 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [facility];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         automaticPricing(new Map([['co', agent]]), planet);
@@ -1006,8 +1036,8 @@ describe('automaticPricing — facility restoration demand', () => {
     function makeAgentWithFacilities(facilities: ReturnType<typeof makeProductionFacility>[]) {
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = facilities;
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = null;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = null;
         agent.assets[PLANET_ID].deposits = 1_000_000;
         return agent;
     }
@@ -1149,7 +1179,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         agent.assets[PLANET_ID].market = {
@@ -1191,7 +1221,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.assets[PLANET_ID].market = {
             sell: {},
@@ -1228,7 +1258,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
 
         const agent = makeAgent('co', PLANET_ID);
         agent.assets[PLANET_ID].productionFacilities = [consumer];
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
         agent.assets[PLANET_ID].deposits = 1_000_000;
 
         agent.assets[PLANET_ID].market = {
@@ -1263,9 +1293,9 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
 describe('automaticPricing — storage department generates buy bids', () => {
     it('generates buy bids for logistics and administration when storage department exists', () => {
         const agent = makeAgent('co', PLANET_ID);
-        agent.assets[PLANET_ID].storageFacility = makeStorageFacility({ planetId: PLANET_ID });
-        agent.assets[PLANET_ID].storageFacility.department = storageDepartmentFacilityType(PLANET_ID, 'storage-dept');
-        agent.assets[PLANET_ID].storageFacility.department.scale = 1;
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].storage.department = logisticsDepartmentFacilityType(PLANET_ID, 'storage-dept');
+        agent.assets[PLANET_ID].storage.department.scale = 1;
         agent.assets[PLANET_ID].deposits = 1_000_000;
         agent.automated = true;
 

@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { useHashAccordion } from '@/hooks/useHashAccordion';
 import { useOnlyRelevantResourcesPreference } from '@/hooks/uiPreferences';
 import type { MarketOverviewRow } from '@/server/controller/planet';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
@@ -303,7 +304,7 @@ export default function MarketPanel({
             case 'currentStorage':
                 return resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
                     ? (allPlanetDeposits?.[resourceName.slice(CURRENCY_RESOURCE_PREFIX.length)] ?? 0)
-                    : (assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0);
+                    : queryStorageFacility(assets.storage, resourceName);
             case 'clearingPrice':
                 return overviewRows[resourceName]?.clearingPrice ?? 0;
             case 'totalProduction':

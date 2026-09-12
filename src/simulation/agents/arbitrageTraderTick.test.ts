@@ -14,6 +14,7 @@ import { effectiveShipValue } from '../ships/shipMarket';
 import type { TransportShip } from '../ships/ships';
 import { createShip, shiptypes } from '../ships/ships';
 import { makeAgent, makeAgentPlanetAssets, makeGameState, makePlanet } from '../utils/testHelper';
+import { putIntoStorageFacility } from '../planet/facility';
 import { seedArbitrageTraderAgents } from './arbitrageTrader';
 import { arbitrageTraderTick } from './arbitrageTraderTick';
 
@@ -70,6 +71,8 @@ function makeTwoPlanetState(opts?: {
             'p-dest': assetsDest,
         },
     });
+    assetsOrigin.storage.shells.solid.compartments.Steel = 1;
+    assetsDest.storage.shells.solid.compartments.Steel = 1;
 
     const ship = createShip(SHIP_TYPE, 0, 'Trader Ship', pOrigin) as TransportShip;
     agent.ships.push(ship);
@@ -339,10 +342,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
-            resource: steelResource,
-            quantity: 50,
-        };
+        putIntoStorageFacility(agent.assets['p-dest']!.storage, steelResource, 50);
         state.planets.get('p-dest')!.marketPrices.Steel = 200;
 
         arbitrageTraderTick(state);
@@ -372,10 +372,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             currentCargo: { resource: steelResource, quantity: 0 },
         };
 
-        agent.assets['p-origin']!.storageFacility.currentInStorage.Steel = {
-            resource: steelResource,
-            quantity: 50,
-        };
+        putIntoStorageFacility(agent.assets['p-origin']!.storage, steelResource, 50);
         state.planets.get('p-origin')!.marketPrices.Steel = 100;
 
         arbitrageTraderTick(state);
@@ -393,10 +390,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
-            resource: steelResource,
-            quantity: 50,
-        };
+        putIntoStorageFacility(agent.assets['p-dest']!.storage, steelResource, 50);
         state.planets.get('p-dest')!.marketPrices.Steel = 200;
 
         agent.assets['p-dest']!.market!.sell.Steel = {
@@ -421,10 +415,7 @@ describe('arbitrageTraderTick – postSellOffers', () => {
             volumePerQuantity: 0.3,
             massPerQuantity: 1,
         };
-        agent.assets['p-dest']!.storageFacility.currentInStorage.Steel = {
-            resource: steelResource,
-            quantity: 50,
-        };
+        putIntoStorageFacility(agent.assets['p-dest']!.storage, steelResource, 50);
         state.planets.get('p-dest')!.marketPrices.Steel = 200;
 
         agent.assets['p-dest']!.market!.sell.Steel = {

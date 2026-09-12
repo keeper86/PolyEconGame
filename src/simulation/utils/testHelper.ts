@@ -5,14 +5,19 @@ import { makeLoan } from '../financial/loanTypes';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import {
     createLastTickResults,
+    makeStorageShell,
     nullWagePidState,
+    putIntoStorageFacility,
+    queryStorageFacility,
+    removeFromStorageFacility,
     type HRFacility,
     type ManagementFacility,
     type ProductionFacility,
     type ShipConstructionFacility,
     type StorageDepartment,
-    type StorageFacility,
+    type Storage,
 } from '../planet/facility';
+import type { Resource } from '../planet/claims';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -176,21 +181,50 @@ export function makeEnvironment(overrides?: Partial<Environment>): Environment {
     };
 }
 
-export function makeStorageFacility(overrides?: Partial<StorageFacility>): StorageFacility {
-    return {
+export function makeStorageFacility(overrides?: Partial<Storage>, initialScale = 1): Storage {
+    const base: Storage = {
         planetId: 'p',
         id: 'storage-p',
-        capacity: { volume: 1e13, mass: 1e13 },
-        current: { volume: 0, mass: 0 },
         currentInStorage: {},
         escrow: {},
+        shells: {
+            solid: makeStorageShell('p', 'storage-p-silo', 'solid', initialScale),
+            liquid: makeStorageShell('p', 'storage-p-tank', 'liquid', initialScale),
+            pieces: makeStorageShell('p', 'storage-p-warehouse', 'pieces', initialScale),
+        },
         department: {
             ...makeManagementFacility(),
-            storageBuffer: 0,
-            storageStarvation: 0,
+            transportBuffer: 0,
+            transportStarvation: 0,
         } as StorageDepartment,
         ...overrides,
-    } as StorageFacility;
+    };
+    const planetId = base.planetId;
+    const id = base.id;
+    const scale = base.department?.maxScale && base.department.maxScale > 0 ? base.department.maxScale : 1;
+    base.shells = {
+        solid: makeStorageShell(planetId, `${id}-silo`, 'solid', scale),
+        liquid: makeStorageShell(planetId, `${id}-tank`, 'liquid', scale),
+        pieces: makeStorageShell(planetId, `${id}-warehouse`, 'pieces', scale),
+    };
+    return base;
+}
+
+export function setStorageResourceQuantity(storage: Storage, resource: Resource, quantity: number): void {
+    const previousDepartment = storage.department;
+    if (!previousDepartment || previousDepartment.transportStarvation !== 0) {
+        storage.department = { transportStarvation: 0 } as Partial<StorageDepartment> as StorageDepartment;
+    }
+
+    const existing = queryStorageFacility(storage, resource.name, false);
+    if (existing > 0) {
+        removeFromStorageFacility(storage, resource.name, existing);
+    }
+    if (quantity > 0) {
+        putIntoStorageFacility(storage, resource, quantity);
+    }
+
+    storage.department = previousDepartment;
 }
 
 export function makeManagementFacility(
@@ -329,7 +363,7 @@ export function makeAgentPlanetAssets(planetId = 'p', overrides?: Partial<AgentP
         deposits: 0,
         depositHold: 0,
         activeLoans: [],
-        storageFacility: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
+        storage: makeStorageFacility({ planetId, id: `storage-${planetId}` }),
         wagePerEdu: {
             none: DEFAULT_WAGE_PER_EDU,
             primary: DEFAULT_WAGE_PER_EDU,

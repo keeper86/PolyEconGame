@@ -23,7 +23,7 @@ import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
     USED_QUANTITY,
-    storageDepartmentFacilityType,
+    logisticsDepartmentFacilityType,
 } from '../../src/simulation/planet/specialFacilities';
 import {
     FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK,
@@ -83,7 +83,7 @@ function resourceConstraintKey(name: string): string {
 const HR_ADMIN_PER_SCALE = USED_QUANTITY;
 const HR_ADMIN_PER_WORKER = (HR_WORLD_BUFFER * ESTIMATED_HR_OVERHEAD * HR_ADMIN_PER_SCALE) / (PRODUCED_HR_QUANTITY / 2);
 
-const stoTemplate = storageDepartmentFacilityType(TOOL_PLANET, TOOL_ID);
+const stoTemplate = logisticsDepartmentFacilityType(TOOL_PLANET, TOOL_ID);
 const STO_WORKERS_PER_SCALE =
     (stoTemplate.workerRequirement.none ?? 0) +
     (stoTemplate.workerRequirement.primary ?? 0) +

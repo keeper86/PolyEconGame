@@ -10,6 +10,7 @@ import type { LoanConditions } from '../../server/controller/simulation';
 import { computeFacilitiesValue, computeShipsValue, constructionValuationPrice } from './assetValuation';
 import type { ShipCapitalMarket } from '../ships/ships';
 import { processBankruptcy } from './bankruptcy';
+import { getWholeStorage } from '../planet/facility';
 
 export function computeLoanConditions(
     agent: Agent,
@@ -35,8 +36,8 @@ export function computeLoanConditions(
     const isNewAgent = !agent.starterLoanTaken;
 
     let storageCollateral = 0;
-    if (assets?.storageFacility?.currentInStorage) {
-        for (const entry of Object.values(assets.storageFacility.currentInStorage)) {
+    if (assets?.storage) {
+        for (const [, entry] of getWholeStorage(assets.storage)) {
             if (entry?.quantity && entry.resource.form !== 'services') {
                 const price = planet.marketPrices[entry.resource.name] ?? 0;
                 storageCollateral += entry.quantity * price * LOAN_COLLATERAL_FACTOR;

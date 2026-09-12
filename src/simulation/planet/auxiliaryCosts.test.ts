@@ -24,7 +24,7 @@ import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
     humanResourcesOfficeFacilityType,
-    storageDepartmentFacilityType,
+    logisticsDepartmentFacilityType,
 } from './specialFacilities';
 
 describe('auxiliaryCostRates', () => {
@@ -33,7 +33,7 @@ describe('auxiliaryCostRates', () => {
         const rates = auxiliaryCostRates(planet);
 
         const hrTemplate = humanResourcesOfficeFacilityType('catalog', 'preview');
-        const storageTemplate = storageDepartmentFacilityType('catalog', 'preview');
+        const storageTemplate = logisticsDepartmentFacilityType('catalog', 'preview');
 
         const adminPrice = (planet.marketPrices.Administration ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER;
         const logisticsPrice = (planet.marketPrices.Logistics ?? 0) * SERVICE_DEPRECIATION_COST_MULTIPLIER;

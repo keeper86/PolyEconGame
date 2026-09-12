@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, INPUT_BUFFER_REFILL_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
 import { machineryFactory } from '../planet/productionFacilities';
 import {
     electronicsResourceType,
@@ -30,7 +30,7 @@ function makeIronSmelterAgent(id: string) {
     const agent = makeAgent(id, PLANET_ID);
     agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
-    agent.assets[PLANET_ID].storageFacility = storage;
+    agent.assets[PLANET_ID].storage = storage;
     return agent;
 }
 
@@ -41,7 +41,7 @@ function makeMachineryAgent(id: string) {
     const agent = makeAgent(id, PLANET_ID);
     agent.assets[PLANET_ID].deposits = 1_000_000;
     agent.assets[PLANET_ID].productionFacilities = [facility];
-    agent.assets[PLANET_ID].storageFacility = storage;
+    agent.assets[PLANET_ID].storage = storage;
     return agent;
 }
 
@@ -123,9 +123,9 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        // With empty storage, smoothing caps the target at baseRateConsumption * (1 + INVENTORY_SMOOTHING_MAX_EXTRA)
+        // With empty storage: baseRate * (1 + smoothingMaxExtra) plus the refill term shortfall / refillTicks
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
-        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
         expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 

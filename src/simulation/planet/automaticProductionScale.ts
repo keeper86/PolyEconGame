@@ -1,24 +1,31 @@
 import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
-import type { HRFacility, PidState, ProductionFacility } from './facility';
-import { calculateCostsForConstruction, getStorageStarvation } from './facility';
+import type { HRFacility, PidState, ProductionFacility, StorageFacility } from './facility';
+import { calculateCostsForConstruction, getTransportStarvation, storageFormKeys } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
 
 export * from './automaticProductionScale/constants';
 export {
+    computeDynamicExpansionTarget,
     findMaxAffordableScale,
     findMaxScaleForCSBudget,
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
+export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
 export {
-    computeFacilitySignal,
-    computeProfitMargin,
-    estimateProfitAtScale,
-} from './automaticProductionScale/signalComputation';
+    assertStabilityConditions,
+    checkCapacityCoversTarget,
+    checkLimitCycleBand,
+    checkSymmetricRateLimit,
+    correctionTimeTicks,
+    evaluateStabilityConditions,
+    limitCycleRatio,
+    storageLeadTimeTicks,
+} from './automaticProductionScale/stabilityConditions';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -30,20 +37,24 @@ import {
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
     DYNAMIC_EXPANSION_CAP_FRACTION,
-    EXPANSION_INPUT_EFFICIENCY_MIN,
     EXPANSION_INTEGRAL_DECAY,
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
-    EXPANSION_STORAGE_FREE_FRACTION,
     EXPANSION_WORKING_CAPITAL_TICKS,
-    FACILITY_EXPANSION_MIN_MAINTENANCE,
     HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    STORAGE_CONTRACTION_RATE,
+    STORAGE_EXPANSION_RATE,
     STORAGE_STARVATION_EXPANSION_MAX,
 } from './automaticProductionScale/constants';
+import {
+    getContractionIntegralThreshold,
+    getExpansionIntegralThreshold,
+    getMinScaleFraction,
+} from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
     calculateExpansionParams,
@@ -55,12 +66,12 @@ import {
     agentHasOwnConstructionFacility,
     checkExpansionFunds,
     computeConstructionInflationFactor,
-    computeExpansionWorkforceStats,
-    type ExpansionWorkforceStats,
 } from './automaticProductionScale/expansionUtils';
 import { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-import { computeFacilitySignal } from './automaticProductionScale/signalComputation';
+import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow';
+import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
+import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
@@ -69,6 +80,44 @@ function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
     const fillRate = pMax > 0 ? hrDepartment.hrBuffer / pMax : 0;
     return Math.max(-1, Math.min(1, (HR_TARGET_FILL_RATE - fillRate) / HR_TARGET_FILL_RATE));
+}
+
+const SHELL_BUFFER_FRACTION = 1.5;
+const SHELL_OVERSHOOT_FRACTION = 2;
+
+// Returns the construction budget still available after deciding growth (contraction frees budget).
+export function reconcileShellScale(
+    planet: Planet,
+    agent: Agent,
+    gameState: GameState,
+    assets: AgentPlanetAssets,
+    shell: StorageFacility,
+    requiredScale: number,
+    hasOwnConstruction: boolean,
+    remainingConstructionBudget: number,
+): number {
+    if (requiredScale <= 0 || shell.construction !== null) {
+        return remainingConstructionBudget;
+    }
+
+    const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
+
+    if (shell.maxScale < requiredScale) {
+        if (remainingConstructionBudget <= 0) {
+            return remainingConstructionBudget;
+        }
+        const started = initiateCapacityExpansion(shell, assets, planet, hasOwnConstruction, bufferScale);
+        if (!started) {
+            return remainingConstructionBudget;
+        }
+        return Math.max(0, remainingConstructionBudget - shell.construction!.maximumConstructionServiceConsumption);
+    }
+
+    if (shell.maxScale > requiredScale * SHELL_OVERSHOOT_FRACTION && shell.maxScale > bufferScale) {
+        processFacilityContraction(planet, shell, agent, bufferScale, gameState, 0.5);
+    }
+
+    return remainingConstructionBudget;
 }
 
 type AutoscaleDebugEntry = {
@@ -93,7 +142,7 @@ type AutoscaleDebugEntry = {
         hasNoActiveConstruction: boolean;
         positiveSignal: boolean;
         integralAboveThreshold: boolean;
-        efficiencyAbove95: boolean;
+        efficiencyHealthy: boolean;
         workersAvailable: boolean;
         fundsAvailable: boolean;
         hasOwnConstruction: boolean;
@@ -140,9 +189,8 @@ function collectExpansionDebugContext(
     atMaxScale: boolean,
     hasNoActiveConstruction: boolean,
     integralAboveThreshold: boolean,
-    efficiencyAbove95: boolean,
-    workforceStats: ExpansionWorkforceStats,
-    workersAvailable: boolean,
+    inputsHealthy: boolean,
+    workerCoverage: number,
     fundsAvailable: boolean,
     hasOwnConstruction: boolean,
 ): AutoscaleDebugEntry {
@@ -175,11 +223,11 @@ function collectExpansionDebugContext(
     if (!integralAboveThreshold) {
         blockReason.push('expansionIntegralBelowThreshold');
     }
-    if (!efficiencyAbove95) {
-        blockReason.push('overallEfficiencyBelow95');
+    if (!inputsHealthy) {
+        blockReason.push('inputsBelow90');
     }
-    if (!workersAvailable) {
-        blockReason.push('insufficientWorkers');
+    if (workerCoverage <= 0.05) {
+        blockReason.push('lowWorkerCoverage');
     }
     if (!fundsAvailable) {
         blockReason.push('insufficientFunds');
@@ -207,15 +255,15 @@ function collectExpansionDebugContext(
             hasNoActiveConstruction,
             positiveSignal: signal > 0,
             integralAboveThreshold,
-            efficiencyAbove95,
-            workersAvailable,
+            efficiencyHealthy: inputsHealthy,
+            workersAvailable: workerCoverage >= 0.9,
             fundsAvailable,
             hasOwnConstruction,
         },
         workforce: {
-            availableUnemployed: workforceStats.totalAvailableUnemployed,
-            requiredNewWorkers: workforceStats.totalRequiredNewWorkers,
-            requiredWithReserve: workforceStats.requiredWithReserve,
+            availableUnemployed: 0,
+            requiredNewWorkers: 0,
+            requiredWithReserve: workerCoverage,
         },
         expansion: {
             targetMax,
@@ -246,31 +294,9 @@ function collectExpansionDebugContext(
     };
 }
 
-function hasStorageRoom(assets: AgentPlanetAssets): boolean {
-    const storage = assets.storageFacility;
-    if (!storage) {
-        return false;
-    }
-    const department = storage.department;
-    if (!department) {
-        return false;
-    }
-    const storageStarvation = department.storageStarvation > 0.05;
-    if (storageStarvation) {
-        return false;
-    }
-
-    const scale = department.scale ?? 1;
-    const volumeCapacity = storage.capacity.volume * scale;
-    const massCapacity = storage.capacity.mass * scale;
-
-    return (
-        storage.current.volume < volumeCapacity * EXPANSION_STORAGE_FREE_FRACTION &&
-        storage.current.mass < massCapacity * EXPANSION_STORAGE_FREE_FRACTION
-    );
-}
-
 export function updateAgentProductionScale(gameState: GameState, planet: Planet): void {
+    const expThreshold = getExpansionIntegralThreshold() ?? EXPANSION_INTEGRAL_THRESHOLD;
+    const conThreshold = getContractionIntegralThreshold() ?? CONTRACTION_INTEGRAL_THRESHOLD;
     const debugAggregates = {
         facilitiesAtMaxScale: 0,
         facilitiesAtMaxScalePositiveSignal: 0,
@@ -278,12 +304,10 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         expansionsStarted: 0,
         blockedByIntegral: 0,
         blockedByEfficiency: 0,
-        blockedByWorkers: 0,
         blockedByFunds: 0,
     };
 
     const resourceTotalMaxCapacity = new Map<string, number>();
-    const resourceTotalMaxNeeded = new Map<string, number>();
     let totalActiveConstructionDemand = 0;
     gameState.agents.forEach((agent) => {
         const assets = agent.assets[planet.id];
@@ -298,13 +322,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
             for (const facility of assets.productionFacilities) {
-                for (const out of facility.needs) {
-                    const needed = out.quantity * facility.maxScale;
-                    resourceTotalMaxNeeded.set(
-                        out.resource.name,
-                        (resourceTotalMaxNeeded.get(out.resource.name) ?? 0) + needed,
-                    );
-                }
                 if (facility.construction !== null) {
                     totalActiveConstructionDemand += facility.construction.maximumConstructionServiceConsumption;
                 }
@@ -313,9 +330,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 totalActiveConstructionDemand +=
                     assets.humanResourcesDepartment?.construction.maximumConstructionServiceConsumption ?? 0;
             }
-            if (assets.storageFacility?.department?.construction !== null) {
+            if (assets.storage?.department?.construction !== null) {
                 totalActiveConstructionDemand +=
-                    assets.storageFacility.department?.construction.maximumConstructionServiceConsumption ?? 0;
+                    assets.storage.department?.construction.maximumConstructionServiceConsumption ?? 0;
             }
             for (const facility of assets.shipConstructionFacilities) {
                 if (facility.construction !== null) {
@@ -354,7 +371,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             const hasAnyMarketData = facility.produces.some(
-                (o) => planet.lastMarketResult[o.resource.name] !== undefined,
+                (o) => planet.avgMarketResult[o.resource.name] !== undefined,
             );
             if (!hasAnyMarketData) {
                 continue;
@@ -362,72 +379,69 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const state: PidState = { ...getDefaultPidState(), ...facility.pidState };
 
-            const flowSellThroughByResource: Record<string, number> = {};
-            for (const output of facility.produces) {
-                const offer = assets.market?.sell?.[output.resource.name];
-                const produced = facility.lastTickResults?.lastProduced?.[output.resource.name] ?? 0;
-                if (produced > 0 && offer) {
-                    flowSellThroughByResource[output.resource.name] = (offer.lastSold ?? 0) / produced;
-                }
-            }
+            const inputEfficiency = Object.values(facility.lastTickResults.resourceEfficiency).reduce(
+                (sum, r) => Math.min(sum, r),
+                1,
+            );
 
-            const rawSignal = computeFacilitySignal(facility, planet, flowSellThroughByResource);
+            const serviceFlowSignal = updateServiceFlowSignal(facility, assets, planet, state);
+            const maxError = computeFacilityStorageSignal(facility, assets).maxError;
+            const storageSignal = maxError > 0 ? inputEfficiency * maxError : maxError;
 
-            const signal = SIGNAL_EMA_ALPHA * rawSignal + (1 - SIGNAL_EMA_ALPHA) * state.smoothedSignal;
+            const signal = serviceFlowSignal ? serviceFlowSignal.error : storageSignal;
             state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
-            const newScale = Math.max(
-                facility.maxScale * MIN_SCALE_FRACTION,
-                Math.min(facility.maxScale, facility.scale + delta),
-            );
+            const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
+            const newScale = Math.max(minScale, Math.min(facility.maxScale, facility.scale + delta));
             facility.scale = newScale;
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
-            const storageHealthy = getStorageStarvation(assets.storageFacility) <= STORAGE_STARVATION_EXPANSION_MAX;
-            if (
-                facility.scale === facility.maxScale &&
-                signal > 0 &&
-                facility.maintenanceStatus > FACILITY_EXPANSION_MIN_MAINTENANCE &&
-                hrHealthy &&
-                storageHealthy
-            ) {
-                state.expansionIntegral = Math.min(EXPANSION_INTEGRAL_MAX, state.expansionIntegral + signal);
+            const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
+
+            const atMaxScale = facility.scale >= facility.maxScale * 0.999;
+            const atMinScale = facility.scale <= minScale;
+
+            if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
+                state.expansionIntegral = Math.min(
+                    EXPANSION_INTEGRAL_MAX,
+                    state.expansionIntegral + STORAGE_EXPANSION_RATE,
+                );
             } else {
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            const contractionStrength = facility.scale <= 0.2 * facility.maxScale && signal < 0 ? Math.abs(signal) : 0;
-            if (contractionStrength > 0) {
+            if (atMinScale && signal < 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
-                    state.contractionIntegral + contractionStrength,
+                    state.contractionIntegral + STORAGE_CONTRACTION_RATE,
                 );
             } else {
                 state.contractionIntegral = Math.max(0, state.contractionIntegral - CONTRACTION_INTEGRAL_DECAY);
             }
 
             const dynamicThreshold = hasOwnConstruction
-                ? EXPANSION_INTEGRAL_THRESHOLD
+                ? expThreshold
                 : Math.min(
                       EXPANSION_INTEGRAL_MAX,
-                      EXPANSION_INTEGRAL_THRESHOLD *
+                      expThreshold *
                           Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
                   );
 
-            const atMaxScale = facility.scale >= facility.maxScale;
             const hasNoActiveConstruction = facility.construction === null;
             const positiveSignal = signal > 0;
             const integralAboveThreshold = state.expansionIntegral >= dynamicThreshold;
-            const efficiencyAbove85 = (facility.lastTickResults?.overallEfficiency ?? 0) > 0.85;
-            const inputEfficiencies = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
-            const worstInputEfficiency = inputEfficiencies.length > 0 ? Math.min(...inputEfficiencies) : 1;
-            const inputHealthy = worstInputEfficiency >= EXPANSION_INPUT_EFFICIENCY_MIN;
-            const baseConditionsMet =
-                atMaxScale && hasNoActiveConstruction && integralAboveThreshold && efficiencyAbove85 && inputHealthy;
+            const resourceEfficiencyValues = Object.values(facility.lastTickResults?.resourceEfficiency ?? {});
+            const worstInputEfficiency =
+                resourceEfficiencyValues.length > 0 ? Math.min(...resourceEfficiencyValues) : 1;
+            const inputsHealthy = worstInputEfficiency >= 0.9;
+            const workerCoverageValues = Object.values(facility.lastTickResults?.workerEfficiency ?? {}).filter(
+                (v): v is number => typeof v === 'number',
+            );
+            const workerCoverage = workerCoverageValues.length > 0 ? Math.min(...workerCoverageValues) : 1;
+            const baseConditionsMet = hasNoActiveConstruction && integralAboveThreshold && inputsHealthy;
 
             let debugEntry: AutoscaleDebugEntry | null = null;
-            let workersAvailable = false;
             let fundsAvailable = false;
 
             if (isAutoscaleDebugEnabled()) {
@@ -439,12 +453,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            const needWorkerFundsCheck =
-                baseConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
-            let workforceStats: ExpansionWorkforceStats | null = null;
-            if (needWorkerFundsCheck) {
-                workforceStats = computeExpansionWorkforceStats(facility, planet);
-                workersAvailable = workforceStats.hasSufficientWorkers;
+            const needFundsCheck = baseConditionsMet || (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal);
+            if (needFundsCheck) {
                 if (hasOwnConstruction) {
                     fundsAvailable = true;
                 } else {
@@ -459,7 +469,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
 
-            if (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal && agent.id === 'civic-solutions-corp') {
+            if (isAutoscaleDebugEnabled() && atMaxScale && positiveSignal) {
                 console.log(
                     'DEBUG',
                     facility.name,
@@ -476,16 +486,15 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     facility,
                     assets,
                     state,
-                    rawSignal,
+                    signal,
                     signal,
                     delta,
                     dynamicThreshold,
                     atMaxScale,
                     hasNoActiveConstruction,
                     integralAboveThreshold,
-                    efficiencyAbove85,
-                    workforceStats!,
-                    workersAvailable,
+                    inputsHealthy,
+                    workerCoverage,
                     fundsAvailable,
                     hasOwnConstruction,
                 );
@@ -493,47 +502,46 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 if (!integralAboveThreshold) {
                     debugAggregates.blockedByIntegral++;
                 }
-                if (!efficiencyAbove85) {
+                if (!inputsHealthy) {
                     debugAggregates.blockedByEfficiency++;
-                }
-                if (!workersAvailable) {
-                    debugAggregates.blockedByWorkers++;
                 }
                 if (!fundsAvailable) {
                     debugAggregates.blockedByFunds++;
                 }
             }
 
-            if (baseConditionsMet && workersAvailable && hasStorageRoom(assets)) {
+            if (baseConditionsMet && fundsAvailable) {
                 const dynamicTarget = computeDynamicExpansionTarget(
                     facility,
                     assets,
                     planet,
-                    resourceTotalMaxCapacity,
-                    resourceTotalMaxNeeded,
                     hasOwnConstruction,
                     remainingConstructionBudget,
                 );
                 if (dynamicTarget > facility.maxScale) {
-                    const expanded = initiateCapacityExpansion(
-                        facility,
-                        assets,
-                        planet,
-                        hasOwnConstruction,
-                        dynamicTarget,
-                    );
-                    if (expanded) {
-                        remainingConstructionBudget = Math.max(
-                            0,
-                            remainingConstructionBudget - facility.construction!.maximumConstructionServiceConsumption,
+                    const effectiveTarget = facility.maxScale + (dynamicTarget - facility.maxScale) * workerCoverage;
+                    if (effectiveTarget >= facility.maxScale + 1) {
+                        const expanded = initiateCapacityExpansion(
+                            facility,
+                            assets,
+                            planet,
+                            hasOwnConstruction,
+                            effectiveTarget,
                         );
-                        state.expansionIntegral = 0;
-                        if (debugEntry) {
-                            debugEntry.didExpand = true;
-                            debugEntry.blockReason = [];
-                        }
-                        if (isAutoscaleDebugEnabled()) {
-                            debugAggregates.expansionsStarted++;
+                        if (expanded) {
+                            remainingConstructionBudget = Math.max(
+                                0,
+                                remainingConstructionBudget -
+                                    facility.construction!.maximumConstructionServiceConsumption,
+                            );
+                            state.expansionIntegral = 0;
+                            if (debugEntry) {
+                                debugEntry.didExpand = true;
+                                debugEntry.blockReason = [];
+                            }
+                            if (isAutoscaleDebugEnabled()) {
+                                debugAggregates.expansionsStarted++;
+                            }
                         }
                     }
                 }
@@ -545,7 +553,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             if (
                 facility.construction === null &&
-                state.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD &&
+                state.contractionIntegral >= conThreshold &&
                 facility.scale < facility.maxScale
             ) {
                 const contracted = processFacilityContraction(
@@ -596,7 +604,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const hrDynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD *
+                expThreshold *
                     Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
@@ -655,7 +663,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             if (
                 hrDepartment.scale < hrDepartment.maxScale &&
                 hrDepartment.construction === null &&
-                hrState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
+                hrState.contractionIntegral >= conThreshold
             ) {
                 const hrTargetMin = Math.max(1, Math.floor(hrDepartment.maxScale * (1 - MAX_SCALE_CONTRACT_FRACTION)));
                 if (hrTargetMin < hrDepartment.maxScale) {
@@ -667,7 +675,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             hrDepartment.pidState = hrState;
         }
 
-        const storageDepartment = assets.storageFacility.department;
+        const storageDepartment = assets.storage.department;
         if (storageDepartment && storageDepartment.construction?.type !== 'new') {
             const stoRawSignal = computeStorageSignal(storageDepartment);
             const stoState: PidState = { ...getDefaultPidState(), ...storageDepartment.pidState };
@@ -699,7 +707,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const stoDynamicThreshold = Math.min(
                 EXPANSION_INTEGRAL_MAX,
-                EXPANSION_INTEGRAL_THRESHOLD *
+                expThreshold *
                     Math.max(1, computeConstructionInflationFactor(planet) / EXPANSION_PRICE_INFLATION_THRESHOLD),
             );
 
@@ -737,7 +745,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             if (
                 storageDepartment.scale < storageDepartment.maxScale &&
                 storageDepartment.construction === null &&
-                stoState.contractionIntegral >= CONTRACTION_INTEGRAL_THRESHOLD
+                stoState.contractionIntegral >= conThreshold
             ) {
                 const stoTargetMin = Math.max(
                     1,
@@ -750,6 +758,25 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             }
 
             storageDepartment.pidState = stoState;
+        }
+
+        const shellSizing = updateAgentShellCompartments(assets);
+
+        for (const form of storageFormKeys()) {
+            const sizing = shellSizing[form];
+            if (!sizing) {
+                continue;
+            }
+            remainingConstructionBudget = reconcileShellScale(
+                planet,
+                agent,
+                gameState,
+                assets,
+                assets.storage.shells[form],
+                sizing.requiredScale,
+                hasOwnConstruction,
+                remainingConstructionBudget,
+            );
         }
     });
 

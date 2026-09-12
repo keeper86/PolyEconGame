@@ -20,6 +20,7 @@ import {
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
 } from '@/simulation/constants';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import { AlertCircle, ChevronDown, Package, RotateCcw, Tag } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ConfigRangeSlider, ConfigSlider } from './ConfigSlider';
@@ -174,7 +175,7 @@ export default function SellSection({
     const [sellPricingOpen, setSellPricingOpen] = useSellPricingOpenPreference();
     const [sellVolumeOpen, setSellVolumeOpen] = useSellVolumeOpenPreference();
 
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = queryStorageFacility(assets.storage, resourceName);
     const producedPerTick = productionPerTick(assets.productionFacilities, resourceName);
 
     const isCurrency = resourceName.startsWith('CUR_');
@@ -426,6 +427,7 @@ export default function SellSection({
             ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
                   .filter((p) => isFinite(p) && p > 0)
                   .sort((a, b) => a - b)
+                  .filter((p, i, arr) => i === 0 || p !== arr[i - 1])
             : [];
 
     return (
@@ -743,7 +745,7 @@ export default function SellSection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {SELL_VOLUME_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activeVolumePreset;

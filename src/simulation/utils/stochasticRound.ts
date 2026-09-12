@@ -43,3 +43,12 @@ export function stochasticRound(x: number): number {
     }
     return nextRandom() < frac ? base + 1 : base;
 }
+
+export function getRngState(): [number, number] {
+    return [s0, s1];
+}
+
+export function setRngState(state: [number, number]): void {
+    s0 = state[0];
+    s1 = state[1];
+}

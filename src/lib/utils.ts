@@ -15,7 +15,6 @@ export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Unit
     switch (form) {
         case 'solid':
         case 'pieces':
-        case 'gas':
             return 'tonnes';
         case 'liquid':
             return 'litres';
@@ -44,7 +43,7 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
         return `${formattedNumber}ℓ`;
     }
     if (unit === 'm3') {
-        return `${formattedNumber}m³`;
+        return `${formattedNumber}(m³)`;
     }
     if (unit === 'percent') {
         return `${formattedNumber}%`;

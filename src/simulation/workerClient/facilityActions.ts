@@ -1,17 +1,33 @@
 import { processFacilityContraction } from '../agents/recycler';
 import type { HRFacility, ProductionFacility, StorageDepartment } from '../planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
+import { calculateCostsForConstruction, getFacilityType, storageFormKeys } from '../planet/facility';
 import type { GameState } from '../planet/planet';
+import type { AgentPlanetAssets } from '../planet/planet';
 import { facilityByName } from '../planet/productionFacilities';
 import {
     HR_DEPARTMENT_NAME,
     humanResourcesOfficeFacilityType,
     shipConstructionFacilityType,
-    STORAGE_DEPARTMENT_NAME,
-    storageDepartmentFacilityType,
+    LOGISTICS_DEPARTMENT_NAME,
+    logisticsDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import { constructionShipType, shiptypes } from '../ships/ships';
 import type { OutboundMessage, PendingAction } from './messages';
+
+export const storageShellById = (
+    assets: AgentPlanetAssets | undefined,
+    facilityId: string,
+): AgentPlanetAssets['storage']['shells'][keyof AgentPlanetAssets['storage']['shells']] | undefined => {
+    if (!assets) {
+        return undefined;
+    }
+    for (const form of storageFormKeys()) {
+        if (assets.storage.shells[form].id === facilityId) {
+            return assets.storage.shells[form];
+        }
+    }
+    return undefined;
+};
 
 export function handleBuildFacility(
     state: GameState,
@@ -41,7 +57,7 @@ export function handleBuildFacility(
     }
     const catalogEntry = facilityByName.get(facilityKey);
     const isHrDepartment = facilityKey === HR_DEPARTMENT_NAME;
-    const isStorageDepartment = facilityKey === STORAGE_DEPARTMENT_NAME;
+    const isStorageDepartment = facilityKey === LOGISTICS_DEPARTMENT_NAME;
     if (!isHrDepartment && !isStorageDepartment && !catalogEntry) {
         safePostMessage({
             type: 'facilityBuildFailed',
@@ -55,12 +71,12 @@ export function handleBuildFacility(
     const newFacility = isHrDepartment
         ? humanResourcesOfficeFacilityType(planetId, facilityId)
         : isStorageDepartment
-          ? storageDepartmentFacilityType(planetId, facilityId)
+          ? logisticsDepartmentFacilityType(planetId, facilityId)
           : catalogEntry!.factory(planetId, facilityId);
     const alreadyExists = isHrDepartment
         ? assets.humanResourcesDepartment !== null
         : isStorageDepartment
-          ? assets.storageFacility.department !== null
+          ? assets.storage.department !== null
           : assets.productionFacilities.some((f) => f.name === facilityKey);
     if (alreadyExists) {
         safePostMessage({
@@ -86,7 +102,7 @@ export function handleBuildFacility(
     if (isHrDepartment) {
         assets.humanResourcesDepartment = newFacility as HRFacility;
     } else if (isStorageDepartment) {
-        assets.storageFacility.department = newFacility as StorageDepartment;
+        assets.storage.department = newFacility as StorageDepartment;
     } else {
         assets.productionFacilities.push(newFacility as ProductionFacility);
     }
@@ -123,7 +139,8 @@ export function handleExpandFacility(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
-        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined);
+        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityExpandFailed',
@@ -205,8 +222,9 @@ export function handleSetFacilityScale(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
-        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined) ??
-        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityScaleSetFailed',
@@ -252,8 +270,9 @@ export function handleContractFacility(
     const facility =
         assets.productionFacilities.find((f) => f.id === facilityId) ??
         (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
-        (assets.storageFacility.department?.id === facilityId ? assets.storageFacility.department : undefined) ??
-        assets.shipConstructionFacilities.find((f) => f.id === facilityId);
+        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId) ??
+        storageShellById(assets, facilityId);
     if (!facility) {
         safePostMessage({
             type: 'facilityContractFailed',
@@ -309,8 +328,8 @@ export function handleContractFacility(
             assets.productionFacilities.splice(prodIdx, 1);
         } else if (assets.humanResourcesDepartment?.id === facilityId) {
             assets.humanResourcesDepartment = null;
-        } else if (assets.storageFacility.department?.id === facilityId) {
-            assets.storageFacility.department = null;
+        } else if (assets.storage.department?.id === facilityId) {
+            assets.storage.department = null;
         } else {
             const shipIdx = assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId);
             if (shipIdx !== -1) {
@@ -604,13 +623,17 @@ export function handleCancelConstruction(
     const facilityIndex = assets.productionFacilities.findIndex((f) => f.id === facilityId);
     const isHumanResources = facilityIndex === -1 && assets.humanResourcesDepartment?.id === facilityId;
     const isStorageDepartment =
-        facilityIndex === -1 && !isHumanResources && assets.storageFacility.department?.id === facilityId;
+        facilityIndex === -1 && !isHumanResources && assets.storage.department?.id === facilityId;
     const shipyardIndex =
         facilityIndex === -1 && !isHumanResources && !isStorageDepartment
             ? assets.shipConstructionFacilities.findIndex((f) => f.id === facilityId)
             : -1;
+    const storageShell =
+        facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1
+            ? storageShellById(assets, facilityId)
+            : undefined;
 
-    if (facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1) {
+    if (facilityIndex === -1 && !isHumanResources && !isStorageDepartment && shipyardIndex === -1 && !storageShell) {
         safePostMessage({
             type: 'constructionCancelFailed',
             requestId,
@@ -646,10 +669,30 @@ export function handleCancelConstruction(
         return;
     }
 
+    if (storageShell) {
+        if (!storageShell.construction) {
+            safePostMessage({
+                type: 'constructionCancelFailed',
+                requestId,
+                reason: 'Facility is not under construction',
+                processedAtTick: state.tick,
+            });
+            return;
+        }
+        // Storage shells are permanent facilities and are never created via 'new' construction, only
+        // expanded, so cancellation always clears the expansion rather than removing the shell.
+        storageShell.construction = null;
+        console.log(
+            `[worker] Agent '${agentId}' cancelled expansion of storage shell '${facilityId}' on planet '${planetId}'`,
+        );
+        safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId, processedAtTick: state.tick });
+        return;
+    }
+
     const facility = isHumanResources
         ? assets.humanResourcesDepartment!
         : isStorageDepartment
-          ? assets.storageFacility.department!
+          ? assets.storage.department!
           : assets.productionFacilities[facilityIndex];
     if (!facility.construction) {
         safePostMessage({
@@ -664,7 +707,7 @@ export function handleCancelConstruction(
         if (isHumanResources) {
             assets.humanResourcesDepartment = null;
         } else if (isStorageDepartment) {
-            assets.storageFacility.department = null;
+            assets.storage.department = null;
         } else {
             assets.productionFacilities.splice(facilityIndex, 1);
         }

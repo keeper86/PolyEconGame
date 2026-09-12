@@ -131,7 +131,7 @@ export const oilWell = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 10,
-        primary: 30,
+        primary: 20,
         secondary: 20,
         tertiary: 5,
     },
@@ -163,7 +163,7 @@ const stoneQuarry = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 10,
-        primary: 20,
+        primary: 10,
         secondary: 10,
         tertiary: 1,
     },
@@ -180,7 +180,7 @@ const copperMine = (planetId: string, id: string): ProductionFacility => ({
     workerRequirement: {
         none: 10,
         primary: 20,
-        secondary: 20,
+        secondary: 10,
         tertiary: 1,
     },
     needs: [{ resource: copperDepositResourceType, quantity: 0.2 }],
@@ -227,7 +227,7 @@ export const ironSmelter = (planetId: string, id: string): ProductionFacility =>
     powerConsumptionPerTick: 1.2,
     workerRequirement: {
         none: 5,
-        primary: 30,
+        primary: 20,
         secondary: 20,
         tertiary: 5,
     },
@@ -246,7 +246,7 @@ const copperSmelter = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 1.0,
     workerRequirement: {
         none: 5,
-        primary: 30,
+        primary: 20,
         secondary: 20,
         tertiary: 5,
     },
@@ -257,6 +257,9 @@ const copperSmelter = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: copperResourceType, quantity: 100 }],
 });
 
+const OIL_REFINERY_WASTE_SURPLUS_TICKS = 120;
+const REFINERY_OUTPUT_FLEXIBLE = (process.env.REFINERY_OUTPUT_FLEXIBLE ?? '0') === '1';
+
 export const oilRefinery = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
@@ -266,15 +269,17 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     workerRequirement: {
         none: 5,
         primary: 20,
-        secondary: 30,
-        tertiary: 20,
+        secondary: 20,
+        tertiary: 10,
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: fuelResourceType, quantity: 80 },
-        { resource: plasticResourceType, quantity: 60 },
-        { resource: chemicalResourceType, quantity: 60 },
+        { resource: fuelResourceType, quantity: 90 },
+        { resource: plasticResourceType, quantity: 62 },
+        { resource: chemicalResourceType, quantity: 48 },
     ],
+    outputFlexible: REFINERY_OUTPUT_FLEXIBLE,
+    wasteSurplusTicks: OIL_REFINERY_WASTE_SURPLUS_TICKS,
 });
 
 const sawmill = (planetId: string, id: string): ProductionFacility => ({
@@ -286,7 +291,7 @@ const sawmill = (planetId: string, id: string): ProductionFacility => ({
     workerRequirement: {
         none: 5,
         primary: 20,
-        secondary: 20,
+        secondary: 10,
         tertiary: 1,
     },
     needs: [{ resource: logsResourceType, quantity: 300 }],
@@ -422,9 +427,9 @@ const beveragePlant = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.4,
     workerRequirement: {
         none: 5,
-        primary: 15,
-        secondary: 15,
-        tertiary: 2,
+        primary: 10,
+        secondary: 10,
+        tertiary: 1,
     },
     needs: [
         { resource: waterResourceType, quantity: 110 },
@@ -444,8 +449,8 @@ const paperMill = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.9,
     workerRequirement: {
         none: 5,
-        primary: 20,
-        secondary: 20,
+        primary: 10,
+        secondary: 10,
         tertiary: 4,
     },
     needs: [
@@ -482,8 +487,8 @@ const textileMill = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 5,
-        primary: 30,
-        secondary: 30,
+        primary: 20,
+        secondary: 20,
         tertiary: 2,
     },
     needs: [
@@ -502,7 +507,7 @@ const clothingFactory = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 5,
-        primary: 30,
+        primary: 20,
         secondary: 20,
         tertiary: 5,
     },
@@ -522,7 +527,7 @@ const furnitureFactory = (planetId: string, id: string): ProductionFacility => (
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
         none: 5,
-        primary: 30,
+        primary: 20,
         secondary: 20,
         tertiary: 5,
     },
@@ -564,7 +569,7 @@ const electronicsFactory = (planetId: string, id: string): ProductionFacility =>
     workerRequirement: {
         none: 0,
         primary: 10,
-        secondary: 30,
+        secondary: 20,
         tertiary: 30,
     },
     needs: [
@@ -584,7 +589,7 @@ const itDevicesFactory = (planetId: string, id: string): ProductionFacility => (
     workerRequirement: {
         none: 0,
         primary: 20,
-        secondary: 40,
+        secondary: 30,
         tertiary: 20,
     },
     needs: [
@@ -602,9 +607,9 @@ export const machineryFactory = (planetId: string, id: string): ProductionFacili
     name: 'Machinery Factory',
     powerConsumptionPerTick: 1.0,
     workerRequirement: {
-        none: 5,
+        none: 10,
         primary: 30,
-        secondary: 40,
+        secondary: 30,
         tertiary: 30,
     },
     needs: [
@@ -623,8 +628,8 @@ const vehicleFactory = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 1.2,
     workerRequirement: {
         none: 5,
-        primary: 50,
-        secondary: 60,
+        primary: 40,
+        secondary: 50,
         tertiary: 20,
     },
     needs: [
@@ -645,8 +650,8 @@ export const agriculturalFacility = (planetId: string, id: string): ProductionFa
     powerConsumptionPerTick: 1.2,
     workerRequirement: {
         none: 10,
-        primary: 25,
-        secondary: 15,
+        primary: 20,
+        secondary: 10,
         tertiary: 0,
     },
     needs: [
@@ -698,7 +703,7 @@ const packagingPlant = (planetId: string, id: string): ProductionFacility => ({
     powerConsumptionPerTick: 0.7,
     workerRequirement: {
         none: 5,
-        primary: 25,
+        primary: 20,
         secondary: 20,
         tertiary: 3,
     },
@@ -718,8 +723,8 @@ const administrativeCenter = (planetId: string, id: string): ProductionFacility 
     workerRequirement: {
         none: 10,
         primary: 40,
-        secondary: 50,
-        tertiary: 30,
+        secondary: 40,
+        tertiary: 20,
     },
     needs: [
         { resource: furnitureResourceType, quantity: 1 },
@@ -735,7 +740,7 @@ const logisticsHub = (planetId: string, id: string): ProductionFacility => ({
     name: 'Logistics Hub' as const,
     powerConsumptionPerTick: 0.2,
     workerRequirement: {
-        none: 100,
+        none: 80,
         primary: 60,
         secondary: 30,
         tertiary: 10,
@@ -774,7 +779,7 @@ const groceryChain = (planetId: string, id: string): ProductionFacility => ({
     name: 'Grocery Chain' as const,
     powerConsumptionPerTick: 0.4,
     workerRequirement: {
-        none: 5,
+        none: 20,
         primary: 90,
         secondary: 60,
         tertiary: 10,
@@ -813,7 +818,7 @@ const hospital = (planetId: string, id: string): ProductionFacility => ({
     name: 'Hospital' as const,
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
-        none: 0,
+        none: 10,
         primary: 10,
         secondary: 50,
         tertiary: 90,
@@ -833,7 +838,7 @@ const educationCenter = (planetId: string, id: string): ProductionFacility => ({
     name: 'Education Center' as const,
     powerConsumptionPerTick: 0.6,
     workerRequirement: {
-        none: 0,
+        none: 5,
         primary: 20,
         secondary: 60,
         tertiary: 120,
@@ -853,10 +858,10 @@ const maintenanceFacility = (planetId: string, id: string): ProductionFacility =
         name: 'Maintenance Facility',
         powerConsumptionPerTick: 2,
         workerRequirement: {
-            none: 5,
+            none: 10,
             primary: 30,
             secondary: 60,
-            tertiary: 10,
+            tertiary: 15,
         },
         needs: [
             { resource: steelResourceType, quantity: 10 },
@@ -949,15 +954,15 @@ export const neededWorkersByFacility: (facility: Facility) => number = (facility
     );
 };
 
-const allFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
+const allProductionFacilityEntries = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES);
 export const facilitiesByLevel: Record<ResourceProcessLevel, FacilityCatalogEntry[]> = {
-    raw: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
-    refined: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
-    manufactured: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
-    services: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
-    internal: allFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
+    raw: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'raw'),
+    refined: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'refined'),
+    manufactured: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'manufactured'),
+    services: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'services'),
+    internal: allProductionFacilityEntries.filter((e) => e.primaryOutputLevel === 'internal'),
 };
 
 export const facilityByName: ReadonlyMap<string, FacilityCatalogEntry> = new Map(
-    allFacilityEntries.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
+    allProductionFacilityEntries.map((e) => [e.factory(PLACEHOLDER_PLANET, PLACEHOLDER_ID).name, e]),
 );

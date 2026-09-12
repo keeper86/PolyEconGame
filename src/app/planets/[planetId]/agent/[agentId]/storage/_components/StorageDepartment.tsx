@@ -24,7 +24,7 @@ import { computeStorageThroughputMass, getFacilityType } from '@/simulation/plan
 import { computeOtherConstructionCosts } from '@/simulation/planet/facilityMaintenance';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
-import { PRODUCED_STORAGE_QUANTITY, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import { PRODUCED_STORAGE_QUANTITY, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
@@ -172,7 +172,8 @@ function StorageBuildCard({
                         <StorageBufferGauge
                             buffer={0}
                             demand={storageDemand}
-                            department={entry}
+                            facility={entry}
+                            servicePerScale='department'
                             maxScaleOverride={previewScale}
                         />
                     </div>
@@ -273,7 +274,8 @@ function StorageConstructionCard({
                     <StorageBufferGauge
                         buffer={0}
                         demand={storageDemand}
-                        department={facility}
+                        facility={facility}
+                        servicePerScale='department'
                         maxScaleOverride={targetScale}
                     />
                 </div>
@@ -286,7 +288,7 @@ function StorageConstructionCard({
     );
 }
 
-export default function StorageDepartment({
+export default function LogisticsDepartment({
     agentId,
     planetId,
     assets,
@@ -320,13 +322,13 @@ export default function StorageDepartment({
         return keys;
     }, [pendingActions]);
 
-    const template = useMemo(() => storageDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
-    const department = assets.storageFacility.department;
+    const template = useMemo(() => logisticsDepartmentFacilityType(PLACEHOLDER_PLANET, PLACEHOLDER_ID), []);
+    const department = assets.storage.department;
 
     const storageDemand = useMemo(() => computeStorageThroughputMass(assets), [assets]);
     const status = useMemo(
-        () => storageBufferStatus(department?.storageBuffer ?? 0, storageDemand),
-        [department?.storageBuffer, storageDemand],
+        () => storageBufferStatus(department?.transportBuffer ?? 0, storageDemand),
+        [department?.transportBuffer, storageDemand],
     );
     const statusConfig = STORAGE_STATUS_CONFIG[status];
 
@@ -358,7 +360,7 @@ export default function StorageDepartment({
             const gridTemplateColumns = `${needsCount}fr 2rem 2fr`;
             const globalMin = limitingEfficiency(results);
             const eff = results.overallEfficiency;
-            const buffer = department.storageBuffer ?? 0;
+            const buffer = department.transportBuffer ?? 0;
 
             return (
                 <ActiveFacilityCard
@@ -392,7 +394,12 @@ export default function StorageDepartment({
                             className={`shrink-0 h-8 w-8 ${department.needs.length > 0 ? 'text-muted-foreground' : 'invisible'}`}
                         />
                         <div className='flex justify-center'>
-                            <StorageBufferGauge buffer={buffer} demand={storageDemand} department={department} />
+                            <StorageBufferGauge
+                                buffer={buffer}
+                                demand={storageDemand}
+                                facility={department}
+                                servicePerScale='department'
+                            />
                         </div>
                     </div>
 
@@ -405,7 +412,7 @@ export default function StorageDepartment({
                             department.scale
                         }
                     >
-                        <StorageStarvationBar ss={department.storageStarvation ?? 0} />
+                        <StorageStarvationBar ss={department.transportStarvation ?? 0} />
                     </StorageBalanceRow>
                 </ActiveFacilityCard>
             );

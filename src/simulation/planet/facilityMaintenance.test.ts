@@ -14,6 +14,7 @@ import {
     makeProductionFacility,
     makeShipConstructionFacility,
     makeStorageFacility,
+    setStorageResourceQuantity,
 } from '../utils/testHelper';
 import type { Resource } from './claims';
 import {
@@ -22,10 +23,9 @@ import {
     getFacilityType,
     queryStorageFacility,
     type ProductionFacility,
-    type StorageFacility,
+    type Storage,
 } from './facility';
 import {
-    collectAgentFacilities,
     computeOtherConstructionCosts,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
@@ -47,23 +47,31 @@ interface Setup {
     planet: Planet;
     agent: Agent;
     facility: ProductionFacility;
-    storage: StorageFacility;
+    storage: Storage;
 }
 
 function setup(overrides?: Partial<ProductionFacility>): Setup {
     const agent = makeAgent(AGENT_ID, PLANET_ID);
     const assets = agent.assets[PLANET_ID]!;
-    assets.storageFacility.department = null;
+    assets.storage.department = null;
     const facility = makeProductionFacility({}, overrides);
     facility.lastTickResults.overallEfficiency = 1;
     assets.productionFacilities = [facility];
     const planet = makePlanet({ marketPrices: { [constructionServiceResourceType.name]: CONSTRUCTION_PRICE } });
     const gameState = makeGameState([planet], [agent]);
-    return { gameState, planet, agent, facility, storage: assets.storageFacility };
+    return { gameState, planet, agent, facility, storage: assets.storage };
 }
 
-function seedService(storage: StorageFacility, resource: Resource, quantity: number): void {
-    storage.currentInStorage[resource.name] = { resource, quantity };
+function seedService(storage: Storage, resource: Resource, quantity: number): void {
+    setStorageResourceQuantity(storage, resource, quantity);
+}
+
+// The auto-granted storage shells are themselves operating capital and so wear + consume the same
+// Maintenance pool every tick. Freeze them so a test can isolate the single facility under repair.
+function quietStorageShells(storage: Storage): void {
+    for (const shell of Object.values(storage.shells)) {
+        shell.maxMaintenance = 0;
+    }
 }
 
 function markUnderConstruction(facility: ProductionFacility): void {
@@ -202,6 +210,7 @@ describe('facilityMaintenanceTick', () => {
 
     it('repairs maintenanceStatus from Maintenance service up to the per-tick cap', () => {
         const { gameState, planet, facility, storage } = setup();
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         seedService(
@@ -276,6 +285,7 @@ describe('facilityMaintenanceTick', () => {
     it('scales maintenance service consumption with facility scale', () => {
         const scale = 10;
         const { gameState, planet, facility, storage } = setup({ scale });
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         seedService(
@@ -319,6 +329,7 @@ describe('facilityMaintenanceTick', () => {
 
     it('records maintenance repair consumption in accounting', () => {
         const { gameState, planet, agent, facility, storage } = setup();
+        quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
         planet.marketPrices[maintenanceServiceResourceType.name] = MAINTENANCE_PRICE;
@@ -495,84 +506,6 @@ describe('facilityMaintenanceTick', () => {
     });
 });
 
-describe('collectAgentFacilities', () => {
-    it('collects production, ship construction, storage department and HR facilities', () => {
-        const agent = makeAgent(AGENT_ID, PLANET_ID);
-        const assets = agent.assets[PLANET_ID]!;
-        const production = makeProductionFacility();
-        const shipyard = makeShipConstructionFacility();
-        const hr = makeHRFacility();
-        assets.productionFacilities = [production];
-        assets.shipConstructionFacilities = [shipyard];
-        assets.humanResourcesDepartment = hr;
-
-        const facilities = collectAgentFacilities(assets);
-
-        expect(facilities).toContain(production);
-        expect(facilities).toContain(shipyard);
-        expect(facilities).toContain(hr);
-        expect(facilities).toContain(assets.storageFacility.department);
-        expect(facilities).toHaveLength(4);
-    });
-
-    it('skips absent storage department and HR department', () => {
-        const agent = makeAgent(AGENT_ID, PLANET_ID);
-        const assets = agent.assets[PLANET_ID]!;
-        assets.storageFacility.department = null;
-        assets.humanResourcesDepartment = null;
-
-        const facilities = collectAgentFacilities(assets);
-
-        describe('facilityRestorationCapacityPerTick', () => {
-            it('returns 0 at full maxMaintenance', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 1;
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBe(0);
-            });
-
-            it('returns MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE times full restore cost when headroom exceeds the per-tick cap', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 0.5;
-                const cost = fullRestoreCost(facility);
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE * cost * facilityRestorationCostFactor(0.5),
-                    10,
-                );
-            });
-
-            it('clamps to the remaining headroom when nearly full', () => {
-                const facility = makeProductionFacility();
-                facility.maxMaintenance = 1 - MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2;
-                const cost = fullRestoreCost(facility);
-
-                expect(facilityRestorationCapacityPerTick(facility)).toBeCloseTo(
-                    (MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 2) *
-                        cost *
-                        facilityRestorationCostFactor(facility.maxMaintenance),
-                    10,
-                );
-            });
-
-            it('scales with the full restore cost of the facility type', () => {
-                const rawFacility = makeProductionFacility();
-                rawFacility.maxMaintenance = 0.5;
-
-                const constructionFacility = makeProductionFacility();
-                constructionFacility.produces = [{ resource: constructionServiceResourceType, quantity: 1 }];
-                constructionFacility.maxMaintenance = 0.5;
-
-                expect(facilityRestorationCapacityPerTick(constructionFacility)).toBeGreaterThan(
-                    facilityRestorationCapacityPerTick(rawFacility),
-                );
-            });
-        });
-
-        expect(facilities).toHaveLength(0);
-    });
-});
-
 describe('computeOtherConstructionCosts', () => {
     it('sums remaining construction costs across production, management and ship construction facilities', () => {
         const agent = makeAgent(AGENT_ID, PLANET_ID);
@@ -618,7 +551,7 @@ describe('computeOtherConstructionCosts', () => {
         });
         assets.productionFacilities = [production];
         assets.humanResourcesDepartment = hr;
-        assets.storageFacility.department = storageDepartment;
+        assets.storage.department = storageDepartment;
         assets.shipConstructionFacilities = [shipyard];
 
         const remainingConstructionServices = 70 + 30 + 30 + 60;

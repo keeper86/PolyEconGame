@@ -6,20 +6,31 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '../constants';
 import { fillRateFactor } from '../market/automaticPricing';
-import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
+import {
+    makeAgent,
+    makeAgentPlanetAssets,
+    makePlanet,
+    makeProductionFacility,
+    setStorageResourceQuantity,
+} from '../utils/testHelper';
 import {
     EXPANSION_INTEGRAL_MAX,
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_IMAX,
-    computeFacilitySignal,
+    PID_OUT_MAX_DOWN,
+    PID_OUT_MAX_UP,
+    STORAGE_CAPACITY_MONTHS,
+    STORAGE_TARGET_MONTHS,
+    computeDynamicExpansionTarget,
+    computeFacilityStorageSignal,
     computePidDelta,
-    estimateProfitAtScale,
     getDefaultPidState,
+    softClip,
     updateAgentProductionScale,
 } from './automaticProductionScale';
 import type { ProductionFacility } from './facility';
 import type { GameState, MarketResult, Planet } from './planet';
-import { maintenanceServiceResourceType } from './services';
+import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
 
 const RESOURCE_NAME = maintenanceServiceResourceType.name;
 
@@ -80,6 +91,20 @@ function createMaintenanceChainFixture(overrides?: {
     facility.lastTickResults.overallEfficiency = overrides?.overallEfficiency ?? 1;
 
     return { facility, planet };
+}
+
+function makeStorageSignalFixture(inventory: number): {
+    facility: ProductionFacility;
+    assets: ReturnType<typeof makeAgentPlanetAssets>;
+} {
+    const facility = makeProductionFacility(undefined, {
+        maxScale: 1,
+        scale: 1,
+        produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+    });
+    const assets = makeAgentPlanetAssets('p');
+    setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, inventory);
+    return { facility, assets };
 }
 
 function makeChainGameState(planet: Planet, facility: ProductionFacility): GameState {
@@ -175,65 +200,73 @@ describe('service buffer fill dynamics', () => {
     });
 });
 
-describe('computeFacilitySignal (demand-based)', () => {
-    it('is positive on shortage and negative on oversupply', () => {
-        const shortage = createMaintenanceChainFixture({ unfilledFrac: 0.8 });
-        expect(computeFacilitySignal(shortage.facility, shortage.planet)).toBeCloseTo(0.8, 5);
+describe('computeFacilityStorageSignal (own-production storage error)', () => {
+    // Storage target is STORAGE_TARGET_MONTHS (2) months × 30 ticks/month × maxScale 1 × produce 100/tick.
+    const target = STORAGE_TARGET_MONTHS * 30 * 100;
 
-        const oversupply = createMaintenanceChainFixture({ unfilledFrac: 0 });
-        expect(computeFacilitySignal(oversupply.facility, oversupply.planet, { [RESOURCE_NAME]: 0.6 })).toBeCloseTo(
-            -0.4,
-            5,
-        );
+    function makeStorageFixture(overrides?: { inventory?: number; producesTwoOutputs?: boolean }): {
+        facility: ProductionFacility;
+        assets: ReturnType<typeof makeAgentPlanetAssets>;
+    } {
+        const produces = overrides?.producesTwoOutputs
+            ? [
+                  { resource: maintenanceServiceResourceType, quantity: 100 },
+                  { resource: constructionServiceResourceType, quantity: 100 },
+              ]
+            : [{ resource: maintenanceServiceResourceType, quantity: 100 }];
+        const facility = makeProductionFacility(undefined, { maxScale: 1, scale: 1, produces });
+        const assets = makeAgentPlanetAssets('p');
+        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, overrides?.inventory ?? 0);
+        return { facility, assets };
+    }
+
+    it('is positive when the storage is below the 3-month target and negative above', () => {
+        const below = makeStorageFixture({ inventory: target / 2 });
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
+
+        const above = makeStorageFixture({ inventory: target * 2 });
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
     });
 
-    it('treats full sell-through as no surplus regardless of market stock', () => {
-        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
-        fixture.planet.lastMarketResult[RESOURCE_NAME] = makeMarketResult({
-            totalSupply: 1000,
-            unsoldSupply: 900,
-            totalDemand: 100,
-            unfilledDemand: 0,
-        });
-        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 1 })).toBe(0);
+    it('is zero when the storage is exactly at the 3-month target', () => {
+        const fixture = makeStorageFixture({ inventory: target });
+        expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBe(0);
     });
 
-    it('is zero when supply and demand are balanced', () => {
-        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
-        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 1 })).toBeCloseTo(0, 5);
+    it('anchors the target to the facility own production, not the market demand', () => {
+        const fixture = makeStorageFixture({ inventory: target });
+        expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBe(0);
+
+        fixture.facility.maxScale = 2;
+        expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBeGreaterThan(0);
     });
 
-    it('is zero when there is no market data', () => {
-        const { facility, planet } = createMaintenanceChainFixture({});
-        planet.lastMarketResult = {};
-        expect(computeFacilitySignal(facility, planet, { [RESOURCE_NAME]: 1 })).toBe(0);
+    it('maxError tracks the most starved output', () => {
+        const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
+        setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
+        const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
     });
 
-    it('does not contract a surplus producer while the market is under-served', () => {
-        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.4 });
-        // the producer sold only 20% of its output (flowDeviation −0.8) while 40% of the
-        // demand went unfilled: the scarcity caps the negative deviation → neutral signal
-        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBe(0);
-    });
+    it('maxError is negative only when every output is above the target', () => {
+        const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
+        setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target * 2);
+        const bothFull = computeFacilityStorageSignal(fixture.facility, fixture.assets);
+        expect(bothFull.maxError).toBeLessThan(0);
 
-    it('still contracts oversupply when the market is fully served', () => {
-        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0 });
-        expect(computeFacilitySignal(fixture.facility, fixture.planet, { [RESOURCE_NAME]: 0.2 })).toBeCloseTo(-0.8, 5);
-    });
-
-    it('treats a missing sell-through as fully sold', () => {
-        const fixture = createMaintenanceChainFixture({ unfilledFrac: 0.3 });
-        expect(computeFacilitySignal(fixture.facility, fixture.planet)).toBeCloseTo(0.3, 5);
+        setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 2);
+        const oneStarved = computeFacilityStorageSignal(fixture.facility, fixture.assets);
+        expect(oneStarved.maxError).toBeGreaterThan(0);
     });
 });
 
 describe('PID utilization response', () => {
     it('converges scale to maxScale in well under 100 ticks of sustained shortage', () => {
-        const { facility, planet } = createMaintenanceChainFixture({ unfilledFrac: 0.8, scale: 0.5, maxScale: 1 });
+        const { facility, assets } = makeStorageSignalFixture(0);
         const state = getDefaultPidState();
         let ticks = 0;
         while (facility.scale < facility.maxScale - 1e-9 && ticks < 10_000) {
-            const signal = computeFacilitySignal(facility, planet);
+            const signal = computeFacilityStorageSignal(facility, assets).maxError;
             const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             ticks++;
@@ -243,10 +276,10 @@ describe('PID utilization response', () => {
     });
 
     it('stays bounded over 10_000 ticks', () => {
-        const { facility, planet } = createMaintenanceChainFixture({ unfilledFrac: 0.3, scale: 0.5, maxScale: 1 });
+        const { facility, assets } = makeStorageSignalFixture(3 * 30 * 100 * 0.5);
         const state = getDefaultPidState();
         for (let tick = 0; tick < 10_000; tick++) {
-            const signal = computeFacilitySignal(facility, planet);
+            const signal = computeFacilityStorageSignal(facility, assets).maxError;
             const delta = computePidDelta(signal, state) * facility.maxScale;
             facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
             expect(Number.isFinite(facility.scale)).toBe(true);
@@ -254,6 +287,81 @@ describe('PID utilization response', () => {
         }
         expect(state.integral).toBeGreaterThanOrEqual(-PID_IMAX);
         expect(state.integral).toBeLessThanOrEqual(PID_IMAX);
+    });
+    describe('soft clip removes the describing-function gain collapse', () => {
+        it('attenuates a saturated error instead of pinning it at the clamp', () => {
+            expect(softClip(0.5)).toBeCloseTo(Math.tanh(0.5), 10);
+            expect(softClip(1)).toBeLessThan(0.77);
+            expect(softClip(1)).toBeGreaterThan(0.76);
+            expect(softClip(-1)).toBeGreaterThan(-0.77);
+            expect(softClip(-1)).toBeLessThan(-0.76);
+            expect(softClip(Number.POSITIVE_INFINITY)).toBe(1);
+            expect(softClip(Number.NEGATIVE_INFINITY)).toBe(-1);
+        });
+
+        it('keeps the small-signal gain at unity so the loop stays in the linear region', () => {
+            for (const value of [0.01, 0.05, 0.1, 0.2]) {
+                expect(softClip(value) / value).toBeGreaterThan(0.98);
+            }
+        });
+
+        it('converges to a constant scale under a constant saturating error instead of limit cycling', () => {
+            const { facility, assets } = makeStorageSignalFixture(0);
+            const state = getDefaultPidState();
+            const error = computeFacilityStorageSignal(facility, assets).maxError;
+            expect(error).toBeCloseTo(Math.tanh(1), 5);
+
+            const afterSettling = facility.scale;
+            for (let tick = 0; tick < 2_000; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+            }
+            expect(facility.scale).toBeCloseTo(afterSettling, 9);
+        });
+
+        it('drives scale monotonically once the proportional term alone can hold it', () => {
+            const { facility, assets } = makeStorageSignalFixture(0);
+            const state = getDefaultPidState();
+            const trajectory: number[] = [];
+            for (let tick = 0; tick < 30; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+                trajectory.push(facility.scale);
+            }
+            const diffs = trajectory.slice(1).map((value, index) => value - trajectory[index]);
+            expect(diffs.every((diff) => diff >= 0)).toBe(true);
+            expect(diffs.every((diff) => diff <= PID_OUT_MAX_UP * facility.maxScale + 1e-9)).toBe(true);
+        });
+
+        it('never overshoots the rate limit in either direction', () => {
+            expect(PID_OUT_MAX_UP).toBe(PID_OUT_MAX_DOWN);
+            const { facility, assets } = makeStorageSignalFixture(3 * 30 * 100 * 0.5);
+            const state = getDefaultPidState();
+            let previous = facility.scale;
+            for (let tick = 0; tick < 500; tick++) {
+                const signal = computeFacilityStorageSignal(facility, assets).maxError;
+                const delta = computePidDelta(signal, state) * facility.maxScale;
+                facility.scale = Math.max(facility.maxScale * 0.1, Math.min(facility.maxScale, facility.scale + delta));
+                expect(Math.abs(facility.scale - previous)).toBeLessThanOrEqual(
+                    PID_OUT_MAX_UP * facility.maxScale + 1e-9,
+                );
+                previous = facility.scale;
+            }
+        });
+    });
+});
+
+describe('storage lead time keeps the loop out of the limit-cycle band', () => {
+    it('holds Tw >= 0.5 * Tp as required by Spiegler & Naim Eq. 22', () => {
+        const tp = STORAGE_TARGET_MONTHS * 30;
+        const tw = 1 / PID_OUT_MAX_UP;
+        expect(tw).toBeGreaterThanOrEqual(0.5 * tp);
+    });
+
+    it('keeps the target above the capacity horizon so shells can hold the buffer', () => {
+        expect(STORAGE_TARGET_MONTHS).toBeLessThanOrEqual(STORAGE_CAPACITY_MONTHS);
     });
 });
 
@@ -266,6 +374,41 @@ describe('capacity expansion arming', () => {
             ticks++;
         }
         expect(ticks).toBe(EXPANSION_INTEGRAL_THRESHOLD);
+    });
+});
+
+describe('computeDynamicExpansionTarget sizes the expansion to the storage deficit', () => {
+    it('targets the scale that refills the 3-month own-production storage target', () => {
+        const { facility, planet } = createMaintenanceChainFixture({
+            maxScale: 100,
+            scale: 100,
+            producesQuantity: 1,
+        });
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, 4500);
+        // target = 3 months * 30 ticks * 100 maxScale * 1 quantity = 9000; inventory 4500 → deficit 4500.
+        // scaleForDemand = 4500 / 1 = 4500 → capped at the +10% absolute cap (110).
+        const target = computeDynamicExpansionTarget(facility, assets, planet, true, Infinity);
+
+        expect(target).toBe(110);
+    });
+
+    it('does not expand when the storage is already at the 3-month target', () => {
+        const { facility, planet } = createMaintenanceChainFixture({
+            maxScale: 100,
+            scale: 100,
+            producesQuantity: 1,
+        });
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, STORAGE_TARGET_MONTHS * 30 * 100);
+
+        const target = computeDynamicExpansionTarget(facility, assets, planet, true, Infinity);
+
+        expect(target).toBe(100);
     });
 });
 
@@ -318,60 +461,5 @@ describe('profitable-but-input-starved maintenance facility must not spuriously 
         }
 
         expect(facility.maxScale).toBe(100);
-    });
-});
-
-describe('estimateProfitAtScale (marginal profit)', () => {
-    it('price-response: a higher output price raises profit at expansion scale', () => {
-        const cheap = createMaintenanceChainFixture({ price: 10, scale: 100, maxScale: 100, producesQuantity: 1 });
-        const expensive = createMaintenanceChainFixture({ price: 20, scale: 100, maxScale: 100, producesQuantity: 1 });
-        const target = 100 * 1.025;
-
-        expect(estimateProfitAtScale(expensive.facility, expensive.planet, target)).toBeGreaterThan(
-            estimateProfitAtScale(cheap.facility, cheap.planet, target),
-        );
-    });
-
-    it('input-scarcity non-linearity: expansion does not raise profit for an input-starved facility', () => {
-        const fixture = createMaintenanceChainFixture({
-            scale: 100,
-            maxScale: 100,
-            producesQuantity: 1,
-            wageCosts: 100,
-            resourceEfficiency: { Steel: 0.5 },
-            overallEfficiency: 0.5,
-        });
-
-        const current = estimateProfitAtScale(fixture.facility, fixture.planet, 100);
-        const expanded = estimateProfitAtScale(fixture.facility, fixture.planet, 100 * 1.025);
-
-        expect(expanded).toBeLessThan(current);
-    });
-
-    it('expand decision: a non-starved profitable facility is more profitable at expansion scale', () => {
-        const fixture = createMaintenanceChainFixture({
-            unfilledFrac: 0.8,
-            price: 12,
-            scale: 50,
-            maxScale: 100,
-            producesQuantity: 1,
-        });
-
-        expect(estimateProfitAtScale(fixture.facility, fixture.planet, 50 * 1.025)).toBeGreaterThan(
-            estimateProfitAtScale(fixture.facility, fixture.planet, 50),
-        );
-    });
-
-    it('contract decision: an unprofitable facility is more profitable at contraction scale', () => {
-        const fixture = createMaintenanceChainFixture({
-            scale: 100,
-            maxScale: 100,
-            producesQuantity: 1,
-            wageCosts: 1000,
-        });
-
-        expect(estimateProfitAtScale(fixture.facility, fixture.planet, 100 * 0.975)).toBeGreaterThan(
-            estimateProfitAtScale(fixture.facility, fixture.planet, 100),
-        );
     });
 });

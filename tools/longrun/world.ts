@@ -6,6 +6,7 @@ import {
     makeDefaultEnvironment,
     makeStorage,
     prefillAgentStorageFromFacilities,
+    presizeAgentShellForFacilities,
     storageScaleForFacilities,
 } from '../../src/simulation/initialUniverse/helpers';
 import { initialMarketPrices } from '../../src/simulation/initialUniverse/initialMarketPrices';
@@ -42,7 +43,6 @@ import {
 import { ESTIMATED_HR_OVERHEAD, HR_WORLD_BUFFER, humanResourcesOfficeFacilityType } from '../../src/simulation/planet/specialFacilities';
 import {
     constructionServiceResourceType,
-    groceryServiceResourceType,
     maintenanceServiceResourceType,
 } from '../../src/simulation/planet/services';
 import type { EducationLevelType } from '../../src/simulation/population/education';
@@ -68,6 +68,36 @@ export interface BenchmarkWorldConfig {
     loanRatePerYear?: number;
     bankruptcyWriteOffFraction?: number;
     costSpringStrength?: number;
+    populationWealthTax?: boolean;
+    refineryMinAskMultiplier?: number;
+    refineryPriceAdjustMaxDown?: number;
+    refineryTargetSellThrough?: number;
+    oilReservoirMultiplier?: number;
+    resourceMultiplier?: number;
+}
+
+export function applyRefinerySellOverride(
+    sellConfig: AutomatedPricingConfig,
+    facilityType: string,
+    config: BenchmarkWorldConfig,
+): AutomatedPricingConfig {
+    if (facilityType !== 'oilRefinery') {
+        return sellConfig;
+    }
+    const override: Partial<AutomatedPricingConfig> = {};
+    if (config.refineryMinAskMultiplier !== undefined) {
+        override.automatedCostFloorBuffer = config.refineryMinAskMultiplier;
+    }
+    if (config.refineryPriceAdjustMaxDown !== undefined) {
+        override.priceAdjustMaxDown = config.refineryPriceAdjustMaxDown;
+    }
+    if (config.refineryTargetSellThrough !== undefined) {
+        override.targetSellThrough = config.refineryTargetSellThrough;
+    }
+    if (Object.keys(override).length === 0) {
+        return sellConfig;
+    }
+    return { ...sellConfig, ...override };
 }
 
 interface FacilityTarget {
@@ -163,8 +193,14 @@ const BASE_RESOURCES: Array<{ resource: ReturnType<typeof makePool>['resource'];
 function buildResources(config: BenchmarkWorldConfig): Planet['resources'] {
     const resources: Planet['resources'] = {};
     const rawPoolFactor = config.rawPoolFactor ?? 1;
+    const resourceMultiplier = config.resourceMultiplier ?? 100;
+    const oilReservoirMultiplier = config.oilReservoirMultiplier ?? 1;
     for (const { resource, quantity, renewable } of BASE_RESOURCES) {
-        let qty = quantity * rawPoolFactor;
+        let qty =
+            quantity *
+            rawPoolFactor *
+            resourceMultiplier *
+            (resource.name === oilReservoirResourceType.name ? oilReservoirMultiplier : 1);
         if (resource.name === waterSourceResourceType.name && config.waterPoolQuantity !== undefined) {
             qty = config.waterPoolQuantity;
         }
@@ -243,18 +279,23 @@ export function buildBenchmarkWorld(
                 if (assets.market.sell[resource.name]) {
                     continue;
                 }
-                if (resource.name === groceryServiceResourceType.name) {
-                    const groceryStrategy: AutomatedPricingConfig = {
-                        priceAdjustMaxUp: 1.02,
-                        priceAdjustMaxDown: 0.98,
-                        targetSellThrough: 0.8,
+                if (resource.form === 'services') {
+                    // Match initialUniverse/proceduralWorld: services clear harder than goods
+                    // (targetSellThrough 0.9 merged over the agent's own sell config).
+                    assets.market.sell[resource.name] = {
+                        resource,
+                        automated: true,
+                        autoConfig: { ...personality.sellAutoConfig, targetSellThrough: 0.9 },
                     };
-                    assets.market.sell[resource.name] = { resource, automated: true, autoConfig: groceryStrategy };
                 } else {
                     assets.market.sell[resource.name] = {
                         resource,
                         automated: true,
-                        autoConfig: buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                        autoConfig: applyRefinerySellOverride(
+                            buildSellAutoConfigForResource(personality.sellAutoConfig, resource),
+                            facilityType,
+                            config,
+                        ),
                     };
                 }
             }
@@ -377,6 +418,7 @@ export function buildBenchmarkWorld(
         bankruptcies: [],
     };
 
+    presizeAgentShellForFacilities(gameState);
     prefillAgentStorageFromFacilities(gameState);
 
     return { gameState, planet, agents: allAgents };

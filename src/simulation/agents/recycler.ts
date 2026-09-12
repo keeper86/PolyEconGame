@@ -19,9 +19,7 @@ export function createRecyclerAgent(planetId: string, planetName: string): Agent
     const storage = makeStorage({
         planetId: planetId,
         id: `${recyclerId}_store`,
-        scale: 1,
-        volumeCapacity: 1e6, // services have 0 volume/mass, but we need some capacity
-        massCapacity: 1e6,
+        scale: 1, // services have 0 volume/mass, so the smallest shell with real capacity is enough
     });
 
     const assets = makeAgentPlanetAssets([], storage, null);
@@ -69,7 +67,7 @@ export function getRecyclerPaymentRatio(planet: Planet, amount: number): number 
     }
 
     const unsoldSupply = Math.max(1, marketResult?.unsoldSupply ?? 0);
-    const recyclerCSStock = queryStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType.name);
+    const recyclerCSStock = queryStorageFacility(recyclerAssets.storage, constructionServiceResourceType.name);
 
     const unfilledDemand = Math.max(1, marketResult?.unfilledDemand ?? 0);
     const demandRatio = unsoldSupply / unfilledDemand - 1;
@@ -160,7 +158,7 @@ export function processFacilityContraction(
     }
 
     // Add recovered CS to recycler's storage (services have 0 volume/mass, so no overflow possible)
-    putIntoStorageFacility(recyclerAssets.storageFacility, constructionServiceResourceType, recoveredCS);
+    putIntoStorageFacility(recyclerAssets.storage, constructionServiceResourceType, recoveredCS);
 
     const scaleFraction = facility.maxScale > 0 ? facility.scale / facility.maxScale : 1;
     facility.maxScale = targetMax;

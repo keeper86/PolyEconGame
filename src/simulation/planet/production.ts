@@ -23,28 +23,23 @@ import {
     jointOutputCostShares,
     type AuxiliaryCostRates,
 } from './auxiliaryCosts';
-import type {
-    Facility,
-    ManagementFacility,
-    ProductionFacility,
-    ShipConstructionFacility,
-    StorageFacility,
-} from './facility';
+import type { Facility, ManagementFacility, ProductionFacility, ShipConstructionFacility, Storage } from './facility';
 import {
     computeFacilityConditionEfficiency,
     createLastTickResults,
-    isFacilityOperating,
+    getAvailableStorageCapacity,
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
 } from './facility';
 import type { Agent, AgentPlanetAssets, GameState, MonthAccumulator, Planet } from './planet';
-import { hasActiveLicense, pushTickerEvent } from './planet';
+import { getAllFacilities, hasActiveLicense, pushTickerEvent } from './planet';
 import { constructionServiceResourceType } from './services';
 import type { WaterFillFacilityResult, WorkerSlot } from './waterFill';
 import { waterFill } from './waterFill';
 import { ALL_PRODUCTION_FACILITY_ENTRIES } from './productionFacilities';
 import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
+import { isStorageSpaceClampEnabled } from './automaticProductionScale/runtimeConfig';
 
 function weightedMeanAgeForEdu(workforce: WorkforceCohort<WorkforceCategory>[], edu: EducationLevelType): number {
     let sumAge = 0;
@@ -74,7 +69,7 @@ type ConstructionTracking = { planet: Planet; monthAcc: MonthAccumulator; gameSt
 
 export function consumeConstructionForFacility(
     facility: Facility,
-    storage: StorageFacility | null,
+    storage: Storage | null,
     tracking: ConstructionTracking,
 ): number {
     if (!facility.construction || !storage) {
@@ -132,19 +127,11 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
             return;
         }
 
-        const allFacilities: Array<Facility> = [
-            ...assets.productionFacilities,
-            ...(assets.storageFacility.department ? [assets.storageFacility.department] : []),
-            ...assets.shipConstructionFacilities,
-        ];
-
-        if (assets.humanResourcesDepartment) {
-            allFacilities.push(assets.humanResourcesDepartment);
-        }
+        const allFacilities = getAllFacilities(assets);
 
         for (const facility of allFacilities) {
             const wasUnderConstruction = facility.construction !== null;
-            const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storageFacility, {
+            const constructionServiceConsumption = consumeConstructionForFacility(facility, assets.storage, {
                 planet,
                 monthAcc: assets.monthAcc,
                 gameStateTick: gameState.tick,
@@ -177,7 +164,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
 }
 
 function consumeNeeds(params: ProductionParameters | ManagementParameters): Record<string, number> {
-    const { facility, storage, overallEfficiency, planet, agent } = params;
+    const { facility, storage, overallEfficiency, storageSpaceFactor, planet, agent } = params;
     const actualConsumed: Record<string, number> = {};
 
     const needs = facility.needs;
@@ -192,7 +179,7 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
         return actualConsumed;
     }
     for (const need of needs) {
-        const consumed = need.quantity * scale * efficiency;
+        const consumed = need.quantity * scale * efficiency * storageSpaceFactor;
         if (need.resource.form === 'landBoundResource') {
             const extracted = extractFromClaimedResource(planet, agent, need.resource, consumed);
             actualConsumed[need.resource.name] = extracted;
@@ -232,7 +219,7 @@ function consumeNeeds(params: ProductionParameters | ManagementParameters): Reco
 function produceOutputs(
     params: IntermediateResults & { facility: ProductionFacility | ManagementFacility },
 ): Record<string, number> {
-    const { facility, storage, overallEfficiency } = params;
+    const { facility, storage, overallEfficiency, storageSpaceFactor } = params;
 
     const actualProduced: Record<string, number> = {};
 
@@ -242,8 +229,11 @@ function produceOutputs(
         }
         return actualProduced;
     }
+    const totalTemplateOutput = facility.produces.reduce((sum, output) => sum + output.quantity, 0);
+    const mix = facility.type === 'production' ? facility.productionMix : undefined;
     for (const output of facility.produces) {
-        const produced = output.quantity * facility.scale * overallEfficiency;
+        const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
+        const produced = totalTemplateOutput * share * facility.scale * overallEfficiency * storageSpaceFactor;
         actualProduced[output.resource.name] = produced;
         params.planet.producedResources[output.resource.name] =
             (params.planet.producedResources[output.resource.name] ?? 0) + produced;
@@ -251,7 +241,7 @@ function produceOutputs(
             const stored = putIntoStorageFacility(storage, output.resource, produced);
             if (Math.abs(stored / produced - 1) > RELATIVE_CONSUMPTION_MISMATCH_TOLERANCE) {
                 console.warn(
-                    `Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}. storage: ${storage.department?.storageStarvation} scale: ${facility.scale} / ${facility.maxScale}`,
+                    `Unexpected: stored ${stored} of ${output.resource.name}, expected ${produced}. storage: ${storage.department?.transportStarvation} scale: ${facility.scale} / ${facility.maxScale}`,
                 );
             }
         }
@@ -291,7 +281,7 @@ function computeTotalStorageDemand(enrichedFacilities: EnrichedFacility[]): Map<
 function computeResourceEfficiencyMap(
     ef: EnrichedFacility,
     totalStorageDemand: Map<string, number>,
-    storage: StorageFacility,
+    storage: Storage,
     planet: Planet,
     agent: Agent,
 ): Record<string, number> {
@@ -326,9 +316,42 @@ function computeResourceEfficiencyMap(
     return resourceEfficiencyMap;
 }
 
+export function computeStorageSpaceFactor(facility: Facility, assets: AgentPlanetAssets): number {
+    if (!isStorageSpaceClampEnabled()) {
+        return 1;
+    }
+    if (facility.type === 'ship_construction') {
+        return 1;
+    }
+    if (facility.type === 'storage') {
+        return 1;
+    }
+    if (facility.produces.length === 0) {
+        return 1;
+    }
+    const storage = assets.storage;
+    const totalTemplateOutput = facility.produces.reduce((sum, output) => sum + output.quantity, 0);
+    const mix = facility.type === 'production' ? facility.productionMix : undefined;
+    let factor = 1;
+    for (const output of facility.produces) {
+        if (output.resource.form === 'services' || output.resource.form === 'internal') {
+            continue;
+        }
+        const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
+        const producedPerTick = totalTemplateOutput * share * facility.scale;
+        if (producedPerTick <= 0) {
+            continue;
+        }
+        const freeQuantity = getAvailableStorageCapacity(storage, output.resource);
+        factor = Math.min(factor, Math.min(1, freeQuantity / producedPerTick));
+    }
+    return Math.max(0, Math.min(1, factor));
+}
+
 type IntermediateResults = {
-    storage: StorageFacility;
+    storage: Storage;
     overallEfficiency: number;
+    storageSpaceFactor: number;
     workerResults: WaterFillFacilityResult;
     resourceEfficiencyMap: Record<string, number>;
     monthAcc: MonthAccumulator;
@@ -624,16 +647,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             xpProdByEdu[edu] = productivityFromXP(avgXP);
         }
 
-        const activeFacilities: Array<Facility> = [
-            ...assets.productionFacilities.filter(isFacilityOperating),
-            ...(assets.storageFacility.department && isFacilityOperating(assets.storageFacility.department)
-                ? [assets.storageFacility.department]
-                : []),
-            ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
-                ? [assets.humanResourcesDepartment]
-                : []),
-            ...assets.shipConstructionFacilities.filter(isFacilityOperating),
-        ];
+        const activeFacilities = getAllFacilities(assets, true);
 
         const enrichedFacilities: EnrichedFacility[] = activeFacilities.map((facility) => {
             return { facility, resourceEfficiencyMap: {} };
@@ -644,7 +658,7 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             ef.resourceEfficiencyMap = computeResourceEfficiencyMap(
                 ef,
                 totalStorageDemand,
-                assets.storageFacility,
+                assets.storage,
                 planet,
                 agent,
             );
@@ -660,20 +674,32 @@ export function productionTick(gameState: GameState, planet: Planet): void {
             tertiary: 0,
         };
         for (const { facility } of enrichedFacilities) {
+            const construction = facility.construction;
+            const allocatorScale =
+                construction &&
+                construction.type === 'expansion' &&
+                construction.constructionTargetMaxScale > facility.scale
+                    ? facility.scale +
+                      (construction.constructionTargetMaxScale - facility.scale) *
+                          Math.min(
+                              1,
+                              construction.progress / Math.max(1, construction.totalConstructionServiceRequired),
+                          )
+                    : facility.scale;
             for (const [eduLevel, req] of Object.entries(facility.workerRequirement)) {
                 if (!req || req <= 0) {
                     continue;
                 }
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
-                const fullTarget = req * facility.scale;
+                const allocatorFullTarget = req * allocatorScale;
 
                 const hrMult =
                     facility.id === assets.humanResourcesDepartment?.id ? 1 : assets.hrProductivityMultiplier;
 
                 const avgXpProd = xpProdByEdu[jobEdu] ?? 1;
                 const combinedProd = ageProd[jobEdu] * avgXpProd * hrMult;
-                const bodies = combinedProd > 0 ? Math.ceil(fullTarget / combinedProd) : 0;
+                const bodies = combinedProd > 0 ? Math.ceil(allocatorFullTarget / combinedProd) : 0;
                 const slot: WorkerSlot = {
                     facilityId: facility.id,
                     facilityType: facility.type,
@@ -778,18 +804,21 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 ...(resourceEfficiencies.length > 0 ? resourceEfficiencies : [1]),
             );
             const overallEfficiency = rawEfficiency * computeFacilityConditionEfficiency(facility.maintenanceStatus);
+            const storageSpaceFactor = computeStorageSpaceFactor(facility, assets);
 
             if (overallEfficiency > 0) {
-                planet.environment.pollution.air += facility.pollutionPerTick.air * facility.scale * overallEfficiency;
+                planet.environment.pollution.air +=
+                    facility.pollutionPerTick.air * facility.scale * overallEfficiency * storageSpaceFactor;
                 planet.environment.pollution.water +=
-                    facility.pollutionPerTick.water * facility.scale * overallEfficiency;
+                    facility.pollutionPerTick.water * facility.scale * overallEfficiency * storageSpaceFactor;
                 planet.environment.pollution.soil +=
-                    facility.pollutionPerTick.soil * facility.scale * overallEfficiency;
+                    facility.pollutionPerTick.soil * facility.scale * overallEfficiency * storageSpaceFactor;
             }
 
             const productionParameterBase = {
-                storage: assets.storageFacility,
+                storage: assets.storage,
                 overallEfficiency,
+                storageSpaceFactor,
                 workerResults,
                 resourceEfficiencyMap,
                 monthAcc: assets.monthAcc,
@@ -799,8 +828,11 @@ export function productionTick(gameState: GameState, planet: Planet): void {
 
             if (facility.type === 'production') {
                 processProductionFacility({ ...productionParameterBase, facility });
-            } else if (facility.type === 'management') {
-                processManagementFacility({ ...productionParameterBase, facility });
+            } else if (facility.type === 'management' || facility.type === 'storage') {
+                processManagementFacility({
+                    ...productionParameterBase,
+                    facility: facility as ManagementFacility,
+                });
             } else {
                 processShipConstructionFacility({ ...productionParameterBase, facility }, gameState);
             }

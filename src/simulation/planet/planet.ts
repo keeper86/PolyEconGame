@@ -11,7 +11,14 @@ import type {
 } from '../ships/ships';
 import type { WorkforceCategory, WorkforceCohort } from '../workforce/workforce';
 import type { Resource, ResourceEntry, ResourceQuantity } from './claims';
-import type { HRFacility, ProductionFacility, ShipConstructionFacility, StorageFacility } from './facility';
+import {
+    isFacilityOperating,
+    type Facility,
+    type HRFacility,
+    type ProductionFacility,
+    type ShipConstructionFacility,
+    type Storage,
+} from './facility';
 
 export interface Bank {
     loans: number;
@@ -318,7 +325,7 @@ export type AgentPlanetAssets = {
     shipConstructionFacilities: ShipConstructionFacility[];
     workforceDemography: WorkforceCohort<WorkforceCategory>[];
 
-    storageFacility: StorageFacility;
+    storage: Storage;
 
     humanResourcesDepartment: HRFacility | null;
     hrProductivityMultiplier: number;
@@ -371,6 +378,31 @@ export type AgentPlanetAssets = {
         commercial?: PlanetLicense;
         workforce?: PlanetLicense;
     };
+};
+
+export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean = false): Array<Facility> => {
+    const manageStorage: Array<Facility> = [
+        ...(assets.storage.department ? [assets.storage.department] : []),
+        assets.storage.shells.solid,
+        assets.storage.shells.liquid,
+        assets.storage.shells.pieces,
+    ];
+    if (onlyActive) {
+        return [
+            ...assets.productionFacilities.filter(isFacilityOperating),
+            ...manageStorage.filter(isFacilityOperating),
+            ...(assets.humanResourcesDepartment && isFacilityOperating(assets.humanResourcesDepartment)
+                ? [assets.humanResourcesDepartment]
+                : []),
+            ...assets.shipConstructionFacilities.filter(isFacilityOperating),
+        ];
+    }
+    return [
+        ...assets.productionFacilities,
+        ...manageStorage,
+        ...assets.shipConstructionFacilities,
+        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
+    ];
 };
 
 export function hasActiveLicense(assets: AgentPlanetAssets, type: LicenseType): boolean {

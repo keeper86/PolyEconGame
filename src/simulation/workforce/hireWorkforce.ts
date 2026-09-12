@@ -1,5 +1,4 @@
 import { MIN_EMPLOYABLE_AGE, NOTICE_PERIOD_MONTHS } from '../constants';
-import { computeCostOfLiving } from '../market/serviceDefinitions';
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
 import { educationLevelKeys, type EducationLevelType } from '../population/education';
@@ -11,7 +10,7 @@ import {
     ACCEPTABLE_IDLE_FRACTION,
     acceptProbability,
     computeLaborMarket,
-    outsideIncome,
+    reservationWage,
     smoothedReachableVacancyWage,
 } from './laborMarket';
 import { totalActiveForEdu } from './workforceAggregates';
@@ -39,7 +38,6 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
         t = profiler.mark();
     }
     const laborMarket = computeLaborMarket(agents, planet);
-    const costOfLiving = computeCostOfLiving(planet);
     if (profiler?.isEnabled) {
         t = profiler.markAndAccum('hireMinWage', '  hire_minWageMap', t);
     }
@@ -96,11 +94,10 @@ export function hireWorkforce(agents: Map<string, Agent>, planet: Planet, profil
                 for (let wi = eduIndex.get(edu)!; wi < educationLevelKeys.length && remainingGap > 0; wi++) {
                     const workerEdu = educationLevelKeys[wi];
                     const wage = assets.wagePerEdu[workerEdu] ?? 0;
-                    const outside = outsideIncome(
+                    const threshold = reservationWage(
                         laborMarket.reachableTightness[workerEdu],
                         smoothedReachableVacancyWage(planet, workerEdu, laborMarket.reachableVacancyWage[workerEdu]),
                     );
-                    const threshold = Math.max(costOfLiving, outside);
 
                     type Bucket = { age: number; avail: number; probToAccept: number };
                     const buckets: Bucket[] = [];

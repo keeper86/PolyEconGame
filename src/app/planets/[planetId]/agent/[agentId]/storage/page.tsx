@@ -1,7 +1,8 @@
 'use client';
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
-import StorageDepartment from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/StorageDepartment';
+import LogisticsDepartment from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/StorageDepartment';
+import StorageShellsPanel from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/StorageShellsPanel';
 import { ResourceMicroCardGrid } from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/ResourceMicroCardGrid';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
@@ -32,10 +33,11 @@ export default function StoragePage() {
                 agentId={agentId}
                 planetId={planetId}
             >
-                {assets?.storageFacility ? (
+                {assets?.storage ? (
                     <div className='space-y-4'>
                         <span className='flex flex-row flex-wrap gap-2'>
-                            <StorageDepartment agentId={agentId} planetId={planetId} assets={assets} />
+                            <LogisticsDepartment agentId={agentId} planetId={planetId} assets={assets} />
+                            <StorageShellsPanel agentId={agentId} planetId={planetId} assets={assets} />
                         </span>
                         <ResourceMicroCardGrid assets={assets} tick={tick} />
                     </div>

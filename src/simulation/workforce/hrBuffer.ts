@@ -1,5 +1,5 @@
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import type { StorageFacility } from '../planet/facility';
+import type { Storage } from '../planet/facility';
 import { queryStorageFacility, removeFromStorageFacility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
@@ -66,12 +66,12 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         return;
     }
 
-    const producedHr = pullAllHrFromStorage(assets.storageFacility);
+    const producedHr = pullAllHrFromStorage(assets.storage);
     const demand = assets.usedWorkers;
     const maxDailyHROutput = computeMaxDailyHROutput(hrDepartment.maxScale);
-    if (demand > maxDailyHROutput * 1.5) {
+    if (demand > maxDailyHROutput * 2.5) {
         console.warn(
-            `Demand ${demand} exceeds max daily output ${maxDailyHROutput}, ratio ${demand / maxDailyHROutput}`,
+            `HR Demand ${demand} exceeds max daily output ${maxDailyHROutput}, ratio ${demand / maxDailyHROutput}`,
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
@@ -81,7 +81,7 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(consumed, demand));
 }
 
-function pullAllHrFromStorage(storage: StorageFacility): number {
+function pullAllHrFromStorage(storage: Storage): number {
     const available = queryStorageFacility(storage, humanResourcesServiceResourceType.name);
     if (available <= 0) {
         return 0;

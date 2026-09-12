@@ -2,6 +2,7 @@ import { CONSTRUCTION_VALUATION_PRICE_CAP, RECYCLER_BASE_RECOVERY_EFFICIENCY } f
 import type { Facility } from '../planet/facility';
 import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
+import { getAllFacilities } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
@@ -16,10 +17,7 @@ export function computeFacilitiesValue(assets: AgentPlanetAssets, csPrice: numbe
         return 0;
     }
 
-    const allFacilities: Facility[] = [...assets.productionFacilities, ...assets.shipConstructionFacilities];
-    if (assets.humanResourcesDepartment) {
-        allFacilities.push(assets.humanResourcesDepartment);
-    }
+    const allFacilities: Facility[] = getAllFacilities(assets);
 
     let total = 0;
     for (const facility of allFacilities) {

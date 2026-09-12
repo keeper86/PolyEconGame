@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
-import { putIntoStorageFacility } from '../planet/facility';
+import { putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import { humanResourcesServiceResourceType } from '../planet/services';
 import { PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
@@ -114,13 +114,13 @@ describe('processHrBufferForAssets', () => {
         const assets = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: hrFacility,
         });
-        putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
+        putIntoStorageFacility(assets.storage, humanResourcesServiceResourceType, 1000);
 
         assets.usedWorkers = 100;
 
         processHrBufferForAssets(assets);
 
-        expect(assets.storageFacility.currentInStorage[humanResourcesServiceResourceType.name]?.quantity ?? 0).toBe(0);
+        expect(queryStorageFacility(assets.storage, humanResourcesServiceResourceType.name)).toBe(0);
         expect(hrFacility.hrBuffer).toBe(1500 - 100);
     });
 
@@ -134,7 +134,7 @@ describe('processHrBufferForAssets', () => {
         const assets = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: hrFacility,
         });
-        putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
+        putIntoStorageFacility(assets.storage, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets);
         expect(hrFacility.hrBuffer).toBe(pMax);
@@ -151,7 +151,7 @@ describe('processHrBufferForAssets', () => {
         const assets = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: hrFacility,
         });
-        putIntoStorageFacility(assets.storageFacility, humanResourcesServiceResourceType, 1000);
+        putIntoStorageFacility(assets.storage, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets);
         expect(hrFacility.hrBuffer).toBe(1000);
@@ -166,7 +166,7 @@ describe('processHrBufferForAssets', () => {
         const assets2 = makeAgentPlanetAssets('p', {
             humanResourcesDepartment: hrFacility2,
         });
-        putIntoStorageFacility(assets2.storageFacility, humanResourcesServiceResourceType, 1000);
+        putIntoStorageFacility(assets2.storage, humanResourcesServiceResourceType, 1000);
 
         processHrBufferForAssets(assets2);
         expect(hrFacility2.hrBuffer).toBe(pMax);

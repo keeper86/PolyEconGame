@@ -7,7 +7,7 @@ import {
     machineryResourceType,
     vehicleResourceType,
 } from '../planet/resources';
-import { putIntoStorageFacility } from '../planet/facility';
+import { getEscrow, putIntoStorageFacility, queryStorageFacility, shellFormOfResource } from '../planet/facility';
 import { agentMap, makeAgent, makePlanet, makeStorageFacility } from '../utils/testHelper';
 import { marketTick } from './market';
 import { clearUnifiedBids } from './orderBook';
@@ -16,13 +16,24 @@ import { collectAgentBids, collectAgentOffers } from './orderCollection';
 const COAL = coalResourceType.name;
 const MACHINERY = machineryResourceType.name;
 
+function authorizeResource(storage: ReturnType<typeof makeStorageFacility>, resourceName: string): void {
+    const resource = [coalResourceType, vehicleResourceType, machineryResourceType, clothingResourceType].find(
+        (r) => r.name === resourceName,
+    )!;
+    const form = shellFormOfResource(resource);
+    if (form) {
+        storage.shells[form].compartments[resource.name] = 1;
+    }
+}
+
 function makeSellerWithStock(resourceName: string, stock: number, askPrice: number, id = 'seller'): Agent {
     const resource = [coalResourceType, vehicleResourceType, machineryResourceType, clothingResourceType].find(
         (r) => r.name === resourceName,
     )!;
     const agent = makeAgent(id, 'p');
-    agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
-    putIntoStorageFacility(agent.assets.p.storageFacility, resource, stock);
+    agent.assets.p.storage = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
+    authorizeResource(agent.assets.p.storage, resourceName);
+    putIntoStorageFacility(agent.assets.p.storage, resource, stock);
     agent.assets.p.market = {
         sell: {
             [resourceName]: { resource, offerPrice: askPrice, offerRetainment: 0 },
@@ -44,7 +55,8 @@ function makeBuyerWithDeposits(
     )!;
     const agent = makeAgent(id, 'p');
     agent.assets.p.deposits = deposits;
-    agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
+    agent.assets.p.storage = makeStorageFacility({ planetId: 'p', id: `storage-${id}` });
+    authorizeResource(agent.assets.p.storage, resourceName);
     agent.assets.p.market = {
         sell: {},
         buy: { [resourceName]: { resource, bidPrice: price, bidStorageTarget: qty } },
@@ -64,9 +76,7 @@ describe('market escrow — seller-side', () => {
         const seller = makeSellerWithStock(COAL, 100, 1.0);
         collectAgentOffers(agentMap(seller), planet);
 
-        const freeAfterEscrow =
-            seller.assets.p.storageFacility.currentInStorage[COAL]!.quantity -
-            (seller.assets.p.storageFacility.escrow[COAL] ?? 0);
+        const freeAfterEscrow = queryStorageFacility(seller.assets.p.storage, COAL);
         expect(freeAfterEscrow).toBe(0);
     });
 
@@ -77,15 +87,15 @@ describe('market escrow — seller-side', () => {
         const orders = books.get(COAL) ?? [];
         expect(orders).toHaveLength(1);
         expect(orders[0].quantity).toBe(100);
-        expect(seller.assets.p.storageFacility.escrow[COAL]).toBe(100);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(100);
     });
 
     it('goods not sold are released from escrow after a full market tick', () => {
         const seller = makeSellerWithStock(COAL, 100, 999);
         marketTick(agentMap(seller), planet);
 
-        expect(seller.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
-        expect(seller.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBeCloseTo(100, 6);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        expect(queryStorageFacility(seller.assets.p.storage, COAL)).toBeCloseTo(100, 6);
     });
 
     it('sold goods are removed from both escrow and storage', () => {
@@ -94,16 +104,18 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(seller, buyer), planet);
 
-        expect(seller.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
-        const remaining = seller.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        const remaining = queryStorageFacility(seller.assets.p.storage, COAL, false);
         expect(remaining).toBeCloseTo(40, 6);
     });
 
     it('agent selling two resources has zero escrow for both after a full tick', () => {
         const seller = makeAgent('seller', 'p');
-        seller.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: 'storage-seller' });
-        putIntoStorageFacility(seller.assets.p.storageFacility, coalResourceType, 100);
-        putIntoStorageFacility(seller.assets.p.storageFacility, machineryResourceType, 5);
+        seller.assets.p.storage = makeStorageFacility({ planetId: 'p', id: 'storage-seller' });
+        authorizeResource(seller.assets.p.storage, COAL);
+        authorizeResource(seller.assets.p.storage, MACHINERY);
+        putIntoStorageFacility(seller.assets.p.storage, coalResourceType, 100);
+        putIntoStorageFacility(seller.assets.p.storage, machineryResourceType, 5);
         seller.assets.p.market = {
             sell: {
                 [COAL]: { resource: coalResourceType, offerPrice: 1.0, offerRetainment: 0 },
@@ -115,16 +127,16 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(seller), planet);
 
-        expect(seller.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
-        expect(seller.assets.p.storageFacility.escrow[MACHINERY] ?? 0).toBe(0);
-        expect(seller.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0).toBeCloseTo(100, 6);
-        expect(seller.assets.p.storageFacility.currentInStorage[MACHINERY]?.quantity ?? 0).toBeCloseTo(5, 6);
+        expect(getEscrow(seller.assets.p.storage, COAL)).toBe(0);
+        expect(getEscrow(seller.assets.p.storage, MACHINERY)).toBe(0);
+        expect(queryStorageFacility(seller.assets.p.storage, COAL, false)).toBeCloseTo(100, 6);
+        expect(queryStorageFacility(seller.assets.p.storage, MACHINERY, false)).toBeCloseTo(5, 6);
     });
 
     it('agent that is both buyer and seller ends tick with zero escrow and zero depositHold', () => {
         const agent = makeAgent('dual', 'p');
-        agent.assets.p.storageFacility = makeStorageFacility({ planetId: 'p', id: 'storage-dual' });
-        putIntoStorageFacility(agent.assets.p.storageFacility, coalResourceType, 50);
+        agent.assets.p.storage = makeStorageFacility({ planetId: 'p', id: 'storage-dual' });
+        putIntoStorageFacility(agent.assets.p.storage, coalResourceType, 50);
         agent.assets.p.deposits = 1_000;
         planet.marketPrices[MACHINERY] = 10.0;
         agent.assets.p.market = {
@@ -138,7 +150,7 @@ describe('market escrow — seller-side', () => {
 
         marketTick(agentMap(agent), planet);
 
-        expect(agent.assets.p.storageFacility.escrow[COAL] ?? 0).toBe(0);
+        expect(getEscrow(agent.assets.p.storage, COAL)).toBe(0);
         expect(agent.assets.p.depositHold).toBe(0);
     });
 });
@@ -193,7 +205,7 @@ describe('market escrow — buyer-side deposit hold', () => {
 
         marketTick(agentMap(seller, buyer), planet);
 
-        const bought = buyer.assets.p.storageFacility.currentInStorage[COAL]?.quantity ?? 0;
+        const bought = queryStorageFacility(buyer.assets.p.storage, COAL, false);
         expect(bought).toBe(0);
         expect(buyer.assets.p.deposits).toBe(0);
     });

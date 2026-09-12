@@ -1,10 +1,10 @@
-# Game
+# Enterprise Engine
 
 ## Prerequisites
 
 **Note:** The following setup has been tested on **Ubuntu Linux** and for **Windows Subsystem For Linux (WSL)**. Other distributions may require adjustments.
 
-Before running Game, ensure the following tools are installed and configured on your system
+Before running Enterprise Engine, ensure the following tools are installed and configured on your system
 
 ### Node.js and npm
 
@@ -115,7 +115,7 @@ npm run test:coverage # Run tests with coverage
 
 ### End-to-End Tests
 
-The tests assume the development version of Game is running and accessible via `http://localhost:3000` (app) and `http://localhost:8080` (Keycloak) unlike unit tests.
+The tests assume the development version of Enterprise Engine is running and accessible via `http://localhost:3000` (app) and `http://localhost:8080` (Keycloak) unlike unit tests.
 
 This project includes Playwright-based e2e tests that validate the full application flow including authentication and API documentation.
 

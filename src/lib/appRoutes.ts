@@ -45,7 +45,7 @@ export type RouteManifestEntry = RouteMetadata | RouteManifest;
 export const APP_ROUTES = {
     root: {
         path: '/',
-        label: 'Game',
+        label: 'Enterprise Engine',
         icon: Home,
         isPublic: true,
         description: 'Dashboard and overview',

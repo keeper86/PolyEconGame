@@ -1,13 +1,13 @@
 {
     "id": "polyecongame",
     "realm": "polyecongame",
-    "displayName": "Game Dev Realm",
+    "displayName": "Enterprise Engine Dev Realm",
     "enabled": true,
     "clients": [
         {
             "clientId": "polyecongame-app",
-            "name": "Game Application - Development",
-            "description": "DevClient for Game",
+            "name": "Enterprise Engine Application - Development",
+            "description": "DevClient for Enterprise Engine",
             "rootUrl": "http://localhost:3000",
             "adminUrl": "http://localhost:3000",
             "baseUrl": "http://localhost:3000",

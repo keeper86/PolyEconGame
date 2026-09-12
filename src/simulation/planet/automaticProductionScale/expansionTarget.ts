@@ -1,14 +1,10 @@
-import { MIN_EMPLOYABLE_AGE } from '../../constants';
-import { educationLevelKeys, type EducationLevelType } from '../../population/education';
+import { TICKS_PER_MONTH } from '../../constants';
 import type { ResourceQuantity } from '../claims';
 import type { Facility, FacilityBase, ManagementFacility, ProductionFacility } from '../facility';
-import { calculateCostsForConstruction, getFacilityType } from '../facility';
+import { calculateCostsForConstruction, getFacilityType, queryStorageFacility } from '../facility';
 import type { AgentPlanetAssets, Planet } from '../planet';
-import {
-    DYNAMIC_EXPANSION_CAP_FRACTION,
-    EXPANSION_WORKER_RESERVE_MARGIN,
-    MAX_SCALE_EXPAND_FRACTION,
-} from './constants';
+import { DYNAMIC_EXPANSION_CAP_FRACTION, MAX_SCALE_EXPAND_FRACTION, STORAGE_TARGET_MONTHS } from './constants';
+import { getStorageTargetMonths } from './runtimeConfig';
 import { checkExpansionFunds } from './expansionUtils';
 
 export function calculateExpansionParams(facility: FacilityBase): { targetMax: number; cost: number; time: number } {
@@ -47,8 +43,6 @@ export function findMaxAffordableScale(
     }
     return best;
 }
-
-const OVER_SHARE_FACTOR = 1.2;
 
 // TODO: choose a better scale cost function that is easily invertible
 export function findMaxScaleForCSBudget(
@@ -109,58 +103,23 @@ export function computeDynamicExpansionTarget(
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
     planet: Planet,
-    resourceTotalMaxCapacity: Map<string, number>,
-    resourceTotalMaxNeeded: Map<string, number>,
     hasOwnConstruction: boolean,
     constructionBudget: number,
 ): number {
     let maxDemandScale = facility.maxScale;
 
     for (const output of facility.produces) {
-        const lastResult = planet.avgMarketResult[output.resource.name];
-        if (!lastResult || lastResult.unfilledDemand <= 0) {
-            continue;
-        }
-
-        const totalCapacity = resourceTotalMaxCapacity.get(output.resource.name) ?? 0;
-        const totalNeeded = resourceTotalMaxNeeded.get(output.resource.name) ?? 0;
-        const estimateOfDemand = 0.5 * (Math.max(0, totalNeeded - totalCapacity) + lastResult.unfilledDemand);
-        const ownCapacity = output.quantity * facility.maxScale;
-        const capacityShare = totalCapacity > 0 ? ownCapacity / totalCapacity : 1;
-        const targetNewProductionDueUnfilledDemand = estimateOfDemand * capacityShare * OVER_SHARE_FACTOR;
-
-        const scaleForDemand = Math.ceil(targetNewProductionDueUnfilledDemand / output.quantity);
+        const inventory = queryStorageFacility(assets.storage, output.resource.name, false);
+        const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
+        const target = targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
+        const deficit = Math.max(0, target - inventory);
+        const scaleForDemand = Math.ceil(deficit / output.quantity);
 
         maxDemandScale = Math.max(maxDemandScale, facility.maxScale + scaleForDemand);
     }
 
     const absoluteCap = facility.maxScale + Math.max(1, Math.ceil(facility.maxScale * DYNAMIC_EXPANSION_CAP_FRACTION));
     let targetMax = Math.min(maxDemandScale, absoluteCap);
-
-    const demography = planet.population.demography;
-    const unemployedByEdu: Record<EducationLevelType, number> = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
-    for (let age = MIN_EMPLOYABLE_AGE; age < demography.length; age++) {
-        for (const edu of educationLevelKeys) {
-            unemployedByEdu[edu] += demography[age].unoccupied[edu].total;
-        }
-    }
-
-    for (let eduIndex = 0; eduIndex < educationLevelKeys.length; eduIndex++) {
-        const edu = educationLevelKeys[eduIndex];
-        const reqPerScale = facility.workerRequirement[edu] ?? 0;
-        if (reqPerScale <= 0) {
-            continue;
-        }
-
-        let availableForJobTier = 0;
-        for (let i = eduIndex; i < educationLevelKeys.length; i++) {
-            availableForJobTier += unemployedByEdu[educationLevelKeys[i]];
-        }
-
-        const usableForEdu = availableForJobTier / (1 + EXPANSION_WORKER_RESERVE_MARGIN);
-        const maxScaleFromLabor = facility.maxScale + Math.floor(usableForEdu / reqPerScale);
-        targetMax = Math.min(targetMax, maxScaleFromLabor);
-    }
 
     if (!hasOwnConstruction) {
         targetMax = findMaxAffordableScale(facility, assets, planet, facility.maxScale, targetMax);

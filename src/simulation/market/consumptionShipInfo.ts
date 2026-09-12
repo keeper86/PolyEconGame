@@ -1,3 +1,4 @@
+import type { ResourceQuantity } from '../planet/claims';
 import type { ConstructionShip, Ship, TransportShip } from '../ships/ships';
 
 // ── Slim ship info needed for consumption computation ──────────────────────
@@ -11,8 +12,8 @@ export type ConsumptionShipInfo = {
     state: {
         type: string;
         planetId: string;
-        cargoGoal: { resource: { name: string }; quantity: number } | null;
-        currentCargo: { resource: { name: string }; quantity: number } | null;
+        cargoGoal: ResourceQuantity | null;
+        currentCargo: ResourceQuantity | null;
         buildingTarget: {
             construction: { maximumConstructionServiceConsumption: number } | null;
         } | null;

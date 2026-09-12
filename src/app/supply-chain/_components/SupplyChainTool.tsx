@@ -18,7 +18,10 @@ import {
     FACILITY_LEVEL_LABELS,
     FACILITY_LEVELS,
 } from '@/simulation/planet/productionFacilities';
-import { humanResourcesOfficeFacilityType, storageDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
+import {
+    humanResourcesOfficeFacilityType,
+    logisticsDepartmentFacilityType,
+} from '@/simulation/planet/specialFacilities';
 import { solveSupplyChain, type SolverResult, type SolverObjective } from './solver';
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
@@ -280,7 +283,7 @@ function SolverTab({
         () => [
             ...Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map((e) => e.factory('tool', 'preview').name),
             humanResourcesOfficeFacilityType('tool', 'preview-hr').name,
-            storageDepartmentFacilityType('tool', 'preview-sto').name,
+            logisticsDepartmentFacilityType('tool', 'preview-sto').name,
         ],
         [],
     );
@@ -301,7 +304,7 @@ function SolverTab({
         }
         grouped.internal = [
             humanResourcesOfficeFacilityType('tool', 'preview-hr').name,
-            storageDepartmentFacilityType('tool', 'preview-sto').name,
+            logisticsDepartmentFacilityType('tool', 'preview-sto').name,
         ];
         return grouped;
     }, []);
@@ -352,7 +355,7 @@ function SolverTab({
                   const f = e.factory('tool', 'preview');
                   return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
               }),
-              ...[humanResourcesOfficeFacilityType, storageDepartmentFacilityType].map((factory) => {
+              ...[humanResourcesOfficeFacilityType, logisticsDepartmentFacilityType].map((factory) => {
                   const f = factory('tool', 'preview');
                   return { name: f.name, scale: result.scales[f.name] ?? 0, facility: f };
               }),

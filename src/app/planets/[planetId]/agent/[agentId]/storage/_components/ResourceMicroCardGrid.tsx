@@ -1,8 +1,8 @@
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { getWholeStorage, queryStorageFacility } from '@/simulation/planet/facility';
 import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
@@ -62,7 +62,7 @@ function aggregateSoldPerTick(assets: AgentPlanetAssets): Record<string, number>
 }
 
 function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCardEntry[] {
-    const storage = assets.storageFacility;
+    const storage = assets.storage;
     const prodPerTick = aggregateProduction(assets);
     const consPerTick = aggregateConsumption(assets);
     const boughtPerTick = aggregateBoughtPerTick(assets);
@@ -74,7 +74,7 @@ function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCa
 
     const allNames = new Set<string>();
 
-    for (const name of Object.keys(storage.currentInStorage)) {
+    for (const [name] of getWholeStorage(storage)) {
         allNames.add(name);
     }
     for (const name of Object.keys(prodPerTick)) {
@@ -119,7 +119,7 @@ function buildMicroCardEntries(assets: AgentPlanetAssets, tick: number): MicroCa
             continue;
         }
 
-        const stock = storage.currentInStorage[name]?.quantity ?? 0;
+        const stock = queryStorageFacility(storage, name, false);
 
         const toQty = (acc: Record<string, { quantity: number; value: number }>): number => {
             return acc[name]?.quantity ?? 0;
@@ -203,18 +203,6 @@ type Props = {
 
 // TODO: consolidate and unify storage related functions. Use same logic anywhere.
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
-    const storage = assets.storageFacility;
-    const usedVol = storage.current.volume;
-    const scale = storage.department?.maxScale ?? 0;
-    const capVol = storage.capacity.volume * scale;
-    const usedMass = storage.current.mass;
-    const capMass = storage.capacity.mass * scale;
-    const volPercent = capVol > 0 ? (usedVol / capVol) * 100 : 0;
-    const massPercent = capMass > 0 ? (usedMass / capMass) * 100 : 0;
-
-    const volColorClass = volPercent > 90 ? 'bg-red-500' : volPercent > 70 ? 'bg-amber-500' : 'bg-green-500';
-    const massColorClass = massPercent > 90 ? 'bg-red-500' : massPercent > 70 ? 'bg-amber-500' : 'bg-green-500';
-
     const entries = useMemo(() => buildMicroCardEntries(assets, tick), [assets, tick]);
 
     const resourceGroups = useMemo(() => {
@@ -237,46 +225,6 @@ export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactEleme
 
     return (
         <div className='space-y-3' data-tour='storage-overview'>
-            {/* Capacity bars — reused from existing StoragePanel */}
-            <div className='flex items-center gap-3 text-[10px]' data-tour='storage-capacity'>
-                <div className='flex items-center gap-1 flex-1'>
-                    <span className='text-muted-foreground shrink-0'>Volume:</span>
-                    <span
-                        className={`shrink-0 font-medium ${volPercent > 90 ? 'text-red-500' : volPercent > 70 ? 'text-amber-500' : ''}`}
-                    >
-                        {Math.round(volPercent)}%
-                    </span>
-                    <div className='flex-1 h-1.5 bg-muted rounded-full overflow-hidden'>
-                        <div
-                            className={`h-full rounded-full transition-all ${volColorClass}`}
-                            style={{ width: `${Math.min(volPercent, 100)}%` }}
-                        />
-                    </div>
-                    <span className='text-muted-foreground shrink-0'>
-                        {formatNumberWithUnit(Math.round(usedVol), 'm3')} /{' '}
-                        {formatNumberWithUnit(Math.round(capVol), 'm3')}
-                    </span>
-                </div>
-                <div className='flex items-center gap-1 flex-1'>
-                    <span className='text-muted-foreground shrink-0'>Mass:</span>
-                    <span
-                        className={`shrink-0 font-medium ${massPercent > 90 ? 'text-red-500' : massPercent > 70 ? 'text-amber-500' : ''}`}
-                    >
-                        {Math.round(massPercent)}%
-                    </span>
-                    <div className='flex-1 h-1.5 bg-muted rounded-full overflow-hidden'>
-                        <div
-                            className={`h-full rounded-full transition-all ${massColorClass}`}
-                            style={{ width: `${Math.min(massPercent, 100)}%` }}
-                        />
-                    </div>
-                    <span className='text-muted-foreground shrink-0'>
-                        {formatNumberWithUnit(Math.round(usedMass), 'tonnes')} /{' '}
-                        {formatNumberWithUnit(Math.round(capMass), 'tonnes')}
-                    </span>
-                </div>
-            </div>
-
             <Tabs value={activeTab} onValueChange={setActiveTab} className='space-y-3'>
                 <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                     {resourceGroups.map(({ level, label, resources }) => (

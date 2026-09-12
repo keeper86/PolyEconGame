@@ -384,17 +384,6 @@ const smallTanker: TransportShipType = {
     buildingTime: 60,
 };
 
-const smallGasCarrier: TransportShipType = {
-    type: 'transport',
-    name: 'Gas Carrier 1',
-    scale: 'small',
-    speed: 6,
-    cargoSpecification: { type: 'gas', volume: 150000, mass: 120000 },
-    requiredCrew: { ...defaultRequiredCrew },
-    buildingCost: [...defaultBuildingCost],
-    buildingTime: 60,
-};
-
 const smallFreighter: TransportShipType = {
     type: 'transport',
     name: 'Freighter 1',
@@ -439,12 +428,6 @@ export const shiptypes = {
         tanker2: scaleShipType('medium', 'Tanker 2', smallTanker),
         tanker3: scaleShipType('large', 'Tanker 3', smallTanker),
         tanker4: scaleShipType('super', 'Tanker 4', smallTanker),
-    } as const,
-    gas: {
-        gasCarrier1: smallGasCarrier,
-        gasCarrier2: scaleShipType('medium', 'Gas Carrier 2', smallGasCarrier),
-        gasCarrier3: scaleShipType('large', 'Gas Carrier 3', smallGasCarrier),
-        gasCarrier4: scaleShipType('super', 'Gas Carrier 4', smallGasCarrier),
     } as const,
     pieces: {
         freighter1: smallFreighter,

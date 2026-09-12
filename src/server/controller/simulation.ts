@@ -8,7 +8,7 @@ import {
 import { toConsumptionShipInfo, type ConsumptionShipInfo } from '@/simulation/market/consumptionShipInfo';
 import { DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
-import { getStorageStarvation } from '@/simulation/planet/facility';
+import { getTransportStarvation } from '@/simulation/planet/facility';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { groceryServiceResourceType } from '@/simulation/planet/services';
 import { shiptypes } from '@/simulation/ships/ships';
@@ -853,7 +853,7 @@ export const getAgentConditions = () =>
             const assets = agent?.assets?.[input.planetId];
             return {
                 hrProductivityMultiplier: assets?.hrProductivityMultiplier ?? 1,
-                storageStarvation: assets?.storageFacility ? getStorageStarvation(assets.storageFacility) : 1,
+                storageStarvation: assets?.storage ? getTransportStarvation(assets.storage) : 1,
             };
         });
 
@@ -910,7 +910,6 @@ export const getTickerEvents = () =>
 const ALL_TRANSPORT_SHIP_TYPES = [
     ...Object.values(shiptypes.solid),
     ...Object.values(shiptypes.liquid),
-    ...Object.values(shiptypes.gas),
     ...Object.values(shiptypes.pieces),
 ] as const;
 

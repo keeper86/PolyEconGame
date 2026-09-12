@@ -6,7 +6,7 @@ export type ResourceProcessLevel = TradableResourceProcessLevel | 'internal';
 
 export type Resource = {
     name: string;
-    form: 'solid' | 'liquid' | 'gas' | 'pieces' | 'landBoundResource' | 'services' | 'currency' | 'internal';
+    form: 'solid' | 'liquid' | 'pieces' | 'landBoundResource' | 'services' | 'currency' | 'internal';
     level: ResourceProcessLevel | 'source' | 'currency';
     volumePerQuantity: number;
     massPerQuantity: number;

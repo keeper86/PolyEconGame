@@ -130,9 +130,9 @@ describe('updateProductionCostFloors — reference weights', () => {
             auxiliaryCostPerTick(refinery, rates);
 
         const sum =
-            80 * floorFor(planet, fuelResourceType.name) +
-            60 * floorFor(planet, plasticResourceType.name) +
-            60 * floorFor(planet, chemicalResourceType.name);
+            90 * floorFor(planet, fuelResourceType.name) +
+            62 * floorFor(planet, plasticResourceType.name) +
+            48 * floorFor(planet, chemicalResourceType.name);
         expect(sum).toBeCloseTo(bundleCost, 8);
     });
 
@@ -199,9 +199,9 @@ describe('updateProductionCostFloors — reference weights', () => {
 describe('jointOutputCostShares', () => {
     const refinery = oilRefinery('catalog', 'preview');
     const outputAccum = new Map([
-        [fuelResourceType.name, 80],
-        [plasticResourceType.name, 60],
-        [chemicalResourceType.name, 60],
+        [fuelResourceType.name, 90],
+        [plasticResourceType.name, 62],
+        [chemicalResourceType.name, 48],
     ]);
 
     it('allocates the whole bundle (shares sum to one)', () => {

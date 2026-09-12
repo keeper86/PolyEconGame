@@ -11,8 +11,8 @@ import {
     administrativeServiceResourceType,
     educationServiceResourceType,
     humanResourcesServiceResourceType,
+    internalLogisticsServiceResourceType,
     logisticsServiceResourceType,
-    storageServiceResourceType,
     trainingServiceResourceType,
 } from './services';
 
@@ -76,13 +76,13 @@ export const humanResourcesOfficeFacilityType = (planetId: string, id: string): 
     wagePidState: nullWagePidState(),
 });
 
-export const STORAGE_DEPARTMENT_NAME = 'Storage Department';
+export const LOGISTICS_DEPARTMENT_NAME = 'Logistics Department';
 export const PRODUCED_STORAGE_QUANTITY = 10000;
-export const storageDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
+export const logisticsDepartmentFacilityType = (planetId: string, id: string): StorageDepartment => ({
     ...makeManagementFacilityDefaults(),
     planetId,
     id,
-    name: STORAGE_DEPARTMENT_NAME,
+    name: LOGISTICS_DEPARTMENT_NAME,
     powerConsumptionPerTick: 0.5,
     workerRequirement: {
         none: 25,
@@ -94,10 +94,10 @@ export const storageDepartmentFacilityType = (planetId: string, id: string): Sto
         { resource: administrativeServiceResourceType, quantity: 5 },
         { resource: logisticsServiceResourceType, quantity: 50 },
     ],
-    produces: [{ resource: storageServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
+    produces: [{ resource: internalLogisticsServiceResourceType, quantity: PRODUCED_STORAGE_QUANTITY }],
 
-    storageBuffer: 0,
-    storageStarvation: 0,
+    transportBuffer: 0,
+    transportStarvation: 0,
 });
 // service shield for production
 // increased buffer for storageServiceResourceType

@@ -1,7 +1,6 @@
 import type { Agent, Planet } from '../planet/planet';
 import { hasActiveLicense } from '../planet/planet';
-import type { Resource } from '../planet/claims';
-import { getStorageScaleBasis, lockIntoEscrow, queryStorageFacility } from '../planet/facility';
+import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
 import { EPSILON } from '../constants';
@@ -28,7 +27,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
                 continue;
             }
 
-            const free = queryStorageFacility(assets.storageFacility, resourceName);
+            const free = queryStorageFacility(assets.storage, resourceName);
 
             const validatedOffer = validateAndPrepareSellOffer(offer, free);
 
@@ -43,7 +42,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
 
             offer.lastPlacedQty = quantity;
             offer.lastOfferPrice = askPrice;
-            lockIntoEscrow(assets.storageFacility, resourceName, quantity);
+            lockIntoEscrow(assets.storage, resourceName, quantity);
 
             let book = books.get(resourceName);
             if (!book) {
@@ -81,18 +80,17 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             qty: number;
             price: number;
             maxCost: number;
-            resource: Resource;
         }[] = [];
         let totalMaxCost = 0;
-        let totalRequiredVolume = 0;
-        let totalRequiredMass = 0;
 
         for (const [resourceName, bid] of Object.entries(assets.market.buy)) {
             if (isCurrencyResource(bid.resource) || bid.resource.form === 'internal') {
                 continue;
             }
-            const currentInventory = queryStorageFacility(assets.storageFacility, resourceName);
+            const currentInventory = queryStorageFacility(assets.storage, resourceName);
 
+            // validateAndPrepareBuyBid already caps qty to the exact free space of the bid's own
+            // form shell, so nothing has to be scaled across resources for storage afterwards.
             const validatedBid = validateAndPrepareBuyBid(bid, assets, currentInventory);
 
             if (!validatedBid) {
@@ -100,29 +98,13 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             }
 
             const { price, quantity: qty, maxCost } = validatedBid;
-            pendingBids.push({ resourceName, qty, price, maxCost, resource: bid.resource });
+            pendingBids.push({ resourceName, qty, price, maxCost });
             totalMaxCost += maxCost;
-
-            totalRequiredVolume += qty * bid.resource.volumePerQuantity;
-            totalRequiredMass += qty * bid.resource.massPerQuantity;
         }
 
         if (pendingBids.length === 0) {
             return;
         }
-
-        const storage = assets.storageFacility;
-        const scale = getStorageScaleBasis(storage);
-        const freeVolume = storage.capacity.volume * scale - storage.current.volume;
-        const freeMass = storage.capacity.mass * scale - storage.current.mass;
-
-        const isVolumeLimited = totalRequiredVolume > freeVolume;
-        const isMassLimited = totalRequiredMass > freeMass;
-        const isStorageLimited = isVolumeLimited || isMassLimited;
-
-        const volumeScaleFactor = isVolumeLimited ? (freeVolume > 0 ? freeVolume / totalRequiredVolume : 0) : 1;
-        const massScaleFactor = isMassLimited ? (freeMass > 0 ? freeMass / totalRequiredMass : 0) : 1;
-        const storageScaleFactor = Math.min(volumeScaleFactor, massScaleFactor);
 
         const availableDeposits = assets.deposits;
         const isDepositLimited = totalMaxCost > availableDeposits;
@@ -137,27 +119,16 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
         for (const { resourceName, qty, price } of pendingBids) {
             const bid = assets.market.buy[resourceName]!;
 
-            const storageScaledQty = Math.max(0, qty * storageScaleFactor);
-
             const safeDepositScale = isDepositLimited ? 0.99 * depositScaleFactor : depositScaleFactor;
-            let scaledQty = Math.max(0, storageScaledQty * safeDepositScale);
+            let scaledQty = Math.max(0, qty * safeDepositScale);
 
             if (scaledQty > 0 && scaledQty < EPSILON) {
                 scaledQty = 0;
             }
 
-            const isStorageDropped = storageScaledQty <= 0;
-            const isStorageScaled = !isStorageDropped && isStorageLimited && storageScaledQty < qty;
-            const isDepositDropped = scaledQty <= 0 && !isStorageDropped;
-            const isDepositScaled = !isDepositDropped && isDepositLimited && scaledQty < storageScaledQty;
-
             if (scaledQty <= 0) {
                 if (!agent.automated) {
-                    if (isStorageDropped) {
-                        bid.storageScaleWarning = 'dropped';
-                    } else if (isDepositDropped) {
-                        bid.depositScaleWarning = 'dropped';
-                    }
+                    bid.depositScaleWarning = 'dropped';
                 }
                 continue;
             }
@@ -167,13 +138,8 @@ export function collectAgentBids(agents: Map<string, Agent>, planet: Planet): Ma
             const cost = scaledQty * price;
             holdAmount += cost;
 
-            if (!agent.automated) {
-                if (isStorageScaled) {
-                    bid.storageScaleWarning = 'scaled';
-                }
-                if (isDepositScaled) {
-                    bid.depositScaleWarning = 'scaled';
-                }
+            if (!agent.automated && isDepositLimited && scaledQty < qty) {
+                bid.depositScaleWarning = 'scaled';
             }
 
             if (process.env.SIM_DEBUG === '1') {

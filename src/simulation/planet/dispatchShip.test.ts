@@ -105,7 +105,7 @@ describe('handleDispatchShip', () => {
     });
 
     it('fails when cargo goal specified but no storage facility', () => {
-        const assets = makeAgentPlanetAssets('p1', { storageFacility: undefined as never });
+        const assets = makeAgentPlanetAssets('p1', { storage: undefined as never });
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
@@ -139,7 +139,7 @@ describe('handleDispatchShip', () => {
     it('dispatches even when requested quantity exceeds storage (loading phase handles shortfall)', () => {
         const storage = makeStorageFacility({ planetId: 'p1' });
         putIntoStorageFacility(storage, steelResourceType, 50);
-        const assets = makeAgentPlanetAssets('p1', { storageFacility: storage });
+        const assets = makeAgentPlanetAssets('p1', { storage: storage });
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets, p2: makeAgentPlanetAssets('p2') } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);
@@ -158,7 +158,7 @@ describe('handleDispatchShip', () => {
     it('dispatches with cargo into loading state and cargo drawn from own storage', () => {
         const storage = makeStorageFacility({ planetId: 'p1' });
         putIntoStorageFacility(storage, steelResourceType, 500);
-        const assets = makeAgentPlanetAssets('p1', { storageFacility: storage });
+        const assets = makeAgentPlanetAssets('p1', { storage: storage });
         const agent = makeAgent('a1', 'p1', 'Agent', { assets: { p1: assets, p2: makeAgentPlanetAssets('p2') } });
         const ship = makeTransportShip('S1', 'p1');
         agent.ships.push(ship);

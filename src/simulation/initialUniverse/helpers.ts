@@ -9,7 +9,14 @@ import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { SERVICE_DEFINITIONS } from '../market/serviceDefinitions';
 
 import type { HRFacility } from '../planet/facility';
-import { putIntoStorageFacility, type ProductionFacility, type StorageFacility } from '../planet/facility';
+import {
+    makeStorageShell,
+    putIntoStorageFacility,
+    storageFormKeys,
+    type ProductionFacility,
+    type Storage,
+} from '../planet/facility';
+import { updateAgentShellCompartments } from '../planet/automaticProductionScale/shellCompartments';
 import {
     createEmptyAccumulator,
     createEmptyDemographicEventCounters,
@@ -19,7 +26,7 @@ import {
 import {
     PRODUCED_HR_QUANTITY,
     PRODUCED_STORAGE_QUANTITY,
-    storageDepartmentFacilityType,
+    logisticsDepartmentFacilityType,
 } from '../planet/specialFacilities';
 import {
     MAX_AGE,
@@ -29,47 +36,41 @@ import {
 } from '../population/population';
 import { makeWorkforceDemography } from '../utils/testHelper';
 
-export function makeStorage(opts: {
-    planetId: string;
-    id: string;
-    scale?: number;
-    volumeCapacity?: number;
-    massCapacity?: number;
-}): StorageFacility {
+export function makeStorage(opts: { planetId: string; id: string; scale?: number }): Storage {
     const scale = opts.scale ?? 1;
-    const department = storageDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
+    const department = logisticsDepartmentFacilityType(opts.planetId, `${opts.id}-department`);
     department.scale = scale;
     department.maxScale = scale;
     return {
         planetId: opts.planetId,
         id: opts.id,
-        capacity: {
-            volume: opts.volumeCapacity ?? 1e13,
-            mass: opts.massCapacity ?? 1e15,
-        },
-        current: { mass: 0, volume: 0 },
         currentInStorage: {},
         escrow: {},
+        shells: {
+            solid: makeStorageShell(opts.planetId, `${opts.id}-silo`, 'solid', scale),
+            liquid: makeStorageShell(opts.planetId, `${opts.id}-tank`, 'liquid', scale),
+            pieces: makeStorageShell(opts.planetId, `${opts.id}-warehouse`, 'pieces', scale),
+        },
         department,
     };
 }
 
 export function makeAgentPlanetAssets(
     facilities: ProductionFacility[],
-    storage: StorageFacility,
+    storage: Storage,
     hrDepartment: HRFacility | null,
 ): AgentPlanetAssets {
     if (hrDepartment && hrDepartment.construction === null) {
         hrDepartment.hrBuffer = PRODUCED_HR_QUANTITY * hrDepartment.maxScale * HR_BUFFER_CAPACITY_MULTIPLIER;
     }
     if (storage.department && storage.department.construction === null) {
-        storage.department.storageBuffer =
+        storage.department.transportBuffer =
             PRODUCED_STORAGE_QUANTITY * storage.department.scale * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
     }
     return {
         productionFacilities: facilities,
         shipConstructionFacilities: [],
-        storageFacility: storage,
+        storage: storage,
         humanResourcesDepartment: hrDepartment,
         hrProductivityMultiplier: 1,
         transportContracts: [],
@@ -114,7 +115,7 @@ export function makeAgent(opts: {
     associatedPlanetId: string;
     planetId: string;
     facilities: ProductionFacility[];
-    storage: StorageFacility;
+    storage: Storage;
     hrDepartment: HRFacility | null;
     logo?: string;
 }): Agent {
@@ -140,10 +141,10 @@ export function makeAgent(opts: {
 
 export function prefillAgentStorageFromFacilities(gameState: { agents: Map<string, Agent> }): void {
     for (const agent of gameState.agents.values()) {
-        for (const [, assets] of Object.entries(agent.assets)) {
-            const storage = (assets as AgentPlanetAssets).storageFacility;
-            const facilities = (assets as AgentPlanetAssets).productionFacilities;
-            for (const facility of facilities) {
+        for (const [, rawAssets] of Object.entries(agent.assets)) {
+            const assets = rawAssets as AgentPlanetAssets;
+            const storage = assets.storage;
+            for (const facility of assets.productionFacilities) {
                 for (const { resource, quantity } of facility.needs) {
                     if (
                         resource.form === 'services' ||
@@ -167,6 +168,33 @@ export function prefillAgentStorageFromFacilities(gameState: { agents: Map<strin
                     putIntoStorageFacility(storage, resource, targetQty);
                 }
             }
+        }
+    }
+}
+
+// Seed-time equivalent of the runtime reconcile step: give each physical shell the scale the
+// compartment allocator reports as required for the agent's produced footprint, so a fresh world does
+// not start under-capacity and has to fight for construction budget before the market matures.
+// The allocator runs a second time because it derives shares from the shell's current scale: the first
+// pass reports the required scale while the shell is still undersized and may fall back to equal shares
+// that do not match the footprint, so re-allocating after the resize leaves the prefill with the final
+// compartment split instead of a stale one.
+export function presizeAgentShellForFacilities(gameState: { agents: Map<string, Agent> }): void {
+    for (const agent of gameState.agents.values()) {
+        for (const [, rawAssets] of Object.entries(agent.assets)) {
+            const assets = rawAssets as AgentPlanetAssets;
+            const sizing = updateAgentShellCompartments(assets);
+            for (const form of storageFormKeys()) {
+                const required = sizing[form]?.requiredScale;
+                if (!required) {
+                    continue;
+                }
+                const shell = assets.storage.shells[form];
+                const target = Math.ceil(required);
+                shell.scale = target;
+                shell.maxScale = target;
+            }
+            updateAgentShellCompartments(assets);
         }
     }
 }

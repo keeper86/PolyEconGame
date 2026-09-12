@@ -9,7 +9,7 @@ export const STORAGE_TARGET_FILL_RATE = 0.85;
 
 export function computeStorageSignal(storageDepartment: StorageDepartment): number {
     const maxBuffer = storageDepartment.scale * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
-    const fillRate = maxBuffer > 0 ? storageDepartment.storageBuffer / maxBuffer : 0;
+    const fillRate = maxBuffer > 0 ? storageDepartment.transportBuffer / maxBuffer : 0;
     return Math.max(-1, Math.min(1, (STORAGE_TARGET_FILL_RATE - fillRate) / STORAGE_TARGET_FILL_RATE));
 }
 
@@ -22,7 +22,7 @@ export function computeStorageExpansionTarget(
 ): number {
     const currentMax = storageDepartment.maxScale;
     const maxBuffer = currentMax * PRODUCED_STORAGE_QUANTITY * STORAGE_BUFFER_CAPACITY_MULTIPLIER;
-    const currentBuffer = storageDepartment.storageBuffer;
+    const currentBuffer = storageDepartment.transportBuffer;
     const fillRate = maxBuffer > 0 ? currentBuffer / maxBuffer : 1;
 
     if (fillRate >= STORAGE_TARGET_FILL_RATE) {

@@ -1,8 +1,7 @@
 import { NOTICE_PERIOD_MONTHS } from '../constants';
 import { processFacilityContraction } from '../agents/recycler';
-import { collectAgentFacilities } from '../planet/facilityMaintenance';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { pushTickerEvent, pushBankruptcyRecord } from '../planet/planet';
+import { pushTickerEvent, pushBankruptcyRecord, getAllFacilities } from '../planet/planet';
 import { mergeClaimBackIntoPool } from '../planet/claims';
 import { transferPopulation } from '../population/population';
 import { forEachWorkforceCohort } from '../workforce/workforce';
@@ -153,7 +152,7 @@ export function liquidateAgent(gameState: GameState, planet: Planet, agent: Agen
         if (!targetPlanet) {
             continue;
         }
-        for (const facility of collectAgentFacilities(assets)) {
+        for (const facility of getAllFacilities(assets)) {
             processFacilityContraction(targetPlanet, facility, agent, 0, gameState, 0, 1, 'bank');
         }
     }

@@ -191,7 +191,13 @@ export const updateUser = () => {
 export const getUserIdFromSession = () => {
     return protectedProcedure
         .meta({
-            openapi: { method: 'GET', path: '/user-id', tags: ['Game'], summary: 'Get User ID', protect: true },
+            openapi: {
+                method: 'GET',
+                path: '/user-id',
+                tags: ['Enterprise Engine'],
+                summary: 'Get User ID',
+                protect: true,
+            },
         })
         .input(z.void())
         .output(z.object({ userId: z.string() }))
@@ -571,7 +577,7 @@ export const setSellOffers = () => {
 
                 const inventoryQty = isCurrencyResource(resource)
                     ? 0
-                    : queryStorageFacility(sellAssets.storageFacility, resourceName);
+                    : queryStorageFacility(sellAssets.storage, resourceName);
 
                 const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 

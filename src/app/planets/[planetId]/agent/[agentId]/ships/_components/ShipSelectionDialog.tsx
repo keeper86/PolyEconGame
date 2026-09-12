@@ -18,7 +18,6 @@ const categoryLabels: Record<keyof typeof shiptypes, string> = {
     solid: 'Bulk Carriers',
     liquid: 'Tankers',
     pieces: 'Freighters',
-    gas: 'Gas Carriers',
     passenger: 'Passenger Ships',
 };
 

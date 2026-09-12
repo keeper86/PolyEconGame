@@ -31,7 +31,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-    title: 'Game',
+    title: 'Enterprise Engine',
     description: 'Simulate and manage a company in a dynamic economic environment.',
 };
 

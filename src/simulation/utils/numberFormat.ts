@@ -14,9 +14,9 @@ export function formatNumbers(n: number | null | undefined): string {
     let currentNumber = n;
     let currentSuffix = '';
     const abbreviations: [number, string][] = [
-        [1_000_000_000_000_000_000_000, 'S'],
-        [1_000_000_000_000_000_000, 'Qt'],
-        [1_000_000_000_000_000, 'Q'],
+        [1_000_000_000_000_000_000_000, 'Z'],
+        [1_000_000_000_000_000_000, 'E'],
+        [1_000_000_000_000_000, 'P'],
         [1_000_000_000_000, 'T'],
         [1_000_000_000, 'B'],
         [1_000_000, 'M'],

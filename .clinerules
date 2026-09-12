@@ -1,24 +1,16 @@
 # PolyEconGame Codebase Summary
 
-## Expected Behavior
-
-- We do an explicit planning for each feature/refactor.
-- The plan has enough detail to be executed without much thinking.
-- When the plan exists:
-    - Use the plan, do not think it through a second time.
-    - Do not verify everything again.
-- if you run in circles, returning to the user to ask something, is expected and greeted behaviour.
-
 ## Rules:
 
 - Avoid comments! If a comment seems necessary, restructure or rename instead.
 - If you see a comment that seems unnecessary, delete it.
 - Avoid optional properties. We are in dev only — no need for backwards-compatibility.
-- Run 'npm run test:all' to run all tests.
+- Run 'npm run test:all' to run all tests (does not run npm run build).
 - Do not run 'npm run build', there is always a dev server running. server crashes, building fails randomly.
 - When you fix a bug, most likely you will also want to add a test.
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
-- Be direct and honest. If a task makes no real sense, say so. If you are unsure, ask.
+- Be direct and honest. If a task makes no real sense, say so. Do not ask only questions.
+  When you ask the answer must lead to implementation. No eternal asking!
 
 ## Overview
 
@@ -76,7 +68,7 @@ src/
 
 ## Core Simulation System
 
-### Game State Model
+### Enterprise Engine State Model
 
 The simulation uses an immutable data structure for snapshots with structural sharing:
 
@@ -150,5 +142,6 @@ This will format, lint, build and run all tests. The CI pipeline runs this comma
 ## Memory
 
 You find something so important you wished knew earlier:
+
 - The user is often concurrently editing the codebase — files can change while you work. Re-read before finalizing and don't be surprised by mid-task edits.
 - The user always forgets to adapt tests. When tests fail after a change, check whether the current implementation moved on and fix the tests proactively.

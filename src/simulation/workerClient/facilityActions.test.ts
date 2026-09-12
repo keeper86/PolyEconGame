@@ -229,6 +229,90 @@ describe('handleContractFacility — humanResourcesDepartment', () => {
     });
 });
 
+describe('handleStorageShellCommands', () => {
+    function solidShell(company: Awaited<ReturnType<typeof setupWorld>>['company'], planetId: string) {
+        return company.assets[planetId].storage.shells.solid;
+    }
+
+    it('expands a storage shell', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = solidShell(company, planet.id);
+        const { messages, post } = makeMessages();
+
+        handleExpandFacility(
+            gameState,
+            {
+                type: 'expandFacility',
+                requestId: 'r30',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+                targetScale: solid.maxScale + 1,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityExpanded',
+            facilityId: solid.id,
+        });
+        expect(solid.construction).not.toBeNull();
+        expect(solid.construction!.type).toBe('expansion');
+    });
+
+    it('sets operating scale on a storage shell', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = solidShell(company, planet.id);
+        const { messages, post } = makeMessages();
+
+        handleSetFacilityScale(
+            gameState,
+            {
+                type: 'setFacilityScale',
+                requestId: 'r31',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+                scaleFraction: 0.5,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityScaleSet',
+            facilityId: solid.id,
+        });
+        expect(solid.scale).toBeCloseTo(solid.maxScale * 0.5);
+    });
+
+    it('contracts a storage shell to a lower scale', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = solidShell(company, planet.id);
+        solid.maxScale = 2;
+        solid.scale = 2;
+        const { messages, post } = makeMessages();
+
+        handleContractFacility(
+            gameState,
+            {
+                type: 'contractFacility',
+                requestId: 'r32',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+                targetScale: 1,
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'facilityContracted',
+            facilityId: solid.id,
+        });
+        expect(solid.maxScale).toBe(1);
+    });
+});
+
 function makeExpansionFacility(planetId: string, id = 'fac-2'): ProductionFacility {
     return {
         ...makeNewFacility(planetId, id),
@@ -489,6 +573,68 @@ describe('handleCancelConstruction — shipyard not under construction', () => {
                 agentId: company.id,
                 planetId: planet.id,
                 facilityId: 'sy-idle',
+            },
+            post,
+        );
+
+        expect(messages[0]).toMatchObject({
+            type: 'constructionCancelFailed',
+            reason: 'Facility is not under construction',
+        });
+    });
+});
+
+describe('handleCancelConstruction — storage shell expansion', () => {
+    it('clears construction on the shell but keeps the shell', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = company.assets[planet.id].storage.shells.solid;
+        solid.construction = {
+            type: 'expansion',
+            progress: 0,
+            constructionTargetMaxScale: solid.maxScale + 1,
+            totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+            maximumConstructionServiceConsumption: 1,
+            lastTickInvestedConstructionServices: 0,
+        };
+        const { messages, post } = makeMessages();
+
+        handleCancelConstruction(
+            gameState,
+            {
+                type: 'cancelConstruction',
+                requestId: 'r13',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
+            },
+            post,
+        );
+
+        expect(messages).toHaveLength(1);
+        expect(messages[0]).toMatchObject({
+            type: 'constructionCancelled',
+            facilityId: solid.id,
+        });
+        expect(company.assets[planet.id].storage.shells.solid).toBe(solid);
+        expect(company.assets[planet.id].storage.shells.solid.construction).toBeNull();
+    });
+});
+
+describe('handleCancelConstruction — storage shell not under construction', () => {
+    it('fails when the shell has no active construction', () => {
+        const { gameState, planet, company } = setupWorld();
+        const solid = company.assets[planet.id].storage.shells.solid;
+        solid.construction = null;
+        const { messages, post } = makeMessages();
+
+        handleCancelConstruction(
+            gameState,
+            {
+                type: 'cancelConstruction',
+                requestId: 'r14',
+                agentId: company.id,
+                planetId: planet.id,
+                facilityId: solid.id,
             },
             post,
         );

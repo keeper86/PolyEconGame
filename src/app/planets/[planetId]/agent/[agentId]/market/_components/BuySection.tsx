@@ -26,6 +26,7 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '@/simulation/constants';
 import type { BuyDiagnostics } from '@/simulation/planet/planet';
+import { queryStorageFacility } from '@/simulation/planet/facility';
 import {
     AlertCircle,
     Anchor,
@@ -207,7 +208,7 @@ export default function BuySection({
     const [buyPricingOpen, setBuyPricingOpen] = useBuyPricingOpenPreference();
     const [buyVolumeOpen, setBuyVolumeOpen] = useBuyVolumeOpenPreference();
 
-    const inventoryQty = assets.storageFacility.currentInStorage[resourceName]?.quantity ?? 0;
+    const inventoryQty = queryStorageFacility(assets.storage, resourceName);
     const deposits = assets.deposits;
 
     const isCurrency = resourceName.startsWith('CUR_');
@@ -460,6 +461,7 @@ export default function BuySection({
             ? [costFloor, overviewRow.clearingPrice, costFloor * 2, costFloor * 3, costFloor * 4]
                   .filter((p) => isFinite(p) && p > 0)
                   .sort((a, b) => a - b)
+                  .filter((p, i, arr) => i === 0 || p !== arr[i - 1])
             : [];
 
     return (
@@ -797,7 +799,7 @@ export default function BuySection({
                             </CollapsibleTrigger>
                             <CollapsibleContent className='px-2.5 pb-2.5 space-y-2'>
                                 <div className='relative'>
-                                    <div className='space-y-1'>
+                                    <div className='space-y-1 pb-2'>
                                         <div className='flex flex-wrap gap-1'>
                                             {BUY_VOLUME_PRESET_ORDER.map((preset, index) => {
                                                 const isActive = preset === activeVolumePreset;

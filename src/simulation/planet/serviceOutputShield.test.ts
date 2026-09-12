@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { putIntoStorageFacility } from './facility';
+import { putIntoStorageFacility, queryStorageFacility } from './facility';
 import { logisticsServiceResourceType } from './services';
 import {
     makeAgent,
@@ -15,11 +15,11 @@ describe('service output shield', () => {
         const facility = makeProductionFacility();
         facility.lastTickResults.lastProduced[logisticsServiceResourceType.name] = outputPerTick;
         const storage = makeStorageFacility();
-        storage.department!.storageBuffer = 1e6;
-        storage.department!.storageStarvation = 0;
+        storage.department!.transportBuffer = 1e6;
+        storage.department!.transportStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
-            storageFacility: storage,
+            storage: storage,
         });
         return { assets, storage };
     }
@@ -31,7 +31,7 @@ describe('service output shield', () => {
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(1000, 3);
         expect(assets.monthAcc.naturalDepreciationValue).toBeCloseTo(0, 3);
     });
@@ -43,7 +43,7 @@ describe('service output shield', () => {
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(4600, 1);
     });
 
@@ -51,18 +51,18 @@ describe('service output shield', () => {
         const facility = makeProductionFacility();
         facility.lastTickResults.lastConsumed[logisticsServiceResourceType.name] = 1000;
         const storage = makeStorageFacility();
-        storage.department!.storageBuffer = 1e6;
-        storage.department!.storageStarvation = 0;
+        storage.department!.transportBuffer = 1e6;
+        storage.department!.transportStarvation = 0;
         const assets = makeAgentPlanetAssets('p', {
             productionFacilities: [facility],
-            storageFacility: storage,
+            storage: storage,
         });
         putIntoStorageFacility(storage, logisticsServiceResourceType, 1000);
         const agent = makeAgent('a', 'p', 'A', { assets: { p: assets } });
 
         storageLogisticsTick(new Map([['a', agent]]), makePlanet());
 
-        const remaining = storage.currentInStorage[logisticsServiceResourceType.name]?.quantity ?? 0;
+        const remaining = queryStorageFacility(storage, logisticsServiceResourceType.name);
         expect(remaining).toBeCloseTo(900, 1);
     });
 });
