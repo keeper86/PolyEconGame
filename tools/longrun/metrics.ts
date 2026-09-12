@@ -950,6 +950,26 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             : 0;
     const groceryBuffer = computeNormalizedBuffer(planet, 'grocery');
 
+    // Per-resource market clearing for every tradable, so a supply/demand question can be
+    // answered from the series instead of inferred from prices. Emitted as
+    // market_<Resource>_<field> keys to keep the flat CSV shape.
+    const marketFields: Record<string, number> = {};
+    for (const resource of TRADABLE_RESOURCES) {
+        const key = resource.name.replace(/[^A-Za-z0-9]/g, '');
+        const result = planet.lastMarketResult[resource.name];
+        const demand = result?.totalDemand ?? 0;
+        const supply = result?.totalSupply ?? 0;
+        const volume = result?.totalVolume ?? 0;
+        marketFields[`market_${key}_demand`] = demand;
+        marketFields[`market_${key}_supply`] = supply;
+        marketFields[`market_${key}_volume`] = volume;
+        marketFields[`market_${key}_unfilled`] = result?.unfilledDemand ?? 0;
+        marketFields[`market_${key}_unsold`] = result?.unsoldSupply ?? 0;
+        marketFields[`market_${key}_price`] = result?.clearingPrice ?? 0;
+        marketFields[`market_${key}_fillRate`] = demand > 0 ? volume / demand : 0;
+        marketFields[`market_${key}_buffer`] = supply > 0 ? volume / supply : 0;
+    }
+
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
 
@@ -1532,6 +1552,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         restorationAggregateConsumption,
         priceCeilHits,
         priceFloorHits,
+        ...marketFields,
     };
 }
 
@@ -1895,5 +1916,18 @@ export const METRIC_KEYS: string[] = [
     'restorationAggregateConsumption',
     'priceCeilHits',
     'priceFloorHits',
+    ...TRADABLE_RESOURCES.flatMap((resource) => {
+        const key = resource.name.replace(/[^A-Za-z0-9]/g, '');
+        return [
+            `market_${key}_demand`,
+            `market_${key}_supply`,
+            `market_${key}_volume`,
+            `market_${key}_unfilled`,
+            `market_${key}_unsold`,
+            `market_${key}_price`,
+            `market_${key}_fillRate`,
+            `market_${key}_buffer`,
+        ];
+    }),
 ];
 

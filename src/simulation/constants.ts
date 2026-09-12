@@ -61,7 +61,7 @@ export const JOINT_DEMAND_WEIGHT_MAX = 4;
 export const TARGET_FILL_RATE = 0.6;
 export const TARGET_FILL_RATE_SERVICES = 0.7;
 export const TARGET_SELL_THROUGH = 0.6;
-export const TARGET_SELL_THROUGH_SERVICES = 0.7;
+export const TARGET_SELL_THROUGH_SERVICES = 0.8;
 
 export const HR_BUFFER_CAPACITY_MULTIPLIER = 5;
 
