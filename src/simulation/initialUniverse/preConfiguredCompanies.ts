@@ -319,6 +319,22 @@ const WORD_POOLS: Record<FacilityType, { stems: string[] }> = {
             'BugOff',
         ],
     },
+    plasticsFactory: {
+        stems: [
+            'PolyPlast',
+            'Global Polymers',
+            'Synthetica',
+            'ResinWorks',
+            'PlastiCorp',
+            'PetroPolymers',
+            'Mold Masters',
+            'Granulate Group',
+            'ThermoPlast',
+            'Polymer Dynamics',
+            'Injection Works',
+            'PlastChem',
+        ],
+    },
     paperMill: {
         stems: [
             'Paper World',
@@ -947,6 +963,16 @@ export const NAMES: Record<string, string[]> = {
         'Flint Glass Corp',
     ],
     pesticidePlant: ['GreenChem Ltd', 'CropGuard Corp', 'BioShield Chemicals', 'Field Protect Inc', 'AgriDefense Ltd'],
+    plasticsFactory: [
+        'PolyPlast Corp',
+        'Global Polymers Inc',
+        'Synthetica Ltd',
+        'ResinWorks Co',
+        'PetroPolymers Corp',
+        'Mold Masters Ltd',
+        'ThermoPlast Inc',
+        'Polymer Dynamics Corp',
+    ],
     paperMill: [
         'Paper World Inc',
         'Northern Paper Mills',

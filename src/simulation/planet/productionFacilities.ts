@@ -273,11 +273,30 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
     produces: [
-        { resource: fuelResourceType, quantity: 90 },
-        { resource: plasticResourceType, quantity: 62 },
-        { resource: chemicalResourceType, quantity: 48 },
+        { resource: fuelResourceType, quantity: 80 },
+        { resource: chemicalResourceType, quantity: 120 },
     ],
     outputFlexible: REFINERY_OUTPUT_FLEXIBLE,
+});
+
+export const PlasticsFactory = (planetId: string, id: string): ProductionFacility => ({
+    ...makeFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Plastics Factory',
+    powerConsumptionPerTick: 1.5,
+    workerRequirement: {
+        none: 5,
+        primary: 20,
+        secondary: 20,
+        tertiary: 10,
+    },
+    needs: [
+        { resource: chemicalResourceType, quantity: 100 },
+        { resource: waterResourceType, quantity: 100 },
+        { resource: coalResourceType, quantity: 10 },
+    ],
+    produces: [{ resource: plasticResourceType, quantity: 100 }],
 });
 
 const sawmill = (planetId: string, id: string): ProductionFacility => ({
@@ -904,6 +923,7 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     ironSmelter: entry(ironSmelter),
     copperSmelter: entry(copperSmelter),
     oilRefinery: entry(oilRefinery),
+    plasticsFactory: entry(PlasticsFactory),
     sawmill: entry(sawmill),
     cementPlant: entry(cementPlant),
     glassFactory: entry(glassFactory),

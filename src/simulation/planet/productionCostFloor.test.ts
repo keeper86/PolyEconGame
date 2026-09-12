@@ -9,13 +9,7 @@ import {
     facilityWageCostPerTick,
     jointOutputCostShares,
 } from './auxiliaryCosts';
-import {
-    chemicalResourceType,
-    coalResourceType,
-    fuelResourceType,
-    plasticResourceType,
-    waterResourceType,
-} from './resources';
+import { chemicalResourceType, coalResourceType, fuelResourceType, waterResourceType } from './resources';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
@@ -115,7 +109,6 @@ describe('updateProductionCostFloors — reference weights', () => {
         const refFuel = initialMarketPrices[fuelResourceType.name] ?? 0;
         const refChemical = initialMarketPrices[chemicalResourceType.name] ?? 0;
         expect(chemicalFloor / fuelFloor).toBeCloseTo(refChemical / refFuel, 8);
-        expect(floorFor(planet, plasticResourceType.name)).toBeCloseTo(fuelFloor, 8);
     });
 
     it('keeps the bundle identity: sum of floor times quantity equals the facility cost', () => {
@@ -129,10 +122,7 @@ describe('updateProductionCostFloors — reference weights', () => {
             facilityWageCostPerTick(refinery, planet) +
             auxiliaryCostPerTick(refinery, rates);
 
-        const sum =
-            90 * floorFor(planet, fuelResourceType.name) +
-            62 * floorFor(planet, plasticResourceType.name) +
-            48 * floorFor(planet, chemicalResourceType.name);
+        const sum = 80 * floorFor(planet, fuelResourceType.name) + 120 * floorFor(planet, chemicalResourceType.name);
         expect(sum).toBeCloseTo(bundleCost, 8);
     });
 
@@ -199,9 +189,8 @@ describe('updateProductionCostFloors — reference weights', () => {
 describe('jointOutputCostShares', () => {
     const refinery = oilRefinery('catalog', 'preview');
     const outputAccum = new Map([
-        [fuelResourceType.name, 90],
-        [plasticResourceType.name, 62],
-        [chemicalResourceType.name, 48],
+        [fuelResourceType.name, 80],
+        [chemicalResourceType.name, 120],
     ]);
 
     it('allocates the whole bundle (shares sum to one)', () => {

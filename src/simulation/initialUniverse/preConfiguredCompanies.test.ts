@@ -53,6 +53,7 @@ describe('getNamesFor', () => {
             ironSmelter: 32,
             copperSmelter: 24,
             oilRefinery: 80,
+            plasticsFactory: 32,
             sawmill: 32,
             cementPlant: 32,
             glassFactory: 24,
