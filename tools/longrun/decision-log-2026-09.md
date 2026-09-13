@@ -1277,3 +1277,209 @@ RUN RELATIONSHIPS worth keeping straight:
     floor25-6000y   ran on floor 0.25 / hard, BEFORE the recipe change  -> control for the new default
     lowworker-6000y runs on floor 0.25 / hard, WITH the reduced recipes -> the comparison pair
     stable6000y/softfloor-6000y used floor 0.10 and are now historical (pre-default-change)
+
+## FUNDING CHANNEL AUDIT + SUPPORT RESUME EXPERIMENTS (2026-09-09)
+
+All five 6000y runs are DEAD. Lifespans: setpoint 89.8y, softfloor 234.7y, lowworker 494.3y,
+control(floor .10) 500.75y, floor25 638.2y. The floor change extends life ~27% but does not save
+any run. Do NOT start another blind 6000y sweep.
+
+DEATH SIGNATURE (all five identical): population fell to zero in 1-4 years from a healthy level.
+condition was 0.58-0.86 AT THE MOMENT OF COLLAPSE, so condition has no predictive value.
+
+FALSIFIED THIS SESSION (be careful, I got several of these wrong first):
+- BANKRUPTCY is NOT the mechanism. bankruptcies accumulate ~13-27 over the entire collapse;
+  agentsInDistress is exactly 0 in every window; emergencyLoansGranted is flat through the death.
+- WAGE/LABOR fluctuation is NOT the mechanism. Wages track the price level (symptom, one step
+  behind); slotFillPrimary RISES 27M->57M, so there is no labor shortage.
+- 'logistics charges 8.8x markup' was a DATA-READING ERROR on my part (misread an aggregated
+  column). Real logisticsHub P/C is 1.40 through the stable period. Logistics DID grow to close
+  the shortage (12.5k -> 203k scale, matching volume) and was NOT capacity limited.
+- DIVERGENCE was also wrong. It is a LIMIT CYCLE: bounded amplitude (yearly max/min 1.1-1.6) and
+  stable for ~350 years, then the trough walks to zero and the peak runs away at the same time.
+
+WHAT THE DATA ACTUALLY SHOWS (floor25):
+  y0-546    foodPrice band 1.1-1.6x, stable           <- genuine limit cycle
+  y567      level shift, amplitude unchanged
+  y600-620  meanWealth trough 1819 -> 695 -> 0; foodPrice peak 13 -> 99 -> 13570
+  y620      mass deaths begin with groceryFillRate 0.9998 and supply 1.7x demand
+
+Food is ABUNDANT at the point of death: fill rate 1.0, unfilled demand 0, supply 1.7x demand.
+People die while the shelves are full. demand/pop is CONSTANT at 0.0336-0.0342 for 300y, so it is
+not a demand failure either. The binding constraint is AFFORDABILITY: wage/foodPrice falls
+0.39 -> 0.09 while prices rise 35x and wages only 11x.
+
+WHY GOVERNMENT SUPPORT CANNOT PREVENT IT (src/simulation/agents/governmentAgent.ts):
+- INSURANCE_RATES covers only education/unoccupied/unableToWork. occ==='employed' gets NOTHING.
+  The employed majority who cannot afford food receive zero support.
+- second, the wealth cap is INSURANCE_WEALTH_CAP_DAYS=5 days of benefit. Any cohort with a
+  wealth residual above 5 days of benefit gets ZERO. (Rationale in the old comment was price
+  stability; it is lethal when the problem is affordability.)
+- the government is NOT short of money: governmentDebt=0 for the whole run, deposits 2-4e12, so
+  the 0% governmentSupport loan path is never triggered.
+- base IS indexed: base = max(wagePerEdu.none, MIN_WAGE), and wageNone floats 1.15 -> 13. Therefore
+  support is NOT nominal-fixed, but it LAGS prices, and the per-capita real transfer stays ~3 units
+  against a food price of ~600.
+
+NEW INSTRUMENTATION (tools/longrun/run.ts, all default OFF):
+  --supportEmployed                    extend support to the employed cohort (uses UNOCCUPIED rate)
+  --supportWealthCapDays=<n>           widen/replace the 5-day residual cap
+  --supportFoodAffordability=<x>       per-cohort daily floor = x * Grocery market price
+Constants exported for tests: INSURANCE_WEALTH_CAP_DAYS. Setters in governmentAgent.ts.
+Tests: 4 new in governmentAgent.test.ts (default off, employed paid when on, food floor, cap
+widening). Gotcha found while writing them: dailyInsurance = max(insuranceDaily, affordabilityDaily)
+was 0 for employed because rate is undefined, so the affordability max silently no-oped unless a
+rate fallback was added. Full suite 120 files / 1788 passed.
+
+RESUME EXPERIMENTS (both resumed from floor25 checkpoint tick 216000 = y600, BEFORE the y620
+breakout, so they test the terminal event only):
+  supportEmployed-6000y   --supportEmployed
+  supportFoodFloor-6000y  --supportFoodAffordability=1.0 --supportWealthCapDays=30
+Both started at pop 297M / condition 0.95, matching the control. ETA ~30h each.
+DISCRIMINATOR: if employed-cohort support prevents the y620 deaths, affordability is the binding
+constraint. If the food floor does but the wage-linked one does not, it is the LAG that kills.
+If neither helps, the trough-walking is upstream of affordability.
+
+OPEN: what makes the trough walk to zero and the peak run away simultaneously? totalMaxLoanAmount
+ratchets monotonically (1.5e11 -> 1.3e14) and is the only monotone variable found, but causation is
+NOT established. The facility P/C ratios that spike at the end are machinery 1.4->5.8,
+vehicleFa 0.9->6.6, pesticide 1.2->6.7, oilRefine pinned BELOW 1.0 (0.92) - the fixed-cost
+amortization over collapsing volume, i.e. a cost spring. Volume collapses FIRST (logiSvcVolume
+2.7e7 -> 6.6e6) and price spikes after (357x), which is consistent with cost-push over falling
+volume rather than credit-driven inflation.
+
+## DEATH-CAUSE BREAKDOWN METRIC (2026-09-09)
+Motivation: the collapse is a black box. We only knew total deaths, so we could not say whether people
+died of starvation, aging, environment, or the workforce mortality path. Needed for the
+flow-propagation questions (does price actually allocate demand? do agents substitute?) without
+launching more instrumented runs.
+
+Mortality is a SUM OF SEPARABLE ADDITIVE TERMS (src/simulation/population/mortality.ts):
+    mortality(age, starvation, env) = mortalityProbability(age) * (1 + starvationLevel)
+                                    + environmentalMortality
+                                    + starvationLevel^STARVATION_ACUTE_POWER
+and deaths additionally split by a STRUCTURAL branch: occ==='employed' uses workforceEvents deaths,
+everyone else uses the starvation/environment formula. So there are four attributable buckets.
+
+NEW: mortalityComponentsPerTick(starvation, env, age) -> {baseline, environment, starvation}.
+Implementation note / gotcha: convertAnnualToPerTick(r) = 1-(1-r)^(1/TICKS_PER_YEAR) is CONCAVE, so
+f(a+b) != f(a)+f(b). Decomposing by converting each term separately does NOT sum to the total
+(measured 5.5e-10 residual). Fixed by computing components as SHARES of the single total produced by
+computeMortalityProbabilityPerTick, so the three always sum exactly. Also note MAX_MORTALITY_PER_TICK
+= 0.8 is already per-tick, not annual - wrapping it in convertAnnualToPerTick double-converts.
+
+New metric columns (real runs, no instrumentation flag): deathsBaselinePerTick,
+deathsStarvationPerTick, deathsEnvironmentPerTick, deathsWorkforceThisMonth.
+
+FIRST REAL READING (fresh 6y singleAgent run, healthy population 9.93M):
+    deathsThisMonth 14040 = workforce 5679 (monthly) + baseline ~6480 (216/tick x30)
+                          + environment ~2790 (93/tick x30) + starvation 0
+So even in the BASELINE the employed/workforce death channel is the single largest cause, and
+starvation is exactly zero. This is a separate death path that no support policy touches, and it
+qualifies the earlier question of whether support reaches the employed - they have their own channel.
+
+Tests: 4 new in mortality.test.ts (sums to total, zero-starvation attribution, share shifts toward
+starvation as starvation rises, baseline-only case). Full suite 120 files / 1792 passed.
+
+## CORRECTION + RESUME EXPERIMENT RESULTS (2026-09-09)
+
+CORRECTION to my own claim above: the employed/workforce deaths are NOT a separate cause. I read
+workforceDemographicTick.ts: it applies the SAME mortalityProbabilityPerTick(age, starvation, env)
+to category.active and the onboarding/volunteer/fired/retired pipelines. So employed deaths are the
+SAME forces, just routed through a different code path. Column renamed deathsWorkforceThisMonth ->
+deathsEmployedThisMonth for this reason. The four columns therefore mean:
+  deathsEmployedThisMonth  = deaths among EMPLOYED (share of population, not a cause)
+  deathsBaselinePerTick    = NON-employed, aging/baseline share
+  deathsStarvationPerTick  = NON-employed, starvation share
+  deathsEnvironmentPerTick = NON-employed, environmental share
+(Do not add the employed column to the other three as if they were disjoint causes.)
+
+RESUME EXPERIMENTS BOTH DIED, FASTER THAN THE CONTROL:
+  supportEmployed   extinct y608.25  (control died y620)
+  supportFoodFloor  extinct y609.17  (control died y620)
+Population grew to 309M in both, then fell to zero in ONE year. So neither employed-cohort support
+nor a food-affordability floor with a 30-day cap extends life from the y600 checkpoint. Caveat: these
+are n=1 and the support was introduced at y600 into an economy already deep in the breakout, so this
+does NOT disprove support as a design fix from t=0; it only shows it cannot reverse a breakout in
+progress. Both were 3-minute runs.
+
+DEATH-CAUSE BREAKDOWN (replay of supportEmployed from y600, 12 monthly samples):
+  HEALTHY y600-606:  baseline 139k/mo (34%) | employed 190k/mo (47%) | env 78k/mo (19%) | starve ~0
+  DYING   y607.5+:   starvation 118M (53.9%) | employed 97M (44.3%) | baseline 2.7M (1.2%) | env 1.1M (0.5%)
+
+TWO FINDINGS THAT MATTER:
+1. The starvation column decays EXPONENTIALLY toward zero over many ticks while healthy (values like
+   1.196e-219!) and then switches on at tick 218700. That is not a market going gradually short, it is
+a THRESHOLD CROSSING in the starvation term (starvationLevel^STARVATION_ACUTE_POWER). This supports
+the 'wealth curve / threshold' reading over a gradual supply squeeze. Prices can therefore be a
+consequence of the crossing rather than its cause.
+2. Employed people are ~47% of NORMAL deaths and 44% of collapse deaths. Any support policy that
+targets only the non-employed is blind to nearly half of all mortality.
+
+BUG FOUND AND FIXED (tools/longrun/run.ts): --resume into an output dir that has a checkpoint but no
+series.csv wrote all data rows with NO HEADER (appendCsvRows assumes the header exists). It silently
+produced unparseable CSVs for both resume runs above. Fixed by writing the header on resume when
+series.csv/scaleGaps.csv are absent. Also: reusing an existing series.csv keeps the OLD header, so new
+metric columns do not appear in resumed files - worth remembering when comparing columns.
+
+Suite after all of this: 120 files / 1792 passed, tsc clean.
+
+## COST SPRING PINNED AS THE CAUSE — per-tick probe, y600-608 (2026-09-09)
+
+Probe: TICK_PROBE=1 resume from the floor25 y600 checkpoint, 13 facilities incl. the swinging ones.
+Captured the whole excursion at per-tick resolution, then the run died at y607.92 (control died y620).
+New probe columns: price0/costFloor0/springDev0/baseFactor0/netFactor0/sellThrough0 (and _1).
+
+THE MECHANISM, now evidenced tick-by-tick. Refinery output 0 = Fuel:
+tick      Fuel price  Fuel costFloor  springDev  netFactor
+218757      0.01        33.39           0         0.9468
+event       0.0602      33.67          71.06      6.022   <- ONE tick
+218759      0.057       33.97           0         0.9467
+
+Formula (automaticPricing.ts:567-570):
+  brakeZoneTop = costFloor * automatedCostFloorBuffer
+  deviation    = sqrt(max(0, brakeZoneTop / price - 1))
+  netFactor    = baseFactor + costSpringStrength * SPRING_NORMALIZATION * deviation
+
+DEFECT: sqrt(costFloor/price - 1) is UNBOUNDED as price -> PRICE_FLOOR. At price 0.01 and floor 33.67
+the ratio is ~5000, deviation ~71, netFactor 6.02 (a 6x price move in one tick). There is no
+saturation on this gain, unlike the describing-function CLIP the paper analyses. This is the
+"uninformed replenishment / anchor-room" failure the old protocols hit on maintenance, seen again.
+
+RELAXATION OSCILLATION (refinery, whole probe):
+  price/costFloor ratio climbs to and PINS at ~6.5 (216712 ratio 6.97 -> 217660 ratio 6.06), then
+  collapses to 0.01 and pins there (218134-218601), then recovers to 1.27. scale is FROZEN at
+  2.92e5-3.16e5 (+-8%) for the entire 2850-tick probe. price < costFloor in 35.5% of ticks.
+So the automatic expansion loop gets no usable signal: the price it reads is either 6.5x cost or
+pinned at the floor, never near cost (competitive equilibrium would be ~1.0).
+
+MULTI-OUTPUT CONTAMINATION (the refinery is the ONLY outputFlexible producer; plastic exists
+nowhere else, per this log earlier):
+tick      Fuel price  Fuel floor   Plastic price
+218001      3.575       272.0       0.01        <- plastic pins FIRST
+218201      0.01        62.23       0.01        <- then Fuel follows it down
+218401      0.01        29.83       0.01
+218601      0.01        23.89       0.01
+One low-elasticity output (plastic) reaching the floor drags the sibling outputs to the floor,
+because the floor/spring interacts across a joint production set while each output has its own
+counter. This connects to the old note 'refinery multi-output max() causes oscillation'.
+
+CORRECTIONS TO EARLIER CLAIMS IN THIS LOG:
+- 'grocery pinned at production cost floor which is too high' (user hypothesis): NOT supported.
+  Grocery Chain holds P/C 1.50-1.67 and margin 0.49-0.57 through y630. It is profitable and stable.
+- 'logistics charges 8.8x markup / blocks expansion': NOT supported. logisticsHub P/C is 1.40 in
+  the stable period and it DOES grow (scale 1.25e4 -> 2.03e5) in proportion to volume.
+- 'expansionBlockedByProfit accumulates': NOT supported. It stays 3-5 facilities for 600 years.
+The real driver is the cost spring's unbounded gain + multi-output contamination, in the
+refinery specifically, with plastic as the pinning output.
+
+WHAT THE FIX MUST ADDRESS (not done yet):
+1. The sqrt cost-spring gain needs a finite bound (saturate it), so a price near the floor cannot
+   produce a 6x one-tick jump.
+2. Multi-output facilities need per-output cost accounting, or the spring must not let one pinned
+   output contaminate its siblings.
+3. Whatever the fix, the test to watch is price/costFloor ratio converging toward ~1.0 for the
+   refinery rather than sitting at 6.5 or at the floor.
+
+Tests added: 1 in automaticPricing.test.ts pinning the unbounded-gain behaviour (deviation > 28 at
+the observed price/floor pair, and strictly larger at the floor). Suite 120 files / 1793 passed.

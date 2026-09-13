@@ -144,9 +144,6 @@ export type ProductionFacility = FacilityBase & {
     type: 'production';
     needs: ResourceQuantity[];
     produces: ResourceQuantity[];
-    outputFlexible?: boolean;
-    productionMix?: { [resourceName: string]: number };
-    wasteSurplusTicks?: number;
 
     lastTickResults: LastProductionTickResults;
     pidState?: PidState | null;

@@ -81,7 +81,7 @@ export function applyRefinerySellOverride(
     facilityType: string,
     config: BenchmarkWorldConfig,
 ): AutomatedPricingConfig {
-    if (facilityType !== 'oilRefinery') {
+    if (facilityType !== 'fuelRefinery') {
         return sellConfig;
     }
     const override: Partial<AutomatedPricingConfig> = {};

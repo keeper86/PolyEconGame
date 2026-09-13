@@ -36,6 +36,7 @@ import {
     ALL_SERVICE_RESOURCE_TYPE_NAMES,
 } from '../../src/simulation/planet/services';
 import { educationLevelKeys } from '../../src/simulation/population/education';
+import { computeEnvironmentalMortality, mortalityComponentsPerTick } from '../../src/simulation/population/mortality';
 import { OCCUPATIONS } from '../../src/simulation/population/population';
 import { computeLaborMarket } from '../../src/simulation/workforce/laborMarket';
 import { sumSlotFillByEdu, sumTotalUsedByEdu, totalActiveForEdu } from '../../src/simulation/workforce/workforceAggregates';
@@ -206,6 +207,11 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let healthcareStarvationWeighted = 0;
     let deathsLastMonth = 0;
     let deathsThisMonth = 0;
+    let deathsBaseline = 0;
+    let deathsStarvation = 0;
+    let deathsEnvironment = 0;
+    let deathsWorkforce = 0;
+    const environmentalMortality = computeEnvironmentalMortality(planet.environment);
     let maxGroceryStarvation = 0;
     let starvationMild = 0;
     let starvationSevere = 0;
@@ -213,7 +219,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let wealthWeighted = 0;
     const wealthEntries: Array<{ mean: number; count: number }> = [];
 
-    for (const cohort of planet.population.demography) {
+    for (let age = 0; age < planet.population.demography.length; age++) {
+        const cohort = planet.population.demography[age];
         for (const occ of OCCUPATIONS) {
             for (const edu of educationLevelKeys) {
                 const cat = cohort[occ][edu];
@@ -226,6 +233,14 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 healthcareStarvationWeighted += cat.total * cat.services.healthcare.starvationLevel;
                 deathsLastMonth += cat.deaths.countLastMonth;
                 deathsThisMonth += cat.deaths.countThisMonth;
+                if (occ === 'employed') {
+                    deathsWorkforce += cat.deaths.countThisMonth;
+                } else {
+                    const components = mortalityComponentsPerTick(starvation, environmentalMortality, age);
+                    deathsBaseline += cat.total * components.baseline;
+                    deathsStarvation += cat.total * components.starvation;
+                    deathsEnvironment += cat.total * components.environment;
+                }
                 wealthWeighted += cat.total * cat.wealth.mean;
                 wealthEntries.push({ mean: cat.wealth.mean, count: cat.total });
                 if (starvation > maxGroceryStarvation) {
@@ -439,10 +454,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maintSteelBuffer = 0;
     let maintElectronicsBuffer = 0;
     let maintPlasticBuffer = 0;
-    let oilRefineryCount = 0;
-    let oilRefineryScale = 0;
-    let oilRefineryRevenue = 0;
-    let oilRefineryChemicalShare = 0;
+    let fuelRefineryCount = 0;
+    let fuelRefineryScale = 0;
+    let fuelRefineryRevenue = 0;
+    let chemicalRefineryCount = 0;
+    let chemicalRefineryScale = 0;
+    let chemicalRefineryRevenue = 0;
 
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -701,11 +718,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironSmelterCount += 1;
             }
 
-            if (facility.name === 'Oil Refinery') {
-                oilRefineryScale += facility.scale;
-                oilRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
-                oilRefineryChemicalShare += facility.productionMix?.[chemicalResourceType.name] ?? 0;
-                oilRefineryCount += 1;
+            if (facility.name === 'Fuel Refinery') {
+                fuelRefineryScale += facility.scale;
+                fuelRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                fuelRefineryCount += 1;
+            }
+
+            if (facility.name === 'Chemical Refinery') {
+                chemicalRefineryScale += facility.scale;
+                chemicalRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                chemicalRefineryCount += 1;
             }
 
             if (isMaintenanceFacility(facility.name)) {
@@ -935,6 +957,26 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             : 0;
     const groceryBuffer = computeNormalizedBuffer(planet, 'grocery');
 
+    // Per-resource market clearing for every tradable, so a supply/demand question can be
+    // answered from the series instead of inferred from prices. Emitted as
+    // market_<Resource>_<field> keys to keep the flat CSV shape.
+    const marketFields: Record<string, number> = {};
+    for (const resource of TRADABLE_RESOURCES) {
+        const key = resource.name.replace(/[^A-Za-z0-9]/g, '');
+        const result = planet.lastMarketResult[resource.name];
+        const demand = result?.totalDemand ?? 0;
+        const supply = result?.totalSupply ?? 0;
+        const volume = result?.totalVolume ?? 0;
+        marketFields[`market_${key}_demand`] = demand;
+        marketFields[`market_${key}_supply`] = supply;
+        marketFields[`market_${key}_volume`] = volume;
+        marketFields[`market_${key}_unfilled`] = result?.unfilledDemand ?? 0;
+        marketFields[`market_${key}_unsold`] = result?.unsoldSupply ?? 0;
+        marketFields[`market_${key}_price`] = result?.clearingPrice ?? 0;
+        marketFields[`market_${key}_fillRate`] = demand > 0 ? volume / demand : 0;
+        marketFields[`market_${key}_buffer`] = supply > 0 ? volume / supply : 0;
+    }
+
     const gdpAnnual =
         Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) * TICKS_PER_YEAR;
 
@@ -1021,9 +1063,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const steelUnsoldSupply = steelResult?.unsoldSupply ?? 0;
     const steelVolume = steelResult?.totalVolume ?? 0;
     const steelFillRate = steelTotalDemand > 0 ? steelVolume / steelTotalDemand : 0;
-    const oilRefineryScaleAvg = oilRefineryCount > 0 ? oilRefineryScale / oilRefineryCount : 0;
-    const oilRefineryRevenueAvg = oilRefineryCount > 0 ? oilRefineryRevenue / oilRefineryCount : 0;
-    const oilRefineryChemicalShareAvg = oilRefineryCount > 0 ? oilRefineryChemicalShare / oilRefineryCount : 0;
+    const fuelRefineryScaleAvg = fuelRefineryCount > 0 ? fuelRefineryScale / fuelRefineryCount : 0;
+    const fuelRefineryRevenueAvg = fuelRefineryCount > 0 ? fuelRefineryRevenue / fuelRefineryCount : 0;
+    const chemicalRefineryScaleAvg = chemicalRefineryCount > 0 ? chemicalRefineryScale / chemicalRefineryCount : 0;
+    const chemicalRefineryRevenueAvg = chemicalRefineryCount > 0 ? chemicalRefineryRevenue / chemicalRefineryCount : 0;
     const fuelPrice = priceOf(planet, fuelResourceType.name);
     const plasticPrice = priceOf(planet, plasticResourceType.name);
     const chemicalPrice = priceOf(planet, chemicalResourceType.name);
@@ -1232,6 +1275,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         starvationFatalFraction: totalPopulation > 0 ? starvationFatal / totalPopulation : 0,
         deathsLastMonth,
         deathsThisMonth,
+        deathsBaselinePerTick: deathsBaseline,
+        deathsStarvationPerTick: deathsStarvation,
+        deathsEnvironmentPerTick: deathsEnvironment,
+        deathsEmployedThisMonth: deathsWorkforce,
         birthsThisMonth: 0,
         meanWealth,
         medianWealth,
@@ -1488,9 +1535,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         steelUnsoldSupply,
         steelVolume,
         steelFillRate,
-        oilRefineryScale: oilRefineryScaleAvg,
-        oilRefineryRevenue: oilRefineryRevenueAvg,
-        oilRefineryChemicalShare: oilRefineryChemicalShareAvg,
+        fuelRefineryScale: fuelRefineryScaleAvg,
+        fuelRefineryRevenue: fuelRefineryRevenueAvg,
+        chemicalRefineryScale: chemicalRefineryScaleAvg,
+        chemicalRefineryRevenue: chemicalRefineryRevenueAvg,
         fuelPrice,
         plasticPrice,
         chemicalPrice,
@@ -1513,6 +1561,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         restorationAggregateConsumption,
         priceCeilHits,
         priceFloorHits,
+        ...marketFields,
     };
 }
 
@@ -1584,6 +1633,10 @@ export const METRIC_KEYS: string[] = [
     'starvationFatalFraction',
     'deathsLastMonth',
     'deathsThisMonth',
+    'deathsBaselinePerTick',
+    'deathsStarvationPerTick',
+    'deathsEnvironmentPerTick',
+    'deathsEmployedThisMonth',
     'birthsThisMonth',
     'meanWealth',
     'medianWealth',
@@ -1844,9 +1897,10 @@ export const METRIC_KEYS: string[] = [
     'steelUnsoldSupply',
     'steelVolume',
     'steelFillRate',
-    'oilRefineryScale',
-    'oilRefineryRevenue',
-    'oilRefineryChemicalShare',
+    'fuelRefineryScale',
+    'fuelRefineryRevenue',
+    'chemicalRefineryScale',
+    'chemicalRefineryRevenue',
     'fuelPrice',
     'plasticPrice',
     'chemicalPrice',
@@ -1872,5 +1926,18 @@ export const METRIC_KEYS: string[] = [
     'restorationAggregateConsumption',
     'priceCeilHits',
     'priceFloorHits',
+    ...TRADABLE_RESOURCES.flatMap((resource) => {
+        const key = resource.name.replace(/[^A-Za-z0-9]/g, '');
+        return [
+            `market_${key}_demand`,
+            `market_${key}_supply`,
+            `market_${key}_volume`,
+            `market_${key}_unfilled`,
+            `market_${key}_unsold`,
+            `market_${key}_price`,
+            `market_${key}_fillRate`,
+            `market_${key}_buffer`,
+        ];
+    }),
 ];
 

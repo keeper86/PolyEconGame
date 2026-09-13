@@ -780,6 +780,20 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
         }
     });
 
+    // Non-automated (player) agents never get production-scale autoscaling, but they still trade, so their
+    // shell compartments must be authored to the production footprint or their physical-good bids find no
+    // allocated storage and are dropped. No shell reconcile here: growing/shrinking shells is the player's
+    // own construction decision.
+    gameState.agents.forEach((agent) => {
+        if (agent.automated) {
+            return;
+        }
+        const assets = agent.assets[planet.id];
+        if (assets) {
+            updateAgentShellCompartments(assets);
+        }
+    });
+
     if (isAutoscaleDebugEnabled()) {
         logAutoscalePlanet({
             tick: gameState.tick,

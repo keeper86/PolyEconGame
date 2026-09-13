@@ -49,3 +49,33 @@ export const computeMortalityProbabilityPerTick = (
         ),
     );
 };
+
+export type MortalityComponents = {
+    baseline: number;
+    environment: number;
+    starvation: number;
+};
+
+// Splits the per-tick mortality probability of a non-employed cohort into attributable shares.
+// Employed cohorts do not use this: the workforce path applies the same mortality formula to the
+// working population, so employed deaths are reported separately as a population share, not a cause.
+export const mortalityComponentsPerTick = (
+    starvationLevel: number,
+    environmentalMortality: number,
+    age: number,
+): MortalityComponents => {
+    const baselineAnnual = mortalityProbability(age);
+    const starvationAnnual = baselineAnnual * starvationLevel;
+    const acuteAnnual = starvationLevel === 0 ? 0 : Math.pow(starvationLevel, STARVATION_ACUTE_POWER);
+    const environmentAnnual = environmentalMortality;
+    const totalAnnual = baselineAnnual + starvationAnnual + environmentAnnual + acuteAnnual;
+    const total = computeMortalityProbabilityPerTick(starvationLevel, environmentalMortality, age);
+    if (totalAnnual <= 0) {
+        return { baseline: total, environment: 0, starvation: 0 };
+    }
+    return {
+        baseline: total * (baselineAnnual / totalAnnual),
+        environment: total * (environmentAnnual / totalAnnual),
+        starvation: total * ((starvationAnnual + acuteAnnual) / totalAnnual),
+    };
+};

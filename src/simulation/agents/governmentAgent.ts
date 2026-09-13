@@ -17,7 +17,7 @@ import { distributeWealthChangeTracked } from '../financial/wealthOps';
 import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { forEachPopulationCohort, type Occupation } from '../population/population';
 import type { Agent, GameState, Planet } from '../planet/planet';
-import { constructionServiceResourceType } from '../planet/services';
+import { constructionServiceResourceType, groceryServiceResourceType } from '../planet/services';
 import type { ShipCapitalMarket } from '../ships/ships';
 
 const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
@@ -26,8 +26,24 @@ const INSURANCE_RATES: Partial<Record<Occupation, number>> = {
     unableToWork: UNEMPLOYMENT_INSURANCE_RATE_UNABLE,
 };
 
-const INSURANCE_WEALTH_CAP_DAYS = 5;
+export const INSURANCE_WEALTH_CAP_DAYS = 5;
 let wealthTaxAllowanceOverride: number | undefined = undefined;
+
+let supportEmployedOverride: boolean | undefined = undefined;
+let supportWealthCapDaysOverride: number | undefined = undefined;
+let supportFoodAffordabilityOverride: number | undefined = undefined;
+
+export function setSupportEmployed(enabled: boolean): void {
+    supportEmployedOverride = enabled;
+}
+
+export function setSupportWealthCapDays(days: number): void {
+    supportWealthCapDaysOverride = days;
+}
+
+export function setSupportFoodAffordabilityMultiplier(multiplier: number): void {
+    supportFoodAffordabilityOverride = multiplier;
+}
 
 export function setWealthTaxAllowance(allowance: number): void {
     wealthTaxAllowanceOverride = allowance;
@@ -161,6 +177,10 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
     if (base <= 0) {
         return 0;
     }
+    const supportEmployed = supportEmployedOverride ?? false;
+    const wealthCapDays = supportWealthCapDaysOverride ?? INSURANCE_WEALTH_CAP_DAYS;
+    const affordabilityMultiplier = supportFoodAffordabilityOverride ?? 0;
+    const foodPrice = planet.marketPrices[groceryServiceResourceType.name] ?? 0;
     let total = 0;
     for (let age = 0; age < planet.population.demography.length; age++) {
         forEachPopulationCohort(planet.population.demography[age], (category, occ, edu) => {
@@ -168,14 +188,18 @@ export const governmentSupportTick = (gameState: GameState, planet: Planet): num
                 return;
             }
             const rate = INSURANCE_RATES[occ];
-            if (!rate) {
+            const employed = occ === 'employed';
+            const effectiveRate = rate ?? (supportEmployed && employed ? UNEMPLOYMENT_INSURANCE_RATE_UNOCCUPIED : 0);
+            if (effectiveRate <= 0 && affordabilityMultiplier <= 0) {
                 return;
             }
-            // Daily subsistence top-up = `rate` × wage, each recipient carries at most
-            // INSURANCE_WEALTH_CAP_DAYS of it so transfers feed consumption without
-            // letting cohorts accumulate spendable cash that prices suddenly.
-            const dailyInsurance = rate * base;
-            const wealthCap = INSURANCE_WEALTH_CAP_DAYS * dailyInsurance;
+            const insuranceDaily = effectiveRate * base;
+            const affordabilityDaily = affordabilityMultiplier * foodPrice;
+            const dailyInsurance = Math.max(insuranceDaily, affordabilityDaily);
+            if (dailyInsurance <= 0) {
+                return;
+            }
+            const wealthCap = wealthCapDays * dailyInsurance;
             const payment = Math.min(dailyInsurance, wealthCap - category.wealth.mean);
             if (payment <= 0) {
                 return;

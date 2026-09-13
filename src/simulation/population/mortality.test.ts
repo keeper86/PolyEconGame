@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
-import { computeEnvironmentalMortality } from './mortality';
+import {
+    computeEnvironmentalMortality,
+    computeMortalityProbabilityPerTick,
+    mortalityComponentsPerTick,
+} from './mortality';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 
 describe('convertAnnualToPerTick', () => {
@@ -73,5 +77,42 @@ describe('computeEnvironmentalMortality', () => {
         const result = computeEnvironmentalMortality(env);
         const expected = 10 * 0.0005 + 20 * 0.00005 + 30 * 0.000015;
         expect(result).toBeCloseTo(expected, 8);
+    });
+});
+
+describe('mortalityComponentsPerTick', () => {
+    it('sums to the total mortality probability when uncapped', () => {
+        const env = 0.001;
+        for (const age of [5, 30, 50, 70]) {
+            for (const starvation of [0, 0.25, 0.6]) {
+                const total = computeMortalityProbabilityPerTick(starvation, env, age);
+                const parts = mortalityComponentsPerTick(starvation, env, age);
+                const sum = parts.baseline + parts.environment + parts.starvation;
+                expect(sum).toBeCloseTo(total, 12);
+            }
+        }
+    });
+
+    it('attributes nothing to starvation when starvation is zero', () => {
+        const parts = mortalityComponentsPerTick(0, 0.002, 40);
+        expect(parts.starvation).toBe(0);
+        expect(parts.environment).toBeGreaterThan(0);
+        expect(parts.baseline).toBeGreaterThan(0);
+    });
+
+    it('shifts the share from baseline to starvation as starvation rises', () => {
+        const calm = mortalityComponentsPerTick(0.1, 0.001, 40);
+        const starving = mortalityComponentsPerTick(0.7, 0.001, 40);
+        expect(starving.starvation).toBeGreaterThan(calm.starvation);
+        expect(starving.starvation / (starving.baseline + starving.starvation)).toBeGreaterThan(
+            calm.starvation / (calm.baseline + calm.starvation),
+        );
+    });
+
+    it('keeps the baseline share at one when starvation and environment are zero', () => {
+        const parts = mortalityComponentsPerTick(0, 0, 40);
+        expect(parts.starvation).toBe(0);
+        expect(parts.environment).toBe(0);
+        expect(parts.baseline).toBeCloseTo(computeMortalityProbabilityPerTick(0, 0, 40), 12);
     });
 });

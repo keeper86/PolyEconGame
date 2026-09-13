@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
+    FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -17,11 +17,10 @@ import {
     SPRING_NORMALIZATION,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
-    TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { putIntoStorageFacility, shellFormOfResource } from '../planet/facility';
-import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
+import { facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
     clothingResourceType,
@@ -215,8 +214,6 @@ describe('resolveBidConfig — config resolution', () => {
         expect(bid!.bidStorageTarget).toBeCloseTo(expectedRawTarget, 0);
     });
 });
-
-// ── Existing tests ────────────────────────────────────────────────────────────
 
 describe('automaticPricing — sell offer respects own input reserves', () => {
     it('does not offer for sale the portion of inventory reserved for own facility inputs', () => {
@@ -428,6 +425,41 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         expect(offer.offerPrice).toBeGreaterThan(10);
     });
 
+    it('amplifies without bound as the price approaches the floor from above', () => {
+        const priceNearFloor = 0.0602;
+        const costFloor = 33.67;
+        const offer = {
+            resource: goodsResource,
+            offerPrice: priceNearFloor,
+            lastSold: 0.001,
+            autoConfig: {
+                automatedCostFloorBuffer: 1.5,
+                costSpringStrength: 0.5,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(offer, 100, priceNearFloor, costFloor);
+
+        expect(offer.diagnostics!.costSpringDeviation).toBeGreaterThan(28);
+        expect(offer.diagnostics!.costSpringDeviation).toBeCloseTo(
+            Math.sqrt((costFloor * 1.5) / priceNearFloor - 1),
+            6,
+        );
+
+        const atFloor = {
+            resource: goodsResource,
+            offerPrice: 0.01,
+            lastSold: 0.001,
+            autoConfig: {
+                automatedCostFloorBuffer: 1.5,
+                costSpringStrength: 0.5,
+                targetSellThrough: 0.6,
+            },
+        } as unknown as AgentMarketOfferState;
+        adjustOfferPrice(atFloor, 100, 0.01, costFloor);
+        expect(atFloor.diagnostics!.costSpringDeviation).toBeGreaterThan(offer.diagnostics!.costSpringDeviation);
+    });
+
     it('is inactive at or above the buffer, so sell-through feedback governs', () => {
         const offer = {
             resource: goodsResource,
@@ -465,26 +497,6 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         expect(offer.diagnostics!.costSpringDeviation).toBe(0);
         // sold 0 < target → factor = maxDown → price falls
         expect(offer.offerPrice).toBeCloseTo(10 * PRICE_ADJUST_MAX_DOWN, 5);
-    });
-
-    it('disables the cost spring for saturated products so surplus can clear', () => {
-        const offer = {
-            resource: goodsResource,
-            offerPrice: 10,
-            lastSold: 30,
-            autoConfig: {
-                automatedCostFloorBuffer: 2,
-                costSpringStrength: 0.05,
-                targetSellThrough: 0.6,
-            },
-        } as unknown as AgentMarketOfferState;
-        adjustOfferPrice(offer, 100, 10, 20, true);
-
-        // Same configuration as the "pushes the price up below the buffer" case,
-        // but saturation removes the spring: price must fall on weak sell-through.
-        expect(offer.diagnostics!.costSpringDeviation).toBe(0);
-        expect(offer.diagnostics!.netFactor).toBeCloseTo(offer.diagnostics!.baseFactor, 10);
-        expect(offer.offerPrice).toBeLessThan(10);
     });
 });
 
@@ -707,6 +719,88 @@ describe('automaticPricing — sell-side config overrides', () => {
     });
 });
 
+// ── Sell-side production smoothing ───────────────────────────────────────────
+
+describe('adjustOfferPrice — production-anchored offer smoothing', () => {
+    const goods: Resource = {
+        name: 'TestGoodsSmoothing',
+        form: 'solid',
+        level: 'refined',
+        volumePerQuantity: 1,
+        massPerQuantity: 1,
+    };
+
+    it('offers sellProductionSmoothing x production rate, independent of inventory size', () => {
+        const makeOffer = () =>
+            ({
+                resource: goods,
+                offerPrice: 10,
+                lastSold: 10,
+                autoConfig: { sellProductionSmoothing: 3, targetSellThrough: 0.6 },
+            }) as unknown as AgentMarketOfferState;
+
+        const productionRate = 1000;
+        const small = makeOffer();
+        adjustOfferPrice(small, 10_000, 10, 1, productionRate);
+
+        const huge = makeOffer();
+        adjustOfferPrice(huge, 10_000_000_000, 10, 1, productionRate);
+
+        // 3 x 1000 offered per tick, regardless of how much stock is held
+        expect(small.diagnostics!.effectiveQuantity).toBeCloseTo(3000, 6);
+        expect(huge.diagnostics!.effectiveQuantity).toBeCloseTo(3000, 6);
+    });
+
+    it('caps the offer at the available surplus', () => {
+        const offer = {
+            resource: goods,
+            offerPrice: 10,
+            lastSold: 10,
+            autoConfig: { sellProductionSmoothing: 3, targetSellThrough: 0.6 },
+        } as unknown as AgentMarketOfferState;
+
+        adjustOfferPrice(offer, 500, 10, 1, 1000);
+
+        expect(offer.diagnostics!.effectiveQuantity).toBeCloseTo(500, 6);
+    });
+
+    it('does not let the retainment diverge when production outpaces the offer', () => {
+        const offer = {
+            resource: goods,
+            offerPrice: 10,
+            lastSold: 10,
+            autoConfig: { sellProductionSmoothing: 3, targetSellThrough: 0.6 },
+        } as unknown as AgentMarketOfferState;
+
+        const productionRate = 1000;
+        let inventory = 0;
+        let maxInventory = 0;
+        for (let tick = 0; tick < 1000; tick++) {
+            inventory += productionRate;
+            adjustOfferPrice(offer, inventory, 10, 1, productionRate);
+            inventory -= offer.diagnostics!.effectiveQuantity;
+            maxInventory = Math.max(maxInventory, inventory);
+        }
+
+        // Stock stays within one smoothing window of production instead of piling up forever.
+        expect(maxInventory).toBeLessThanOrEqual(productionRate * 3 + 1);
+    });
+
+    it('falls back to inventory-proportional smoothing when there is no producer', () => {
+        const offer = {
+            resource: goods,
+            offerPrice: 10,
+            lastSold: 10,
+            autoConfig: { freeRetainmentSmoothingMaxExtra: 10, targetSellThrough: 0.6 },
+        } as unknown as AgentMarketOfferState;
+
+        adjustOfferPrice(offer, 10_000, 10, 1, 0);
+
+        // surplus 10000 spread over 10 days -> 1000 offered
+        expect(offer.diagnostics!.effectiveQuantity).toBeCloseTo(1000, 6);
+    });
+});
+
 // ── Existing tests ────────────────────────────────────────────────────────────
 
 describe('automaticPricing — pieces resource quantities are continuous', () => {
@@ -865,6 +959,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -879,18 +974,14 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        const expectedBid = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedBid * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
     it('keeps the full bid quantity even when price is far above cost, anchored by the ceiling spring', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 100 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -917,11 +1008,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
         // no quantity throttle: the full storage target is bid regardless of the market price
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
         // the bid price itself is pulled down by the ceiling spring (bid far above the ceiling)
@@ -967,6 +1054,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             progress: 0,
             lastTickInvestedConstructionServices: 0,
         };
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -982,15 +1070,11 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 
-    it('bids above steady-state for a facility below full maintenance', () => {
+    it('bids up to the max repair rate (capped) for a facility below full maintenance', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'degraded', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -1010,10 +1094,13 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const steadyStateRate =
-            (facility.scale * FACILITY_MAINTENANCE_DECREASE_PER_YEAR * MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeGreaterThan(steadyStateRate * INPUT_BUFFER_TARGET_TICKS_SERVICES);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK *
+                MAINTENANCE_SERVICE_PER_STATUS_UNIT *
+                facility.scale *
+                INPUT_BUFFER_TARGET_TICKS_SERVICES,
+            6,
+        );
     });
 });
 

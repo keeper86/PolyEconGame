@@ -20,7 +20,6 @@ import {
     auxiliaryCostRates,
     facilityInputCostPerTick,
     facilityWageCostPerTick,
-    jointOutputCostShares,
     type AuxiliaryCostRates,
 } from './auxiliaryCosts';
 import type { Facility, ManagementFacility, ProductionFacility, ShipConstructionFacility, Storage } from './facility';
@@ -230,9 +229,8 @@ function produceOutputs(
         return actualProduced;
     }
     const totalTemplateOutput = facility.produces.reduce((sum, output) => sum + output.quantity, 0);
-    const mix = facility.type === 'production' ? facility.productionMix : undefined;
     for (const output of facility.produces) {
-        const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
+        const share = output.quantity / Math.max(1, totalTemplateOutput);
         const produced = totalTemplateOutput * share * facility.scale * overallEfficiency * storageSpaceFactor;
         actualProduced[output.resource.name] = produced;
         params.planet.producedResources[output.resource.name] =
@@ -331,13 +329,12 @@ export function computeStorageSpaceFactor(facility: Facility, assets: AgentPlane
     }
     const storage = assets.storage;
     const totalTemplateOutput = facility.produces.reduce((sum, output) => sum + output.quantity, 0);
-    const mix = facility.type === 'production' ? facility.productionMix : undefined;
     let factor = 1;
     for (const output of facility.produces) {
         if (output.resource.form === 'services' || output.resource.form === 'internal') {
             continue;
         }
-        const share = mix?.[output.resource.name] ?? output.quantity / Math.max(1, totalTemplateOutput);
+        const share = output.quantity / Math.max(1, totalTemplateOutput);
         const producedPerTick = totalTemplateOutput * share * facility.scale;
         if (producedPerTick <= 0) {
             continue;
@@ -375,7 +372,6 @@ function accumulateTheoreticalCostFloor(
     facility: ProductionFacility,
     planet: Planet,
     rates: AuxiliaryCostRates,
-    outputAccum: Map<string, number>,
     costAccum: Map<string, number>,
 ): void {
     const totalCostPerUnit =
@@ -383,22 +379,17 @@ function accumulateTheoreticalCostFloor(
         facilityWageCostPerTick(facility, planet) +
         auxiliaryCostPerTick(facility, rates);
 
-    const shares = jointOutputCostShares(facility, planet, outputAccum);
-
     for (const output of facility.produces) {
-        const qty = output.quantity;
-        if (qty <= 0) {
+        if (output.quantity <= 0) {
             continue;
         }
 
-        const share = shares.get(output.resource.name) ?? 0;
-        const costForOutput = totalCostPerUnit * share;
         const outputDepreciationMultiplier =
             output.resource.form === 'services' ? SERVICE_DEPRECIATION_COST_MULTIPLIER : 1.0;
 
         costAccum.set(
             output.resource.name,
-            (costAccum.get(output.resource.name) ?? 0) + costForOutput * outputDepreciationMultiplier,
+            (costAccum.get(output.resource.name) ?? 0) + totalCostPerUnit * outputDepreciationMultiplier,
         );
     }
 }
@@ -418,7 +409,7 @@ export function updateProductionCostFloors(planet: Planet): void {
 
     for (const { template } of Object.values(ALL_PRODUCTION_FACILITY_ENTRIES)) {
         if (template.produces.length > 0) {
-            accumulateTheoreticalCostFloor(template, planet, rates, outputAccum, costAccum);
+            accumulateTheoreticalCostFloor(template, planet, rates, costAccum);
         }
     }
 

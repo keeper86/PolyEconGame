@@ -11,7 +11,22 @@ import { computeFacilityStorageSignal } from '../../src/simulation/planet/automa
 
 const TICK_PROBE_ENV = 'TICK_PROBE';
 
-const TARGETS = ['Oil Refinery', 'Maintenance Facility', 'Iron Smelter', 'Grocery Chain', 'Agricultural Facility', 'Water Facility', 'Pesticide Plant'] as const;
+const TARGETS = [
+    'Fuel Refinery',
+    'Chemical Refinery',
+    'Maintenance Facility',
+    'Iron Smelter',
+    'Grocery Chain',
+    'Agricultural Facility',
+    'Water Facility',
+    'Pesticide Plant',
+    'Glass Factory',
+    'Cement Plant',
+    'Oil Well',
+    'Construction Facility',
+    'Logistics Hub',
+    'Vehicle Factory',
+] as const;
 
 const COLUMNS = [
     'tick',
@@ -44,6 +59,24 @@ const COLUMNS = [
     'inEff1',
     'inEff2',
     'workerEffWorst',
+    'price0',
+    'costFloor0',
+    'springDev0',
+    'baseFactor0',
+    'netFactor0',
+    'sellThrough0',
+    'sold0',
+    'effQty0',
+    'retain0',
+    'price1',
+    'costFloor1',
+    'springDev1',
+    'baseFactor1',
+    'netFactor1',
+    'sellThrough1',
+    'sold1',
+    'effQty1',
+    'retain1',
 ];
 
 let started = false;
@@ -104,7 +137,36 @@ function row(
         Math.max(e0, e1, e2).toFixed(5),
         computeFacilityStorageSignal(facility, assets).maxError.toFixed(5),
         ...inputEfficiencies(facility),
+        ...sellDiagnostics(assets, outputs[0]?.resource.name),
+        ...sellDiagnostics(assets, outputs[1]?.resource.name),
     ].join(',');
+}
+
+function sellDiagnostics(
+    assets: AgentPlanetAssets,
+    resourceName: string | undefined,
+): string[] {
+    const blank = ['', '', '', '', '', '', '', '', ''];
+    if (!resourceName) {
+        return blank;
+    }
+    const offer = assets.market.sell[resourceName];
+    const diagnostics = offer?.diagnostics;
+    if (!diagnostics) {
+        return blank;
+    }
+    const sold = offer?.lastSold;
+    return [
+        diagnostics.newPrice.toFixed(4),
+        diagnostics.costFloor.toFixed(4),
+        diagnostics.costSpringDeviation.toFixed(5),
+        diagnostics.baseFactor.toFixed(5),
+        diagnostics.netFactor.toFixed(5),
+        diagnostics.smoothedSellThrough.toFixed(4),
+        sold !== undefined ? sold.toFixed(2) : '',
+        diagnostics.effectiveQuantity.toFixed(2),
+        diagnostics.rawRetainment.toFixed(2),
+    ];
 }
 
 function inputEfficiencies(facility: ProductionFacility): string[] {

@@ -257,14 +257,11 @@ const copperSmelter = (planetId: string, id: string): ProductionFacility => ({
     produces: [{ resource: copperResourceType, quantity: 100 }],
 });
 
-const OIL_REFINERY_WASTE_SURPLUS_TICKS = 120;
-const REFINERY_OUTPUT_FLEXIBLE = (process.env.REFINERY_OUTPUT_FLEXIBLE ?? '0') === '1';
-
-export const oilRefinery = (planetId: string, id: string): ProductionFacility => ({
+export const fuelRefinery = (planetId: string, id: string): ProductionFacility => ({
     ...makeFacilityDefaults(),
     planetId,
     id,
-    name: 'Oil Refinery',
+    name: 'Fuel Refinery',
     powerConsumptionPerTick: 1.5,
     workerRequirement: {
         none: 5,
@@ -273,13 +270,43 @@ export const oilRefinery = (planetId: string, id: string): ProductionFacility =>
         tertiary: 10,
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
-    produces: [
-        { resource: fuelResourceType, quantity: 90 },
-        { resource: plasticResourceType, quantity: 62 },
-        { resource: chemicalResourceType, quantity: 48 },
+    produces: [{ resource: fuelResourceType, quantity: 200 }],
+});
+
+export const chemicalRefinery = (planetId: string, id: string): ProductionFacility => ({
+    ...makeFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Chemical Refinery',
+    powerConsumptionPerTick: 1.5,
+    workerRequirement: {
+        none: 5,
+        primary: 20,
+        secondary: 20,
+        tertiary: 10,
+    },
+    needs: [{ resource: crudeOilResourceType, quantity: 200 }],
+    produces: [{ resource: chemicalResourceType, quantity: 200 }],
+});
+
+export const PlasticsFactory = (planetId: string, id: string): ProductionFacility => ({
+    ...makeFacilityDefaults(),
+    planetId,
+    id,
+    name: 'Plastics Factory',
+    powerConsumptionPerTick: 1.5,
+    workerRequirement: {
+        none: 5,
+        primary: 20,
+        secondary: 20,
+        tertiary: 10,
+    },
+    needs: [
+        { resource: chemicalResourceType, quantity: 100 },
+        { resource: waterResourceType, quantity: 100 },
+        { resource: coalResourceType, quantity: 10 },
     ],
-    outputFlexible: REFINERY_OUTPUT_FLEXIBLE,
-    wasteSurplusTicks: OIL_REFINERY_WASTE_SURPLUS_TICKS,
+    produces: [{ resource: plasticResourceType, quantity: 100 }],
 });
 
 const sawmill = (planetId: string, id: string): ProductionFacility => ({
@@ -747,7 +774,7 @@ const logisticsHub = (planetId: string, id: string): ProductionFacility => ({
     },
     needs: [
         { resource: vehicleResourceType, quantity: 1 },
-        { resource: fuelResourceType, quantity: 60 },
+        { resource: fuelResourceType, quantity: 90 },
     ],
     produces: [{ resource: logisticsServiceResourceType, quantity: 300 }],
 });
@@ -864,9 +891,9 @@ const maintenanceFacility = (planetId: string, id: string): ProductionFacility =
             tertiary: 15,
         },
         needs: [
-            { resource: steelResourceType, quantity: 10 },
-            { resource: electronicsResourceType, quantity: 5 },
-            { resource: plasticResourceType, quantity: 10 },
+            { resource: steelResourceType, quantity: 5 },
+            { resource: electronicsResourceType, quantity: 1 },
+            { resource: plasticResourceType, quantity: 5 },
         ],
         produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
     };
@@ -905,7 +932,9 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     ironMine: entry(ironMine),
     ironSmelter: entry(ironSmelter),
     copperSmelter: entry(copperSmelter),
-    oilRefinery: entry(oilRefinery),
+    fuelRefinery: entry(fuelRefinery),
+    chemicalRefinery: entry(chemicalRefinery),
+    plasticsFactory: entry(PlasticsFactory),
     sawmill: entry(sawmill),
     cementPlant: entry(cementPlant),
     glassFactory: entry(glassFactory),
