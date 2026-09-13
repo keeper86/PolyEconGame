@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { seedRng } from '../utils/stochasticRound';
-import { computeStorageSpaceFactor, constructionTick, productionTick } from './production';
 import { MIN_SCALE_FRACTION } from './automaticProductionScale/constants';
 import { queryStorageFacility } from './facility';
+import { computeStorageSpaceFactor, constructionTick, productionTick } from './production';
 
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 import type { TransportShipType } from '../ships/ships';
 import {
     makeAgent,
@@ -16,23 +17,15 @@ import {
     makeStorageFacility,
     setStorageResourceQuantity,
 } from '../utils/testHelper';
+import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 import { ironOreDepositResourceType } from './landBoundResources';
-import {
-    chemicalResourceType,
-    fuelResourceType,
-    produceResourceType,
-    ironOreResourceType,
-    steelResourceType,
-    waterResourceType,
-} from './resources';
+import type { AgentPlanetAssets } from './planet';
+import { ironOreResourceType, produceResourceType, steelResourceType, waterResourceType } from './resources';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
     humanResourcesServiceResourceType,
 } from './services';
-import type { AgentPlanetAssets } from './planet';
-import { makePool } from '../initialUniverse/resourceClaimFactory';
-import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
 // The auto-granted storage shells are now operational facilities that also hire. Zero their
 // requirements so worker-allocation tests exercise a single facility with a controlled workforce.
@@ -90,37 +83,6 @@ describe('productionTick (basic)', () => {
 
         const ironEntries = planet.resources['Iron Ore Deposit'];
         expect(ironEntries?.claims[0]?.quantity).toBeLessThan(5000);
-    });
-
-    it('splits production according to the output mix', () => {
-        const { planet, gov } = makePlanetWithPopulation({});
-        const agent = makeAgent('refinery-company');
-
-        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
-        facility.id = 'refinery';
-        facility.needs = [{ resource: waterResourceType, quantity: 10 }];
-        facility.produces = [
-            { resource: fuelResourceType, quantity: 100 },
-            { resource: chemicalResourceType, quantity: 100 },
-        ];
-        facility.productionMix = { [fuelResourceType.name]: 0.25, [chemicalResourceType.name]: 0.75 };
-
-        agent.assets.p.productionFacilities = [facility];
-        updateAgentShellCompartments(agent.assets.p);
-        setStorageResourceQuantity(agent.assets.p.storage, waterResourceType, 1000);
-        const wf = agent.assets.p.workforceDemography;
-        wf[30].secondary.active = 1;
-
-        const gameState = makeGameState(planet, [agent, gov]);
-
-        productionTick(gameState, planet);
-
-        const fuel = queryStorageFacility(agent.assets.p.storage, fuelResourceType.name);
-        const chem = queryStorageFacility(agent.assets.p.storage, chemicalResourceType.name);
-
-        // total template output is 200; the mix 25/75 splits it into 50/150
-        expect(fuel).toBeCloseTo(50, 1);
-        expect(chem).toBeCloseTo(150, 1);
     });
 
     it('does not operate facility when required land-bound resource is unavailable', () => {

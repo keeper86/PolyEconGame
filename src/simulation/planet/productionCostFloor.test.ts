@@ -16,7 +16,7 @@ import {
     logisticsServiceResourceType,
     maintenanceServiceResourceType,
 } from './services';
-import { oilRefinery } from './productionFacilities';
+import { fuelRefinery } from './productionFacilities';
 import { updateProductionCostFloors } from './production';
 
 const floorFor = (planet: ReturnType<typeof makePlanet>, name: string): number => planet.lastProductionCostFloors[name];
@@ -115,7 +115,7 @@ describe('updateProductionCostFloors — reference weights', () => {
         const planet = makePlanet();
         updateProductionCostFloors(planet);
 
-        const refinery = oilRefinery('catalog', 'preview');
+        const refinery = fuelRefinery('catalog', 'preview');
         const rates = auxiliaryCostRates(planet);
         const bundleCost =
             facilityInputCostPerTick(refinery, planet) +
@@ -187,7 +187,7 @@ describe('updateProductionCostFloors — reference weights', () => {
 });
 
 describe('jointOutputCostShares', () => {
-    const refinery = oilRefinery('catalog', 'preview');
+    const refinery = fuelRefinery('catalog', 'preview');
     const outputAccum = new Map([
         [fuelResourceType.name, 80],
         [chemicalResourceType.name, 120],

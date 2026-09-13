@@ -149,24 +149,6 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         inputReserve.set(resourceName, target);
     }
 
-    const saturatedOutputs = new Set<string>();
-    for (const facility of assets.productionFacilities) {
-        const wasteTicks = facility.wasteSurplusTicks ?? 0;
-        if (wasteTicks <= 0) {
-            continue;
-        }
-        for (const output of facility.produces) {
-            if (output.resource.form === 'services') {
-                continue;
-            }
-            const keep = wasteTicks * facility.maxScale * output.quantity;
-            const free = queryStorageFacility(assets.storage, output.resource.name);
-            if (free >= keep) {
-                saturatedOutputs.add(output.resource.name);
-            }
-        }
-    }
-
     // ── Sell-side automated offers ───────────────────────────────────────────
 
     const productionRate = new Map<string, number>();
@@ -200,7 +182,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, saturatedOutputs.has(resource.name));
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
         }
     }
 
@@ -478,7 +460,6 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
-    saturated = false,
 ): void {
     const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
 
@@ -565,8 +546,8 @@ export function adjustOfferPrice(
     );
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
-    const deviation = saturated ? 0 : Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
-    const netFactor = saturated ? factor : factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
+    const deviation = Math.sqrt(Math.max(0, brakeZoneTop / price - 1));
+    const netFactor = factor + cfg.costSpringStrength * SPRING_NORMALIZATION * deviation;
     const newPrice = price * netFactor;
 
     if (!isFinite(newPrice) || newPrice < PRICE_FLOOR) {
