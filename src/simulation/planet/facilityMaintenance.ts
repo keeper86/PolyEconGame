@@ -49,6 +49,12 @@ export function facilityMaintenanceRepairNeedPerTick(facility: Facility): number
     return repairFraction * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
 }
 
+export function facilityMaintenanceRepairDeficit(facility: Facility): number {
+    const deficit = Math.max(0, facility.maxMaintenance - facility.maintenanceStatus);
+    const capped = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, deficit);
+    return capped * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+}
+
 export const facilityFullRestoreCost = (facility: Facility): number =>
     calculateCostsForConstruction(getFacilityType(facility), 0, facility.maxScale).cost;
 

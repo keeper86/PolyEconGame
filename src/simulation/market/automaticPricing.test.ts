@@ -3,6 +3,7 @@ import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
     FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
+    FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
@@ -1085,7 +1086,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 
-    it('bids steady-state consumption (not the repair capacity) for a facility below full maintenance', () => {
+    it('bids up to the max repair rate (capped) for a facility below full maintenance', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'degraded', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
@@ -1105,13 +1106,13 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const steadyStateRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(steadyStateRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        expect(bid.bidStorageTarget).toBeCloseTo(
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK *
+                MAINTENANCE_SERVICE_PER_STATUS_UNIT *
+                facility.scale *
+                INPUT_BUFFER_TARGET_TICKS_SERVICES,
+            6,
+        );
     });
 });
 
