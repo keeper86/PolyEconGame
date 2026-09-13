@@ -399,10 +399,10 @@ export const getAllFacilities = (assets: AgentPlanetAssets, onlyActive: boolean 
         ];
     }
     return [
-        ...assets.productionFacilities,
         ...manageStorage,
-        ...assets.shipConstructionFacilities,
         ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
+        ...assets.shipConstructionFacilities,
+        ...assets.productionFacilities,
     ];
 };
 
