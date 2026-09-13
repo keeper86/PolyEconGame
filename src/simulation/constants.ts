@@ -54,10 +54,6 @@ export const SERVICE_DEPRECIATION_COST_MULTIPLIER =
 
 export const STORAGE_MOVEMENT_FACTOR = 2;
 
-export const JOINT_DEMAND_WEIGHT_EXPONENT = Number(process.env.JOINT_DEMAND_WEIGHT_EXPONENT ?? 1);
-export const JOINT_DEMAND_WEIGHT_MIN = 0.25;
-export const JOINT_DEMAND_WEIGHT_MAX = 4;
-
 export const TARGET_FILL_RATE = 0.6;
 export const TARGET_FILL_RATE_SERVICES = 0.7;
 export const TARGET_SELL_THROUGH = 0.6;

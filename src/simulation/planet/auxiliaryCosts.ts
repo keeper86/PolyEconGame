@@ -1,8 +1,5 @@
 import {
     FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK,
-    JOINT_DEMAND_WEIGHT_EXPONENT,
-    JOINT_DEMAND_WEIGHT_MAX,
-    JOINT_DEMAND_WEIGHT_MIN,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
     SERVICE_DEPRECIATION_COST_MULTIPLIER,
@@ -10,7 +7,6 @@ import {
     STORAGE_MOVEMENT_FACTOR,
     TICKS_PER_MONTH,
 } from '../constants';
-import { initialMarketPrices } from '../initialUniverse/initialMarketPrices';
 import { educationLevelKeys } from '../population/education';
 import type { Facility, ManagementFacility, ProductionFacility } from './facility';
 import { facilityFullRestoreCost, facilityRestorationCostFactor } from './facilityMaintenance';
@@ -129,55 +125,3 @@ export const auxiliaryCostPerTick = (facility: ProductionFacility, rates: Auxili
     facilityWorkerCount(facility) * rates.hrCostPerWorker +
     storageScaleForFacility(facility) * rates.storageCostPerScale +
     facilityUpkeepCostPerTick(facility, rates);
-
-const clampJointDemandRatio = (ratio: number): number =>
-    Math.max(JOINT_DEMAND_WEIGHT_MIN, Math.min(JOINT_DEMAND_WEIGHT_MAX, ratio));
-
-export const jointOutputCostShares = (
-    facility: ProductionFacility,
-    planet: Planet,
-    outputAccum: Map<string, number>,
-    exponent: number = JOINT_DEMAND_WEIGHT_EXPONENT,
-): Map<string, number> => {
-    const outputs = facility.produces.filter((output) => output.quantity > 0);
-    const totalQty = outputs.reduce((sum, output) => sum + output.quantity, 0);
-    if (outputs.length === 0 || totalQty <= 0) {
-        return new Map();
-    }
-
-    let kappaMean = 0;
-    const kappa = new Map<string, number>();
-    for (const output of outputs) {
-        const q = outputAccum.get(output.resource.name) ?? output.quantity;
-        const demand = planet.avgMarketResult[output.resource.name]?.totalDemand ?? 0;
-        const k = q > 0 && demand > 0 ? demand / q : 1;
-        kappa.set(output.resource.name, k);
-        kappaMean += k;
-    }
-    kappaMean /= outputs.length;
-
-    let totalWeighted = 0;
-    const rawWeight = new Map<string, number>();
-    for (const output of outputs) {
-        const refPrice = initialMarketPrices[output.resource.name] ?? 0;
-        const ratio = kappaMean > 0 ? clampJointDemandRatio((kappa.get(output.resource.name) ?? 1) / kappaMean) : 1;
-        const weight = refPrice * Math.pow(ratio, exponent);
-        rawWeight.set(output.resource.name, weight);
-        totalWeighted += output.quantity * weight;
-    }
-
-    const shares = new Map<string, number>();
-    if (totalWeighted > 0) {
-        for (const output of outputs) {
-            shares.set(
-                output.resource.name,
-                (output.quantity * (rawWeight.get(output.resource.name) ?? 0)) / totalWeighted,
-            );
-        }
-    } else {
-        for (const output of outputs) {
-            shares.set(output.resource.name, output.quantity / totalQty);
-        }
-    }
-    return shares;
-};

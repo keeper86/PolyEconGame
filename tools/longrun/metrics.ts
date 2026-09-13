@@ -454,10 +454,12 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     let maintSteelBuffer = 0;
     let maintElectronicsBuffer = 0;
     let maintPlasticBuffer = 0;
-    let oilRefineryCount = 0;
-    let oilRefineryScale = 0;
-    let oilRefineryRevenue = 0;
-    let oilRefineryChemicalShare = 0;
+    let fuelRefineryCount = 0;
+    let fuelRefineryScale = 0;
+    let fuelRefineryRevenue = 0;
+    let chemicalRefineryCount = 0;
+    let chemicalRefineryScale = 0;
+    let chemicalRefineryRevenue = 0;
 
     const allocByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
     const activeByEdu = { none: 0, primary: 0, secondary: 0, tertiary: 0 };
@@ -716,11 +718,16 @@ export function sampleMetrics(gameState: GameState): MetricMap {
                 ironSmelterCount += 1;
             }
 
-            if (facility.name === 'Oil Refinery') {
-                oilRefineryScale += facility.scale;
-                oilRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
-                oilRefineryChemicalShare += facility.productionMix?.[chemicalResourceType.name] ?? 0;
-                oilRefineryCount += 1;
+            if (facility.name === 'Fuel Refinery') {
+                fuelRefineryScale += facility.scale;
+                fuelRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                fuelRefineryCount += 1;
+            }
+
+            if (facility.name === 'Chemical Refinery') {
+                chemicalRefineryScale += facility.scale;
+                chemicalRefineryRevenue += facility.lastTickResults?.revenue ?? 0;
+                chemicalRefineryCount += 1;
             }
 
             if (isMaintenanceFacility(facility.name)) {
@@ -1056,9 +1063,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
     const steelUnsoldSupply = steelResult?.unsoldSupply ?? 0;
     const steelVolume = steelResult?.totalVolume ?? 0;
     const steelFillRate = steelTotalDemand > 0 ? steelVolume / steelTotalDemand : 0;
-    const oilRefineryScaleAvg = oilRefineryCount > 0 ? oilRefineryScale / oilRefineryCount : 0;
-    const oilRefineryRevenueAvg = oilRefineryCount > 0 ? oilRefineryRevenue / oilRefineryCount : 0;
-    const oilRefineryChemicalShareAvg = oilRefineryCount > 0 ? oilRefineryChemicalShare / oilRefineryCount : 0;
+    const fuelRefineryScaleAvg = fuelRefineryCount > 0 ? fuelRefineryScale / fuelRefineryCount : 0;
+    const fuelRefineryRevenueAvg = fuelRefineryCount > 0 ? fuelRefineryRevenue / fuelRefineryCount : 0;
+    const chemicalRefineryScaleAvg = chemicalRefineryCount > 0 ? chemicalRefineryScale / chemicalRefineryCount : 0;
+    const chemicalRefineryRevenueAvg = chemicalRefineryCount > 0 ? chemicalRefineryRevenue / chemicalRefineryCount : 0;
     const fuelPrice = priceOf(planet, fuelResourceType.name);
     const plasticPrice = priceOf(planet, plasticResourceType.name);
     const chemicalPrice = priceOf(planet, chemicalResourceType.name);
@@ -1527,9 +1535,10 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         steelUnsoldSupply,
         steelVolume,
         steelFillRate,
-        oilRefineryScale: oilRefineryScaleAvg,
-        oilRefineryRevenue: oilRefineryRevenueAvg,
-        oilRefineryChemicalShare: oilRefineryChemicalShareAvg,
+        fuelRefineryScale: fuelRefineryScaleAvg,
+        fuelRefineryRevenue: fuelRefineryRevenueAvg,
+        chemicalRefineryScale: chemicalRefineryScaleAvg,
+        chemicalRefineryRevenue: chemicalRefineryRevenueAvg,
         fuelPrice,
         plasticPrice,
         chemicalPrice,
@@ -1888,9 +1897,10 @@ export const METRIC_KEYS: string[] = [
     'steelUnsoldSupply',
     'steelVolume',
     'steelFillRate',
-    'oilRefineryScale',
-    'oilRefineryRevenue',
-    'oilRefineryChemicalShare',
+    'fuelRefineryScale',
+    'fuelRefineryRevenue',
+    'chemicalRefineryScale',
+    'chemicalRefineryRevenue',
     'fuelPrice',
     'plasticPrice',
     'chemicalPrice',

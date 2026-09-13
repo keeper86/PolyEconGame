@@ -38,7 +38,6 @@ export function storageLogisticsTick(agents: Map<string, Agent>, planet: Planet)
             processFormStorageLogistics(storage, form);
         }
         applyStorageDegradation(storage, planet, assets);
-        wasteSurplusOutputs(assets);
     }
 }
 
@@ -108,30 +107,6 @@ function pullService(storage: Storage, resourceName: string): number {
         return 0;
     }
     return removeFromStorageFacility(storage, resourceName, available);
-}
-
-export function wasteSurplusOutputs(assets: AgentPlanetAssets): void {
-    const storage = assets.storage;
-    for (const facility of assets.productionFacilities) {
-        const wasteTicks = facility.wasteSurplusTicks ?? 0;
-        if (wasteTicks <= 0) {
-            continue;
-        }
-        for (const output of facility.produces) {
-            if (ALL_SERVICE_RESOURCE_TYPE_NAMES.includes(output.resource.name)) {
-                continue;
-            }
-            const freeQuantity = queryStorageFacility(storage, output.resource.name);
-            if (freeQuantity <= 0) {
-                continue;
-            }
-            const keep = wasteTicks * facility.maxScale * output.quantity;
-            const excess = freeQuantity - keep;
-            if (excess > 1e-9) {
-                removeFromStorageFacility(storage, output.resource.name, excess);
-            }
-        }
-    }
 }
 
 function serviceOutputPerTick(assets: AgentPlanetAssets, name: string): number {

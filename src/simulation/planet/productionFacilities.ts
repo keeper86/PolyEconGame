@@ -270,10 +270,7 @@ export const fuelRefinery = (planetId: string, id: string): ProductionFacility =
         tertiary: 10,
     },
     needs: [{ resource: crudeOilResourceType, quantity: 200 }],
-    produces: [
-        { resource: fuelResourceType, quantity: 60 },
-        { resource: chemicalResourceType, quantity: 140 },
-    ],
+    produces: [{ resource: fuelResourceType, quantity: 200 }],
 });
 
 export const chemicalRefinery = (planetId: string, id: string): ProductionFacility => ({
@@ -935,7 +932,8 @@ export const ALL_PRODUCTION_FACILITY_ENTRIES = {
     ironMine: entry(ironMine),
     ironSmelter: entry(ironSmelter),
     copperSmelter: entry(copperSmelter),
-    oilRefinery: entry(fuelRefinery),
+    fuelRefinery: entry(fuelRefinery),
+    chemicalRefinery: entry(chemicalRefinery),
     plasticsFactory: entry(PlasticsFactory),
     sawmill: entry(sawmill),
     cementPlant: entry(cementPlant),

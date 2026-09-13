@@ -141,11 +141,7 @@ function appendRefineryMixRow(gameState: GameState, outDir: string): void {
                     continue;
                 }
                 const p = fac as ProductionFacility;
-                if (!p.outputFlexible || !p.productionMix) {
-                    continue;
-                }
-                const keepTicks = p.wasteSurplusTicks ?? 30;
-                const mix = p.productionMix;
+                const keepTicks = 30;
                 for (const o of p.produces) {
                     const q = o.quantity;
                     const free = queryStorageFacility(assets.storage, o.resource.name);
@@ -159,7 +155,6 @@ function appendRefineryMixRow(gameState: GameState, outDir: string): void {
                         (free / 1e6).toFixed(1),
                         (keep / 1e6).toFixed(1),
                         deficit.toFixed(3),
-                        (mix[o.resource.name] ?? 0).toFixed(4),
                     ].join('|');
                     appendFileSync(file, line + '\n');
                 }

@@ -19,7 +19,6 @@ import { environmentTick } from './planet/environment';
 import type { GameState } from './planet/planet';
 import { accumulatePlanetPrices, resetAgentMetrics } from './planet/planet';
 import { constructionTick, productionTick, updateProductionCostFloors } from './planet/production';
-import { updateProductionMix } from './planet/productionMix';
 import { populationAdvanceYearTick, populationTick, resetPopulationMonthCounters } from './population/populationTick';
 import { shipTick } from './ships/ships';
 import { seedRng } from './utils/stochasticRound';
@@ -157,7 +156,6 @@ export function advanceTick(gameState: GameState) {
             automaticPricing(gameState.agents, planet);
             marketTick(gameState.agents, planet);
             accumulatePlanetPrices(planet);
-            updateProductionMix(gameState, planet);
             if (profile.isEnabled) {
                 t = profile.markAndAccum('market', 'updateCostFloor + pricing + marketTick', t);
             }

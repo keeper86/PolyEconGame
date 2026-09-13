@@ -19,13 +19,13 @@ describe('applyRefinerySellOverride', () => {
     });
 
     it('leaves the refinery untouched when no override is configured', () => {
-        const result = applyRefinerySellOverride({ ...base }, 'oilRefinery', {});
+        const result = applyRefinerySellOverride({ ...base }, 'fuelRefinery', {});
         expect(result).toEqual(base);
     });
 
     it('raises the soft-min ask (automatedCostFloorBuffer) for the refinery', () => {
         const config: BenchmarkWorldConfig = { refineryMinAskMultiplier: 3 };
-        const result = applyRefinerySellOverride({ ...base }, 'oilRefinery', config);
+        const result = applyRefinerySellOverride({ ...base }, 'fuelRefinery', config);
         expect(result.automatedCostFloorBuffer).toBe(3);
         expect(result.priceAdjustMaxDown).toBe(base.priceAdjustMaxDown);
         expect(result.targetSellThrough).toBe(base.targetSellThrough);
@@ -33,13 +33,13 @@ describe('applyRefinerySellOverride', () => {
 
     it('caps price cuts (priceAdjustMaxDown) for the refinery', () => {
         const config: BenchmarkWorldConfig = { refineryPriceAdjustMaxDown: 0.99 };
-        const result = applyRefinerySellOverride({ ...base }, 'oilRefinery', config);
+        const result = applyRefinerySellOverride({ ...base }, 'fuelRefinery', config);
         expect(result.priceAdjustMaxDown).toBe(0.99);
     });
 
     it('lowers the sell-through target for the refinery', () => {
         const config: BenchmarkWorldConfig = { refineryTargetSellThrough: 0.5 };
-        const result = applyRefinerySellOverride({ ...base }, 'oilRefinery', config);
+        const result = applyRefinerySellOverride({ ...base }, 'fuelRefinery', config);
         expect(result.targetSellThrough).toBe(0.5);
     });
 
@@ -49,7 +49,7 @@ describe('applyRefinerySellOverride', () => {
             refineryPriceAdjustMaxDown: 0.99,
             refineryTargetSellThrough: 0.5,
         };
-        const result = applyRefinerySellOverride({ ...base }, 'oilRefinery', config);
+        const result = applyRefinerySellOverride({ ...base }, 'fuelRefinery', config);
         expect(result.automatedCostFloorBuffer).toBe(3);
         expect(result.priceAdjustMaxDown).toBe(0.99);
         expect(result.targetSellThrough).toBe(0.5);
