@@ -124,6 +124,8 @@ interface FleetRefs {
     beverage: FleetAcc;
 }
 
+const REFINERY_NAMES = ['Fuel Refinery', 'Chemical Refinery'] as const;
+
 let mixHeaderShown = false;
 function appendRefineryMixRow(gameState: GameState, outDir: string): void {
     const file = path.join(outDir, 'refineryMix.csv');
@@ -141,6 +143,9 @@ function appendRefineryMixRow(gameState: GameState, outDir: string): void {
                     continue;
                 }
                 const p = fac as ProductionFacility;
+                if (!REFINERY_NAMES.includes(p.name as (typeof REFINERY_NAMES)[number])) {
+                    continue;
+                }
                 const keepTicks = 30;
                 for (const o of p.produces) {
                     const q = o.quantity;

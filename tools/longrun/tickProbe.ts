@@ -12,7 +12,8 @@ import { computeFacilityStorageSignal } from '../../src/simulation/planet/automa
 const TICK_PROBE_ENV = 'TICK_PROBE';
 
 const TARGETS = [
-    'Oil Refinery',
+    'Fuel Refinery',
+    'Chemical Refinery',
     'Maintenance Facility',
     'Iron Smelter',
     'Grocery Chain',
