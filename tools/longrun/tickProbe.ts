@@ -26,6 +26,9 @@ const TARGETS = [
     'Construction Facility',
     'Logistics Hub',
     'Vehicle Factory',
+    'Beverage Plant',
+    'Food Processor',
+    'Packaging Plant',
 ] as const;
 
 const COLUMNS = [
@@ -58,6 +61,13 @@ const COLUMNS = [
     'inEff0',
     'inEff1',
     'inEff2',
+    'inEff3',
+    'inEff4',
+    'inEffName0',
+    'inEffName1',
+    'inEffName2',
+    'inEffName3',
+    'inEffName4',
     'workerEffWorst',
     'price0',
     'costFloor0',
@@ -171,12 +181,20 @@ function sellDiagnostics(
 
 function inputEfficiencies(facility: ProductionFacility): string[] {
     const effs = facility.needs.map((need) => facility.lastTickResults?.resourceEfficiency?.[need.resource.name] ?? 1);
+    const names = facility.needs.map((need) => need.resource.name.replace(/ /g, '_'));
     const worker = Object.values(facility.lastTickResults?.workerEfficiency ?? {});
     const worstWorker = worker.length > 0 ? Math.min(...worker.filter((v): v is number => typeof v === 'number')) : 1;
     return [
         (effs[0] ?? 1).toFixed(4),
         (effs[1] ?? 1).toFixed(4),
         (effs[2] ?? 1).toFixed(4),
+        (effs[3] ?? 1).toFixed(4),
+        (effs[4] ?? 1).toFixed(4),
+        names[0] ?? '',
+        names[1] ?? '',
+        names[2] ?? '',
+        names[3] ?? '',
+        names[4] ?? '',
         worstWorker.toFixed(4),
     ];
 }

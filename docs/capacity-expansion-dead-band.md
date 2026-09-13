@@ -141,19 +141,57 @@ sampler can land on one and misreport the month. **Read per-tick data before con
 failed.** The starvation is real, but it comes from a sustained stock deficit, not from a supply
 outage or an order-book fault.
 
-The chain is therefore:
+## Root cause: intermittent bidding makes the whole chain oscillate
+
+Everything above shares one cause, visible only per tick. Take the Beverage Plant at y429
+(resumed y400 checkpoint, `TICK_PROBE=1`, full input columns):
 
 ```
-beverage production intermittently fails (beverageFill = 0)
--> grocery chain cannot produce enough service
--> grocery supply < demand sustained for months
--> grocery buffer drains -> starvation
+tick     offered      sold     inv0        inEff0..4
+154440  74,635,241  74,635,241  74,554,305   all 1.0000
+154441  74,554,305           0 183,405,841   all 1.0000
+154442 183,405,841           0 307,466,324   all 1.0000
+154443 307,466,324 307,466,324 128,584,966   all 1.0000
+154444 128,584,966 128,584,966 129,786,693   all 1.0000
+154445 129,786,693           0 259,722,571   all 1.0000
 ```
 
-This is the same shape as the plastic episode: one upstream input fails intermittently, the
-downstream service cannot buffer (it decays), and the deficit passes straight through to the
-population. The buffer reaching zero is the fatal step, because mortality has no multi-year
-dampening.
+All five inputs are fully available on every tick, and it offers on every tick. But sales clear
+only about every third tick: on the middle ticks it sells nothing because **nobody bid**.
+Measured over the whole probe:
+
+```
+Beverage_Plant : zero offer 0.0% of ticks, inputs 1.0 throughout, output 74M..390M swinging
+Water_Facility : zero offer 0.0% of ticks, offers 5.5e11, sells 2.4e6 (236,000x glut)
+Grocery_Chain  : zero offer 0.9% of ticks, but inEff1(beverage) == 0 on ~50% of ticks
+```
+
+The bid-side driver is `bidStorageTarget`: an agent bids to fill its multi-tick input buffer,
+and once the buffer is above target `bidStorageTarget` becomes 0 (see `automaticPricing.ts`,
+the `aggregatedBuyTargets` path), so no bid is placed on subsequent ticks until consumption
+draws the buffer back down. Bidding is therefore on/off with a period of a few ticks.
+
+The chain closes like this:
+
+```
+buyer bids only every few ticks
+-> producer sells only on those ticks, inventory and output swing
+-> downstream sees inputs arrive lumpily (inEff flips 0 and 1)
+-> services cannot smooth it, because they decay at SERVICE_DEPRECIATION_RATE_PER_TICK
+-> output of the service oscillates
+-> the critical buffer drains below demand for months
+-> starvation
+```
+
+This is why input "fill rates" for basic commodities like water read 0.0, 0.36, 0.81, 0.0 on
+consecutive months while water is oversupplied 236,000x. Those numbers measure per-tick bid
+satisfaction on a bursting bid schedule, not scarcity. They are the same sampling alias as the
+`groceryTotalSupply = 0` reading, seen from the other side.
+
+So the recurring failure is: **one oscillating bid/sell cycle, propagated through a chain whose
+services cannot buffer.** The plastic episode, the maintenance blackout and the grocery shortfall
+are all instances of it. The lever is either to damp the bidding cycle or to give services enough
+effective buffering that lumpy delivery does not reach the population.
 
 ## Ruled out
 
