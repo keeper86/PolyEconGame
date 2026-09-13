@@ -1114,6 +1114,30 @@ describe('updateAgentProductionScale', () => {
         expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
     });
 
+    it('accumulates expansion integral when settled just below full capacity (inside the old dead band)', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 9.93,
+            maxScale: 10,
+            maintenanceStatus: 1,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+            },
+        });
+        setStorageQuantity(agents, 0);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale / facility.maxScale).toBeLessThan(0.999);
+        expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
+    });
+
     it('derivative term produces braking when smoothed signal suddenly drops', () => {
         const planetBalanced = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });

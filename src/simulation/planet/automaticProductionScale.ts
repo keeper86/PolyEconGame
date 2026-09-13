@@ -42,6 +42,7 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
     EXPANSION_WORKING_CAPITAL_TICKS,
+    EXPANSION_AT_CAPACITY_FRACTION,
     HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
@@ -399,7 +400,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
-            const atMaxScale = facility.scale >= facility.maxScale * 0.999;
+            const atMaxScale = facility.scale >= facility.maxScale * EXPANSION_AT_CAPACITY_FRACTION;
             const atMinScale = facility.scale <= minScale;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {

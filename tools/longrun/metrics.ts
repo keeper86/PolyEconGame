@@ -1195,6 +1195,8 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         facilityTypeMetrics[`facilitySignal_${key}`] = s.signalActual / s.count;
         facilityTypeMetrics[`facilityCandidateSignal_${key}`] = s.signalCandidate / s.count;
         facilityTypeMetrics[`facilityScale_${key}`] = s.scale;
+        facilityTypeMetrics[`facilityMaxScale_${key}`] = s.maxScale;
+        facilityTypeMetrics[`facilityScaleFrac_${key}`] = s.maxScale > 0 ? s.scale / s.maxScale : 0;
         facilityTypeMetrics[`facilityLandInputCosts_${key}`] = s.landInputCosts / s.count;
         facilityTypeMetrics[`facilityLossCaughtActual_${key}`] =
             s.lossCount > 0 ? s.lossCaughtActual / s.lossCount : 0;
@@ -1745,6 +1747,8 @@ export const METRIC_KEYS: string[] = [
         `facilitySignal_${key}`,
         `facilityCandidateSignal_${key}`,
         `facilityScale_${key}`,
+        `facilityMaxScale_${key}`,
+        `facilityScaleFrac_${key}`,
         `facilityLandInputCosts_${key}`,
         `facilityLossCaughtActual_${key}`,
         `facilityLossCaughtBlend_${key}`,

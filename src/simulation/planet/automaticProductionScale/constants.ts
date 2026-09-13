@@ -41,6 +41,16 @@ export const EXPANSION_WORKER_RESERVE_MARGIN = 0.3;
 
 export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.1;
 
+/**
+ * A facility only arms an expansion when its operating scale has reached this fraction of its
+ * capacity. The PID's proportional term saturates at signal ~0.05 (PID_KP=0.1 against
+ * PID_OUT_MAX=0.005), so a facility can settle a hair below full capacity and freeze there: its
+ * signal decays to zero, the D term leaks off geometrically, and scale stops moving within
+ * float64 resolution. A 0.999 threshold sat inside that frozen band and blocked expansion for
+ * decades. 0.98 sits clear of the band a settled facility actually occupies.
+ */
+export const EXPANSION_AT_CAPACITY_FRACTION = 0.98;
+
 export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
 export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
 export const CONTRACTION_INTEGRAL_MAX = 180;
