@@ -182,6 +182,7 @@ export interface AutomatedPricingConfig {
     freeRetainment?: number;
     freeBuyQuantitySmoothingMaxExtra?: number;
     freeRetainmentSmoothingMaxExtra?: number;
+    sellProductionSmoothing?: number;
 
     targetSellThrough?: number;
     askVolumeFloorFraction?: number;

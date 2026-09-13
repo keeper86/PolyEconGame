@@ -16,6 +16,7 @@ import {
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
     PRICE_FLOOR,
+    SELL_PRODUCTION_SMOOTHING,
     SELL_THROUGH_EMA_ALPHA,
     SPRING_NORMALIZATION,
     TARGET_FILL_RATE,
@@ -31,7 +32,7 @@ import {
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import {
-    facilityMaintenanceRepairNeedPerTick,
+    facilityMaintenanceConsumptionPerTick,
     facilityRestorationCapacityPerTick,
 } from '../planet/facilityMaintenance';
 import type {
@@ -67,6 +68,7 @@ function resolveOfferConfig(config: AutomatedPricingConfig | undefined, resource
         automatedCostFloorBuffer: c.automatedCostFloorBuffer ?? AUTOMATED_COST_FLOOR_BUFFER,
         freeRetainment: c.freeRetainment ?? 0,
         freeRetainmentSmoothingMaxExtra: c.freeRetainmentSmoothingMaxExtra ?? FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
+        sellProductionSmoothing: c.sellProductionSmoothing ?? SELL_PRODUCTION_SMOOTHING,
     };
 }
 
@@ -182,7 +184,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 );
             }
 
-            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
+            adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, productionRate.get(resource.name) ?? 0);
         }
     }
 
@@ -207,7 +209,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         }
 
         offer.offerRetainment = 0;
-        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor);
+        adjustOfferPrice(offer, inventoryQty, initialPrice, costFloor, 0);
     }
 
     // ── Buy-side aggregated targets ─────────────────────────────────────────
@@ -270,7 +272,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
         if (isFacilityOperating(facility)) {
             const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
-            const facilityTarget = facilityMaintenanceRepairNeedPerTick(facility) * cfg.inputBufferTargetTicks;
+            const facilityTarget = facilityMaintenanceConsumptionPerTick(facility) * cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
@@ -460,6 +462,7 @@ export function adjustOfferPrice(
     inventoryQty: number,
     initialPrice: number,
     costFloor: number = PRICE_FLOOR,
+    productionRate: number = 0,
 ): void {
     const cfg = resolveOfferConfig(offer.autoConfig, offer.resource);
 
@@ -478,12 +481,14 @@ export function adjustOfferPrice(
     const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && offer.resource.form !== 'services') {
-        // Sell smoothing: offer surplus gradually over smoothing days,
-        // applies to both producers and non-producers.
-        // This prevents inventory dumps that cause totalSupply spikes
-        // which trick the PID into over-contracting.
-        const smoothingDays = Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
-        const perTick = Math.min(surplus, Math.max(100, surplus / smoothingDays));
+        // Producers anchor the offer to their production rate, not to the inventory, so a
+        // stockpile cannot inflate the retainment without bound. Non-producers (no production
+        // rate) fall back to spreading the surplus over the configured smoothing days to
+        // liquidate dead stock without dumping it in a single tick.
+        const perTick =
+            productionRate > 0
+                ? Math.min(surplus, productionRate * cfg.sellProductionSmoothing)
+                : Math.min(surplus, Math.max(100, surplus / Math.max(1, cfg.freeRetainmentSmoothingMaxExtra)));
         const effectiveRetainment = Math.max(rawRetainment, inventoryQty - perTick);
         offer.offerRetainment = Math.min(effectiveRetainment, inventoryQty);
     }
