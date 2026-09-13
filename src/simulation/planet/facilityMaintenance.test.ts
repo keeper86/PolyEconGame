@@ -247,6 +247,7 @@ describe('facilityMaintenanceTick', () => {
 
     it('degrades maxMaintenance after a full repair cycle', () => {
         const { gameState, planet, facility, storage } = setup();
+        quietStorageShells(storage);
         facility.maintenanceStatus = 0;
         facility.maxMaintenance = 1;
         facility.cumulativeRepairAcc = ALMOST_FULL_REPAIR_CYCLE;
@@ -310,6 +311,7 @@ describe('facilityMaintenanceTick', () => {
     it('accumulates repair cycles by restored condition fraction, not consumed services', () => {
         const scale = 10;
         const { gameState, planet, facility, storage } = setup({ scale });
+        quietStorageShells(storage);
         facility.maintenanceStatus = 0;
         facility.maxMaintenance = 1;
         facility.cumulativeRepairAcc = ALMOST_FULL_REPAIR_CYCLE;
@@ -326,6 +328,41 @@ describe('facilityMaintenanceTick', () => {
             ALMOST_FULL_REPAIR_CYCLE + FACILITY_MAINTENANCE_REPAIR_PER_TICK - 1,
             10,
         );
+    });
+
+    it('shares a scarce maintenance pool so no facility is starved by its position in getAllFacilities', () => {
+        const agent = makeAgent(AGENT_ID, PLANET_ID);
+        const assets = agent.assets[PLANET_ID]!;
+        assets.storage.department = null;
+
+        const production = makeProductionFacility({}, { id: 'factory', scale: 1 });
+        production.lastTickResults.overallEfficiency = 1;
+        production.maintenanceStatus = 0;
+        production.maxMaintenance = 1;
+
+        const hr = makeHRFacility({}, { id: 'hr', scale: 1 });
+        hr.lastTickResults.overallEfficiency = 1;
+        hr.maintenanceStatus = 0;
+        hr.maxMaintenance = 1;
+
+        assets.productionFacilities = [production];
+        assets.humanResourcesDepartment = hr;
+
+        const planet = makePlanet({ marketPrices: {} });
+        const gameState = makeGameState([planet], [agent]);
+        quietStorageShells(assets.storage);
+        seedService(
+            assets.storage,
+            maintenanceServiceResourceType,
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT,
+        );
+
+        facilityMaintenanceTick(gameState, planet);
+
+        expect(hr.lastTickMaintenanceConsumption).toBeGreaterThan(0);
+        expect(production.lastTickMaintenanceConsumption).toBeGreaterThan(0);
+        expect(hr.maintenanceStatus).toBeGreaterThan(0);
+        expect(production.maintenanceStatus).toBeGreaterThan(0);
     });
 
     it('records maintenance repair consumption in accounting', () => {

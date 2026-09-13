@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
@@ -18,11 +17,10 @@ import {
     SPRING_NORMALIZATION,
     TARGET_SELL_THROUGH,
     TARGET_SELL_THROUGH_SERVICES,
-    TICKS_PER_YEAR,
 } from '../constants';
 import { DEFAULT_WAGE_PER_EDU } from '../financial/financialTick';
 import { putIntoStorageFacility, shellFormOfResource } from '../planet/facility';
-import { facilityRestorationCapacityPerTick, facilityUsageFactor } from '../planet/facilityMaintenance';
+import { facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
 import type { AgentMarketOfferState, AutomatedPricingConfig } from '../planet/planet';
 import {
     clothingResourceType,
@@ -961,6 +959,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -975,18 +974,14 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
-        expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
+        const expectedBid = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+        expect(bid.bidStorageTarget).toBeCloseTo(expectedBid * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
     it('keeps the full bid quantity even when price is far above cost, anchored by the ceiling spring', () => {
         const facility = makeProductionFacility({ none: 1 }, { id: 'factory', scale: 10 });
         facility.needs = [];
         facility.produces = [{ resource: waterResourceType, quantity: 100 }];
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 100 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -1013,11 +1008,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
         // no quantity throttle: the full storage target is bid regardless of the market price
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
         // the bid price itself is pulled down by the ceiling spring (bid far above the ceiling)
@@ -1063,6 +1054,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             progress: 0,
             lastTickInvestedConstructionServices: 0,
         };
+        facility.maintenanceStatus = 0.95;
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
         planet.lastProductionCostFloors[maintenanceServiceResourceType.name] = 2;
@@ -1078,11 +1070,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         const expectedRate =
-            (facility.scale *
-                facilityUsageFactor(facility) *
-                FACILITY_MAINTENANCE_DECREASE_PER_YEAR *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT) /
-            TICKS_PER_YEAR;
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 

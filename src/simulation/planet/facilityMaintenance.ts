@@ -74,36 +74,44 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
         if (!assets) {
             return;
         }
-        for (const facility of getAllFacilities(assets)) {
+        const facilities = getAllFacilities(assets);
+        const available = queryStorageFacility(assets.storage, maintenanceServiceResourceType.name);
+        let totalDesired = 0;
+        for (const facility of facilities) {
             facility.lastTickMaintenanceConsumption = 0;
             facility.lastTickRestorationConsumption = 0;
             if (!isFacilityOperating(facility)) {
                 continue;
             }
-            applyFacilityMaintenance(facility, assets, planet);
+            totalDesired += facilityMaintenanceRepairNeedPerTick(facility);
+        }
+        const ration = totalDesired > 0 ? Math.min(1, available / totalDesired) : 0;
+        for (const facility of facilities) {
+            if (!isFacilityOperating(facility)) {
+                continue;
+            }
+            applyFacilityRepair(facility, assets, planet, ration);
             applyFacilityRestoration(facility, assets, planet);
         }
     });
 }
 
-function applyFacilityMaintenance(facility: Facility, assets: AgentPlanetAssets, planet: Planet): void {
+function applyFacilityWear(facility: Facility): void {
     const usageFactor = facilityUsageFactor(facility);
     facility.maintenanceStatus = Math.max(
         0,
         facility.maintenanceStatus - (usageFactor * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR,
     );
+}
 
-    const repairCap = Math.max(0, facility.maxMaintenance - facility.maintenanceStatus);
-    if (repairCap <= 0) {
+function applyFacilityRepair(facility: Facility, assets: AgentPlanetAssets, planet: Planet, ration: number): void {
+    const desired = facilityMaintenanceRepairNeedPerTick(facility);
+    applyFacilityWear(facility);
+    if (desired <= 0 || ration <= 0) {
         return;
     }
 
-    const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
-    const consumed = removeFromStorageFacility(
-        assets.storage,
-        maintenanceServiceResourceType.name,
-        repairFraction * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale,
-    );
+    const consumed = removeFromStorageFacility(assets.storage, maintenanceServiceResourceType.name, desired * ration);
     facility.lastTickMaintenanceConsumption = consumed;
     if (consumed <= 0) {
         return;
