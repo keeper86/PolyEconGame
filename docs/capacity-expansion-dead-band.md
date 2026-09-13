@@ -1,11 +1,12 @@
-# Capacity dead band, the plastic chokepoint, and the fatal grocery stock-out
+# Capacity dead band, the plastic chokepoint, and the fatal grocery shortfall
 
-Two failure modes seen on the `singleAgent` 8B / 1000x benchmark, plus one chronic degradation.
-They are easy to conflate; keep them apart.
+Three things seen on the `singleAgent` 8B / 1000x benchmark. They are easy to conflate; keep them
+apart.
 
 - **Chronic**: the capacity dead band, which stalls expansions for decades (sections 3-4).
 - **Degrading**: the plastic chokepoint, which blacks out maintenance and ratchets condition down.
-- **Fatal**: a grocery stock-out, which starves the population before maintenance is involved.
+- **Fatal**: a sustained grocery shortfall fed by an intermittent beverage input, which drains
+  the grocery buffer and starves the population while maintenance is still healthy.
 
 ## Symptom: the recurring condition collapse
 
@@ -102,31 +103,57 @@ year of maintenance loses condition, and `maxMaintenance` ratchets down irrevers
 clamped to it. Each episode permanently lowers the achievable condition of every facility, so
 repeated plastic episodes compound.
 
-## Two separate failures, do not conflate them
+## The fatal mechanism: a beverage-input shortfall drains the grocery buffer
 
-The episodes above degrade the economy but do not by themselves end it. Run `gate098-6000y`
-eventually died differently, and the distinction matters:
+Run `gate098-6000y` died at y224 with condition near 1.0 and maintenance healthy, so maintenance
+is a victim of the extinction, not its cause. A per-tick probe of the same run window (resumed
+from the y400 checkpoint with `TICK_PROBE=1`) shows what actually kills it.
+
+Monthly view (from `series.csv`):
 
 ```
-year    pop(B)   aFacCond  groceryBuffer  groceryFillRate  maintPlasticEff  maintOutput
-221.58  25.59    0.9972    0.823          1.000            1.0000           124,972,077
-221.92  25.65    0.9958    0.000          0.000            1.0000           126,522,480
-222.17  22.32    0.9955    0.000          0.000            1.0000            80,909,208
-223.00  15.04    0.9952    0.000          0.000            1.0000            84,561,481
-224.00   0.00    0.8475    0.000          0.000            1.0000                     0
+year    grocDemand    grocSupply    fill   buffer   beverFill
+427.83  4,913,994,290  2,861,015,297  0.582  0.036    1.000
+428.33  3,349,854,385    384,264,981  0.115  0.548    0.000
+428.75  2,940,811,106  2,961,405,814  1.000  0.741    0.053
+429.00  4,445,422,073  2,242,752,599  0.505  0.139    0.061
+429.50  3,413,939,315  1,031,361,282  0.012  0.510    0.434
 ```
 
-Condition stays near 1.0 and maintenance output stays healthy (126M, plastic efficiency 1.0)
-while 26.8B people starve in about two years. The trigger is `groceryBuffer` going from 0.823 to
-exactly 0 within a tick, taking `groceryFillRate` to 0.
+Grocery supply (~2.8e9) sits persistently below demand (~4.3e9) for months, so the buffer
+drains 0.74 -> 0.14 and the population falls 87.2B -> 82.9B. The grocery chain is input-limited:
+`market_Beverage_fillRate` is intermittently exactly 0.
 
-Maintenance output only reaches 0 once the population, and therefore the labour force, is gone.
-So **maintenance is a victim of the extinction, not its cause**, and the capacity dead band is a
-chronic degradation, not the fatal mechanism.
+Important measurement trap: `groceryTotalSupply` reads exactly 0 in the monthly series at some
+ticks, which looks like a month-long market outage. Per-tick data from the probe shows the
+opposite:
 
-The fatal mechanism is a grocery stock-out: the buffer is allowed to reach exactly zero, and a
-single tick at `groceryFillRate = 0` kills the starving cohort immediately because there is no
-multi-year dampening on food mortality. That is the failure to chase next.
+```
+window y429.000-429.083 (one month, 31 ticks):
+  effQty0 == 0  :  1 tick
+  effQty0  > 0  : 30 ticks, mean offer 2.78e9
+whole probe window: 0.9% of ticks have a zero offer
+```
+
+The grocery chain sells its whole inventory on most ticks and therefore has nothing to offer on
+the next one. Zero offers are sparse single-tick events, not month-long outages; a monthly
+sampler can land on one and misreport the month. **Read per-tick data before concluding a market
+failed.** The starvation is real, but it comes from a sustained stock deficit, not from a supply
+outage or an order-book fault.
+
+The chain is therefore:
+
+```
+beverage production intermittently fails (beverageFill = 0)
+-> grocery chain cannot produce enough service
+-> grocery supply < demand sustained for months
+-> grocery buffer drains -> starvation
+```
+
+This is the same shape as the plastic episode: one upstream input fails intermittently, the
+downstream service cannot buffer (it decays), and the deficit passes straight through to the
+population. The buffer reaching zero is the fatal step, because mortality has no multi-year
+dampening.
 
 ## Ruled out
 
@@ -137,10 +164,13 @@ multi-year dampening on food mortality. That is the failure to chase next.
   agents' own targets, and the bid quantity is a multi-tick buffer, so a fill rate below 1 does
   not mean unmet tick need. The apparent contradiction (huge unsold supply beside unfilled
   demand) follows from the producer being oversized, not from the targets.
-- **A price gap.** The price explosion during the episode follows from supply hitting exactly
+- **A price gap.** The price explosion during the maintenance episode follows from supply hitting
   zero, not from a bid/ask spread. Supply recovers within months once plastic returns.
 - **Capacity being too small.** The maintenance facility carries 4-6x demand-to-supply headroom
   for the first 80 years. It is oversized, not undersized.
+- **Month-long market outages.** `groceryTotalSupply = 0` in the monthly series is a sampling
+  artifact: only 0.9% of ticks actually place no offer, and the zero months shown above contain
+  30 selling ticks out of 31. Before concluding that a market failed, read per-tick data.
 
 ## Fix and open work
 
