@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { TICKS_PER_YEAR } from '../constants';
-import { computeEnvironmentalMortality, computeMortalityProbabilityPerTick, mortalityComponentsPerTick } from './mortality';
+import {
+    computeEnvironmentalMortality,
+    computeMortalityProbabilityPerTick,
+    mortalityComponentsPerTick,
+} from './mortality';
 import { convertAnnualToPerTick } from '../utils/convertAnnualToPerTick';
 
 describe('convertAnnualToPerTick', () => {

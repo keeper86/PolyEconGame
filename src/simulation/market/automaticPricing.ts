@@ -31,10 +31,7 @@ import {
 } from '../planet/automaticProductionScale/runtimeConfig';
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
-import {
-    facilityMaintenanceRepairDeficit,
-    facilityRestorationCapacityPerTick,
-} from '../planet/facilityMaintenance';
+import { facilityMaintenanceRepairDeficit, facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
 import type {
     Agent,
     AgentMarketBidState,
