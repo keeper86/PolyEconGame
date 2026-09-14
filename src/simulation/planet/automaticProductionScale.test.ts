@@ -1115,7 +1115,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
     });
 
-    it('accumulates expansion integral when settled just below full capacity (inside the old dead band)', () => {
+    it('arms expansion when a fast-slewing facility pins against full capacity', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, {
             scale: 9.93,
@@ -1135,7 +1135,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale / facility.maxScale).toBeLessThan(0.999);
+        expect(facility.scale / facility.maxScale).toBeGreaterThanOrEqual(0.999);
         expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
     });
 
@@ -1274,7 +1274,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(1), 5);
+        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(12), 5);
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {

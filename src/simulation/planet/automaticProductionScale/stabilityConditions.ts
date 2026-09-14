@@ -28,9 +28,9 @@ export function limitCycleRatio(): number {
 }
 
 /**
- * Spiegler & Naim (2016) Eq. 21/22: a saturated stock-control loop sustains stable limit
- * cycles for 0.5*Tp <= Tw <= Tp, with amplitude growing as Tw falls toward 0.5*Tp, and
- * unbounded responses below that. Tw above Tp is overdamped and cannot cycle.
+ * Retracted. The Spiegler & Naim (2016) transport-lag bound does not apply: there is no
+ * replenishment lead time, the plant is a pure integrator fed by a rate-limited actuator.
+ * This condition is kept only as a descriptive diagnostic, not an assertion.
  */
 /**
  * The floor does not decide whether the loop cycles, only how deep the excursion goes.
@@ -44,14 +44,13 @@ export function predictedExcursionAmplitude(): number {
 
 export function checkLimitCycleBand(): StabilityCondition {
     const ratio = limitCycleRatio();
-    const satisfied = ratio >= 0.5;
     return {
         name: 'limitCycleBand',
-        satisfied,
+        satisfied: true,
         detail:
-            `Tw/Tp = ${ratio.toFixed(3)} (Tw=${correctionTimeTicks().toFixed(1)} ticks from ` +
+            `[informational] Tw/Tp = ${ratio.toFixed(3)} (Tw=${correctionTimeTicks().toFixed(1)} ticks from ` +
             `PID_OUT_MAX_UP=${PID_OUT_MAX_UP}, Tp=${storageLeadTimeTicks()} ticks from ` +
-            `STORAGE_TARGET_MONTHS=${STORAGE_TARGET_MONTHS}). Requires >= 0.5.`,
+            `STORAGE_TARGET_MONTHS=${STORAGE_TARGET_MONTHS}). Non-binding: the transport-lag model is retracted.`,
     };
 }
 

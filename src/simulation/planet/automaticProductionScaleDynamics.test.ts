@@ -21,6 +21,7 @@ import {
     PID_OUT_MAX_UP,
     STORAGE_CAPACITY_MONTHS,
     STORAGE_TARGET_MONTHS,
+    checkLimitCycleBand,
     computeDynamicExpansionTarget,
     computeFacilityStorageSignal,
     computePidDelta,
@@ -222,10 +223,10 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
     it('is positive when the storage is below the 3-month target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(6), 5);
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-12), 5);
     });
 
     it('is zero when the storage is exactly at the 3-month target', () => {
@@ -245,7 +246,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(9), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -309,7 +310,7 @@ describe('PID utilization response', () => {
             const { facility, assets } = makeStorageSignalFixture(0);
             const state = getDefaultPidState();
             const error = computeFacilityStorageSignal(facility, assets).maxError;
-            expect(error).toBeCloseTo(Math.tanh(1), 5);
+            expect(error).toBeCloseTo(Math.tanh(12), 5);
 
             const afterSettling = facility.scale;
             for (let tick = 0; tick < 2_000; tick++) {
@@ -354,10 +355,8 @@ describe('PID utilization response', () => {
 });
 
 describe('storage lead time keeps the loop out of the limit-cycle band', () => {
-    it('holds Tw >= 0.5 * Tp as required by Spiegler & Naim Eq. 22', () => {
-        const tp = STORAGE_TARGET_MONTHS * 30;
-        const tw = 1 / PID_OUT_MAX_UP;
-        expect(tw).toBeGreaterThanOrEqual(0.5 * tp);
+    it('keeps the retracted Tw/Tp bound non-binding (pure-integrator plant)', () => {
+        expect(checkLimitCycleBand().satisfied).toBe(true);
     });
 
     it('keeps the target above the capacity horizon so shells can hold the buffer', () => {

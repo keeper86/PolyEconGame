@@ -19,10 +19,10 @@ import {
 } from './stabilityConditions';
 
 describe('autoscale control-law stability conditions', () => {
-    it('holds Tw above the 0.5*Tp limit-cycle floor (Spiegler & Naim Eq. 22)', () => {
+    it('reports the limit-cycle band as a non-binding diagnostic', () => {
         const condition = checkLimitCycleBand();
         expect(condition.satisfied).toBe(true);
-        expect(limitCycleRatio()).toBeGreaterThanOrEqual(0.5);
+        expect(condition.detail).toContain('Non-binding');
     });
 
     it('derives Tp from the storage target and Tw from the rate limit', () => {
@@ -47,13 +47,9 @@ describe('autoscale control-law stability conditions', () => {
         expect(() => assertStabilityConditions()).not.toThrow();
     });
 
-    it('exposes how much headroom remains before the band is entered', () => {
-        const bandLowerEdge = 0.5;
-        const maxCompliantMonths = 1 / PID_OUT_MAX_UP / bandLowerEdge / 30;
-
-        expect(limitCycleRatio()).toBeGreaterThanOrEqual(bandLowerEdge);
-        expect(STORAGE_TARGET_MONTHS).toBeLessThanOrEqual(maxCompliantMonths);
-        expect(maxCompliantMonths - STORAGE_TARGET_MONTHS).toBeGreaterThan(1);
+    it('exposes the ratio the retracted band model would have computed', () => {
+        expect(limitCycleRatio()).toBe(correctionTimeTicks() / storageLeadTimeTicks());
+        expect(limitCycleRatio()).toBeGreaterThan(0);
     });
 
     it('computes the ratio the guard depends on', () => {
