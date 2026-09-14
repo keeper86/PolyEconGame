@@ -13,6 +13,7 @@ import {
     setServiceSellThroughTarget,
     setStorageSpaceClampEnabled,
     setMinScaleFraction,
+    setExpansionAtCapacityFraction,
     setStorageTargetMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
@@ -480,6 +481,11 @@ async function main(): Promise<void> {
     if (minScaleFractionArg !== undefined) {
         setMinScaleFraction(Number(minScaleFractionArg));
         console.log(`min scale fraction overridden to ${minScaleFractionArg}`);
+    }
+    const expansionAtCapacityFractionArg = arg('expansionAtCapacityFraction');
+    if (expansionAtCapacityFractionArg !== undefined) {
+        setExpansionAtCapacityFraction(Number(expansionAtCapacityFractionArg));
+        console.log(`expansion at-capacity fraction overridden to ${expansionAtCapacityFractionArg}`);
     }
     const serviceSellThroughArg = arg('serviceSellThrough');
     if (serviceSellThroughArg !== undefined) {

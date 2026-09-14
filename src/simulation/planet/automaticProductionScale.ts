@@ -47,6 +47,7 @@ import {
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    SOFT_FLOOR_RELAXATION,
     STORAGE_CONTRACTION_RATE,
     STORAGE_EXPANSION_RATE,
     STORAGE_STARVATION_EXPANSION_MAX,
@@ -54,6 +55,7 @@ import {
 import {
     getContractionIntegralThreshold,
     getExpansionIntegralThreshold,
+    getExpansionAtCapacityFraction,
     getMinScaleFraction,
 } from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
@@ -394,13 +396,18 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
             const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
-            const newScale = Math.max(minScale, Math.min(facility.maxScale, facility.scale + delta));
+            let newScale = facility.scale + delta;
+            if (newScale < minScale) {
+                newScale = minScale - (minScale - newScale) * SOFT_FLOOR_RELAXATION;
+                newScale = Math.max(0, newScale);
+            }
+            newScale = Math.min(facility.maxScale, newScale);
             facility.scale = newScale;
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
-            const atMaxScale = facility.scale >= facility.maxScale * EXPANSION_AT_CAPACITY_FRACTION;
+            const atMaxScale = facility.scale >= facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
             const atMinScale = facility.scale <= minScale;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {

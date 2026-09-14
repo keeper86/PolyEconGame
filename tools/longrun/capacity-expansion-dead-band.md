@@ -418,3 +418,23 @@ shrinks further and the (unchanged) 0.25 floor sits lower, widening the operatin
 bang-bang relay is still present and still visits the floor, but it is no longer fatal. Next candidate,
 if we want to remove the oscillation itself, is the `MIN_SCALE_FRACTION` floor / the rate-limited
 integrating signal - now a benign amplitude question, not a survival question.
+
+### Step 2: soft lower bound (SOFT_FLOOR_RELAXATION = 0.5)
+
+Replaced the hard `Math.max(minScale, ...)` floor with a soft one: below `minScale` the downward
+delta is attenuated by `SOFT_FLOOR_RELAXATION` (0.5) instead of being clamped, never below zero.
+This removes the relaxation wall the scale slams into, which fed the floor-to-ceiling relay. Run
+`pid-softfloor-200y`, baseline for this step is `pid-remhack-200y` (condition holds at ~0.99, no
+starvation). Prediction: the operating fraction stops pinning at exactly 0.25 and idles more
+graduated; the relay amplitude (fuel swing ~32x on remhack) should shrink. Not a survival question
+anymore - this is about taming the remaining bang-bang.
+
+### Step 3: soft ceiling via EXPANSION_AT_CAPACITY_FRACTION 0.98 -> 0.85
+
+The top wall was still hard: `EXPANSION_AT_CAPACITY_FRACTION=0.98` meant the plant had to be
+pinned at the ceiling before expansion could arm, which *incentivised* dwelling at maxScale (the
+softfloor run showed ceiling dwell rise to 66%). Lowering the gate to 0.85 arms growth while the
+plant is 85% utilised, so capacity grows before the scale slams into the ceiling. Runs:
+`pid-softfloor-200y` (soft floor only, 0.98) vs `pid-softfloor-0.85-200y` (soft floor + soft
+ceiling), baseline `pid-remhack-200y`. Prediction: ceiling dwell falls from ~66% toward the transit
+band, and the operating scale stops gluing to 1.0.

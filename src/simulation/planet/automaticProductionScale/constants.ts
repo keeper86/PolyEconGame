@@ -12,6 +12,15 @@ export const STORAGE_STARVATION_EXPANSION_MAX = 0.05;
  */
 export const MIN_SCALE_FRACTION = 0.25;
 
+/**
+ * Soft lower bound on operating scale. A hard Math.max(minScale, ...) makes the scale slam into
+ * the floor and sit there (a relaxation wall), which is what feeds the floor-to-ceiling relay.
+ * With a soft floor the downward delta is attenuated below minScale instead of clamped, so the
+ * facility can idle deeper with less authority instead of over-supplying against a wall. 0 = hard
+ * floor (old behaviour), 1 = no floor. It never drives scale below zero.
+ */
+export const SOFT_FLOOR_RELAXATION = 0.5;
+
 export const PID_KP = 0.01;
 
 export const PID_KI = 0.0001;
@@ -43,13 +52,14 @@ export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.1;
 
 /**
  * A facility only arms an expansion when its operating scale has reached this fraction of its
- * capacity. The PID's proportional term saturates at signal ~0.5 (PID_KP=0.01 against
- * PID_OUT_MAX=0.005), so a facility can settle a hair below full capacity and freeze there: its
- * signal decays to zero, the D term leaks off geometrically, and scale stops moving within
- * float64 resolution. A 0.999 threshold sat inside that frozen band and blocked expansion for
- * decades. 0.98 sits clear of the band a settled facility actually occupies.
+ * capacity. This is the soft-ceiling knob: the higher the fraction, the harder the operating
+ * scale must be pressed against maxScale before growth becomes eligible, which incentivises
+ * dwelling at the ceiling. A 0.999 threshold sat inside the PID's frozen band and blocked
+ * expansion for decades (a settled facility freezes just below full capacity). 0.85 arms growth
+ * while the plant is still 85% utilised, so capacity grows before the scale has to slam into the
+ * ceiling - trading a little idle-capacity slack for a much softer upper bound.
  */
-export const EXPANSION_AT_CAPACITY_FRACTION = 0.98;
+export const EXPANSION_AT_CAPACITY_FRACTION = 0.85;
 
 export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
 export const CONTRACTION_INTEGRAL_THRESHOLD = 15;
