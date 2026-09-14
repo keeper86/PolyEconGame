@@ -12,12 +12,12 @@ export const STORAGE_STARVATION_EXPANSION_MAX = 0.05;
  */
 export const MIN_SCALE_FRACTION = 0.25;
 
-export const PID_KP = 0.1;
+export const PID_KP = 0.01;
 
-export const PID_KI = 0.001;
+export const PID_KI = 0.0001;
 
-export const PID_KD = 0.01;
-export const PID_IMAX = 0.025;
+export const PID_KD = 0.001;
+export const PID_IMAX = 0.0025;
 
 // Spiegler & Naim (2016) Eq. 21/22: a saturated stock-control loop limit cycles when the
 // correction time constant Tw falls below half the replenishment lead time Tp. Tp is
@@ -43,7 +43,7 @@ export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.1;
 
 /**
  * A facility only arms an expansion when its operating scale has reached this fraction of its
- * capacity. The PID's proportional term saturates at signal ~0.05 (PID_KP=0.1 against
+ * capacity. The PID's proportional term saturates at signal ~0.5 (PID_KP=0.01 against
  * PID_OUT_MAX=0.005), so a facility can settle a hair below full capacity and freeze there: its
  * signal decays to zero, the D term leaks off geometrically, and scale stops moving within
  * float64 resolution. A 0.999 threshold sat inside that frozen band and blocked expansion for
@@ -52,9 +52,9 @@ export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.1;
 export const EXPANSION_AT_CAPACITY_FRACTION = 0.98;
 
 export const MAX_SCALE_CONTRACT_FRACTION = 0.005;
-export const CONTRACTION_INTEGRAL_THRESHOLD = 30;
+export const CONTRACTION_INTEGRAL_THRESHOLD = 15;
 export const CONTRACTION_INTEGRAL_MAX = 180;
-export const CONTRACTION_INTEGRAL_DECAY = 0.5;
+export const CONTRACTION_INTEGRAL_DECAY = 0.05;
 
 export const STORAGE_EXPANSION_RATE = 0.2;
 export const STORAGE_CONTRACTION_RATE = 0.1;

@@ -13,6 +13,7 @@ import {
 } from '../utils/testHelper';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
+    CONTRACTION_INTEGRAL_THRESHOLD,
     EXPANSION_INTEGRAL_THRESHOLD,
     PID_KP,
     STORAGE_TARGET_FILL_RATE,
@@ -814,7 +815,7 @@ describe('updateAgentProductionScale', () => {
             scale: 10,
             maxScale: 100,
             pidState: {
-                contractionIntegral: 30,
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD, 
                 integral: 0,
                 prevError: 0,
                 filteredError: 0,
@@ -1894,7 +1895,7 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: 0,
-                contractionIntegral: 30,
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD, 
                 smoothedSignal: 0,
             },
         });

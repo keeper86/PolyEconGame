@@ -22,10 +22,6 @@ export function computePidDelta(signal: number, state: PidState): number {
     const D = PID_KD * (state.filteredError - state.prevError);
     state.prevError = state.filteredError;
 
-    if (signal > 0 && state.integral < 0) {
-        state.integral = 0;
-    }
-
     const tentativeOutput = P + state.integral + D;
     const outSat = Math.max(-outMaxDown, Math.min(outMaxUp, tentativeOutput));
     const saturatedUp = signal > 0 && outSat >= outMaxUp;

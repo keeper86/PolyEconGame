@@ -225,3 +225,196 @@ The gate relaxation is necessary but not sufficient:
   arm, so the gate is not the only blocker.
 - **Services have no capacity-headroom term** in the flow signal, so a saturated service facility
   registers need only after it has already failed to meet demand.
+
+## The slow oscillator is the fuel refinery's capacity controller
+
+The long-run sawtooth (condition 0.99 -> 0.78 -> 0.99 on a 4-35y period) is driven by the fuel
+refinery, not by the fast bid cycle. Fuel is the input of `logisticsHub`
+(`{fuel, 90}/tick`), logistics is the input of the whole population-facing chain, so a fuel
+collapse propagates: `fuelFill = 0 -> logiSupply = 0 -> logiUnfilled = 100% of demand -> condition
+collapse`. On run `head-6000y` the fuel refinery scale swings **mean 4.6M, min 0.33M, max 30.6M
+(cv 1.16)**; the same pattern appears as `market_Fuel_fillRate = 0` exactly whenever
+`market_Logistics_supply = 0`.
+
+### It is not scarcity
+
+`oilReservoirLeft` moves 209e9 -> 93e9 over 400 years (no depletion), `crudeFill` is often 1.000
+while `fuelFill = 0.000`, and `fuelPrice` stays 2-5 (only 204/236 by year 380+). The fuel refinery
+is never starved of crude and never sees a scarcity price. The oscillation is in the **controller**.
+
+### Two separate variables: operating `scale` (flow) and capacity `maxScale` (ratchet)
+
+The autoscale block holds two distinct quantities and they must not be conflated:
+
+- **Operating `scale`** is the continuous flow, updated every tick as
+  `scale += computePidDelta(signal, state) * maxScale`, clamped to
+  `[MIN_SCALE_FRACTION * maxScale, maxScale]` (`automaticProductionScale.ts`). Both rate limits are
+  symmetric: `PID_OUT_MAX_UP = PID_OUT_MAX_DOWN = 0.005`, and the PID output saturates for any
+  `|signal| >= 0.005 / PID_KP = 0.05`. So `scale` is a **rate-limited ramp that saturates in both
+  directions** — a relay, travelling the whole legal range `[0.25, 1.0]` per cycle.
+- **Capacity `maxScale`** changes only by the gated expansion jump (`EXPANSION_AT_CAPACITY_FRACTION`,
+  expansion integral threshold, funds) plus the rare `processFacilityContraction`. It is a
+  **monotone ratchet upward** in normal operation.
+
+Facilities where both columns exist show the relay dwell (fraction of months within 1% of a clamp):
+
+```
+ironSmelter : at ceiling 57.2%  at floor 16.0%  mid 26.8%
+sandMine    : at ceiling 73.6%  at floor  3.1%  mid 23.3%
+coalMine    : at ceiling 69.4%  at floor 11.1%  mid 19.6%
+ironMine    : at ceiling 66.9%  at floor 15.5%  mid 17.7%
+```
+
+60-75% of the time the operating scale is pinned at the ceiling and only 18-27% is in transit; the
+amplitude is set by the clamps (`floor/ceiling = 1/MIN_SCALE_FRACTION = 4.0`, measured 4.0-4.4x),
+not by a dynamic gain.
+
+### The cycle grows because maxScale ratchets past demand
+
+The relay amplitude is fixed, but the capacity ratchet is not. `ironSmelter` in the window
+y260-300 shows `operScale/maxScale` slamming between 1.000 and 0.250 while `maxScale` only rises
+(2.98M -> 3.08M -> 3.37M -> 4.07M). As capacity ratchets up on the surplus half of each cycle and
+never comes back down, the plant converges to a fast, shallow relay: the peak keeps climbing
+(fuel refinery 1.3M -> 29M, 22x) while the period collapses (34y -> 4y).
+
+```
+ #   y     trough      peak      period
+ 1   99.2      928585   2077778    34.4
+ 2  208.2     1951082   3756399   108.9
+ 9  282.8     1808098   7944166    10.7
+14  402.2     7555187  19425729     9.3
+20  428.1     6929030  29271668     3.9
+```
+
+### Measured return-map eigenvalue: the cycle sits on the unit circle
+
+`tools/_cycle_gain.py` fits the sampled return map
+`x_k = (scale/maxScale, ln maxScale)` at deep troughs, in the sense of Flieller/Riedinger/Louis,
+"Computation and stability of Limit Cycles in Hybrid Systems": a hybrid limit cycle is locally
+stable iff the eigenvalues of the sampled map's Jacobian lie **inside** the unit circle. The trough
+`scale/maxScale` is pinned to the `MIN_SCALE_FRACTION` floor (median exactly 0.2500 for
+`ironSmelter`), so that coordinate is constant on the attractor and the cycle is effectively a 1-D
+map in `ln(maxScale)`; its gain is the ratchet entry `a11`.
+
+Per facility on `head-6000y`:
+
+```
+facility      cycles  period1  periodN   |lambda|   verdict    A
+ironSmelter      73      4.9      3.6      1.004   UNSTABLE   [[0.227,0.013],[0.076,1.003]]
+sandMine         75      3.6      3.5      0.969   stable     [[0.244,-0.048],[0.022,0.970]]
+coalMine         56      3.9      2.1      0.970   stable     [[0.260,-0.059],[0.027,0.972]]
+ironMine         53      4.3      7.0      0.988   stable     [[-0.053,-0.028],[0.464,1.000]]
+```
+
+Sweeping every long-run series that carries the `(Scale, MaxScale)` pair
+(`tools/_cycle_gain_sweep.py`, 339 facility-cycles over 113 runs) gives **median |lambda| = 0.982,
+83/339 above 1.0** (the excess above 1.0 is concentrated in short runs where the OLS fit is
+ill-conditioned). Restricting to well-sampled long runs (>= 600y) gives **median 0.980, 35/56 in
+[0.95, 1.05], 5/56 above 1.0**. The scatter is facility- and seed-dependent and straddles the unit
+circle.
+
+So the cycle is not strongly unstable; it is **marginally stable, sitting on the unit circle**. That
+is why the period random-walks (34y -> 4y, then back) instead of either locking or diverging: a
+marginal eigenvalue plus noise gives exactly the wandering period and slowly rising peak we see.
+The `period_gain` (median 1.02-1.04) is the weak second mode, the sensitivity of the state to the
+switching times in the paper's `dx/dt_i` term.
+
+### Fix implied
+
+The relay amplitude is not the problem; the **capacity ratchet** is. `maxScale` changes in only
+~1.3% of months (67/5276 for `ironSmelter`), median +5-10% per change, net 12-19x over the run, and
+the down-steps are rare (28-70 over the whole run against 39-55 up-steps on the same columns). Gated
+expansion fires whenever the operating scale has been pegged at the ceiling with a positive signal,
+so a plant that is momentarily short ratchets capacity up, and the down-path almost never undoes it
+when the surplus half of the cycle arrives. Because the marginal eigenvalue is at 1, the smallest
+push moves a run between the stable and unstable side. Two levers, in order of expected effect:
+
+- **Give the ratchet a down-path.** Capacity contraction is gated behind
+  `CONTRACTION_INTEGRAL_THRESHOLD` and bounded by the tiny `MAX_SCALE_CONTRACT_FRACTION = 0.005`,
+  so it effectively never fires. A capacity that can only grow turns each surplus half-cycle into
+  permanent oversupply and shrinks the period toward the relay's own transit time.
+- **Damp the relay so it stops pegging the clamp.** The PID saturates for `|signal| >= 0.5` after the
+  PID_KP rescale, so the operating scale is bang-bang rather than proportional, and `atMaxScale` arms the expansion jump
+  almost every time the signal turns positive. A wider proportional band (smaller `PID_KP` relative
+  to `PID_OUT_MAX`) or a dead-band around the ceiling would stop the short-lived peaks from arming
+  expansions.
+
+### Applied
+
+PID gains rescaled 10x to widen the linear band (Spiegler & Naim 5.4, the "lower-than-unity pure
+gain" compensation). PID_KP 0.1 to 0.01, PID_KI 0.001 to 0.0001, PID_KD 0.01 to 0.001,
+PID_IMAX 0.025 to 0.0025. PID_OUT_MAX stays 0.005 (bounded by the output buffer), so the
+saturation point moves from |signal| about 0.05 to about 0.5: the controller now runs in its
+proportional region over the operating range and the floor clamp engages far less, which is the
+paper's recipe for removing the limit cycle rather than merely damping it. The Tw/Tp guard is
+unchanged because it derives from PID_OUT_MAX_UP, not the gains.
+
+### Storage shrink is lethal (negative result)
+
+A 200-year 10M single-agent control at `STORAGE_TARGET_MONTHS=12` survives to the end (condition
+drops to 0.613 but population lives) and reproduces the fuel/logistics/condition collapse at y160-180.
+The same run with `--storageTargetMonths=6` (the Spiegler-Naim "overdamped" side of the Tw/Tp
+band, Tw/Tp = 200/180 = 1.11) goes **population extinct at y94.7**. The 6-month buffer was not the
+problem: it was the cushion. Shrinking it halved the inventory a facility holds, so a brief logistics
+fill flicker (0.87-0.99, the same relay that is always present) drains the grocery buffer in about one
+year and the population starves to zero. The single-echelon OUT-policy stability band does not
+transfer to this multi-echelon buffered chain: the 12-month target is load-bearing and must not be
+reduced. The fuel/relay oscillation is not removed by shorter lead time, only the resilience to it.
+
+### Phase-plane probe: it is a relaxation oscillator, not a relay (prediction falsified)
+
+`TICK_PROBE=1` per-tick `(smoothedSignal, scaleFrac)` for the fuel refinery (60y single-agent run,
+`pid-probe-60y`) shows the true mechanism, and it is a **rate-limited integrator with symmetric
+clamps**, not relay-with-hysteresis. I predicted "rate-limited ramp, no hysteresis, on/off at the
+same threshold" — half right, and the wrong half is informative:
+
+- The operating scale is a ramp capped at `+/-PID_OUT_MAX` (measured max per-tick dscaleFrac =
+  0.00500 exactly) and welded to the `MIN_SCALE_FRACTION` floor (0.2500) and the `maxScale` ceiling.
+- There is **no hysteresis**: the on/off threshold is the same in both directions — the scale starts
+  climbing when `signal` crosses zero positive and starts falling when it crosses zero negative.
+- What looks like hysteresis is **dead time**: the signal `softClip = tanh` saturates and is pinned at
+  about `-0.083` (its running minimum) for the whole descent, so the scale slams into the floor and
+  sits there while the (saturated) signal slowly re-integrates through zero.
+- The escape is not capacity contraction: `contractionIntegral` never arms (stays ~0), `maxScale`
+  stays fixed, and the scale only climbs again when the demand signal crosses positive.
+
+So the bang-bang is a **relaxation oscillation**: a slow integrating signal (saturated by tanh,
+so the controller loses all proportional information past |error| ~ 2.5x target) driving a
+rate-limited, clamp-bounded scale. The known fix for a relaxation oscillator is to remove the
+saturation that makes it slow-fast: drop `softClip`'s tanh so the error stays linear, and/or soften
+the `MIN_SCALE_FRACTION` wall, so the controller pulls back proportionally instead of slamming
+clamp-to-clamp.
+
+### Removed A1 + rebalanced C2 (step 1)
+
+Two hacks removed/balanced, based on the phase-plane + `contractionIntegral` evidence:
+
+- **A1 removed**: the one-sided cross-zero reset `if (signal>0 && integral<0) integral=0` in
+  `computePidDelta` is gone. It was the "heal too much contraction" guard that wiped a wound-down
+  negative integral the instant demand returned, so the down-path could never accumulate.
+- **C2 rebalanced**: `CONTRACTION_INTEGRAL_DECAY` 0.5 -> 0.05 (now symmetric with expansion, so the
+  contraction integral no longer leaks away 10x faster than it charges) and
+  `CONTRACTION_INTEGRAL_THRESHOLD` 30 -> 15 (the measured peak was 29.9, one tick short of firing).
+
+`MIN_SCALE_FRACTION` floor, `PID_KP` rescale and the expansion-side guards are untouched. Control is
+`pid-retune-200y` (12-month, condition collapsed to 0.613 but population survived); experiment is
+`pid-remhack-200y`. Prediction: capacity contraction now actually fires, so the fuel refinery stops
+being welded to the 0.25 floor and the up-only ratchet asymmetry is removed.
+
+### Result: A1 + C2 fix removes the lethal cascade (condition holds)
+
+`pid-remhack-200y` vs control `pid-retune-200y`, both 200y 10M single-agent:
+
+```
+                   min condition   final condition   max logiUnfilled   fuel swing
+control (old hacks)    0.613           0.613           5.42e7            18x
+experiment (fix)       0.989           0.996           2.39e7            32x
+```
+
+Prediction scorecard: **right** that the up-only ratchet was what made a transient shortage
+lethal (condition no longer collapses, 0.989 floor vs 0.613). **Wrong** that the relay amplitude
+would shrink: the fuel swing went 18x -> 32x because capacity contraction now works, so `maxScale`
+shrinks further and the (unchanged) 0.25 floor sits lower, widening the operating-scale swing. The
+bang-bang relay is still present and still visits the floor, but it is no longer fatal. Next candidate,
+if we want to remove the oscillation itself, is the `MIN_SCALE_FRACTION` floor / the rate-limited
+integrating signal - now a benign amplitude question, not a survival question.

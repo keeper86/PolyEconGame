@@ -87,6 +87,18 @@ const COLUMNS = [
     'sold1',
     'effQty1',
     'retain1',
+    'buyInv0',
+    'buyTarget0',
+    'buyEff0',
+    'buyFill0',
+    'buyPrice0',
+    'buyInv1',
+    'buyTarget1',
+    'buyEff1',
+    'buyFill1',
+    'buyPrice1',
+    'agentDeposits',
+    'agentRevenue',
 ];
 
 let started = false;
@@ -118,6 +130,22 @@ function row(
     const [r0, i0, t0, e0] = perOutput(0);
     const [r1, i1, t1, e1] = perOutput(1);
     const [r2, i2, t2, e2] = perOutput(2);
+    const perInput = (i: number): [number, number, number, number, number] => {
+        const need = facility.needs[i];
+        if (!need) {
+            return [0, 0, 0, 0, 0];
+        }
+        const bid = assets.market.buy[need.resource.name];
+        return [
+            queryStorageFacility(assets.storage, need.resource.name, false),
+            bid?.bidStorageTarget ?? 0,
+            bid?.lastEffectiveQty ?? 0,
+            bid?.smoothedFillRate ?? 0,
+            bid?.bidPrice ?? 0,
+        ];
+    };
+    const bid0 = perInput(0);
+    const bid1 = perInput(1);
     const pid = facility.pidState;
     return [
         String(tick),
@@ -149,6 +177,18 @@ function row(
         ...inputEfficiencies(facility),
         ...sellDiagnostics(assets, outputs[0]?.resource.name),
         ...sellDiagnostics(assets, outputs[1]?.resource.name),
+        bid0[0].toFixed(2),
+        bid0[1].toFixed(2),
+        bid0[2].toFixed(2),
+        bid0[3].toFixed(5),
+        bid0[4].toFixed(4),
+        bid1[0].toFixed(2),
+        bid1[1].toFixed(2),
+        bid1[2].toFixed(2),
+        bid1[3].toFixed(5),
+        bid1[4].toFixed(4),
+        assets.deposits.toFixed(2),
+        (facility.lastTickResults.revenue ?? 0).toFixed(2),
     ].join(',');
 }
 
