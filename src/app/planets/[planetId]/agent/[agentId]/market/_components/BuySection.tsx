@@ -105,7 +105,7 @@ function buyStatus(
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
-    const fillRate = lastBought && diagnostics.shortfall > 0 ? lastBought / diagnostics.shortfall : 0;
+    const fillRate = diagnostics.smoothedFillRate;
     const noSupply = (overviewRow?.totalSupply ?? 0) <= 0;
     const lowPrice = diagnostics.newBidPrice < diagnostics.marketPrice;
 
@@ -629,7 +629,7 @@ export default function BuySection({
                                             )}
                                             committed={committedVal(committedConfig, 'targetFillRate')}
                                             min={0.1}
-                                            max={1.0}
+                                            max={2}
                                             step={0.05}
                                             isPercent
                                             onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}

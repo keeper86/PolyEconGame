@@ -41,7 +41,7 @@ export const PRICING_DEFAULTS: PricingParams = {
     priceAdjustMaxUp: 1.05,
     priceAdjustMaxDown: 0.95,
     costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
-    targetSellThrough: 0.6,
+    targetSellThrough: 1.0,
     automatedCostFloorBuffer: 1.5,
     bidOfferMaxCostMultiplier: 6,
     outputBufferTicks: 0,
@@ -230,15 +230,19 @@ function computePidDelta(signal: number, state: PidState, params: PidParams): nu
 
 // ── Pricing (extracted from automaticPricing.ts) ─────────────────────────────
 
-function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, sellThrough));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxUp - 1);
-    } else {
-        const t = clamped / target;
+function sellThroughFactor(
+    sellThrough: number,
+    target: number,
+    maxUp: number,
+    maxDown: number,
+    smoothing: number,
+): number {
+    if (sellThrough <= target) {
+        const t = target > 0 ? sellThrough / target : 0;
         return maxDown + t * (1 - maxDown);
     }
+    const t = Math.min(1, (sellThrough - target) / Math.max(1e-4, smoothing - target));
+    return 1 + t * (maxUp - 1);
 }
 
 function computeOfferPrice(
@@ -269,6 +273,7 @@ function computeOfferPrice(
                 params.targetSellThrough,
                 params.priceAdjustMaxUp,
                 params.priceAdjustMaxDown,
+                1,
             );
             return Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, currentPrice * factor));
         }
@@ -281,6 +286,7 @@ function computeOfferPrice(
         params.targetSellThrough,
         params.priceAdjustMaxUp,
         params.priceAdjustMaxDown,
+        1,
     );
 
     const brakeZoneTop = costFloor * params.automatedCostFloorBuffer;
@@ -291,15 +297,13 @@ function computeOfferPrice(
     return Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
 }
 
-function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, fillRate));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxDown - 1);
-    } else {
-        const t = clamped / target;
+function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number, smoothing: number): number {
+    if (fillRate <= target) {
+        const t = target > 0 ? fillRate / target : 0;
         return maxUp + t * (1 - maxUp);
     }
+    const t = Math.min(1, (fillRate - target) / Math.max(1e-4, smoothing - target));
+    return 1 + t * (maxDown - 1);
 }
 
 function computeBidPrice(
@@ -331,6 +335,7 @@ function computeBidPrice(
         params.targetSellThrough,
         params.priceAdjustMaxUp,
         params.priceAdjustMaxDown,
+        1,
     );
 
     const overDeviation = Math.sqrt(Math.max(0, currentBidPrice / ceilingPrice - 1));

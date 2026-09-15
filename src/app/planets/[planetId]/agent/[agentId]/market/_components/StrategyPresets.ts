@@ -178,7 +178,7 @@ export const PRICING_BUY_PRESETS: Record<Exclude<PricingPresetType, 'custom'>, P
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         costSpringStrength: f2(DEFAULT_COST_SPRING_STRENGTH * 1.67),
-        targetFillRate: f2(Math.min(1, TARGET_FILL_RATE * 1.06)),
+        targetFillRate: f2(Math.min(2, TARGET_FILL_RATE * 1.06)),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
     },
 };
@@ -203,7 +203,7 @@ const PRICING_BUY_PRESETS_SERVICES: Record<Exclude<PricingPresetType, 'custom'>,
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP * 1.1),
         priceAdjustMaxDown: f2(1 - (1 - PRICE_ADJUST_MAX_DOWN) * 0.6),
         costSpringStrength: f2(DEFAULT_COST_SPRING_STRENGTH * 1.67),
-        targetFillRate: f2(Math.min(1, TARGET_FILL_RATE_SERVICES * 1.04)),
+        targetFillRate: f2(Math.min(2, TARGET_FILL_RATE_SERVICES * 1.04)),
         bidOfferMaxCostMultiplier: String(Math.round(BID_OFFER_MAX_COST_MULTIPLIER * 1.67)),
     },
 };
@@ -228,7 +228,7 @@ export const PRICING_SELL_PRESETS: Record<Exclude<SellPricingPresetType, 'custom
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
         costSpringStrength: f2(DEFAULT_COST_SPRING_STRENGTH * 0.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
-        targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH * 1.06)),
+        targetSellThrough: f2(Math.min(2, TARGET_SELL_THROUGH * 1.06)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),
@@ -253,7 +253,7 @@ const PRICING_SELL_PRESETS_SERVICES: Record<Exclude<SellPricingPresetType, 'cust
         priceAdjustMaxDown: f2(PRICE_ADJUST_MAX_DOWN * 0.84),
         costSpringStrength: f2(DEFAULT_COST_SPRING_STRENGTH * 0.67),
         automatedCostFloorBuffer: f2(AUTOMATED_COST_FLOOR_BUFFER * 0.67),
-        targetSellThrough: f2(Math.min(1, TARGET_SELL_THROUGH_SERVICES * 1.04)),
+        targetSellThrough: f2(Math.min(2, TARGET_SELL_THROUGH_SERVICES * 1.04)),
     },
     'market-rate': {
         priceAdjustMaxUp: f2(PRICE_ADJUST_MAX_UP),

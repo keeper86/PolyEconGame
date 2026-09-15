@@ -443,15 +443,20 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
 
 // ── Sell-side helpers ─────────────────────────────────────────────────────────
 
-export function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, sellThrough));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxUp - 1);
-    } else {
-        const t = clamped / target;
+export function sellThroughFactor(
+    sellThrough: number,
+    target: number,
+    maxUp: number,
+    maxDown: number,
+    smoothing: number,
+): number {
+    if (sellThrough <= target) {
+        const t = target > 0 ? sellThrough / target : 0;
         return maxDown + t * (1 - maxDown);
     }
+    const range = Math.max(EPSILON, smoothing - target);
+    const t = Math.min(1, (sellThrough - target) / range);
+    return 1 + t * (maxUp - 1);
 }
 
 export function adjustOfferPrice(
@@ -495,25 +500,28 @@ export function adjustOfferPrice(
     const effectiveQuantity = Math.max(0, inventoryQty - retainment);
     const oldPrice = price;
     const targetSellThrough = cfg.targetSellThrough ?? TARGET_SELL_THROUGH;
+    const sellSmoothing = productionRate > 0 ? cfg.sellProductionSmoothing : cfg.freeRetainmentSmoothingMaxExtra;
 
     if (effectiveQuantity < EPSILON) {
         if (sold > 0 && price > 0) {
             // Stockout: everything that could be offered was sold. This is a discrete
             // signal rather than a rate measurement, so do not smooth it.
             const rawSellThrough = 1;
-            offer.smoothedSellThrough = rawSellThrough;
+            const normalizedSellThrough = rawSellThrough * sellSmoothing;
+            offer.smoothedSellThrough = normalizedSellThrough;
             const factor = sellThroughFactor(
-                rawSellThrough,
+                normalizedSellThrough,
                 targetSellThrough,
                 cfg.priceAdjustMaxUp,
                 cfg.priceAdjustMaxDown,
+                sellSmoothing,
             );
             const newPrice = price * factor;
             const clamped = Math.min(PRICE_CEIL, Math.max(PRICE_FLOOR, newPrice));
             offer.offerPrice = clamped;
             offer.diagnostics = {
                 sellThroughRate: rawSellThrough,
-                smoothedSellThrough: rawSellThrough,
+                smoothedSellThrough: normalizedSellThrough,
                 targetSellThrough,
                 baseFactor: factor,
                 costSpringDeviation: 0,
@@ -535,16 +543,18 @@ export function adjustOfferPrice(
     offer.offerRetainment = Math.max(retainment, inventoryQty - effectiveQuantity);
 
     const rawSellThrough = Math.min(1, Math.max(0, sold / effectiveQuantity));
+    const normalizedSellThrough = rawSellThrough * sellSmoothing;
     const smoothedSellThrough =
         offer.smoothedSellThrough === undefined
-            ? rawSellThrough
-            : SELL_THROUGH_EMA_ALPHA * rawSellThrough + (1 - SELL_THROUGH_EMA_ALPHA) * offer.smoothedSellThrough;
+            ? normalizedSellThrough
+            : SELL_THROUGH_EMA_ALPHA * normalizedSellThrough + (1 - SELL_THROUGH_EMA_ALPHA) * offer.smoothedSellThrough;
     offer.smoothedSellThrough = smoothedSellThrough;
     const factor = sellThroughFactor(
         smoothedSellThrough,
         targetSellThrough,
         cfg.priceAdjustMaxUp,
         cfg.priceAdjustMaxDown,
+        sellSmoothing,
     );
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
@@ -577,15 +587,20 @@ export function adjustOfferPrice(
 
 // ── Buy-side helpers ──────────────────────────────────────────────────────────
 
-export function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, fillRate));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxDown - 1);
-    } else {
-        const t = clamped / target;
+export function fillRateFactor(
+    fillRate: number,
+    target: number,
+    maxUp: number,
+    maxDown: number,
+    smoothing: number,
+): number {
+    if (fillRate <= target) {
+        const t = target > 0 ? fillRate / target : 0;
         return maxUp + t * (1 - maxUp);
     }
+    const range = Math.max(EPSILON, smoothing - target);
+    const t = Math.min(1, (fillRate - target) / range);
+    return 1 + t * (maxDown - 1);
 }
 
 function adjustBidPrice(
@@ -632,10 +647,12 @@ function adjustBidPrice(
 
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
     const rawFillRate = lastDemanded > 0 ? Math.min(1, Math.max(0, lastBought / lastDemanded)) : 1;
+    const buySmoothing = bid.resource.form === 'services' ? 1 : 1 + cfg.inventorySmoothingMaxExtra;
+    const normalizedFillRate = rawFillRate * buySmoothing;
     const smoothedFillRate =
         bid.smoothedFillRate === undefined
-            ? rawFillRate
-            : FILL_RATE_EMA_ALPHA * rawFillRate + (1 - FILL_RATE_EMA_ALPHA) * bid.smoothedFillRate;
+            ? normalizedFillRate
+            : FILL_RATE_EMA_ALPHA * normalizedFillRate + (1 - FILL_RATE_EMA_ALPHA) * bid.smoothedFillRate;
     bid.smoothedFillRate = smoothedFillRate;
 
     const baseFactor = fillRateFactor(
@@ -643,6 +660,7 @@ function adjustBidPrice(
         cfg.targetFillRate,
         cfg.priceAdjustMaxUp,
         cfg.priceAdjustMaxDown,
+        buySmoothing,
     );
 
     const overDeviation = Math.sqrt(Math.max(0, bid.bidPrice / ceilingPrice - 1));

@@ -690,6 +690,11 @@ export default function MultiProductPriceChart({
                                                                     {tooltipLabelFormatter(label as number)}
                                                                 </div>
                                                                 {payload
+                                                                    .sort(
+                                                                        (a, b) =>
+                                                                            ((a.value as number) ?? 0) -
+                                                                            ((b.value as number) ?? 0),
+                                                                    )
                                                                     .map((p) => (
                                                                         <div
                                                                             key={p.name}

@@ -332,9 +332,9 @@ describe('automaticPricing — offer price tâtonnement', () => {
         const STOCK = 1000;
         const sold = STOCK * TARGET_SELL_THROUGH;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, sold, STOCK);
-        // Disable sell-smoothing for this test: set smoothing=1 so all surplus is offered
+        // Disable sell-smoothing for this test: set sellProductionSmoothing=1 so all surplus is offered
         const offer = agent.assets[PLANET_ID].market!.sell[WATER]!;
-        offer.autoConfig = { ...offer.autoConfig, freeRetainmentSmoothingMaxExtra: 1 };
+        offer.autoConfig = { ...offer.autoConfig, sellProductionSmoothing: 1 };
 
         automaticPricing(new Map([['co', agent]]), planet);
 
@@ -407,11 +407,12 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         const offer = {
             resource: goodsResource,
             offerPrice: 10,
-            lastSold: 60,
+            lastSold: 100,
             autoConfig: {
                 automatedCostFloorBuffer: 2,
                 costSpringStrength: 0.05,
-                targetSellThrough: 0.6,
+                targetSellThrough: 1,
+                freeRetainmentSmoothingMaxExtra: 1,
             },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 20);
@@ -419,7 +420,7 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         // price/cost = 0.5, brakeZoneTop = 40 → deviation = sqrt(40/10 - 1) = sqrt(3)
         const deviation = Math.sqrt(3);
         expect(offer.diagnostics!.costSpringDeviation).toBeCloseTo(deviation, 10);
-        // sell-through 0.6 equals the target → factor = 1, spring alone pushes the price up
+        // sell-through 1.0 equals the target → factor = 1, spring alone pushes the price up
         expect(offer.diagnostics!.baseFactor).toBeCloseTo(1, 10);
         expect(offer.offerPrice).toBeCloseTo(10 * (1 + 0.05 * SPRING_NORMALIZATION * deviation), 10);
         expect(offer.offerPrice).toBeGreaterThan(10);
@@ -468,7 +469,8 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
             autoConfig: {
                 automatedCostFloorBuffer: 2,
                 costSpringStrength: 0.05,
-                targetSellThrough: 0.6,
+                targetSellThrough: 1,
+                freeRetainmentSmoothingMaxExtra: 1,
             },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
@@ -476,7 +478,7 @@ describe('adjustOfferPrice — cost spring (soft minAsk)', () => {
         // price/cost = 5 ≥ buffer → deviation = 0 → netFactor is exactly the sell-through factor
         expect(offer.diagnostics!.costSpringDeviation).toBe(0);
         expect(offer.diagnostics!.netFactor).toBeCloseTo(offer.diagnostics!.baseFactor, 10);
-        // sell-through 0.4 < target 0.6 → price falls
+        // sell-through 0.4 < target 1.0 → price falls
         expect(offer.offerPrice).toBeLessThan(10);
     });
 
@@ -516,7 +518,7 @@ describe('automaticPricing — EMA smoothing', () => {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 50,
-            autoConfig: { askVolumeFloorFraction: 1 },
+            autoConfig: { askVolumeFloorFraction: 1, freeRetainmentSmoothingMaxExtra: 1 },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.smoothedSellThrough).toBeCloseTo(0.5, 10);
@@ -529,7 +531,7 @@ describe('automaticPricing — EMA smoothing', () => {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 90,
-            autoConfig: { askVolumeFloorFraction: 1 },
+            autoConfig: { askVolumeFloorFraction: 1, freeRetainmentSmoothingMaxExtra: 1 },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
         expect(offer.smoothedSellThrough).toBeCloseTo(0.9, 10);
@@ -550,6 +552,7 @@ describe('automaticPricing — EMA smoothing', () => {
             resource: goodsResource,
             offerPrice: 10,
             lastSold: 95,
+            autoConfig: { freeRetainmentSmoothingMaxExtra: 1 },
         } as unknown as AgentMarketOfferState;
         adjustOfferPrice(offer, 100, 10, 2);
 
@@ -593,14 +596,14 @@ describe('automaticPricing — EMA smoothing', () => {
 
         automaticPricing(new Map([['co', agent]]), planet);
         const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
-        expect(bid.smoothedFillRate).toBeCloseTo(0.5, 10);
+        expect(bid.smoothedFillRate).toBeCloseTo(1.5, 10);
         expect(bid.diagnostics!.fillRate).toBeCloseTo(0.5, 10);
-        expect(bid.diagnostics!.smoothedFillRate).toBeCloseTo(0.5, 10);
+        expect(bid.diagnostics!.smoothedFillRate).toBeCloseTo(1.5, 10);
 
         bid.lastBought = 10;
         bid.lastEffectiveQty = 10;
         automaticPricing(new Map([['co', agent]]), planet);
-        const expected = FILL_RATE_EMA_ALPHA * 1.0 + (1 - FILL_RATE_EMA_ALPHA) * 0.5;
+        const expected = FILL_RATE_EMA_ALPHA * 3.0 + (1 - FILL_RATE_EMA_ALPHA) * 1.5;
         expect(bid.smoothedFillRate).toBeCloseTo(expected, 10);
     });
 });
@@ -1316,7 +1319,7 @@ describe('automaticPricing — profitabilityGap multiplicatively dampens but nev
                 [lumberResourceType.name]: {
                     resource: lumberResourceType,
                     bidPrice: 50,
-                    lastBought: 5,
+                    lastBought: 1,
                     lastEffectiveQty: 10,
                     automated: true,
                 },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRICE_CEIL, PRICE_FLOOR } from '../constants';
+import { PRICE_CEIL, PRICE_FLOOR, THEORETICAL_PRODUCTION_COST_FACTOR } from '../constants';
 import { makePlanet } from '../utils/testHelper';
 import { coalResourceType, waterResourceType } from './resources';
 import {
@@ -20,6 +20,18 @@ describe('updateProductionCostFloors', () => {
         // coalMine: 52 workers at wage 1, only a land-bound input priced at 0
         const inputAndWageCostPerUnit = 52 / 500;
         expect(floorFor(planet, coalResourceType.name)).toBeGreaterThan(inputAndWageCostPerUnit);
+    });
+
+    it('scales the theoretical production cost by the 1.3 factor', () => {
+        const planet = makePlanet();
+        updateProductionCostFloors(planet);
+
+        // coalMine: 52 workers at wage 1, only a land-bound input priced at 0.
+        // The floor must cover at least the wage cost, scaled by the productivity factor.
+        const inputAndWageCostPerUnit = 52 / 500;
+        expect(floorFor(planet, coalResourceType.name)).toBeGreaterThanOrEqual(
+            inputAndWageCostPerUnit * THEORETICAL_PRODUCTION_COST_FACTOR,
+        );
     });
 
     it('passes storage department input costs into the floor of mass-heavy goods', () => {

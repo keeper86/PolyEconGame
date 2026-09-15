@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     TARGET_FILL_RATE_SERVICES,
@@ -150,33 +151,34 @@ function simulateServiceBufferFill({
         const filled = Math.min(shortfall, production);
         buffer = Math.min(capacity, buffer + filled);
         fillRate = shortfall > 0 ? filled / shortfall : 1;
-        priceFactor = fillRateFactor(fillRate, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        priceFactor = fillRateFactor(
+            fillRate,
+            TARGET_FILL_RATE_SERVICES,
+            PRICE_ADJUST_MAX_UP,
+            PRICE_ADJUST_MAX_DOWN,
+            1,
+        );
     }
     return { fillRate, priceFactor };
 }
 
 describe('fillRateFactor', () => {
-    it('pushes the bid price up below target and down above target', () => {
-        expect(fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN)).toBeCloseTo(
-            1.05,
+    it('pushes the bid price up below target, neutral at target, and down above target', () => {
+        const target = TARGET_FILL_RATE_SERVICES;
+        const goodsSmoothing = 1 + INVENTORY_SMOOTHING_MAX_EXTRA;
+        expect(fillRateFactor(0, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing)).toBeCloseTo(1.05);
+        expect(fillRateFactor(target, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing)).toBeCloseTo(
+            1,
         );
         expect(
-            fillRateFactor(
-                TARGET_FILL_RATE_SERVICES,
-                TARGET_FILL_RATE_SERVICES,
-                PRICE_ADJUST_MAX_UP,
-                PRICE_ADJUST_MAX_DOWN,
-            ),
-        ).toBeCloseTo(1);
-        expect(fillRateFactor(1, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN)).toBeCloseTo(
-            0.95,
-        );
+            fillRateFactor(goodsSmoothing, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing),
+        ).toBeCloseTo(0.95);
     });
 });
 
 describe('bid price runaway', () => {
     it('doubles the bid price every ~14 ticks at zero fill rate', () => {
-        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, 1);
         const doublingTicks = Math.log(2) / Math.log(factor);
         expect(doublingTicks).toBeCloseTo(14.2, 0);
     });
@@ -191,7 +193,7 @@ describe('service buffer fill dynamics', () => {
     it('buffer target of 1 tick fills to 100% at 1x production and stops compounding', () => {
         const { fillRate, priceFactor } = simulateServiceBufferFill({ bufferTargetTicks: 1, productionRatio: 1 });
         expect(fillRate).toBeCloseTo(1);
-        expect(priceFactor).toBeLessThan(1);
+        expect(priceFactor).toBeLessThanOrEqual(1);
     });
 
     it('buffer target of 3 ticks stalls at ~33% fill at 1x production and compounds forever', () => {
@@ -413,7 +415,7 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
 
 describe('the race between price and supply', () => {
     it('price more than quadruples during the time it takes to arm one <=30% expansion', () => {
-        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, 1);
         const doublingTicks = Math.log(2) / Math.log(factor);
         expect(EXPANSION_INTEGRAL_THRESHOLD / doublingTicks).toBeGreaterThan(2);
     });

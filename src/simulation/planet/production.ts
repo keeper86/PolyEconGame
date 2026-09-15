@@ -4,6 +4,7 @@ import {
     PRICE_CEIL,
     PRICE_FLOOR,
     SERVICE_DEPRECIATION_COST_MULTIPLIER,
+    THEORETICAL_PRODUCTION_COST_FACTOR,
     TICKS_PER_YEAR,
 } from '../constants';
 import type { EducationLevelType } from '../population/education';
@@ -375,9 +376,10 @@ function accumulateTheoreticalCostFloor(
     costAccum: Map<string, number>,
 ): void {
     const totalCostPerUnit =
-        facilityInputCostPerTick(facility, planet) +
-        facilityWageCostPerTick(facility, planet) +
-        auxiliaryCostPerTick(facility, rates);
+        (facilityInputCostPerTick(facility, planet) +
+            facilityWageCostPerTick(facility, planet) +
+            auxiliaryCostPerTick(facility, rates)) *
+        THEORETICAL_PRODUCTION_COST_FACTOR;
 
     for (const output of facility.produces) {
         if (output.quantity <= 0) {
