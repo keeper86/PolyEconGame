@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import type { AgentPlanetAssets, GameState } from '../../src/simulation/planet/planet';
 import { getAllFacilities } from '../../src/simulation/planet/planet';
-import { queryStorageFacility } from '../../src/simulation/planet/facility';
+import { getTransportStarvation, queryStorageFacility } from '../../src/simulation/planet/facility';
 import type { ProductionFacility } from '../../src/simulation/planet/facility';
 import { TICKS_PER_YEAR, TICKS_PER_MONTH } from '../../src/simulation/constants';
 import { STORAGE_TARGET_MONTHS } from '../../src/simulation/planet/automaticProductionScale/constants';
@@ -29,6 +29,10 @@ const TARGETS = [
     'Beverage Plant',
     'Food Processor',
     'Packaging Plant',
+    'Coal Mine',
+    'Iron Mine',
+    'Copper Smelter',
+    'Plastics Factory',
 ] as const;
 
 const COLUMNS = [
@@ -99,6 +103,29 @@ const COLUMNS = [
     'buyPrice1',
     'agentDeposits',
     'agentRevenue',
+    'rawSignal',
+    'pidDelta',
+    'maintenanceStatus',
+    'constructionType',
+    'constructionProgress',
+    'need0Name',
+    'need0Buffer',
+    'need0Required',
+    'need0Eff',
+    'need1Name',
+    'need1Buffer',
+    'need1Required',
+    'need1Eff',
+    'need2Name',
+    'need2Buffer',
+    'need2Required',
+    'need2Eff',
+    'lastProduced0',
+    'lastProduced1',
+    'lastProduced2',
+    'agentId',
+    'hrProductivityMultiplier',
+    'transportStarvation',
 ];
 
 let started = false;
@@ -114,6 +141,7 @@ function row(
     tick: number,
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
+    agentId: string,
 ): string {
     const outputs = facility.produces;
     const targetMonths = STORAGE_TARGET_MONTHS;
@@ -147,6 +175,22 @@ function row(
     const bid0 = perInput(0);
     const bid1 = perInput(1);
     const pid = facility.pidState;
+    const needDiag = (i: number): [string, string, string, string] => {
+        const need = facility.needs[i];
+        if (!need) {
+            return ['', '', '', ''];
+        }
+        return [
+            need.resource.name.replace(/ /g, '_'),
+            queryStorageFacility(assets.storage, need.resource.name, false).toFixed(2),
+            (need.quantity * facility.scale).toFixed(2),
+            (facility.lastTickResults?.resourceEfficiency?.[need.resource.name] ?? 1).toFixed(5),
+        ];
+    };
+    const produced = (i: number): number => {
+        const out = outputs[i];
+        return out ? (facility.lastTickResults?.lastProduced?.[out.resource.name] ?? 0) : 0;
+    };
     return [
         String(tick),
         (tick / TICKS_PER_YEAR).toFixed(3),
@@ -189,6 +233,22 @@ function row(
         bid1[4].toFixed(4),
         assets.deposits.toFixed(2),
         (facility.lastTickResults.revenue ?? 0).toFixed(2),
+        (pid?.lastRawSignal ?? 0).toFixed(5),
+        (pid?.lastDelta ?? 0).toFixed(6),
+        (facility.maintenanceStatus ?? 1).toFixed(4),
+        facility.construction?.type ?? '',
+        facility.construction
+            ? (facility.construction.progress / Math.max(1e-9, facility.construction.totalConstructionServiceRequired)).toFixed(4)
+            : '',
+        ...needDiag(0),
+        ...needDiag(1),
+        ...needDiag(2),
+        produced(0).toFixed(2),
+        produced(1).toFixed(2),
+        produced(2).toFixed(2),
+        agentId,
+        (assets.hrProductivityMultiplier ?? 1).toFixed(4),
+        getTransportStarvation(assets.storage).toFixed(4),
     ].join(',');
 }
 
@@ -257,7 +317,7 @@ export function tickProbe(gameState: GameState, outDir: string): void {
                 if (!TARGETS.includes(p.name as (typeof TARGETS)[number])) {
                     continue;
                 }
-                lines.push(row(gameState.tick, p, assets));
+                lines.push(row(gameState.tick, p, assets, agent.id));
             }
         }
     }

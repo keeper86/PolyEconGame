@@ -10,6 +10,7 @@ let serviceSellThroughTarget: number | null = null;
 let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
 let productionSignalEmaAlpha: number | null = null;
+let storageErrorZoomMonths: number | null = null;
 
 export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
     storageSpaceClampEnabled = enabled;
@@ -55,6 +56,10 @@ export const setProductionSignalEmaAlpha = (value: number | null): void => {
     productionSignalEmaAlpha = value;
 };
 
+export const setStorageErrorZoomMonths = (value: number | null): void => {
+    storageErrorZoomMonths = value;
+};
+
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
 export const getPidOutMaxDown = (): number | null => pidOutMaxDown;
 export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
@@ -67,3 +72,4 @@ export const getServiceSellThroughTarget = (): number | null => serviceSellThrou
 export const getServiceFillRateTarget = (): number | null => serviceFillRateTarget;
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
 export const getProductionSignalEmaAlpha = (): number | null => productionSignalEmaAlpha;
+export const getStorageErrorZoomMonths = (): number | null => storageErrorZoomMonths;

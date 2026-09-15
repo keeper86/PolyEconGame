@@ -401,6 +401,8 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
+            state.lastRawSignal = rawSignal;
+            state.lastDelta = delta;
             const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
             let newScale = facility.scale + delta;
             if (newScale < minScale) {

@@ -134,6 +134,8 @@ export type PidState = {
     expansionIntegral: number;
     contractionIntegral: number;
     smoothedSignal: number;
+    lastRawSignal: number;
+    lastDelta: number;
     flowProducedEMA?: number;
     flowClearedEMA?: number;
     flowUnfilledEMA?: number;

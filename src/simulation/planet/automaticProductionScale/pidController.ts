@@ -10,6 +10,8 @@ export function getDefaultPidState(): PidState {
         expansionIntegral: 0,
         contractionIntegral: 0,
         smoothedSignal: 0,
+        lastRawSignal: 0,
+        lastDelta: 0,
     };
 }
 
