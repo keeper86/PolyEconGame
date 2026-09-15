@@ -28,7 +28,7 @@ import { StorageStarvationBar } from './StorageStarvationBar';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
     const used = usageOfShell(shell);
-    const capacity = { volume: shell.capacity.volume * shell.scale, mass: shell.capacity.mass * shell.scale };
+    const capacity = { volume: shell.capacity.volume * shell.maxScale, mass: shell.capacity.mass * shell.maxScale };
     const volumePct = capacity.volume > 0 ? Math.min(1, used.volume / capacity.volume) : 0;
     const massPct = capacity.mass > 0 ? Math.min(1, used.mass / capacity.mass) : 0;
 

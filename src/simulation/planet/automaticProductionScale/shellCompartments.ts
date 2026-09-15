@@ -92,7 +92,7 @@ export const resolveFormShell = (
     footprint: StorageResidency[],
 ): CellAllocation => {
     const shell = storage.shells[form];
-    const allocation = allocateShellCells(shell, footprint, shell.scale);
+    const allocation = allocateShellCells(shell, footprint, shell.maxScale);
 
     const footprintNames = new Set(footprint.map((r) => r.name));
     for (const name of Object.keys(shell.compartments)) {

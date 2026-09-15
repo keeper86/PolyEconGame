@@ -26,6 +26,7 @@ import {
 } from './automaticProductionScale';
 import {
     DYNAMIC_EXPANSION_CAP_FRACTION,
+    EXPANSION_AT_CAPACITY_FRACTION,
     MIN_SCALE_FRACTION,
     STORAGE_TARGET_MONTHS,
 } from './automaticProductionScale/constants';
@@ -1135,7 +1136,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale / facility.maxScale).toBeGreaterThanOrEqual(0.999);
+        expect(facility.scale / facility.maxScale).toBeGreaterThanOrEqual(EXPANSION_AT_CAPACITY_FRACTION);
         expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
     });
 
