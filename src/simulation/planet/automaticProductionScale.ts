@@ -57,6 +57,7 @@ import {
     getExpansionIntegralThreshold,
     getExpansionAtCapacityFraction,
     getMinScaleFraction,
+    getProductionSignalEmaAlpha,
 } from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -391,7 +392,12 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const maxError = computeFacilityStorageSignal(facility, assets).maxError;
             const storageSignal = maxError > 0 ? inputEfficiency * maxError : maxError;
 
-            const signal = serviceFlowSignal ? serviceFlowSignal.error : storageSignal;
+            const rawSignal = serviceFlowSignal ? serviceFlowSignal.error : storageSignal;
+            const signalEmaAlpha = getProductionSignalEmaAlpha();
+            const signal =
+                signalEmaAlpha !== null
+                    ? signalEmaAlpha * rawSignal + (1 - signalEmaAlpha) * state.smoothedSignal
+                    : rawSignal;
             state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
@@ -407,7 +413,9 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
-            const atMaxScale = facility.scale >= facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
+            const atMaxScale =
+                facility.scale >=
+                facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
             const atMinScale = facility.scale <= minScale;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
@@ -494,7 +502,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     facility,
                     assets,
                     state,
-                    signal,
+                    rawSignal,
                     signal,
                     delta,
                     dynamicThreshold,

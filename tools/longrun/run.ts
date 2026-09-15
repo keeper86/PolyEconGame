@@ -15,6 +15,7 @@ import {
     setMinScaleFraction,
     setExpansionAtCapacityFraction,
     setStorageTargetMonths,
+    setProductionSignalEmaAlpha,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -476,6 +477,11 @@ async function main(): Promise<void> {
     if (storageTargetMonthsArg !== undefined) {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
+    }
+    const productionSignalEmaAlphaArg = arg('productionSignalEmaAlpha');
+    if (productionSignalEmaAlphaArg !== undefined) {
+        setProductionSignalEmaAlpha(Number(productionSignalEmaAlphaArg));
+        console.log(`production signal EMA alpha overridden to ${productionSignalEmaAlphaArg}`);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {

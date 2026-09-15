@@ -30,6 +30,7 @@ import {
     MIN_SCALE_FRACTION,
     STORAGE_TARGET_MONTHS,
 } from './automaticProductionScale/constants';
+import { setProductionSignalEmaAlpha } from './automaticProductionScale/runtimeConfig';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
 import { shellFormOfResource } from './facility';
@@ -816,7 +817,7 @@ describe('updateAgentProductionScale', () => {
             scale: 10,
             maxScale: 100,
             pidState: {
-                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD, 
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD,
                 integral: 0,
                 prevError: 0,
                 filteredError: 0,
@@ -1276,6 +1277,26 @@ describe('updateAgentProductionScale', () => {
         updateAgentProductionScale(makeGameState(agents), planet);
 
         expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(12), 5);
+    });
+
+    it('applies EMA smoothing to the production signal when alpha is configured', () => {
+        setProductionSignalEmaAlpha(0.3);
+        try {
+            const planet = makePlanetWithAvg(
+                makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }),
+            );
+            const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
+            setStorageQuantity(agents, 0);
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+            const first = facility.pidState!.smoothedSignal;
+            expect(first).toBeCloseTo(0.3 * Math.tanh(12), 5);
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+            expect(facility.pidState!.smoothedSignal).toBeCloseTo(0.3 * Math.tanh(12) + 0.7 * first, 5);
+        } finally {
+            setProductionSignalEmaAlpha(null);
+        }
     });
 
     it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
@@ -1896,7 +1917,7 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: 0,
-                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD, 
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
             },
         });

@@ -202,7 +202,7 @@ describe('service buffer fill dynamics', () => {
 });
 
 describe('computeFacilityStorageSignal (own-production storage error)', () => {
-    // Storage target is STORAGE_TARGET_MONTHS (2) months × 30 ticks/month × maxScale 1 × produce 100/tick.
+    // Storage target is STORAGE_TARGET_MONTHS months × 30 ticks/month × maxScale 1 × produce 100/tick.
     const target = STORAGE_TARGET_MONTHS * 30 * 100;
 
     function makeStorageFixture(overrides?: { inventory?: number; producesTwoOutputs?: boolean }): {
@@ -221,7 +221,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         return { facility, assets };
     }
 
-    it('is positive when the storage is below the 3-month target and negative above', () => {
+    it('is positive when the storage is below the 12-month target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
         expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(6), 5);
 
@@ -229,7 +229,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-12), 5);
     });
 
-    it('is zero when the storage is exactly at the 3-month target', () => {
+    it('is zero when the storage is exactly at the 12-month target', () => {
         const fixture = makeStorageFixture({ inventory: target });
         expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBe(0);
     });
@@ -377,7 +377,7 @@ describe('capacity expansion arming', () => {
 });
 
 describe('computeDynamicExpansionTarget sizes the expansion to the storage deficit', () => {
-    it('targets the scale that refills the 3-month own-production storage target', () => {
+    it('targets the scale that refills the 12-month own-production storage target', () => {
         const { facility, planet } = createMaintenanceChainFixture({
             maxScale: 100,
             scale: 100,
@@ -387,14 +387,14 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
             productionFacilities: [facility],
         });
         setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, 4500);
-        // target = 3 months * 30 ticks * 100 maxScale * 1 quantity = 9000; inventory 4500 → deficit 4500.
-        // scaleForDemand = 4500 / 1 = 4500 → capped at the +10% absolute cap (110).
+        // target = 12 months * 30 ticks * 100 maxScale * 1 quantity = 36000; inventory 4500 → deficit 31500.
+        // scaleForDemand = 31500 / 1 = 31500 → capped at the +10% absolute cap (110).
         const target = computeDynamicExpansionTarget(facility, assets, planet, true, Infinity);
 
         expect(target).toBe(110);
     });
 
-    it('does not expand when the storage is already at the 3-month target', () => {
+    it('does not expand when the storage is already at the 12-month target', () => {
         const { facility, planet } = createMaintenanceChainFixture({
             maxScale: 100,
             scale: 100,
