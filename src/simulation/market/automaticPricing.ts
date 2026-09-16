@@ -398,8 +398,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             resource.form !== 'services'
         ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const smoothedDemand =
-                baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
+            const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
             totalShortfall = Math.min(totalShortfall, smoothedDemand);
         }
 
