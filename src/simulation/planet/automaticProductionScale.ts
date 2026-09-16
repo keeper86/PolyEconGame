@@ -67,6 +67,19 @@ import { computeFacilityStorageSignal } from './automaticProductionScale/signalC
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 
+export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
+    let newScale = currentScale + delta;
+    if (newScale < minScale) {
+        if (currentScale >= minScale) {
+            newScale = minScale - (minScale - newScale) * SOFT_FLOOR_RELAXATION;
+        } else if (delta < 0) {
+            newScale = currentScale + delta * SOFT_FLOOR_RELAXATION;
+        }
+        newScale = Math.max(0, newScale);
+    }
+    return Math.min(maxScale, newScale);
+}
+
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
 
@@ -394,13 +407,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             state.lastRawSignal = rawSignal;
             state.lastDelta = delta;
             const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
-            let newScale = facility.scale + delta;
-            if (newScale < minScale) {
-                newScale = minScale - (minScale - newScale) * SOFT_FLOOR_RELAXATION;
-                newScale = Math.max(0, newScale);
-            }
-            newScale = Math.min(facility.maxScale, newScale);
-            facility.scale = newScale;
+            facility.scale = applySoftFloorScale(facility.scale, delta, minScale, facility.maxScale);
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;

@@ -799,6 +799,21 @@ describe('adjustOfferPrice — production-anchored offer smoothing', () => {
         // surplus 10000 spread over 10 days -> 1000 offered
         expect(offer.diagnostics!.effectiveQuantity).toBeCloseTo(1000, 6);
     });
+
+    it('treats zero freeRetainmentSmoothingMaxExtra as one so a full sale raises the price', () => {
+        const offer = {
+            resource: goods,
+            offerPrice: 10,
+            lastSold: 100,
+            autoConfig: { freeRetainmentSmoothingMaxExtra: 0, targetSellThrough: 0.6 },
+        } as unknown as AgentMarketOfferState;
+
+        adjustOfferPrice(offer, 100, 10, 1, 0);
+
+        expect(offer.diagnostics!.sellThroughRate).toBeCloseTo(1, 10);
+        expect(offer.diagnostics!.smoothedSellThrough).toBeCloseTo(1, 10);
+        expect(offer.offerPrice).toBeGreaterThan(10);
+    });
 });
 
 // ── Existing tests ────────────────────────────────────────────────────────────

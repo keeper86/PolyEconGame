@@ -629,7 +629,7 @@ export default function BuySection({
                                             )}
                                             committed={committedVal(committedConfig, 'targetFillRate')}
                                             min={0.1}
-                                            max={2}
+                                            max={isService ? 1 : 2}
                                             step={0.05}
                                             isPercent
                                             onChange={(v) => handleSliderChange({ targetFillRate: String(v) })}

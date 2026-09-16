@@ -502,7 +502,7 @@ export function adjustOfferPrice(
             ? 1
             : productionRate > 0
               ? cfg.sellProductionSmoothing
-              : cfg.freeRetainmentSmoothingMaxExtra;
+              : Math.max(1, cfg.freeRetainmentSmoothingMaxExtra);
 
     if (effectiveQuantity < EPSILON) {
         if (sold > 0 && price > 0) {

@@ -16,8 +16,8 @@ import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrB
 import {
     CONTRACTION_INTEGRAL_THRESHOLD,
     EXPANSION_INTEGRAL_THRESHOLD,
-    PID_KP,
     STORAGE_TARGET_FILL_RATE,
+    applySoftFloorScale,
     computeStorageExpansionTarget,
     computeStorageSignal,
     findMaxAffordableScale,
@@ -28,6 +28,8 @@ import {
 import {
     DYNAMIC_EXPANSION_CAP_FRACTION,
     EXPANSION_AT_CAPACITY_FRACTION,
+    PID_OUT_MAX_UP,
+    SOFT_FLOOR_RELAXATION,
     STORAGE_TARGET_MONTHS,
 } from './automaticProductionScale/constants';
 import { setProductionSignalEmaAlpha } from './automaticProductionScale/runtimeConfig';
@@ -1047,7 +1049,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('integral accumulation causes larger scale changes over repeated ticks than a single proportional step', () => {
+    it('grows scale from below the floor at the slew-limited rate under sustained shortage', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 100 });
         setStorageQuantity(agents, 0);
@@ -1063,12 +1065,11 @@ describe('updateAgentProductionScale', () => {
         };
 
         const N = 20;
-        const singleStepScale = facility.maxScale * 0.1 + PID_KP * Math.tanh(0.2) * facility.maxScale;
         for (let i = 0; i < N; i++) {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        expect(facility.scale).toBeGreaterThan(singleStepScale);
+        expect(facility.scale).toBeCloseTo(N * PID_OUT_MAX_UP * facility.maxScale, 6);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1338,37 +1339,13 @@ describe('updateAgentProductionScale', () => {
         }
     });
 
-    it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
-        const planet = makePlanet({
-            lastMarketResult: {
-                [RESOURCE_NAME]: {
-                    resourceName: RESOURCE_NAME,
-                    clearingPrice: 10,
-                    totalVolume: 50,
-                    totalDemand: 100,
-                    totalSupply: 20,
-                    unfilledDemand: 80,
-                    unsoldSupply: 0,
-                },
-            },
-
-            avgMarketResult: {
-                [RESOURCE_NAME]: {
-                    resourceName: RESOURCE_NAME,
-                    clearingPrice: 10,
-                    totalVolume: 20,
-                    totalDemand: 30,
-                    totalSupply: 200,
-                    unfilledDemand: 0,
-                    unsoldSupply: 180,
-                },
-            },
-        });
+    it('does not re-anchor a below-floor scale upward when the signal is neutral', () => {
+        const planet = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 1 });
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeGreaterThan(0);
+        expect(facility.scale).toBeCloseTo(0, 10);
     });
 
     it('initiates HR department expansion when workforce demand exceeds HR scale', () => {
@@ -2479,5 +2456,40 @@ describe('updateAgentProductionScale shell compartments for non-automated agents
         expect(shell.compartments[RESOURCE_NAME]).toBeGreaterThan(0);
         expect(shell.construction).toBeNull();
         expect(shell.scale).toBe(scaleBefore);
+    });
+});
+
+describe('applySoftFloorScale', () => {
+    const minScale = 0.25;
+    const maxScale = 1;
+
+    it('relaxes only the below-floor portion when crossing the floor', () => {
+        const result = applySoftFloorScale(0.3, -0.1, minScale, maxScale);
+        expect(result).toBeCloseTo(0.25 - (0.25 - 0.2) * SOFT_FLOOR_RELAXATION, 10);
+    });
+
+    it('attenuates only the delta when already below the floor', () => {
+        const result = applySoftFloorScale(0.05, -0.01, minScale, maxScale);
+        expect(result).toBeCloseTo(0.05 - 0.01 * SOFT_FLOOR_RELAXATION, 10);
+        expect(result).toBeLessThan(0.05);
+    });
+
+    it('leaves an already-below-floor scale unchanged on a zero delta', () => {
+        const result = applySoftFloorScale(0.05, 0, minScale, maxScale);
+        expect(result).toBeCloseTo(0.05, 10);
+    });
+
+    it('does not attenuate upward movement from below the floor', () => {
+        const result = applySoftFloorScale(0.05, 0.05, minScale, maxScale);
+        expect(result).toBeCloseTo(0.1, 10);
+    });
+
+    it('leaves a scale above the floor untouched', () => {
+        expect(applySoftFloorScale(0.5, 0.1, minScale, maxScale)).toBeCloseTo(0.6, 10);
+    });
+
+    it('clamps to maxScale and to zero', () => {
+        expect(applySoftFloorScale(0.9, 0.5, minScale, maxScale)).toBeCloseTo(maxScale, 10);
+        expect(applySoftFloorScale(0.05, -1, minScale, maxScale)).toBeCloseTo(0, 10);
     });
 });

@@ -1,5 +1,10 @@
 import { PRICE_FLOOR, PRICE_CEIL, EPSILON } from '../constants';
-import type { AgentPlanetAssets, AgentMarketOfferState, AgentMarketBidState } from '../planet/planet';
+import type {
+    AgentPlanetAssets,
+    AgentMarketOfferState,
+    AgentMarketBidState,
+    AutomatedPricingConfig,
+} from '../planet/planet';
 import type { Resource } from '../planet/claims';
 import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/facility';
 import type { BuyBid } from '../../server/controller/user';
@@ -94,7 +99,6 @@ export function validateBuyBid(
     if (bidStorageTarget !== undefined && bidStorageTarget < 0) {
         return { isValid: false, error: 'Quantity must be non-negative' };
     }
-
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storage, resource);
     const currentInventory = queryStorageFacility(assets.storage, resource.name);
     const quantity = bidStorageTarget !== undefined ? Math.max(0, bidStorageTarget - currentInventory) : 0;
@@ -186,4 +190,23 @@ export function validateAndPrepareBuyBid(
     const maxCost = validatedQuantity * price;
 
     return { price, quantity: validatedQuantity, maxCost };
+}
+
+export function validateAutoConfigTargets(
+    autoConfig: AutomatedPricingConfig | undefined,
+    resource: Resource,
+): ValidationResult {
+    if (!autoConfig || resource.form !== 'services') {
+        return { isValid: true };
+    }
+
+    if (autoConfig.targetSellThrough !== undefined && autoConfig.targetSellThrough > 1) {
+        return { isValid: false, error: 'Target sell-through must not exceed 100% for services' };
+    }
+
+    if (autoConfig.targetFillRate !== undefined && autoConfig.targetFillRate > 1) {
+        return { isValid: false, error: 'Target fill rate must not exceed 100% for services' };
+    }
+
+    return { isValid: true };
 }

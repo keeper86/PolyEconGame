@@ -689,7 +689,7 @@ export default function MultiProductPriceChart({
                                                                 <div style={{ color: '#94a3b8', marginBottom: 4 }}>
                                                                     {tooltipLabelFormatter(label as number)}
                                                                 </div>
-                                                                {payload
+                                                                {[...payload]
                                                                     .sort(
                                                                         (a, b) =>
                                                                             ((b.value as number) ?? 0) -

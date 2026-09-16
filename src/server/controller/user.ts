@@ -3,7 +3,7 @@ import {
     getCurrencyResource,
     isCurrencyResource,
 } from '@/simulation/market/currencyResources';
-import { validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
+import { validateAutoConfigTargets, validateBuyBid, validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import { assetManifest } from '@/lib/assetManifest';
@@ -587,6 +587,14 @@ export const setSellOffers = () => {
                         message: `Invalid sell offer for ${resourceName}: ${validation.error}`,
                     });
                 }
+
+                const targetValidation = validateAutoConfigTargets(offer.autoConfig, resource);
+                if (!targetValidation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid sell offer for ${resourceName}: ${targetValidation.error}`,
+                    });
+                }
             }
 
             logger.info(
@@ -802,6 +810,14 @@ export const setBuyBids = () => {
                     throw new TRPCError({
                         code: 'BAD_REQUEST',
                         message: `Invalid buy bid for ${resourceName}: ${validation.error}`,
+                    });
+                }
+
+                const targetValidation = validateAutoConfigTargets(bid.autoConfig, resource);
+                if (!targetValidation.isValid) {
+                    throw new TRPCError({
+                        code: 'BAD_REQUEST',
+                        message: `Invalid buy bid for ${resourceName}: ${targetValidation.error}`,
                     });
                 }
             }
