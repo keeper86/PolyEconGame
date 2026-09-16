@@ -689,21 +689,27 @@ export default function MultiProductPriceChart({
                                                                 <div style={{ color: '#94a3b8', marginBottom: 4 }}>
                                                                     {tooltipLabelFormatter(label as number)}
                                                                 </div>
-                                                                {payload.map((p) => (
-                                                                    <div
-                                                                        key={p.name}
-                                                                        style={{ color: p.color ?? '#e2e8f0' }}
-                                                                    >
-                                                                        {p.name}:{' '}
-                                                                        {rescaleMode === 'relative'
-                                                                            ? `${(p.value as number).toFixed(2)}×`
-                                                                            : formatNumberWithUnit(
-                                                                                  p.value as number,
-                                                                                  'currency',
-                                                                                  planetId,
-                                                                              )}
-                                                                    </div>
-                                                                ))}
+                                                                {[...payload]
+                                                                    .sort(
+                                                                        (a, b) =>
+                                                                            ((b.value as number) ?? 0) -
+                                                                            ((a.value as number) ?? 0),
+                                                                    )
+                                                                    .map((p) => (
+                                                                        <div
+                                                                            key={p.name}
+                                                                            style={{ color: p.color ?? '#e2e8f0' }}
+                                                                        >
+                                                                            {p.name}:{' '}
+                                                                            {rescaleMode === 'relative'
+                                                                                ? `${(p.value as number).toFixed(2)}×`
+                                                                                : formatNumberWithUnit(
+                                                                                      p.value as number,
+                                                                                      'currency',
+                                                                                      planetId,
+                                                                                  )}
+                                                                        </div>
+                                                                    ))}
                                                             </div>
                                                         );
                                                     }}

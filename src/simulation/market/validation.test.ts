@@ -4,7 +4,7 @@ import { shellFormOfResource } from '../planet/facility';
 import { makeManagementFacility, makeStorageFacility } from '../utils/testHelper';
 import type { Resource } from '../planet/claims';
 import type { Storage } from '../planet/facility';
-import { validateBuyBid, validateSellOffer } from './validation';
+import { validateAutoConfigTargets, validateBuyBid, validateSellOffer } from './validation';
 
 function makeAssets(deposits: number, resource: Resource, storageScale = 1e9) {
     const storage = makeStorageFacility({
@@ -155,6 +155,42 @@ describe('market validation', () => {
         it('returns valid when storageTarget already met by inventory', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 0 }, coalResource, coalAssets(150));
             expect(result.isValid).toBe(true);
+        });
+    });
+
+    describe('validateAutoConfigTargets', () => {
+        const serviceResource: Resource = {
+            name: 'TestService',
+            form: 'services',
+            level: 'source',
+            volumePerQuantity: 0,
+            massPerQuantity: 0,
+        };
+
+        it('allows goods targets above 100%', () => {
+            const result = validateAutoConfigTargets({ targetSellThrough: 1.5, targetFillRate: 1.5 }, coalResourceType);
+            expect(result.isValid).toBe(true);
+        });
+
+        it('allows service targets at or below 100%', () => {
+            const result = validateAutoConfigTargets({ targetSellThrough: 1, targetFillRate: 1 }, serviceResource);
+            expect(result.isValid).toBe(true);
+        });
+
+        it('rejects service targetSellThrough above 100%', () => {
+            const result = validateAutoConfigTargets({ targetSellThrough: 1.5 }, serviceResource);
+            expect(result.isValid).toBe(false);
+            expect(result.error).toContain('sell-through');
+        });
+
+        it('rejects service targetFillRate above 100%', () => {
+            const result = validateAutoConfigTargets({ targetFillRate: 1.5 }, serviceResource);
+            expect(result.isValid).toBe(false);
+            expect(result.error).toContain('fill rate');
+        });
+
+        it('is valid when the config is undefined', () => {
+            expect(validateAutoConfigTargets(undefined, serviceResource).isValid).toBe(true);
         });
     });
 });

@@ -134,6 +134,8 @@ export type PidState = {
     expansionIntegral: number;
     contractionIntegral: number;
     smoothedSignal: number;
+    lastRawSignal: number;
+    lastDelta: number;
     flowProducedEMA?: number;
     flowClearedEMA?: number;
     flowUnfilledEMA?: number;
@@ -183,7 +185,7 @@ export const STORAGE_SHELL_FORM_NAMES: Record<StorageForm, string> = {
 };
 
 // One shell-scale of physical container holds the same volume/mass whatever the shape; only the surface
-// topology differs. A shell's total capacity is this per-unit volume/mass scaled by its current scale.
+// topology differs. A shell's total capacity is this per-unit volume/mass scaled by its installed maxScale.
 export const STORAGE_SHELL_CAPACITY = { volume: 200000, mass: 50000 };
 
 export type StorageFacility = FacilityBase &
@@ -526,8 +528,8 @@ export const getStorageCapacityState = (storage: Storage, resource: Resource): S
         const shell = storage.shells[form];
         const ownQuantity = shell.currentInStorage[resource.name]?.quantity ?? 0;
         const share = computeCompartmentShare(shell, resource);
-        const shellVolume = shell.capacity.volume * shell.scale;
-        const shellMass = shell.capacity.mass * shell.scale;
+        const shellVolume = shell.capacity.volume * shell.maxScale;
+        const shellMass = shell.capacity.mass * shell.maxScale;
         capacity.volume = shellVolume * share;
         capacity.mass = shellMass * share;
         used.volume = Math.max(0, ownQuantity * resource.volumePerQuantity);

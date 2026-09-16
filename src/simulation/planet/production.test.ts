@@ -20,11 +20,18 @@ import {
 import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
 import { ironOreDepositResourceType } from './landBoundResources';
 import type { AgentPlanetAssets } from './planet';
-import { ironOreResourceType, produceResourceType, steelResourceType, waterResourceType } from './resources';
+import {
+    ironOreResourceType,
+    plasticResourceType,
+    produceResourceType,
+    steelResourceType,
+    waterResourceType,
+} from './resources';
 import {
     administrativeServiceResourceType,
     constructionServiceResourceType,
     humanResourcesServiceResourceType,
+    maintenanceServiceResourceType,
 } from './services';
 
 // The auto-granted storage shells are now operational facilities that also hire. Zero their
@@ -240,6 +247,35 @@ describe('productionTick (basic)', () => {
 
         const stored = queryStorageFacility(agent.assets.p.storage, 'Iron Ore');
         expect(stored).toBeLessThan(1000);
+    });
+
+    it('stops producing a service entirely when one shared input runs out', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 1 });
+        facility.id = 'maint-fac';
+        facility.needs = [
+            { resource: steelResourceType, quantity: 1 },
+            { resource: plasticResourceType, quantity: 1 },
+        ];
+        facility.produces = [{ resource: maintenanceServiceResourceType, quantity: 1 }];
+
+        agent.assets.p.productionFacilities = [facility];
+        updateAgentShellCompartments(agent.assets.p);
+        const wf = agent.assets.p.workforceDemography;
+        wf[30].secondary.active = 1;
+        quietStorageShells(agent);
+
+        setStorageResourceQuantity(agent.assets.p.storage, steelResourceType, 10_000);
+        setStorageResourceQuantity(agent.assets.p.storage, plasticResourceType, 0);
+
+        const gs = makeGameState(planet, [agent, gov]);
+        productionTick(gs, planet);
+
+        const recorded = agent.assets.p.productionFacilities.find((f) => f.id === 'maint-fac');
+        expect(recorded!.lastTickResults.overallEfficiency).toBe(0);
+        expect(queryStorageFacility(agent.assets.p.storage, maintenanceServiceResourceType.name)).toBe(0);
     });
 
     it('wage costs use actual assigned workers and are not scaled by input efficiency', () => {

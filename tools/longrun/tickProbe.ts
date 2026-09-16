@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import type { AgentPlanetAssets, GameState } from '../../src/simulation/planet/planet';
 import { getAllFacilities } from '../../src/simulation/planet/planet';
-import { queryStorageFacility } from '../../src/simulation/planet/facility';
+import { getTransportStarvation, queryStorageFacility } from '../../src/simulation/planet/facility';
 import type { ProductionFacility } from '../../src/simulation/planet/facility';
 import { TICKS_PER_YEAR, TICKS_PER_MONTH } from '../../src/simulation/constants';
 import { STORAGE_TARGET_MONTHS } from '../../src/simulation/planet/automaticProductionScale/constants';
@@ -26,6 +26,13 @@ const TARGETS = [
     'Construction Facility',
     'Logistics Hub',
     'Vehicle Factory',
+    'Beverage Plant',
+    'Food Processor',
+    'Packaging Plant',
+    'Coal Mine',
+    'Iron Mine',
+    'Copper Smelter',
+    'Plastics Factory',
 ] as const;
 
 const COLUMNS = [
@@ -58,6 +65,13 @@ const COLUMNS = [
     'inEff0',
     'inEff1',
     'inEff2',
+    'inEff3',
+    'inEff4',
+    'inEffName0',
+    'inEffName1',
+    'inEffName2',
+    'inEffName3',
+    'inEffName4',
     'workerEffWorst',
     'price0',
     'costFloor0',
@@ -77,6 +91,41 @@ const COLUMNS = [
     'sold1',
     'effQty1',
     'retain1',
+    'buyInv0',
+    'buyTarget0',
+    'buyEff0',
+    'buyFill0',
+    'buyPrice0',
+    'buyInv1',
+    'buyTarget1',
+    'buyEff1',
+    'buyFill1',
+    'buyPrice1',
+    'agentDeposits',
+    'agentRevenue',
+    'rawSignal',
+    'pidDelta',
+    'maintenanceStatus',
+    'constructionType',
+    'constructionProgress',
+    'need0Name',
+    'need0Buffer',
+    'need0Required',
+    'need0Eff',
+    'need1Name',
+    'need1Buffer',
+    'need1Required',
+    'need1Eff',
+    'need2Name',
+    'need2Buffer',
+    'need2Required',
+    'need2Eff',
+    'lastProduced0',
+    'lastProduced1',
+    'lastProduced2',
+    'agentId',
+    'hrProductivityMultiplier',
+    'transportStarvation',
 ];
 
 let started = false;
@@ -92,6 +141,7 @@ function row(
     tick: number,
     facility: ProductionFacility,
     assets: AgentPlanetAssets,
+    agentId: string,
 ): string {
     const outputs = facility.produces;
     const targetMonths = STORAGE_TARGET_MONTHS;
@@ -108,7 +158,39 @@ function row(
     const [r0, i0, t0, e0] = perOutput(0);
     const [r1, i1, t1, e1] = perOutput(1);
     const [r2, i2, t2, e2] = perOutput(2);
+    const perInput = (i: number): [number, number, number, number, number] => {
+        const need = facility.needs[i];
+        if (!need) {
+            return [0, 0, 0, 0, 0];
+        }
+        const bid = assets.market.buy[need.resource.name];
+        return [
+            queryStorageFacility(assets.storage, need.resource.name, false),
+            bid?.bidStorageTarget ?? 0,
+            bid?.lastEffectiveQty ?? 0,
+            bid?.smoothedFillRate ?? 0,
+            bid?.bidPrice ?? 0,
+        ];
+    };
+    const bid0 = perInput(0);
+    const bid1 = perInput(1);
     const pid = facility.pidState;
+    const needDiag = (i: number): [string, string, string, string] => {
+        const need = facility.needs[i];
+        if (!need) {
+            return ['', '', '', ''];
+        }
+        return [
+            need.resource.name.replace(/ /g, '_'),
+            queryStorageFacility(assets.storage, need.resource.name, false).toFixed(2),
+            (need.quantity * facility.scale).toFixed(2),
+            (facility.lastTickResults?.resourceEfficiency?.[need.resource.name] ?? 1).toFixed(5),
+        ];
+    };
+    const produced = (i: number): number => {
+        const out = outputs[i];
+        return out ? (facility.lastTickResults?.lastProduced?.[out.resource.name] ?? 0) : 0;
+    };
     return [
         String(tick),
         (tick / TICKS_PER_YEAR).toFixed(3),
@@ -139,6 +221,34 @@ function row(
         ...inputEfficiencies(facility),
         ...sellDiagnostics(assets, outputs[0]?.resource.name),
         ...sellDiagnostics(assets, outputs[1]?.resource.name),
+        bid0[0].toFixed(2),
+        bid0[1].toFixed(2),
+        bid0[2].toFixed(2),
+        bid0[3].toFixed(5),
+        bid0[4].toFixed(4),
+        bid1[0].toFixed(2),
+        bid1[1].toFixed(2),
+        bid1[2].toFixed(2),
+        bid1[3].toFixed(5),
+        bid1[4].toFixed(4),
+        assets.deposits.toFixed(2),
+        (facility.lastTickResults.revenue ?? 0).toFixed(2),
+        (pid?.lastRawSignal ?? 0).toFixed(5),
+        (pid?.lastDelta ?? 0).toFixed(6),
+        (facility.maintenanceStatus ?? 1).toFixed(4),
+        facility.construction?.type ?? '',
+        facility.construction
+            ? (facility.construction.progress / Math.max(1e-9, facility.construction.totalConstructionServiceRequired)).toFixed(4)
+            : '',
+        ...needDiag(0),
+        ...needDiag(1),
+        ...needDiag(2),
+        produced(0).toFixed(2),
+        produced(1).toFixed(2),
+        produced(2).toFixed(2),
+        agentId,
+        (assets.hrProductivityMultiplier ?? 1).toFixed(4),
+        getTransportStarvation(assets.storage).toFixed(4),
     ].join(',');
 }
 
@@ -171,12 +281,20 @@ function sellDiagnostics(
 
 function inputEfficiencies(facility: ProductionFacility): string[] {
     const effs = facility.needs.map((need) => facility.lastTickResults?.resourceEfficiency?.[need.resource.name] ?? 1);
+    const names = facility.needs.map((need) => need.resource.name.replace(/ /g, '_'));
     const worker = Object.values(facility.lastTickResults?.workerEfficiency ?? {});
     const worstWorker = worker.length > 0 ? Math.min(...worker.filter((v): v is number => typeof v === 'number')) : 1;
     return [
         (effs[0] ?? 1).toFixed(4),
         (effs[1] ?? 1).toFixed(4),
         (effs[2] ?? 1).toFixed(4),
+        (effs[3] ?? 1).toFixed(4),
+        (effs[4] ?? 1).toFixed(4),
+        names[0] ?? '',
+        names[1] ?? '',
+        names[2] ?? '',
+        names[3] ?? '',
+        names[4] ?? '',
         worstWorker.toFixed(4),
     ];
 }
@@ -199,7 +317,7 @@ export function tickProbe(gameState: GameState, outDir: string): void {
                 if (!TARGETS.includes(p.name as (typeof TARGETS)[number])) {
                     continue;
                 }
-                lines.push(row(gameState.tick, p, assets));
+                lines.push(row(gameState.tick, p, assets, agent.id));
             }
         }
     }

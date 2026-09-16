@@ -10,6 +10,8 @@ export function getDefaultPidState(): PidState {
         expansionIntegral: 0,
         contractionIntegral: 0,
         smoothedSignal: 0,
+        lastRawSignal: 0,
+        lastDelta: 0,
     };
 }
 
@@ -21,10 +23,6 @@ export function computePidDelta(signal: number, state: PidState): number {
     const P = PID_KP * signal;
     const D = PID_KD * (state.filteredError - state.prevError);
     state.prevError = state.filteredError;
-
-    if (signal > 0 && state.integral < 0) {
-        state.integral = 0;
-    }
 
     const tentativeOutput = P + state.integral + D;
     const outSat = Math.max(-outMaxDown, Math.min(outMaxUp, tentativeOutput));

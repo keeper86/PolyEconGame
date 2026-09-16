@@ -17,16 +17,6 @@ export {
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
 export {
-    assertStabilityConditions,
-    checkCapacityCoversTarget,
-    checkLimitCycleBand,
-    checkSymmetricRateLimit,
-    correctionTimeTicks,
-    evaluateStabilityConditions,
-    limitCycleRatio,
-    storageLeadTimeTicks,
-} from './automaticProductionScale/stabilityConditions';
-export {
     computeStorageExpansionTarget,
     computeStorageSignal,
     STORAGE_TARGET_FILL_RATE,
@@ -42,10 +32,12 @@ import {
     EXPANSION_INTEGRAL_THRESHOLD,
     EXPANSION_PRICE_INFLATION_THRESHOLD,
     EXPANSION_WORKING_CAPITAL_TICKS,
+    EXPANSION_AT_CAPACITY_FRACTION,
     HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER,
     MAX_SCALE_CONTRACT_FRACTION,
     MIN_SCALE_FRACTION,
     SIGNAL_EMA_ALPHA,
+    SOFT_FLOOR_RELAXATION,
     STORAGE_CONTRACTION_RATE,
     STORAGE_EXPANSION_RATE,
     STORAGE_STARVATION_EXPANSION_MAX,
@@ -53,7 +45,9 @@ import {
 import {
     getContractionIntegralThreshold,
     getExpansionIntegralThreshold,
+    getExpansionAtCapacityFraction,
     getMinScaleFraction,
+    getProductionSignalEmaAlpha,
 } from './automaticProductionScale/runtimeConfig';
 import { initiateCapacityExpansion } from './automaticProductionScale/expansionActions';
 import {
@@ -72,6 +66,19 @@ import { updateServiceFlowSignal } from './automaticProductionScale/serviceFlow'
 import { computeFacilityStorageSignal } from './automaticProductionScale/signalComputation';
 import { computeStorageExpansionTarget, computeStorageSignal } from './automaticProductionScale/storageAutoscale';
 import { updateAgentShellCompartments } from './automaticProductionScale/shellCompartments';
+
+export function applySoftFloorScale(currentScale: number, delta: number, minScale: number, maxScale: number): number {
+    let newScale = currentScale + delta;
+    if (newScale < minScale) {
+        if (currentScale >= minScale) {
+            newScale = minScale - (minScale - newScale) * SOFT_FLOOR_RELAXATION;
+        } else if (delta < 0) {
+            newScale = currentScale + delta * SOFT_FLOOR_RELAXATION;
+        }
+        newScale = Math.max(0, newScale);
+    }
+    return Math.min(maxScale, newScale);
+}
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
@@ -388,18 +395,26 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const maxError = computeFacilityStorageSignal(facility, assets).maxError;
             const storageSignal = maxError > 0 ? inputEfficiency * maxError : maxError;
 
-            const signal = serviceFlowSignal ? serviceFlowSignal.error : storageSignal;
+            const rawSignal = serviceFlowSignal ? serviceFlowSignal.error : storageSignal;
+            const signalEmaAlpha = getProductionSignalEmaAlpha();
+            const signal =
+                signalEmaAlpha !== null
+                    ? signalEmaAlpha * rawSignal + (1 - signalEmaAlpha) * state.smoothedSignal
+                    : rawSignal;
             state.smoothedSignal = signal;
 
             const delta = computePidDelta(signal, state) * facility.maxScale;
+            state.lastRawSignal = rawSignal;
+            state.lastDelta = delta;
             const minScale = facility.maxScale * (getMinScaleFraction() ?? MIN_SCALE_FRACTION);
-            const newScale = Math.max(minScale, Math.min(facility.maxScale, facility.scale + delta));
-            facility.scale = newScale;
+            facility.scale = applySoftFloorScale(facility.scale, delta, minScale, facility.maxScale);
 
             const hrHealthy = (assets.hrProductivityMultiplier ?? 1) >= HR_EXPANSION_MIN_PRODUCTIVITY_MULTIPLIER;
             const storageHealthy = getTransportStarvation(assets.storage) <= STORAGE_STARVATION_EXPANSION_MAX;
 
-            const atMaxScale = facility.scale >= facility.maxScale * 0.999;
+            const atMaxScale =
+                facility.scale >=
+                facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
             const atMinScale = facility.scale <= minScale;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
@@ -486,7 +501,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                     facility,
                     assets,
                     state,
-                    signal,
+                    rawSignal,
                     signal,
                     delta,
                     dynamicThreshold,

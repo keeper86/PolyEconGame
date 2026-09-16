@@ -1483,3 +1483,99 @@ WHAT THE FIX MUST ADDRESS (not done yet):
 
 Tests added: 1 in automaticPricing.test.ts pinning the unbounded-gain behaviour (deviation > 28 at
 the observed price/floor pair, and strictly larger at the floor). Suite 120 files / 1793 passed.
+
+
+## Anti-windup on the PID integral (conditional integration), 2026-09-14
+
+Root: computePidDelta's anti-windup only guards PID_OUT_MAX saturation, not the minScale/maxScale
+clamps applied after it. So the PID integral wound up against the floor/ceiling wall, storing latent
+momentum that later released as an overshoot slam. Fix: added `suppressIntegration` to
+computePidDelta; when the scale is against a wall AND the signal pushes further into it, the integral
+freezes. Wired at all three call sites (production, HR, storage).
+
+Contraction revert (from the failed symmetric experiment): MAX_SCALE_CONTRACT_FRACTION 0.005->0.01
+(2x remhack, not the 0.1 that drove maintenance-starvation condition sawtooth to 0.497).
+
+Experiments (paired A/B, same seed 1001):
+  current-6agent-6000y   (no anti-windup)  vs antiwindup-6agent-6000y (anti-windup)   -- 6agent chaos
+  current-1agent-6000y   (no anti-windup)  vs antiwindup-600y          (anti-windup)   -- 1agent clean
+  buf60-goods-600y       (goods buffer 60, double)                                     -- buffer hypothesis
+Prediction: anti-windup raises the condition floor (fewer/shallower maintenance dips), esp. in 6agent.
+
+
+## PROTOCOL: the 1/30 sell-through structural conflict (beverage, per-tick hard data)
+
+TICK_PROBE=1 on beverage (singleAgent, bevprobe-120y, 20798 ticks). Hard per-tick facts from the sim:
+
+- Storage inventory is AT target: inv0/target0 occupancy median 1.0016 (range 0.083-1.11). NOT empty, NOT full.
+- The PID signal is a healthy symmetric oscillation around zero: smoothedSignal in [-0.112, +0.724],
+  49.8% positive, median -0.0016. tanh(err0) == smoothedSignal exactly (signal path is correct).
+- The producer OFFERS ~1 month of output per tick: median effQty0 = 1,162,308.
+- Consumers BUY ~1 day: median sold0 = 38,431. retain0 = 0.
+- => sell-through = 38,431 / 1,162,308 = 0.03306 == 1/30 (0.03333) to 4 significant figures.
+- 1/30 of offered (38,744) == median sold (38,431) to <1%.
+
+CONCLUSION (structural, not dynamical): the "20-33x oversizing" is not a wrong setpoint or a broken
+oscillation. It is the emergent steady-state of two incommensurate rules fighting: the supply side
+offers 1 month of (smoothed) production per tick, the demand side consumes 1 day per tick, so global
+sell-through is necessarily ~1/30. Every knob tuned this session (PID rescale, contraction symmetry,
+anti-windup, soft floor, ceiling gate) was tuning the *dynamics* of a regulator whose equilibrium is
+fixed at "offer 30x, sell 1x" by construction. The regulator itself is healthy (inventory at target,
+symmetric signal). The bang-bang observed at monthly resolution was an artifact of downsampling the
+per-tick healthy oscillation, not a real clamp-clashing on the signal.
+
+FAILED HYPOTHESES this session (each corrected by hard data / sharper reading):
+1. "fuel refinery capacity ratchet is the prime mover" -> drove the fuel/logistics/condition cascade;
+   yes, but only on 10M world; the 8B world had a separate money-loop death.
+2. "decay drains storage and flips the signal" -> WRONG: preservation = 1 - 0.05*ss^6, decay ~0 at
+   empty storage.
+3. "maxScale growth flips the signal" -> WRONG: maxScale is ~constant over the cycle.
+4. "signal never crosses zero (stuck negative)" -> WRONG: per-tick it is symmetric around 0, 50/50.
+5. "storage empty / punishing degradation branch" -> WRONG: inventory is AT target, occupancy ~1.0.
+
+OPEN QUESTION (the real fix): resolve the 1-month-offer vs 1-day-buy mismatch. Candidate directions:
+(a) offer only ~1 day of output (the offer is a per-tick, not a per-month, quantity), or
+(b) make the producer's offer quantity demand-aware. This is a design decision, not a tuning problem.
+
+
+## CORRECTION (protocol follow-up): it is NOT oversizing; it is the sell-through TARGET
+
+Production tracks demand: inventory is steady at target, so production ~= sold (~39k/tick) with
+decay ~0. The '20-33x oversizing' was a category error - the producer OFFERS ~1 month of buffer per
+tick (1.16M) while consumers BUY ~1 day (38k), so sell-through is STRUCTURALLY ~1/30 (measured 0.0265
+smoothed, 0.0333 raw). There is no production oversizing; capacity is correctly sized.
+
+The real bug: the pricing/scale controller targets a sell-through of ~60-80% (TARGET_SELL_THROUGH /
+TARGET_FILL_RATE), but the structure makes sell-through ~3.3%. The controller is chasing a target 20x
+above the structurally achievable floor, so it eternally over-corrects (push price down, see 3%, push
+scale, see 3%) in a relaxation oscillation. THAT, not PID/contraction/floor, is the bang-bang.
+
+OPEN QUESTION (corrected): resolve the sell-through-target-vs-structural-1/30 mismatch. Either (a) make
+the sell-through target consistent with the 1-month offer, or (b) decouple the offer quantity from the
+buffer so the offer is per-day and sell-through can be ~1. My earlier candidate 'offer 1 day instead of
+a month' was the wrong framing - the offer IS a buffer-resupply quote by design.
+
+
+## MARKET BUG (code-traced): SELL_PRODUCTION_SMOOTHING=30 vs TARGET_SELL_THROUGH=0.6
+
+Per-tick probe (bevprobe-120y) confirmed: ALL goods producers sit at sell-through ~1/30 (0.017-0.034),
+while Grocery_Chain/Logistics/Maintenance (per-tick-consumed services) sell-through is 0.14-0.79.
+netFactor = 1.0 everywhere (pricing loop saturated), baseFactor ~0.95, price ~= costFloor (ratio 0.89-1.14).
+
+Code trace (automaticPricing.ts adjustOfferPrice):
+- effectiveQuantity (offer) = min(surplus, productionRate * sellProductionSmoothing)  [line 487]
+- sellProductionSmoothing defaults to SELL_PRODUCTION_SMOOTHING = 30  [constants.ts:52]
+  => producers OFFER 1 month (30 ticks) of production every tick.
+- targetSellThrough defaults to TARGET_SELL_THROUGH = 0.6  [constants.ts:61]
+  => price controller targets selling 60% of the OFFERED month.
+- Consumers BUY ~ productionRate * 1 (one day), so actual sell-through = 1/30 ~= 3.3%.
+- The controller sees 3.3% vs 60% and drives price down to costFloor (measured: price~=costFloor,
+  baseFactor 0.95, netFactor 1.0 = clamped at the floor).
+
+ROOT CAUSE: SELL_PRODUCTION_SMOOTHING=30 conflates 'offer' with 'one month of buffer'. The natural
+scale is production/demand (the buyer side already gets this right via targetFill on input needs).
+=> the producer offers 30x what is consumed, and a 60% sell-through target is impossible by
+construction, so every goods producer is permanently squeezed to (or below) cost floor.
+
+FIX: SELL_PRODUCTION_SMOOTHING 30 -> 3 (offer ~3 days). Sell-through ~1/3 ~= 33% (still below 60%
+but one order of magnitude less pathological), and price pressure becomes mild instead of floor-pinned.

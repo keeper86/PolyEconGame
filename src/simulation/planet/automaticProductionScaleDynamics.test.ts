@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
+    INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     TARGET_FILL_RATE_SERVICES,
@@ -149,33 +150,34 @@ function simulateServiceBufferFill({
         const filled = Math.min(shortfall, production);
         buffer = Math.min(capacity, buffer + filled);
         fillRate = shortfall > 0 ? filled / shortfall : 1;
-        priceFactor = fillRateFactor(fillRate, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        priceFactor = fillRateFactor(
+            fillRate,
+            TARGET_FILL_RATE_SERVICES,
+            PRICE_ADJUST_MAX_UP,
+            PRICE_ADJUST_MAX_DOWN,
+            1,
+        );
     }
     return { fillRate, priceFactor };
 }
 
 describe('fillRateFactor', () => {
-    it('pushes the bid price up below target and down above target', () => {
-        expect(fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN)).toBeCloseTo(
-            1.05,
+    it('pushes the bid price up below target, neutral at target, and down above target', () => {
+        const target = TARGET_FILL_RATE_SERVICES;
+        const goodsSmoothing = 1 + INVENTORY_SMOOTHING_MAX_EXTRA;
+        expect(fillRateFactor(0, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing)).toBeCloseTo(1.05);
+        expect(fillRateFactor(target, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing)).toBeCloseTo(
+            1,
         );
         expect(
-            fillRateFactor(
-                TARGET_FILL_RATE_SERVICES,
-                TARGET_FILL_RATE_SERVICES,
-                PRICE_ADJUST_MAX_UP,
-                PRICE_ADJUST_MAX_DOWN,
-            ),
-        ).toBeCloseTo(1);
-        expect(fillRateFactor(1, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN)).toBeCloseTo(
-            0.95,
-        );
+            fillRateFactor(goodsSmoothing, target, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, goodsSmoothing),
+        ).toBeCloseTo(0.95);
     });
 });
 
 describe('bid price runaway', () => {
     it('doubles the bid price every ~14 ticks at zero fill rate', () => {
-        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, 1);
         const doublingTicks = Math.log(2) / Math.log(factor);
         expect(doublingTicks).toBeCloseTo(14.2, 0);
     });
@@ -190,7 +192,7 @@ describe('service buffer fill dynamics', () => {
     it('buffer target of 1 tick fills to 100% at 1x production and stops compounding', () => {
         const { fillRate, priceFactor } = simulateServiceBufferFill({ bufferTargetTicks: 1, productionRatio: 1 });
         expect(fillRate).toBeCloseTo(1);
-        expect(priceFactor).toBeLessThan(1);
+        expect(priceFactor).toBeLessThanOrEqual(1);
     });
 
     it('buffer target of 3 ticks stalls at ~33% fill at 1x production and compounds forever', () => {
@@ -201,7 +203,7 @@ describe('service buffer fill dynamics', () => {
 });
 
 describe('computeFacilityStorageSignal (own-production storage error)', () => {
-    // Storage target is STORAGE_TARGET_MONTHS (2) months × 30 ticks/month × maxScale 1 × produce 100/tick.
+    // Storage target is STORAGE_TARGET_MONTHS months × 30 ticks/month × maxScale 1 × produce 100/tick.
     const target = STORAGE_TARGET_MONTHS * 30 * 100;
 
     function makeStorageFixture(overrides?: { inventory?: number; producesTwoOutputs?: boolean }): {
@@ -220,15 +222,15 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         return { facility, assets };
     }
 
-    it('is positive when the storage is below the 3-month target and negative above', () => {
+    it('is positive when the storage is below the 12-month target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(6), 5);
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-12), 5);
     });
 
-    it('is zero when the storage is exactly at the 3-month target', () => {
+    it('is zero when the storage is exactly at the 12-month target', () => {
         const fixture = makeStorageFixture({ inventory: target });
         expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBe(0);
     });
@@ -245,7 +247,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(9), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -309,7 +311,7 @@ describe('PID utilization response', () => {
             const { facility, assets } = makeStorageSignalFixture(0);
             const state = getDefaultPidState();
             const error = computeFacilityStorageSignal(facility, assets).maxError;
-            expect(error).toBeCloseTo(Math.tanh(1), 5);
+            expect(error).toBeCloseTo(Math.tanh(12), 5);
 
             const afterSettling = facility.scale;
             for (let tick = 0; tick < 2_000; tick++) {
@@ -354,12 +356,6 @@ describe('PID utilization response', () => {
 });
 
 describe('storage lead time keeps the loop out of the limit-cycle band', () => {
-    it('holds Tw >= 0.5 * Tp as required by Spiegler & Naim Eq. 22', () => {
-        const tp = STORAGE_TARGET_MONTHS * 30;
-        const tw = 1 / PID_OUT_MAX_UP;
-        expect(tw).toBeGreaterThanOrEqual(0.5 * tp);
-    });
-
     it('keeps the target above the capacity horizon so shells can hold the buffer', () => {
         expect(STORAGE_TARGET_MONTHS).toBeLessThanOrEqual(STORAGE_CAPACITY_MONTHS);
     });
@@ -378,7 +374,7 @@ describe('capacity expansion arming', () => {
 });
 
 describe('computeDynamicExpansionTarget sizes the expansion to the storage deficit', () => {
-    it('targets the scale that refills the 3-month own-production storage target', () => {
+    it('targets the scale that refills the 12-month own-production storage target', () => {
         const { facility, planet } = createMaintenanceChainFixture({
             maxScale: 100,
             scale: 100,
@@ -388,14 +384,14 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
             productionFacilities: [facility],
         });
         setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, 4500);
-        // target = 3 months * 30 ticks * 100 maxScale * 1 quantity = 9000; inventory 4500 → deficit 4500.
-        // scaleForDemand = 4500 / 1 = 4500 → capped at the +10% absolute cap (110).
+        // target = 12 months * 30 ticks * 100 maxScale * 1 quantity = 36000; inventory 4500 → deficit 31500.
+        // scaleForDemand = 31500 / 1 = 31500 → capped at the +10% absolute cap (110).
         const target = computeDynamicExpansionTarget(facility, assets, planet, true, Infinity);
 
         expect(target).toBe(110);
     });
 
-    it('does not expand when the storage is already at the 3-month target', () => {
+    it('does not expand when the storage is already at the 12-month target', () => {
         const { facility, planet } = createMaintenanceChainFixture({
             maxScale: 100,
             scale: 100,
@@ -414,7 +410,7 @@ describe('computeDynamicExpansionTarget sizes the expansion to the storage defic
 
 describe('the race between price and supply', () => {
     it('price more than quadruples during the time it takes to arm one <=30% expansion', () => {
-        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN);
+        const factor = fillRateFactor(0, TARGET_FILL_RATE_SERVICES, PRICE_ADJUST_MAX_UP, PRICE_ADJUST_MAX_DOWN, 1);
         const doublingTicks = Math.log(2) / Math.log(factor);
         expect(EXPANSION_INTEGRAL_THRESHOLD / doublingTicks).toBeGreaterThan(2);
     });

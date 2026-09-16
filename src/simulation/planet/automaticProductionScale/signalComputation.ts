@@ -2,8 +2,8 @@ import { TICKS_PER_MONTH } from '../../constants';
 import { queryStorageFacility } from '../facility';
 import type { ProductionFacility } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
-import { STORAGE_TARGET_MONTHS } from './constants';
-import { getStorageTargetMonths } from './runtimeConfig';
+import { STORAGE_ERROR_ZOOM_MONTHS, STORAGE_TARGET_MONTHS } from './constants';
+import { getStorageErrorZoomMonths, getStorageTargetMonths } from './runtimeConfig';
 
 export type FacilityStorageSignal = {
     maxError: number;
@@ -21,7 +21,9 @@ export function computeFacilityStorageSignal(
         const inventory = queryStorageFacility(assets.storage, output.resource.name, false);
         const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
         const target = targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
-        const error = (target - inventory) / Math.max(1e-9, target);
+        const zoomMonths = getStorageErrorZoomMonths() ?? STORAGE_ERROR_ZOOM_MONTHS;
+        const zoom = zoomMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
+        const error = (target - inventory) / Math.max(1e-9, zoom);
         maxError = Math.max(maxError, error);
         minError = Math.min(minError, error);
     }

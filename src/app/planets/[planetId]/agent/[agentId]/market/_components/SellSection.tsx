@@ -73,7 +73,7 @@ function sellStatus(
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
-    const sellThroughRate = diagnostics.effectiveQuantity > 0 ? (lastSold ?? 0) / diagnostics.effectiveQuantity : 0;
+    const sellThroughRate = diagnostics.smoothedSellThrough;
     const noDemand = (overviewRow?.totalDemand ?? 0) <= 0;
     const highPrice = diagnostics.newPrice > diagnostics.marketPrice;
 
@@ -600,7 +600,7 @@ export default function SellSection({
                                             )}
                                             committed={committedVal(committedConfig, 'targetSellThrough')}
                                             min={0.1}
-                                            max={0.99}
+                                            max={isService ? 1 : 2}
                                             step={0.01}
                                             isPercent
                                             onChange={(v) => handleSliderChange({ targetSellThrough: String(v) })}

@@ -4,11 +4,13 @@ import type { Resource } from './claims';
 import {
     getAvailableStorageCapacity,
     getEscrow,
+    getStorageCapacityState,
     lockIntoEscrow,
     makeStorageShell,
     putIntoStorageFacility,
     queryStorageFacility,
     removeFromStorageFacility,
+    STORAGE_SHELL_CAPACITY,
     usageOfShell,
 } from './facility';
 import type { Storage } from './facility';
@@ -206,5 +208,21 @@ describe('per-shell resource ledgers', () => {
         expect(removed).toBeCloseTo(20);
         expect(storage.shells.solid.currentInStorage['test-resource']?.quantity).toBeCloseTo(40);
         expect(queryStorageFacility(storage, 'test-resource')).toBeCloseTo(40);
+    });
+});
+
+describe('storage capacity scales with maxScale', () => {
+    it('uses the built maxScale for physical capacity even when the operating scale is lower', () => {
+        const storage = makeStorageFacility();
+        const resource = makeResource();
+        const shell = storage.shells.solid;
+        shell.scale = 1;
+        shell.maxScale = 5;
+        shell.compartments[resource.name] = 1;
+
+        const state = getStorageCapacityState(storage, resource);
+
+        expect(state.capacity.volume).toBeCloseTo(STORAGE_SHELL_CAPACITY.volume * 5);
+        expect(state.capacity.mass).toBeCloseTo(STORAGE_SHELL_CAPACITY.mass * 5);
     });
 });

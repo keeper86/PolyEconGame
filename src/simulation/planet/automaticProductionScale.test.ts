@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -13,9 +14,10 @@ import {
 } from '../utils/testHelper';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import {
+    CONTRACTION_INTEGRAL_THRESHOLD,
     EXPANSION_INTEGRAL_THRESHOLD,
-    PID_KP,
     STORAGE_TARGET_FILL_RATE,
+    applySoftFloorScale,
     computeStorageExpansionTarget,
     computeStorageSignal,
     findMaxAffordableScale,
@@ -25,15 +27,17 @@ import {
 } from './automaticProductionScale';
 import {
     DYNAMIC_EXPANSION_CAP_FRACTION,
-    MIN_SCALE_FRACTION,
+    EXPANSION_AT_CAPACITY_FRACTION,
+    PID_OUT_MAX_UP,
+    SOFT_FLOOR_RELAXATION,
     STORAGE_TARGET_MONTHS,
 } from './automaticProductionScale/constants';
+import { setProductionSignalEmaAlpha } from './automaticProductionScale/runtimeConfig';
+import { shellFormOfResource } from './facility';
+import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
-import { shellFormOfResource } from './facility';
 import { constructionServiceResourceType } from './services';
-import { makePool } from '../initialUniverse/resourceClaimFactory';
-import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
@@ -275,6 +279,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -306,14 +312,14 @@ describe('updateAgentProductionScale', () => {
         expect(facility.construction).not.toBeNull();
     });
 
-    it('clamps scale up to the minimum floor when already below it', () => {
+    it('soft floor lets a facility sit below minScale instead of being hard-clamped', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unsoldSupply: 80, totalSupply: 100 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0001, maxScale: 1 });
-        const floor = facility.maxScale * MIN_SCALE_FRACTION;
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeGreaterThanOrEqual(floor);
+        expect(facility.scale).toBeGreaterThanOrEqual(0);
+        expect(facility.scale).toBeLessThanOrEqual(facility.maxScale);
     });
 
     it('clamps scale to maxScale when over-demanded', () => {
@@ -406,6 +412,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             // Need a worker requirement so hasSufficientUnemployedWorkers passes
             workerRequirement: { none: 1 },
@@ -464,6 +472,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -492,6 +502,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         setStorageQuantity(agents, 0);
@@ -524,6 +536,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         setStorageQuantity(agents, 0);
@@ -552,6 +566,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -610,6 +626,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -659,6 +677,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -691,6 +711,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD * 3,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
         });
@@ -759,6 +781,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -797,6 +821,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
@@ -814,12 +840,14 @@ describe('updateAgentProductionScale', () => {
             scale: 10,
             maxScale: 100,
             pidState: {
-                contractionIntegral: 30,
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD,
                 integral: 0,
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
@@ -1021,7 +1049,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('integral accumulation causes larger scale changes over repeated ticks than a single proportional step', () => {
+    it('grows scale from below the floor at the slew-limited rate under sustained shortage', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 100 });
         setStorageQuantity(agents, 0);
@@ -1032,15 +1060,16 @@ describe('updateAgentProductionScale', () => {
             filteredError: 0,
             expansionIntegral: 0,
             smoothedSignal: 0,
+            lastRawSignal: 0,
+            lastDelta: 0,
         };
 
         const N = 20;
-        const singleStepScale = facility.maxScale * 0.1 + PID_KP * Math.tanh(0.2) * facility.maxScale;
         for (let i = 0; i < N; i++) {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        expect(facility.scale).toBeGreaterThan(singleStepScale);
+        expect(facility.scale).toBeCloseTo(N * PID_OUT_MAX_UP * facility.maxScale, 6);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1057,6 +1086,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         const agent = agents.values().next().value as Agent;
@@ -1081,6 +1112,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         const agent = agents.values().next().value as Agent;
@@ -1105,6 +1138,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         setStorageQuantity(agents, 0);
@@ -1114,11 +1149,39 @@ describe('updateAgentProductionScale', () => {
         expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
     });
 
+    it('arms expansion when a fast-slewing facility pins against full capacity', () => {
+        const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
+        const { agents, facility } = makeSetup(planet, {
+            scale: 9.93,
+            maxScale: 10,
+            maintenanceStatus: 1,
+            workerRequirement: { none: 1 },
+            pidState: {
+                contractionIntegral: 0,
+                integral: 0,
+                prevError: 0,
+                filteredError: 0,
+                expansionIntegral: 0,
+                smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
+            },
+        });
+        setStorageQuantity(agents, 0);
+
+        updateAgentProductionScale(makeGameState(agents), planet);
+
+        expect(facility.scale / facility.maxScale).toBeGreaterThanOrEqual(EXPANSION_AT_CAPACITY_FRACTION);
+        expect(facility.pidState!.expansionIntegral).toBeGreaterThan(0);
+    });
+
     it('derivative term produces braking when smoothed signal suddenly drops', () => {
         const planetBalanced = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });
         facility.pidState = {
             smoothedSignal: 0.8,
+            lastRawSignal: 0,
+            lastDelta: 0,
             filteredError: 0.8,
             prevError: 0.8,
             integral: 0,
@@ -1131,6 +1194,8 @@ describe('updateAgentProductionScale', () => {
         const { agents: agentsB, facility: facilityB } = makeSetup(planetBalanced, { scale: 0.5, maxScale: 1 });
         facilityB.pidState = {
             smoothedSignal: 0.8,
+            lastRawSignal: 0,
+            lastDelta: 0,
             filteredError: 0.8,
             prevError: 1.0,
             integral: 0,
@@ -1172,6 +1237,8 @@ describe('updateAgentProductionScale', () => {
                 filteredError: 0,
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
             workerRequirement: { none: 1 },
             lastTickResults: {
@@ -1249,40 +1316,36 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(1), 5);
+        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(12), 5);
     });
 
-    it('recovers from scale=0 trap: uses lastMarketResult (not EMA) so stale unsold history does not block scale-up', () => {
-        const planet = makePlanet({
-            lastMarketResult: {
-                [RESOURCE_NAME]: {
-                    resourceName: RESOURCE_NAME,
-                    clearingPrice: 10,
-                    totalVolume: 50,
-                    totalDemand: 100,
-                    totalSupply: 20,
-                    unfilledDemand: 80,
-                    unsoldSupply: 0,
-                },
-            },
+    it('applies EMA smoothing to the production signal when alpha is configured', () => {
+        setProductionSignalEmaAlpha(0.3);
+        try {
+            const planet = makePlanetWithAvg(
+                makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }),
+            );
+            const { agents, facility } = makeSetup(planet, { scale: 0.5, maxScale: 1 });
+            setStorageQuantity(agents, 0);
 
-            avgMarketResult: {
-                [RESOURCE_NAME]: {
-                    resourceName: RESOURCE_NAME,
-                    clearingPrice: 10,
-                    totalVolume: 20,
-                    totalDemand: 30,
-                    totalSupply: 200,
-                    unfilledDemand: 0,
-                    unsoldSupply: 180,
-                },
-            },
-        });
+            updateAgentProductionScale(makeGameState(agents), planet);
+            const first = facility.pidState!.smoothedSignal;
+            expect(first).toBeCloseTo(0.3 * Math.tanh(12), 5);
+
+            updateAgentProductionScale(makeGameState(agents), planet);
+            expect(facility.pidState!.smoothedSignal).toBeCloseTo(0.3 * Math.tanh(12) + 0.7 * first, 5);
+        } finally {
+            setProductionSignalEmaAlpha(null);
+        }
+    });
+
+    it('does not re-anchor a below-floor scale upward when the signal is neutral', () => {
+        const planet = makePlanetWithAvg(makeMarketResult());
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 1 });
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.scale).toBeGreaterThan(0);
+        expect(facility.scale).toBeCloseTo(0, 10);
     });
 
     it('initiates HR department expansion when workforce demand exceeds HR scale', () => {
@@ -1300,6 +1363,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1341,6 +1406,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 0,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1496,6 +1563,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 0,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1530,6 +1599,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 10,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1595,6 +1666,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1631,6 +1704,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1670,6 +1745,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD * 3,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1709,6 +1786,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1754,6 +1833,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1797,6 +1878,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1838,6 +1921,8 @@ describe('updateAgentProductionScale', () => {
                 expansionIntegral: 0,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1870,8 +1955,10 @@ describe('updateAgentProductionScale', () => {
                 prevError: 0,
                 filteredError: 0,
                 expansionIntegral: 0,
-                contractionIntegral: 30,
+                contractionIntegral: CONTRACTION_INTEGRAL_THRESHOLD,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
 
@@ -1926,6 +2013,8 @@ describe('construction budget constraint', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         planet.producedResources.Construction = 0;
@@ -1950,6 +2039,8 @@ describe('construction budget constraint', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         planet.producedResources.Construction = 50;
@@ -1981,6 +2072,8 @@ describe('construction budget constraint', () => {
                 expansionIntegral: EXPANSION_INTEGRAL_THRESHOLD,
                 contractionIntegral: 0,
                 smoothedSignal: 0,
+                lastRawSignal: 0,
+                lastDelta: 0,
             },
         });
         planet.lastMarketResult.Construction = {
@@ -2363,5 +2456,40 @@ describe('updateAgentProductionScale shell compartments for non-automated agents
         expect(shell.compartments[RESOURCE_NAME]).toBeGreaterThan(0);
         expect(shell.construction).toBeNull();
         expect(shell.scale).toBe(scaleBefore);
+    });
+});
+
+describe('applySoftFloorScale', () => {
+    const minScale = 0.25;
+    const maxScale = 1;
+
+    it('relaxes only the below-floor portion when crossing the floor', () => {
+        const result = applySoftFloorScale(0.3, -0.1, minScale, maxScale);
+        expect(result).toBeCloseTo(0.25 - (0.25 - 0.2) * SOFT_FLOOR_RELAXATION, 10);
+    });
+
+    it('attenuates only the delta when already below the floor', () => {
+        const result = applySoftFloorScale(0.05, -0.01, minScale, maxScale);
+        expect(result).toBeCloseTo(0.05 - 0.01 * SOFT_FLOOR_RELAXATION, 10);
+        expect(result).toBeLessThan(0.05);
+    });
+
+    it('leaves an already-below-floor scale unchanged on a zero delta', () => {
+        const result = applySoftFloorScale(0.05, 0, minScale, maxScale);
+        expect(result).toBeCloseTo(0.05, 10);
+    });
+
+    it('does not attenuate upward movement from below the floor', () => {
+        const result = applySoftFloorScale(0.05, 0.05, minScale, maxScale);
+        expect(result).toBeCloseTo(0.1, 10);
+    });
+
+    it('leaves a scale above the floor untouched', () => {
+        expect(applySoftFloorScale(0.5, 0.1, minScale, maxScale)).toBeCloseTo(0.6, 10);
+    });
+
+    it('clamps to maxScale and to zero', () => {
+        expect(applySoftFloorScale(0.9, 0.5, minScale, maxScale)).toBeCloseTo(maxScale, 10);
+        expect(applySoftFloorScale(0.05, -1, minScale, maxScale)).toBeCloseTo(0, 10);
     });
 });

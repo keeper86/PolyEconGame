@@ -111,7 +111,7 @@ export const SELL_DEFAULTS: SellScenario = {
     costFloor: 80,
     marketPrice: 100,
     lastSold: 45,
-    targetSellThrough: 0.6,
+    targetSellThrough: 1.0,
     priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
     priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
     costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -133,7 +133,7 @@ export const BUY_DEFAULTS: BuyScenario = {
     storageTarget: 1500,
     lastBought: 40,
     lastDemanded: 45,
-    targetFillRate: 0.6,
+    targetFillRate: 1.0,
     priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
     priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
     costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -238,8 +238,15 @@ function computeSellPrice(
 
     const effectiveQuantity = Math.max(0, inventoryQty - retainment);
 
-    const sellThrough = effectiveQuantity > 0 ? lastSold / effectiveQuantity : 1;
-    const factor = sellThroughFactor(sellThrough, cfg.targetSellThrough, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
+    const rawSellThrough = effectiveQuantity > 0 ? lastSold / effectiveQuantity : 1;
+    const sellSmoothing = 1 + cfg.inventorySmoothingMaxExtra * (surplusRatio ?? 0);
+    const factor = sellThroughFactor(
+        rawSellThrough * sellSmoothing,
+        cfg.targetSellThrough,
+        cfg.priceAdjustMaxUp,
+        cfg.priceAdjustMaxDown,
+        sellSmoothing,
+    );
 
     const brakeZoneTop = costFloor * cfg.automatedCostFloorBuffer;
     const deviation = Math.sqrt(Math.max(0, brakeZoneTop / currentPrice - 1));
@@ -252,7 +259,7 @@ function computeSellPrice(
         effectiveQuantity,
         newRetainment: retainment,
         diagnostics: {
-            sellThroughRate: sellThrough,
+            sellThroughRate: rawSellThrough,
             targetSellThrough: cfg.targetSellThrough,
             baseFactor: factor,
             costSpringDeviation: deviation,
@@ -285,6 +292,7 @@ function computeBuyPrice(
         priceAdjustMaxUp: number;
         priceAdjustMaxDown: number;
         costSpringStrength: number;
+        inventorySmoothingMaxExtra: number;
     },
 ): { newPrice: number; diagnostics: BuyDiagnostics } {
     if (shortfall <= 1e-4 || shortfall === undefined) {
@@ -347,8 +355,15 @@ function computeBuyPrice(
     }
 
     const effectiveDemanded = lastDemanded > 0 ? lastDemanded : shortfall;
-    const fillRate = effectiveDemanded > 0 ? lastBought / effectiveDemanded : 1;
-    const baseFactor = fillRateFactor(fillRate, cfg.targetFillRate, cfg.priceAdjustMaxUp, cfg.priceAdjustMaxDown);
+    const rawFillRate = effectiveDemanded > 0 ? lastBought / effectiveDemanded : 1;
+    const buySmoothing = 1 + cfg.inventorySmoothingMaxExtra;
+    const baseFactor = fillRateFactor(
+        rawFillRate * buySmoothing,
+        cfg.targetFillRate,
+        cfg.priceAdjustMaxUp,
+        cfg.priceAdjustMaxDown,
+        buySmoothing,
+    );
 
     const overDeviation = Math.sqrt(Math.max(0, currentBidPrice / ceilingPrice - 1));
     const ceilingSpring = cfg.costSpringStrength * SPRING_NORMALIZATION * overDeviation;
@@ -359,7 +374,7 @@ function computeBuyPrice(
     return {
         newPrice: clampedPrice,
         diagnostics: {
-            fillRate,
+            fillRate: rawFillRate,
             targetFillRate: cfg.targetFillRate,
             baseFactor,
             ceilingPrice,
@@ -377,26 +392,28 @@ function computeBuyPrice(
 
 // ── Factor helpers ────────────────────────────────────────────────────────────
 
-function sellThroughFactor(sellThrough: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, sellThrough));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxUp - 1);
-    } else {
-        const t = clamped / target;
+function sellThroughFactor(
+    sellThrough: number,
+    target: number,
+    maxUp: number,
+    maxDown: number,
+    smoothing: number,
+): number {
+    if (sellThrough <= target) {
+        const t = target > 0 ? sellThrough / target : 0;
         return maxDown + t * (1 - maxDown);
     }
+    const t = Math.min(1, (sellThrough - target) / Math.max(1e-4, smoothing - target));
+    return 1 + t * (maxUp - 1);
 }
 
-function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number): number {
-    const clamped = Math.max(0, Math.min(1, fillRate));
-    if (clamped >= target) {
-        const t = (clamped - target) / (1 - target);
-        return 1 + t * (maxDown - 1);
-    } else {
-        const t = clamped / target;
+function fillRateFactor(fillRate: number, target: number, maxUp: number, maxDown: number, smoothing: number): number {
+    if (fillRate <= target) {
+        const t = target > 0 ? fillRate / target : 0;
         return maxUp + t * (1 - maxUp);
     }
+    const t = Math.min(1, (fillRate - target) / Math.max(1e-4, smoothing - target));
+    return 1 + t * (maxDown - 1);
 }
 
 // ── Simulator ─────────────────────────────────────────────────────────────────
@@ -483,6 +500,7 @@ export function runSimulation(scenario: Scenario, numTicks: number): TickResult[
                     priceAdjustMaxUp: b.priceAdjustMaxUp,
                     priceAdjustMaxDown: b.priceAdjustMaxDown,
                     costSpringStrength: b.costSpringStrength,
+                    inventorySmoothingMaxExtra: b.inventorySmoothingMaxExtra,
                 },
             );
 
@@ -518,7 +536,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         costFloor: 80,
         marketPrice: 100,
         lastSold: 45,
-        targetSellThrough: 0.6,
+        targetSellThrough: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -538,7 +556,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         costFloor: 80,
         marketPrice: 100,
         lastSold: 20,
-        targetSellThrough: 0.6,
+        targetSellThrough: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -558,7 +576,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         costFloor: 80,
         marketPrice: 100,
         lastSold: 45,
-        targetSellThrough: 0.6,
+        targetSellThrough: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH * 1.5,
@@ -578,7 +596,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         costFloor: 100,
         marketPrice: 100,
         lastSold: 48,
-        targetSellThrough: 0.6,
+        targetSellThrough: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH * 2,
@@ -598,7 +616,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         costFloor: 80,
         marketPrice: 100,
         lastSold: 45,
-        targetSellThrough: 0.6,
+        targetSellThrough: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -619,7 +637,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         storageTarget: 1500,
         lastBought: 40,
         lastDemanded: 45,
-        targetFillRate: 0.6,
+        targetFillRate: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,
@@ -639,7 +657,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         storageTarget: 3000,
         lastBought: 10,
         lastDemanded: 45,
-        targetFillRate: 0.6,
+        targetFillRate: 1.0,
         priceAdjustMaxUp: 1.1,
         priceAdjustMaxDown: 0.9,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH * 2,
@@ -659,7 +677,7 @@ export const PRESET_SCENARIOS: Record<string, Scenario> = {
         storageTarget: 1500,
         lastBought: 40,
         lastDemanded: 45,
-        targetFillRate: 0.6,
+        targetFillRate: 1.0,
         priceAdjustMaxUp: PRICE_ADJUST_MAX_UP,
         priceAdjustMaxDown: PRICE_ADJUST_MAX_DOWN,
         costSpringStrength: DEFAULT_COST_SPRING_STRENGTH,

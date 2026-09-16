@@ -9,8 +9,7 @@
 - Do not run 'npm run build', there is always a dev server running. server crashes, building fails randomly.
 - When you fix a bug, most likely you will also want to add a test.
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
-- Be direct and honest. If a task makes no real sense, say so. Do not ask only questions.
-  When you ask the answer must lead to implementation. No eternal asking!
+- Be direct and honest. If a task makes no real sense, say so.
 
 ## Overview
 

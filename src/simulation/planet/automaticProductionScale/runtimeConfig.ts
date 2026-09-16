@@ -5,9 +5,12 @@ let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
 let minScaleFraction: number | null = null;
+let expansionAtCapacityFraction: number | null = null;
 let serviceSellThroughTarget: number | null = null;
 let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
+let productionSignalEmaAlpha: number | null = null;
+let storageErrorZoomMonths: number | null = null;
 
 export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
     storageSpaceClampEnabled = enabled;
@@ -33,6 +36,10 @@ export const setMinScaleFraction = (value: number | null): void => {
     minScaleFraction = value;
 };
 
+export const setExpansionAtCapacityFraction = (value: number | null): void => {
+    expansionAtCapacityFraction = value;
+};
+
 export const setServiceSellThroughTarget = (value: number | null): void => {
     serviceSellThroughTarget = value;
 };
@@ -45,6 +52,14 @@ export const setServiceFlowDecayTarget = (value: number | null): void => {
     serviceFlowDecayTarget = value;
 };
 
+export const setProductionSignalEmaAlpha = (value: number | null): void => {
+    productionSignalEmaAlpha = value;
+};
+
+export const setStorageErrorZoomMonths = (value: number | null): void => {
+    storageErrorZoomMonths = value;
+};
+
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
 export const getPidOutMaxDown = (): number | null => pidOutMaxDown;
 export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
@@ -52,6 +67,9 @@ export const getExpansionIntegralThreshold = (): number | null => expansionInteg
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
 export const getMinScaleFraction = (): number | null => minScaleFraction;
+export const getExpansionAtCapacityFraction = (): number | null => expansionAtCapacityFraction;
 export const getServiceSellThroughTarget = (): number | null => serviceSellThroughTarget;
 export const getServiceFillRateTarget = (): number | null => serviceFillRateTarget;
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
+export const getProductionSignalEmaAlpha = (): number | null => productionSignalEmaAlpha;
+export const getStorageErrorZoomMonths = (): number | null => storageErrorZoomMonths;
