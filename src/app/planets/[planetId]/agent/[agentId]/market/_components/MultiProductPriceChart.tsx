@@ -692,8 +692,8 @@ export default function MultiProductPriceChart({
                                                                 {payload
                                                                     .sort(
                                                                         (a, b) =>
-                                                                            ((a.value as number) ?? 0) -
-                                                                            ((b.value as number) ?? 0),
+                                                                            ((b.value as number) ?? 0) -
+                                                                            ((a.value as number) ?? 0),
                                                                     )
                                                                     .map((p) => (
                                                                         <div

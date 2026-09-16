@@ -10,7 +10,6 @@ import {
     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
-    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
@@ -399,9 +398,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
             resource.form !== 'services'
         ) {
             const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const refillRate = totalShortfall / INPUT_BUFFER_REFILL_TICKS;
             const smoothedDemand =
-                baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio)) + refillRate;
+                baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
             totalShortfall = Math.min(totalShortfall, smoothedDemand);
         }
 
@@ -500,7 +498,12 @@ export function adjustOfferPrice(
     const effectiveQuantity = Math.max(0, inventoryQty - retainment);
     const oldPrice = price;
     const targetSellThrough = cfg.targetSellThrough ?? TARGET_SELL_THROUGH;
-    const sellSmoothing = productionRate > 0 ? cfg.sellProductionSmoothing : cfg.freeRetainmentSmoothingMaxExtra;
+    const sellSmoothing =
+        offer.resource.form === 'services'
+            ? 1
+            : productionRate > 0
+              ? cfg.sellProductionSmoothing
+              : cfg.freeRetainmentSmoothingMaxExtra;
 
     if (effectiveQuantity < EPSILON) {
         if (sold > 0 && price > 0) {

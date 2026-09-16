@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { INPUT_BUFFER_TARGET_TICKS, INPUT_BUFFER_REFILL_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
+import { INPUT_BUFFER_TARGET_TICKS, INVENTORY_SMOOTHING_MAX_EXTRA } from '../constants';
 import { machineryFactory } from '../planet/productionFacilities';
 import {
     electronicsResourceType,
@@ -123,9 +123,9 @@ describe('supply chain — break-even ceiling does not collapse for unpriced out
 
         const steelBid = factory.assets[PLANET_ID].market?.buy[steelResourceType.name];
 
-        // With empty storage: baseRate * (1 + smoothingMaxExtra) plus the refill term shortfall / refillTicks
+        // With empty storage: baseRate * (1 + smoothingMaxExtra)
         const baseRate = rawTarget / INPUT_BUFFER_TARGET_TICKS;
-        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + rawTarget / INPUT_BUFFER_REFILL_TICKS;
+        const smoothedTarget = baseRate * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
         expect(steelBid!.bidStorageTarget).toBeCloseTo(smoothedTarget, 0);
     });
 

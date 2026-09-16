@@ -6,7 +6,6 @@ import {
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
-    INPUT_BUFFER_REFILL_TICKS,
     INVENTORY_SMOOTHING_MAX_EXTRA,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
@@ -188,11 +187,8 @@ describe('resolveBidConfig — config resolution', () => {
         const bid = agent.assets[PLANET_ID].market?.buy[goodsResource.name];
         expect(bid).toBeDefined();
 
-        // With empty storage: baseRate 10 * (1 + 2) = 30 smoothing plus refill term rawTarget/refillTicks
-        expect(bid!.bidStorageTarget).toBeCloseTo(
-            10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA) + (10 * INPUT_BUFFER_TARGET_TICKS) / INPUT_BUFFER_REFILL_TICKS,
-            0,
-        );
+        // With empty storage: baseRate 10 * (1 + 2) = 30 smoothing
+        expect(bid!.bidStorageTarget).toBeCloseTo(10 * (1 + INVENTORY_SMOOTHING_MAX_EXTRA), 0);
     });
 
     it('buy-side with undefined config picks service defaults for services resources', () => {
@@ -330,11 +326,12 @@ describe('automaticPricing — offer price tâtonnement', () => {
     it('has no price drift when sell-through exactly equals the target', () => {
         const PRICE = 10;
         const STOCK = 1000;
-        const sold = STOCK * TARGET_SELL_THROUGH;
+        const TARGET = 0.85;
+        const sold = STOCK * TARGET;
         const { agent, planet } = makeWaterProducerWithPriorOffer(PRICE, sold, STOCK);
         // Disable sell-smoothing for this test: set sellProductionSmoothing=1 so all surplus is offered
         const offer = agent.assets[PLANET_ID].market!.sell[WATER]!;
-        offer.autoConfig = { ...offer.autoConfig, sellProductionSmoothing: 1 };
+        offer.autoConfig = { ...offer.autoConfig, sellProductionSmoothing: 1, targetSellThrough: TARGET };
 
         automaticPricing(new Map([['co', agent]]), planet);
 
