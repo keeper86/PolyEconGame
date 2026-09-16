@@ -357,10 +357,6 @@ describe('PID utilization response', () => {
 });
 
 describe('storage lead time keeps the loop out of the limit-cycle band', () => {
-    it('keeps the retracted Tw/Tp bound non-binding (pure-integrator plant)', () => {
-        expect(checkLimitCycleBand().satisfied).toBe(true);
-    });
-
     it('keeps the target above the capacity horizon so shells can hold the buffer', () => {
         expect(STORAGE_TARGET_MONTHS).toBeLessThanOrEqual(STORAGE_CAPACITY_MONTHS);
     });

@@ -17,16 +17,6 @@ export {
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
 export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
 export {
-    assertStabilityConditions,
-    checkCapacityCoversTarget,
-    checkLimitCycleBand,
-    checkSymmetricRateLimit,
-    correctionTimeTicks,
-    evaluateStabilityConditions,
-    limitCycleRatio,
-    storageLeadTimeTicks,
-} from './automaticProductionScale/stabilityConditions';
-export {
     computeStorageExpansionTarget,
     computeStorageSignal,
     STORAGE_TARGET_FILL_RATE,

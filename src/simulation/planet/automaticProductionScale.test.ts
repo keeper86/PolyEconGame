@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { STORAGE_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
+import { makePool } from '../initialUniverse/resourceClaimFactory';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -27,16 +28,14 @@ import {
 import {
     DYNAMIC_EXPANSION_CAP_FRACTION,
     EXPANSION_AT_CAPACITY_FRACTION,
-    MIN_SCALE_FRACTION,
     STORAGE_TARGET_MONTHS,
 } from './automaticProductionScale/constants';
 import { setProductionSignalEmaAlpha } from './automaticProductionScale/runtimeConfig';
+import { shellFormOfResource } from './facility';
+import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import type { Agent, GameState, MarketResult, Planet } from './planet';
 import { crudeOilResourceType, naturalGasResourceType, produceResourceType } from './resources';
-import { shellFormOfResource } from './facility';
 import { constructionServiceResourceType } from './services';
-import { makePool } from '../initialUniverse/resourceClaimFactory';
-import { arableLandResourceType, waterSourceResourceType } from './landBoundResources';
 import { PRODUCED_HR_QUANTITY, PRODUCED_STORAGE_QUANTITY } from './specialFacilities';
 
 const RESOURCE = produceResourceType;
