@@ -157,7 +157,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.scale);
+            productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.maxScale);
 
             const inventoryQty = queryStorageFacility(assets.storage, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
@@ -480,10 +480,11 @@ export function adjustOfferPrice(
     const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && offer.resource.form !== 'services') {
-        // Producers anchor the offer to their production rate, not to the inventory, so a
-        // stockpile cannot inflate the retainment without bound. Non-producers (no production
-        // rate) fall back to spreading the surplus over the configured smoothing days to
-        // liquidate dead stock without dumping it in a single tick.
+        // Producers anchor the offer to their capacity (maxScale production), not to the current
+        // operating scale or the inventory, so a facility that has contracted its scale still
+        // offers its full capacity and can sell down a stockpile, while the stockpile itself
+        // cannot inflate the retainment without bound. Non-producers fall back to spreading the
+        // surplus over the configured smoothing days to liquidate dead stock without a dump.
         const perTick =
             productionRate > 0
                 ? Math.min(surplus, productionRate * cfg.sellProductionSmoothing)

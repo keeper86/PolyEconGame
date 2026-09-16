@@ -23,6 +23,7 @@ export {
 } from './automaticProductionScale/storageAutoscale';
 
 import {
+    CONTRACTION_AT_SCALE_FRACTION,
     CONTRACTION_INTEGRAL_DECAY,
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
@@ -415,7 +416,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const atMaxScale =
                 facility.scale >=
                 facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
-            const atMinScale = facility.scale <= minScale;
+            const belowHalfCapacity = facility.scale < facility.maxScale * CONTRACTION_AT_SCALE_FRACTION;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
                 state.expansionIntegral = Math.min(
@@ -426,7 +427,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            if (atMinScale && signal < 0) {
+            if (belowHalfCapacity && signal < 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
                     state.contractionIntegral + STORAGE_CONTRACTION_RATE,

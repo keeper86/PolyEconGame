@@ -15,6 +15,7 @@ import {
     setMinScaleFraction,
     setExpansionAtCapacityFraction,
     setStorageTargetMonths,
+    setStorageCapacityMonths,
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
@@ -478,6 +479,11 @@ async function main(): Promise<void> {
     if (storageTargetMonthsArg !== undefined) {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
+    }
+    const storageCapacityMonthsArg = arg('storageCapacityMonths');
+    if (storageCapacityMonthsArg !== undefined) {
+        setStorageCapacityMonths(Number(storageCapacityMonthsArg));
+        console.log(`goods storage capacity overridden to ${storageCapacityMonthsArg} months`);
     }
     const productionSignalEmaAlphaArg = arg('productionSignalEmaAlpha');
     if (productionSignalEmaAlphaArg !== undefined) {

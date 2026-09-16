@@ -21,12 +21,12 @@ export const MIN_SCALE_FRACTION = 0.25;
  */
 export const SOFT_FLOOR_RELAXATION = 0.5;
 
-export const PID_KP = 0.01;
+export const PID_KP = 0.001;
 
-export const PID_KI = 0.0001;
+export const PID_KI = 0.00001;
 
 export const PID_KD = 0.001;
-export const PID_IMAX = 0.0025;
+export const PID_IMAX = 0.0001;
 
 // There is no replenishment transport lag: scale acts on production within the same tick and
 // inventory integrates it directly, so the plant is a pure first-order integrator with a
@@ -37,12 +37,12 @@ export const STORAGE_TARGET_MONTHS = 12;
 export const STORAGE_CAPACITY_MONTHS = 13;
 
 /**
- * The storage error is re-normalised by this scale instead of the full target, so the tanh
- * saturation gradient lives in the +/-1-month band around the target instead of the +/-12-month
- * band. A zoom-in that keeps the signal linear exactly where the inventory actually matters and
- * saturates to full up/down beyond it, without changing the buffer target or the signal source.
+ * The storage error is normalised by the full target so the tanh signal stays proportional over
+ * the whole reachable inventory range (storage caps at STORAGE_CAPACITY_MONTHS, so the surplus
+ * side only reaches ~tanh(-1/12)). The old 1-month zoom saturated the signal to +/-1 for any
+ * error beyond ~2 months, turning the PID into a relay for over-built facilities.
  */
-export const STORAGE_ERROR_ZOOM_MONTHS = 1;
+export const STORAGE_ERROR_ZOOM_MONTHS = STORAGE_TARGET_MONTHS;
 
 export const PID_OUT_MAX_UP = 0.001;
 export const PID_OUT_MAX_DOWN = 0.001;
@@ -69,6 +69,7 @@ export const DYNAMIC_EXPANSION_CAP_FRACTION = 0.1;
 export const EXPANSION_AT_CAPACITY_FRACTION = 0.98;
 
 export const MAX_SCALE_CONTRACT_FRACTION = 0.01;
+export const CONTRACTION_AT_SCALE_FRACTION = 0.5;
 export const CONTRACTION_INTEGRAL_THRESHOLD = 15;
 export const CONTRACTION_INTEGRAL_MAX = 180;
 export const CONTRACTION_INTEGRAL_DECAY = 0.05;

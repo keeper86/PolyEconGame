@@ -4,6 +4,7 @@ const pidOutMaxUp: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
+let storageCapacityMonths: number | null = null;
 let minScaleFraction: number | null = null;
 let expansionAtCapacityFraction: number | null = null;
 let serviceSellThroughTarget: number | null = null;
@@ -30,6 +31,10 @@ export const setContractionIntegralThreshold = (value: number | null): void => {
 
 export const setStorageTargetMonths = (value: number | null): void => {
     storageTargetMonths = value;
+};
+
+export const setStorageCapacityMonths = (value: number | null): void => {
+    storageCapacityMonths = value;
 };
 
 export const setMinScaleFraction = (value: number | null): void => {
@@ -66,6 +71,7 @@ export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
 export const getExpansionIntegralThreshold = (): number | null => expansionIntegralThreshold;
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
+export const getStorageCapacityMonths = (): number | null => storageCapacityMonths;
 export const getMinScaleFraction = (): number | null => minScaleFraction;
 export const getExpansionAtCapacityFraction = (): number | null => expansionAtCapacityFraction;
 export const getServiceSellThroughTarget = (): number | null => serviceSellThroughTarget;

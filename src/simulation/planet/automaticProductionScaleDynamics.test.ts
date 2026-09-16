@@ -224,10 +224,17 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
 
     it('is positive when the storage is below the 12-month target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
-        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(6), 5);
+        expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
 
         const above = makeStorageFixture({ inventory: target * 2 });
-        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-12), 5);
+        expect(computeFacilityStorageSignal(above.facility, above.assets).maxError).toBeCloseTo(Math.tanh(-1), 5);
+    });
+
+    it('does not saturate for a 1-month deficit (stays in the linear band)', () => {
+        const oneMonthShort = makeStorageFixture({ inventory: target - 30 * 100 });
+        const signal = computeFacilityStorageSignal(oneMonthShort.facility, oneMonthShort.assets).maxError;
+        expect(signal).toBeCloseTo(Math.tanh(1 / 12), 5);
+        expect(signal).toBeLessThan(0.1);
     });
 
     it('is zero when the storage is exactly at the 12-month target', () => {
@@ -247,7 +254,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         const fixture = makeStorageFixture({ producesTwoOutputs: true, inventory: target * 2 });
         setStorageResourceQuantity(fixture.assets.storage, constructionServiceResourceType, target / 4);
         const signal = computeFacilityStorageSignal(fixture.facility, fixture.assets);
-        expect(signal.maxError).toBeCloseTo(Math.tanh(9), 5);
+        expect(signal.maxError).toBeCloseTo(Math.tanh(0.75), 5);
     });
 
     it('maxError is negative only when every output is above the target', () => {
@@ -311,7 +318,7 @@ describe('PID utilization response', () => {
             const { facility, assets } = makeStorageSignalFixture(0);
             const state = getDefaultPidState();
             const error = computeFacilityStorageSignal(facility, assets).maxError;
-            expect(error).toBeCloseTo(Math.tanh(12), 5);
+            expect(error).toBeCloseTo(Math.tanh(1), 5);
 
             const afterSettling = facility.scale;
             for (let tick = 0; tick < 2_000; tick++) {
