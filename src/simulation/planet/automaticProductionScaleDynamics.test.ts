@@ -22,7 +22,6 @@ import {
     PID_OUT_MAX_UP,
     STORAGE_CAPACITY_MONTHS,
     STORAGE_TARGET_MONTHS,
-    checkLimitCycleBand,
     computeDynamicExpansionTarget,
     computeFacilityStorageSignal,
     computePidDelta,
