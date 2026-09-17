@@ -1,5 +1,5 @@
 import { TICKS_PER_MONTH } from '../../constants';
-import { queryStorageFacility } from '../facility';
+import { getStorageCapacityState, queryStorageFacility } from '../facility';
 import type { ProductionFacility } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_ERROR_ZOOM_MONTHS, STORAGE_TARGET_MONTHS } from './constants';
@@ -20,7 +20,9 @@ export function computeFacilityStorageSignal(
     for (const output of facility.produces) {
         const inventory = queryStorageFacility(assets.storage, output.resource.name, false);
         const targetMonths = getStorageTargetMonths() ?? STORAGE_TARGET_MONTHS;
-        const target = targetMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
+        const monthlyProduction = TICKS_PER_MONTH * facility.maxScale * output.quantity;
+        const reachable = reachableTargetQuantity(assets.storage, output.resource, monthlyProduction);
+        const target = Math.min(targetMonths * monthlyProduction, reachable);
         const zoomMonths = getStorageErrorZoomMonths() ?? STORAGE_ERROR_ZOOM_MONTHS;
         const zoom = zoomMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
         const error = (target - inventory) / Math.max(1e-9, zoom);
@@ -36,6 +38,17 @@ export function computeFacilityStorageSignal(
         maxError: softClip(maxError),
         minError: softClip(minError),
     };
+}
+
+export function reachableTargetQuantity(
+    storage: AgentPlanetAssets['storage'],
+    resource: ProductionFacility['produces'][number]['resource'],
+    monthlyProduction: number,
+): number {
+    const capacity = getStorageCapacityState(storage, resource).capacity;
+    const byVolume = resource.volumePerQuantity > 0 ? capacity.volume / resource.volumePerQuantity : Number.POSITIVE_INFINITY;
+    const byMass = resource.massPerQuantity > 0 ? capacity.mass / resource.massPerQuantity : Number.POSITIVE_INFINITY;
+    return Math.max(0, Math.min(byVolume, byMass) - monthlyProduction);
 }
 
 export function softClip(value: number): number {

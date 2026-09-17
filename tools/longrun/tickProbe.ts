@@ -3,11 +3,13 @@ import path from 'node:path';
 
 import type { AgentPlanetAssets, GameState } from '../../src/simulation/planet/planet';
 import { getAllFacilities } from '../../src/simulation/planet/planet';
-import { getTransportStarvation, queryStorageFacility } from '../../src/simulation/planet/facility';
+import { getTransportStarvation, queryStorageFacility, shellFormOfResource } from '../../src/simulation/planet/facility';
 import type { ProductionFacility } from '../../src/simulation/planet/facility';
 import { TICKS_PER_YEAR, TICKS_PER_MONTH } from '../../src/simulation/constants';
-import { STORAGE_TARGET_MONTHS } from '../../src/simulation/planet/automaticProductionScale/constants';
+import { PID_OUT_MAX_DOWN, PID_OUT_MAX_UP, STORAGE_TARGET_MONTHS } from '../../src/simulation/planet/automaticProductionScale/constants';
+import { getPidOutMaxDown, getPidOutMaxUp } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { computeFacilityStorageSignal } from '../../src/simulation/planet/automaticProductionScale/signalComputation';
+import { footprintPerForm } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
 
 const TICK_PROBE_ENV = 'TICK_PROBE';
 
@@ -105,6 +107,7 @@ const COLUMNS = [
     'agentRevenue',
     'rawSignal',
     'pidDelta',
+    'pidOutNorm',
     'maintenanceStatus',
     'constructionType',
     'constructionProgress',
@@ -126,6 +129,12 @@ const COLUMNS = [
     'agentId',
     'hrProductivityMultiplier',
     'transportStarvation',
+    'shellForm',
+    'shellScale',
+    'shellMaxScale',
+    'shellShare',
+    'shellConstr',
+    'shellRequired',
 ];
 
 let started = false;
@@ -235,6 +244,7 @@ function row(
         (facility.lastTickResults.revenue ?? 0).toFixed(2),
         (pid?.lastRawSignal ?? 0).toFixed(5),
         (pid?.lastDelta ?? 0).toFixed(6),
+        railFraction(pid?.lastDelta ?? 0, facility.maxScale).toFixed(5),
         (facility.maintenanceStatus ?? 1).toFixed(4),
         facility.construction?.type ?? '',
         facility.construction
@@ -249,7 +259,43 @@ function row(
         agentId,
         (assets.hrProductivityMultiplier ?? 1).toFixed(4),
         getTransportStarvation(assets.storage).toFixed(4),
+        ...shellDiagnostics(facility, assets),
     ].join(',');
+}
+
+function shellDiagnostics(facility: ProductionFacility, assets: AgentPlanetAssets): string[] {
+    const out = facility.produces[0];
+    if (!out) {
+        return ['', '', '', '', '', ''];
+    }
+    const form = shellFormOfResource(out.resource);
+    if (!form) {
+        return ['', '', '', '', '', ''];
+    }
+    const shell = assets.storage.shells[form];
+    const footprint = footprintPerForm(assets)[form] ?? [];
+    const required = footprint.reduce(
+        (acc, r) =>
+            acc +
+            Math.max(
+                r.volume > 0 ? r.volume / Math.max(1e-9, shell.capacity.volume) : 0,
+                r.mass > 0 ? r.mass / Math.max(1e-9, shell.capacity.mass) : 0,
+            ),
+        0,
+    );
+    return [
+        form,
+        shell.scale.toFixed(3),
+        shell.maxScale.toFixed(3),
+        (shell.compartments[out.resource.name] ?? 0).toFixed(4),
+        shell.construction?.type ?? '',
+        required.toFixed(1),
+    ];
+}
+
+function railFraction(lastDelta: number, maxScale: number): number {
+    const outMax = lastDelta >= 0 ? (getPidOutMaxUp() ?? PID_OUT_MAX_UP) : (getPidOutMaxDown() ?? PID_OUT_MAX_DOWN);
+    return Math.abs(lastDelta) / Math.max(1e-9, outMax * maxScale);
 }
 
 function sellDiagnostics(

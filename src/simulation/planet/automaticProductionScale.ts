@@ -15,7 +15,7 @@ export {
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
+export { computeFacilityStorageSignal, reachableTargetQuantity, softClip } from './automaticProductionScale/signalComputation';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -101,7 +101,6 @@ export function reconcileShellScale(
     assets: AgentPlanetAssets,
     shell: StorageFacility,
     requiredScale: number,
-    hasOwnConstruction: boolean,
     remainingConstructionBudget: number,
 ): number {
     if (requiredScale <= 0 || shell.construction !== null) {
@@ -111,10 +110,7 @@ export function reconcileShellScale(
     const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
 
     if (shell.maxScale < requiredScale) {
-        if (remainingConstructionBudget <= 0) {
-            return remainingConstructionBudget;
-        }
-        const started = initiateCapacityExpansion(shell, assets, planet, hasOwnConstruction, bufferScale);
+        const started = initiateCapacityExpansion(shell, assets, planet, true, bufferScale);
         if (!started) {
             return remainingConstructionBudget;
         }
@@ -790,7 +786,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 assets,
                 assets.storage.shells[form],
                 sizing.requiredScale,
-                hasOwnConstruction,
                 remainingConstructionBudget,
             );
         }

@@ -683,6 +683,8 @@ export function productionTick(gameState: GameState, planet: Planet): void {
                 if (!req || req <= 0) {
                     continue;
                 }
+                // add storage to the priority list of getting workers
+                // TODO: Settable priority list that can also prio normal production facilities are thinkable.
                 const jobEdu = eduLevel as EducationLevelType;
                 const jobEduIdx = educationLevelKeys.indexOf(jobEdu);
                 const allocatorFullTarget = req * allocatorScale;

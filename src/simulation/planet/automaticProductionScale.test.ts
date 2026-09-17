@@ -960,12 +960,14 @@ describe('updateAgentProductionScale', () => {
             },
         );
 
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        assets.storage.shells.liquid.compartments[OIL.name] = 1;
         const agent = makeAgent('a1', planet.id, 'Agent 1', {
             automated: true,
             assets: {
-                [planet.id]: makeAgentPlanetAssets(planet.id, {
-                    productionFacilities: [facility],
-                }),
+                [planet.id]: assets,
             },
         });
 
@@ -1032,12 +1034,14 @@ describe('updateAgentProductionScale', () => {
             },
         );
 
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        assets.storage.shells.liquid.compartments[OIL.name] = 1;
         const agent = makeAgent('a1', planet.id, 'Agent 1', {
             automated: true,
             assets: {
-                [planet.id]: makeAgentPlanetAssets(planet.id, {
-                    productionFacilities: [facility],
-                }),
+                [planet.id]: assets,
             },
         });
 
