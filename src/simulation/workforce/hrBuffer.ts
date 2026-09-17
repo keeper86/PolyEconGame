@@ -1,4 +1,4 @@
-import { HR_BUFFER_CAPACITY_MULTIPLIER } from '../constants';
+import { HR_BUFFER_CAPACITY_MULTIPLIER, SS_RELAXATION_RATE } from '../constants';
 import type { Storage } from '../planet/facility';
 import { queryStorageFacility, removeFromStorageFacility } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
@@ -11,27 +11,18 @@ export const computeMaxDailyHROutput = (hrFacilityScale: number): number => PROD
 export const computeBufferCapacity = (maxDailyHROutput: number): number =>
     maxDailyHROutput * HR_BUFFER_CAPACITY_MULTIPLIER;
 
-export const updateHrBuffer = (currentBuffer: number, producedHr: number, demand: number, pMax: number): number => {
-    const updated = currentBuffer + producedHr - demand;
-    return Math.min(pMax, Math.max(0, updated));
-};
+/**
+ * HR hardship is a state, mirroring `settleBuffer` on the storage side: excited only while the
+ * buffer is short, and otherwise decaying by SS_RELAXATION_RATE. A single dry tick therefore costs
+ * almost nothing, while a sustained shortfall still builds to full starvation. The multiplier is a
+ * smooth knee over it rather than a piecewise map on an instantaneous ratio (which had a 0.06 cliff
+ * at coverage 1 and dropped straight to 0.5 on any tick where nothing was delivered).
+ */
+export const relaxHrStarvation = (current: number, deficitRatio: number): number =>
+    Math.max(0, Math.min(1, current + (deficitRatio - current) * (1 - SS_RELAXATION_RATE)));
 
-export const computeCoverageRatio = (buffer: number, demand: number): number => {
-    if (demand <= 0) {
-        return 1.0;
-    }
-    return buffer / demand;
-};
-
-export const computeProductivityMultiplier = (coverage: number): number => {
-    if (coverage >= 1.0) {
-        return 1.0;
-    }
-    if (coverage >= 0.3) {
-        return 0.8 + 0.2 * (coverage - 0.3);
-    }
-    return 0.5 + 0.3 * (coverage / 0.3);
-};
+export const computeProductivityMultiplier = (starvation: number): number =>
+    1 - 0.5 * Math.pow(Math.max(0, Math.min(1, starvation)), 6);
 
 export type HrBufferStatus = 'optimal' | 'stable' | 'strained' | 'critical';
 
@@ -62,7 +53,7 @@ export function hrBufferTick(agents: Map<string, Agent>, planet: Planet): void {
 export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
     const hrDepartment = assets.humanResourcesDepartment;
     if (!hrDepartment) {
-        assets.hrProductivityMultiplier = computeProductivityMultiplier(0);
+        assets.hrProductivityMultiplier = computeProductivityMultiplier(1);
         return;
     }
 
@@ -75,10 +66,19 @@ export function processHrBufferForAssets(assets: AgentPlanetAssets): void {
         );
     }
     const pMax = computeBufferCapacity(maxDailyHROutput);
-    const consumed = Math.min(hrDepartment.hrBuffer + producedHr, demand, pMax);
-    hrDepartment.hrBuffer = updateHrBuffer(hrDepartment.hrBuffer, producedHr, demand, pMax);
 
-    assets.hrProductivityMultiplier = computeProductivityMultiplier(computeCoverageRatio(consumed, demand));
+    let buffer = hrDepartment.hrBuffer + producedHr - demand;
+    let starvation = hrDepartment.hrStarvation;
+    if (buffer < 0) {
+        starvation = relaxHrStarvation(starvation, Math.min(1, -buffer / Math.max(1, demand)));
+        buffer = 0;
+    } else {
+        starvation *= SS_RELAXATION_RATE;
+    }
+
+    hrDepartment.hrBuffer = Math.max(0, Math.min(pMax, buffer));
+    hrDepartment.hrStarvation = Math.max(0, Math.min(1, starvation));
+    assets.hrProductivityMultiplier = computeProductivityMultiplier(hrDepartment.hrStarvation);
 }
 
 function pullAllHrFromStorage(storage: Storage): number {

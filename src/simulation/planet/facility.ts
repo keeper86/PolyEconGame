@@ -333,6 +333,7 @@ export const nullWagePidState = (): Record<EducationLevelType, WagePidState> => 
 
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
+    hrStarvation: number;
     wagePidState: Record<EducationLevelType, WagePidState>;
 };
 export type StorageDepartment = ManagementFacility & {
