@@ -19,7 +19,7 @@ import {
     setStorageCapacityMonths,
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
-    setStorageTrendHorizonTicks,
+    setStorageTrendHorizonMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -502,10 +502,10 @@ async function main(): Promise<void> {
         setStorageErrorZoomMonths(Number(storageErrorZoomMonthsArg));
         console.log(`storage error zoom overridden to ${storageErrorZoomMonthsArg} months`);
     }
-    const storageTrendTicksArg = arg('storageTrendTicks');
-    if (storageTrendTicksArg !== undefined) {
-        setStorageTrendHorizonTicks(Number(storageTrendTicksArg));
-        console.log(`storage trend horizon overridden to ${storageTrendTicksArg} ticks`);
+    const storageTrendMonthsArg = arg('storageTrendMonths');
+    if (storageTrendMonthsArg !== undefined) {
+        setStorageTrendHorizonMonths(Number(storageTrendMonthsArg));
+        console.log(`storage trend horizon overridden to ${storageTrendMonthsArg} months`);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {

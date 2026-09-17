@@ -8,7 +8,7 @@ import {
 } from '../constants';
 import { fillRateFactor } from '../market/automaticPricing';
 import {
-    setStorageTrendHorizonTicks,
+    setStorageTrendHorizonMonths,
 } from './automaticProductionScale/runtimeConfig';
 import {
     makeAgent,
@@ -314,7 +314,7 @@ describe('reachableTargetQuantity caps the storage target at the shell capacity'
 describe('forward-looking storage term', () => {
     const target = STORAGE_TARGET_MONTHS * 30 * 100;
 
-    afterEach(() => setStorageTrendHorizonTicks(0));
+    afterEach(() => setStorageTrendHorizonMonths(null));
 
     function makeTrendFixture(produced: number, sold: number) {
         const facility = makeProductionFacility(undefined, {
@@ -335,19 +335,25 @@ describe('forward-looking storage term', () => {
     });
 
     it('is inert at the target while the horizon is off', () => {
-        setStorageTrendHorizonTicks(0);
+        setStorageTrendHorizonMonths(0);
         const { facility, assets } = makeTrendFixture(100, 0);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBe(0);
     });
 
+    it('leads by a month by default', () => {
+        setStorageTrendHorizonMonths(null);
+        const { facility, assets } = makeTrendFixture(100, 0);
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(Math.tanh(-1 / 12), 5);
+    });
+
     it('brakes at the target when production outruns sales', () => {
-        setStorageTrendHorizonTicks(300);
+        setStorageTrendHorizonMonths(10);
         const { facility, assets } = makeTrendFixture(100, 0);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
     });
 
     it('accelerates at the target when the storage is draining', () => {
-        setStorageTrendHorizonTicks(300);
+        setStorageTrendHorizonMonths(10);
         const { facility, assets } = makeTrendFixture(0, 100);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeGreaterThan(0);
     });

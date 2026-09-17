@@ -46,17 +46,20 @@ export const STORAGE_ERROR_ZOOM_MONTHS = STORAGE_TARGET_MONTHS;
 
 /**
  * Forward-looking storage term. The plant is `inv_dot = q*s - d`, so the measured imbalance (own
- * production minus what the market actually took last tick) IS the inventory rate: no differencing,
- * no filtering. That matters because with the actuator as the input the plant is a double integrator
+ * production minus the smoothed market take) IS the inventory rate: no differencing needed. That
+ * matters because with the actuator as the input the plant is a double integrator
  * (`G = q*e^-pT/p^2`), and P-only control on a double integrator has no damping at all
  * (characteristic `p^2 + Kp/Z` - purely imaginary roots), which is what the observed scale relay is.
- * Acting on the inventory predicted `Td` ticks ahead adds `Td/Z * inv_dot`, giving
- * `p^2 + (Kp*Td/Z)p + Kp/Z` and therefore zeta = (Td/2)*sqrt(Kp/Z): damping now scales with the lead.
- * Critical damping needs Td = 2*sqrt(Z/Kp), ~350 ticks at the 1-month zoom. The magnitude is real
- * plant state, so unlike a D term on the error it neither vanishes when the signal clips nor has to
- * be filtered. 0 = off.
+ * Acting on the inventory predicted this many months ahead adds `Td/Z * inv_dot`, turning the
+ * characteristic into `p^2 + (Kp*Td/Z)p + Kp/Z`, hence zeta = (Td/2)*sqrt(Kp/Z).
+ *
+ * One month, i.e. the zoom window's own scale, was the best of the horizons tried over y30-50 of the
+ * single-agent run: the scale swing (p5-p95) falls 19% (0.36 -> 0.29), actuator time-at-limit 33%
+ * (15.6% -> 10.5%) and the food price standard deviation 29% (0.220 -> 0.157), for 2.8x the switches
+ * (all small dithers). The 3- and 12-month leads shrink the swing further but wreck the economy
+ * (food std x2.3/x2.6, wealth -34%/-31%), so the lead is deliberately kept near the noise floor.
  */
-export const STORAGE_TREND_HORIZON_TICKS = 0;
+export const STORAGE_TREND_HORIZON_MONTHS = 1;
 
 export const PID_OUT_MAX_UP = 0.001;
 export const PID_OUT_MAX_DOWN = 0.001;

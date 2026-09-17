@@ -13,7 +13,7 @@ let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
 let productionSignalEmaAlpha: number | null = null;
 let storageErrorZoomMonths: number | null = null;
-let storageTrendHorizonTicks: number | null = null;
+let storageTrendHorizonMonths: number | null = null;
 
 export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
     storageSpaceClampEnabled = enabled;
@@ -71,8 +71,8 @@ export const setStorageErrorZoomMonths = (value: number | null): void => {
     storageErrorZoomMonths = value;
 };
 
-export const setStorageTrendHorizonTicks = (value: number | null): void => {
-    storageTrendHorizonTicks = value;
+export const setStorageTrendHorizonMonths = (value: number | null): void => {
+    storageTrendHorizonMonths = value;
 };
 
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
@@ -90,4 +90,4 @@ export const getServiceFillRateTarget = (): number | null => serviceFillRateTarg
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
 export const getProductionSignalEmaAlpha = (): number | null => productionSignalEmaAlpha;
 export const getStorageErrorZoomMonths = (): number | null => storageErrorZoomMonths;
-export const getStorageTrendHorizonTicks = (): number | null => storageTrendHorizonTicks;
+export const getStorageTrendHorizonMonths = (): number | null => storageTrendHorizonMonths;
