@@ -1,6 +1,7 @@
 let storageSpaceClampEnabled = true;
 let pidOutMaxDown: number | null = null;
 const pidOutMaxUp: number | null = null;
+let pidKd: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
@@ -12,6 +13,7 @@ let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
 let productionSignalEmaAlpha: number | null = null;
 let storageErrorZoomMonths: number | null = null;
+let storageTrendHorizonTicks: number | null = null;
 
 export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
     storageSpaceClampEnabled = enabled;
@@ -19,6 +21,10 @@ export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
 
 export const setPidOutMaxDown = (value: number | null): void => {
     pidOutMaxDown = value;
+};
+
+export const setPidKd = (value: number | null): void => {
+    pidKd = value;
 };
 
 export const setExpansionIntegralThreshold = (value: number | null): void => {
@@ -65,9 +71,14 @@ export const setStorageErrorZoomMonths = (value: number | null): void => {
     storageErrorZoomMonths = value;
 };
 
+export const setStorageTrendHorizonTicks = (value: number | null): void => {
+    storageTrendHorizonTicks = value;
+};
+
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
 export const getPidOutMaxDown = (): number | null => pidOutMaxDown;
 export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
+export const getPidKd = (): number | null => pidKd;
 export const getExpansionIntegralThreshold = (): number | null => expansionIntegralThreshold;
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
@@ -79,3 +90,4 @@ export const getServiceFillRateTarget = (): number | null => serviceFillRateTarg
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
 export const getProductionSignalEmaAlpha = (): number | null => productionSignalEmaAlpha;
 export const getStorageErrorZoomMonths = (): number | null => storageErrorZoomMonths;
+export const getStorageTrendHorizonTicks = (): number | null => storageTrendHorizonTicks;

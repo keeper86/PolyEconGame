@@ -232,6 +232,7 @@ export type AgentMarketOfferState = {
     offerPrice?: number;
     offerRetainment?: number;
     lastSold?: number;
+    smoothedSold?: number;
     lastRevenue?: number;
     lastPlacedQty?: number;
     lastOfferPrice?: number;

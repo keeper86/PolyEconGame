@@ -3,8 +3,17 @@ import { hasActiveLicense } from '../planet/planet';
 import { lockIntoEscrow, queryStorageFacility } from '../planet/facility';
 import type { AgentBidOrder, AskOrder } from './marketTypes';
 import { validateAndPrepareSellOffer, validateAndPrepareBuyBid } from './validation';
-import { EPSILON } from '../constants';
+import { EPSILON, STORAGE_TREND_DEMAND_EMA_ALPHA } from '../constants';
 import { isCurrencyResource } from './currencyResources';
+
+// The storage trend's demand half: own production is exact, the market take is not, so it is the only
+// part that needs smoothing. Folded in where `lastSold` is cleared, i.e. once per tick per offer.
+const foldSmoothedSold = (offer: { lastSold?: number; smoothedSold?: number }): void => {
+    const sold = offer.lastSold ?? 0;
+    offer.smoothedSold =
+        STORAGE_TREND_DEMAND_EMA_ALPHA * sold +
+        (1 - STORAGE_TREND_DEMAND_EMA_ALPHA) * (offer.smoothedSold ?? sold);
+};
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {
     const books = new Map<string, AskOrder[]>();
@@ -32,6 +41,7 @@ export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): 
             const validatedOffer = validateAndPrepareSellOffer(offer, free);
 
             if (!validatedOffer) {
+                foldSmoothedSold(offer);
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
                 offer.lastPlacedQty = 0;
@@ -206,6 +216,7 @@ export function resetAgentSellCounters(askBooks: Map<string, AskOrder[]>, planet
         for (const ask of orders) {
             const offer = ask.agent.assets[planet.id]?.market?.sell[ask.resource.name];
             if (offer !== undefined) {
+                foldSmoothedSold(offer);
                 offer.lastSold = 0;
                 offer.lastRevenue = 0;
             }

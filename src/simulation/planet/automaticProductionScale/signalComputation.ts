@@ -2,8 +2,12 @@ import { TICKS_PER_MONTH } from '../../constants';
 import { getStorageCapacityState, queryStorageFacility } from '../facility';
 import type { ProductionFacility } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
-import { STORAGE_ERROR_ZOOM_MONTHS, STORAGE_TARGET_MONTHS } from './constants';
-import { getStorageErrorZoomMonths, getStorageTargetMonths } from './runtimeConfig';
+import { STORAGE_ERROR_ZOOM_MONTHS, STORAGE_TARGET_MONTHS, STORAGE_TREND_HORIZON_TICKS } from './constants';
+import {
+    getStorageErrorZoomMonths,
+    getStorageTargetMonths,
+    getStorageTrendHorizonTicks,
+} from './runtimeConfig';
 
 export type FacilityStorageSignal = {
     maxError: number;
@@ -25,7 +29,9 @@ export function computeFacilityStorageSignal(
         const target = Math.min(targetMonths * monthlyProduction, reachable);
         const zoomMonths = getStorageErrorZoomMonths() ?? STORAGE_ERROR_ZOOM_MONTHS;
         const zoom = zoomMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
-        const error = (target - inventory) / Math.max(1e-9, zoom);
+        const horizon = getStorageTrendHorizonTicks() ?? STORAGE_TREND_HORIZON_TICKS;
+        const predicted = inventory + horizon * inventoryTrend(facility, assets, output.resource.name);
+        const error = (target - predicted) / Math.max(1e-9, zoom);
         maxError = Math.max(maxError, error);
         minError = Math.min(minError, error);
     }
@@ -38,6 +44,18 @@ export function computeFacilityStorageSignal(
         maxError: softClip(maxError),
         minError: softClip(minError),
     };
+}
+
+/** Inventory rate per tick for one resource: own production minus the smoothed market take, i.e. `q*s - d`. */
+export function inventoryTrend(
+    facility: ProductionFacility,
+    assets: AgentPlanetAssets,
+    resourceName: string,
+): number {
+    const produced = facility.lastTickResults?.lastProduced?.[resourceName] ?? 0;
+    const offer = assets.market.sell[resourceName];
+    const taken = offer?.smoothedSold ?? offer?.lastSold ?? 0;
+    return produced - taken;
 }
 
 export function reachableTargetQuantity(

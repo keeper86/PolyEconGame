@@ -1,6 +1,6 @@
 import type { PidState } from '../facility';
 import { PID_D_ALPHA, PID_IMAX, PID_KD, PID_KI, PID_KP, PID_OUT_MAX_DOWN, PID_OUT_MAX_UP } from './constants';
-import { getPidOutMaxDown, getPidOutMaxUp } from './runtimeConfig';
+import { getPidKd, getPidOutMaxDown, getPidOutMaxUp } from './runtimeConfig';
 
 export function getDefaultPidState(): PidState {
     return {
@@ -21,7 +21,7 @@ export function computePidDelta(signal: number, state: PidState): number {
     state.filteredError = PID_D_ALPHA * signal + (1 - PID_D_ALPHA) * state.filteredError;
 
     const P = PID_KP * signal;
-    const D = PID_KD * (state.filteredError - state.prevError);
+    const D = (getPidKd() ?? PID_KD) * (state.filteredError - state.prevError);
     state.prevError = state.filteredError;
 
     const tentativeOutput = P + state.integral + D;

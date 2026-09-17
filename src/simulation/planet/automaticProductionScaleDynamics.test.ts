@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -7,6 +7,9 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '../constants';
 import { fillRateFactor } from '../market/automaticPricing';
+import {
+    setStorageTrendHorizonTicks,
+} from './automaticProductionScale/runtimeConfig';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -26,6 +29,7 @@ import {
     computeFacilityStorageSignal,
     computePidDelta,
     getDefaultPidState,
+    inventoryTrend,
     reachableTargetQuantity,
     softClip,
     updateAgentProductionScale,
@@ -304,6 +308,48 @@ describe('reachableTargetQuantity caps the storage target at the shell capacity'
         const { facility, assets } = makeSolidFixture(0.5);
         setStorageResourceQuantity(assets.storage, coalResourceType, 24_000);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
+    });
+});
+
+describe('forward-looking storage term', () => {
+    const target = STORAGE_TARGET_MONTHS * 30 * 100;
+
+    afterEach(() => setStorageTrendHorizonTicks(0));
+
+    function makeTrendFixture(produced: number, sold: number) {
+        const facility = makeProductionFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+        });
+        const assets = makeAgentPlanetAssets('p');
+        setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, target);
+        assets.market.sell[RESOURCE_NAME] = { resource: maintenanceServiceResourceType, lastSold: sold };
+        facility.lastTickResults.lastProduced[RESOURCE_NAME] = produced;
+        return { facility, assets };
+    }
+
+    it('reads the inventory rate as own production minus what the market took', () => {
+        const { facility, assets } = makeTrendFixture(100, 40);
+        expect(inventoryTrend(facility, assets, RESOURCE_NAME)).toBe(60);
+    });
+
+    it('is inert at the target while the horizon is off', () => {
+        setStorageTrendHorizonTicks(0);
+        const { facility, assets } = makeTrendFixture(100, 0);
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBe(0);
+    });
+
+    it('brakes at the target when production outruns sales', () => {
+        setStorageTrendHorizonTicks(300);
+        const { facility, assets } = makeTrendFixture(100, 0);
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
+    });
+
+    it('accelerates at the target when the storage is draining', () => {
+        setStorageTrendHorizonTicks(300);
+        const { facility, assets } = makeTrendFixture(0, 100);
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeGreaterThan(0);
     });
 });
 

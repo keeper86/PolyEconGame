@@ -170,6 +170,14 @@ export const SHIP_MARKET_EMA_ALPHA = 0.3;
 export const SELL_THROUGH_EMA_ALPHA = 0.3;
 export const FILL_RATE_EMA_ALPHA = 0.3;
 
+/**
+ * Smoothing for the demand half of the storage trend (`q*s - d`). The production half is exact, so
+ * only the market take is filtered. One month, matching the storage error's zoom window: fast enough
+ * to keep the trend's phase up to the loop's own period, slow enough that the tick-to-tick market
+ * noise does not print straight through into the scale command.
+ */
+export const STORAGE_TREND_DEMAND_EMA_ALPHA = 2 / (TICKS_PER_MONTH + 1);
+
 export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;
 
 export const CLAIM_CONSUMPTION_PER_TICK_AT_SCALE1: Record<string, number> = {

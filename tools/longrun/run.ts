@@ -7,6 +7,7 @@ import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAfford
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
+    setPidKd,
     setPidOutMaxDown,
     setServiceFillRateTarget,
     setServiceFlowDecayTarget,
@@ -18,6 +19,7 @@ import {
     setStorageCapacityMonths,
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
+    setStorageTrendHorizonTicks,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -465,6 +467,11 @@ async function main(): Promise<void> {
         setPidOutMaxDown(Number(pidDownArg));
         console.log(`PID ramp-down limit overridden to ${pidDownArg}`);
     }
+    const pidKdArg = arg('pidKd');
+    if (pidKdArg !== undefined) {
+        setPidKd(Number(pidKdArg));
+        console.log(`PID D gain overridden to ${pidKdArg}`);
+    }
     const expansionThresholdArg = arg('expansionThreshold');
     if (expansionThresholdArg !== undefined) {
         setExpansionIntegralThreshold(Number(expansionThresholdArg));
@@ -494,6 +501,11 @@ async function main(): Promise<void> {
     if (storageErrorZoomMonthsArg !== undefined) {
         setStorageErrorZoomMonths(Number(storageErrorZoomMonthsArg));
         console.log(`storage error zoom overridden to ${storageErrorZoomMonthsArg} months`);
+    }
+    const storageTrendTicksArg = arg('storageTrendTicks');
+    if (storageTrendTicksArg !== undefined) {
+        setStorageTrendHorizonTicks(Number(storageTrendTicksArg));
+        console.log(`storage trend horizon overridden to ${storageTrendTicksArg} ticks`);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {

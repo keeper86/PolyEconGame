@@ -44,6 +44,20 @@ export const STORAGE_CAPACITY_MONTHS = 13;
  */
 export const STORAGE_ERROR_ZOOM_MONTHS = STORAGE_TARGET_MONTHS;
 
+/**
+ * Forward-looking storage term. The plant is `inv_dot = q*s - d`, so the measured imbalance (own
+ * production minus what the market actually took last tick) IS the inventory rate: no differencing,
+ * no filtering. That matters because with the actuator as the input the plant is a double integrator
+ * (`G = q*e^-pT/p^2`), and P-only control on a double integrator has no damping at all
+ * (characteristic `p^2 + Kp/Z` - purely imaginary roots), which is what the observed scale relay is.
+ * Acting on the inventory predicted `Td` ticks ahead adds `Td/Z * inv_dot`, giving
+ * `p^2 + (Kp*Td/Z)p + Kp/Z` and therefore zeta = (Td/2)*sqrt(Kp/Z): damping now scales with the lead.
+ * Critical damping needs Td = 2*sqrt(Z/Kp), ~350 ticks at the 1-month zoom. The magnitude is real
+ * plant state, so unlike a D term on the error it neither vanishes when the signal clips nor has to
+ * be filtered. 0 = off.
+ */
+export const STORAGE_TREND_HORIZON_TICKS = 0;
+
 export const PID_OUT_MAX_UP = 0.001;
 export const PID_OUT_MAX_DOWN = 0.001;
 export const PID_D_ALPHA = 0.3;
