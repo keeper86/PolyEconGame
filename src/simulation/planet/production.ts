@@ -472,6 +472,7 @@ function processProductionFacility(params: ProductionParameters): void {
 
     facility.lastTickResults = {
         overallEfficiency: overallEfficiency,
+        workerEfficiencyOverall: workerResults.workerEfficiencyOverall,
         workerEfficiency: workerResults.workerEfficiency,
         resourceEfficiency: resourceEfficiencyMap,
         overqualifiedWorkers: workerResults.overqualifiedWorkers,
@@ -513,6 +514,7 @@ function processManagementFacility(params: ManagementParameters): void {
     costBalance -= wageCosts;
     facility.lastTickResults = {
         overallEfficiency,
+        workerEfficiencyOverall: workerResults.workerEfficiencyOverall,
         workerEfficiency: workerResults.workerEfficiency,
         resourceEfficiency: resourceEfficiencyMap,
         overqualifiedWorkers: workerResults.overqualifiedWorkers,
@@ -582,6 +584,7 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
 
     facility.lastTickResults = {
         overallEfficiency,
+        workerEfficiencyOverall: workerResults.workerEfficiencyOverall,
         workerEfficiency: workerResults.workerEfficiency,
         resourceEfficiency: resourceEfficiencyMap,
         overqualifiedWorkers: workerResults.overqualifiedWorkers,

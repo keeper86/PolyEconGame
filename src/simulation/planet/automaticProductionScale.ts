@@ -83,6 +83,7 @@ export function applySoftFloorScale(currentScale: number, delta: number, minScal
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
+export const HR_EXPANSION_TARGET_FACTOR = HR_EXPANSION_FACTOR;
 
 function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));

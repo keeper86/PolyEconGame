@@ -1033,6 +1033,7 @@ describe('construction ship: pre-fabrication with buildingTarget.construction ==
             produces: [],
             lastTickResults: {
                 overallEfficiency: 0,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 overqualifiedWorkers: {},
                 resourceEfficiency: {},

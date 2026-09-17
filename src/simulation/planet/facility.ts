@@ -100,6 +100,7 @@ export type FacilityCategory = FacilityBase['type'];
 
 export type LastTickResults = {
     overallEfficiency: number;
+    workerEfficiencyOverall: number;
     workerEfficiency: { [edu in EducationLevelType]?: number };
 
     exactUsedByEdu: { [jobEdu in EducationLevelType]?: number };
@@ -355,6 +356,7 @@ export type Facility = ProductionFacility | ManagementFacility | StorageFacility
 
 export const createLastTickResults = (): LastTickResults => ({
     overallEfficiency: 0,
+    workerEfficiencyOverall: 1,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},

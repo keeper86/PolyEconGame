@@ -50,6 +50,7 @@ function makeShipyard(planetId: string, agentId: string): ShipConstructionFacili
         progress: 0,
         lastTickResults: {
             overallEfficiency: 0,
+            workerEfficiencyOverall: 1,
             workerEfficiency: {},
             overqualifiedWorkers: {},
             exactUsedByEdu: {},

@@ -18,6 +18,7 @@ import {
 
 const zeroLastTicksResults: LastManagementTickResults = {
     overallEfficiency: 0,
+    workerEfficiencyOverall: 1,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},

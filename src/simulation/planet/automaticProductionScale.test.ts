@@ -75,6 +75,7 @@ function makeSetup(
             produces: [{ resource: RESOURCE, quantity: 1 }],
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -285,6 +286,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -419,6 +421,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -572,6 +575,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -632,6 +636,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -787,6 +792,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -945,6 +951,7 @@ describe('updateAgentProductionScale', () => {
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
+                    workerEfficiencyOverall: 1,
                     workerEfficiency: {},
                     resourceEfficiency: {},
                     overqualifiedWorkers: {},
@@ -1019,6 +1026,7 @@ describe('updateAgentProductionScale', () => {
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
+                    workerEfficiencyOverall: 1,
                     workerEfficiency: {},
                     resourceEfficiency: {},
                     overqualifiedWorkers: {},
@@ -1248,6 +1256,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},

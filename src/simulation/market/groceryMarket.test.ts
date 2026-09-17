@@ -48,6 +48,7 @@ function makeAgentWithGroceryServiceFacility(id = 'grocery-agent'): Agent {
             powerConsumptionPerTick: 0,
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},

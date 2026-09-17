@@ -10,6 +10,11 @@ import { PID_OUT_MAX_DOWN, PID_OUT_MAX_UP, STORAGE_TARGET_MONTHS } from '../../s
 import { getPidOutMaxDown, getPidOutMaxUp } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { computeFacilityStorageSignal } from '../../src/simulation/planet/automaticProductionScale/signalComputation';
 import { footprintPerForm } from '../../src/simulation/planet/automaticProductionScale/shellCompartments';
+import { computeStorageSpaceFactor } from '../../src/simulation/planet/production';
+import { computeBufferCapacity, computeMaxDailyHROutput } from '../../src/simulation/workforce/hrBuffer';
+import { PRODUCED_HR_QUANTITY } from '../../src/simulation/planet/specialFacilities';
+import { HR_EXPANSION_TARGET_FACTOR } from '../../src/simulation/planet/automaticProductionScale';
+import type { EducationLevelType } from '../../src/simulation/population/education';
 
 const TICK_PROBE_ENV = 'TICK_PROBE';
 
@@ -135,6 +140,25 @@ const COLUMNS = [
     'shellShare',
     'shellConstr',
     'shellRequired',
+    'workerEfficiencyOverall',
+    'storageSpaceFactor',
+    'slotFillNone',
+    'slotFillPrimary',
+    'slotFillSecondary',
+    'slotFillTertiary',
+    'hrBuffer',
+    'hrUsedWorkers',
+    'hrBufferPerWorker',
+    'hrMaxScale',
+    'hrDemandScale',
+    'hrBufferCap',
+    'hrScale',
+    'hrUtilization',
+    'hrEfficiency',
+    'hrWorkerEff',
+    'hrAdminEff',
+    'hrAdminStored',
+    'hrConstruction',
 ];
 
 let started = false;
@@ -260,7 +284,64 @@ function row(
         (assets.hrProductivityMultiplier ?? 1).toFixed(4),
         getTransportStarvation(assets.storage).toFixed(4),
         ...shellDiagnostics(facility, assets),
+        ...constraintDiagnostics(facility, assets),
+        ...hrDiagnostics(assets),
     ].join(',');
+}
+
+/**
+ * The HR link. Every facility's effective labour is scaled by `hrProductivityMultiplier`, which
+ * `processHrBufferForAssets` sets from `min(hrBuffer + producedHr, usedWorkers, cap) / usedWorkers`
+ * - so it collapses when the HR department cannot cover the workforce it is sized against. Its
+ * scale is driven here by `usedWorkers * HR_EXPANSION_TARGET_FACTOR / PRODUCED_HR_QUANTITY`, capped
+ * at +10% per expansion.
+ */
+function hrDiagnostics(assets: AgentPlanetAssets): string[] {
+    const dept = assets.humanResourcesDepartment;
+    if (!dept) {
+        return ['', '', '', '', '', '', '', '', '', '', '', '', ''];
+    }
+    const demand = assets.usedWorkers;
+    const maxDaily = computeMaxDailyHROutput(dept.maxScale);
+    const need = dept.needs[0];
+    const adminStored = need ? queryStorageFacility(assets.storage, need.resource.name) : 0;
+    const results = dept.lastTickResults;
+    return [
+        dept.hrBuffer.toFixed(2),
+        String(demand),
+        (demand > 0 ? dept.hrBuffer / demand : 1).toFixed(5),
+        dept.maxScale.toFixed(3),
+        String(Math.max(1, Math.ceil((demand * HR_EXPANSION_TARGET_FACTOR) / PRODUCED_HR_QUANTITY))),
+        computeBufferCapacity(maxDaily).toFixed(2),
+        dept.scale.toFixed(3),
+        (dept.maxScale > 0 ? dept.scale / dept.maxScale : 1).toFixed(5),
+        (results?.overallEfficiency ?? 0).toFixed(5),
+        (results?.workerEfficiencyOverall ?? 1).toFixed(5),
+        (need ? (results?.resourceEfficiency?.[need.resource.name] ?? 1) : 1).toFixed(5),
+        adminStored.toFixed(2),
+        dept.construction?.type ?? '',
+    ];
+}
+
+/**
+ * The two factors production.ts multiplies into output that drive other metrics do not show:
+ * `workerEfficiencyOverall` is the min over staffing slots (a level being short, or an HR
+ * productivity multiplier below 1, both lower it while per-education counts can look fine), and
+ * `storageSpaceFactor` throttles production when the output shell is full without touching
+ * overallEfficiency at all. The per-level fills use assigned counts against the requirement.
+ */
+function constraintDiagnostics(facility: ProductionFacility, assets: AgentPlanetAssets): string[] {
+    const levels: EducationLevelType[] = ['none', 'primary', 'secondary', 'tertiary'];
+    const used = facility.lastTickResults.totalUsedByEdu;
+    const fill = levels.map((level) => {
+        const required = (facility.workerRequirement[level] ?? 0) * facility.scale;
+        return required > 0 ? Math.min(1, (used[level] ?? 0) / required) : 1;
+    });
+    return [
+        (facility.lastTickResults.workerEfficiencyOverall ?? 1).toFixed(5),
+        computeStorageSpaceFactor(facility, assets).toFixed(5),
+        ...fill.map((f) => f.toFixed(5)),
+    ];
 }
 
 function shellDiagnostics(facility: ProductionFacility, assets: AgentPlanetAssets): string[] {
