@@ -179,6 +179,27 @@ Written to `tools/longrun/results/<out>/`:
 Performance on a typical dev machine: roughly 8–13 ticks/s, i.e. ~15–25 min for a 30-year run.
 Check `msPerTick` / `ticksPerSecond` in `summary.json`.
 
+## Reading market mismatch
+
+Markets are oversubscribed by design: agents offer several times what they produce and bid several
+times what they consume, and the surplus offers are exactly what refills the storage buffers while
+they sit below target. The tâtonnement price is a directed random walk, so matching switches on and
+off from tick to tick.
+
+Consequence: large per-tick mismatch is normal and means nothing on its own.
+
+- `market_X_unfilled` / `unfilledFrac` around 0.2-0.3 together with `market_X_unsold` / `unsoldFrac`
+  around 0.8 is expected — offered supply runs at several times the traded volume in a healthy run.
+  Agents target `TARGET_SELL_THROUGH = 1.2` (`src/simulation/constants.ts`), i.e. they deliberately
+  offer more than they expect to sell, and the book carries offers from several ticks.
+- Judge markets by smoothed behaviour, never by single ticks or tick-to-tick variance. Pricing and
+  control act on EMA'd sell-through and fill-rate (`SELL_THROUGH_EMA_ALPHA` / `FILL_RATE_EMA_ALPHA` =
+  0.3, against `TARGET_SELL_THROUGH` / `TARGET_FILL_RATE`), while `market_*_fillRate` and
+  `market_*_buffer` in `series.csv` are instantaneous per-sample values — average them over windows of
+  years before concluding anything.
+- Something is genuinely wrong when a *smoothed* value trends: an EMA sell-through/fill-rate drifting
+  over decades, a price leaving its band, or unfilled and unsold both rising over the long run.
+
 ## Comparing results
 
 `baseline` is the reference run. To see the effect of a change, run the same scenario into a

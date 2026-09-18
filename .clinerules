@@ -10,6 +10,17 @@
 - When you fix a bug, most likely you will also want to add a test.
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
 - Be direct and honest. If a task makes no real sense, say so.
+- Judge market health by smoothed/EMA sell-through and fill-rate, never by per-tick unfilled/unsold — see "Reading market metrics" below.
+
+## Reading market metrics (important)
+
+The order-book markets are deliberately oversubscribed: agents offer several times what they produce and bid several times what they consume, so the surplus offers are exactly what refills the storage buffers while they sit below target. The tâtonnement price is a directed random walk, so matching switches on and off from tick to tick.
+
+Per-tick market mismatch is therefore normal and is NOT a shortage, a clearing failure or deterioration:
+
+- `market_X_unfilled` / `unfilledFrac` around 0.2-0.3 together with `market_X_unsold` / `unsoldFrac` around 0.8 is expected. Agents target `TARGET_SELL_THROUGH = 1.2` (src/simulation/constants.ts) — they deliberately offer more than they expect to sell — and the book carries offers from several ticks, so offered supply runs at several times the traded volume in a healthy run.
+- Judge markets by smoothed behaviour, never by single ticks or tick-to-tick variance. Pricing and control act on EMA'd sell-through and fill-rate (`SELL_THROUGH_EMA_ALPHA` / `FILL_RATE_EMA_ALPHA` = 0.3, against `TARGET_SELL_THROUGH` / `TARGET_FILL_RATE`), while `market_*_fillRate` and `market_*_buffer` in series.csv are instantaneous per-sample values — average them over windows of years before concluding anything.
+- A real problem appears as a smoothed trend: an EMA sell-through/fill-rate drifting over decades, a price leaving its band, or unfilled and unsold both rising over the long run.
 
 ## Overview
 
