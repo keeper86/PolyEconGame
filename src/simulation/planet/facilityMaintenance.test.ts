@@ -287,6 +287,7 @@ describe('facilityMaintenanceTick', () => {
     it('scales maintenance service consumption with facility scale', () => {
         const scale = 10;
         const { gameState, planet, facility, storage } = setup({ scale });
+        facility.maxScale = scale;
         quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
@@ -303,7 +304,7 @@ describe('facilityMaintenanceTick', () => {
             10,
         );
         expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * scale,
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale,
             10,
         );
     });
@@ -635,7 +636,7 @@ describe('facilityMaintenanceRepairDeficit', () => {
         facility.maxMaintenance = 1;
 
         expect(facilityMaintenanceRepairDeficit(facility)).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale,
+            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale,
             6,
         );
     });

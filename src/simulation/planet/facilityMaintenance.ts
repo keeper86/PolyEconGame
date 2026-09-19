@@ -8,6 +8,7 @@ import {
 } from '../constants';
 import {
     calculateCostsForConstruction,
+    facilityConstructionMultiplier,
     getFacilityType,
     isFacilityOperating,
     queryStorageFacility,
@@ -28,7 +29,10 @@ export function computeOtherConstructionCosts(assets: AgentPlanetAssets, constru
 }
 
 export function facilityUsageFactor(facility: Facility): number {
-    return 0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale);
+    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)];
+    return (
+        (0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale)) * multiplier
+    );
 }
 
 export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
@@ -44,7 +48,8 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
 export function facilityMaintenanceRepairDeficit(facility: Facility): number {
     const deficit = Math.max(0, facility.maxMaintenance - facility.maintenanceStatus);
     const capped = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, deficit);
-    return capped * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)];
+    return capped * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale * multiplier;
 }
 
 export const facilityFullRestoreCost = (facility: Facility): number =>
@@ -109,7 +114,7 @@ function applyFacilityRepair(facility: Facility, assets: AgentPlanetAssets, plan
         return;
     }
 
-    const restoredFraction = consumed / (facility.scale * MAINTENANCE_SERVICE_PER_STATUS_UNIT);
+    const restoredFraction = consumed / (facility.maxScale * MAINTENANCE_SERVICE_PER_STATUS_UNIT);
     facility.maintenanceStatus = Math.min(facility.maxMaintenance, facility.maintenanceStatus + restoredFraction);
 
     const price = planet.marketPrices[maintenanceServiceResourceType.name] ?? 0;

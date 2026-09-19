@@ -43,7 +43,7 @@ export const isFacilityOperating = (facility: Facility): boolean => facility.con
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
 const constructionCostFactor = 20000;
-const facilityConstructionMultiplier: Record<FacilityType, number> = {
+export const facilityConstructionMultiplier: Record<FacilityType, number> = {
     raw: 1,
     refined: 2,
     manufactured: 3,

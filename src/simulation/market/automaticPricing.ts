@@ -270,8 +270,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, maintDebug: bool
             const facilityTarget = facilityMaintenanceRepairDeficit(facility) * cfg.inputBufferTargetTicks;
             if (maintDebug) {
                 console.log(
-                    `[maintfac]\t${agent.id}\t${facility.name.replace(/ /g, '_')}\t${facility.scale}\t` +
-                        `${facility.maxMaintenance}\t${facility.maintenanceStatus}\t${facilityMaintenanceRepairDeficit(facility)}\t${facilityTarget}\t${cfg.inputBufferTargetTicks}`,
+                    `[maintfac]\t${agent.id}\t${facility.name.replace(/ /g, '_')}\t${facility.scale}\t${facility.maxScale}\t${facility.maxMaintenance}\t${facility.maintenanceStatus}\t${facilityTarget}`,
                 );
             }
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
