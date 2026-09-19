@@ -11,6 +11,7 @@ import {
     facilityConstructionMultiplier,
     getFacilityType,
     isFacilityOperating,
+    maintenanceCostFactor,
     queryStorageFacility,
     removeFromStorageFacility,
     type Facility,
@@ -29,10 +30,8 @@ export function computeOtherConstructionCosts(assets: AgentPlanetAssets, constru
 }
 
 export function facilityUsageFactor(facility: Facility): number {
-    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)];
-    return (
-        (0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale)) * multiplier
-    );
+    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)] * maintenanceCostFactor;
+    return (0.5 + 1.5 * facility.lastTickResults.overallEfficiency * (facility.scale / facility.maxScale)) * multiplier;
 }
 
 export function facilityMaintenanceConsumptionPerTick(facility: Facility): number {
@@ -48,7 +47,7 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
 export function facilityMaintenanceRepairDeficit(facility: Facility): number {
     const deficit = Math.max(0, facility.maxMaintenance - facility.maintenanceStatus);
     const capped = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, deficit);
-    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)];
+    const multiplier = facilityConstructionMultiplier[getFacilityType(facility)] * maintenanceCostFactor;
     return capped * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale * multiplier;
 }
 
