@@ -27,6 +27,7 @@ import {
 } from './facility';
 import {
     computeOtherConstructionCosts,
+    facilityMaintenanceMultiplier,
     facilityMaintenanceRepairDeficit,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
@@ -103,6 +104,15 @@ function fullRestoreCost(facility: ProductionFacility): number {
 
 function wearPerTick(facility: ProductionFacility): number {
     return (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+}
+
+function repairServicePerTick(facility: ProductionFacility): number {
+    return (
+        FACILITY_MAINTENANCE_REPAIR_PER_TICK *
+        MAINTENANCE_SERVICE_PER_STATUS_UNIT *
+        facility.maxScale *
+        facilityMaintenanceMultiplier(facility)
+    );
 }
 
 describe('computeFacilityConditionEfficiency', () => {
@@ -214,22 +224,18 @@ describe('facilityMaintenanceTick', () => {
         quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
-        seedService(
-            storage,
-            maintenanceServiceResourceType,
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * 2,
-        );
+        const seed = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * 2;
+        seedService(storage, maintenanceServiceResourceType, seed);
 
         facilityMaintenanceTick(gameState, planet);
 
         const expected = HALF_CONDITION - wearPerTick(facility) + FACILITY_MAINTENANCE_REPAIR_PER_TICK;
         expect(facility.maintenanceStatus).toBeCloseTo(expected, 10);
         expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT,
+            seed - repairServicePerTick(facility),
             10,
         );
     });
-
     it('does not repair beyond maxMaintenance', () => {
         const { gameState, planet, facility, storage } = setup();
         facility.maintenanceStatus = 1 - FACILITY_MAINTENANCE_REPAIR_PER_TICK;
@@ -269,7 +275,7 @@ describe('facilityMaintenanceTick', () => {
     it('clamps maintenanceStatus to maxMaintenance when fully degraded', () => {
         const { gameState, planet, facility, storage } = setup();
         const negligibleStructure = MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE / 10;
-        facility.maintenanceStatus = negligibleStructure;
+        facility.maintenanceStatus = 0;
         facility.maxMaintenance = negligibleStructure;
         facility.cumulativeRepairAcc = ALMOST_FULL_REPAIR_CYCLE;
         seedService(
@@ -291,11 +297,8 @@ describe('facilityMaintenanceTick', () => {
         quietStorageShells(storage);
         facility.maintenanceStatus = HALF_CONDITION;
         facility.maxMaintenance = 1;
-        seedService(
-            storage,
-            maintenanceServiceResourceType,
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * scale * 2,
-        );
+        const seed = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * scale * 2;
+        seedService(storage, maintenanceServiceResourceType, seed);
 
         facilityMaintenanceTick(gameState, planet);
 
@@ -304,7 +307,7 @@ describe('facilityMaintenanceTick', () => {
             10,
         );
         expect(queryStorageFacility(storage, maintenanceServiceResourceType.name)).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale,
+            seed - repairServicePerTick(facility),
             10,
         );
     });
@@ -380,7 +383,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        const consumed = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT;
+        const consumed = repairServicePerTick(facility);
         const assets = agent.assets[PLANET_ID]!;
         expect(planet.consumedResources[maintenanceServiceResourceType.name]).toBeCloseTo(consumed, 10);
         expect(assets.monthAcc.consumedResources[maintenanceServiceResourceType.name].quantity).toBeCloseTo(
@@ -511,10 +514,7 @@ describe('facilityMaintenanceTick', () => {
 
         facilityMaintenanceTick(gameState, planet);
 
-        expect(facility.lastTickMaintenanceConsumption).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT,
-            10,
-        );
+        expect(facility.lastTickMaintenanceConsumption).toBeCloseTo(repairServicePerTick(facility), 10);
         expect(facility.lastTickRestorationConsumption).toBe(0);
     });
 
@@ -635,9 +635,6 @@ describe('facilityMaintenanceRepairDeficit', () => {
         facility.maintenanceStatus = 0.5;
         facility.maxMaintenance = 1;
 
-        expect(facilityMaintenanceRepairDeficit(facility)).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.maxScale,
-            6,
-        );
+        expect(facilityMaintenanceRepairDeficit(facility)).toBeCloseTo(repairServicePerTick(facility), 6);
     });
 });

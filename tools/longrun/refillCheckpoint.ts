@@ -7,8 +7,8 @@ const srcDir = process.argv[2];
 const dstDir = process.argv[3];
 const factor = Number(process.argv[4] ?? '1e12');
 
-if (!srcDir || !dstDir || !Number.isFinite(factor)) {
-    console.error('usage: tsx refillCheckpoint.ts <srcDir> <dstDir> <factor>');
+if (!srcDir || !dstDir || !Number.isFinite(factor) || factor <= 0) {
+    console.error('usage: tsx refillCheckpoint.ts <srcDir> <dstDir> <factor>  (factor > 0)');
     process.exit(1);
 }
 

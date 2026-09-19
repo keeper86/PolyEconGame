@@ -2,12 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
-    MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -1090,9 +1088,7 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]?.bidStorageTarget ?? 0).toBe(
-            0,
-        );
+        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]?.bidStorageTarget ?? 0).toBe(0);
     });
 
     it('creates a Maintenance buy bid for an expanding facility', () => {

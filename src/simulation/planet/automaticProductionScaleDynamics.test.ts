@@ -7,9 +7,7 @@ import {
     TARGET_FILL_RATE_SERVICES,
 } from '../constants';
 import { fillRateFactor } from '../market/automaticPricing';
-import {
-    setStorageTrendHorizonMonths,
-} from './automaticProductionScale/runtimeConfig';
+import { setStorageTrendHorizonMonths } from './automaticProductionScale/runtimeConfig';
 import {
     makeAgent,
     makeAgentPlanetAssets,
@@ -228,7 +226,7 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
         return { facility, assets };
     }
 
-    it('is positive when the storage is below the 12-month target and negative above', () => {
+    it('is positive when the storage is below the target and negative above', () => {
         const below = makeStorageFixture({ inventory: target / 2 });
         expect(computeFacilityStorageSignal(below.facility, below.assets).maxError).toBeCloseTo(Math.tanh(0.5), 5);
 
@@ -239,11 +237,11 @@ describe('computeFacilityStorageSignal (own-production storage error)', () => {
     it('does not saturate for a 1-month deficit (stays in the linear band)', () => {
         const oneMonthShort = makeStorageFixture({ inventory: target - 30 * 100 });
         const signal = computeFacilityStorageSignal(oneMonthShort.facility, oneMonthShort.assets).maxError;
-        expect(signal).toBeCloseTo(Math.tanh(1 / 12), 5);
-        expect(signal).toBeLessThan(0.1);
+        expect(signal).toBeCloseTo(Math.tanh(1 / STORAGE_TARGET_MONTHS), 5);
+        expect(signal).toBeLessThan(0.2);
     });
 
-    it('is zero when the storage is exactly at the 12-month target', () => {
+    it('is zero when the storage is exactly at the target', () => {
         const fixture = makeStorageFixture({ inventory: target });
         expect(computeFacilityStorageSignal(fixture.facility, fixture.assets).maxError).toBe(0);
     });
@@ -291,20 +289,21 @@ describe('reachableTargetQuantity caps the storage target at the shell capacity'
     }
 
     it('caps a target the shell cannot store at capacity minus one month of own production', () => {
-        const { assets } = makeSolidFixture(0.5);
-        const capacity = assets.storage.shells.solid.capacity.mass * 0.5;
+        const shellMaxScale = 0.2;
+        const { assets } = makeSolidFixture(shellMaxScale);
+        const capacity = assets.storage.shells.solid.capacity.mass * shellMaxScale;
         expect(STORAGE_TARGET_MONTHS * monthly).toBeGreaterThan(capacity);
         expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeCloseTo(capacity - monthly, 5);
     });
 
-    it('leaves the 12-month target alone when the shell can hold it', () => {
+    it('leaves the target alone when the shell can hold it', () => {
         const { assets } = makeSolidFixture(4);
         expect(reachableTargetQuantity(assets.storage, coalResourceType, monthly)).toBeGreaterThan(
             STORAGE_TARGET_MONTHS * monthly,
         );
     });
 
-    it('reads no deficit when a full shell still sits below the 12-month target', () => {
+    it('reads no deficit when a full shell still sits below the target', () => {
         const { facility, assets } = makeSolidFixture(0.5);
         setStorageResourceQuantity(assets.storage, coalResourceType, 24_000);
         expect(computeFacilityStorageSignal(facility, assets).maxError).toBeLessThan(0);
@@ -323,6 +322,7 @@ describe('forward-looking storage term', () => {
             produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
         });
         const assets = makeAgentPlanetAssets('p');
+        assets.productionFacilities = [facility];
         setStorageResourceQuantity(assets.storage, maintenanceServiceResourceType, target);
         assets.market.sell[RESOURCE_NAME] = { resource: maintenanceServiceResourceType, lastSold: sold };
         facility.lastTickResults.lastProduced[RESOURCE_NAME] = produced;
@@ -330,8 +330,51 @@ describe('forward-looking storage term', () => {
     }
 
     it('reads the inventory rate as own production minus what the market took', () => {
-        const { facility, assets } = makeTrendFixture(100, 40);
-        expect(inventoryTrend(facility, assets, RESOURCE_NAME)).toBe(60);
+        const { assets } = makeTrendFixture(100, 40);
+        expect(inventoryTrend(assets, RESOURCE_NAME)).toBe(60);
+    });
+
+    it('counts the aggregated market take once, not once per producer of the resource', () => {
+        const facility = makeProductionFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+        });
+        const twin = makeProductionFacility(undefined, {
+            id: 'facility-2',
+            maxScale: 1,
+            scale: 1,
+            produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+        });
+        const assets = makeAgentPlanetAssets('p');
+        assets.productionFacilities = [facility, twin];
+        assets.market.sell[RESOURCE_NAME] = { resource: maintenanceServiceResourceType, lastSold: 40 };
+        facility.lastTickResults.lastProduced[RESOURCE_NAME] = 100;
+        twin.lastTickResults.lastProduced[RESOURCE_NAME] = 100;
+
+        expect(inventoryTrend(assets, RESOURCE_NAME)).toBe(160);
+    });
+
+    it('counts internal consumption and depreciation as withdrawals', () => {
+        const producer = makeProductionFacility(undefined, {
+            maxScale: 1,
+            scale: 1,
+            produces: [{ resource: constructionServiceResourceType, quantity: 100 }],
+        });
+        const consumer = makeProductionFacility(undefined, {
+            id: 'facility-2',
+            maxScale: 1,
+            scale: 1,
+            produces: [{ resource: maintenanceServiceResourceType, quantity: 100 }],
+            needs: [{ resource: constructionServiceResourceType, quantity: 30 }],
+        });
+        const assets = makeAgentPlanetAssets('p');
+        assets.productionFacilities = [producer, consumer];
+        producer.lastTickResults.lastProduced[constructionServiceResourceType.name] = 100;
+        consumer.lastTickResults.lastConsumed[constructionServiceResourceType.name] = 30;
+        assets.lastDepreciatedPerTick[constructionServiceResourceType.name] = 10;
+
+        expect(inventoryTrend(assets, constructionServiceResourceType.name)).toBe(60);
     });
 
     it('is inert at the target while the horizon is off', () => {
@@ -343,7 +386,10 @@ describe('forward-looking storage term', () => {
     it('leads by a month by default', () => {
         setStorageTrendHorizonMonths(null);
         const { facility, assets } = makeTrendFixture(100, 0);
-        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(Math.tanh(-1 / 12), 5);
+        expect(computeFacilityStorageSignal(facility, assets).maxError).toBeCloseTo(
+            Math.tanh(-1 / STORAGE_TARGET_MONTHS),
+            5,
+        );
     });
 
     it('brakes at the target when production outruns sales', () => {

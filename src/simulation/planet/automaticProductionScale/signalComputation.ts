@@ -2,12 +2,9 @@ import { TICKS_PER_MONTH } from '../../constants';
 import { getStorageCapacityState, queryStorageFacility } from '../facility';
 import type { ProductionFacility } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
+import { getAllFacilities } from '../planet';
 import { STORAGE_ERROR_ZOOM_MONTHS, STORAGE_TARGET_MONTHS, STORAGE_TREND_HORIZON_MONTHS } from './constants';
-import {
-    getStorageErrorZoomMonths,
-    getStorageTargetMonths,
-    getStorageTrendHorizonMonths,
-} from './runtimeConfig';
+import { getStorageErrorZoomMonths, getStorageTargetMonths, getStorageTrendHorizonMonths } from './runtimeConfig';
 
 export type FacilityStorageSignal = {
     maxError: number;
@@ -30,7 +27,7 @@ export function computeFacilityStorageSignal(
         const zoomMonths = getStorageErrorZoomMonths() ?? STORAGE_ERROR_ZOOM_MONTHS;
         const zoom = zoomMonths * TICKS_PER_MONTH * facility.maxScale * output.quantity;
         const horizon = (getStorageTrendHorizonMonths() ?? STORAGE_TREND_HORIZON_MONTHS) * TICKS_PER_MONTH;
-        const predicted = inventory + horizon * inventoryTrend(facility, assets, output.resource.name);
+        const predicted = inventory + horizon * inventoryTrend(assets, output.resource.name);
         const error = (target - predicted) / Math.max(1e-9, zoom);
         maxError = Math.max(maxError, error);
         minError = Math.min(minError, error);
@@ -46,16 +43,20 @@ export function computeFacilityStorageSignal(
     };
 }
 
-/** Inventory rate per tick for one resource: own production minus the smoothed market take, i.e. `q*s - d`. */
-export function inventoryTrend(
-    facility: ProductionFacility,
-    assets: AgentPlanetAssets,
-    resourceName: string,
-): number {
-    const produced = facility.lastTickResults?.lastProduced?.[resourceName] ?? 0;
+export function inventoryTrend(assets: AgentPlanetAssets, resourceName: string): number {
     const offer = assets.market.sell[resourceName];
     const taken = offer?.smoothedSold ?? offer?.lastSold ?? 0;
-    return produced - taken;
+    const depreciated = assets.lastDepreciatedPerTick[resourceName] ?? 0;
+    let trend = -taken - depreciated;
+
+    for (const facility of getAllFacilities(assets)) {
+        trend -= facility.lastTickResults.lastConsumed[resourceName] ?? 0;
+        if (facility.type !== 'ship_construction') {
+            trend += facility.lastTickResults.lastProduced[resourceName] ?? 0;
+        }
+    }
+
+    return trend;
 }
 
 export function reachableTargetQuantity(
@@ -64,7 +65,8 @@ export function reachableTargetQuantity(
     monthlyProduction: number,
 ): number {
     const capacity = getStorageCapacityState(storage, resource).capacity;
-    const byVolume = resource.volumePerQuantity > 0 ? capacity.volume / resource.volumePerQuantity : Number.POSITIVE_INFINITY;
+    const byVolume =
+        resource.volumePerQuantity > 0 ? capacity.volume / resource.volumePerQuantity : Number.POSITIVE_INFINITY;
     const byMass = resource.massPerQuantity > 0 ? capacity.mass / resource.massPerQuantity : Number.POSITIVE_INFINITY;
     return Math.max(0, Math.min(byVolume, byMass) - monthlyProduction);
 }
