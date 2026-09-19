@@ -11,8 +11,7 @@ import { isCurrencyResource } from './currencyResources';
 const foldSmoothedSold = (offer: { lastSold?: number; smoothedSold?: number }): void => {
     const sold = offer.lastSold ?? 0;
     offer.smoothedSold =
-        STORAGE_TREND_DEMAND_EMA_ALPHA * sold +
-        (1 - STORAGE_TREND_DEMAND_EMA_ALPHA) * (offer.smoothedSold ?? sold);
+        STORAGE_TREND_DEMAND_EMA_ALPHA * sold + (1 - STORAGE_TREND_DEMAND_EMA_ALPHA) * (offer.smoothedSold ?? sold);
 };
 
 export function collectAgentOffers(agents: Map<string, Agent>, planet: Planet): Map<string, AskOrder[]> {

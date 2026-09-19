@@ -15,7 +15,12 @@ export {
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityStorageSignal, inventoryTrend, reachableTargetQuantity, softClip } from './automaticProductionScale/signalComputation';
+export {
+    computeFacilityStorageSignal,
+    inventoryTrend,
+    reachableTargetQuantity,
+    softClip,
+} from './automaticProductionScale/signalComputation';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
