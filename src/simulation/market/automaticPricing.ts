@@ -31,12 +31,13 @@ import {
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import { facilityMaintenanceRepairDeficit, facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
-import type {
-    Agent,
-    AgentMarketBidState,
-    AgentMarketOfferState,
-    AutomatedPricingConfig,
-    Planet,
+import {
+    getAllFacilities,
+    type Agent,
+    type AgentMarketBidState,
+    type AgentMarketOfferState,
+    type AutomatedPricingConfig,
+    type Planet,
 } from '../planet/planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import { toConsumptionShipInfo } from './consumptionShipInfo';
@@ -97,13 +98,16 @@ function resolveBidConfigForResource(assets: import('../planet/planet').AgentPla
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+let maintDebugTick = 0;
+
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
+    const maintDebug = process.env.MAINT_DEBUG === '1' && maintDebugTick++ % 30 === 0;
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet);
+        automaticPricingForAgent(agent, planet, maintDebug);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet, maintDebug: boolean): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -211,12 +215,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     // ── Buy-side aggregated targets ─────────────────────────────────────────
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number; freeTarget: number }>();
 
-    for (const facility of [
-        ...assets.productionFacilities,
-        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-        ...(assets.storage.department ? [assets.storage.department] : []),
-        ...assets.shipConstructionFacilities,
-    ]) {
+    for (const facility of getAllFacilities(assets, false)) {
         if (isFacilityOperating(facility)) {
             let needs = [];
             if (facility.type === 'ship_construction') {
@@ -269,6 +268,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (isFacilityOperating(facility)) {
             const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
             const facilityTarget = facilityMaintenanceRepairDeficit(facility) * cfg.inputBufferTargetTicks;
+            if (maintDebug) {
+                console.log(
+                    `[maintfac]\t${agent.id}\t${facility.name.replace(/ /g, '_')}\t${facility.scale}\t` +
+                        `${facility.maxMaintenance}\t${facility.maintenanceStatus}\t${facilityMaintenanceRepairDeficit(facility)}\t${facilityTarget}\t${cfg.inputBufferTargetTicks}`,
+                );
+            }
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
@@ -420,6 +425,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const smoothedTarget = totalShortfall > EPSILON ? currentInventory + totalShortfall : storageTarget;
 
         adjustBidPrice(bid, totalShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
+
+        if (maintDebug && resourceName === maintenanceServiceResourceType.name) {
+            console.log(
+                `[maintbid]\t${agent.id}\taggregated=${storageTarget}\tfree=${freeTarget}\tshortfall=${totalShortfall}\tsmoothed=${smoothedTarget}\tstoredTarget=${bid.bidStorageTarget}\tprice=${bid.bidPrice}`,
+            );
+        }
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(

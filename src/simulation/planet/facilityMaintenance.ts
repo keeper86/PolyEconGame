@@ -41,14 +41,6 @@ export function facilityMaintenanceConsumptionPerTick(facility: Facility): numbe
     );
 }
 
-export function facilityMaintenanceRepairNeedPerTick(facility: Facility): number {
-    const degradation = (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
-    const degradedStatus = Math.max(0, facility.maintenanceStatus - degradation);
-    const repairCap = Math.max(0, facility.maxMaintenance - degradedStatus);
-    const repairFraction = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, repairCap);
-    return repairFraction * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
-}
-
 export function facilityMaintenanceRepairDeficit(facility: Facility): number {
     const deficit = Math.max(0, facility.maxMaintenance - facility.maintenanceStatus);
     const capped = Math.min(FACILITY_MAINTENANCE_REPAIR_PER_TICK, deficit);
@@ -83,7 +75,7 @@ export function facilityMaintenanceTick(gameState: GameState, planet: Planet): v
             if (!isFacilityOperating(facility)) {
                 continue;
             }
-            totalDesired += facilityMaintenanceRepairNeedPerTick(facility);
+            totalDesired += facilityMaintenanceRepairDeficit(facility);
         }
         const ration = totalDesired > 0 ? Math.min(1, available / totalDesired) : 0;
         for (const facility of facilities) {
@@ -105,7 +97,7 @@ function applyFacilityWear(facility: Facility): void {
 }
 
 function applyFacilityRepair(facility: Facility, assets: AgentPlanetAssets, planet: Planet, ration: number): void {
-    const desired = facilityMaintenanceRepairNeedPerTick(facility);
+    const desired = facilityMaintenanceRepairDeficit(facility);
     applyFacilityWear(facility);
     if (desired <= 0 || ration <= 0) {
         return;

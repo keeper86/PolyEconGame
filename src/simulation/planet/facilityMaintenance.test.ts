@@ -27,7 +27,7 @@ import {
 } from './facility';
 import {
     computeOtherConstructionCosts,
-    facilityMaintenanceRepairNeedPerTick,
+    facilityMaintenanceRepairDeficit,
     facilityMaintenanceTick,
     facilityRestorationCapacityPerTick,
     facilityRestorationCostFactor,
@@ -627,27 +627,14 @@ describe('computeOtherConstructionCosts', () => {
     });
 });
 
-describe('facilityMaintenanceRepairNeedPerTick', () => {
-    it('equals one tick of degradation at full condition', () => {
-        const facility = makeProductionFacility({}, { scale: 10 });
-        facility.lastTickResults.overallEfficiency = 1;
-        facility.maintenanceStatus = 1;
-        facility.maxMaintenance = 1;
-
-        const degradation = (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
-        expect(facilityMaintenanceRepairNeedPerTick(facility)).toBeCloseTo(
-            degradation * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale,
-            6,
-        );
-    });
-
+describe('facilityMaintenanceRepairDeficit', () => {
     it('is capped by the max repair rate when the deficit exceeds it', () => {
         const facility = makeProductionFacility({}, { scale: 10 });
         facility.lastTickResults.overallEfficiency = 1;
         facility.maintenanceStatus = 0.5;
         facility.maxMaintenance = 1;
 
-        expect(facilityMaintenanceRepairNeedPerTick(facility)).toBeCloseTo(
+        expect(facilityMaintenanceRepairDeficit(facility)).toBeCloseTo(
             FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale,
             6,
         );
