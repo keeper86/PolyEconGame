@@ -72,7 +72,7 @@ function canLiquidate(agent: Agent): boolean {
 }
 
 export function processBankruptcy(gameState: GameState, planet: Planet, agent: Agent, tick: number): Agent | null {
-    if (agent.id === planet.governmentId) {
+    if (agent.id === planet.governmentId || agent.id === planet.recycler.id) {
         return null;
     }
     if (!agent.assets[planet.id]) {
