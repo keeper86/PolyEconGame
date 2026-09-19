@@ -147,12 +147,30 @@ describe('automaticPricing — buy side', () => {
         const bid = buyer.assets.p.market!.buy[COAL]!;
         const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
 
-        // With smoothing, bidStorageTarget should be <= rawTarget and >= inventoryQty
         expect(bid.bidStorageTarget).toBeGreaterThanOrEqual(inventoryQty);
         expect(bid.bidStorageTarget).toBeLessThanOrEqual(rawTarget);
-        // The effective buy quantity is the shortfall after smoothing
         const effectiveQty = Math.max(0, bid.bidStorageTarget! - inventoryQty);
         expect(effectiveQty).toBeGreaterThan(0);
+    });
+
+    it('asks the fixed smoothing maximum while below the level target, independent of the fill ratio', () => {
+        const buyer = makeSteelProducer();
+        const facility = buyer.assets.p.productionFacilities[0]!;
+        const coalNeed = facility.needs.find((n) => n.resource.name === COAL)!;
+        const consumptionPerTick = coalNeed.quantity * facility.scale;
+        const maxAsk = consumptionPerTick * (1 + INVENTORY_SMOOTHING_MAX_EXTRA);
+
+        putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, consumptionPerTick * 2);
+        automaticPricing(agentMap(buyer), planet);
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        const lowInventoryAsk = bid.bidStorageTarget! - queryStorageFacility(buyer.assets.p.storage, COAL);
+
+        putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, consumptionPerTick * 18);
+        automaticPricing(agentMap(buyer), planet);
+        const highInventoryAsk = bid.bidStorageTarget! - queryStorageFacility(buyer.assets.p.storage, COAL);
+
+        expect(lowInventoryAsk).toBeCloseTo(maxAsk, 5);
+        expect(highInventoryAsk).toBeCloseTo(maxAsk, 5);
     });
 
     it('effective buy quantity is 0 when buffer is already fully covered by storage', () => {
@@ -182,7 +200,6 @@ describe('automaticPricing — buy side', () => {
 
         const inventoryQty = queryStorageFacility(buyer.assets.p.storage, COAL);
         const baselineTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
-        // With full buffer, the target should be ≤ inventory (smoothing reduces it further)
         expect(baselineTarget).toBeLessThanOrEqual(inventoryQty);
 
         // Config free buy quantity
@@ -191,8 +208,6 @@ describe('automaticPricing — buy side', () => {
         automaticPricing(agentMap(buyer), planet);
 
         const newTarget = buyer.assets.p.market!.buy[COAL]!.bidStorageTarget ?? 0;
-        // freeBuyQuantity = 1000 (absolute target), smoothed over 2 ticks → 500/tick
-        // structural target ≈ inventory (already full), so smoothedTarget = inventory + 500
         expect(newTarget).toBeGreaterThan(inventoryQty);
 
         // After the fix: diagnostics.shortfall should equal bidStorageTarget - inventory (both per-tick)
@@ -560,15 +575,14 @@ describe('automaticPricing — buy side', () => {
             // (allow small rounding)
             expect(perTickFromShortfall).toBeLessThanOrEqual(PER_TICK + 1);
 
-            // Simulate buying — add the shortfall to inventory for next tick
-            if (inventory + perTickFromShortfall <= FREE_TARGET) {
-                putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, perTickFromShortfall);
+            // Simulate buying — the bid is placed and fully filled at the shortfall
+            const placed = perTickFromShortfall;
+            if (inventory + placed <= FREE_TARGET) {
+                putIntoStorageFacility(buyer.assets.p.storage, coalResourceType, placed);
             }
-
-            // Reset counters as the tick loop would
-            bid.lastBought = 0;
-            bid.lastSpent = 0;
-            bid.lastEffectiveQty = 0;
+            bid.lastBought = placed;
+            bid.lastSpent = placed * planet.marketPrices[COAL]!;
+            bid.lastEffectiveQty = placed;
         }
 
         // After 15 ticks at ~50k/tick we should have ~750k inventory
@@ -872,6 +886,27 @@ describe('marketTick — agent buying', () => {
         marketTick(agentMap(seller, buyer), planet);
 
         expect(buyer.assets.p.deposits).toBeLessThanOrEqual(depositsBefore);
+    });
+
+    it('a bid dropped at collection keeps its price instead of collapsing via a forged fill rate', () => {
+        const seller = makeCoalSeller(3000, 1.0);
+        const buyer = makeSteelProducer();
+        buyer.assets.p.deposits = 1_000_000;
+
+        automaticPricing(agentMap(buyer), planet);
+        const bid = buyer.assets.p.market!.buy[COAL]!;
+        const priceBefore = bid.bidPrice!;
+
+        buyer.assets.p.deposits = 0;
+        marketTick(agentMap(seller, buyer), planet);
+        expect(bid.lastEffectiveQty).toBe(0);
+
+        buyer.assets.p.deposits = 1_000_000;
+        automaticPricing(agentMap(buyer), planet);
+
+        expect(bid.notPlaced).toBe(true);
+        expect(bid.diagnostics).toBeUndefined();
+        expect(bid.bidPrice).toBeCloseTo(priceBefore, 10);
     });
 
     it('seller is credited exactly once when both households and an agent buy from them', () => {

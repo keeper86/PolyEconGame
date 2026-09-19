@@ -603,6 +603,42 @@ describe('automaticPricing — EMA smoothing', () => {
         const expected = FILL_RATE_EMA_ALPHA * 3.0 + (1 - FILL_RATE_EMA_ALPHA) * 1.5;
         expect(bid.smoothedFillRate).toBeCloseTo(expected, 10);
     });
+
+    it('does not forge a full fill when the bid was dropped at collection', () => {
+        const planet = makePlanetWithPrice({ [lumberResourceType.name]: 100 });
+        planet.lastProductionCostFloors[lumberResourceType.name] = 20;
+
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [consumer];
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [lumberResourceType.name]: {
+                    resource: lumberResourceType,
+                    bidPrice: 50,
+                    lastBought: 0,
+                    lastEffectiveQty: 0,
+                    automated: true,
+                },
+            },
+        };
+
+        for (let tick = 0; tick < 10; tick++) {
+            automaticPricing(new Map([['co', agent]]), planet);
+        }
+
+        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
+        expect(bid.smoothedFillRate).toBeUndefined();
+        expect(bid.notPlaced).toBe(true);
+        expect(bid.diagnostics).toBeUndefined();
+        expect(bid.bidPrice).toBeCloseTo(50, 10);
+    });
 });
 
 describe('automaticPricing — sell-side config overrides', () => {

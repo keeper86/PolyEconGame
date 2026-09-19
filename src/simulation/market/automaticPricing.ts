@@ -391,15 +391,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         let totalShortfall = Math.max(0, storageTarget - currentInventory);
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
-        if (
-            baseRateConsumption > EPSILON &&
-            storageTarget > EPSILON &&
-            totalShortfall > EPSILON &&
-            resource.form !== 'services'
-        ) {
-            const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
-            totalShortfall = Math.min(totalShortfall, smoothedDemand);
+        if (baseRateConsumption > EPSILON && resource.form !== 'services') {
+            totalShortfall = Math.min(totalShortfall, baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra));
         }
 
         if (freeTarget > EPSILON) {
@@ -624,6 +617,8 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.smoothedFillRate = undefined;
+        bid.notPlaced = false;
         bid.diagnostics = undefined;
         return;
     }
@@ -635,6 +630,8 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.smoothedFillRate = undefined;
+        bid.notPlaced = false;
         bid.diagnostics = undefined;
         return;
     }
@@ -646,10 +643,18 @@ function adjustBidPrice(
         return;
     }
 
+    const bidWasDropped = bid.lastEffectiveQty === 0;
+    if (bidWasDropped) {
+        bid.notPlaced = true;
+        bid.diagnostics = undefined;
+        return;
+    }
+
     const lastBought = bid.lastBought ?? 0;
 
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
-    const rawFillRate = lastDemanded > 0 ? Math.min(1, Math.max(0, lastBought / lastDemanded)) : 1;
+    const rawFillRate = Math.min(1, Math.max(0, lastBought / lastDemanded));
+    bid.notPlaced = false;
     const buySmoothing = bid.resource.form === 'services' ? 1 : 1 + cfg.inventorySmoothingMaxExtra;
     const normalizedFillRate = rawFillRate * buySmoothing;
     const smoothedFillRate =

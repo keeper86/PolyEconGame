@@ -252,6 +252,7 @@ export type AgentMarketBidState = {
     lastEffectiveQty?: number;
     lastBidPrice?: number;
     smoothedFillRate?: number;
+    notPlaced?: boolean;
 
     storageFullWarning?: boolean;
 

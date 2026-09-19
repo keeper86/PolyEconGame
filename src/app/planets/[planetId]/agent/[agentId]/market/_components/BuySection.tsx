@@ -75,6 +75,7 @@ type BuyStatusKind =
     | 'not_filled_no_supply'
     | 'not_filled'
     | 'no_bid'
+    | 'not_placed'
     | 'target_met'
     | 'off';
 
@@ -83,12 +84,20 @@ function buyStatus(
     diagnostics: BuyDiagnostics | undefined,
     lastBought: number | undefined,
     overviewRow: { totalSupply: number } | undefined,
+    notPlaced: boolean | undefined,
 ): { kind: BuyStatusKind; text: string; className: string } {
     if (!automated) {
         return {
             kind: 'off',
             text: 'Off.',
             className: '',
+        };
+    }
+    if (notPlaced) {
+        return {
+            kind: 'not_placed',
+            text: 'Not placed. No storage or deposits.',
+            className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }
     if (!diagnostics) {
@@ -269,8 +278,8 @@ export default function BuySection({
         ) : null;
 
     const status = useMemo(
-        () => buyStatus(local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow),
-        [local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow],
+        () => buyStatus(local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow, bid?.notPlaced),
+        [local.bidAutomated, bid?.diagnostics, bid?.lastBought, overviewRow, bid?.notPlaced],
     );
 
     // ── Auto-config state ────────────────────────────────────────────────────
