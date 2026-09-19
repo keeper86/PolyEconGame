@@ -2,12 +2,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
     AUTOMATED_COST_FLOOR_BUFFER,
     BID_OFFER_MAX_COST_MULTIPLIER,
-    FACILITY_MAINTENANCE_REPAIR_PER_TICK,
     FILL_RATE_EMA_ALPHA,
     INPUT_BUFFER_TARGET_TICKS,
     INPUT_BUFFER_TARGET_TICKS_SERVICES,
     INVENTORY_SMOOTHING_MAX_EXTRA,
-    MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     PRICE_ADJUST_MAX_DOWN,
     PRICE_ADJUST_MAX_UP,
     PRICE_CEIL,
@@ -32,6 +30,7 @@ import {
 import { seedRng } from '../utils/stochasticRound';
 import { makeAgent, makePlanet, makeProductionFacility, makeStorageFacility } from '../utils/testHelper';
 import { adjustOfferPrice, automaticPricing, buyVolumeFraction, sellVolumeFraction } from './automaticPricing';
+import { facilityMaintenanceRepairDeficit } from '../planet/facilityMaintenance';
 import type { Resource } from '../planet/claims';
 import {
     administrativeServiceResourceType,
@@ -603,6 +602,42 @@ describe('automaticPricing — EMA smoothing', () => {
         const expected = FILL_RATE_EMA_ALPHA * 3.0 + (1 - FILL_RATE_EMA_ALPHA) * 1.5;
         expect(bid.smoothedFillRate).toBeCloseTo(expected, 10);
     });
+
+    it('does not forge a full fill when the bid was dropped at collection', () => {
+        const planet = makePlanetWithPrice({ [lumberResourceType.name]: 100 });
+        planet.lastProductionCostFloors[lumberResourceType.name] = 20;
+
+        const consumer = makeProductionFacility({ none: 1 }, { id: 'cons', scale: 1 });
+        consumer.needs = [{ resource: lumberResourceType, quantity: 1 }];
+        consumer.produces = [{ resource: waterResourceType, quantity: 1 }];
+
+        const agent = makeAgent('co', PLANET_ID);
+        agent.assets[PLANET_ID].productionFacilities = [consumer];
+        agent.assets[PLANET_ID].storage = makeStorageFacility({ planetId: PLANET_ID });
+        agent.assets[PLANET_ID].deposits = 1_000_000;
+        agent.assets[PLANET_ID].market = {
+            sell: {},
+            buy: {
+                [lumberResourceType.name]: {
+                    resource: lumberResourceType,
+                    bidPrice: 50,
+                    lastBought: 0,
+                    lastEffectiveQty: 0,
+                    automated: true,
+                },
+            },
+        };
+
+        for (let tick = 0; tick < 10; tick++) {
+            automaticPricing(new Map([['co', agent]]), planet);
+        }
+
+        const bid = agent.assets[PLANET_ID].market!.buy[lumberResourceType.name]!;
+        expect(bid.smoothedFillRate).toBeUndefined();
+        expect(bid.notPlaced).toBe(true);
+        expect(bid.diagnostics).toBeUndefined();
+        expect(bid.bidPrice).toBeCloseTo(50, 10);
+    });
 });
 
 describe('automaticPricing — sell-side config overrides', () => {
@@ -989,7 +1024,7 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const expectedBid = FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+        const expectedBid = facilityMaintenanceRepairDeficit(facility);
         expect(bid.bidStorageTarget).toBeCloseTo(expectedBid * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
     it('keeps the full bid quantity even when price is far above cost, anchored by the ceiling spring', () => {
@@ -1022,8 +1057,7 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const expectedRate =
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+        const expectedRate = facilityMaintenanceRepairDeficit(facility);
         // no quantity throttle: the full storage target is bid regardless of the market price
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
         // the bid price itself is pulled down by the ceiling spring (bid far above the ceiling)
@@ -1054,7 +1088,7 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         automaticPricing(new Map([['co', agent]]), planet);
 
-        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]).toBeUndefined();
+        expect(agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]?.bidStorageTarget ?? 0).toBe(0);
     });
 
     it('creates a Maintenance buy bid for an expanding facility', () => {
@@ -1084,8 +1118,7 @@ describe('automaticPricing — facility maintenance demand', () => {
 
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
-        const expectedRate =
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK * MAINTENANCE_SERVICE_PER_STATUS_UNIT * facility.scale;
+        const expectedRate = facilityMaintenanceRepairDeficit(facility);
         expect(bid.bidStorageTarget).toBeCloseTo(expectedRate * INPUT_BUFFER_TARGET_TICKS_SERVICES, 10);
     });
 
@@ -1110,10 +1143,7 @@ describe('automaticPricing — facility maintenance demand', () => {
         const bid = agent.assets[PLANET_ID].market!.buy[maintenanceServiceResourceType.name]!;
         expect(bid).toBeDefined();
         expect(bid.bidStorageTarget).toBeCloseTo(
-            FACILITY_MAINTENANCE_REPAIR_PER_TICK *
-                MAINTENANCE_SERVICE_PER_STATUS_UNIT *
-                facility.scale *
-                INPUT_BUFFER_TARGET_TICKS_SERVICES,
+            facilityMaintenanceRepairDeficit(facility) * INPUT_BUFFER_TARGET_TICKS_SERVICES,
             6,
         );
     });

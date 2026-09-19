@@ -232,6 +232,7 @@ export type AgentMarketOfferState = {
     offerPrice?: number;
     offerRetainment?: number;
     lastSold?: number;
+    smoothedSold?: number;
     lastRevenue?: number;
     lastPlacedQty?: number;
     lastOfferPrice?: number;
@@ -251,6 +252,7 @@ export type AgentMarketBidState = {
     lastEffectiveQty?: number;
     lastBidPrice?: number;
     smoothedFillRate?: number;
+    notPlaced?: boolean;
 
     storageFullWarning?: boolean;
 

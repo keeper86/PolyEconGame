@@ -50,4 +50,24 @@ describe('HRBalanceRow', () => {
         expect(bufferValue).toBeInTheDocument();
         expect(bufferValue.className).toContain('text-green-600');
     });
+
+    it('renders children below the balance equation', () => {
+        render(
+            <HRBalanceRow demand={10} buffer={20} production={15}>
+                <span>starvation bar</span>
+            </HRBalanceRow>,
+        );
+
+        expect(screen.getByText('starvation bar')).toBeInTheDocument();
+    });
+
+    it('renders children in the no-demand state', () => {
+        render(
+            <HRBalanceRow demand={0} buffer={0} production={0}>
+                <span>starvation bar</span>
+            </HRBalanceRow>,
+        );
+
+        expect(screen.getByText('starvation bar')).toBeInTheDocument();
+    });
 });

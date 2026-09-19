@@ -10,111 +10,21 @@
 - When you fix a bug, most likely you will also want to add a test.
 - Do NOT use interactive terminal commands. Especially 'git diff' or 'git show'
 - Be direct and honest. If a task makes no real sense, say so.
+- Judge market health by smoothed/EMA sell-through and fill-rate, never by per-tick unfilled/unsold — see "Reading market metrics" below.
+
+## Reading market metrics (important)
+
+The order-book markets are deliberately oversubscribed: agents offer several times what they produce and bid several times what they consume, so the surplus offers are exactly what refills the storage buffers while they sit below target. The tâtonnement price is a directed random walk, so matching switches on and off from tick to tick.
+
+Per-tick market mismatch is therefore normal and is NOT a shortage, a clearing failure or deterioration:
+
+- `market_X_unfilled` / `unfilledFrac` around 0.2-0.3 together with `market_X_unsold` / `unsoldFrac` around 0.8 is expected. Agents target `TARGET_SELL_THROUGH = 1.2` (src/simulation/constants.ts) — they deliberately offer more than they expect to sell — and the book carries offers from several ticks, so offered supply runs at several times the traded volume in a healthy run.
+- Judge markets by smoothed behaviour, never by single ticks or tick-to-tick variance. Pricing and control act on EMA'd sell-through and fill-rate (`SELL_THROUGH_EMA_ALPHA` / `FILL_RATE_EMA_ALPHA` = 0.3, against `TARGET_SELL_THROUGH` / `TARGET_FILL_RATE`), while `market_*_fillRate` and `market_*_buffer` in series.csv are instantaneous per-sample values — average them over windows of years before concluding anything.
+- A real problem appears as a smoothed trend: an EMA sell-through/fill-rate drifting over decades, a price leaving its band, or unfilled and unsold both rising over the long run.
 
 ## Overview
 
 PolyEconGame is a macro economic simulation game built with Next.js 15, TypeScript. The game simulates planetary economies with detailed population dynamics, market systems, production chains, and financial systems.
-
-## Architecture
-
-### Tech Stack
-
-- **Frontend**: Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS
-- **Backend**: tRPC for type-safe APIs, PostgreSQL with Knex.js
-- **Simulation**: Worker threads with Piscina for parallel processing
-- **Authentication**: Keycloak with NextAuth.js
-- **State Management**: React Query (TanStack Query)
-- **UI Components**: Radix UI primitives with custom shadcn/ui components
-- **Testing**: Vitest (unit), Playwright (e2e)
-- **Containerization**: Docker with Docker Compose
-
-### Directory Structure
-
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── planets/           # Planet management UI
-│   ├── agents/            # Agent/company management
-│   ├── simulation/        # Simulation control panel
-│   └── api/               # API routes (NextAuth, tRPC)
-├── components/            # React components
-│   ├── ui/               # Reusable UI components (shadcn)
-│   ├── client/           # Client-side components
-│   ├── navigation/       # Navigation components
-│   └── icons/            # Icon components
-├── hooks/                # Custom React hooks
-├── lib/                  # Utility libraries
-├── server/               # Backend server code
-│   ├── controller/       # tRPC controllers
-│   ├── db.ts            # Database connection
-│   └── router.ts        # tRPC router definitions
-├── simulation/           # Core simulation engine
-│   ├── engine.ts        # Main tick loop (advanceTick)
-│   ├── constants.ts     # All simulation constants
-│   ├── immutableTypes.ts # Snapshot types (Immutable.js)
-│   ├── agents/          # NPC agents: ForexMarketMaker, ArbitrageTrader, GovernmentAgent, Shipbuilder
-│   ├── financial/       # Loans, wages, wealth operations (financialTick, loanConditions, wealthOps)
-│   ├── initialUniverse/ # World generation (alphaCentauri, proceduralWorld, resourceClaimFactory)
-│   ├── market/          # Order books, tâtonnement pricing, forex, settlement, population demand
-│   ├── planet/          # Planet/Agent types, production, facilities, claims, environment
-│   ├── population/      # Demographics, mortality, fertility, education, aging
-│   ├── ships/           # Ship types, ship market, transport contracts
-│   ├── workforce/       # Worker allocation, hire/fire, demographic transitions
-│   ├── worker.ts        # Worker thread entry point
-│   └── workerClient/    # Worker communication (commands, queries, actions)
-└── types/               # TypeScript type definitions
-```
-
-## Core Simulation System
-
-### Enterprise Engine State Model
-
-The simulation uses an immutable data structure for snapshots with structural sharing:
-
-- **GameState**: Contains `tick`, `planets` (Map), `agents` (Map)
-- **Planet**: Represents a celestial body with population, resources, infrastructure, environment, and bank
-- **Agent**: Represents a company/player with assets, facilities, workforce, and market positions
-
-### Simulation Tick Loop (`engine.ts`)
-
-Each tick (30 ticks per month, 12 months per year).
-
-### Resource System
-
-- **Resource Types**: Solid, liquid, gas, persons, frozen goods, land-bound, energy
-- **Resource Claims**: Land and resource ownership/tenancy system
-- **Renewable Resources**: Farms and water sources regenerate
-- **Non-renewable Resources**: Mines have finite capacity
-
-### Worker Thread Architecture
-
-- **Main Thread**: Handles HTTP requests and UI rendering
-- **Worker Thread**: Runs simulation in background using Piscina
-- **Communication**: Message passing via MessagePort
-- **Snapshot Persistence**: Periodic saving to PostgreSQL with compression
-- **Crash Recovery**: Can restore from latest snapshot
-
-## API Structure (tRPC)
-
-All routes are defined in `src/server/router.ts` and handled in `src/server/controller/`.
-
-## Constants & Configuration
-
-All simulation constants are centralized in `src/simulation/constants.ts`.
-
-## Database Schema
-
-### Key Tables
-
-- `game_snapshots`: Compressed simulation state snapshots
-- `planet_population_history`: Historical population statistics
-- `user_data`: User accounts and preferences
-
-### Migration System
-
-- Knex.js migrations for schema evolution
-- Automatic migration on dev server start, see `migrations/` directory
-- Seed data for development/testing in `seeds/` directory
 
 ## Testing
 

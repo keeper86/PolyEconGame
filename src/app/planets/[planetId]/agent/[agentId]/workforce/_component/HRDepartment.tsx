@@ -34,6 +34,7 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
 import { HRBalanceRow, HRBuildRow } from './HRBalanceRow';
 import { HRBufferGauge } from './HRBufferGauge';
+import { HRStarvationBar } from './HRStarvationBar';
 
 const HR_STATUS_CONFIG: Record<
     HrBufferStatus,
@@ -399,7 +400,9 @@ export default function HRDepartment({
                             PRODUCED_HR_QUANTITY *
                             hrDepartment.scale
                         }
-                    />
+                    >
+                        <HRStarvationBar starvation={hrDepartment.hrStarvation} />
+                    </HRBalanceRow>
                 </ActiveFacilityCard>
             );
         }

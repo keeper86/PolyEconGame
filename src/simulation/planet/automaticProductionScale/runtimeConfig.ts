@@ -1,9 +1,11 @@
 let storageSpaceClampEnabled = true;
 let pidOutMaxDown: number | null = null;
 const pidOutMaxUp: number | null = null;
+let pidKd: number | null = null;
 let expansionIntegralThreshold: number | null = null;
 let contractionIntegralThreshold: number | null = null;
 let storageTargetMonths: number | null = null;
+let storageCapacityMonths: number | null = null;
 let minScaleFraction: number | null = null;
 let expansionAtCapacityFraction: number | null = null;
 let serviceSellThroughTarget: number | null = null;
@@ -11,6 +13,7 @@ let serviceFillRateTarget: number | null = null;
 let serviceFlowDecayTarget: number | null = null;
 let productionSignalEmaAlpha: number | null = null;
 let storageErrorZoomMonths: number | null = null;
+let storageTrendHorizonMonths: number | null = null;
 
 export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
     storageSpaceClampEnabled = enabled;
@@ -18,6 +21,10 @@ export const setStorageSpaceClampEnabled = (enabled: boolean): void => {
 
 export const setPidOutMaxDown = (value: number | null): void => {
     pidOutMaxDown = value;
+};
+
+export const setPidKd = (value: number | null): void => {
+    pidKd = value;
 };
 
 export const setExpansionIntegralThreshold = (value: number | null): void => {
@@ -30,6 +37,10 @@ export const setContractionIntegralThreshold = (value: number | null): void => {
 
 export const setStorageTargetMonths = (value: number | null): void => {
     storageTargetMonths = value;
+};
+
+export const setStorageCapacityMonths = (value: number | null): void => {
+    storageCapacityMonths = value;
 };
 
 export const setMinScaleFraction = (value: number | null): void => {
@@ -60,12 +71,18 @@ export const setStorageErrorZoomMonths = (value: number | null): void => {
     storageErrorZoomMonths = value;
 };
 
+export const setStorageTrendHorizonMonths = (value: number | null): void => {
+    storageTrendHorizonMonths = value;
+};
+
 export const isStorageSpaceClampEnabled = (): boolean => storageSpaceClampEnabled;
 export const getPidOutMaxDown = (): number | null => pidOutMaxDown;
 export const getPidOutMaxUp = (): number | null => pidOutMaxUp;
+export const getPidKd = (): number | null => pidKd;
 export const getExpansionIntegralThreshold = (): number | null => expansionIntegralThreshold;
 export const getContractionIntegralThreshold = (): number | null => contractionIntegralThreshold;
 export const getStorageTargetMonths = (): number | null => storageTargetMonths;
+export const getStorageCapacityMonths = (): number | null => storageCapacityMonths;
 export const getMinScaleFraction = (): number | null => minScaleFraction;
 export const getExpansionAtCapacityFraction = (): number | null => expansionAtCapacityFraction;
 export const getServiceSellThroughTarget = (): number | null => serviceSellThroughTarget;
@@ -73,3 +90,4 @@ export const getServiceFillRateTarget = (): number | null => serviceFillRateTarg
 export const getServiceFlowDecayTarget = (): number | null => serviceFlowDecayTarget;
 export const getProductionSignalEmaAlpha = (): number | null => productionSignalEmaAlpha;
 export const getStorageErrorZoomMonths = (): number | null => storageErrorZoomMonths;
+export const getStorageTrendHorizonMonths = (): number | null => storageTrendHorizonMonths;

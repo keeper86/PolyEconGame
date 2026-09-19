@@ -6,12 +6,11 @@ import { PRODUCED_HR_QUANTITY } from '../planet/specialFacilities';
 import { makeAgentPlanetAssets, makeHRFacility } from '../utils/testHelper';
 import {
     computeBufferCapacity,
-    computeCoverageRatio,
     computeMaxDailyHROutput,
     computeProductivityMultiplier,
     hrBufferStatus,
     processHrBufferForAssets,
-    updateHrBuffer,
+    relaxHrStarvation,
 } from './hrBuffer';
 
 describe('computeMaxDailyHROutput', () => {
@@ -29,52 +28,36 @@ describe('computeBufferCapacity', () => {
     });
 });
 
-describe('updateHrBuffer', () => {
-    it('adds production and subtracts demand', () => {
-        expect(updateHrBuffer(100, 500, 200, 3000)).toBe(400);
+describe('relaxHrStarvation', () => {
+    it('is excited toward the deficit while the buffer is short', () => {
+        expect(relaxHrStarvation(0, 1)).toBeCloseTo(0.05, 10);
+        expect(relaxHrStarvation(0.05, 1)).toBeCloseTo(0.0975, 10);
     });
 
-    it('clamps at zero', () => {
-        expect(updateHrBuffer(50, 100, 200, 3000)).toBe(0);
-    });
-
-    it('clamps at pMax', () => {
-        expect(updateHrBuffer(2900, 500, 100, 3000)).toBe(3000);
-    });
-
-    it('handles zero demand', () => {
-        expect(updateHrBuffer(500, 1000, 0, 3000)).toBe(1500);
-    });
-});
-
-describe('computeCoverageRatio', () => {
-    it('returns 1.0 when demand is zero', () => {
-        expect(computeCoverageRatio(100, 0)).toBe(1.0);
-        expect(computeCoverageRatio(0, 0)).toBe(1.0);
-    });
-
-    it('returns buffer divided by demand', () => {
-        expect(computeCoverageRatio(200, 100)).toBe(2.0);
-        expect(computeCoverageRatio(50, 100)).toBe(0.5);
+    it('relaxes toward the deficit as well, so it never overshoots', () => {
+        expect(relaxHrStarvation(1, 0)).toBeCloseTo(0.95, 10);
+        expect(relaxHrStarvation(0, 0)).toBe(0);
     });
 });
 
 describe('computeProductivityMultiplier', () => {
-    it('returns 1.0 at or above full coverage', () => {
-        expect(computeProductivityMultiplier(1.0)).toBe(1.0);
-        expect(computeProductivityMultiplier(2.0)).toBe(1.0);
+    it('is 1 without starvation and halves at full starvation', () => {
+        expect(computeProductivityMultiplier(0)).toBe(1);
+        expect(computeProductivityMultiplier(1)).toBeCloseTo(0.5, 10);
     });
 
-    it('uses strained formula between 0.3 and 1.0', () => {
-        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.84);
-        expect(computeProductivityMultiplier(0.3)).toBeCloseTo(0.8);
-        expect(computeProductivityMultiplier(0.65)).toBeCloseTo(0.87);
+    it('barely reacts until the starvation is severe', () => {
+        expect(computeProductivityMultiplier(0.5)).toBeCloseTo(0.9921875, 10);
+        expect(computeProductivityMultiplier(0.7)).toBeCloseTo(0.941, 3);
+        expect(computeProductivityMultiplier(0.9)).toBeCloseTo(0.734, 3);
     });
 
-    it('uses critical formula below 0.3', () => {
-        expect(computeProductivityMultiplier(0.2)).toBeCloseTo(0.7);
-        expect(computeProductivityMultiplier(0.0)).toBeCloseTo(0.5);
-        expect(computeProductivityMultiplier(0.1)).toBeCloseTo(0.6);
+    it('is monotone decreasing in starvation', () => {
+        const xs = [0, 0.2, 0.4, 0.6, 0.8, 1];
+        const ys = xs.map(computeProductivityMultiplier);
+        for (let i = 1; i < ys.length; i++) {
+            expect(ys[i]).toBeLessThanOrEqual(ys[i - 1]);
+        }
     });
 });
 
@@ -191,25 +174,33 @@ describe('processHrBufferForAssets', () => {
         expect(assets.hrProductivityMultiplier).toBe(0.5);
     });
 
-    it('sets productivity multiplier based on coverage', () => {
-        const hrFacility = makeHRFacility(undefined, {
-            produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
-            hrBuffer: 0,
-        });
-        const assets = makeAgentPlanetAssets('p', {
-            humanResourcesDepartment: hrFacility,
-        });
-        assets.usedWorkers = 1000;
+    it('barely reacts to a single dry tick, but still reaches the floor under a sustained shortfall', () => {
+        const makeAssets = () => {
+            const hrFacility = makeHRFacility(undefined, {
+                produces: [{ resource: humanResourcesServiceResourceType, quantity: PRODUCED_HR_QUANTITY }],
+            });
+            const assets = makeAgentPlanetAssets('p', {
+                humanResourcesDepartment: hrFacility,
+            });
+            assets.usedWorkers = 1000;
+            return assets;
+        };
 
-        processHrBufferForAssets(assets);
-        expect(assets.hrProductivityMultiplier).toBeLessThan(1);
-        expect(assets.hrProductivityMultiplier).toBeGreaterThanOrEqual(0.5);
+        const oneDryTick = makeAssets();
+        processHrBufferForAssets(oneDryTick);
+        expect(oneDryTick.hrProductivityMultiplier).toBeGreaterThan(0.99);
+
+        const sustained = makeAssets();
+        for (let tick = 0; tick < 400; tick++) {
+            processHrBufferForAssets(sustained);
+        }
+        expect(sustained.hrProductivityMultiplier).toBeCloseTo(0.5, 2);
     });
 });
 
 describe('hrBuffer integration', () => {
     it('returns optimal when demand is zero and buffer is full', () => {
         expect(hrBufferStatus(3000, 0)).toBe('optimal');
-        expect(computeProductivityMultiplier(computeCoverageRatio(3000, 0))).toBe(1);
+        expect(computeProductivityMultiplier(0)).toBe(1);
     });
 });

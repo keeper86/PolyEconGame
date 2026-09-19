@@ -4,7 +4,7 @@ import type { Storage, StorageFacility } from '../facility';
 import { shellFormOfResource, storageFormKeys, type StorageForm } from '../facility';
 import type { AgentPlanetAssets } from '../planet';
 import { STORAGE_CAPACITY_MONTHS } from './constants';
-import { getStorageTargetMonths } from './runtimeConfig';
+import { getStorageCapacityMonths, getStorageTargetMonths } from './runtimeConfig';
 
 export type StorageResidency = {
     name: string;
@@ -111,7 +111,7 @@ export const resolveFormShell = (
 // ship-builder's material inputs (a ship itself is not a stored good). Reserving both directions keeps
 // the seed-time prefill and steady-state production from overflowing an output-only-sized shell.
 export const residencyMonthsTicks = (): number =>
-    (getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS) * TICKS_PER_MONTH;
+    (getStorageCapacityMonths() ?? getStorageTargetMonths() ?? STORAGE_CAPACITY_MONTHS) * TICKS_PER_MONTH;
 
 const addResidency = (
     grouped: Record<StorageForm, Map<string, StorageResidency>>,

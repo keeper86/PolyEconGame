@@ -43,7 +43,8 @@ export const isFacilityOperating = (facility: Facility): boolean => facility.con
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
 const constructionCostFactor = 20000;
-const facilityConstructionMultiplier: Record<FacilityType, number> = {
+export const maintenanceCostFactor = 0.5;
+export const facilityConstructionMultiplier: Record<FacilityType, number> = {
     raw: 1,
     refined: 2,
     manufactured: 3,
@@ -100,6 +101,7 @@ export type FacilityCategory = FacilityBase['type'];
 
 export type LastTickResults = {
     overallEfficiency: number;
+    workerEfficiencyOverall: number;
     workerEfficiency: { [edu in EducationLevelType]?: number };
 
     exactUsedByEdu: { [jobEdu in EducationLevelType]?: number };
@@ -332,6 +334,7 @@ export const nullWagePidState = (): Record<EducationLevelType, WagePidState> => 
 
 export type HRFacility = ManagementFacility & {
     hrBuffer: number;
+    hrStarvation: number;
     wagePidState: Record<EducationLevelType, WagePidState>;
 };
 export type StorageDepartment = ManagementFacility & {
@@ -355,6 +358,7 @@ export type Facility = ProductionFacility | ManagementFacility | StorageFacility
 
 export const createLastTickResults = (): LastTickResults => ({
     overallEfficiency: 0,
+    workerEfficiencyOverall: 1,
     workerEfficiency: {},
     resourceEfficiency: {},
     overqualifiedWorkers: {},

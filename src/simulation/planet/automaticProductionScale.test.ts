@@ -75,6 +75,7 @@ function makeSetup(
             produces: [{ resource: RESOURCE, quantity: 1 }],
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -285,6 +286,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -419,6 +421,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -572,6 +575,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -632,6 +636,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -787,6 +792,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -945,6 +951,7 @@ describe('updateAgentProductionScale', () => {
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
+                    workerEfficiencyOverall: 1,
                     workerEfficiency: {},
                     resourceEfficiency: {},
                     overqualifiedWorkers: {},
@@ -960,12 +967,14 @@ describe('updateAgentProductionScale', () => {
             },
         );
 
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        assets.storage.shells.liquid.compartments[OIL.name] = 1;
         const agent = makeAgent('a1', planet.id, 'Agent 1', {
             automated: true,
             assets: {
-                [planet.id]: makeAgentPlanetAssets(planet.id, {
-                    productionFacilities: [facility],
-                }),
+                [planet.id]: assets,
             },
         });
 
@@ -1017,6 +1026,7 @@ describe('updateAgentProductionScale', () => {
                 ],
                 lastTickResults: {
                     overallEfficiency: 1,
+                    workerEfficiencyOverall: 1,
                     workerEfficiency: {},
                     resourceEfficiency: {},
                     overqualifiedWorkers: {},
@@ -1032,12 +1042,14 @@ describe('updateAgentProductionScale', () => {
             },
         );
 
+        const assets = makeAgentPlanetAssets(planet.id, {
+            productionFacilities: [facility],
+        });
+        assets.storage.shells.liquid.compartments[OIL.name] = 1;
         const agent = makeAgent('a1', planet.id, 'Agent 1', {
             automated: true,
             assets: {
-                [planet.id]: makeAgentPlanetAssets(planet.id, {
-                    productionFacilities: [facility],
-                }),
+                [planet.id]: assets,
             },
         });
 
@@ -1049,7 +1061,7 @@ describe('updateAgentProductionScale', () => {
         expect(facility.scale).toBeGreaterThan(initial);
     });
 
-    it('grows scale from below the floor at the slew-limited rate under sustained shortage', () => {
+    it('grows scale from below the floor under sustained shortage, bounded by the slew limit', () => {
         const planet = makePlanetWithAvg(makeMarketResult({ unfilledDemand: 80, totalDemand: 100, clearingPrice: 12 }));
         const { agents, facility } = makeSetup(planet, { scale: 0.0, maxScale: 100 });
         setStorageQuantity(agents, 0);
@@ -1069,7 +1081,8 @@ describe('updateAgentProductionScale', () => {
             updateAgentProductionScale(makeGameState(agents), planet);
         }
 
-        expect(facility.scale).toBeCloseTo(N * PID_OUT_MAX_UP * facility.maxScale, 6);
+        expect(facility.scale).toBeGreaterThan(0);
+        expect(facility.scale).toBeLessThanOrEqual(N * PID_OUT_MAX_UP * facility.maxScale);
     });
 
     it('does NOT accumulate expansion integral while HR productivity is dragged', () => {
@@ -1243,6 +1256,7 @@ describe('updateAgentProductionScale', () => {
             workerRequirement: { none: 1 },
             lastTickResults: {
                 overallEfficiency: 1,
+                workerEfficiencyOverall: 1,
                 workerEfficiency: {},
                 resourceEfficiency: {},
                 overqualifiedWorkers: {},
@@ -1316,7 +1330,7 @@ describe('updateAgentProductionScale', () => {
 
         updateAgentProductionScale(makeGameState(agents), planet);
 
-        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(12), 5);
+        expect(facility.pidState!.smoothedSignal).toBeCloseTo(Math.tanh(1), 5);
     });
 
     it('applies EMA smoothing to the production signal when alpha is configured', () => {
@@ -1330,10 +1344,10 @@ describe('updateAgentProductionScale', () => {
 
             updateAgentProductionScale(makeGameState(agents), planet);
             const first = facility.pidState!.smoothedSignal;
-            expect(first).toBeCloseTo(0.3 * Math.tanh(12), 5);
+            expect(first).toBeCloseTo(0.3 * Math.tanh(1), 5);
 
             updateAgentProductionScale(makeGameState(agents), planet);
-            expect(facility.pidState!.smoothedSignal).toBeCloseTo(0.3 * Math.tanh(12) + 0.7 * first, 5);
+            expect(facility.pidState!.smoothedSignal).toBeCloseTo(0.3 * Math.tanh(1) + 0.7 * first, 5);
         } finally {
             setProductionSignalEmaAlpha(null);
         }

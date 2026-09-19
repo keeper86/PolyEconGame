@@ -266,6 +266,7 @@ export function makeHRFacility(
     return {
         ...makeManagementFacility(workerReq, overrides as Partial<ManagementFacility>),
         hrBuffer: 0,
+        hrStarvation: 0,
         wagePidState: nullWagePidState(),
         ...overrides,
     };

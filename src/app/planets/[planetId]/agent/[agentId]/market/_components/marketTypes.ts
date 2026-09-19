@@ -169,6 +169,7 @@ export type MarketBidEntry = {
     automated?: boolean;
     autoConfig?: AutomatedPricingConfig;
     diagnostics?: BuyDiagnostics;
+    notPlaced?: boolean;
 };
 
 export type MarketOfferEntry = {

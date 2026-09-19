@@ -31,12 +31,13 @@ import {
 import type { Resource } from '../planet/claims';
 import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import { facilityMaintenanceRepairDeficit, facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
-import type {
-    Agent,
-    AgentMarketBidState,
-    AgentMarketOfferState,
-    AutomatedPricingConfig,
-    Planet,
+import {
+    getAllFacilities,
+    type Agent,
+    type AgentMarketBidState,
+    type AgentMarketOfferState,
+    type AutomatedPricingConfig,
+    type Planet,
 } from '../planet/planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '../planet/services';
 import { toConsumptionShipInfo } from './consumptionShipInfo';
@@ -97,13 +98,16 @@ function resolveBidConfigForResource(assets: import('../planet/planet').AgentPla
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+let maintDebugTick = 0;
+
 export function automaticPricing(agents: Map<string, Agent>, planet: Planet): void {
+    const maintDebug = process.env.MAINT_DEBUG === '1' && maintDebugTick++ % 30 === 0;
     agents.forEach((agent) => {
-        automaticPricingForAgent(agent, planet);
+        automaticPricingForAgent(agent, planet, maintDebug);
     });
 }
 
-function automaticPricingForAgent(agent: Agent, planet: Planet): void {
+function automaticPricingForAgent(agent: Agent, planet: Planet, maintDebug: boolean): void {
     const assets = agent.assets[planet.id];
     if (!assets) {
         return;
@@ -157,7 +161,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
                 continue;
             }
 
-            productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.scale);
+            productionRate.set(resource.name, (productionRate.get(resource.name) ?? 0) + quantity * facility.maxScale);
 
             const inventoryQty = queryStorageFacility(assets.storage, resource.name);
             const reserved = inputReserve.get(resource.name) ?? 0;
@@ -211,12 +215,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
     // ── Buy-side aggregated targets ─────────────────────────────────────────
     const aggregatedBuyTargets = new Map<string, { resource: Resource; storageTarget: number; freeTarget: number }>();
 
-    for (const facility of [
-        ...assets.productionFacilities,
-        ...(assets.humanResourcesDepartment ? [assets.humanResourcesDepartment] : []),
-        ...(assets.storage.department ? [assets.storage.department] : []),
-        ...assets.shipConstructionFacilities,
-    ]) {
+    for (const facility of getAllFacilities(assets, false)) {
         if (isFacilityOperating(facility)) {
             let needs = [];
             if (facility.type === 'ship_construction') {
@@ -269,6 +268,11 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         if (isFacilityOperating(facility)) {
             const cfg = resolveBidConfigForResource(assets, maintenanceServiceResourceType);
             const facilityTarget = facilityMaintenanceRepairDeficit(facility) * cfg.inputBufferTargetTicks;
+            if (maintDebug) {
+                console.log(
+                    `[maintfac]\t${agent.id}\t${facility.name.replace(/ /g, '_')}\t${facility.scale}\t${facility.maxScale}\t${facility.maxMaintenance}\t${facility.maintenanceStatus}\t${facilityTarget}`,
+                );
+            }
             const existing = aggregatedBuyTargets.get(maintenanceServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;
@@ -391,15 +395,8 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         let totalShortfall = Math.max(0, storageTarget - currentInventory);
 
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
-        if (
-            baseRateConsumption > EPSILON &&
-            storageTarget > EPSILON &&
-            totalShortfall > EPSILON &&
-            resource.form !== 'services'
-        ) {
-            const fillRatio = Math.min(1, currentInventory / storageTarget);
-            const smoothedDemand = baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra * (1 - fillRatio));
-            totalShortfall = Math.min(totalShortfall, smoothedDemand);
+        if (baseRateConsumption > EPSILON && resource.form !== 'services') {
+            totalShortfall = Math.min(totalShortfall, baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra));
         }
 
         if (freeTarget > EPSILON) {
@@ -427,6 +424,12 @@ function automaticPricingForAgent(agent: Agent, planet: Planet): void {
         const smoothedTarget = totalShortfall > EPSILON ? currentInventory + totalShortfall : storageTarget;
 
         adjustBidPrice(bid, totalShortfall, smoothedTarget, marketPrice, bidCeil, costFloor);
+
+        if (maintDebug && resourceName === maintenanceServiceResourceType.name) {
+            console.log(
+                `[maintbid]\t${agent.id}\taggregated=${storageTarget}\tfree=${freeTarget}\tshortfall=${totalShortfall}\tsmoothed=${smoothedTarget}\tstoredTarget=${bid.bidStorageTarget}\tprice=${bid.bidPrice}`,
+            );
+        }
 
         if (!bid.bidPrice || !isFinite(bid.bidPrice) || bid.bidPrice < PRICE_FLOOR) {
             console.warn(
@@ -480,10 +483,11 @@ export function adjustOfferPrice(
     const rawRetainment = (offer.offerRetainment ?? 0) + freeRetainment;
     const surplus = Math.max(0, inventoryQty - rawRetainment);
     if (surplus > EPSILON && offer.resource.form !== 'services') {
-        // Producers anchor the offer to their production rate, not to the inventory, so a
-        // stockpile cannot inflate the retainment without bound. Non-producers (no production
-        // rate) fall back to spreading the surplus over the configured smoothing days to
-        // liquidate dead stock without dumping it in a single tick.
+        // Producers anchor the offer to their capacity (maxScale production), not to the current
+        // operating scale or the inventory, so a facility that has contracted its scale still
+        // offers its full capacity and can sell down a stockpile, while the stockpile itself
+        // cannot inflate the retainment without bound. Non-producers fall back to spreading the
+        // surplus over the configured smoothing days to liquidate dead stock without a dump.
         const perTick =
             productionRate > 0
                 ? Math.min(surplus, productionRate * cfg.sellProductionSmoothing)
@@ -623,6 +627,8 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.smoothedFillRate = undefined;
+        bid.notPlaced = false;
         bid.diagnostics = undefined;
         return;
     }
@@ -634,6 +640,8 @@ function adjustBidPrice(
             const newPrice = marketPrice;
             bid.bidPrice = Math.max(PRICE_FLOOR, newPrice);
         }
+        bid.smoothedFillRate = undefined;
+        bid.notPlaced = false;
         bid.diagnostics = undefined;
         return;
     }
@@ -645,10 +653,18 @@ function adjustBidPrice(
         return;
     }
 
+    const bidWasDropped = bid.lastEffectiveQty === 0;
+    if (bidWasDropped) {
+        bid.notPlaced = true;
+        bid.diagnostics = undefined;
+        return;
+    }
+
     const lastBought = bid.lastBought ?? 0;
 
     const lastDemanded = bid.lastEffectiveQty ?? shortfall;
-    const rawFillRate = lastDemanded > 0 ? Math.min(1, Math.max(0, lastBought / lastDemanded)) : 1;
+    const rawFillRate = Math.min(1, Math.max(0, lastBought / lastDemanded));
+    bid.notPlaced = false;
     const buySmoothing = bid.resource.form === 'services' ? 1 : 1 + cfg.inventorySmoothingMaxExtra;
     const normalizedFillRate = rawFillRate * buySmoothing;
     const smoothedFillRate =

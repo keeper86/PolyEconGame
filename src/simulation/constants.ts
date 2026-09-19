@@ -57,10 +57,10 @@ export const SERVICE_DEPRECIATION_COST_MULTIPLIER =
 
 export const STORAGE_MOVEMENT_FACTOR = 2;
 
-export const TARGET_FILL_RATE = 0.85;
-export const TARGET_FILL_RATE_SERVICES = 0.85;
+export const TARGET_FILL_RATE = 0.86;
+export const TARGET_FILL_RATE_SERVICES = TARGET_FILL_RATE;
 export const TARGET_SELL_THROUGH = 1.2;
-export const TARGET_SELL_THROUGH_SERVICES = 0.85;
+export const TARGET_SELL_THROUGH_SERVICES = TARGET_FILL_RATE;
 
 export const HR_BUFFER_CAPACITY_MULTIPLIER = 5;
 
@@ -169,6 +169,14 @@ export const MAX_DISPATCH_TIMEOUT_TICKS = 60;
 export const SHIP_MARKET_EMA_ALPHA = 0.3;
 export const SELL_THROUGH_EMA_ALPHA = 0.3;
 export const FILL_RATE_EMA_ALPHA = 0.3;
+
+/**
+ * Smoothing for the demand half of the storage trend (`q*s - d`). The production half is exact, so
+ * only the market take is filtered. One month, matching the storage error's zoom window: fast enough
+ * to keep the trend's phase up to the loop's own period, slow enough that the tick-to-tick market
+ * noise does not print straight through into the scale command.
+ */
+export const STORAGE_TREND_DEMAND_EMA_ALPHA = 2 / (TICKS_PER_MONTH + 1);
 
 export const SHIP_MARKET_MAX_TRADE_HISTORY = 100;
 

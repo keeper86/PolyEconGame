@@ -15,7 +15,12 @@ export {
     findMaxScaleForLandboundResources,
 } from './automaticProductionScale/expansionTarget';
 export { computePidDelta, getDefaultPidState } from './automaticProductionScale/pidController';
-export { computeFacilityStorageSignal, softClip } from './automaticProductionScale/signalComputation';
+export {
+    computeFacilityStorageSignal,
+    inventoryTrend,
+    reachableTargetQuantity,
+    softClip,
+} from './automaticProductionScale/signalComputation';
 export {
     computeStorageExpansionTarget,
     computeStorageSignal,
@@ -23,6 +28,7 @@ export {
 } from './automaticProductionScale/storageAutoscale';
 
 import {
+    CONTRACTION_AT_SCALE_FRACTION,
     CONTRACTION_INTEGRAL_DECAY,
     CONTRACTION_INTEGRAL_MAX,
     CONTRACTION_INTEGRAL_THRESHOLD,
@@ -82,6 +88,7 @@ export function applySoftFloorScale(currentScale: number, delta: number, minScal
 
 const HR_TARGET_FILL_RATE = 0.85;
 const HR_EXPANSION_FACTOR = 1.4;
+export const HR_EXPANSION_TARGET_FACTOR = HR_EXPANSION_FACTOR;
 
 function computeHrSignal(hrDepartment: HRFacility): number {
     const pMax = computeBufferCapacity(computeMaxDailyHROutput(hrDepartment.maxScale));
@@ -100,7 +107,6 @@ export function reconcileShellScale(
     assets: AgentPlanetAssets,
     shell: StorageFacility,
     requiredScale: number,
-    hasOwnConstruction: boolean,
     remainingConstructionBudget: number,
 ): number {
     if (requiredScale <= 0 || shell.construction !== null) {
@@ -110,10 +116,7 @@ export function reconcileShellScale(
     const bufferScale = Math.max(1, Math.ceil(requiredScale * SHELL_BUFFER_FRACTION));
 
     if (shell.maxScale < requiredScale) {
-        if (remainingConstructionBudget <= 0) {
-            return remainingConstructionBudget;
-        }
-        const started = initiateCapacityExpansion(shell, assets, planet, hasOwnConstruction, bufferScale);
+        const started = initiateCapacityExpansion(shell, assets, planet, true, bufferScale);
         if (!started) {
             return remainingConstructionBudget;
         }
@@ -415,7 +418,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
             const atMaxScale =
                 facility.scale >=
                 facility.maxScale * (getExpansionAtCapacityFraction() ?? EXPANSION_AT_CAPACITY_FRACTION);
-            const atMinScale = facility.scale <= minScale;
+            const belowHalfCapacity = facility.scale < facility.maxScale * CONTRACTION_AT_SCALE_FRACTION;
 
             if (atMaxScale && signal > 0 && hrHealthy && storageHealthy) {
                 state.expansionIntegral = Math.min(
@@ -426,7 +429,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 state.expansionIntegral = Math.max(0, state.expansionIntegral - EXPANSION_INTEGRAL_DECAY);
             }
 
-            if (atMinScale && signal < 0) {
+            if (belowHalfCapacity && signal < 0) {
                 state.contractionIntegral = Math.min(
                     CONTRACTION_INTEGRAL_MAX,
                     state.contractionIntegral + STORAGE_CONTRACTION_RATE,
@@ -789,7 +792,6 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 assets,
                 assets.storage.shells[form],
                 sizing.requiredScale,
-                hasOwnConstruction,
                 remainingConstructionBudget,
             );
         }

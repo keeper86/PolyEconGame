@@ -7,6 +7,7 @@ import { setPopulationWealthTaxEnabled, setSupportEmployed, setSupportFoodAfford
 import {
     setContractionIntegralThreshold,
     setExpansionIntegralThreshold,
+    setPidKd,
     setPidOutMaxDown,
     setServiceFillRateTarget,
     setServiceFlowDecayTarget,
@@ -15,8 +16,10 @@ import {
     setMinScaleFraction,
     setExpansionAtCapacityFraction,
     setStorageTargetMonths,
+    setStorageCapacityMonths,
     setProductionSignalEmaAlpha,
     setStorageErrorZoomMonths,
+    setStorageTrendHorizonMonths,
 } from '../../src/simulation/planet/automaticProductionScale/runtimeConfig';
 import { setNonRenewableClaimCostMultiplier } from '../../src/simulation/planet/claims';
 import { setBankruptcyDebtWriteOffFraction } from '../../src/simulation/financial/bankruptcy';
@@ -464,6 +467,11 @@ async function main(): Promise<void> {
         setPidOutMaxDown(Number(pidDownArg));
         console.log(`PID ramp-down limit overridden to ${pidDownArg}`);
     }
+    const pidKdArg = arg('pidKd');
+    if (pidKdArg !== undefined) {
+        setPidKd(Number(pidKdArg));
+        console.log(`PID D gain overridden to ${pidKdArg}`);
+    }
     const expansionThresholdArg = arg('expansionThreshold');
     if (expansionThresholdArg !== undefined) {
         setExpansionIntegralThreshold(Number(expansionThresholdArg));
@@ -479,6 +487,11 @@ async function main(): Promise<void> {
         setStorageTargetMonths(Number(storageTargetMonthsArg));
         console.log(`goods storage target buffer overridden to ${storageTargetMonthsArg} months`);
     }
+    const storageCapacityMonthsArg = arg('storageCapacityMonths');
+    if (storageCapacityMonthsArg !== undefined) {
+        setStorageCapacityMonths(Number(storageCapacityMonthsArg));
+        console.log(`goods storage capacity overridden to ${storageCapacityMonthsArg} months`);
+    }
     const productionSignalEmaAlphaArg = arg('productionSignalEmaAlpha');
     if (productionSignalEmaAlphaArg !== undefined) {
         setProductionSignalEmaAlpha(Number(productionSignalEmaAlphaArg));
@@ -488,6 +501,11 @@ async function main(): Promise<void> {
     if (storageErrorZoomMonthsArg !== undefined) {
         setStorageErrorZoomMonths(Number(storageErrorZoomMonthsArg));
         console.log(`storage error zoom overridden to ${storageErrorZoomMonthsArg} months`);
+    }
+    const storageTrendMonthsArg = arg('storageTrendMonths');
+    if (storageTrendMonthsArg !== undefined) {
+        setStorageTrendHorizonMonths(Number(storageTrendMonthsArg));
+        console.log(`storage trend horizon overridden to ${storageTrendMonthsArg} months`);
     }
     const minScaleFractionArg = arg('minScaleFraction');
     if (minScaleFractionArg !== undefined) {
