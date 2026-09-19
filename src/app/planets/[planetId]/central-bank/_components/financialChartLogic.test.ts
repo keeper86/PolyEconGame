@@ -1,5 +1,91 @@
 import { describe, expect, it } from 'vitest';
-import { raiseWagesMonotone } from './financialChartLogic';
+import { computeCostOfLivingMonthlyData, computeMacroMonthlyData, raiseWagesMonotone } from './financialChartLogic';
+import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+
+function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
+    return gameYear * TICKS_PER_YEAR + monthIndex * TICKS_PER_MONTH + (day - 1) + 1;
+}
+
+function macroYear(gameYear: number, gdp: number): EconomyPoint[] {
+    return Array.from({ length: 12 }, (_, monthIndex) => ({
+        bucket: gameTickFor(gameYear, monthIndex, TICKS_PER_MONTH),
+        avgGdp: gdp,
+        avgBankEquity: gdp * 2,
+        avgMoneySupply: gdp * 3,
+    }));
+}
+
+function costYear(gameYear: number, cost: number): CostOfLivingPoint[] {
+    return Array.from({ length: 12 }, (_, monthIndex) => ({
+        bucket: gameTickFor(gameYear, monthIndex, TICKS_PER_MONTH),
+        avgCostOfLiving: cost,
+        avgCostOfLivingRich: cost * 2,
+        avgWageEdu0: 10,
+        avgWageEdu1: 20,
+        avgWageEdu2: 30,
+        avgWageEdu3: 40,
+    }));
+}
+
+describe('computeMacroMonthlyData live point', () => {
+    const data = [...macroYear(0, 100), ...macroYear(1, 200)];
+    const live: MacroLive = { tick: gameTickFor(1, 2, 5), gdp: 999, bankEquity: 888, moneySupply: 777 };
+
+    it('appends the live point at the fractional month index', () => {
+        const result = computeMacroMonthlyData(data, live.tick, live);
+        const livePoint = result.find((p) => p.monthIdx !== undefined && !Number.isInteger(p.monthIdx));
+        expect(livePoint).toBeDefined();
+        expect(livePoint?.gdp).toBe(999);
+        expect(livePoint?.bankEquity).toBe(888);
+        expect(livePoint?.moneySupply).toBe(777);
+        expect(livePoint?.monthIdx).toBeCloseTo(2 + 4 / TICKS_PER_MONTH, 5);
+    });
+
+    it('omits the live point when no live data is provided', () => {
+        const result = computeMacroMonthlyData(data, live.tick);
+        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some((p) => p.gdp === 999)).toBe(false);
+    });
+
+    it('never leaks live values into the ghost series', () => {
+        const result = computeMacroMonthlyData(data, live.tick, live);
+        const ghosts = result.filter((p) => p.ghostGdp !== null);
+        expect(ghosts.length).toBeGreaterThan(0);
+        expect(ghosts.every((p) => p.ghostGdp !== 999)).toBe(true);
+    });
+});
+
+describe('computeCostOfLivingMonthlyData live point', () => {
+    const data = [...costYear(0, 5), ...costYear(1, 8)];
+    const live: CostOfLivingLive = {
+        tick: gameTickFor(1, 4, 10),
+        costOfLiving: 12,
+        costOfLivingRich: 20,
+        wageEdu0: 100,
+        wageEdu1: 200,
+        wageEdu2: 300,
+        wageEdu3: 400,
+    };
+
+    it('appends the live point at the fractional month index', () => {
+        const result = computeCostOfLivingMonthlyData(data, live.tick, live);
+        const livePoint = result.find((p) => p.monthIdx !== undefined && !Number.isInteger(p.monthIdx));
+        expect(livePoint).toBeDefined();
+        expect(livePoint?.costOfLiving).toBe(12);
+        expect(livePoint?.costOfLivingRich).toBe(20);
+        expect(livePoint?.costOfLivingRichDiff).toBe(8);
+        expect(livePoint?.wageEdu0).toBe(100);
+        expect(livePoint?.wageEdu3).toBe(400);
+        expect(livePoint?.monthIdx).toBeCloseTo(4 + 9 / TICKS_PER_MONTH, 5);
+    });
+
+    it('omits the live point when no live data is provided', () => {
+        const result = computeCostOfLivingMonthlyData(data, live.tick);
+        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some((p) => p.costOfLiving === 12)).toBe(false);
+    });
+});
 
 describe('raiseWagesMonotone', () => {
     it('keeps already-monotone wages unchanged', () => {

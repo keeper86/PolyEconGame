@@ -1,5 +1,81 @@
 import { describe, expect, it } from 'vitest';
-import { alignedYDomains } from './financialChartLogic';
+import {
+    alignedYDomains,
+    computeFinancialGhostData,
+    computeFinancialMonthlyData,
+    type FinancialLive,
+    type FinancialPoint,
+} from './financialChartLogic';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+
+function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
+    return gameYear * TICKS_PER_YEAR + monthIndex * TICKS_PER_MONTH + (day - 1) + 1;
+}
+
+function financialYear(gameYear: number, netBalance: number): FinancialPoint[] {
+    return Array.from({ length: 12 }, (_, monthIndex) => ({
+        bucket: gameTickFor(gameYear, monthIndex, TICKS_PER_MONTH),
+        avgNetBalance: netBalance,
+        avgAssetValue: netBalance * 2,
+        avgMonthlyNetIncome: netBalance / 2,
+        avgWages: netBalance / 4,
+        sumPurchases: netBalance / 8,
+        sumClaimPayments: netBalance / 16,
+    }));
+}
+
+describe('computeFinancialMonthlyData live point', () => {
+    const data = [...financialYear(0, 100), ...financialYear(1, 200)];
+    const live: FinancialLive = {
+        tick: gameTickFor(1, 3, 6),
+        avgNetBalance: 1111,
+        avgAssetValue: 2222,
+        avgMonthlyNetIncome: 3333,
+        avgWages: 444,
+        sumPurchases: 55,
+        sumClaimPayments: 6,
+    };
+
+    it('appends the live point at the fractional month index', () => {
+        const result = computeFinancialMonthlyData(data, live.tick, live);
+        const livePoint = result.find((p) => !Number.isInteger(p.monthIdx));
+        expect(livePoint).toBeDefined();
+        expect(livePoint?.avgNetBalance).toBe(1111);
+        expect(livePoint?.avgAssetValue).toBe(2222);
+        expect(livePoint?.avgMonthlyNetIncome).toBe(3333);
+        expect(livePoint?.avgWages).toBe(444);
+        expect(livePoint?.sumPurchases).toBe(55);
+        expect(livePoint?.sumClaimPayments).toBe(6);
+        expect(livePoint?.monthIdx).toBeCloseTo(3 + 5 / TICKS_PER_MONTH, 5);
+    });
+
+    it('omits the live point when no live data is provided', () => {
+        const result = computeFinancialMonthlyData(data, live.tick);
+        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some((p) => p.avgNetBalance === 1111)).toBe(false);
+    });
+});
+
+describe('computeFinancialGhostData live threshold', () => {
+    const data = [...financialYear(0, 100), ...financialYear(1, 200)];
+
+    it('starts the previous-year ghost series at the current month', () => {
+        const live: FinancialLive = {
+            tick: gameTickFor(1, 3, 6),
+            avgNetBalance: 0,
+            avgAssetValue: 0,
+            avgMonthlyNetIncome: 0,
+            avgWages: 0,
+            sumPurchases: 0,
+            sumClaimPayments: 0,
+        };
+        const ghost = computeFinancialGhostData(data, live.tick, live);
+        const monthIdxs = ghost.map((p) => p.monthIdx);
+        expect(monthIdxs.includes(3)).toBe(false);
+        expect(monthIdxs.includes(4)).toBe(true);
+        expect(monthIdxs.includes(12)).toBe(true);
+    });
+});
 
 function zeroFraction([lo, hi]: [number, number]): number {
     return Math.abs(lo) / (hi - lo);

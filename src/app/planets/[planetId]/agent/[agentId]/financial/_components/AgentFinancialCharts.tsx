@@ -11,6 +11,7 @@ import {
     computeFinancialGhostData,
     computeFinancialMonthlyData,
     type FinancialChartPoint,
+    type FinancialLive,
     type FinancialPoint,
 } from './financialChartLogic';
 
@@ -18,10 +19,12 @@ export default function AgentFinancialCharts({
     agentId,
     planetId,
     onlyBalances = false,
+    live,
 }: {
     agentId: string;
     planetId: string;
     onlyBalances?: boolean;
+    live?: FinancialLive;
 }) {
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
@@ -53,12 +56,12 @@ export default function AgentFinancialCharts({
 
     const monthlyHistory = useMemo(() => monthlyData?.history ?? [], [monthlyData]);
     const activeMonthlyData = useMemo(
-        () => (currentTick > 0 ? computeFinancialMonthlyData(monthlyHistory, currentTick) : []),
-        [monthlyHistory, currentTick],
+        () => (currentTick > 0 ? computeFinancialMonthlyData(monthlyHistory, currentTick, live) : []),
+        [monthlyHistory, currentTick, live],
     );
     const activeGhostData = useMemo(
-        () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick) : []),
-        [monthlyHistory, currentTick],
+        () => (currentTick > 0 ? computeFinancialGhostData(monthlyHistory, currentTick, live) : []),
+        [monthlyHistory, currentTick, live],
     );
 
     const activeData: FinancialPoint[] | FinancialChartPoint[] =

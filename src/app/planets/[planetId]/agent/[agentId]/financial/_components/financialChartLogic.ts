@@ -1,4 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
 
 export type FinancialPoint = {
@@ -73,7 +74,35 @@ export type FinancialChartPoint = FinancialPoint & {
     monthIdx: number;
 };
 
-export function computeFinancialMonthlyData(allPts: FinancialRawPoint[], currentTick: number): FinancialChartPoint[] {
+export type FinancialLive = {
+    tick: number;
+    avgNetBalance: number;
+    avgAssetValue: number;
+    avgMonthlyNetIncome: number;
+    avgWages: number;
+    sumPurchases: number;
+    sumClaimPayments: number;
+};
+
+function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
+    const { monthIndex, day } = tickToDate(live.tick);
+    return {
+        bucket: live.tick,
+        avgNetBalance: live.avgNetBalance,
+        avgAssetValue: live.avgAssetValue,
+        avgMonthlyNetIncome: live.avgMonthlyNetIncome,
+        avgWages: live.avgWages,
+        sumPurchases: live.sumPurchases,
+        sumClaimPayments: live.sumClaimPayments,
+        monthIdx: monthIndex + Math.max(day - 1, 0.001) / TICKS_PER_MONTH,
+    };
+}
+
+export function computeFinancialMonthlyData(
+    allPts: FinancialRawPoint[],
+    currentTick: number,
+    live?: FinancialLive,
+): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
     }
@@ -102,23 +131,32 @@ export function computeFinancialMonthlyData(allPts: FinancialRawPoint[], current
         }
     }
 
+    if (live && live.tick > 0) {
+        result.push(liveFinancialPoint(live));
+    }
+
     return result;
 }
 
-export function computeFinancialGhostData(allPts: FinancialRawPoint[], currentTick: number): FinancialChartPoint[] {
+export function computeFinancialGhostData(
+    allPts: FinancialRawPoint[],
+    currentTick: number,
+    live?: FinancialLive,
+): FinancialChartPoint[] {
     if (allPts.length === 0 || currentTick === 0) {
         return [];
     }
 
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
-    const { year: latestYear, monthIndex: currentMonthIndex } = tickToDate(currentTick);
+    const anchorTick = live && live.tick > 0 ? live.tick : currentTick;
+    const { year: latestYear, monthIndex: currentMonthIndex, day: currentDay } = tickToDate(anchorTick);
 
-    const currentMonthIdx = currentMonthIndex + 1;
+    const currentMonthIdx = currentMonthIndex + Math.max(currentDay - 1, 0.001) / TICKS_PER_MONTH;
 
     return pts
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
+            return year === latestYear - 1 && monthIndex + 1 > currentMonthIdx;
         })
         .map((p) => ({
             ...p,

@@ -437,6 +437,7 @@ export default function MultiProductPriceChart({
     onOpenChange,
 }: Props): React.ReactElement {
     const { granularity, setGranularity, currentTick } = useGranularity();
+    const trpc = useTRPC();
 
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const isControlled = controlledIsOpen !== undefined;
@@ -451,6 +452,26 @@ export default function MultiProductPriceChart({
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [rescaleMode, setRescaleMode] = usePriceScaleModePreference();
     const { results: resultsMap, onResult, clear } = useQueryResults();
+
+    const { data: marketOverview } = useSimulationQuery(
+        trpc.simulation.getPlanetMarketOverview.queryOptions(
+            { planetId, average: false },
+            { enabled: isOpen && granularity === 'monthly' },
+        ),
+    );
+
+    const liveTick = marketOverview?.tick ?? 0;
+
+    const livePrices = useMemo(() => {
+        const map = new Map<string, { price: number; relative: number }>();
+        for (const row of marketOverview?.rows ?? []) {
+            map.set(row.resourceName, {
+                price: row.clearingPrice,
+                relative: row.priceCostRatio > 0 ? row.priceCostRatio : row.clearingPrice,
+            });
+        }
+        return map;
+    }, [marketOverview]);
 
     // Clear results when granularity changes (different data shape)
     useEffect(() => {
@@ -502,6 +523,26 @@ export default function MultiProductPriceChart({
             }
         }
 
+        if (granularity === 'monthly' && liveTick > 0 && livePrices.size > 0 && selectedProducts.length > 0) {
+            const livePoint: MergedPoint = { bucket: liveTick };
+            let hasLive = false;
+            for (const name of selectedProducts) {
+                const live = livePrices.get(name);
+                if (!live) {
+                    continue;
+                }
+                livePoint[name] = rescaleMode === 'relative' ? live.relative : live.price;
+                hasLive = true;
+            }
+            if (hasLive) {
+                allBuckets.set(liveTick, livePoint);
+                const totalMonths = Math.floor(liveTick / 30);
+                const year = START_YEAR + Math.floor(totalMonths / 12);
+                const monthIdx = totalMonths % 12;
+                bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
+            }
+        }
+
         for (const name of selectedProducts) {
             for (const [, point] of allBuckets) {
                 if (point[name] === undefined) {
@@ -515,7 +556,7 @@ export default function MultiProductPriceChart({
             p.yearLabel = bucketToYearLabel.get(p.bucket);
         }
         return sorted;
-    }, [results, selectedProducts, granularity, rescaleMode]);
+    }, [results, selectedProducts, granularity, rescaleMode, liveTick, livePrices]);
 
     const scale = useMemo(() => {
         if (mergedData.length === 0) {

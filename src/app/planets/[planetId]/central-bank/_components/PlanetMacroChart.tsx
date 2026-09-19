@@ -20,107 +20,31 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     bucketDecadeLabel,
+    computeMacroMonthlyData,
+    type EconomyPoint,
+    type MacroChartPoint,
+    type MacroLive,
     type Granularity,
 } from './financialChartLogic';
 
-export type EconomyPoint = {
-    bucket: number;
-    avgGdp: number;
-    avgBankEquity: number;
-    avgMoneySupply: number;
-};
-
-type ChartPoint = {
-    monthIdx?: number;
-    year: number;
-    xVal?: number;
-    label?: string;
-    gdp: number | null;
-    bankEquity: number | null;
-    moneySupply: number | null;
-    ghostGdp: number | null;
-    ghostBankEquity: number | null;
-    ghostMoneySupply: number | null;
-};
-
-function toChartPoint(e: EconomyPoint, idx: number): ChartPoint {
-    return {
-        monthIdx: idx,
-        year: tickToDate(e.bucket).year,
-        gdp: e.avgGdp,
-        bankEquity: e.avgBankEquity,
-        moneySupply: e.avgMoneySupply,
-        ghostGdp: null,
-        ghostBankEquity: null,
-        ghostMoneySupply: null,
-    };
-}
-
-function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): ChartPoint[] {
-    if (data.length === 0 || currentTick === 0) {
-        return [];
-    }
-    const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-    const latestYear = tickToDate(currentTick).year;
-
-    const current: ChartPoint[] = [];
-    for (const p of sorted) {
-        if (tickToDate(p.bucket).year === latestYear) {
-            current.push(toChartPoint(p, tickToDate(p.bucket).monthIndex + 1));
-        }
-    }
-
-    const prevDecPoint = sorted.find((p) => {
-        const { year, monthIndex } = tickToDate(p.bucket);
-        return year === latestYear - 1 && monthIndex === 11;
-    });
-    if (prevDecPoint) {
-        current.unshift(toChartPoint(prevDecPoint, 0));
-    } else {
-        const lastBefore = [...sorted].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
-        if (lastBefore) {
-            current.unshift(toChartPoint(lastBefore, 0));
-        }
-    }
-
-    const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
-    const ghostPoints: ChartPoint[] = sorted
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
-        })
-        .map((p) => {
-            const cp = toChartPoint(p, tickToDate(p.bucket).monthIndex + 1);
-            return {
-                ...cp,
-                ghostGdp: cp.gdp,
-                ghostBankEquity: cp.bankEquity,
-                ghostMoneySupply: cp.moneySupply,
-                gdp: null,
-                bankEquity: null,
-                moneySupply: null,
-            };
-        });
-
-    const merged = [...current, ...ghostPoints].sort((a, b) => (a.monthIdx ?? 0) - (b.monthIdx ?? 0));
-    return merged;
-}
+export type { EconomyPoint };
 
 export function PlanetMacroChart({
     data,
     granularity,
     planetId,
     currentTick,
+    live,
 }: {
     data: EconomyPoint[];
     granularity: Granularity;
     planetId?: string;
     currentTick: number;
+    live?: MacroLive;
 }) {
-    const chartData = useMemo(() => {
+    const chartData = useMemo((): MacroChartPoint[] => {
         if (granularity === 'monthly') {
-            return computeMonthlyChartData(data, currentTick);
+            return computeMacroMonthlyData(data, currentTick, live);
         }
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
@@ -133,6 +57,9 @@ export function PlanetMacroChart({
                     gdp: p.avgGdp,
                     bankEquity: p.avgBankEquity,
                     moneySupply: p.avgMoneySupply,
+                    ghostGdp: null,
+                    ghostBankEquity: null,
+                    ghostMoneySupply: null,
                 };
             });
         }
@@ -145,9 +72,12 @@ export function PlanetMacroChart({
                 gdp: p.avgGdp,
                 bankEquity: p.avgBankEquity,
                 moneySupply: p.avgMoneySupply,
+                ghostGdp: null,
+                ghostBankEquity: null,
+                ghostMoneySupply: null,
             };
         });
-    }, [data, granularity, currentTick]);
+    }, [data, granularity, currentTick, live]);
 
     const domainCurrency = useMemo(() => {
         const vals: number[] = [];

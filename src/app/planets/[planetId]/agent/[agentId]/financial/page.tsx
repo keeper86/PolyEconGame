@@ -69,7 +69,23 @@ export default function FinancialPage() {
                                     agentId={agentId}
                                 />
                                 <Separator />
-                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                                <AgentFinancialCharts
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                    live={{
+                                        tick,
+                                        avgNetBalance:
+                                            (assets.deposits ?? 0) - totalOutstandingLoans(assets.activeLoans ?? []),
+                                        avgAssetValue:
+                                            loanConditions.storageCollateral +
+                                            loanConditions.shipsCollateral +
+                                            loanConditions.facilitiesCollateral,
+                                        avgMonthlyNetIncome: assets.monthAcc.revenue,
+                                        avgWages: assets.monthAcc.wages,
+                                        sumPurchases: assets.monthAcc.purchases,
+                                        sumClaimPayments: assets.monthAcc.claimPayments,
+                                    }}
+                                />
                                 <ProductResolutionPanel
                                     monthAcc={assets.monthAcc}
                                     lastMonthAcc={assets.lastMonthAcc}
