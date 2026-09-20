@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { monthCentre } from '@/lib/historyChartAxis';
+import { ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -150,11 +150,7 @@ export function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData, data
           : 0;
 
     return pts
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-
-            return year === latestYear - 1 && monthIndex + 0.5 > fractionalThreshold;
-        })
+        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthVisible(p.bucket, fractionalThreshold))
         .map((p) => {
             return {
                 tick: p.bucket,

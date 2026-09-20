@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import { ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
@@ -141,10 +141,7 @@ export function computeFinancialGhostData(
     const currentMonthIdx = currentMonthIndex + Math.max(currentDay - 1, 0.001) / TICKS_PER_MONTH;
 
     return pts
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 0.5 > currentMonthIdx;
-        })
+        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthVisible(p.bucket, currentMonthIdx))
         .map((p) => ({
             ...p,
             monthIdx: monthCentre(p.bucket),

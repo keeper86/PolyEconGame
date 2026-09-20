@@ -1,4 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export const MONTH_NAMES = [
     'Jan',
@@ -30,6 +31,14 @@ export type HistoryAxis = {
 
 export function monthCentre(bucket: number): number {
     return tickToDate(bucket).monthIndex + 0.5;
+}
+
+export function ghostMonthVisible(bucket: number, livePosition: number): boolean {
+    return monthCentre(bucket) - 1 / TICKS_PER_MONTH > livePosition;
+}
+
+export function isLiveMonthPoint(monthIdx?: number): boolean {
+    return monthIdx !== undefined && monthIdx > PREVIOUS_DECEMBER_IDX && monthIdx % 1 !== 0.5;
 }
 
 export function yearCentre(bucket: number): number {

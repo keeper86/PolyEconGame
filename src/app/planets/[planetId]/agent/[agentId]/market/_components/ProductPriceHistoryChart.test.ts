@@ -57,7 +57,7 @@ describe('MonthlyChart data invariant: data.length + ghost.length === 14', () =>
                 const data = computeMonthlyData(completedBuckets, live, PRODUCT_NAME);
                 const ghostData = computeMonthlyGhostData(completedBuckets, live, data);
                 const total = data.length + ghostData.length;
-                const expectedTotal = (day - 1) / TICKS_PER_MONTH < 0.5 ? 14 : 13;
+                const expectedTotal = (day - 1) / TICKS_PER_MONTH < 0.5 - 1 / TICKS_PER_MONTH ? 14 : 13;
 
                 if (total !== expectedTotal) {
                     const { year, monthIndex: mi, day: d } = tickToDate(tick);
@@ -178,7 +178,7 @@ describe('MonthlyChart data invariant: data.length + ghost.length === 14', () =>
             const ghostData = computeMonthlyGhostData(completedBuckets, live, data);
 
             const expectedDataLength = monthIndex + 2;
-            const expectedGhostLength = 12 - monthIndex;
+            const expectedGhostLength = 11 - monthIndex;
 
             const label = `${MONTH_NAMES[monthIndex]} day ${day}`;
             if (data.length !== expectedDataLength) {
@@ -187,7 +187,7 @@ describe('MonthlyChart data invariant: data.length + ghost.length === 14', () =>
             if (ghostData.length !== expectedGhostLength) {
                 failures.push(`${label}: ghost.length=${ghostData.length} expected=${expectedGhostLength}`);
             }
-            if (data.length + ghostData.length !== 14) {
+            if (data.length + ghostData.length !== 13) {
                 failures.push(`${label}: total=${data.length + ghostData.length} expected=14`);
             }
             if (completedMonthCount(data) !== monthIndex) {
@@ -296,7 +296,7 @@ describe('MonthlyChart data invariant: boundary edge cases', () => {
                 const ghostData = computeMonthlyGhostData(completedBuckets, live, data);
 
                 const hasDecember = ghostData.some((p) => p.monthIdx === 11.5);
-                const expectDecember = monthIndex + (day - 1) / TICKS_PER_MONTH < 11.5;
+                const expectDecember = monthIndex + (day - 1) / TICKS_PER_MONTH < 11.5 - 1 / TICKS_PER_MONTH;
                 if (hasDecember !== expectDecember) {
                     const { year, monthIndex: mi, day: d } = tickToDate(tick);
                     failures.push(
@@ -326,8 +326,8 @@ describe('MonthlyChart data invariant: boundary edge cases', () => {
 
             const ghostMonthIdxs = ghostData.map((p) => p.monthIdx as number).sort((a, b) => a - b);
 
-            const expectedStart = monthIndex + 0.5;
-            const expectedRange = Array.from({ length: 12 - monthIndex }, (_, i) => expectedStart + i);
+            const expectedStart = monthIndex + 1.5;
+            const expectedRange = Array.from({ length: 11 - monthIndex }, (_, i) => expectedStart + i);
 
             const label = `${MONTH_NAMES[monthIndex]} day ${day}`;
             if (JSON.stringify(ghostMonthIdxs) !== JSON.stringify(expectedRange)) {
@@ -349,7 +349,7 @@ describe('MonthlyChart with server-limited data (limit=13)', () => {
             .slice(0, limit);
     }
 
-    it('limit=13 gives total=14 at every month throughout year 1', () => {
+    it('limit=13 gives total=13 at every month throughout year 1', () => {
         const allPoints = makeTwoYearsOfData(0, 1);
         const failures: string[] = [];
 
@@ -363,9 +363,9 @@ describe('MonthlyChart with server-limited data (limit=13)', () => {
             const ghostData = computeMonthlyGhostData(pts, live, data);
             const total = data.length + ghostData.length;
 
-            if (total !== 14) {
+            if (total !== 13) {
                 failures.push(
-                    `${MONTH_NAMES[monthIndex]} day ${day}: data=${data.length} ghost=${ghostData.length} total=${total} (expected 14) with limit=13`,
+                    `${MONTH_NAMES[monthIndex]} day ${day}: data=${data.length} ghost=${ghostData.length} total=${total} (expected 13) with limit=13`,
                 );
             }
         }
@@ -375,7 +375,7 @@ describe('MonthlyChart with server-limited data (limit=13)', () => {
         }
     });
 
-    it('limit=13 gives full ghost coverage (monthIdx 1–12) in January', () => {
+    it('limit=13 gives full ghost coverage (Feb–Dec) in January', () => {
         const allPoints = makeTwoYearsOfData(0, 1);
         const tick = gameTickFor(1, 0, 15);
         const live: LiveData = { tick, price: 11 };
@@ -385,7 +385,7 @@ describe('MonthlyChart with server-limited data (limit=13)', () => {
         const ghostData = computeMonthlyGhostData(pts, live, data);
 
         const ghostIdxs = ghostData.map((p) => p.monthIdx as number).sort((a, b) => a - b);
-        expect(ghostIdxs).toEqual([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
+        expect(ghostIdxs).toEqual([1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
     });
 
     it('limit=13 gives complete ghost range at every month (no gaps)', () => {
@@ -402,8 +402,8 @@ describe('MonthlyChart with server-limited data (limit=13)', () => {
             const ghostData = computeMonthlyGhostData(pts, live, data);
 
             const ghostIdxs = ghostData.map((p) => p.monthIdx as number).sort((a, b) => a - b);
-            const expectedStart = monthIndex + 0.5;
-            const expectedRange = Array.from({ length: 12 - monthIndex }, (_, i) => expectedStart + i);
+            const expectedStart = monthIndex + 1.5;
+            const expectedRange = Array.from({ length: 11 - monthIndex }, (_, i) => expectedStart + i);
 
             if (JSON.stringify(ghostIdxs) !== JSON.stringify(expectedRange)) {
                 failures.push(`${MONTH_NAMES[monthIndex]}: ghost=[${ghostIdxs}] expected=[${expectedRange}]`);
