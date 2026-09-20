@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { tickToDate } from '@/components/client/TickDisplay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
+import { liveYearX } from '@/lib/chartTime';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -562,19 +563,36 @@ function MonthlyChart({
     );
 }
 
+function priceLivePoint(live?: LiveData): ChartPoint | null {
+    if (!live || live.tick <= 0) {
+        return null;
+    }
+    const fallback = live.price;
+    return {
+        tick: live.tick,
+        year: liveYearX(live.tick),
+        avgPrice: live.avgPrice ?? fallback,
+        minPrice: live.minPrice ?? fallback,
+        maxPrice: live.maxPrice ?? fallback,
+        priceFloor: live.priceFloor ?? fallback,
+    };
+}
+
 function YearlyChart({
     yearlyPoints,
+    live,
     productName,
     rescaleMode,
     planetId,
 }: {
     yearlyPoints: RawPoint[];
+    live?: LiveData;
     productName: string;
     rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
-        return [...yearlyPoints]
+        const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => ({
                 tick: p.bucket,
@@ -584,7 +602,9 @@ function YearlyChart({
                 maxPrice: p.maxPrice,
                 priceFloor: p.priceFloor,
             }));
-    }, [yearlyPoints]);
+        const livePoint = priceLivePoint(live);
+        return livePoint ? [...rows, livePoint] : rows;
+    }, [yearlyPoints, live]);
 
     const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
 
@@ -597,7 +617,8 @@ function YearlyChart({
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
     const xMin = data.length > 0 ? data[0].year : 0;
-    const xDomain: [number, number] = [xMin, xMin + 10];
+    const xMax = data.length > 0 ? Math.max(xMin + 10, data[data.length - 1].year) : xMin + 10;
+    const xDomain: [number, number] = [xMin, xMax];
     const xTicks = Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
     const verticalGridValues = Array.from({ length: 11 }, (_, i) => xMin + i);
 
@@ -630,17 +651,19 @@ function YearlyChart({
 
 function DecadesChart({
     decadePoints,
+    live,
     productName,
     rescaleMode,
     planetId,
 }: {
     decadePoints: RawPoint[];
+    live?: LiveData;
     productName: string;
     rescaleMode: PriceScaleMode;
     planetId: string;
 }) {
     const data = useMemo((): ChartPoint[] => {
-        return [...decadePoints]
+        const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
             .map((p) => ({
                 tick: p.bucket,
@@ -650,7 +673,9 @@ function DecadesChart({
                 maxPrice: p.maxPrice,
                 priceFloor: p.priceFloor,
             }));
-    }, [decadePoints]);
+        const livePoint = priceLivePoint(live);
+        return livePoint ? [...rows, livePoint] : rows;
+    }, [decadePoints, live]);
 
     const scaleData = useMemo(() => (rescaleMode === 'relative' ? rescalePoints(data) : data), [data, rescaleMode]);
 
@@ -811,6 +836,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             {granularity === 'yearly' && (
                 <YearlyChart
                     yearlyPoints={yearlyPoints}
+                    live={yearlyPoints.length === 0 ? undefined : live}
                     productName={productName}
                     rescaleMode={rescaleMode}
                     planetId={planetId}
@@ -819,6 +845,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
             {granularity === 'decade' && (
                 <DecadesChart
                     decadePoints={decadePoints}
+                    live={decadePoints.length === 0 ? undefined : live}
                     productName={productName}
                     rescaleMode={rescaleMode}
                     planetId={planetId}

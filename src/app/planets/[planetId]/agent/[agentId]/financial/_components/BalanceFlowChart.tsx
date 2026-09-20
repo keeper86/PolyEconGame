@@ -1,6 +1,7 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -22,6 +23,7 @@ import {
     alignedYDomains,
     bucketDecadeLabel,
     type FinancialChartPoint,
+    type FinancialLive,
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
@@ -30,11 +32,32 @@ export function BalanceFlowChart({
     data,
     ghostData,
     granularity,
+    live,
 }: {
     data: FinancialChartPoint[] | FinancialPoint[];
     ghostData?: FinancialChartPoint[];
     granularity: Granularity;
+    live?: FinancialLive;
 }) {
+    const liveRow = useMemo(() => {
+        if (!live || live.tick <= 0) {
+            return null;
+        }
+        return {
+            xVal: liveYearX(live.tick),
+            year: tickToDate(live.tick).year,
+            label: undefined as string | undefined,
+            cashBalance: live.avgNetBalance,
+            assetValue: live.avgAssetValue,
+            netPosition: live.avgNetBalance + live.avgAssetValue,
+            netIncome: live.avgMonthlyNetIncome - (live.avgWages + live.sumPurchases + live.sumClaimPayments),
+            ghostCashBalance: null,
+            ghostAssetValue: null,
+            ghostNetPosition: null,
+            ghostNetIncome: null,
+        };
+    }, [live]);
+
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
             const currentPts = data as FinancialChartPoint[];
@@ -76,7 +99,7 @@ export function BalanceFlowChart({
                 });
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        return (data as FinancialPoint[]).map((p) => {
+        const rows = (data as FinancialPoint[]).map((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
             return {
                 xVal: year + 1,
@@ -95,7 +118,8 @@ export function BalanceFlowChart({
                 ghostNetIncome: null,
             };
         });
-    }, [data, ghostData, granularity]);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [data, ghostData, granularity, liveRow]);
 
     const [domainBalance, domainIncome] = useMemo(() => {
         const balanceVals = chartData
@@ -120,10 +144,11 @@ export function BalanceFlowChart({
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
             const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
+            const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
+                domain: [xMin, xMax] as [number, number],
                 ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
@@ -131,15 +156,15 @@ export function BalanceFlowChart({
             };
         }
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: undefined,
+            tickFormatter: (v: number) => `${Math.round(v)}`,
             gridVertical: false,
             gridValues: undefined,
         };
-    }, [granularity, data]);
+    }, [granularity, data, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
@@ -156,7 +181,7 @@ export function BalanceFlowChart({
         if (granularity === 'yearly') {
             return (label: number) => String(Math.floor(label));
         }
-        return undefined;
+        return (label: number) => String(Math.round(label));
     }, [granularity, chartData]);
 
     return (

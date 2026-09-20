@@ -1,6 +1,7 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -11,6 +12,7 @@ import {
     MONTH_NAMES,
     bucketDecadeLabel,
     type FinancialChartPoint,
+    type FinancialLive,
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
@@ -19,10 +21,12 @@ export function ExpensesRevenueChart({
     data,
     ghostData,
     granularity,
+    live,
 }: {
     data: FinancialChartPoint[] | FinancialPoint[];
     ghostData?: FinancialChartPoint[];
     granularity: Granularity;
+    live?: FinancialLive;
 }) {
     const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
         const finite = vals.filter(Number.isFinite);
@@ -38,6 +42,8 @@ export function ExpensesRevenueChart({
         return [Math.max(0, lo - pad), hi + pad];
     };
 
+    const liveX = live && live.tick > 0 ? liveYearX(live.tick) : null;
+
     const { scale, domain, yTicks } = useMemo(() => {
         const allVals = [...data, ...(ghostData ?? [])].flatMap((p) => [
             p.avgMonthlyNetIncome,
@@ -45,6 +51,9 @@ export function ExpensesRevenueChart({
             p.sumPurchases,
             p.sumClaimPayments,
         ]);
+        if (live && live.tick > 0) {
+            allVals.push(live.avgMonthlyNetIncome, live.avgWages, live.sumPurchases, live.sumClaimPayments);
+        }
         const positive = allVals.filter((v) => v > 0);
         if (positive.length >= 2) {
             const lo = Math.min(...positive);
@@ -58,7 +67,7 @@ export function ExpensesRevenueChart({
             }
         }
         return { scale: 'linear' as const, domain: yDomain(allVals), yTicks: undefined };
-    }, [data, ghostData]);
+    }, [data, ghostData, live]);
 
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
@@ -101,7 +110,7 @@ export function ExpensesRevenueChart({
                 });
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        return (data as FinancialPoint[]).map((p) => {
+        const rows = (data as FinancialPoint[]).map((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
             const normPurchases = p.sumPurchases / monthsPerBucket;
             const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
@@ -120,7 +129,24 @@ export function ExpensesRevenueChart({
                 ghostClaimPayments: null,
             };
         });
-    }, [data, ghostData, granularity, scale]);
+        if (live && live.tick > 0) {
+            rows.push({
+                xVal: liveYearX(live.tick),
+                year: tickToDate(live.tick).year,
+                monthIndex: 0,
+                label: undefined,
+                revenue: scale === 'log' && live.avgMonthlyNetIncome <= 0 ? null : live.avgMonthlyNetIncome,
+                wages: scale === 'log' && live.avgWages <= 0 ? null : live.avgWages,
+                purchases: scale === 'log' && live.sumPurchases <= 0 ? null : live.sumPurchases,
+                claimPayments: scale === 'log' && live.sumClaimPayments <= 0 ? null : live.sumClaimPayments,
+                ghostRevenue: null,
+                ghostWages: null,
+                ghostPurchases: null,
+                ghostClaimPayments: null,
+            });
+        }
+        return rows;
+    }, [data, ghostData, granularity, scale, live]);
 
     const xAxisProps = useMemo(() => {
         if (granularity === 'monthly') {
@@ -137,10 +163,11 @@ export function ExpensesRevenueChart({
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
             const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
+            const xMax = liveX !== null ? Math.max(xMin + 10, liveX) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
+                domain: [xMin, xMax] as [number, number],
                 ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
@@ -148,15 +175,15 @@ export function ExpensesRevenueChart({
             };
         }
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: undefined,
+            tickFormatter: (v: number) => `${Math.round(v)}`,
             gridVertical: false,
             gridValues: undefined,
         };
-    }, [granularity, data]);
+    }, [granularity, data, liveX]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
@@ -173,7 +200,7 @@ export function ExpensesRevenueChart({
         if (granularity === 'yearly') {
             return (label: number) => String(Math.floor(label));
         }
-        return undefined;
+        return (label: number) => String(Math.round(label));
     }, [granularity, chartData]);
 
     return (

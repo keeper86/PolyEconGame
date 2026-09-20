@@ -454,10 +454,7 @@ export default function MultiProductPriceChart({
     const { results: resultsMap, onResult, clear } = useQueryResults();
 
     const { data: marketOverview } = useSimulationQuery(
-        trpc.simulation.getPlanetMarketOverview.queryOptions(
-            { planetId, average: false },
-            { enabled: isOpen && granularity === 'monthly' },
-        ),
+        trpc.simulation.getPlanetMarketOverview.queryOptions({ planetId, average: false }, { enabled: isOpen }),
     );
 
     const liveTick = marketOverview?.tick ?? 0;
@@ -523,7 +520,7 @@ export default function MultiProductPriceChart({
             }
         }
 
-        if (granularity === 'monthly' && liveTick > 0 && livePrices.size > 0 && selectedProducts.length > 0) {
+        if (liveTick > 0 && livePrices.size > 0 && selectedProducts.length > 0) {
             const livePoint: MergedPoint = { bucket: liveTick };
             let hasLive = false;
             for (const name of selectedProducts) {
@@ -536,10 +533,14 @@ export default function MultiProductPriceChart({
             }
             if (hasLive) {
                 allBuckets.set(liveTick, livePoint);
-                const totalMonths = Math.floor(liveTick / 30);
-                const year = START_YEAR + Math.floor(totalMonths / 12);
-                const monthIdx = totalMonths % 12;
-                bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
+                if (granularity === 'monthly') {
+                    const totalMonths = Math.floor(liveTick / 30);
+                    const year = START_YEAR + Math.floor(totalMonths / 12);
+                    const monthIdx = totalMonths % 12;
+                    bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
+                } else {
+                    bucketToYearLabel.set(liveTick, `${START_YEAR + Math.floor(liveTick / 360)}`);
+                }
             }
         }
 

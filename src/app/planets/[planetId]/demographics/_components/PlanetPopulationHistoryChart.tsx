@@ -5,6 +5,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { liveYearX } from '@/lib/chartTime';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -331,22 +332,25 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
     );
 }
 
-function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
-    const data = useMemo(
-        (): ChartPoint[] =>
-            [...yearlyPoints]
-                .sort((a, b) => a.bucket - b.bucket)
-                .map((p) => ({
-                    tick: p.bucket,
-                    year: p.bucket / TICKS_PER_YEAR + START_YEAR + 1,
-                    value: p.avgPopulation,
-                })),
-        [yearlyPoints],
-    );
+function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const data = useMemo((): ChartPoint[] => {
+        const rows = [...yearlyPoints]
+            .sort((a, b) => a.bucket - b.bucket)
+            .map((p) => ({
+                tick: p.bucket,
+                year: p.bucket / TICKS_PER_YEAR + START_YEAR + 1,
+                value: p.avgPopulation,
+            }));
+        if (live && live.tick > 0) {
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+        }
+        return rows;
+    }, [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
     const xMin = data.length > 0 ? data[0].year : 0;
-    const xDomain: [number, number] = [xMin, xMin + 10];
+    const xMax = data.length > 0 ? Math.max(xMin + 10, data[data.length - 1].year) : xMin + 10;
+    const xDomain: [number, number] = [xMin, xMax];
     const xTicks = Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
     const verticalGridValues = Array.from({ length: 11 }, (_, i) => xMin + i);
 
@@ -416,18 +420,20 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
     );
 }
 
-function DecadesChart({ decadePoints }: { decadePoints: PopulationRawPoint[] }) {
-    const data = useMemo(
-        (): ChartPoint[] =>
-            [...decadePoints]
-                .sort((a, b) => a.bucket - b.bucket)
-                .map((p) => ({
-                    tick: p.bucket,
-                    year: p.bucket / TICKS_PER_YEAR + START_YEAR,
-                    value: p.avgPopulation,
-                })),
-        [decadePoints],
-    );
+function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
+    const data = useMemo((): ChartPoint[] => {
+        const rows = [...decadePoints]
+            .sort((a, b) => a.bucket - b.bucket)
+            .map((p) => ({
+                tick: p.bucket,
+                year: p.bucket / TICKS_PER_YEAR + START_YEAR,
+                value: p.avgPopulation,
+            }));
+        if (live && live.tick > 0) {
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+        }
+        return rows;
+    }, [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
 
@@ -556,9 +562,17 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     />
                     {granularity === 'monthly' && <MonthlyChart monthlyPoints={monthlyPoints} live={live} />}
                     {granularity === 'yearly' &&
-                        (yearlyPoints.length > 0 ? <YearlyChart yearlyPoints={yearlyPoints} /> : <EmptyChart />)}
+                        (yearlyPoints.length > 0 ? (
+                            <YearlyChart yearlyPoints={yearlyPoints} live={live} />
+                        ) : (
+                            <EmptyChart />
+                        ))}
                     {granularity === 'decade' &&
-                        (decadePoints.length > 0 ? <DecadesChart decadePoints={decadePoints} /> : <EmptyChart />)}
+                        (decadePoints.length > 0 ? (
+                            <DecadesChart decadePoints={decadePoints} live={live} />
+                        ) : (
+                            <EmptyChart />
+                        ))}
 
                     <Separator />
 

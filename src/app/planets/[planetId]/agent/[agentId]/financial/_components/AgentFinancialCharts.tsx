@@ -89,6 +89,7 @@ export default function AgentFinancialCharts({
                             data={activeData}
                             ghostData={granularity === 'monthly' ? activeGhostData : undefined}
                             granularity={granularity}
+                            live={live}
                         />
                     </div>
                 )}
@@ -97,6 +98,7 @@ export default function AgentFinancialCharts({
                         data={activeData}
                         ghostData={granularity === 'monthly' ? activeGhostData : undefined}
                         granularity={granularity}
+                        live={live}
                     />
                 </div>
             </div>

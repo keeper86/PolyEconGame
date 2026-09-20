@@ -1,6 +1,7 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
 import { TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
@@ -480,8 +481,24 @@ export default function PlanetBufferChart({
         [monthlyPoints, currentTick, live],
     );
     const ghostData = useMemo(() => computeBufferGhostData(monthlyPoints, currentTick), [monthlyPoints, currentTick]);
-    const yearlyChartData = useMemo(() => computeYearlyData(yearlyPoints), [yearlyPoints]);
-    const decadeChartData = useMemo(() => computeDecadeData(decadePoints), [decadePoints]);
+    const liveRow = useMemo((): ChartPoint | null => {
+        if (!live || live.tick <= 0) {
+            return null;
+        }
+        const point: ChartPoint = { tick: live.tick, year: liveYearX(live.tick) };
+        for (const key of BUFFER_KEYS) {
+            point[key] = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
+        }
+        return point;
+    }, [live]);
+    const yearlyChartData = useMemo(() => {
+        const rows = computeYearlyData(yearlyPoints);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [yearlyPoints, liveRow]);
+    const decadeChartData = useMemo(() => {
+        const rows = computeDecadeData(decadePoints);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [decadePoints, liveRow]);
 
     const xFormatter = (v: number): string => {
         if (granularity === 'monthly') {
@@ -504,7 +521,8 @@ export default function PlanetBufferChart({
             return undefined;
         }
         const xMin = yearlyChartData[0].year;
-        return [xMin, xMin + 10];
+        const xMax = Math.max(xMin + 10, yearlyChartData[yearlyChartData.length - 1].year);
+        return [xMin, xMax];
     }, [yearlyChartData]);
 
     const yearGridValues = useMemo(() => {

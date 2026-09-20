@@ -1,6 +1,7 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -42,18 +43,55 @@ export function PlanetMacroChart({
     currentTick: number;
     live?: MacroLive;
 }) {
+    const liveRow: MacroChartPoint | null = useMemo(
+        () =>
+            live && live.tick > 0
+                ? {
+                      xVal: liveYearX(live.tick),
+                      year: tickToDate(live.tick).year,
+                      gdp: live.gdp,
+                      bankEquity: live.bankEquity,
+                      moneySupply: live.moneySupply,
+                      ghostGdp: null,
+                      ghostBankEquity: null,
+                      ghostMoneySupply: null,
+                  }
+                : null,
+        [live],
+    );
+
     const chartData = useMemo((): MacroChartPoint[] => {
         if (granularity === 'monthly') {
             return computeMacroMonthlyData(data, currentTick, live);
         }
+        const takeLive = (rows: MacroChartPoint[]): MacroChartPoint[] => (liveRow ? [...rows, liveRow] : rows);
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-            return sorted.slice(-11).map((p) => {
-                const { year, monthIndex } = tickToDate(p.bucket);
+            return takeLive(
+                sorted.slice(-11).map((p) => {
+                    const { year, monthIndex } = tickToDate(p.bucket);
+                    return {
+                        xVal: year + 1,
+                        year: year + 1,
+                        monthIndex,
+                        gdp: p.avgGdp,
+                        bankEquity: p.avgBankEquity,
+                        moneySupply: p.avgMoneySupply,
+                        ghostGdp: null,
+                        ghostBankEquity: null,
+                        ghostMoneySupply: null,
+                    };
+                }),
+            );
+        }
+
+        return takeLive(
+            data.map((p) => {
+                const { year } = tickToDate(p.bucket);
                 return {
-                    xVal: year + 1,
-                    year: year + 1,
-                    monthIndex,
+                    label: bucketDecadeLabel(p.bucket),
+                    xVal: year,
+                    year,
                     gdp: p.avgGdp,
                     bankEquity: p.avgBankEquity,
                     moneySupply: p.avgMoneySupply,
@@ -61,23 +99,9 @@ export function PlanetMacroChart({
                     ghostBankEquity: null,
                     ghostMoneySupply: null,
                 };
-            });
-        }
-
-        return data.map((p) => {
-            const { year } = tickToDate(p.bucket);
-            return {
-                label: bucketDecadeLabel(p.bucket),
-                year,
-                gdp: p.avgGdp,
-                bankEquity: p.avgBankEquity,
-                moneySupply: p.avgMoneySupply,
-                ghostGdp: null,
-                ghostBankEquity: null,
-                ghostMoneySupply: null,
-            };
-        });
-    }, [data, granularity, currentTick, live]);
+            }),
+        );
+    }, [data, granularity, currentTick, live, liveRow]);
 
     const domainCurrency = useMemo(() => {
         const vals: number[] = [];
@@ -124,10 +148,11 @@ export function PlanetMacroChart({
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
             const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
+            const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal ?? xMin + 10) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
+                domain: [xMin, xMax] as [number, number],
                 ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
@@ -135,15 +160,15 @@ export function PlanetMacroChart({
             };
         }
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: undefined,
+            tickFormatter: (v: number) => `${Math.round(v)}`,
             gridVertical: false,
             gridValues: undefined,
         };
-    }, [granularity, data]);
+    }, [granularity, data, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
@@ -160,7 +185,7 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             return (label: number) => String(Math.floor(label));
         }
-        return undefined;
+        return (label: number) => String(Math.round(label));
     }, [granularity, chartData]);
 
     return (
