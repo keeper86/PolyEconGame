@@ -1,5 +1,6 @@
 import { getDb } from 'tests/vitest/setupTestcontainer';
 import { describe, expect, it } from 'vitest';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from './constants';
 import {
     getGameSnapshotByTick,
     getLatestGameSnapshot,
@@ -10,6 +11,10 @@ import {
     insertProductPriceHistory,
     pruneGameSnapshots,
 } from './gameSnapshotRepository';
+
+function monthBucket(tick: number): number {
+    return tick - TICKS_PER_MONTH + 1;
+}
 
 function mockSnapshotData(seed: number): Buffer {
     const data = Buffer.alloc(64);
@@ -143,7 +148,7 @@ describe('product price history: write-refresh-read', () => {
         const rows = await getProductPriceHistory(db, PLANET, PRODUCT, 'monthly', 13);
 
         expect(rows.length).toBeGreaterThanOrEqual(1);
-        const janBucket = rows.find((r) => Number(r.bucket) === JAN_TICK);
+        const janBucket = rows.find((r) => Number(r.bucket) === monthBucket(JAN_TICK));
         expect(janBucket).toBeDefined();
         expect(janBucket!.avg_price).toBeCloseTo(10);
         expect(janBucket!.min_price).toBeCloseTo(9);
@@ -170,7 +175,7 @@ describe('product price history: write-refresh-read', () => {
         await refreshProductPriceMonthly(30);
 
         const rows = await getProductPriceHistory(db, CLEAN_PLANET, PRODUCT, 'monthly', 13);
-        const bucket = rows.find((r) => Number(r.bucket) === 30);
+        const bucket = rows.find((r) => Number(r.bucket) === monthBucket(30));
 
         expect(bucket).toBeUndefined();
     });
@@ -202,7 +207,7 @@ describe('product price history: write-refresh-read', () => {
         await refreshProductPriceMonthly(FEB_TICK + BUCKET_WIDTH);
 
         const rows = await getProductPriceHistory(db, PLANET, PRODUCT, 'monthly', 13);
-        const febBucket = rows.find((r) => Number(r.bucket) === FEB_TICK);
+        const febBucket = rows.find((r) => Number(r.bucket) === monthBucket(FEB_TICK));
 
         expect(febBucket).toBeDefined();
         expect(febBucket!.avg_price).toBeCloseTo(20);
@@ -244,7 +249,7 @@ describe('planet population history: write-refresh-read', () => {
         const rows = await getPlanetPopulationHistoryAggregated(db, 'test-planet-pop-jan', 'monthly', 13);
 
         expect(rows.length).toBeGreaterThanOrEqual(1);
-        const janBucket = rows.find((r) => Number(r.bucket) === JAN_TICK);
+        const janBucket = rows.find((r) => Number(r.bucket) === monthBucket(JAN_TICK));
         expect(janBucket).toBeDefined();
         expect(janBucket!.avg_population).toBeCloseTo(1_000_000);
     });
@@ -269,7 +274,7 @@ describe('planet population history: write-refresh-read', () => {
         await refreshPopulationMonthly(30);
 
         const rows = await getPlanetPopulationHistoryAggregated(db, 'test-planet-pop-clean', 'monthly', 13);
-        const bucket = rows.find((r) => Number(r.bucket) === 30);
+        const bucket = rows.find((r) => Number(r.bucket) === monthBucket(30));
 
         expect(bucket).toBeUndefined();
     });
@@ -299,7 +304,7 @@ describe('planet population history: write-refresh-read', () => {
 
         for (const [i, planet_id] of planets.entries()) {
             const rows = await getPlanetPopulationHistoryAggregated(db, planet_id, 'monthly', 13);
-            const bucket = rows.find((r) => Number(r.bucket) === TICK);
+            const bucket = rows.find((r) => Number(r.bucket) === monthBucket(TICK));
             expect(bucket).toBeDefined();
             expect(bucket!.avg_population).toBeCloseTo((i + 1) * 1_000_000);
         }
@@ -356,9 +361,54 @@ describe('planet population history: write-refresh-read', () => {
 
         expect(result.length).toBeGreaterThanOrEqual(3);
         for (const { tick, population } of insertRows) {
-            const bucket = result.find((r) => Number(r.bucket) === tick);
+            const bucket = result.find((r) => Number(r.bucket) === monthBucket(tick));
             expect(bucket).toBeDefined();
             expect(bucket!.avg_population).toBeCloseTo(population);
         }
+    });
+});
+
+describe('yearly history buckets align with game years', () => {
+    it('buckets the December sample into the year it belongs to', async () => {
+        const db = getDb();
+
+        const PLANET = 'test-pop-year-alignment';
+        const DECEMBER_2200 = TICKS_PER_YEAR;
+        const JANUARY_2201 = TICKS_PER_YEAR + TICKS_PER_MONTH;
+
+        const row = (tick: number, population: number) => ({
+            tick,
+            planet_id: PLANET,
+            population,
+            grocery_buffer: 0,
+            healthcare_buffer: 0,
+            logistics_buffer: 0,
+            education_buffer: 0,
+            retail_buffer: 0,
+            construction_buffer: 0,
+        });
+
+        await insertPlanetPopulationHistory(db, [row(DECEMBER_2200, 1_000_000), row(JANUARY_2201, 2_000_000)]);
+
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'planet_population_monthly',
+            0,
+            JANUARY_2201 + TICKS_PER_MONTH,
+        ]);
+        await db.raw(`CALL refresh_continuous_aggregate(?, ?::bigint, ?::bigint)`, [
+            'planet_population_yearly',
+            0,
+            TICKS_PER_YEAR + 1 + TICKS_PER_YEAR,
+        ]);
+
+        const rows = await getPlanetPopulationHistoryAggregated(db, PLANET, 'yearly', 13);
+
+        const year2200 = rows.find((r) => Number(r.bucket) === 1);
+        const year2201 = rows.find((r) => Number(r.bucket) === TICKS_PER_YEAR + 1);
+
+        expect(year2200).toBeDefined();
+        expect(year2200!.avg_population).toBeCloseTo(1_000_000);
+        expect(year2201).toBeDefined();
+        expect(year2201!.avg_population).toBeCloseTo(2_000_000);
     });
 });

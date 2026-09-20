@@ -21,10 +21,10 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     alignedYDomains,
-    bucketDecadeEnd,
-    bucketDecadeLabel,
-    bucketYearEnd,
-    formatYearStart,
+    bucketDecadeMid,
+    bucketYearMid,
+    formatDecadeLabel,
+    formatYearLabel,
     type FinancialChartPoint,
     type FinancialLive,
     type FinancialPoint,
@@ -49,7 +49,6 @@ export function BalanceFlowChart({
         return {
             xVal: liveYearX(live.tick),
             year: tickToDate(live.tick).year,
-            label: undefined as string | undefined,
             cashBalance: live.avgNetBalance,
             assetValue: live.avgAssetValue,
             netPosition: live.avgNetBalance + live.avgAssetValue,
@@ -104,12 +103,11 @@ export function BalanceFlowChart({
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
         const rows = (data as FinancialPoint[]).map((p) => {
             const { monthIndex } = tickToDate(p.bucket);
-            const xVal = granularity === 'decade' ? bucketDecadeEnd(p.bucket) : bucketYearEnd(p.bucket);
+            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
             return {
                 xVal,
                 year: xVal,
                 monthIndex,
-                label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 cashBalance: p.avgNetBalance,
                 assetValue: p.avgAssetValue,
                 netPosition: p.avgNetBalance + p.avgAssetValue,
@@ -147,13 +145,13 @@ export function BalanceFlowChart({
         }
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? bucketYearEnd(yearlyPts[0].bucket) : 0;
+            const xMin = yearlyPts.length > 0 ? bucketYearMid(yearlyPts[0].bucket) : 0;
             const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
                 domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
+                ticks: Array.from({ length: 11 }, (_, i) => xMin + i),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
                 gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
@@ -164,7 +162,7 @@ export function BalanceFlowChart({
             type: 'number' as const,
             domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: (v: number) => `${Math.round(v)}`,
+            tickFormatter: (v: number) => formatDecadeLabel(v),
             gridVertical: false,
             gridValues: undefined,
         };
@@ -182,7 +180,7 @@ export function BalanceFlowChart({
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return formatYearStart;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

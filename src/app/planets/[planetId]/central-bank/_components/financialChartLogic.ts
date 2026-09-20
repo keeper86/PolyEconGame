@@ -7,20 +7,20 @@ export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Au
 export const MONTHLY_X_TICKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 export const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
-export function bucketYearEnd(bucket: number): number {
-    return tickToDate(bucket + 1).year + 1;
+export function bucketYearMid(bucket: number): number {
+    return tickToDate(bucket).year + 0.5;
 }
 
-export function bucketDecadeEnd(bucket: number): number {
-    return tickToDate(bucket + 1).year + 10;
+export function bucketDecadeMid(bucket: number): number {
+    return tickToDate(bucket).year + 5;
 }
 
-export function bucketDecadeLabel(bucket: number): string {
-    return `${bucketDecadeEnd(bucket)}s`;
+export function formatYearLabel(value: number): string {
+    return `Year ${Math.floor(value)}`;
 }
 
-export function formatYearStart(xVal: number): string {
-    return `Start of ${Math.floor(xVal)}`;
+export function formatDecadeLabel(value: number): string {
+    return `${Math.floor(value / 10) * 10}s`;
 }
 
 export function raiseWagesMonotone(wages: number[]): number[] {
@@ -57,7 +57,6 @@ export type MacroChartPoint = {
     monthIdx?: number;
     year: number;
     xVal?: number;
-    label?: string;
     gdp: number | null;
     bankEquity: number | null;
     moneySupply: number | null;
@@ -162,7 +161,6 @@ export type CostOfLivingChartPoint = {
     monthIdx?: number;
     year: number;
     xVal?: number;
-    label?: string;
     costOfLiving: number | null;
     costOfLivingRich: number | null;
     costOfLivingRichDiff: number | null;

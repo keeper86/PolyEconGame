@@ -10,10 +10,10 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    bucketDecadeEnd,
-    bucketDecadeLabel,
-    bucketYearEnd,
-    formatYearStart,
+    bucketDecadeMid,
+    bucketYearMid,
+    formatDecadeLabel,
+    formatYearLabel,
     type FinancialChartPoint,
     type FinancialLive,
     type FinancialPoint,
@@ -115,14 +115,13 @@ export function ExpensesRevenueChart({
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
         const rows = (data as FinancialPoint[]).map((p) => {
             const { monthIndex } = tickToDate(p.bucket);
-            const xVal = granularity === 'decade' ? bucketDecadeEnd(p.bucket) : bucketYearEnd(p.bucket);
+            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
             const normPurchases = p.sumPurchases / monthsPerBucket;
             const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
             return {
                 xVal,
                 year: xVal,
                 monthIndex,
-                label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
                 wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
                 purchases: scale === 'log' && normPurchases <= 0 ? null : normPurchases,
@@ -138,7 +137,6 @@ export function ExpensesRevenueChart({
                 xVal: liveYearX(live.tick),
                 year: tickToDate(live.tick).year,
                 monthIndex: 0,
-                label: undefined,
                 revenue: scale === 'log' && live.avgMonthlyNetIncome <= 0 ? null : live.avgMonthlyNetIncome,
                 wages: scale === 'log' && live.avgWages <= 0 ? null : live.avgWages,
                 purchases: scale === 'log' && live.sumPurchases <= 0 ? null : live.sumPurchases,
@@ -166,13 +164,13 @@ export function ExpensesRevenueChart({
         }
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? bucketYearEnd(yearlyPts[0].bucket) : 0;
+            const xMin = yearlyPts.length > 0 ? bucketYearMid(yearlyPts[0].bucket) : 0;
             const xMax = liveX !== null ? Math.max(xMin + 10, liveX) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
                 domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
+                ticks: Array.from({ length: 11 }, (_, i) => xMin + i),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
                 gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
@@ -183,7 +181,7 @@ export function ExpensesRevenueChart({
             type: 'number' as const,
             domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: (v: number) => `${Math.round(v)}`,
+            tickFormatter: (v: number) => formatDecadeLabel(v),
             gridVertical: false,
             gridValues: undefined,
         };
@@ -201,7 +199,7 @@ export function ExpensesRevenueChart({
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return formatYearStart;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

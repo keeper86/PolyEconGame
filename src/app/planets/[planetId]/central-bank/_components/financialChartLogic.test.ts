@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-    bucketDecadeEnd,
-    bucketDecadeLabel,
-    bucketYearEnd,
+    bucketDecadeMid,
+    bucketYearMid,
     computeCostOfLivingMonthlyData,
     computeMacroMonthlyData,
-    formatYearStart,
+    formatDecadeLabel,
+    formatYearLabel,
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
@@ -155,34 +155,37 @@ describe('raiseWagesMonotone', () => {
     });
 });
 
-describe('bucket interval ends', () => {
-    it('maps the first yearly bucket (0) to the end of its year', () => {
-        expect(bucketYearEnd(0)).toBe(2201);
+describe('bucket interval midpoints', () => {
+    it('centres the first yearly bucket (1) inside its year', () => {
+        expect(bucketYearMid(1)).toBe(2200.5);
     });
 
-    it('maps later yearly buckets to the end of the year they cover', () => {
-        expect(bucketYearEnd(360)).toBe(2202);
-        expect(bucketYearEnd(720)).toBe(2203);
+    it('centres later yearly buckets inside the year they cover', () => {
+        expect(bucketYearMid(361)).toBe(2201.5);
+        expect(bucketYearMid(721)).toBe(2202.5);
     });
 
-    it('maps the first decade bucket (0) to the end of its decade', () => {
-        expect(bucketDecadeEnd(0)).toBe(2210);
-        expect(bucketDecadeLabel(0)).toBe('2210s');
+    it('centres the first decade bucket (1) inside its decade', () => {
+        expect(bucketDecadeMid(1)).toBe(2205);
     });
 
-    it('maps later decade buckets to the end of the decade they cover', () => {
-        expect(bucketDecadeEnd(3600)).toBe(2220);
-        expect(bucketDecadeLabel(3600)).toBe('2220s');
+    it('centres later decade buckets inside the decade they cover', () => {
+        expect(bucketDecadeMid(3601)).toBe(2215);
     });
 });
 
-describe('formatYearStart', () => {
-    it('prefixes the year boundary with Start of', () => {
-        expect(formatYearStart(2201)).toBe('Start of 2201');
-        expect(formatYearStart(2210)).toBe('Start of 2210');
+describe('year tooltip labels', () => {
+    it('names the year the interval covers', () => {
+        expect(formatYearLabel(2200.5)).toBe('Year 2200');
+        expect(formatYearLabel(2201.5)).toBe('Year 2201');
     });
 
     it('floors fractional live positions to their year', () => {
-        expect(formatYearStart(2201.997)).toBe('Start of 2201');
+        expect(formatYearLabel(2201.997)).toBe('Year 2201');
+    });
+
+    it('names the decade the interval covers', () => {
+        expect(formatDecadeLabel(2205)).toBe('2200s');
+        expect(formatDecadeLabel(2215)).toBe('2210s');
     });
 });

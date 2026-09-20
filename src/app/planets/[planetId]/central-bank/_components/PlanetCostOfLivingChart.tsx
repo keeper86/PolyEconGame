@@ -10,11 +10,11 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    bucketDecadeEnd,
-    bucketDecadeLabel,
-    bucketYearEnd,
+    bucketDecadeMid,
+    bucketYearMid,
     computeCostOfLivingMonthlyData,
-    formatYearStart,
+    formatDecadeLabel,
+    formatYearLabel,
     raiseWagesMonotone,
     type CostOfLivingChartPoint,
     type CostOfLivingLive,
@@ -90,7 +90,7 @@ export function PlanetCostOfLivingChart({
             return takeLive(
                 sorted.slice(-11).map((p) => {
                     const { monthIndex } = tickToDate(p.bucket);
-                    const yearEnd = bucketYearEnd(p.bucket);
+                    const yearMid = bucketYearMid(p.bucket);
                     const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
                         p.avgWageEdu0,
                         p.avgWageEdu1,
@@ -98,8 +98,8 @@ export function PlanetCostOfLivingChart({
                         p.avgWageEdu3,
                     ]);
                     return {
-                        xVal: yearEnd,
-                        year: yearEnd,
+                        xVal: yearMid,
+                        year: yearMid,
                         monthIndex,
                         costOfLiving: p.avgCostOfLiving,
                         costOfLivingRich: p.avgCostOfLivingRich,
@@ -115,7 +115,7 @@ export function PlanetCostOfLivingChart({
 
         return takeLive(
             data.map((p) => {
-                const yearEnd = bucketDecadeEnd(p.bucket);
+                const yearMid = bucketDecadeMid(p.bucket);
                 const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
                     p.avgWageEdu0,
                     p.avgWageEdu1,
@@ -123,9 +123,8 @@ export function PlanetCostOfLivingChart({
                     p.avgWageEdu3,
                 ]);
                 return {
-                    label: bucketDecadeLabel(p.bucket),
-                    xVal: yearEnd,
-                    year: yearEnd,
+                    xVal: yearMid,
+                    year: yearMid,
                     costOfLiving: p.avgCostOfLiving,
                     costOfLivingRich: p.avgCostOfLivingRich,
                     costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
@@ -182,13 +181,13 @@ export function PlanetCostOfLivingChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? bucketYearEnd(displayData[0].bucket) : 0;
+            const xMin = displayData.length > 0 ? bucketYearMid(displayData[0].bucket) : 0;
             const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal ?? xMin + 10) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
                 domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
+                ticks: Array.from({ length: 11 }, (_, i) => xMin + i),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
                 gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
@@ -199,7 +198,7 @@ export function PlanetCostOfLivingChart({
             type: 'number' as const,
             domain: ['dataMin', 'dataMax'] as [string, string],
             ticks: undefined,
-            tickFormatter: (v: number) => `${Math.round(v)}`,
+            tickFormatter: (v: number) => formatDecadeLabel(v),
             gridVertical: false,
             gridValues: undefined,
         };
@@ -217,7 +216,7 @@ export function PlanetCostOfLivingChart({
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return formatYearStart;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

@@ -115,7 +115,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
         if (snapshotDb) {
             const db = snapshotDb;
             const seedRows = [...state.planets.values()].map((planet) => ({
-                tick: 0,
+                tick: 1,
                 planet_id: planet.id,
                 population: computePopulationTotal(planet),
                 grocery_buffer: 0,

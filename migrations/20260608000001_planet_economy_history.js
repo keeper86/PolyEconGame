@@ -34,7 +34,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_economy_monthly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(30, tick)          AS bucket,
+            time_bucket(30, tick, 1)          AS bucket,
             planet_id,
             avg(gdp)::float8               AS avg_gdp,
             avg(cost_of_living)::float8    AS avg_cost_of_living,
@@ -47,7 +47,7 @@ exports.up = async function (knex) {
             avg(bank_equity)::float8       AS avg_bank_equity,
             avg(money_supply)::float8      AS avg_money_supply
         FROM planet_economy_history
-        GROUP BY time_bucket(30, tick), planet_id
+        GROUP BY time_bucket(30, tick, 1), planet_id
         WITH NO DATA
     `);
 
@@ -55,7 +55,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_economy_yearly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(360, bucket)       AS bucket,
+            time_bucket(360, bucket, 1)       AS bucket,
             planet_id,
             avg(avg_gdp)::float8           AS avg_gdp,
             avg(avg_cost_of_living)::float8 AS avg_cost_of_living,
@@ -68,7 +68,7 @@ exports.up = async function (knex) {
             avg(avg_bank_equity)::float8   AS avg_bank_equity,
             avg(avg_money_supply)::float8  AS avg_money_supply
         FROM planet_economy_monthly
-        GROUP BY time_bucket(360, bucket), planet_id
+        GROUP BY time_bucket(360, bucket, 1), planet_id
         WITH NO DATA
     `);
 
@@ -76,7 +76,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_economy_decade
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(3600, bucket)      AS bucket,
+            time_bucket(3600, bucket, 1)      AS bucket,
             planet_id,
             avg(avg_gdp)::float8           AS avg_gdp,
             avg(avg_cost_of_living)::float8 AS avg_cost_of_living,
@@ -89,7 +89,7 @@ exports.up = async function (knex) {
             avg(avg_bank_equity)::float8   AS avg_bank_equity,
             avg(avg_money_supply)::float8  AS avg_money_supply
         FROM planet_economy_yearly
-        GROUP BY time_bucket(3600, bucket), planet_id
+        GROUP BY time_bucket(3600, bucket, 1), planet_id
         WITH NO DATA
     `);
 
