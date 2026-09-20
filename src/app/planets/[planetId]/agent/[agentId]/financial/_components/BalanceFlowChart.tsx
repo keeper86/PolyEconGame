@@ -144,17 +144,17 @@ export function BalanceFlowChart({
             };
         }
         if (granularity === 'yearly') {
-            const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? bucketYearMid(yearlyPts[0].bucket) : 0;
-            const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal) : xMin + 10;
+            const yearlyPts = (data as FinancialPoint[]).slice(-11);
+            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year : 0;
+            const xMax = liveRow ? Math.max(xMin + 11, liveRow.xVal) : xMin + 11;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
                 domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 11 }, (_, i) => xMin + i),
+                ticks: Array.from({ length: 11 }, (_, i) => xMin + i + 0.5),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: Array.from({ length: 12 }, (_, i) => xMin + i),
             };
         }
         return {

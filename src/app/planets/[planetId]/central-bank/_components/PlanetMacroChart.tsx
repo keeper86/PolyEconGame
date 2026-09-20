@@ -150,16 +150,16 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? bucketYearMid(displayData[0].bucket) : 0;
-            const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal ?? xMin + 10) : xMin + 10;
+            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year : 0;
+            const xMax = liveRow ? Math.max(xMin + 11, liveRow.xVal ?? xMin + 11) : xMin + 11;
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
                 domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 11 }, (_, i) => xMin + i),
+                ticks: Array.from({ length: 11 }, (_, i) => xMin + i + 0.5),
                 tickFormatter: (v: number) => String(Math.floor(v)),
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: Array.from({ length: 12 }, (_, i) => xMin + i),
             };
         }
         return {
