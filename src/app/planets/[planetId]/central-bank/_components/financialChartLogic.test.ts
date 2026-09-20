@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { computeCostOfLivingMonthlyData, computeMacroMonthlyData, raiseWagesMonotone } from './financialChartLogic';
+import {
+    bucketDecadeEnd,
+    bucketDecadeLabel,
+    bucketYearEnd,
+    computeCostOfLivingMonthlyData,
+    computeMacroMonthlyData,
+    formatYearStart,
+    raiseWagesMonotone,
+} from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -144,5 +152,37 @@ describe('raiseWagesMonotone', () => {
         const input = [50, 10, 20];
         raiseWagesMonotone(input);
         expect(input).toEqual([50, 10, 20]);
+    });
+});
+
+describe('bucket interval ends', () => {
+    it('maps the first yearly bucket (0) to the end of its year', () => {
+        expect(bucketYearEnd(0)).toBe(2201);
+    });
+
+    it('maps later yearly buckets to the end of the year they cover', () => {
+        expect(bucketYearEnd(360)).toBe(2202);
+        expect(bucketYearEnd(720)).toBe(2203);
+    });
+
+    it('maps the first decade bucket (0) to the end of its decade', () => {
+        expect(bucketDecadeEnd(0)).toBe(2210);
+        expect(bucketDecadeLabel(0)).toBe('2210s');
+    });
+
+    it('maps later decade buckets to the end of the decade they cover', () => {
+        expect(bucketDecadeEnd(3600)).toBe(2220);
+        expect(bucketDecadeLabel(3600)).toBe('2220s');
+    });
+});
+
+describe('formatYearStart', () => {
+    it('prefixes the year boundary with Start of', () => {
+        expect(formatYearStart(2201)).toBe('Start of 2201');
+        expect(formatYearStart(2210)).toBe('Start of 2210');
+    });
+
+    it('floors fractional live positions to their year', () => {
+        expect(formatYearStart(2201.997)).toBe('Start of 2201');
     });
 });

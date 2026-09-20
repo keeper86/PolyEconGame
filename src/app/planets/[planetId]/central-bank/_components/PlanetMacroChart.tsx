@@ -20,8 +20,11 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
+    bucketDecadeEnd,
     bucketDecadeLabel,
+    bucketYearEnd,
     computeMacroMonthlyData,
+    formatYearStart,
     type EconomyPoint,
     type MacroChartPoint,
     type MacroLive,
@@ -69,10 +72,11 @@ export function PlanetMacroChart({
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             return takeLive(
                 sorted.slice(-11).map((p) => {
-                    const { year, monthIndex } = tickToDate(p.bucket);
+                    const { monthIndex } = tickToDate(p.bucket);
+                    const yearEnd = bucketYearEnd(p.bucket);
                     return {
-                        xVal: year + 1,
-                        year: year + 1,
+                        xVal: yearEnd,
+                        year: yearEnd,
                         monthIndex,
                         gdp: p.avgGdp,
                         bankEquity: p.avgBankEquity,
@@ -87,11 +91,11 @@ export function PlanetMacroChart({
 
         return takeLive(
             data.map((p) => {
-                const { year } = tickToDate(p.bucket);
+                const yearEnd = bucketDecadeEnd(p.bucket);
                 return {
                     label: bucketDecadeLabel(p.bucket),
-                    xVal: year,
-                    year,
+                    xVal: yearEnd,
+                    year: yearEnd,
                     gdp: p.avgGdp,
                     bankEquity: p.avgBankEquity,
                     moneySupply: p.avgMoneySupply,
@@ -147,7 +151,7 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
+            const xMin = displayData.length > 0 ? bucketYearEnd(displayData[0].bucket) : 0;
             const xMax = liveRow ? Math.max(xMin + 10, liveRow.xVal ?? xMin + 10) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
@@ -182,10 +186,7 @@ export function PlanetMacroChart({
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return (label: number) => String(Math.round(label));
+        return formatYearStart;
     }, [granularity, chartData]);
 
     return (

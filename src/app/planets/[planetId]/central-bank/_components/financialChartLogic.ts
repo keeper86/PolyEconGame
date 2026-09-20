@@ -7,10 +7,20 @@ export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Au
 export const MONTHLY_X_TICKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 export const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+export function bucketYearEnd(bucket: number): number {
+    return tickToDate(bucket + 1).year + 1;
+}
+
+export function bucketDecadeEnd(bucket: number): number {
+    return tickToDate(bucket + 1).year + 10;
+}
+
 export function bucketDecadeLabel(bucket: number): string {
-    const { year } = tickToDate(bucket);
-    const decadeStart = Math.floor(year / 10) * 10;
-    return `${decadeStart}s`;
+    return `${bucketDecadeEnd(bucket)}s`;
+}
+
+export function formatYearStart(xVal: number): string {
+    return `Start of ${Math.floor(xVal)}`;
 }
 
 export function raiseWagesMonotone(wages: number[]): number[] {

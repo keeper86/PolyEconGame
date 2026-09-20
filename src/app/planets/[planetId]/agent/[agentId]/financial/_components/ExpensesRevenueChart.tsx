@@ -10,7 +10,10 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
+    bucketDecadeEnd,
     bucketDecadeLabel,
+    bucketYearEnd,
+    formatYearStart,
     type FinancialChartPoint,
     type FinancialLive,
     type FinancialPoint,
@@ -111,12 +114,13 @@ export function ExpensesRevenueChart({
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
         const rows = (data as FinancialPoint[]).map((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
+            const { monthIndex } = tickToDate(p.bucket);
+            const xVal = granularity === 'decade' ? bucketDecadeEnd(p.bucket) : bucketYearEnd(p.bucket);
             const normPurchases = p.sumPurchases / monthsPerBucket;
             const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
             return {
-                xVal: year + 1,
-                year: year + 1,
+                xVal,
+                year: xVal,
                 monthIndex,
                 label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
@@ -162,7 +166,7 @@ export function ExpensesRevenueChart({
         }
         if (granularity === 'yearly') {
             const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
+            const xMin = yearlyPts.length > 0 ? bucketYearEnd(yearlyPts[0].bucket) : 0;
             const xMax = liveX !== null ? Math.max(xMin + 10, liveX) : xMin + 10;
             return {
                 dataKey: 'xVal' as const,
@@ -197,10 +201,7 @@ export function ExpensesRevenueChart({
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return (label: number) => String(Math.round(label));
+        return formatYearStart;
     }, [granularity, chartData]);
 
     return (

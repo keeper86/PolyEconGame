@@ -29,9 +29,20 @@ export const MONTH_NAMES = [
 export const MONTHLY_X_TICKS = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
 export const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
+export function bucketYearEnd(bucket: number): number {
+    return tickToDate(bucket + 1).year + 1;
+}
+
+export function bucketDecadeEnd(bucket: number): number {
+    return tickToDate(bucket + 1).year + 10;
+}
+
 export function bucketDecadeLabel(bucket: number): string {
-    const { year } = tickToDate(bucket);
-    return `${year}s`;
+    return `${bucketDecadeEnd(bucket)}s`;
+}
+
+export function formatYearStart(xVal: number): string {
+    return `Start of ${Math.floor(xVal)}`;
 }
 
 export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
