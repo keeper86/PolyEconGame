@@ -8,7 +8,19 @@ import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPref
 import { liveYearX } from '@/lib/chartTime';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { START_YEAR, TICKS_PER_YEAR } from '@/simulation/constants';
+
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeCentre,
+    decadeStart,
+    formatDecadeLabel,
+    formatYearLabel,
+    yearAxis,
+    yearCentre,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
@@ -594,9 +606,10 @@ function YearlyChart({
     const data = useMemo((): ChartPoint[] => {
         const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
+            .slice(-YEAR_WINDOW)
             .map((p) => ({
                 tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR + START_YEAR + 1,
+                year: yearCentre(p.bucket),
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -616,17 +629,7 @@ function YearlyChart({
     );
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
-    const xMin = data.length > 0 ? data[0].year : 0;
-    const xMax = data.length > 0 ? Math.max(xMin + 10, data[data.length - 1].year) : xMin + 10;
-    const xDomain: [number, number] = [xMin, xMax];
-    const xTicks = Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
-    const verticalGridValues = Array.from({ length: 11 }, (_, i) => xMin + i);
-
-    const formatYearTick = (year: number): string => `${Math.floor(year)}`;
-
-    const yearTooltipLabel = (year: number): string => {
-        return `Start of ${Math.floor(year)}`;
-    };
+    const yearlyAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -634,14 +637,14 @@ function YearlyChart({
                 data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
-                xDomain={xDomain}
-                xTicks={xTicks}
-                xTickFormatter={formatYearTick}
-                tooltipLabelFormatter={yearTooltipLabel}
+                xDomain={yearlyAxis.domain}
+                xTicks={yearlyAxis.ticks}
+                xTickFormatter={yearlyAxis.tickFormatter}
+                tooltipLabelFormatter={formatYearLabel}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
-                verticalGridValues={verticalGridValues}
+                verticalGridValues={yearlyAxis.gridValues}
                 rescaleMode={rescaleMode}
                 planetId={planetId}
             />
@@ -665,9 +668,10 @@ function DecadesChart({
     const data = useMemo((): ChartPoint[] => {
         const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
+            .slice(-DECADE_WINDOW)
             .map((p) => ({
                 tick: p.bucket,
-                year: p.bucket / TICKS_PER_YEAR + START_YEAR,
+                year: decadeCentre(p.bucket),
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -687,19 +691,7 @@ function DecadesChart({
     );
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
-    const formatYearTick = (year: number): string => {
-        if (typeof year !== 'number') {
-            return String(year);
-        }
-        return `Y${Math.round(year)}`;
-    };
-
-    const yearTooltipLabel = (year: number): string => {
-        if (typeof year !== 'number') {
-            return String(year);
-        }
-        return `Y${year.toFixed(0)}`;
-    };
+    const decade = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -707,12 +699,14 @@ function DecadesChart({
                 data={scaleData}
                 gradId={gradId}
                 xDataKey='year'
-                xDomain={['dataMin', 'dataMax']}
-                xTickFormatter={formatYearTick}
-                tooltipLabelFormatter={yearTooltipLabel}
+                xDomain={decade.domain}
+                xTicks={decade.ticks}
+                xTickFormatter={decade.tickFormatter}
+                tooltipLabelFormatter={formatDecadeLabel}
                 scale={useLog ? 'log' : 'linear'}
                 yDomain={yDomain}
                 yTicks={data.length === 0 ? [] : yTicks}
+                verticalGridValues={decade.gridValues}
                 rescaleMode={rescaleMode}
                 planetId={planetId}
             />

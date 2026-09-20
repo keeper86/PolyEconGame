@@ -1,27 +1,15 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { monthAxis, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
+
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
+export { MONTH_NAMES, formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
+export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
 
-export const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHLY_AXIS = monthAxis();
 
-export const MONTHLY_X_TICKS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-export const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-export function bucketYearMid(bucket: number): number {
-    return tickToDate(bucket).year + 0.5;
-}
-
-export function bucketDecadeMid(bucket: number): number {
-    return tickToDate(bucket).year + 5;
-}
-
-export function formatYearLabel(value: number): string {
-    return `Year ${Math.floor(value)}`;
-}
-
-export function formatDecadeLabel(value: number): string {
-    return `${Math.floor(value / 10) * 10}s`;
-}
+export const MONTHLY_X_TICKS = MONTHLY_AXIS.ticks;
+export const MONTHLY_GRID_VALUES = MONTHLY_AXIS.gridValues;
 
 export function raiseWagesMonotone(wages: number[]): number[] {
     const raised = [...wages];
@@ -92,7 +80,7 @@ export function computeMacroMonthlyData(
     const current: MacroChartPoint[] = [];
     for (const p of sorted) {
         if (tickToDate(p.bucket).year === latestYear) {
-            current.push(toMacroPoint(p, tickToDate(p.bucket).monthIndex + 1, false));
+            current.push(toMacroPoint(p, monthCentre(p.bucket), false));
         }
     }
 
@@ -109,14 +97,14 @@ export function computeMacroMonthlyData(
         }
     }
 
-    const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
+    const { monthIndex: currentMonthIndex, day: currentDay } = tickToDate(currentTick);
+    const currentMonthIdx = currentMonthIndex + Math.max(currentDay - 1, 0.001) / TICKS_PER_MONTH;
     const ghostPoints = sorted
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
+            return year === latestYear - 1 && monthIndex + 0.5 > currentMonthIdx;
         })
-        .map((p) => toMacroPoint(p, tickToDate(p.bucket).monthIndex + 1, true));
+        .map((p) => toMacroPoint(p, monthCentre(p.bucket), true));
 
     const merged = [...current, ...ghostPoints];
 
@@ -214,7 +202,7 @@ export function computeCostOfLivingMonthlyData(
     const current: CostOfLivingChartPoint[] = [];
     for (const p of sorted) {
         if (tickToDate(p.bucket).year === latestYear) {
-            current.push(toCostOfLivingPoint(p, tickToDate(p.bucket).monthIndex + 1, false));
+            current.push(toCostOfLivingPoint(p, monthCentre(p.bucket), false));
         }
     }
 
@@ -231,14 +219,14 @@ export function computeCostOfLivingMonthlyData(
         }
     }
 
-    const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
+    const { monthIndex: currentMonthIndex, day: currentDay } = tickToDate(currentTick);
+    const currentMonthIdx = currentMonthIndex + Math.max(currentDay - 1, 0.001) / TICKS_PER_MONTH;
     const ghostPoints = sorted
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
+            return year === latestYear - 1 && monthIndex + 0.5 > currentMonthIdx;
         })
-        .map((p) => toCostOfLivingPoint(p, tickToDate(p.bucket).monthIndex + 1, true));
+        .map((p) => toCostOfLivingPoint(p, monthCentre(p.bucket), true));
 
     const currentByMonth = new Map(current.map((p) => [p.monthIdx!, p]));
     const ghostByMonth = new Map(ghostPoints.map((p) => [p.monthIdx!, p]));

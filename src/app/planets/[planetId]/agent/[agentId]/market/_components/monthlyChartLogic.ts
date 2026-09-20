@@ -1,4 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { monthCentre } from '@/lib/historyChartAxis';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -39,11 +40,10 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
     const result: ChartPoint[] = pts
         .filter((p) => tickToDate(p.bucket).year === latestYear)
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             return {
                 tick: p.bucket,
                 year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,
@@ -153,14 +153,13 @@ export function computeMonthlyGhostData(allPts: RawPoint[], live: LiveData, data
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
 
-            return year === latestYear - 1 && monthIndex + 1 > fractionalThreshold;
+            return year === latestYear - 1 && monthIndex + 0.5 > fractionalThreshold;
         })
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             return {
                 tick: p.bucket,
                 year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
                 avgPrice: p.avgPrice,
                 minPrice: p.minPrice,
                 maxPrice: p.maxPrice,

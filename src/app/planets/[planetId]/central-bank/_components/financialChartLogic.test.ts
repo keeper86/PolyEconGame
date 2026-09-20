@@ -15,6 +15,9 @@ function gameTickFor(gameYear: number, monthIndex: number, day: number): number 
     return gameYear * TICKS_PER_YEAR + monthIndex * TICKS_PER_MONTH + (day - 1) + 1;
 }
 
+const isLivePoint = (point: { monthIdx?: number }): boolean =>
+    point.monthIdx !== undefined && point.monthIdx !== 0 && point.monthIdx % 1 !== 0.5;
+
 function macroYear(gameYear: number, gdp: number): EconomyPoint[] {
     return Array.from({ length: 12 }, (_, monthIndex) => ({
         bucket: gameTickFor(gameYear, monthIndex, TICKS_PER_MONTH),
@@ -42,7 +45,7 @@ describe('computeMacroMonthlyData live point', () => {
 
     it('appends the live point at the fractional month index', () => {
         const result = computeMacroMonthlyData(data, live.tick, live);
-        const livePoint = result.find((p) => p.monthIdx !== undefined && !Number.isInteger(p.monthIdx));
+        const livePoint = result.find(isLivePoint);
         expect(livePoint).toBeDefined();
         expect(livePoint?.gdp).toBe(999);
         expect(livePoint?.bankEquity).toBe(888);
@@ -52,7 +55,7 @@ describe('computeMacroMonthlyData live point', () => {
 
     it('omits the live point when no live data is provided', () => {
         const result = computeMacroMonthlyData(data, live.tick);
-        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some(isLivePoint)).toBe(false);
         expect(result.some((p) => p.gdp === 999)).toBe(false);
     });
 
@@ -78,7 +81,7 @@ describe('computeCostOfLivingMonthlyData live point', () => {
 
     it('appends the live point at the fractional month index', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick, live);
-        const livePoint = result.find((p) => p.monthIdx !== undefined && !Number.isInteger(p.monthIdx));
+        const livePoint = result.find(isLivePoint);
         expect(livePoint).toBeDefined();
         expect(livePoint?.costOfLiving).toBe(12);
         expect(livePoint?.costOfLivingRich).toBe(20);
@@ -90,7 +93,7 @@ describe('computeCostOfLivingMonthlyData live point', () => {
 
     it('omits the live point when no live data is provided', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick);
-        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some(isLivePoint)).toBe(false);
         expect(result.some((p) => p.costOfLiving === 12)).toBe(false);
     });
 });

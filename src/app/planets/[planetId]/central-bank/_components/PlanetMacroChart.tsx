@@ -2,6 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
+import { DECADE_WINDOW, decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -90,7 +91,7 @@ export function PlanetMacroChart({
         }
 
         return takeLive(
-            data.map((p) => {
+            data.slice(-DECADE_WINDOW).map((p) => {
                 const yearMid = bucketDecadeMid(p.bucket);
                 return {
                     xVal: yearMid,
@@ -150,26 +151,26 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year : 0;
-            const xMax = liveRow ? Math.max(xMin + 11, liveRow.xVal ?? xMin + 11) : xMin + 11;
+            const axis = yearAxis(displayData.length > 0 ? yearStart(displayData[0].bucket) : 0, liveRow?.xVal);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 11 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 12 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decade = decadeAxis(data.length > 0 ? decadeStart(data[0].bucket) : 0, liveRow?.xVal);
         return {
             dataKey: 'xVal' as const,
             type: 'number' as const,
-            domain: ['dataMin', 'dataMax'] as [string, string],
-            ticks: undefined,
-            tickFormatter: (v: number) => formatDecadeLabel(v),
-            gridVertical: false,
-            gridValues: undefined,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
     }, [granularity, data, liveRow]);
 
@@ -178,10 +179,7 @@ export function PlanetMacroChart({
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }

@@ -1,6 +1,15 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { monthAxis, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
+
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
+export { MONTH_NAMES, formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
+export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
+
+const MONTHLY_AXIS = monthAxis();
+
+export const MONTHLY_X_TICKS = MONTHLY_AXIS.ticks;
+export const MONTHLY_GRID_VALUES = MONTHLY_AXIS.gridValues;
 
 export type FinancialPoint = {
     bucket: number;
@@ -11,39 +20,6 @@ export type FinancialPoint = {
     sumPurchases: number;
     sumClaimPayments: number;
 };
-
-export const MONTH_NAMES = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-] as const;
-export const MONTHLY_X_TICKS = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
-export const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-export function bucketYearMid(bucket: number): number {
-    return tickToDate(bucket).year + 0.5;
-}
-
-export function bucketDecadeMid(bucket: number): number {
-    return tickToDate(bucket).year + 5;
-}
-
-export function formatYearLabel(value: number): string {
-    return `Year ${Math.floor(value)}`;
-}
-
-export function formatDecadeLabel(value: number): string {
-    return `${Math.floor(value / 10) * 10}s`;
-}
 
 export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
     const computeNatural = (vals: number[]): [number, number] => {
@@ -125,7 +101,7 @@ export function computeFinancialMonthlyData(
         .filter((p) => tickToDate(p.bucket).year === latestYear)
         .map((p) => ({
             ...p,
-            monthIdx: tickToDate(p.bucket).monthIndex + 1,
+            monthIdx: monthCentre(p.bucket),
         }));
 
     const prevDecPoint = pts.find((p) => {
@@ -167,10 +143,10 @@ export function computeFinancialGhostData(
     return pts
         .filter((p) => {
             const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 > currentMonthIdx;
+            return year === latestYear - 1 && monthIndex + 0.5 > currentMonthIdx;
         })
         .map((p) => ({
             ...p,
-            monthIdx: tickToDate(p.bucket).monthIndex + 1,
+            monthIdx: monthCentre(p.bucket),
         }));
 }

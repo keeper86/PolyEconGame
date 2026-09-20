@@ -12,6 +12,8 @@ import {
 } from './financialChartLogic';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
+const isLivePoint = (point: { monthIdx: number }): boolean => point.monthIdx !== 0 && point.monthIdx % 1 !== 0.5;
+
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
     return gameYear * TICKS_PER_YEAR + monthIndex * TICKS_PER_MONTH + (day - 1) + 1;
 }
@@ -42,7 +44,7 @@ describe('computeFinancialMonthlyData live point', () => {
 
     it('appends the live point at the fractional month index', () => {
         const result = computeFinancialMonthlyData(data, live.tick, live);
-        const livePoint = result.find((p) => !Number.isInteger(p.monthIdx));
+        const livePoint = result.find(isLivePoint);
         expect(livePoint).toBeDefined();
         expect(livePoint?.avgNetBalance).toBe(1111);
         expect(livePoint?.avgAssetValue).toBe(2222);
@@ -55,7 +57,7 @@ describe('computeFinancialMonthlyData live point', () => {
 
     it('omits the live point when no live data is provided', () => {
         const result = computeFinancialMonthlyData(data, live.tick);
-        expect(result.every((p) => Number.isInteger(p.monthIdx))).toBe(true);
+        expect(result.some(isLivePoint)).toBe(false);
         expect(result.some((p) => p.avgNetBalance === 1111)).toBe(false);
     });
 });
@@ -75,9 +77,23 @@ describe('computeFinancialGhostData live threshold', () => {
         };
         const ghost = computeFinancialGhostData(data, live.tick, live);
         const monthIdxs = ghost.map((p) => p.monthIdx);
-        expect(monthIdxs.includes(3)).toBe(false);
-        expect(monthIdxs.includes(4)).toBe(true);
-        expect(monthIdxs.includes(12)).toBe(true);
+        expect(monthIdxs.includes(2.5)).toBe(false);
+        expect(monthIdxs.includes(3.5)).toBe(true);
+        expect(monthIdxs.includes(11.5)).toBe(true);
+    });
+
+    it('drops the oldest ghost month once the live tick passes its midpoint', () => {
+        const live: FinancialLive = {
+            tick: gameTickFor(1, 3, 25),
+            avgNetBalance: 0,
+            avgAssetValue: 0,
+            avgMonthlyNetIncome: 0,
+            avgWages: 0,
+            sumPurchases: 0,
+            sumClaimPayments: 0,
+        };
+        const ghost = computeFinancialGhostData(data, live.tick, live);
+        expect(ghost.map((p) => p.monthIdx)).toEqual([4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
     });
 });
 

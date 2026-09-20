@@ -2,6 +2,15 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeStart,
+    formatMonthLabel,
+    yearAxis,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -163,27 +172,28 @@ export function ExpensesRevenueChart({
             };
         }
         if (granularity === 'yearly') {
-            const yearlyPts = (data as FinancialPoint[]).slice(-11);
-            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year : 0;
-            const xMax = liveX !== null ? Math.max(xMin + 11, liveX) : xMin + 11;
+            const yearlyPts = (data as FinancialPoint[]).slice(-YEAR_WINDOW);
+            const axis = yearAxis(yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : 0, liveX ?? undefined);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMax] as [number, number],
-                ticks: Array.from({ length: 11 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 12 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
+        const decade = decadeAxis(decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : 0, liveX ?? undefined);
         return {
             dataKey: 'xVal' as const,
             type: 'number' as const,
-            domain: ['dataMin', 'dataMax'] as [string, string],
-            ticks: undefined,
-            tickFormatter: (v: number) => formatDecadeLabel(v),
-            gridVertical: false,
-            gridValues: undefined,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
     }, [granularity, data, liveX]);
 
@@ -192,10 +202,7 @@ export function ExpensesRevenueChart({
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
