@@ -12,14 +12,14 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
-    decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     formatDecadeLabel,
     formatYearLabel,
-    yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
@@ -629,7 +629,10 @@ function YearlyChart({
     );
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
-    const yearlyAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const yearlyAxis = yearWindowAxis(
+        data.length > 0 ? yearStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -691,7 +694,10 @@ function DecadesChart({
     );
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
-    const decade = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const decade = decadeWindowAxis(
+        data.length > 0 ? decadeStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>

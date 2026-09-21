@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { TICKS_PER_MONTH } from '@/simulation/constants';
+import { START_YEAR, TICKS_PER_MONTH } from '@/simulation/constants';
 
 export const MONTH_NAMES = [
     'Jan',
@@ -77,6 +77,14 @@ export function yearAxis(firstYear: number, extendTo?: number): HistoryAxis {
     };
 }
 
+export function yearWindowAxis(firstYear: number | undefined, endYear: number | undefined): HistoryAxis {
+    if (firstYear !== undefined) {
+        return yearAxis(firstYear, endYear);
+    }
+    const start = endYear === undefined ? START_YEAR : Math.max(START_YEAR, Math.ceil(endYear) - YEAR_WINDOW);
+    return yearAxis(start, endYear);
+}
+
 export function decadeAxis(firstDecade: number, extendTo?: number): HistoryAxis {
     const last = Math.max(
         firstDecade + DECADE_WINDOW * DECADE_YEARS,
@@ -89,6 +97,18 @@ export function decadeAxis(firstDecade: number, extendTo?: number): HistoryAxis 
         tickFormatter: (value) => `${Math.floor(value / DECADE_YEARS) * DECADE_YEARS}s`,
         gridValues: Array.from({ length: span + 1 }, (_, i) => firstDecade + i * DECADE_YEARS),
     };
+}
+
+export function decadeWindowAxis(firstDecade: number | undefined, endYear: number | undefined): HistoryAxis {
+    if (firstDecade !== undefined) {
+        return decadeAxis(firstDecade, endYear);
+    }
+    const span = DECADE_WINDOW * DECADE_YEARS;
+    const start =
+        endYear === undefined
+            ? START_YEAR
+            : Math.max(START_YEAR, Math.ceil(endYear / DECADE_YEARS) * DECADE_YEARS - span);
+    return decadeAxis(start, endYear);
 }
 
 export function formatYearLabel(value: number): string {

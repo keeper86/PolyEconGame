@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import {
+    YEAR_WINDOW,
     decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     ghostMonthVisible,
     isLiveMonthPoint,
     monthAxis,
@@ -11,6 +13,7 @@ import {
     yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from './historyChartAxis';
 
 function tickFor(year: number, monthIndex: number, day: number): number {
@@ -70,6 +73,38 @@ describe('historyChartAxis', () => {
             START_YEAR + 60,
         ]);
         expect(axis.tickFormatter(START_YEAR + 5)).toBe(`${START_YEAR}s`);
+    });
+
+    it('keeps the year window at eleven years when there is no history yet', () => {
+        expect(yearWindowAxis(undefined, undefined).domain).toEqual([START_YEAR, START_YEAR + YEAR_WINDOW]);
+        expect(yearWindowAxis(undefined, START_YEAR + 3.4).domain).toEqual([START_YEAR, START_YEAR + YEAR_WINDOW]);
+
+        const late = yearWindowAxis(undefined, START_YEAR + 40.2);
+        expect(late.domain).toEqual([START_YEAR + 30, START_YEAR + 41]);
+        expect(late.ticks).toHaveLength(YEAR_WINDOW);
+    });
+
+    it('keeps the history window once yearly points exist', () => {
+        const withHistory = yearWindowAxis(START_YEAR, START_YEAR + 12.6);
+        const plain = yearAxis(START_YEAR, START_YEAR + 12.6);
+        expect(withHistory.domain).toEqual(plain.domain);
+        expect(withHistory.ticks).toEqual(plain.ticks);
+        expect(withHistory.gridValues).toEqual(plain.gridValues);
+    });
+
+    it('keeps the decade window at six decades when there is no history yet', () => {
+        expect(decadeWindowAxis(undefined, undefined).domain).toEqual([START_YEAR, START_YEAR + 60]);
+        expect(decadeWindowAxis(undefined, START_YEAR + 3.4).domain).toEqual([START_YEAR, START_YEAR + 60]);
+        expect(decadeWindowAxis(undefined, START_YEAR + 80.2).domain).toEqual([START_YEAR + 30, START_YEAR + 90]);
+    });
+
+    it('keeps the history window once decade points exist', () => {
+        const firstDecade = START_YEAR + 20;
+        const withHistory = decadeWindowAxis(firstDecade, START_YEAR + 53);
+        const plain = decadeAxis(firstDecade, START_YEAR + 53);
+        expect(withHistory.domain).toEqual(plain.domain);
+        expect(withHistory.ticks).toEqual(plain.ticks);
+        expect(withHistory.gridValues).toEqual(plain.gridValues);
     });
 
     it('keeps the ghost month visible until one day before the live tick reaches its centre', () => {

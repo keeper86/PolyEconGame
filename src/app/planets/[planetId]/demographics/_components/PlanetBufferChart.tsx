@@ -5,9 +5,9 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
-    decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
@@ -15,9 +15,9 @@ import {
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
-    yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 import React, { useMemo } from 'react';
@@ -518,12 +518,12 @@ export default function PlanetBufferChart({
     const monthlyX = monthAxis();
     const yearlyX =
         yearlyChartData.length > 0
-            ? yearAxis(yearStart(yearlyChartData[0].tick), yearlyChartData[yearlyChartData.length - 1].year)
-            : yearAxis(0);
+            ? yearWindowAxis(yearStart(yearlyChartData[0].tick), yearlyChartData[yearlyChartData.length - 1].year)
+            : yearWindowAxis(undefined, undefined);
     const decadeX =
         decadeChartData.length > 0
-            ? decadeAxis(decadeStart(decadeChartData[0].tick), decadeChartData[decadeChartData.length - 1].year)
-            : decadeAxis(0);
+            ? decadeWindowAxis(decadeStart(decadeChartData[0].tick), decadeChartData[decadeChartData.length - 1].year)
+            : decadeWindowAxis(undefined, undefined);
 
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>

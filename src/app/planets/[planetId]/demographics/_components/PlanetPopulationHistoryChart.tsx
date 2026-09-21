@@ -9,9 +9,9 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
-    decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
@@ -19,9 +19,9 @@ import {
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
-    yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -358,7 +358,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
     }, [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const xAxis = yearWindowAxis(data.length > 0 ? yearStart(data[0].tick) : undefined, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -443,7 +443,10 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
     }, [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xAxis = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const xAxis = decadeWindowAxis(
+        data.length > 0 ? decadeStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>
