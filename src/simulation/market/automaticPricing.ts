@@ -394,6 +394,7 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, maintDebug: bool
 
         let totalShortfall = Math.max(0, storageTarget - currentInventory);
 
+        // implied production, proxy. brittle.
         const baseRateConsumption = storageTarget / bidCfg.inputBufferTargetTicks;
         if (baseRateConsumption > EPSILON && resource.form !== 'services') {
             totalShortfall = Math.min(totalShortfall, baseRateConsumption * (1 + bidCfg.inventorySmoothingMaxExtra));

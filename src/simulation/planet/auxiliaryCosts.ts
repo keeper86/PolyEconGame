@@ -9,7 +9,11 @@ import {
 } from '../constants';
 import { educationLevelKeys } from '../population/education';
 import type { Facility, ManagementFacility, ProductionFacility } from './facility';
-import { facilityFullRestoreCost, facilityRestorationCostFactor } from './facilityMaintenance';
+import {
+    facilityFullRestoreCost,
+    facilityMaintenanceMultiplier,
+    facilityRestorationCostFactor,
+} from './facilityMaintenance';
 import type { Planet } from './planet';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from './services';
 import {
@@ -95,7 +99,9 @@ export type AuxiliaryCostRates = {
 const facilityUpkeepCostPerTick = (
     facility: Facility,
     rates: Pick<AuxiliaryCostRates, 'maintenanceCostPerScale' | 'constructionServicePrice'>,
-): number => rates.maintenanceCostPerScale + restorationDemandPerTick(facility) * rates.constructionServicePrice;
+): number =>
+    (rates.maintenanceCostPerScale + restorationDemandPerTick(facility) * rates.constructionServicePrice) *
+    facilityMaintenanceMultiplier(facility);
 
 export const auxiliaryCostRates = (planet: Planet): AuxiliaryCostRates => {
     const maintenanceCostPerScale =
