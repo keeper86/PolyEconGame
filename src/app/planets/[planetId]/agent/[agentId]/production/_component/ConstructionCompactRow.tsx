@@ -206,44 +206,44 @@ export function ConstructionCompactRow({
                 </div>
             </div>
 
-            {!hideCancel && (
-                <div className='mt-auto space-y-2'>
-                    <div className='flex gap-2'>
-                        <Button
-                            size='sm'
-                            variant={cs.suspended ? 'default' : 'outline'}
-                            className='flex-1 text-xs gap-1'
-                            disabled={suspendMutation.isPending || isPendingSuspension}
-                            onClick={() =>
-                                suspendMutation.mutate({
-                                    agentId,
-                                    planetId,
-                                    facilityId: facility.id,
-                                    suspended: !cs.suspended,
-                                })
-                            }
-                        >
-                            {cs.suspended ? <Play className='h-3.5 w-3.5' /> : <Pause className='h-3.5 w-3.5' />}
-                            {suspendMutation.isPending || isPendingSuspension
-                                ? cs.suspended
-                                    ? 'Resuming…'
-                                    : 'Suspending…'
-                                : cs.suspended
-                                  ? 'Resume'
-                                  : 'Suspend'}
-                        </Button>
+            <div className='mt-auto space-y-2'>
+                <div className='flex gap-2'>
+                    <Button
+                        size='sm'
+                        variant={cs.suspended ? 'default' : 'outline'}
+                        className='flex-1 text-xs gap-1'
+                        disabled={suspendMutation.isPending || isPendingSuspension || isPendingCancel}
+                        onClick={() =>
+                            suspendMutation.mutate({
+                                agentId,
+                                planetId,
+                                facilityId: facility.id,
+                                suspended: !cs.suspended,
+                            })
+                        }
+                    >
+                        {cs.suspended ? <Play className='h-3.5 w-3.5' /> : <Pause className='h-3.5 w-3.5' />}
+                        {suspendMutation.isPending || isPendingSuspension
+                            ? cs.suspended
+                                ? 'Resuming…'
+                                : 'Suspending…'
+                            : cs.suspended
+                              ? 'Resume'
+                              : 'Suspend'}
+                    </Button>
+                    {!hideCancel && (
                         <Button
                             size='sm'
                             variant='destructive'
                             className='flex-1 text-xs gap-1'
-                            disabled={cancelMutation.isPending || isPendingCancel}
+                            disabled={cancelMutation.isPending || isPendingCancel || isPendingSuspension}
                             onClick={() => setShowCancelDialog(true)}
                         >
                             {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
                         </Button>
-                    </div>
+                    )}
                 </div>
-            )}
+            </div>
 
             <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
                 <DialogContent>
