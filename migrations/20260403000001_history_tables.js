@@ -115,7 +115,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW product_price_monthly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(30, tick)  AS bucket,
+            time_bucket(30, tick, 1)  AS bucket,
             planet_id,
             product_name,
             avg(avg_price)         AS avg_price,
@@ -123,7 +123,7 @@ exports.up = async function (knex) {
             max(max_price)         AS max_price,
             avg(price_floor)       AS price_floor
         FROM product_price_history
-        GROUP BY time_bucket(30, tick), planet_id, product_name
+        GROUP BY time_bucket(30, tick, 1), planet_id, product_name
         WITH NO DATA
     `);
 
@@ -131,7 +131,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW agent_monthly_summary
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(30, tick)          AS bucket,
+            time_bucket(30, tick, 1)          AS bucket,
             planet_id,
             agent_id,
             avg(net_balance)::float8               AS avg_net_balance,
@@ -146,7 +146,7 @@ exports.up = async function (knex) {
             avg(facility_count)::float8            AS avg_facility_count,
             avg(storage_value)::float8             AS avg_storage_value
         FROM agent_monthly_history
-        GROUP BY time_bucket(30, tick), planet_id, agent_id
+        GROUP BY time_bucket(30, tick, 1), planet_id, agent_id
         WITH NO DATA
     `);
 
@@ -154,7 +154,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_monthly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(30, tick)               AS bucket,
+            time_bucket(30, tick, 1)               AS bucket,
             planet_id,
             avg(population)::float8             AS avg_population,
             avg(grocery_buffer)::float8         AS avg_grocery_buffer,
@@ -164,7 +164,7 @@ exports.up = async function (knex) {
             avg(retail_buffer)::float8          AS avg_retail_buffer,
             avg(construction_buffer)::float8    AS avg_construction_buffer
         FROM planet_population_history
-        GROUP BY time_bucket(30, tick), planet_id
+        GROUP BY time_bucket(30, tick, 1), planet_id
         WITH NO DATA
     `);
 
@@ -172,7 +172,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW product_price_yearly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(360, bucket)       AS bucket,
+            time_bucket(360, bucket, 1)       AS bucket,
             planet_id,
             product_name,
             avg(avg_price)                 AS avg_price,
@@ -180,7 +180,7 @@ exports.up = async function (knex) {
             max(max_price)                 AS max_price,
             avg(price_floor)               AS price_floor
         FROM product_price_monthly
-        GROUP BY time_bucket(360, bucket), planet_id, product_name
+        GROUP BY time_bucket(360, bucket, 1), planet_id, product_name
         WITH NO DATA
     `);
 
@@ -188,7 +188,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW agent_yearly_summary
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(360, bucket)       AS bucket,
+            time_bucket(360, bucket, 1)       AS bucket,
             planet_id,
             agent_id,
             avg(avg_net_balance)           AS avg_net_balance,
@@ -201,7 +201,7 @@ exports.up = async function (knex) {
             sum(sum_purchases)             AS sum_purchases,
             sum(sum_claim_payments)        AS sum_claim_payments
         FROM agent_monthly_summary
-        GROUP BY time_bucket(360, bucket), planet_id, agent_id
+        GROUP BY time_bucket(360, bucket, 1), planet_id, agent_id
         WITH NO DATA
     `);
 
@@ -209,7 +209,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_yearly
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(360, bucket)                AS bucket,
+            time_bucket(360, bucket, 1)                AS bucket,
             planet_id,
             avg(avg_population)                     AS avg_population,
             avg(avg_grocery_buffer)::float8         AS avg_grocery_buffer,
@@ -219,7 +219,7 @@ exports.up = async function (knex) {
             avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
             avg(avg_construction_buffer)::float8    AS avg_construction_buffer
         FROM planet_population_monthly
-        GROUP BY time_bucket(360, bucket), planet_id
+        GROUP BY time_bucket(360, bucket, 1), planet_id
         WITH NO DATA
     `);
 
@@ -227,7 +227,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW product_price_decade
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(3600, bucket)      AS bucket,
+            time_bucket(3600, bucket, 1)      AS bucket,
             planet_id,
             product_name,
             avg(avg_price)                 AS avg_price,
@@ -235,7 +235,7 @@ exports.up = async function (knex) {
             max(max_price)                 AS max_price,
             avg(price_floor)               AS price_floor
         FROM product_price_yearly
-        GROUP BY time_bucket(3600, bucket), planet_id, product_name
+        GROUP BY time_bucket(3600, bucket, 1), planet_id, product_name
         WITH NO DATA
     `);
 
@@ -243,7 +243,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW agent_decade_summary
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(3600, bucket)      AS bucket,
+            time_bucket(3600, bucket, 1)      AS bucket,
             planet_id,
             agent_id,
             avg(avg_net_balance)           AS avg_net_balance,
@@ -256,7 +256,7 @@ exports.up = async function (knex) {
             sum(sum_purchases)             AS sum_purchases,
             sum(sum_claim_payments)        AS sum_claim_payments
         FROM agent_yearly_summary
-        GROUP BY time_bucket(3600, bucket), planet_id, agent_id
+        GROUP BY time_bucket(3600, bucket, 1), planet_id, agent_id
         WITH NO DATA
     `);
 
@@ -264,7 +264,7 @@ exports.up = async function (knex) {
         CREATE MATERIALIZED VIEW planet_population_decade
         WITH (timescaledb.continuous) AS
         SELECT
-            time_bucket(3600, bucket)               AS bucket,
+            time_bucket(3600, bucket, 1)               AS bucket,
             planet_id,
             avg(avg_population)                     AS avg_population,
             avg(avg_grocery_buffer)::float8         AS avg_grocery_buffer,
@@ -274,7 +274,7 @@ exports.up = async function (knex) {
             avg(avg_retail_buffer)::float8          AS avg_retail_buffer,
             avg(avg_construction_buffer)::float8    AS avg_construction_buffer
         FROM planet_population_yearly
-        GROUP BY time_bucket(3600, bucket), planet_id
+        GROUP BY time_bucket(3600, bucket, 1), planet_id
         WITH NO DATA
     `);
 

@@ -229,6 +229,12 @@ function StorageConstructionCard({
             ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
             : 0;
 
+    const pendingActions = usePendingActions(agentId, planetId);
+    const isPendingCancel = pendingActions.some((a) => a.type === 'cancel' && a.facilityId === facility.id);
+    const isPendingSuspension = pendingActions.some(
+        (a) => (a.type === 'suspend' || a.type === 'resume') && a.facilityId === facility.id,
+    );
+
     return (
         <FacilityCardShell
             className='max-w-[600px]'
@@ -282,7 +288,11 @@ function StorageConstructionCard({
             </div>
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ConstructionCompactRow facility={facility} />
+                <ConstructionCompactRow
+                    facility={facility}
+                    isPendingCancel={isPendingCancel}
+                    isPendingSuspension={isPendingSuspension}
+                />
             </div>
         </FacilityCardShell>
     );

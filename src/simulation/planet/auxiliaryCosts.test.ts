@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+    FACILITY_MAINTENANCE_DECREASE_PER_YEAR,
     FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK,
     MAINTENANCE_SERVICE_PER_STATUS_UNIT,
     MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE,
@@ -7,9 +8,16 @@ import {
     SR_HOLDING_COST_PER_TON,
     STORAGE_MOVEMENT_FACTOR,
     TICKS_PER_MONTH,
+    TICKS_PER_YEAR,
 } from '../constants';
 import { makePlanet, makeProductionFacility } from '../utils/testHelper';
-import { facilityFullRestoreCost, facilityRestorationCostFactor } from './facilityMaintenance';
+import {
+    facilityFullRestoreCost,
+    facilityMaintenanceConsumptionPerTick,
+    facilityMaintenanceMultiplier,
+    facilityRestorationCostFactor,
+    facilityUsageFactor,
+} from './facilityMaintenance';
 import {
     auxiliaryCostPerTick,
     auxiliaryCostRates,
@@ -17,8 +25,12 @@ import {
     storageScaleForFacility,
 } from './auxiliaryCosts';
 import { waterFacility } from './productionFacilities';
-import { furnitureResourceType, ironOreResourceType, waterResourceType } from './resources';
-import { groceryServiceResourceType } from './services';
+import { waterResourceType } from './resources';
+import {
+    groceryServiceResourceType,
+    constructionServiceResourceType,
+    maintenanceServiceResourceType,
+} from './services';
 import {
     ESTIMATED_HR_OVERHEAD,
     PRODUCED_HR_QUANTITY,
@@ -49,12 +61,14 @@ describe('auxiliaryCostRates', () => {
             MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE *
             facilityFullRestoreCost(hrTemplate) *
             facilityRestorationCostFactor(hrTemplate.maxMaintenance);
-        const hrUpkeep = rates.maintenanceCostPerScale + restorationDemand * rates.constructionServicePrice;
+        const hrUpkeep =
+            (rates.maintenanceCostPerScale + restorationDemand * rates.constructionServicePrice) *
+            facilityMaintenanceMultiplier(hrTemplate);
 
         const expectedHrCostPerWorker =
             (ESTIMATED_HR_OVERHEAD * (hrInputCost + hrWageCost + hrUpkeep)) / PRODUCED_HR_QUANTITY;
         expect(rates.hrCostPerWorker).toBeCloseTo(expectedHrCostPerWorker, 10);
-        expect(rates.hrCostPerWorker).toBeCloseTo(0.044821713126252806, 10);
+        expect(rates.hrCostPerWorker).toBeCloseTo(0.044186468886765314, 10);
 
         const storageWorkerCount =
             (storageTemplate.workerRequirement.none ?? 0) +
@@ -71,10 +85,19 @@ describe('auxiliaryCostRates', () => {
             (storageTemplate.workerRequirement.secondary ?? 0) * planet.wagePerEdu.secondary +
             (storageTemplate.workerRequirement.tertiary ?? 0) * planet.wagePerEdu.tertiary;
 
+        const storageRestorationDemand =
+            (FACILITY_MAINTENANCE_DEMAND_PER_SCALE_PER_TICK / MAINTENANCE_SERVICE_PER_STATUS_UNIT) *
+            MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE *
+            facilityFullRestoreCost(storageTemplate) *
+            facilityRestorationCostFactor(storageTemplate.maxMaintenance);
+        const storageUpkeep =
+            (rates.maintenanceCostPerScale + storageRestorationDemand * rates.constructionServicePrice) *
+            facilityMaintenanceMultiplier(storageTemplate);
+
         const expectedStorageCostPerScale =
-            storageInputCost + storageWageCost + storageWorkerCount * expectedHrCostPerWorker + hrUpkeep;
+            storageInputCost + storageWageCost + storageWorkerCount * expectedHrCostPerWorker + storageUpkeep;
         expect(rates.storageCostPerScale).toBeCloseTo(expectedStorageCostPerScale, 10);
-        expect(rates.storageCostPerScale).toBeCloseTo(129.28652983216904, 10);
+        expect(rates.storageCostPerScale).toBeCloseTo(128.01717239781559, 10);
     });
 
     it('does not divide the department cost by zero when service prices are missing', () => {
@@ -132,21 +155,37 @@ describe('auxiliaryCostPerTick', () => {
             MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE *
             facilityFullRestoreCost(facility) *
             facilityRestorationCostFactor(facility.maxMaintenance);
-        const expected = rates.maintenanceCostPerScale + restorationDemand * rates.constructionServicePrice;
+        const expected =
+            (rates.maintenanceCostPerScale + restorationDemand * rates.constructionServicePrice) *
+            facilityMaintenanceMultiplier(facility);
         expect(auxiliaryCostPerTick(facility, rates)).toBeCloseTo(expected, 10);
     });
 
-    it('scales the restoration term with the facility type construction multiplier', () => {
+    it('matches the engine upkeep at the design point', () => {
         const planet = makePlanet();
         const rates = auxiliaryCostRates(planet);
-        const raw = makeProductionFacility({}, { produces: [{ resource: ironOreResourceType, quantity: 10 }] });
-        const manufactured = makeProductionFacility(
+        const facility = makeProductionFacility(
             {},
-            { produces: [{ resource: furnitureResourceType, quantity: 10 }] },
+            { produces: [{ resource: groceryServiceResourceType, quantity: 10 }] },
         );
-        const nonRestoration = rates.maintenanceCostPerScale + storageScaleForFacility(raw) * rates.storageCostPerScale;
-        const rawRestoration = auxiliaryCostPerTick(raw, rates) - nonRestoration;
-        const manufacturedRestoration = auxiliaryCostPerTick(manufactured, rates) - nonRestoration;
-        expect(manufacturedRestoration / rawRestoration).toBeCloseTo(3, 10);
+        facility.scale = 1;
+        facility.maxScale = 1;
+        facility.maxMaintenance = 0.99;
+        facility.lastTickResults.overallEfficiency = 1;
+
+        const maintenancePrice = planet.marketPrices[maintenanceServiceResourceType.name] ?? 0;
+        const constructionPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
+
+        const actualMaintenanceCost = facilityMaintenanceConsumptionPerTick(facility) * maintenancePrice;
+        const wearPerTick = (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+        const actualRestorationCost =
+            wearPerTick *
+            MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE *
+            facilityFullRestoreCost(facility) *
+            facilityRestorationCostFactor(facility.maxMaintenance) *
+            constructionPrice;
+
+        const engineUpkeep = (actualMaintenanceCost + actualRestorationCost) * SERVICE_DEPRECIATION_COST_MULTIPLIER;
+        expect(auxiliaryCostPerTick(facility, rates)).toBeCloseTo(engineUpkeep, 10);
     });
 });

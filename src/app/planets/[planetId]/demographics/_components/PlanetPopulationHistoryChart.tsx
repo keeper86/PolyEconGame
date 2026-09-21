@@ -5,9 +5,27 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeCentre,
+    decadeStart,
+    formatDecadeLabel,
+    formatMonthLabel,
+    formatYearLabel,
+    ghostMonthVisible,
+    isLiveMonthPoint,
+    monthAxis,
+    monthCentre,
+    yearAxis,
+    yearCentre,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
+import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
@@ -78,11 +96,10 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
     const result: ChartPoint[] = pts
         .filter((p) => tickToDate(p.bucket).year === latestYear)
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             return {
                 tick: p.bucket,
                 year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
                 value: p.avgPopulation,
             };
         });
@@ -133,22 +150,16 @@ function computeMonthlyGhostData(allPts: PopulationRawPoint[], live: LiveData): 
     const fractionalThreshold = liveMi + Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
 
     return pts
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === liveYear - 1 && monthIndex + 1 > fractionalThreshold;
-        })
+        .filter((p) => tickToDate(p.bucket).year === liveYear - 1 && ghostMonthVisible(p.bucket, fractionalThreshold))
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             return {
                 tick: p.bucket,
                 year: p.bucket / TICKS_PER_YEAR,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
                 value: p.avgPopulation,
             };
         });
 }
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
     if (value == null) {
@@ -218,15 +229,14 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
 
-    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
+    const monthlyX = monthAxis();
     const monthTooltipLabel = (monthIdx: number): string => {
-        if (!Number.isInteger(monthIdx)) {
+        if (isLiveMonthPoint(monthIdx)) {
             return 'Live';
         }
         const pt = data.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
-        const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
-        return `End of ${label} ${yearInt + START_YEAR}`;
+        return formatMonthLabel(monthIdx, yearInt);
     };
 
     return (
@@ -242,7 +252,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                     <CartesianGrid
                         vertical={true}
                         horizontal={false}
-                        verticalValues={[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}
+                        verticalValues={monthlyX.gridValues}
                         stroke='#334155'
                         strokeOpacity={0.7}
                     />
@@ -252,9 +262,9 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
                         tickLine={false}
-                        domain={[0, 12]}
-                        ticks={[0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]}
-                        tickFormatter={formatMonthTick}
+                        domain={monthlyX.domain}
+                        ticks={monthlyX.ticks}
+                        tickFormatter={monthlyX.tickFormatter}
                         minTickGap={0}
                     />
                     <YAxis
@@ -331,24 +341,24 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
     );
 }
 
-function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
-    const data = useMemo(
-        (): ChartPoint[] =>
-            [...yearlyPoints]
-                .sort((a, b) => a.bucket - b.bucket)
-                .map((p) => ({
-                    tick: p.bucket,
-                    year: p.bucket / TICKS_PER_YEAR + START_YEAR + 1,
-                    value: p.avgPopulation,
-                })),
-        [yearlyPoints],
-    );
+function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const data = useMemo((): ChartPoint[] => {
+        const rows = [...yearlyPoints]
+            .sort((a, b) => a.bucket - b.bucket)
+            .slice(-YEAR_WINDOW)
+            .map((p) => ({
+                tick: p.bucket,
+                year: yearCentre(p.bucket),
+                value: p.avgPopulation,
+            }));
+        if (live && live.tick > 0) {
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+        }
+        return rows;
+    }, [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xMin = data.length > 0 ? data[0].year : 0;
-    const xDomain: [number, number] = [xMin, xMin + 10];
-    const xTicks = Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
-    const verticalGridValues = Array.from({ length: 11 }, (_, i) => xMin + i);
+    const xAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -363,7 +373,7 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
                     <CartesianGrid
                         vertical={true}
                         horizontal={false}
-                        verticalValues={verticalGridValues}
+                        verticalValues={xAxis.gridValues}
                         stroke='#334155'
                         strokeOpacity={0.95}
                     />
@@ -373,9 +383,9 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
                         tickLine={false}
-                        domain={xDomain}
-                        ticks={xTicks}
-                        tickFormatter={(v) => `${Math.floor(v)}`}
+                        domain={xAxis.domain}
+                        ticks={xAxis.ticks}
+                        tickFormatter={xAxis.tickFormatter}
                         minTickGap={0}
                     />
                     <YAxis
@@ -394,7 +404,7 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                `Year ${Math.floor(label as number)}`,
+                                formatYearLabel(label as number),
                                 p?.value as number | undefined,
                             );
                         }}
@@ -416,20 +426,24 @@ function YearlyChart({ yearlyPoints }: { yearlyPoints: PopulationRawPoint[] }) {
     );
 }
 
-function DecadesChart({ decadePoints }: { decadePoints: PopulationRawPoint[] }) {
-    const data = useMemo(
-        (): ChartPoint[] =>
-            [...decadePoints]
-                .sort((a, b) => a.bucket - b.bucket)
-                .map((p) => ({
-                    tick: p.bucket,
-                    year: p.bucket / TICKS_PER_YEAR + START_YEAR,
-                    value: p.avgPopulation,
-                })),
-        [decadePoints],
-    );
+function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
+    const data = useMemo((): ChartPoint[] => {
+        const rows = [...decadePoints]
+            .sort((a, b) => a.bucket - b.bucket)
+            .slice(-DECADE_WINDOW)
+            .map((p) => ({
+                tick: p.bucket,
+                year: decadeCentre(p.bucket),
+                value: p.avgPopulation,
+            }));
+        if (live && live.tick > 0) {
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
+        }
+        return rows;
+    }, [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
+    const xAxis = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -441,15 +455,23 @@ function DecadesChart({ decadePoints }: { decadePoints: PopulationRawPoint[] }) 
                             <stop offset='95%' stopColor='#4f46e5' stopOpacity={0.08} />
                         </linearGradient>
                     </defs>
-                    <CartesianGrid vertical={false} horizontal={false} stroke='#334155' />
+                    <CartesianGrid
+                        vertical={true}
+                        horizontal={false}
+                        verticalValues={xAxis.gridValues}
+                        stroke='#334155'
+                        strokeOpacity={0.95}
+                    />
                     <XAxis
                         dataKey='year'
                         type='number'
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
                         tickLine={false}
-                        domain={['dataMin', 'dataMax']}
-                        tickFormatter={(v) => `Y${Math.round(v as number)}`}
+                        domain={xAxis.domain}
+                        ticks={xAxis.ticks}
+                        tickFormatter={xAxis.tickFormatter}
+                        minTickGap={0}
                     />
                     <YAxis
                         type='number'
@@ -467,7 +489,7 @@ function DecadesChart({ decadePoints }: { decadePoints: PopulationRawPoint[] }) 
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                `Year ${Math.round(label as number)}`,
+                                formatDecadeLabel(label as number),
                                 p?.value as number | undefined,
                             );
                         }}
@@ -556,9 +578,17 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     />
                     {granularity === 'monthly' && <MonthlyChart monthlyPoints={monthlyPoints} live={live} />}
                     {granularity === 'yearly' &&
-                        (yearlyPoints.length > 0 ? <YearlyChart yearlyPoints={yearlyPoints} /> : <EmptyChart />)}
+                        (yearlyPoints.length > 0 ? (
+                            <YearlyChart yearlyPoints={yearlyPoints} live={live} />
+                        ) : (
+                            <EmptyChart />
+                        ))}
                     {granularity === 'decade' &&
-                        (decadePoints.length > 0 ? <DecadesChart decadePoints={decadePoints} /> : <EmptyChart />)}
+                        (decadePoints.length > 0 ? (
+                            <DecadesChart decadePoints={decadePoints} live={live} />
+                        ) : (
+                            <EmptyChart />
+                        ))}
 
                     <Separator />
 

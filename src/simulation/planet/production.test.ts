@@ -614,6 +614,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -630,6 +631,37 @@ describe('constructionTick', () => {
         expect(remaining).toBe(30);
     });
 
+    it('does not consume or advance a suspended construction', () => {
+        const { planet, gov } = makePlanetWithPopulation({});
+        const agent = makeAgent('test-company');
+
+        const facility = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
+        facility.id = 'facility-suspended';
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 1,
+            totalConstructionServiceRequired: 100,
+            maximumConstructionServiceConsumption: 50,
+            progress: 10,
+            lastTickInvestedConstructionServices: 50,
+            suspended: true,
+        };
+
+        agent.assets.p.productionFacilities = [facility];
+        updateAgentShellCompartments(agent.assets.p);
+
+        setStorageResourceQuantity(agent.assets.p.storage, constructionServiceResourceType, 80);
+
+        const gs = makeGameState(planet, [agent, gov]);
+        constructionTick(gs, planet);
+
+        expect(facility.construction).not.toBeNull();
+        expect(facility.construction!.progress).toBe(10);
+        expect(facility.construction!.lastTickInvestedConstructionServices).toBe(0);
+        const remaining = queryStorageFacility(agent.assets.p.storage, constructionServiceResourceType.name);
+        expect(remaining).toBe(80);
+    });
+
     it('completes construction when progress reaches totalConstructionServiceRequired', () => {
         const { planet, gov } = makePlanetWithPopulation({});
         const agent = makeAgent('test-company');
@@ -643,6 +675,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 90,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -669,6 +702,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 10,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -693,6 +727,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 30,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.humanResourcesDepartment = mgmtFacility;
@@ -718,6 +753,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 90,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -747,6 +783,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 90,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -775,6 +812,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -805,6 +843,7 @@ describe('constructionTick', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 90,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -841,6 +880,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 9,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -875,6 +915,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 10,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [facility];
@@ -903,6 +944,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 4,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const f2 = makeProductionFacility({ secondary: 1 }, { scale: 0, maxScale: 0 });
@@ -915,6 +957,7 @@ describe('constructionTick — facilityCompleted ticker events', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 4,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         agent.assets.p.productionFacilities = [f1, f2];
@@ -982,6 +1025,7 @@ describe('productionTick — storage department', () => {
                             maximumConstructionServiceConsumption: 50,
                             progress: 0,
                             lastTickInvestedConstructionServices: 0,
+                            suspended: false,
                         },
                     },
                 ),
@@ -1079,6 +1123,7 @@ describe('productionTick — humanResourcesDepartment', () => {
                     maximumConstructionServiceConsumption: 50,
                     progress: 0,
                     lastTickInvestedConstructionServices: 0,
+                    suspended: false,
                 },
             },
         );
@@ -1324,6 +1369,7 @@ describe('productionTick — shipyard facility (building mode)', () => {
                     maximumConstructionServiceConsumption: 50,
                     progress: 0,
                     lastTickInvestedConstructionServices: 0,
+                    suspended: false,
                 },
             },
         );

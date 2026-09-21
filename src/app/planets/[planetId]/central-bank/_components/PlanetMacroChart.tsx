@@ -1,6 +1,8 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
+import { decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -19,135 +21,94 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    bucketDecadeLabel,
+    bucketDecadeMid,
+    bucketYearMid,
+    computeMacroMonthlyData,
+    decadeDisplayRows,
+    formatDecadeLabel,
+    formatYearLabel,
+    type EconomyPoint,
+    type MacroChartPoint,
+    type MacroLive,
     type Granularity,
 } from './financialChartLogic';
 
-export type EconomyPoint = {
-    bucket: number;
-    avgGdp: number;
-    avgBankEquity: number;
-    avgMoneySupply: number;
-};
-
-type ChartPoint = {
-    monthIdx?: number;
-    year: number;
-    xVal?: number;
-    label?: string;
-    gdp: number | null;
-    bankEquity: number | null;
-    moneySupply: number | null;
-    ghostGdp: number | null;
-    ghostBankEquity: number | null;
-    ghostMoneySupply: number | null;
-};
-
-function toChartPoint(e: EconomyPoint, idx: number): ChartPoint {
-    return {
-        monthIdx: idx,
-        year: tickToDate(e.bucket).year,
-        gdp: e.avgGdp,
-        bankEquity: e.avgBankEquity,
-        moneySupply: e.avgMoneySupply,
-        ghostGdp: null,
-        ghostBankEquity: null,
-        ghostMoneySupply: null,
-    };
-}
-
-function computeMonthlyChartData(data: EconomyPoint[], currentTick: number): ChartPoint[] {
-    if (data.length === 0 || currentTick === 0) {
-        return [];
-    }
-    const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-    const latestYear = tickToDate(currentTick).year;
-
-    const current: ChartPoint[] = [];
-    for (const p of sorted) {
-        if (tickToDate(p.bucket).year === latestYear) {
-            current.push(toChartPoint(p, tickToDate(p.bucket).monthIndex + 1));
-        }
-    }
-
-    const prevDecPoint = sorted.find((p) => {
-        const { year, monthIndex } = tickToDate(p.bucket);
-        return year === latestYear - 1 && monthIndex === 11;
-    });
-    if (prevDecPoint) {
-        current.unshift(toChartPoint(prevDecPoint, 0));
-    } else {
-        const lastBefore = [...sorted].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
-        if (lastBefore) {
-            current.unshift(toChartPoint(lastBefore, 0));
-        }
-    }
-
-    const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
-    const ghostPoints: ChartPoint[] = sorted
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
-        })
-        .map((p) => {
-            const cp = toChartPoint(p, tickToDate(p.bucket).monthIndex + 1);
-            return {
-                ...cp,
-                ghostGdp: cp.gdp,
-                ghostBankEquity: cp.bankEquity,
-                ghostMoneySupply: cp.moneySupply,
-                gdp: null,
-                bankEquity: null,
-                moneySupply: null,
-            };
-        });
-
-    const merged = [...current, ...ghostPoints].sort((a, b) => (a.monthIdx ?? 0) - (b.monthIdx ?? 0));
-    return merged;
-}
+export type { EconomyPoint };
 
 export function PlanetMacroChart({
     data,
     granularity,
     planetId,
     currentTick,
+    live,
 }: {
     data: EconomyPoint[];
     granularity: Granularity;
     planetId?: string;
     currentTick: number;
+    live?: MacroLive;
 }) {
-    const chartData = useMemo(() => {
+    const liveRow: MacroChartPoint | null = useMemo(
+        () =>
+            live && live.tick > 0
+                ? {
+                      xVal: liveYearX(live.tick),
+                      year: tickToDate(live.tick).year,
+                      gdp: live.gdp,
+                      bankEquity: live.bankEquity,
+                      moneySupply: live.moneySupply,
+                      ghostGdp: null,
+                      ghostBankEquity: null,
+                      ghostMoneySupply: null,
+                  }
+                : null,
+        [live],
+    );
+
+    const decadeDisplayData = useMemo(() => decadeDisplayRows(data), [data]);
+
+    const chartData = useMemo((): MacroChartPoint[] => {
         if (granularity === 'monthly') {
-            return computeMonthlyChartData(data, currentTick);
+            return computeMacroMonthlyData(data, currentTick, live);
         }
+        const takeLive = (rows: MacroChartPoint[]): MacroChartPoint[] => (liveRow ? [...rows, liveRow] : rows);
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-            return sorted.slice(-11).map((p) => {
-                const { year, monthIndex } = tickToDate(p.bucket);
+            return takeLive(
+                sorted.slice(-11).map((p) => {
+                    const { monthIndex } = tickToDate(p.bucket);
+                    const yearMid = bucketYearMid(p.bucket);
+                    return {
+                        xVal: yearMid,
+                        year: yearMid,
+                        monthIndex,
+                        gdp: p.avgGdp,
+                        bankEquity: p.avgBankEquity,
+                        moneySupply: p.avgMoneySupply,
+                        ghostGdp: null,
+                        ghostBankEquity: null,
+                        ghostMoneySupply: null,
+                    };
+                }),
+            );
+        }
+
+        return takeLive(
+            decadeDisplayData.map((p) => {
+                const yearMid = bucketDecadeMid(p.bucket);
                 return {
-                    xVal: year + 1,
-                    year: year + 1,
-                    monthIndex,
+                    xVal: yearMid,
+                    year: yearMid,
                     gdp: p.avgGdp,
                     bankEquity: p.avgBankEquity,
                     moneySupply: p.avgMoneySupply,
+                    ghostGdp: null,
+                    ghostBankEquity: null,
+                    ghostMoneySupply: null,
                 };
-            });
-        }
-
-        return data.map((p) => {
-            const { year } = tickToDate(p.bucket);
-            return {
-                label: bucketDecadeLabel(p.bucket),
-                year,
-                gdp: p.avgGdp,
-                bankEquity: p.avgBankEquity,
-                moneySupply: p.avgMoneySupply,
-            };
-        });
-    }, [data, granularity, currentTick]);
+            }),
+        );
+    }, [data, granularity, currentTick, live, liveRow, decadeDisplayData]);
 
     const domainCurrency = useMemo(() => {
         const vals: number[] = [];
@@ -193,44 +154,42 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
+            const axis = yearAxis(displayData.length > 0 ? yearStart(displayData[0].bucket) : 0, liveRow?.xVal);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decade = decadeAxis(
+            decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : 0,
+            liveRow?.xVal,
+        );
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
-            ticks: undefined,
-            tickFormatter: undefined,
-            gridVertical: false,
-            gridValues: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
-    }, [granularity, data]);
+    }, [granularity, data, decadeDisplayData, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return undefined;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

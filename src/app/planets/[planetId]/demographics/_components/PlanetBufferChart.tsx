@@ -1,7 +1,25 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
-import { TICKS_PER_MONTH, START_YEAR } from '@/simulation/constants';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeCentre,
+    decadeStart,
+    formatDecadeLabel,
+    formatMonthLabel,
+    formatYearLabel,
+    ghostMonthVisible,
+    isLiveMonthPoint,
+    monthAxis,
+    monthCentre,
+    yearAxis,
+    yearCentre,
+    yearStart,
+} from '@/lib/historyChartAxis';
+import { TICKS_PER_MONTH } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
@@ -24,10 +42,6 @@ const BUFFER_COLORS: Record<string, string> = {
 };
 
 const BUFFER_KEYS = ['grocery', 'healthcare', 'logistics', 'education', 'retail', 'construction'] as const;
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-const MONTHLY_X_TICKS = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
-const MONTHLY_GRID_VALUES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
 type RawPoint = {
     bucket: number;
@@ -56,6 +70,8 @@ type ChartPoint = {
     monthIdx?: number;
 } & Record<string, number>;
 
+type Granularity = 'monthly' | 'yearly' | 'decade';
+
 function toPercent(bufferValue: number): number {
     return Math.min(100, bufferValue * 100);
 }
@@ -71,11 +87,10 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
     const result: ChartPoint[] = pts
         .filter((p) => tickToDate(p.bucket).year === latestYear)
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             const point: ChartPoint = {
                 tick: p.bucket,
                 year: latestYear,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -100,7 +115,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         if (lastBefore) {
             const prev: ChartPoint = {
                 tick: lastBefore.bucket,
-                year: lastBefore.bucket / TICKS_PER_MONTH,
+                year: latestYear - 1,
                 monthIdx: 0,
             };
             for (const key of BUFFER_KEYS) {
@@ -156,20 +171,16 @@ function computeBufferGhostData(allPts: RawPoint[], currentTick: number): ChartP
     }
 
     const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
-    const { year: latestYear, monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
+    const { year: latestYear, monthIndex, day } = tickToDate(currentTick);
+    const livePosition = monthIndex + Math.max(day - 1, 0.001) / TICKS_PER_MONTH;
 
     return pts
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
-        })
+        .filter((p) => tickToDate(p.bucket).year === latestYear - 1 && ghostMonthVisible(p.bucket, livePosition))
         .map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
             const point: ChartPoint = {
                 tick: p.bucket,
                 year: latestYear - 1,
-                monthIdx: monthIndex + 1,
+                monthIdx: monthCentre(p.bucket),
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -180,11 +191,11 @@ function computeBufferGhostData(allPts: RawPoint[], currentTick: number): ChartP
 }
 
 function computeYearlyData(allPts: RawPoint[]): ChartPoint[] {
-    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
+    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket).slice(-YEAR_WINDOW);
     return pts.map((p) => {
         const point: ChartPoint = {
             tick: p.bucket,
-            year: p.bucket / TICKS_PER_MONTH / 12 + START_YEAR + 1,
+            year: yearCentre(p.bucket),
         };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -195,11 +206,11 @@ function computeYearlyData(allPts: RawPoint[]): ChartPoint[] {
 }
 
 function computeDecadeData(allPts: RawPoint[]): ChartPoint[] {
-    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket);
+    const pts = [...allPts].sort((a, b) => a.bucket - b.bucket).slice(-DECADE_WINDOW);
     return pts.map((p) => {
         const point: ChartPoint = {
             tick: p.bucket,
-            year: p.bucket / TICKS_PER_MONTH / 12 + START_YEAR,
+            year: decadeCentre(p.bucket),
         };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -258,6 +269,7 @@ function mergeMonthlyChartData(data: ChartPoint[], ghostData?: ChartPoint[]): Ch
 function BufferAreaChart({
     data,
     ghostData,
+    granularity,
     xKey,
     xDomain,
     xTicks,
@@ -268,6 +280,7 @@ function BufferAreaChart({
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
+    granularity: Granularity;
     xKey: string;
     xDomain?: [number, number];
     xTicks?: number[];
@@ -326,7 +339,13 @@ function BufferAreaChart({
                             if (visible.length === 0) {
                                 return null;
                             }
-                            const monthLabel = xFormatter(label as number);
+                            const point = payload[0]?.payload as ChartPoint | undefined;
+                            const pointLabel =
+                                granularity === 'monthly'
+                                    ? formatMonthLabel(label as number, point?.year ?? 0)
+                                    : granularity === 'yearly'
+                                      ? formatYearLabel(label as number)
+                                      : formatDecadeLabel(label as number);
                             return (
                                 <div
                                     style={{
@@ -337,7 +356,7 @@ function BufferAreaChart({
                                         padding: '6px 10px',
                                     }}
                                 >
-                                    <div style={{ color: '#94a3b8', marginBottom: 4 }}>End of {monthLabel}.</div>
+                                    <div style={{ color: '#94a3b8', marginBottom: 4 }}>{pointLabel}</div>
                                     {visible.map((p) => (
                                         <div key={p.name} style={{ color: p.color, marginBottom: 2 }}>
                                             {BUFFER_LABELS[String(p.name)] ?? p.name}:{' '}
@@ -368,12 +387,10 @@ function BufferAreaChart({
                                     const tick = payload?.tick;
                                     const dotKey = monthIdx ?? tick;
                                     const value = payload?.[key];
-                                    // Skip rendering if the data value is null/undefined (e.g. ghost-only months)
                                     if (value == null || typeof value !== 'number') {
                                         return <circle key={`${key}_${dotKey}_null`} r={0} visibility='hidden' />;
                                     }
-                                    // Larger dot for live data point (fractional monthIdx)
-                                    if (cx != null && !isNaN(cx) && monthIdx != null && !Number.isInteger(monthIdx)) {
+                                    if (cx != null && !isNaN(cx) && isLiveMonthPoint(monthIdx)) {
                                         return (
                                             <circle
                                                 key={`${key}_${dotKey}_live`}
@@ -414,7 +431,6 @@ function BufferAreaChart({
                                         const ghostKey = `ghost${key.charAt(0).toUpperCase() + key.slice(1)}`;
                                         const monthIdx = payload?.monthIdx;
                                         const value = payload?.[ghostKey];
-                                        // Skip rendering if the ghost data value is null/undefined (e.g. current-data-only months)
                                         if (value == null || typeof value !== 'number') {
                                             return (
                                                 <circle
@@ -459,7 +475,7 @@ type Props = {
     yearlyPoints: RawPoint[];
     decadePoints: RawPoint[];
     currentTick: number;
-    granularity: 'monthly' | 'yearly' | 'decade';
+    granularity: Granularity;
     isLoading?: boolean;
     live: LiveBufferData;
 };
@@ -480,40 +496,34 @@ export default function PlanetBufferChart({
         [monthlyPoints, currentTick, live],
     );
     const ghostData = useMemo(() => computeBufferGhostData(monthlyPoints, currentTick), [monthlyPoints, currentTick]);
-    const yearlyChartData = useMemo(() => computeYearlyData(yearlyPoints), [yearlyPoints]);
-    const decadeChartData = useMemo(() => computeDecadeData(decadePoints), [decadePoints]);
-
-    const xFormatter = (v: number): string => {
-        if (granularity === 'monthly') {
-            const mi = Math.round(v) - 1;
-            return MONTH_NAMES[((mi % 12) + 12) % 12] ?? '';
+    const liveRow = useMemo((): ChartPoint | null => {
+        if (!live || live.tick <= 0) {
+            return null;
         }
-        return `${Math.round(v - 1)}`;
-    };
-
-    const yearTicks = useMemo(() => {
-        if (yearlyChartData.length === 0) {
-            return undefined;
+        const point: ChartPoint = { tick: live.tick, year: liveYearX(live.tick) };
+        for (const key of BUFFER_KEYS) {
+            point[key] = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
         }
-        const xMin = yearlyChartData[0].year;
-        return Array.from({ length: 10 }, (_, i) => xMin + i + 0.5);
-    }, [yearlyChartData]);
+        return point;
+    }, [live]);
+    const yearlyChartData = useMemo(() => {
+        const rows = computeYearlyData(yearlyPoints);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [yearlyPoints, liveRow]);
+    const decadeChartData = useMemo(() => {
+        const rows = computeDecadeData(decadePoints);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [decadePoints, liveRow]);
 
-    const yearXDomain = useMemo((): [number, number] | undefined => {
-        if (yearlyChartData.length === 0) {
-            return undefined;
-        }
-        const xMin = yearlyChartData[0].year;
-        return [xMin, xMin + 10];
-    }, [yearlyChartData]);
-
-    const yearGridValues = useMemo(() => {
-        if (yearlyChartData.length === 0) {
-            return undefined;
-        }
-        const xMin = yearlyChartData[0].year;
-        return Array.from({ length: 11 }, (_, i) => xMin + i);
-    }, [yearlyChartData]);
+    const monthlyX = monthAxis();
+    const yearlyX =
+        yearlyChartData.length > 0
+            ? yearAxis(yearStart(yearlyChartData[0].tick), yearlyChartData[yearlyChartData.length - 1].year)
+            : yearAxis(0);
+    const decadeX =
+        decadeChartData.length > 0
+            ? decadeAxis(decadeStart(decadeChartData[0].tick), decadeChartData[decadeChartData.length - 1].year)
+            : decadeAxis(0);
 
     return (
         <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
@@ -522,12 +532,13 @@ export default function PlanetBufferChart({
                     <BufferAreaChart
                         data={monthlyChartData}
                         ghostData={ghostData}
+                        granularity={granularity}
                         xKey='monthIdx'
-                        xDomain={[0, 12]}
-                        xTicks={MONTHLY_X_TICKS}
-                        xFormatter={xFormatter}
+                        xDomain={monthlyX.domain}
+                        xTicks={monthlyX.ticks}
+                        xFormatter={monthlyX.tickFormatter}
                         gridVertical={true}
-                        gridValues={MONTHLY_GRID_VALUES}
+                        gridValues={monthlyX.gridValues}
                     />
                 ) : (
                     <EmptyChart />
@@ -536,19 +547,29 @@ export default function PlanetBufferChart({
                 (yearlyChartData.length > 0 ? (
                     <BufferAreaChart
                         data={yearlyChartData}
+                        granularity={granularity}
                         xKey='year'
-                        xDomain={yearXDomain}
-                        xTicks={yearTicks}
-                        xFormatter={xFormatter}
+                        xDomain={yearlyX.domain}
+                        xTicks={yearlyX.ticks}
+                        xFormatter={yearlyX.tickFormatter}
                         gridVertical={true}
-                        gridValues={yearGridValues}
+                        gridValues={yearlyX.gridValues}
                     />
                 ) : (
                     <EmptyChart />
                 ))}
             {granularity === 'decade' &&
                 (decadeChartData.length > 0 ? (
-                    <BufferAreaChart data={decadeChartData} xKey='year' xFormatter={xFormatter} gridVertical={false} />
+                    <BufferAreaChart
+                        data={decadeChartData}
+                        granularity={granularity}
+                        xKey='year'
+                        xDomain={decadeX.domain}
+                        xTicks={decadeX.ticks}
+                        xFormatter={decadeX.tickFormatter}
+                        gridVertical={true}
+                        gridValues={decadeX.gridValues}
+                    />
                 ) : (
                     <EmptyChart />
                 ))}

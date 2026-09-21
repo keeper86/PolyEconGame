@@ -965,6 +965,7 @@ describe('automaticPricing — bid diagnostics for dropped demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0.5,
             lastTickInvestedConstructionServices: 10,
+            suspended: false,
         };
 
         const facility = makeProductionFacility({ none: 1 }, { id: 'under-construction', scale: 1 });
@@ -1076,6 +1077,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const planet = makePlanetWithPrice({ [maintenanceServiceResourceType.name]: 2 });
@@ -1102,6 +1104,7 @@ describe('automaticPricing — facility maintenance demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
         facility.maintenanceStatus = 0.95;
 
@@ -1210,6 +1213,7 @@ describe('automaticPricing — facility restoration demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const planet = makeConstructionPlanet();
@@ -1232,6 +1236,7 @@ describe('automaticPricing — facility restoration demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const planet = makeConstructionPlanet();

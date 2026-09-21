@@ -1,6 +1,8 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
+import { decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -9,128 +11,20 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    bucketDecadeLabel,
+    bucketDecadeMid,
+    bucketYearMid,
+    computeCostOfLivingMonthlyData,
+    decadeDisplayRows,
+    formatDecadeLabel,
+    formatYearLabel,
     raiseWagesMonotone,
+    type CostOfLivingChartPoint,
+    type CostOfLivingLive,
+    type CostOfLivingPoint,
     type Granularity,
 } from './financialChartLogic';
 
-export type CostOfLivingPoint = {
-    bucket: number;
-    avgCostOfLiving: number;
-    avgCostOfLivingRich: number;
-    avgWageEdu0: number;
-    avgWageEdu1: number;
-    avgWageEdu2: number;
-    avgWageEdu3: number;
-};
-
-type ChartPoint = {
-    monthIdx?: number;
-    year: number;
-    xVal?: number;
-    label?: string;
-    costOfLiving: number | null;
-    costOfLivingRich: number | null;
-    costOfLivingRichDiff: number | null;
-    wageEdu0: number | null;
-    wageEdu1: number | null;
-    wageEdu2: number | null;
-    wageEdu3: number | null;
-
-    ghostCostOfLiving?: number | null;
-    ghostCostOfLivingRich?: number | null;
-    ghostCostOfLivingRichDiff?: number | null;
-    ghostWageEdu0?: number | null;
-    ghostWageEdu1?: number | null;
-    ghostWageEdu2?: number | null;
-    ghostWageEdu3?: number | null;
-};
-
-function computeMonthlyData(data: CostOfLivingPoint[], currentTick: number): ChartPoint[] {
-    if (data.length === 0 || currentTick === 0) {
-        return [];
-    }
-    const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-    const latestYear = tickToDate(currentTick).year;
-
-    function toCP(p: CostOfLivingPoint, idx: number, ghost: boolean): ChartPoint {
-        const base = ghost ? null : p.avgCostOfLiving;
-        const baseRich = ghost ? null : p.avgCostOfLivingRich;
-        const diff = ghost ? null : p.avgCostOfLivingRich - p.avgCostOfLiving;
-        const [w0r, w1r, w2r, w3r] = raiseWagesMonotone([p.avgWageEdu0, p.avgWageEdu1, p.avgWageEdu2, p.avgWageEdu3]);
-        const w0 = ghost ? null : w0r;
-        const w1 = ghost ? null : w1r;
-        const w2 = ghost ? null : w2r;
-        const w3 = ghost ? null : w3r;
-        const gBase = ghost ? p.avgCostOfLiving : null;
-        const gBaseRich = ghost ? p.avgCostOfLivingRich : null;
-        const gDiff = ghost ? p.avgCostOfLivingRich - p.avgCostOfLiving : null;
-        const gw0 = ghost ? w0r : null;
-        const gw1 = ghost ? w1r : null;
-        const gw2 = ghost ? w2r : null;
-        const gw3 = ghost ? w3r : null;
-        return {
-            monthIdx: idx,
-            year: tickToDate(p.bucket).year,
-            costOfLiving: base,
-            costOfLivingRich: baseRich,
-            costOfLivingRichDiff: diff,
-            wageEdu0: w0,
-            wageEdu1: w1,
-            wageEdu2: w2,
-            wageEdu3: w3,
-            ghostCostOfLiving: gBase,
-            ghostCostOfLivingRich: gBaseRich,
-            ghostCostOfLivingRichDiff: gDiff,
-            ghostWageEdu0: gw0,
-            ghostWageEdu1: gw1,
-            ghostWageEdu2: gw2,
-            ghostWageEdu3: gw3,
-        };
-    }
-
-    const current: ChartPoint[] = [];
-    for (const p of sorted) {
-        if (tickToDate(p.bucket).year === latestYear) {
-            current.push(toCP(p, tickToDate(p.bucket).monthIndex + 1, false));
-        }
-    }
-
-    const prevDecPoint = sorted.find((p) => {
-        const { year, monthIndex } = tickToDate(p.bucket);
-        return year === latestYear - 1 && monthIndex === 11;
-    });
-    if (prevDecPoint) {
-        current.unshift(toCP(prevDecPoint, 0, false));
-    } else {
-        const lastBefore = [...sorted].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
-        if (lastBefore) {
-            current.unshift(toCP(lastBefore, 0, false));
-        }
-    }
-
-    const { monthIndex: currentMonthIndex } = tickToDate(currentTick);
-    const currentMonthIdx = currentMonthIndex + 1;
-    const ghostPoints = sorted
-        .filter((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
-            return year === latestYear - 1 && monthIndex + 1 >= currentMonthIdx;
-        })
-        .map((p) => toCP(p, tickToDate(p.bucket).monthIndex + 1, true));
-
-    const currentByMonth = new Map(current.map((p) => [p.monthIdx!, p]));
-    const ghostByMonth = new Map(ghostPoints.map((p) => [p.monthIdx!, p]));
-    const allIdxs = new Set([...currentByMonth.keys(), ...ghostByMonth.keys()]);
-
-    const merged: ChartPoint[] = [];
-    for (const monthIdx of [...allIdxs].sort((a, b) => a - b)) {
-        const curr = currentByMonth.get(monthIdx);
-        const ghost = ghostByMonth.get(monthIdx);
-        merged.push(curr ?? ghost!);
-    }
-
-    return merged;
-}
+export type { CostOfLivingPoint };
 
 const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
     const finite = vals.filter(Number.isFinite);
@@ -153,20 +47,79 @@ export function PlanetCostOfLivingChart({
     granularity,
     planetId,
     currentTick,
+    live,
 }: {
     data: CostOfLivingPoint[];
     granularity: Granularity;
     planetId?: string;
     currentTick: number;
+    live?: CostOfLivingLive;
 }) {
-    const chartData = useMemo(() => {
+    const liveRow: CostOfLivingChartPoint | null = useMemo(
+        () =>
+            live && live.tick > 0
+                ? (() => {
+                      const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
+                          live.wageEdu0,
+                          live.wageEdu1,
+                          live.wageEdu2,
+                          live.wageEdu3,
+                      ]);
+                      return {
+                          xVal: liveYearX(live.tick),
+                          year: tickToDate(live.tick).year,
+                          costOfLiving: live.costOfLiving,
+                          costOfLivingRich: live.costOfLivingRich,
+                          costOfLivingRichDiff: live.costOfLivingRich - live.costOfLiving,
+                          wageEdu0,
+                          wageEdu1,
+                          wageEdu2,
+                          wageEdu3,
+                      };
+                  })()
+                : null,
+        [live],
+    );
+
+    const decadeDisplayData = useMemo(() => decadeDisplayRows(data), [data]);
+
+    const chartData = useMemo((): CostOfLivingChartPoint[] => {
         if (granularity === 'monthly') {
-            return computeMonthlyData(data, currentTick);
+            return computeCostOfLivingMonthlyData(data, currentTick, live);
         }
+        const takeLive = (rows: CostOfLivingChartPoint[]): CostOfLivingChartPoint[] =>
+            liveRow ? [...rows, liveRow] : rows;
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
-            return sorted.slice(-11).map((p) => {
-                const { year, monthIndex } = tickToDate(p.bucket);
+            return takeLive(
+                sorted.slice(-11).map((p) => {
+                    const { monthIndex } = tickToDate(p.bucket);
+                    const yearMid = bucketYearMid(p.bucket);
+                    const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
+                        p.avgWageEdu0,
+                        p.avgWageEdu1,
+                        p.avgWageEdu2,
+                        p.avgWageEdu3,
+                    ]);
+                    return {
+                        xVal: yearMid,
+                        year: yearMid,
+                        monthIndex,
+                        costOfLiving: p.avgCostOfLiving,
+                        costOfLivingRich: p.avgCostOfLivingRich,
+                        costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
+                        wageEdu0,
+                        wageEdu1,
+                        wageEdu2,
+                        wageEdu3,
+                    };
+                }),
+            );
+        }
+
+        return takeLive(
+            decadeDisplayData.map((p) => {
+                const yearMid = bucketDecadeMid(p.bucket);
                 const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
                     p.avgWageEdu0,
                     p.avgWageEdu1,
@@ -174,9 +127,8 @@ export function PlanetCostOfLivingChart({
                     p.avgWageEdu3,
                 ]);
                 return {
-                    xVal: year + 1,
-                    year: year + 1,
-                    monthIndex,
+                    xVal: yearMid,
+                    year: yearMid,
                     costOfLiving: p.avgCostOfLiving,
                     costOfLivingRich: p.avgCostOfLivingRich,
                     costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
@@ -185,30 +137,9 @@ export function PlanetCostOfLivingChart({
                     wageEdu2,
                     wageEdu3,
                 };
-            });
-        }
-
-        return data.map((p) => {
-            const { year } = tickToDate(p.bucket);
-            const [wageEdu0, wageEdu1, wageEdu2, wageEdu3] = raiseWagesMonotone([
-                p.avgWageEdu0,
-                p.avgWageEdu1,
-                p.avgWageEdu2,
-                p.avgWageEdu3,
-            ]);
-            return {
-                label: bucketDecadeLabel(p.bucket),
-                year,
-                costOfLiving: p.avgCostOfLiving,
-                costOfLivingRich: p.avgCostOfLivingRich,
-                costOfLivingRichDiff: p.avgCostOfLivingRich - p.avgCostOfLiving,
-                wageEdu0,
-                wageEdu1,
-                wageEdu2,
-                wageEdu3,
-            };
-        });
-    }, [data, granularity, currentTick]);
+            }),
+        );
+    }, [data, granularity, currentTick, live, liveRow, decadeDisplayData]);
 
     const domain = useMemo(() => {
         const allVals: number[] = [];
@@ -223,13 +154,13 @@ export function PlanetCostOfLivingChart({
                 p.wageEdu1,
                 p.wageEdu2,
                 p.wageEdu3,
-                'ghostCostOfLiving' in p ? (p as ChartPoint).ghostCostOfLiving : null,
-                'ghostCostOfLivingRich' in p ? (p as ChartPoint).ghostCostOfLivingRich : null,
-                'ghostCostOfLivingRichDiff' in p ? (p as ChartPoint).ghostCostOfLivingRichDiff : null,
-                'ghostWageEdu0' in p ? (p as ChartPoint).ghostWageEdu0 : null,
-                'ghostWageEdu1' in p ? (p as ChartPoint).ghostWageEdu1 : null,
-                'ghostWageEdu2' in p ? (p as ChartPoint).ghostWageEdu2 : null,
-                'ghostWageEdu3' in p ? (p as ChartPoint).ghostWageEdu3 : null,
+                'ghostCostOfLiving' in p ? (p as CostOfLivingChartPoint).ghostCostOfLiving : null,
+                'ghostCostOfLivingRich' in p ? (p as CostOfLivingChartPoint).ghostCostOfLivingRich : null,
+                'ghostCostOfLivingRichDiff' in p ? (p as CostOfLivingChartPoint).ghostCostOfLivingRichDiff : null,
+                'ghostWageEdu0' in p ? (p as CostOfLivingChartPoint).ghostWageEdu0 : null,
+                'ghostWageEdu1' in p ? (p as CostOfLivingChartPoint).ghostWageEdu1 : null,
+                'ghostWageEdu2' in p ? (p as CostOfLivingChartPoint).ghostWageEdu2 : null,
+                'ghostWageEdu3' in p ? (p as CostOfLivingChartPoint).ghostWageEdu3 : null,
             ]) {
                 if (v !== null && v !== undefined) {
                     allVals.push(v);
@@ -254,44 +185,42 @@ export function PlanetCostOfLivingChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const xMin = displayData.length > 0 ? tickToDate(displayData[0].bucket).year + 1 : 0;
+            const axis = yearAxis(displayData.length > 0 ? yearStart(displayData[0].bucket) : 0, liveRow?.xVal);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decade = decadeAxis(
+            decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : 0,
+            liveRow?.xVal,
+        );
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
-            ticks: undefined,
-            tickFormatter: undefined,
-            gridVertical: false,
-            gridValues: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
-    }, [granularity, data]);
+    }, [granularity, data, decadeDisplayData, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return undefined;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

@@ -1,6 +1,16 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeStart,
+    formatMonthLabel,
+    yearAxis,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -9,8 +19,12 @@ import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
     MONTH_NAMES,
-    bucketDecadeLabel,
+    bucketDecadeMid,
+    bucketYearMid,
+    formatDecadeLabel,
+    formatYearLabel,
     type FinancialChartPoint,
+    type FinancialLive,
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
@@ -19,10 +33,12 @@ export function ExpensesRevenueChart({
     data,
     ghostData,
     granularity,
+    live,
 }: {
     data: FinancialChartPoint[] | FinancialPoint[];
     ghostData?: FinancialChartPoint[];
     granularity: Granularity;
+    live?: FinancialLive;
 }) {
     const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
         const finite = vals.filter(Number.isFinite);
@@ -38,6 +54,8 @@ export function ExpensesRevenueChart({
         return [Math.max(0, lo - pad), hi + pad];
     };
 
+    const liveX = live && live.tick > 0 ? liveYearX(live.tick) : null;
+
     const { scale, domain, yTicks } = useMemo(() => {
         const allVals = [...data, ...(ghostData ?? [])].flatMap((p) => [
             p.avgMonthlyNetIncome,
@@ -45,6 +63,9 @@ export function ExpensesRevenueChart({
             p.sumPurchases,
             p.sumClaimPayments,
         ]);
+        if (live && live.tick > 0) {
+            allVals.push(live.avgMonthlyNetIncome, live.avgWages, live.sumPurchases, live.sumClaimPayments);
+        }
         const positive = allVals.filter((v) => v > 0);
         if (positive.length >= 2) {
             const lo = Math.min(...positive);
@@ -58,7 +79,7 @@ export function ExpensesRevenueChart({
             }
         }
         return { scale: 'linear' as const, domain: yDomain(allVals), yTicks: undefined };
-    }, [data, ghostData]);
+    }, [data, ghostData, live]);
 
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
@@ -101,15 +122,15 @@ export function ExpensesRevenueChart({
                 });
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        return (data as FinancialPoint[]).map((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
+        const rows = (data as FinancialPoint[]).map((p) => {
+            const { monthIndex } = tickToDate(p.bucket);
+            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
             const normPurchases = p.sumPurchases / monthsPerBucket;
             const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
             return {
-                xVal: year + 1,
-                year: year + 1,
+                xVal,
+                year: xVal,
                 monthIndex,
-                label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
                 wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
                 purchases: scale === 'log' && normPurchases <= 0 ? null : normPurchases,
@@ -120,7 +141,23 @@ export function ExpensesRevenueChart({
                 ghostClaimPayments: null,
             };
         });
-    }, [data, ghostData, granularity, scale]);
+        if (live && live.tick > 0) {
+            rows.push({
+                xVal: liveYearX(live.tick),
+                year: tickToDate(live.tick).year,
+                monthIndex: 0,
+                revenue: scale === 'log' && live.avgMonthlyNetIncome <= 0 ? null : live.avgMonthlyNetIncome,
+                wages: scale === 'log' && live.avgWages <= 0 ? null : live.avgWages,
+                purchases: scale === 'log' && live.sumPurchases <= 0 ? null : live.sumPurchases,
+                claimPayments: scale === 'log' && live.sumClaimPayments <= 0 ? null : live.sumClaimPayments,
+                ghostRevenue: null,
+                ghostWages: null,
+                ghostPurchases: null,
+                ghostClaimPayments: null,
+            });
+        }
+        return rows;
+    }, [data, ghostData, granularity, scale, live]);
 
     const xAxisProps = useMemo(() => {
         if (granularity === 'monthly') {
@@ -135,45 +172,41 @@ export function ExpensesRevenueChart({
             };
         }
         if (granularity === 'yearly') {
-            const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
+            const yearlyPts = (data as FinancialPoint[]).slice(-YEAR_WINDOW);
+            const axis = yearAxis(yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : 0, liveX ?? undefined);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
+        const decade = decadeAxis(decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : 0, liveX ?? undefined);
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
-            ticks: undefined,
-            tickFormatter: undefined,
-            gridVertical: false,
-            gridValues: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
-    }, [granularity, data]);
+    }, [granularity, data, liveX]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return undefined;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

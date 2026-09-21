@@ -12,6 +12,7 @@ import { FileX, Landmark, Percent, Scale, Search, TrendingDown, Users, Wallet } 
 import React, { useMemo } from 'react';
 import { PlanetCostOfLivingChart, type CostOfLivingPoint } from './PlanetCostOfLivingChart';
 import { PlanetMacroChart, type EconomyPoint } from './PlanetMacroChart';
+import type { CostOfLivingLive, MacroLive } from './financialChartLogic';
 
 const pct = (n: number): string => `${(n * 100).toFixed(2)} %`;
 
@@ -29,7 +30,39 @@ export default function BankPanel({ bank, planetId, governmentBalance }: Props):
         trpc.simulation.getPlanetEconomyHistory.queryOptions({ planetId, granularity, limit: 100 }, { enabled: true }),
     );
 
+    const { data: economySnapshot } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));
+
     const isLoading = loadingEconomy || !economyData;
+
+    const economy = economySnapshot?.economy ?? null;
+
+    const macroLive: MacroLive | undefined = useMemo(() => {
+        if (!economy) {
+            return undefined;
+        }
+        return {
+            tick: economySnapshot?.tick ?? 0,
+            gdp: economy.gdp,
+            bankEquity: bankEquity(economy.bank),
+            moneySupply: economy.moneySupply,
+        };
+    }, [economy, economySnapshot?.tick]);
+
+    const costOfLivingLive: CostOfLivingLive | undefined = useMemo(() => {
+        if (!economy) {
+            return undefined;
+        }
+        const wages = economy.wagePerEdu ?? {};
+        return {
+            tick: economySnapshot?.tick ?? 0,
+            costOfLiving: economy.costOfLiving,
+            costOfLivingRich: economy.costOfLivingRich,
+            wageEdu0: wages.none ?? 0,
+            wageEdu1: wages.primary ?? 0,
+            wageEdu2: wages.secondary ?? 0,
+            wageEdu3: wages.tertiary ?? 0,
+        };
+    }, [economy, economySnapshot?.tick]);
 
     const macroData: EconomyPoint[] = useMemo(
         () =>
@@ -130,12 +163,14 @@ export default function BankPanel({ bank, planetId, governmentBalance }: Props):
                         granularity={granularity}
                         planetId={planetId}
                         currentTick={currentTick}
+                        live={macroLive}
                     />
                     <PlanetCostOfLivingChart
                         data={costOfLivingData}
                         granularity={granularity}
                         planetId={planetId}
                         currentTick={currentTick}
+                        live={costOfLivingLive}
                     />
                 </div>
             </div>

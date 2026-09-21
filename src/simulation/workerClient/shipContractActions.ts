@@ -530,6 +530,7 @@ export function handleAcceptConstructionContract(
         maximumConstructionServiceConsumption: 10,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
 
     const fulfillmentDueAtTick = state.tick + (contract.expiresAtTick - state.tick);
@@ -1463,6 +1464,7 @@ export function handleDispatchConstructionShip(
             maximumConstructionServiceConsumption: 10,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
     }
 

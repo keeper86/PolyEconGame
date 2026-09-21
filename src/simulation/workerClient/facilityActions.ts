@@ -96,6 +96,7 @@ export function handleBuildFacility(
         totalConstructionServiceRequired: cost,
         maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
     newFacility.scale = 0;
     newFacility.maxScale = 0;
@@ -177,6 +178,7 @@ export function handleExpandFacility(
         totalConstructionServiceRequired: cost,
         maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
     console.log(
         `[worker] Agent '${agentId}' expanding '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
@@ -374,6 +376,9 @@ export function handleFacilityAction(
         case 'cancelConstruction':
             handleCancelConstruction(state, action, safePostMessage);
             break;
+        case 'setConstructionSuspended':
+            handleSetConstructionSuspended(state, action, safePostMessage);
+            break;
         default:
             break;
     }
@@ -426,6 +431,7 @@ function handleBuildShipConstructionFacility(
         totalConstructionServiceRequired: cost,
         maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
     newFacility.scale = targetScale;
     newFacility.maxScale = 0;
@@ -504,6 +510,7 @@ function handleExpandShipConstructionFacility(
         totalConstructionServiceRequired: cost,
         maximumConstructionServiceConsumption: cost / time,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
     console.log(
         `[worker] Agent '${agentId}' expanding ship construction facility '${facilityId}' to scale ${targetScale} on planet '${planetId}'`,
@@ -719,4 +726,71 @@ export function handleCancelConstruction(
         console.log(`[worker] Agent '${agentId}' cancelled expansion of '${facilityId}' on planet '${planetId}'`);
     }
     safePostMessage({ type: 'constructionCancelled', requestId, agentId, facilityId, processedAtTick: state.tick });
+}
+
+export function handleSetConstructionSuspended(
+    state: GameState,
+    action: Extract<PendingAction, { type: 'setConstructionSuspended' }>,
+    safePostMessage: (msg: OutboundMessage) => void,
+): void {
+    const { requestId, agentId, planetId, facilityId, suspended } = action;
+    const agent = state.agents.get(agentId);
+    if (!agent) {
+        safePostMessage({
+            type: 'constructionSuspensionSetFailed',
+            requestId,
+            reason: 'Agent not found',
+            processedAtTick: state.tick,
+        });
+        return;
+    }
+    const assets = agent.assets[planetId];
+    if (!assets) {
+        safePostMessage({
+            type: 'constructionSuspensionSetFailed',
+            requestId,
+            reason: `Agent has no assets on planet '${planetId}'`,
+            processedAtTick: state.tick,
+        });
+        return;
+    }
+
+    const facility =
+        assets.productionFacilities.find((f) => f.id === facilityId) ??
+        (assets.humanResourcesDepartment?.id === facilityId ? assets.humanResourcesDepartment : undefined) ??
+        (assets.storage.department?.id === facilityId ? assets.storage.department : undefined) ??
+        assets.shipConstructionFacilities.find((f) => f.id === facilityId) ??
+        storageShellById(assets, facilityId);
+
+    if (!facility) {
+        safePostMessage({
+            type: 'constructionSuspensionSetFailed',
+            requestId,
+            reason: `Facility '${facilityId}' not found`,
+            processedAtTick: state.tick,
+        });
+        return;
+    }
+    if (!facility.construction) {
+        safePostMessage({
+            type: 'constructionSuspensionSetFailed',
+            requestId,
+            reason: 'Facility is not under construction',
+            processedAtTick: state.tick,
+        });
+        return;
+    }
+
+    facility.construction.suspended = suspended;
+    console.log(
+        `[worker] Agent '${agentId}' ${suspended ? 'suspended' : 'resumed'} construction of '${facilityId}' on planet '${planetId}'`,
+    );
+    safePostMessage({
+        type: 'constructionSuspensionSet',
+        requestId,
+        agentId,
+        facilityId,
+        suspended,
+        processedAtTick: state.tick,
+    });
 }

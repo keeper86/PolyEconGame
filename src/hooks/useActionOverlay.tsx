@@ -14,6 +14,8 @@ export type PendingAction = {
         | 'contract'
         | 'scaleChange'
         | 'cancel'
+        | 'suspend'
+        | 'resume'
         | 'marketBuyPrice'
         | 'marketBuyAutomation'
         | 'marketBuyPricingConfig'

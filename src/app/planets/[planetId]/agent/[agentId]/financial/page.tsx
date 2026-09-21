@@ -32,6 +32,9 @@ export default function FinancialPage() {
     const { data: loanConditionsData } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
     const loanConditions = loanConditionsData?.conditions ?? {
         lastMonthlyRevenue: 0,
         lastMonthlyWages: 0,
@@ -69,7 +72,20 @@ export default function FinancialPage() {
                                     agentId={agentId}
                                 />
                                 <Separator />
-                                <AgentFinancialCharts agentId={agentId} planetId={planetId} />
+                                <AgentFinancialCharts
+                                    agentId={agentId}
+                                    planetId={planetId}
+                                    live={{
+                                        tick,
+                                        avgNetBalance:
+                                            (assets.deposits ?? 0) - totalOutstandingLoans(assets.activeLoans ?? []),
+                                        avgAssetValue: financials?.assetValue ?? 0,
+                                        avgMonthlyNetIncome: assets.monthAcc.revenue,
+                                        avgWages: assets.monthAcc.wages,
+                                        sumPurchases: assets.monthAcc.purchases,
+                                        sumClaimPayments: assets.monthAcc.claimPayments,
+                                    }}
+                                />
                                 <ProductResolutionPanel
                                     monthAcc={assets.monthAcc}
                                     lastMonthAcc={assets.lastMonthAcc}

@@ -1,6 +1,6 @@
 import { CURRENCY_RESOURCE_PREFIX } from '@/simulation/market/currencyResources';
 import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
-import { allServices, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
+import { allServices, computeCostOfLiving, serviceKeyOf } from '@/simulation/market/serviceDefinitions';
 import { TRADABLE_RESOURCES } from '@/simulation/planet/resourceCatalog';
 import { constructionServiceResourceType, groceryServiceResourceType } from '@/simulation/planet/services';
 import { z } from 'zod';
@@ -9,7 +9,12 @@ import { educationLevelKeys } from '../../simulation/population/education';
 import type { ServiceName } from '../../simulation/population/population';
 import { OCCUPATIONS } from '../../simulation/population/population';
 import { computePopulationTotal } from '../../simulation/snapshotRepository';
-import { EPSILON, RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '../../simulation/constants';
+import {
+    EPSILON,
+    RECYCLER_BASE_RECOVERY_EFFICIENCY,
+    RECYCLER_PAYMENT_RATIO,
+    TICKS_PER_YEAR,
+} from '../../simulation/constants';
 import { getRecyclerPaymentRatio } from '../../simulation/agents/recycler';
 import { getLatestTick } from '../../simulation/workerClient/manager';
 import { getAgentSync, getPlanetSync, getPlanetWithAgentsSync } from '../../simulation/workerClient/syncQueries';
@@ -119,6 +124,10 @@ export const getPlanetEconomy = () =>
                         governmentBalance: z.number(),
                         wagePerEdu: z.record(z.string(), z.number()).nullable(),
                         priceLevel: z.number().nullable(),
+                        gdp: z.number(),
+                        moneySupply: z.number(),
+                        costOfLiving: z.number(),
+                        costOfLivingRich: z.number(),
                     })
                     .nullable(),
             }),
@@ -130,6 +139,9 @@ export const getPlanetEconomy = () =>
                 return { tick, economy: null };
             }
             const { agent: government } = getAgentSync(planet.governmentId);
+            const gdp =
+                Object.values(planet.avgMarketResult).reduce((sum, r) => sum + r.clearingPrice * r.totalVolume, 0) *
+                TICKS_PER_YEAR;
             return {
                 tick,
                 economy: {
@@ -138,6 +150,10 @@ export const getPlanetEconomy = () =>
                     governmentBalance: government?.assets[planet.id]?.deposits ?? 0,
                     wagePerEdu: planet.wagePerEdu as Record<string, number>,
                     priceLevel: planet.marketPrices[groceryServiceResourceType.name] ?? null,
+                    gdp,
+                    moneySupply: planet.bank.deposits,
+                    costOfLiving: computeCostOfLiving(planet, false),
+                    costOfLivingRich: computeCostOfLiving(planet, true),
                 },
             };
         });

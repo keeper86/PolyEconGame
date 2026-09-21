@@ -414,6 +414,19 @@ export const cancelConstructionSpec: CommandSpec<
     extract: (msg) => ({ processedAtTick: msg.processedAtTick }),
 };
 
+type SetConstructionSuspendedSuccess = Extract<OutboundMessage, { type: 'constructionSuspensionSet' }>;
+type SetConstructionSuspendedFailure = Extract<OutboundMessage, { type: 'constructionSuspensionSetFailed' }>;
+export const setConstructionSuspendedSpec: CommandSpec<
+    Extract<InboundMessage, { type: 'setConstructionSuspended' }>,
+    SetConstructionSuspendedSuccess,
+    SetConstructionSuspendedFailure,
+    { processedAtTick: number }
+> = {
+    successType: 'constructionSuspensionSet',
+    failureType: 'constructionSuspensionSetFailed',
+    extract: (msg) => ({ processedAtTick: msg.processedAtTick }),
+};
+
 type ContractFacilitySuccess = Extract<OutboundMessage, { type: 'facilityContracted' }>;
 type ContractFacilityFailure = Extract<OutboundMessage, { type: 'facilityContractFailed' }>;
 export const contractFacilitySpec: CommandSpec<

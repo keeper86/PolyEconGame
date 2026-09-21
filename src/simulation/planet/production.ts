@@ -77,6 +77,10 @@ export function consumeConstructionForFacility(
     }
     const resourceName = constructionServiceResourceType.name;
     const cs = facility.construction;
+    if (cs.suspended) {
+        cs.lastTickInvestedConstructionServices = 0;
+        return 0;
+    }
     const available = queryStorageFacility(storage, constructionServiceResourceType.name);
     let toConsume = Math.min(cs.maximumConstructionServiceConsumption, available);
     cs.lastTickInvestedConstructionServices = toConsume;

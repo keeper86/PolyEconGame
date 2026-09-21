@@ -9,7 +9,7 @@ import {
 import { totalOutstandingLoans } from '../../src/simulation/financial/loanTypes';
 import { computeNormalizedBuffer } from '../../src/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '../../src/simulation/market/serviceDefinitions';
-import { computeFacilityConditionEfficiency, queryStorageFacility } from '../../src/simulation/planet/facility';
+import { computeFacilityConditionEfficiency, getFormStorageStarvation, getTransportStarvation, queryStorageFacility, storageFormKeys } from '../../src/simulation/planet/facility';
 import { facilityMaintenanceConsumptionPerTick } from '../../src/simulation/planet/facilityMaintenance';
 import { coalDepositResourceType, ironOreDepositResourceType, oilReservoirResourceType, sandDepositResourceType } from '../../src/simulation/planet/landBoundResources';
 import { bankEquity, type GameState, type Planet } from '../../src/simulation/planet/planet';
@@ -192,6 +192,14 @@ function tierAveragePrice(planet: Planet, level: string): number {
         return 0;
     }
     return prices.reduce((a, b) => a + b, 0) / prices.length;
+}
+
+function storageStarvationOf(assets: { storage: import('../../src/simulation/planet/facility').Storage }): number {
+    let starvation = getTransportStarvation(assets.storage);
+    for (const form of storageFormKeys()) {
+        starvation = Math.max(starvation, getFormStorageStarvation(assets.storage, form));
+    }
+    return starvation;
 }
 
 export function sampleMetrics(gameState: GameState): MetricMap {
@@ -490,7 +498,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
             }
         }
         depreciatedNaturalValue += assets.monthAcc.naturalDepreciationValue ?? 0;
-        const ss = assets.storage.department?.storageStarvation ?? 0;
+        const ss = storageStarvationOf(assets);
         if (ss > maxStorageStarvation) {
             maxStorageStarvation = ss;
         }
@@ -902,7 +910,7 @@ export function sampleMetrics(gameState: GameState): MetricMap {
         }
         const storageDept = assets.storage?.department;
         if (storageDept) {
-            storageStarvationSum += storageDept.storageStarvation ?? 0;
+            storageStarvationSum += storageStarvationOf(assets);
             storageStarvationCount += 1;
             maxMaintenanceSum += storageDept.maxMaintenance ?? 1;
             maxMaintenanceCount += 1;

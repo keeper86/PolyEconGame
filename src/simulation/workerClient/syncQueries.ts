@@ -4,6 +4,7 @@ import type { ShipCapitalMarket } from '../ships/ships';
 import type { TickerEvent, LoanConditions } from '../../server/controller/simulation';
 import type { Loan } from '../financial/loanTypes';
 import { computeLoanConditions } from '../financial/loanConditions';
+import { computeAssetValueBreakdown } from '../financial/assetValuation';
 
 /**
  * Synchronous query accessors that read from the cached game state.
@@ -87,6 +88,20 @@ export function getLoanConditionsSync(
         conditions: computeLoanConditions(agent, planet, cache.shipCapitalMarket),
         activeLoans: agent.assets[planetId]?.activeLoans ?? [],
     };
+}
+
+export function getAgentAssetValueSync(agentId: string, planetId: string): number {
+    const cache = getCache();
+    if (!cache) {
+        return 0;
+    }
+    const agent = cache.agentsById.get(agentId);
+    const assets = agent?.assets[planetId];
+    if (!agent || !assets) {
+        return 0;
+    }
+    const planet = cache.planetsById.get(planetId);
+    return computeAssetValueBreakdown(agent, assets, planet, cache.shipCapitalMarket).total;
 }
 
 export function getShipCapitalMarketSync(): { shipCapitalMarket: ShipCapitalMarket } {

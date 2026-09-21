@@ -1,6 +1,6 @@
 import { CONSTRUCTION_VALUATION_PRICE_CAP, RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
 import type { Facility } from '../planet/facility';
-import { calculateCostsForConstruction, getFacilityType } from '../planet/facility';
+import { calculateCostsForConstruction, getFacilityType, getWholeStorage } from '../planet/facility';
 import type { Agent, AgentPlanetAssets, Planet } from '../planet/planet';
 import { getAllFacilities } from '../planet/planet';
 import { constructionServiceResourceType } from '../planet/services';
@@ -78,4 +78,39 @@ export function constructionValuationPrice(planet: Planet): number {
         return csMarketPrice;
     }
     return Math.min(csMarketPrice, CONSTRUCTION_VALUATION_PRICE_CAP * costFloor);
+}
+
+export type AssetValueBreakdown = {
+    facilitiesValue: number;
+    shipsValue: number;
+    storageValue: number;
+    total: number;
+};
+
+export function computeAssetValueBreakdown(
+    agent: Agent,
+    assets: AgentPlanetAssets,
+    planet: Planet | undefined,
+    shipCapitalMarket: ShipCapitalMarket,
+): AssetValueBreakdown {
+    let storageValue = 0;
+    for (const [, entry] of getWholeStorage(assets.storage)) {
+        if (entry?.quantity) {
+            const price = planet?.marketPrices[entry.resource.name] ?? 0;
+            storageValue += entry.quantity * price;
+        }
+    }
+
+    const facilitiesValue = computeFacilitiesValue(
+        assets,
+        planet?.marketPrices[constructionServiceResourceType.name] ?? 0,
+    );
+    const shipsValue = computeShipsValue(agent, shipCapitalMarket, planet?.marketPrices ?? {});
+
+    return {
+        facilitiesValue,
+        shipsValue,
+        storageValue,
+        total: facilitiesValue + shipsValue + storageValue,
+    };
 }

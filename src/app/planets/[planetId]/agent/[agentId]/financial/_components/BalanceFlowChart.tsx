@@ -1,6 +1,16 @@
 'use client';
 
 import { tickToDate } from '@/components/client/TickDisplay';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    DECADE_WINDOW,
+    YEAR_WINDOW,
+    decadeAxis,
+    decadeStart,
+    formatMonthLabel,
+    yearAxis,
+    yearStart,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -20,8 +30,12 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     alignedYDomains,
-    bucketDecadeLabel,
+    bucketDecadeMid,
+    bucketYearMid,
+    formatDecadeLabel,
+    formatYearLabel,
     type FinancialChartPoint,
+    type FinancialLive,
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
@@ -30,11 +44,31 @@ export function BalanceFlowChart({
     data,
     ghostData,
     granularity,
+    live,
 }: {
     data: FinancialChartPoint[] | FinancialPoint[];
     ghostData?: FinancialChartPoint[];
     granularity: Granularity;
+    live?: FinancialLive;
 }) {
+    const liveRow = useMemo(() => {
+        if (!live || live.tick <= 0) {
+            return null;
+        }
+        return {
+            xVal: liveYearX(live.tick),
+            year: tickToDate(live.tick).year,
+            cashBalance: live.avgNetBalance,
+            assetValue: live.avgAssetValue,
+            netPosition: live.avgNetBalance + live.avgAssetValue,
+            netIncome: live.avgMonthlyNetIncome - (live.avgWages + live.sumPurchases + live.sumClaimPayments),
+            ghostCashBalance: null,
+            ghostAssetValue: null,
+            ghostNetPosition: null,
+            ghostNetIncome: null,
+        };
+    }, [live]);
+
     const chartData = useMemo(() => {
         if (granularity === 'monthly') {
             const currentPts = data as FinancialChartPoint[];
@@ -76,13 +110,13 @@ export function BalanceFlowChart({
                 });
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        return (data as FinancialPoint[]).map((p) => {
-            const { year, monthIndex } = tickToDate(p.bucket);
+        const rows = (data as FinancialPoint[]).map((p) => {
+            const { monthIndex } = tickToDate(p.bucket);
+            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
             return {
-                xVal: year + 1,
-                year: year + 1,
+                xVal,
+                year: xVal,
                 monthIndex,
-                label: granularity === 'decade' ? bucketDecadeLabel(p.bucket) : undefined,
                 cashBalance: p.avgNetBalance,
                 assetValue: p.avgAssetValue,
                 netPosition: p.avgNetBalance + p.avgAssetValue,
@@ -95,7 +129,8 @@ export function BalanceFlowChart({
                 ghostNetIncome: null,
             };
         });
-    }, [data, ghostData, granularity]);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [data, ghostData, granularity, liveRow]);
 
     const [domainBalance, domainIncome] = useMemo(() => {
         const balanceVals = chartData
@@ -118,45 +153,41 @@ export function BalanceFlowChart({
             };
         }
         if (granularity === 'yearly') {
-            const yearlyPts = data as FinancialPoint[];
-            const xMin = yearlyPts.length > 0 ? tickToDate(yearlyPts[0].bucket).year + 1 : 0;
+            const yearlyPts = (data as FinancialPoint[]).slice(-YEAR_WINDOW);
+            const axis = yearAxis(yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : 0, liveRow?.xVal);
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
-                domain: [xMin, xMin + 10] as [number, number],
-                ticks: Array.from({ length: 10 }, (_, i) => xMin + i + 0.5),
-                tickFormatter: (v: number) => String(Math.floor(v)),
+                domain: axis.domain,
+                ticks: axis.ticks,
+                tickFormatter: axis.tickFormatter,
                 gridVertical: true,
-                gridValues: Array.from({ length: 11 }, (_, i) => xMin + i),
+                gridValues: axis.gridValues,
             };
         }
+        const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
+        const decade = decadeAxis(decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : 0, liveRow?.xVal);
         return {
-            dataKey: 'label' as const,
-            type: 'category' as const,
-            domain: undefined,
-            ticks: undefined,
-            tickFormatter: undefined,
-            gridVertical: false,
-            gridValues: undefined,
+            dataKey: 'xVal' as const,
+            type: 'number' as const,
+            domain: decade.domain,
+            ticks: decade.ticks,
+            tickFormatter: decade.tickFormatter,
+            gridVertical: true,
+            gridValues: decade.gridValues,
         };
-    }, [granularity, data]);
+    }, [granularity, data, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [
-                        p.monthIdx,
-                        p.monthIdx === 0 ? 'Previous December' : `${MONTH_NAMES[p.monthIdx - 1] ?? ''} ${p.year}`,
-                    ]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        if (granularity === 'yearly') {
-            return (label: number) => String(Math.floor(label));
-        }
-        return undefined;
+        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
     }, [granularity, chartData]);
 
     return (

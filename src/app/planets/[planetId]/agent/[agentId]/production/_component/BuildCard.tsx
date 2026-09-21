@@ -154,11 +154,19 @@ function ConstructionDisplay({
             ? Math.min(100, (cs.progress / cs.totalConstructionServiceRequired) * 100)
             : 0;
 
-    // Check for pending cancel for this facility
-    const pendingCancelAction = usePendingActions(agentId, planetId).find(
-        (a) => a.type === 'cancel' && a.facilityId === facility.id,
+    // Check for a pending cancel/suspend/resume action for this facility
+    const pendingAction = usePendingActions(agentId, planetId).find(
+        (a) => (a.type === 'cancel' || a.type === 'suspend' || a.type === 'resume') && a.facilityId === facility.id,
     );
-    const isPending = pendingCancelAction !== undefined;
+    const isPendingSuspension = pendingAction?.type === 'suspend' || pendingAction?.type === 'resume';
+    const pendingMessage =
+        pendingAction?.type === 'cancel'
+            ? 'Cancellation pending…'
+            : pendingAction?.type === 'suspend'
+              ? 'Suspension pending…'
+              : pendingAction?.type === 'resume'
+                ? 'Resume pending…'
+                : null;
 
     return (
         <FacilityCardShell
@@ -204,14 +212,18 @@ function ConstructionDisplay({
             </div>
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ConstructionCompactRow facility={facility} hideCancel={hideCancel} />
+                <ConstructionCompactRow
+                    facility={facility}
+                    isPendingSuspension={isPendingSuspension}
+                    hideCancel={hideCancel}
+                />
 
                 {/* Blocking overlay only over the action controls */}
-                {pendingCancelAction && (
+                {pendingAction && (
                     <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
                         <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
                             <Spinner className='h-4 w-4' />
-                            {isPending ? 'Cancellation pending…' : 'Awaiting next day…'}
+                            {pendingMessage ?? 'Awaiting next day…'}
                         </span>
                     </div>
                 )}

@@ -1,4 +1,4 @@
-import { isFacilityOperating } from '../planet/facility';
+import { isConstructionActive, isFacilityOperating } from '../planet/facility';
 import type { AgentPlanetAssets } from '../planet/planet';
 import { getAllFacilities } from '../planet/planet';
 import {
@@ -92,8 +92,8 @@ export function computeConsumptionBreakdown(
     // ── Construction services (any facility with active construction) ──────
     if (isConstructionService) {
         for (const f of allFacilities) {
-            if (f.construction !== null) {
-                const rate = f.construction.maximumConstructionServiceConsumption;
+            if (isConstructionActive(f)) {
+                const rate = f.construction!.maximumConstructionServiceConsumption;
                 if (rate > 0) {
                     breakdown.push({
                         sourceType: 'construction_service',
@@ -246,8 +246,8 @@ export function computeAllConsumptionRates(
 
     // ── Construction services (any facility with active construction) ──────
     for (const f of allFacilities) {
-        if (f.construction !== null) {
-            add(constructionServiceResourceType, f.construction.maximumConstructionServiceConsumption);
+        if (isConstructionActive(f)) {
+            add(constructionServiceResourceType, f.construction!.maximumConstructionServiceConsumption);
         }
     }
 

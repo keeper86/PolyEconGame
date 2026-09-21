@@ -84,6 +84,7 @@ function markUnderConstruction(facility: ProductionFacility): void {
         maximumConstructionServiceConsumption: 10,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
 }
 
@@ -95,6 +96,7 @@ function markExpanding(facility: ProductionFacility): void {
         maximumConstructionServiceConsumption: 10,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
 }
 
@@ -557,6 +559,7 @@ describe('computeOtherConstructionCosts', () => {
                 maximumConstructionServiceConsumption: 5,
                 progress: 30,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         });
         const hr = makeHRFacility(undefined, {
@@ -567,6 +570,7 @@ describe('computeOtherConstructionCosts', () => {
                 maximumConstructionServiceConsumption: 5,
                 progress: 20,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         });
         const storageDepartment = makeStorageFacility().department!;
@@ -577,6 +581,7 @@ describe('computeOtherConstructionCosts', () => {
             maximumConstructionServiceConsumption: 5,
             progress: 10,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
         const shipyard = makeShipConstructionFacility(undefined, {
             construction: {
@@ -586,6 +591,7 @@ describe('computeOtherConstructionCosts', () => {
                 maximumConstructionServiceConsumption: 5,
                 progress: 0,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         });
         assets.productionFacilities = [production];
@@ -620,6 +626,7 @@ describe('computeOtherConstructionCosts', () => {
                     maximumConstructionServiceConsumption: 5,
                     progress: 120,
                     lastTickInvestedConstructionServices: 0,
+                    suspended: false,
                 },
             }),
         ];

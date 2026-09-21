@@ -46,6 +46,7 @@ describe('FacilityHeader', () => {
                 maximumConstructionServiceConsumption: 50,
                 progress: 200,
                 lastTickInvestedConstructionServices: 40,
+                suspended: false,
             },
         });
         const results = makeResults();
@@ -67,6 +68,7 @@ describe('FacilityHeader', () => {
                 maximumConstructionServiceConsumption: 50,
                 progress: 200,
                 lastTickInvestedConstructionServices: 40,
+                suspended: false,
             },
         });
 
@@ -97,6 +99,7 @@ describe('FacilityHeader', () => {
                 maximumConstructionServiceConsumption: 50,
                 progress: 200,
                 lastTickInvestedConstructionServices: 40,
+                suspended: false,
             },
         });
         const results = makeResults();

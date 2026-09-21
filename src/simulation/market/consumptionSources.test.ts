@@ -54,6 +54,7 @@ describe('consumptionSources — facility restoration demand', () => {
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
         const assets = makeAssets(facility);
 
@@ -69,5 +70,24 @@ describe('consumptionSources — facility restoration demand', () => {
         const info = computeConsumptionBreakdown(assets, [], 'p', constructionServiceResourceType.name);
 
         expect(info.breakdown.some((item) => item.sourceType === 'restoration')).toBe(true);
+    });
+    it('omits construction-service demand for a suspended construction', () => {
+        const facility = makeDegradedProducer('suspended-construction');
+        facility.construction = {
+            type: 'new',
+            constructionTargetMaxScale: 2,
+            totalConstructionServiceRequired: 1000,
+            maximumConstructionServiceConsumption: 20,
+            progress: 0,
+            lastTickInvestedConstructionServices: 0,
+            suspended: true,
+        };
+        const assets = makeAssets(facility);
+
+        const rates = computeAllConsumptionRates(assets, [], 'p');
+        expect(rates.get(constructionServiceResourceType.name)).toBeUndefined();
+
+        const info = computeConsumptionBreakdown(assets, [], 'p', constructionServiceResourceType.name);
+        expect(info.breakdown.some((item) => item.sourceType === 'construction_service')).toBe(false);
     });
 });
