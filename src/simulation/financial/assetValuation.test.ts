@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY } from '../constants';
-import { calculateCostsForConstruction } from '../planet/facility';
+import { calculateCostsForConstruction, putIntoStorageFacility, queryStorageFacility } from '../planet/facility';
 import type { AgentPlanetAssets } from '../planet/planet';
-import { makeAgentPlanetAssets, makeProductionFacility } from '../utils/testHelper';
-import { computeFacilitiesValue } from './assetValuation';
+import { groceryServiceResourceType } from '../planet/services';
+import { makeAgent, makeAgentPlanetAssets, makePlanet, makeProductionFacility } from '../utils/testHelper';
+import { computeAssetValueBreakdown, computeFacilitiesValue } from './assetValuation';
 
 const CS_PRICE = 10;
 
@@ -135,5 +136,39 @@ describe('computeFacilitiesValue', () => {
             maxMaintenance: 1,
         });
         expect(computeFacilitiesValue(assets, 0)).toBe(0);
+    });
+});
+
+describe('computeAssetValueBreakdown', () => {
+    const noShips = { tradeHistory: [], emaPrice: {} };
+
+    it('matches the facilities value computed for the history writer', () => {
+        const agent = makeAgent();
+        const assets = agent.assets.p!;
+        assets.storage.department = null;
+        const planet = makePlanet({ marketPrices: { Construction: CS_PRICE } });
+
+        const breakdown = computeAssetValueBreakdown(agent, assets, planet, noShips);
+
+        expect(breakdown.facilitiesValue).toBeCloseTo(computeFacilitiesValue(assets, CS_PRICE));
+        expect(breakdown.shipsValue).toBe(0);
+        expect(breakdown.storageValue).toBe(0);
+        expect(breakdown.total).toBeCloseTo(breakdown.facilitiesValue);
+    });
+
+    it('includes service inventory in the storage value', () => {
+        const agent = makeAgent();
+        const assets = agent.assets.p!;
+        assets.storage.department = null;
+        putIntoStorageFacility(assets.storage, groceryServiceResourceType, 10);
+
+        const stored = queryStorageFacility(assets.storage, groceryServiceResourceType.name);
+        expect(stored).toBeGreaterThan(0);
+
+        const planet = makePlanet({ marketPrices: { [groceryServiceResourceType.name]: 5 } });
+        const breakdown = computeAssetValueBreakdown(agent, assets, planet, noShips);
+
+        expect(breakdown.storageValue).toBeCloseTo(stored * 5);
+        expect(breakdown.total).toBeCloseTo(breakdown.facilitiesValue + breakdown.shipsValue + breakdown.storageValue);
     });
 });

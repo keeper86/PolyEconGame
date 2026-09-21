@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { DECADE_WINDOW, decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
+import { decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -24,6 +24,7 @@ import {
     bucketDecadeMid,
     bucketYearMid,
     computeMacroMonthlyData,
+    decadeDisplayRows,
     formatDecadeLabel,
     formatYearLabel,
     type EconomyPoint,
@@ -64,6 +65,8 @@ export function PlanetMacroChart({
         [live],
     );
 
+    const decadeDisplayData = useMemo(() => decadeDisplayRows(data), [data]);
+
     const chartData = useMemo((): MacroChartPoint[] => {
         if (granularity === 'monthly') {
             return computeMacroMonthlyData(data, currentTick, live);
@@ -91,7 +94,7 @@ export function PlanetMacroChart({
         }
 
         return takeLive(
-            data.slice(-DECADE_WINDOW).map((p) => {
+            decadeDisplayData.map((p) => {
                 const yearMid = bucketDecadeMid(p.bucket);
                 return {
                     xVal: yearMid,
@@ -105,7 +108,7 @@ export function PlanetMacroChart({
                 };
             }),
         );
-    }, [data, granularity, currentTick, live, liveRow]);
+    }, [data, granularity, currentTick, live, liveRow, decadeDisplayData]);
 
     const domainCurrency = useMemo(() => {
         const vals: number[] = [];
@@ -162,7 +165,10 @@ export function PlanetMacroChart({
                 gridValues: axis.gridValues,
             };
         }
-        const decade = decadeAxis(data.length > 0 ? decadeStart(data[0].bucket) : 0, liveRow?.xVal);
+        const decade = decadeAxis(
+            decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : 0,
+            liveRow?.xVal,
+        );
         return {
             dataKey: 'xVal' as const,
             type: 'number' as const,
@@ -172,7 +178,7 @@ export function PlanetMacroChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, liveRow]);
+    }, [granularity, data, decadeDisplayData, liveRow]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {

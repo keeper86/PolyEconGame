@@ -2,9 +2,7 @@ import { parentPort, workerData, type MessagePort } from 'node:worker_threads';
 import knexConfig from '../../knexfile.js';
 import { advanceTick, seedRng } from './engine';
 import { totalOutstandingLoans } from './financial/loanTypes';
-import { computeFacilitiesValue, computeShipsValue } from './financial/assetValuation';
-import { constructionServiceResourceType } from './planet/services';
-import { getWholeStorage } from './planet/facility';
+import { computeAssetValueBreakdown } from './financial/assetValuation';
 import {
     getLatestGameSnapshot,
     insertAgentMonthlyHistory,
@@ -299,24 +297,19 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 const facilityCount = assets.productionFacilities.length;
 
                 const planet = gs.planets.get(planetId);
-                let storageValue = 0;
-                for (const [, entry] of getWholeStorage(assets.storage)) {
-                    if (entry?.quantity) {
-                        const price = planet?.marketPrices[entry.resource.name] ?? 0;
-                        storageValue += entry.quantity * price;
-                    }
-                }
-
-                const csPrice = planet?.marketPrices[constructionServiceResourceType.name] ?? 0;
-                const facilitiesValue = computeFacilitiesValue(assets, csPrice);
-                const shipsValue = computeShipsValue(agent, gs.shipCapitalMarket, planet?.marketPrices ?? {});
+                const { storageValue, total: assetValue } = computeAssetValueBreakdown(
+                    agent,
+                    assets,
+                    planet,
+                    gs.shipCapitalMarket,
+                );
 
                 return {
                     tick,
                     planet_id: planetId,
                     agent_id: agent.id,
                     net_balance: cashBalance,
-                    asset_value: facilitiesValue + shipsValue + storageValue,
+                    asset_value: assetValue,
                     monthly_net_income: monthlyNetIncome,
                     total_workers: totalWorkers,
                     wages: assets.monthAcc.wages,

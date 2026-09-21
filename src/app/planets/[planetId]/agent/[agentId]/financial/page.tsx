@@ -32,6 +32,9 @@ export default function FinancialPage() {
     const { data: loanConditionsData } = useSimulationQuery(
         trpc.simulation.getLoanConditions.queryOptions({ agentId, planetId }),
     );
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
     const loanConditions = loanConditionsData?.conditions ?? {
         lastMonthlyRevenue: 0,
         lastMonthlyWages: 0,
@@ -76,10 +79,7 @@ export default function FinancialPage() {
                                         tick,
                                         avgNetBalance:
                                             (assets.deposits ?? 0) - totalOutstandingLoans(assets.activeLoans ?? []),
-                                        avgAssetValue:
-                                            loanConditions.storageCollateral +
-                                            loanConditions.shipsCollateral +
-                                            loanConditions.facilitiesCollateral,
+                                        avgAssetValue: financials?.assetValue ?? 0,
                                         avgMonthlyNetIncome: assets.monthAcc.revenue,
                                         avgWages: assets.monthAcc.wages,
                                         sumPurchases: assets.monthAcc.purchases,

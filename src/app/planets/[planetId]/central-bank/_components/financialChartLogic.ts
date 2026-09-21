@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
@@ -10,6 +10,10 @@ const MONTHLY_AXIS = monthAxis();
 
 export const MONTHLY_X_TICKS = MONTHLY_AXIS.ticks;
 export const MONTHLY_GRID_VALUES = MONTHLY_AXIS.gridValues;
+
+export function decadeDisplayRows<T extends { bucket: number }>(data: T[]): T[] {
+    return [...data].sort((a, b) => a.bucket - b.bucket).slice(-DECADE_WINDOW);
+}
 
 export function raiseWagesMonotone(wages: number[]): number[] {
     const raised = [...wages];

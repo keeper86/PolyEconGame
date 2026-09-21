@@ -282,4 +282,22 @@ describe('processBankruptcy', () => {
         expect(gameState.agents.size).toBe(4);
         assertConserved(gameState, planet);
     });
+
+    it('exempts the recycler agent from bankruptcy', () => {
+        const player = makeAgent('player-co', 'p', 'Player Co');
+        const { gameState, planet } = setupWorld(player);
+        const recycler = planet.recycler;
+        const assets = recycler.assets[planet.id]!;
+        assets.lastMonthAcc.productionValue = 100_000;
+        assets.activeLoans = [makeLoan('emergency', 1_000_000, 0.05, 1, 361, true)];
+        assets.deposits = 500;
+
+        const refound = processBankruptcy(gameState, planet, recycler, 2);
+
+        expect(refound).toBeNull();
+        expect(gameState.agents.get(recycler.id)).toBe(recycler);
+        expect(assets.activeLoans).toHaveLength(1);
+        expect(assets.deposits).toBe(500);
+        expect(gameState.bankruptcies).toHaveLength(0);
+    });
 });

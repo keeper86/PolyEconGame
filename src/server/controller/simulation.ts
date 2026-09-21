@@ -33,6 +33,7 @@ import {
 } from '../../simulation/snapshotRepository';
 import { getLatestTick } from '../../simulation/workerClient/manager';
 import {
+    getAgentAssetValueSync,
     getAgentSync,
     getAllAgentsSync,
     getAllPlanetsSync,
@@ -830,13 +831,14 @@ export const getPlanetEconomyHistory = () =>
 export const getAgentFinancials = () =>
     protectedProcedure
         .input(z.object({ agentId: z.string(), planetId: z.string() }))
-        .output(z.object({ deposits: z.number(), monthlyNetCashFlow: z.number() }))
+        .output(z.object({ deposits: z.number(), monthlyNetCashFlow: z.number(), assetValue: z.number() }))
         .query(async ({ input }) => {
             const { agent } = getAgentSync(input.agentId);
             const { conditions } = getLoanConditionsSync(input.agentId, input.planetId);
             const deposits = agent?.assets?.[input.planetId]?.deposits ?? 0;
             const monthlyNetCashFlow = conditions?.monthlyNetCashFlow ?? 0;
-            return { deposits, monthlyNetCashFlow };
+            const assetValue = getAgentAssetValueSync(input.agentId, input.planetId);
+            return { deposits, monthlyNetCashFlow, assetValue };
         });
 
 export const getAgentConditions = () =>

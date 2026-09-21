@@ -1,5 +1,6 @@
 'use client';
 
+import { tickToDate } from '@/components/client/TickDisplay';
 import { GranularityButtonGroup, useGranularity, type Granularity } from '@/components/client/GranularityButtonGroup';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { Button } from '@/components/ui/button';
@@ -533,13 +534,11 @@ export default function MultiProductPriceChart({
             }
             if (hasLive) {
                 allBuckets.set(liveTick, livePoint);
+                const { monthIndex, year } = tickToDate(liveTick);
                 if (granularity === 'monthly') {
-                    const totalMonths = Math.floor(liveTick / 30);
-                    const year = START_YEAR + Math.floor(totalMonths / 12);
-                    const monthIdx = totalMonths % 12;
-                    bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
+                    bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIndex] ?? ''} ${year}`);
                 } else {
-                    bucketToYearLabel.set(liveTick, `${START_YEAR + Math.floor(liveTick / 360)}`);
+                    bucketToYearLabel.set(liveTick, `${year}`);
                 }
             }
         }
@@ -581,6 +580,10 @@ export default function MultiProductPriceChart({
     }, [mergedData, selectedProducts, scale, yTicks]);
 
     const xTickFormatter = (bucket: number) => {
+        if (bucket === liveTick) {
+            const { monthIndex, year } = tickToDate(bucket);
+            return granularity === 'monthly' ? (MONTH_NAMES[monthIndex] ?? '') : `${year}`;
+        }
         if (granularity === 'monthly') {
             const totalMonths = Math.floor(bucket / 30);
             const monthIdx = totalMonths % 12;

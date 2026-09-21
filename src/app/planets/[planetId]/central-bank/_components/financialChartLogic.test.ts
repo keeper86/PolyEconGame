@@ -4,11 +4,13 @@ import {
     bucketYearMid,
     computeCostOfLivingMonthlyData,
     computeMacroMonthlyData,
+    decadeDisplayRows,
     formatDecadeLabel,
     formatYearLabel,
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
+import { DECADE_WINDOW, decadeStart } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
@@ -190,5 +192,30 @@ describe('year tooltip labels', () => {
     it('names the decade the interval covers', () => {
         expect(formatDecadeLabel(2205)).toBe('2200s');
         expect(formatDecadeLabel(2215)).toBe('2210s');
+    });
+});
+
+describe('decadeDisplayRows', () => {
+    it('keeps only the most recent DECADE_WINDOW buckets in ascending order', () => {
+        const rows = Array.from({ length: 20 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
+
+        const display = decadeDisplayRows(rows);
+
+        expect(display).toHaveLength(DECADE_WINDOW);
+        expect(display.map((p) => p.bucket)).toEqual([14, 15, 16, 17, 18, 19].map((i) => i * TICKS_PER_YEAR + 1));
+    });
+
+    it('sorts unordered input before slicing', () => {
+        const rows = [{ bucket: 30 }, { bucket: 10 }, { bucket: 20 }];
+
+        expect(decadeDisplayRows(rows).map((p) => p.bucket)).toEqual([10, 20, 30]);
+    });
+
+    it('anchors the decade axis at the first displayed bucket rather than the oldest bucket', () => {
+        const rows = Array.from({ length: 200 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
+
+        const display = decadeDisplayRows(rows);
+
+        expect(decadeStart(display[0].bucket)).toBeGreaterThan(decadeStart(rows[0].bucket));
     });
 });
