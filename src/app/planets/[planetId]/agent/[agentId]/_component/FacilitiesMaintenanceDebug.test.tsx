@@ -48,6 +48,7 @@ describe('FacilitiesMaintenanceDebug', () => {
             maximumConstructionServiceConsumption: 1,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const assets = makeAgentPlanetAssets('p', { productionFacilities: [facility] });

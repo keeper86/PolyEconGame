@@ -26,7 +26,11 @@ import {
 } from './auxiliaryCosts';
 import { waterFacility } from './productionFacilities';
 import { waterResourceType } from './resources';
-import { groceryServiceResourceType, constructionServiceResourceType, maintenanceServiceResourceType } from './services';
+import {
+    groceryServiceResourceType,
+    constructionServiceResourceType,
+    maintenanceServiceResourceType,
+} from './services';
 import {
     ESTIMATED_HR_OVERHEAD,
     PRODUCED_HR_QUANTITY,
@@ -173,8 +177,7 @@ describe('auxiliaryCostPerTick', () => {
         const constructionPrice = planet.marketPrices[constructionServiceResourceType.name] ?? 0;
 
         const actualMaintenanceCost = facilityMaintenanceConsumptionPerTick(facility) * maintenancePrice;
-        const wearPerTick =
-            (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
+        const wearPerTick = (facilityUsageFactor(facility) * FACILITY_MAINTENANCE_DECREASE_PER_YEAR) / TICKS_PER_YEAR;
         const actualRestorationCost =
             wearPerTick *
             MAX_MAINTENANCE_DEGRADATION_PER_REPAIR_CYCLE *

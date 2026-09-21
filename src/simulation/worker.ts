@@ -171,6 +171,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     case 'expandShipConstructionFacility':
                     case 'setShipConstructionTarget':
                     case 'cancelConstruction':
+                    case 'setConstructionSuspended':
                         handleFacilityAction(state, action, safePostMessage);
                         break;
                     case 'postTransportContract':
@@ -1695,6 +1696,40 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 return;
             }
             pendingActions.push({ type: 'cancelConstruction', requestId, agentId, planetId, facilityId });
+            if (!processingTick) {
+                drainActionQueue();
+            }
+            return;
+        }
+
+        if (msg.type === 'setConstructionSuspended') {
+            const { requestId, agentId, planetId, facilityId } = msg;
+            if (!state.agents.has(agentId)) {
+                safePostMessage({
+                    type: 'constructionSuspensionSetFailed',
+                    requestId,
+                    reason: 'Agent not found',
+                    processedAtTick: state.tick,
+                });
+                return;
+            }
+            if (!state.planets.has(planetId)) {
+                safePostMessage({
+                    type: 'constructionSuspensionSetFailed',
+                    requestId,
+                    reason: `Planet '${planetId}' not found`,
+                    processedAtTick: state.tick,
+                });
+                return;
+            }
+            pendingActions.push({
+                type: 'setConstructionSuspended',
+                requestId,
+                agentId,
+                planetId,
+                facilityId,
+                suspended: msg.suspended,
+            });
             if (!processingTick) {
                 drainActionQueue();
             }

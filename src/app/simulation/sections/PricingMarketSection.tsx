@@ -193,12 +193,15 @@ Agent settlement:
     totalConstructionServiceRequired:     number,  // total service units needed
     maximumConstructionServiceConsumption: number,  // max units consumed per tick
     progress:                             number,  // cumulative investment so far
+    suspended:                            boolean, // pauses progress, consumption and bids
 }
 
 Each tick:
-  consumed = min(availableConstructionService, maximumConsumption)
-  progress += consumed
-  agent.services.construction -= consumed
+  if suspended: consumed = 0   (no progress, no consumption, no construction-service bids)
+  else:
+    consumed = min(availableConstructionService, maximumConsumption)
+    progress += consumed
+    agent.services.construction -= consumed
 
   if progress ≥ totalRequired:
     facility.maxScale  = constructionTargetMaxScale

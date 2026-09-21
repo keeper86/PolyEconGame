@@ -61,6 +61,7 @@ describe('reconcileShellScale', () => {
             maximumConstructionServiceConsumption: 50,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const remaining = reconcileShellScale(planet, agent, state, assets, shell, 10, 5000);

@@ -120,6 +120,7 @@ describe('computeFacilitiesValue', () => {
                 maximumConstructionServiceConsumption: 1,
                 progress: 50,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         });
         expect(value).toBeCloseTo(completedValue + partialValue);

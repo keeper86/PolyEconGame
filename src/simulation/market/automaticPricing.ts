@@ -29,7 +29,7 @@ import {
     getServiceSellThroughTarget,
 } from '../planet/automaticProductionScale/runtimeConfig';
 import type { Resource } from '../planet/claims';
-import { isFacilityOperating, queryStorageFacility } from '../planet/facility';
+import { isConstructionActive, isFacilityOperating, queryStorageFacility } from '../planet/facility';
 import { facilityMaintenanceRepairDeficit, facilityRestorationCapacityPerTick } from '../planet/facilityMaintenance';
 import {
     getAllFacilities,
@@ -249,10 +249,10 @@ function automaticPricingForAgent(agent: Agent, planet: Planet, maintDebug: bool
                 }
             }
         }
-        if (facility.construction !== null) {
+        if (isConstructionActive(facility)) {
             const cfg = resolveBidConfigForResource(assets, constructionServiceResourceType);
             const facilityTarget =
-                facility.construction.maximumConstructionServiceConsumption * cfg.inputBufferTargetTicks;
+                facility.construction!.maximumConstructionServiceConsumption * cfg.inputBufferTargetTicks;
             const existing = aggregatedBuyTargets.get(constructionServiceResourceType.name);
             if (existing) {
                 existing.storageTarget += facilityTarget;

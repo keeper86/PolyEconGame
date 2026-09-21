@@ -29,6 +29,7 @@ import {
     requestLoanSpec,
     setAutomationSpec,
     setBuyBidsSpec,
+    setConstructionSuspendedSpec,
     setFacilityScaleSpec,
     setSellOffersSpec,
     setShipConstructionTargetSpec,
@@ -569,6 +570,21 @@ export function workerCancelConstruction(opts: {
     return sendCommandSpec(
         { type: 'cancelConstruction', requestId: randomUUID(), agentId, planetId, facilityId },
         cancelConstructionSpec,
+        timeoutMs,
+    );
+}
+
+export function workerSetConstructionSuspended(opts: {
+    agentId: string;
+    planetId: string;
+    facilityId: string;
+    suspended: boolean;
+    timeoutMs?: number;
+}): Promise<{ result: { processedAtTick: number }; processedAtTick: number }> {
+    const { agentId, planetId, facilityId, suspended, timeoutMs } = opts;
+    return sendCommandSpec(
+        { type: 'setConstructionSuspended', requestId: randomUUID(), agentId, planetId, facilityId, suspended },
+        setConstructionSuspendedSpec,
         timeoutMs,
     );
 }

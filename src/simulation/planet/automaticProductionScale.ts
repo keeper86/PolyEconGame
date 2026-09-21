@@ -2,7 +2,12 @@ import { processFacilityContraction } from '../agents/recycler';
 import { computeBufferCapacity, computeMaxDailyHROutput } from '../workforce/hrBuffer';
 import { isAutoscaleDebugEnabled, logAutoscaleFacility, logAutoscalePlanet } from './automaticProductionScaleDebug';
 import type { HRFacility, PidState, ProductionFacility, StorageFacility } from './facility';
-import { calculateCostsForConstruction, getTransportStarvation, storageFormKeys } from './facility';
+import {
+    calculateCostsForConstruction,
+    getTransportStarvation,
+    isConstructionActive,
+    storageFormKeys,
+} from './facility';
 import type { Agent, AgentPlanetAssets, GameState, Planet } from './planet';
 import { constructionServiceResourceType } from './services';
 import { PRODUCED_HR_QUANTITY } from './specialFacilities';
@@ -332,21 +337,21 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                 }
             }
             for (const facility of assets.productionFacilities) {
-                if (facility.construction !== null) {
-                    totalActiveConstructionDemand += facility.construction.maximumConstructionServiceConsumption;
+                if (isConstructionActive(facility)) {
+                    totalActiveConstructionDemand += facility.construction!.maximumConstructionServiceConsumption;
                 }
             }
-            if (assets.humanResourcesDepartment?.construction !== null) {
+            if (assets.humanResourcesDepartment && isConstructionActive(assets.humanResourcesDepartment)) {
                 totalActiveConstructionDemand +=
-                    assets.humanResourcesDepartment?.construction.maximumConstructionServiceConsumption ?? 0;
+                    assets.humanResourcesDepartment.construction!.maximumConstructionServiceConsumption;
             }
-            if (assets.storage?.department?.construction !== null) {
+            if (assets.storage?.department && isConstructionActive(assets.storage.department)) {
                 totalActiveConstructionDemand +=
-                    assets.storage.department?.construction.maximumConstructionServiceConsumption ?? 0;
+                    assets.storage.department.construction!.maximumConstructionServiceConsumption;
             }
             for (const facility of assets.shipConstructionFacilities) {
-                if (facility.construction !== null) {
-                    totalActiveConstructionDemand += facility.construction.maximumConstructionServiceConsumption;
+                if (isConstructionActive(facility)) {
+                    totalActiveConstructionDemand += facility.construction!.maximumConstructionServiceConsumption;
                 }
             }
         }
@@ -672,6 +677,7 @@ export function updateAgentProductionScale(gameState: GameState, planet: Planet)
                         maximumConstructionServiceConsumption: adjCost / adjTime,
                         progress: 0,
                         lastTickInvestedConstructionServices: 0,
+                        suspended: false,
                     };
                     remainingConstructionBudget = Math.max(0, remainingConstructionBudget - adjCost / adjTime);
                     hrState.expansionIntegral = 0;

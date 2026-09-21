@@ -345,6 +345,7 @@ describe('updateAgentProductionScale', () => {
                 totalConstructionServiceRequired: 1000,
                 constructionTargetMaxScale: 1,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
                 maximumConstructionServiceConsumption: 100,
             },
         });
@@ -748,6 +749,7 @@ describe('updateAgentProductionScale', () => {
                 maximumConstructionServiceConsumption: 100,
                 progress: 100,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         });
         setStorageQuantity(agents, oversupplyQuantity(facility.maxScale));
@@ -773,6 +775,7 @@ describe('updateAgentProductionScale', () => {
             maximumConstructionServiceConsumption: 100,
             progress: 100,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const { agents, facility } = makeSetup(planet, {
@@ -1486,6 +1489,7 @@ describe('updateAgentProductionScale', () => {
             maximumConstructionServiceConsumption: 100,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
 
         const hrDepartment = makeHRFacility(undefined, {

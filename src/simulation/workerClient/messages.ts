@@ -280,6 +280,14 @@ export type InboundMessage =
           agentId: string;
           planetId: string;
           facilityId: string;
+      }
+    | {
+          type: 'setConstructionSuspended';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          suspended: boolean;
       };
 
 export type OutboundMessage =
@@ -332,6 +340,15 @@ export type OutboundMessage =
     | { type: 'facilityScaleSetFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'constructionCancelled'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
     | { type: 'constructionCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | {
+          type: 'constructionSuspensionSet';
+          requestId: string;
+          agentId: string;
+          facilityId: string;
+          suspended: boolean;
+          processedAtTick: number;
+      }
+    | { type: 'constructionSuspensionSetFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'claimLeased'; requestId: string; agentId: string; claimId: string; processedAtTick: number }
     | { type: 'claimLeaseFailed'; requestId: string; reason: string; processedAtTick: number }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string; processedAtTick: number }
@@ -734,4 +751,12 @@ export type PendingAction =
           agentId: string;
           planetId: string;
           facilityId: string;
+      }
+    | {
+          type: 'setConstructionSuspended';
+          requestId: string;
+          agentId: string;
+          planetId: string;
+          facilityId: string;
+          suspended: boolean;
       };

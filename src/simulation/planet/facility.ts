@@ -13,6 +13,7 @@ type ConstructionState = {
     maximumConstructionServiceConsumption: number;
     progress: number;
     lastTickInvestedConstructionServices: number;
+    suspended: boolean;
 } | null;
 
 export type FacilityType = (typeof RESOURCE_LEVELS)[number] | 'management' | 'ship_construction' | 'storage';
@@ -40,6 +41,9 @@ export function computeFacilityConditionEfficiency(maintenanceStatus: number): n
 }
 
 export const isFacilityOperating = (facility: Facility): boolean => facility.construction?.type !== 'new';
+
+export const isConstructionActive = (facility: Facility): boolean =>
+    facility.construction !== null && !facility.construction.suspended;
 
 export const MINIMUM_CONSTRUCTION_TIME_IN_TICKS = 40;
 const constructionCostFactor = 20000;

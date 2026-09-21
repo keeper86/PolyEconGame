@@ -569,6 +569,7 @@ describe('engine tick order — restoration outcompetes expansion for constructi
             maximumConstructionServiceConsumption: 20,
             progress: 0,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
         agent.assets['planet-1'].productionFacilities = [facility];
 

@@ -153,6 +153,9 @@ export function ActiveFacilityCard({
     const pendingExpandAction = pendingActions.find((a) => a.type === 'expand' && a.facilityId === facility.id);
     const pendingContractAction = pendingActions.find((a) => a.type === 'contract' && a.facilityId === facility.id);
     const pendingCancelAction = pendingActions.find((a) => a.type === 'cancel' && a.facilityId === facility.id);
+    const pendingSuspensionAction = pendingActions.find(
+        (a) => (a.type === 'suspend' || a.type === 'resume') && a.facilityId === facility.id,
+    );
 
     // If expand is pending (mutation done, awaiting tick), keep the panel visible
     const expandPending = Boolean(pendingExpandAction) && !expandMutation.isPending;
@@ -289,7 +292,11 @@ export function ActiveFacilityCard({
               ? 'Awaiting next day…'
               : pendingCancelAction
                 ? 'Cancellation pending…'
-                : null;
+                : pendingSuspensionAction
+                  ? pendingSuspensionAction.type === 'suspend'
+                      ? 'Suspension pending…'
+                      : 'Resume pending…'
+                  : null;
 
     return (
         <FacilityCardShell
@@ -349,6 +356,7 @@ export function ActiveFacilityCard({
                             <ConstructionCompactRow
                                 facility={facility}
                                 isPendingCancel={Boolean(pendingCancelAction)}
+                                isPendingSuspension={Boolean(pendingSuspensionAction)}
                             />
                         ) : showExpand || expandPending ? (
                             <FacilityConstructionPanel

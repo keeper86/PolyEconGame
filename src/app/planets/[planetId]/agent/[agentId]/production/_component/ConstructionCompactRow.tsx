@@ -23,7 +23,7 @@ import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useMutation } from '@tanstack/react-query';
-import { AlertTriangle, Clock, Timer } from 'lucide-react';
+import { AlertTriangle, Clock, Pause, Play, Timer } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
@@ -32,10 +32,12 @@ import { toast } from 'sonner';
 export function ConstructionCompactRow({
     facility,
     isPendingCancel,
+    isPendingSuspension,
     hideCancel,
 }: {
     facility: Facility;
     isPendingCancel?: boolean;
+    isPendingSuspension?: boolean;
     hideCancel?: boolean;
 }): React.ReactElement {
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
@@ -63,6 +65,24 @@ export function ConstructionCompactRow({
         }),
     );
 
+    const suspendMutation = useMutation(
+        trpc.setConstructionSuspended.mutationOptions({
+            onSuccess: (data, variables) => {
+                addPending({
+                    type: variables.suspended ? 'suspend' : 'resume',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    triggerTick: data.processedAtTick,
+                });
+                toast.success(variables.suspended ? 'Construction suspended.' : 'Construction resumed.');
+            },
+            onError: (err) => {
+                toast.error(err instanceof Error ? err.message : 'Suspension change failed');
+            },
+        }),
+    );
+
     const [showCancelDialog, setShowCancelDialog] = useState(false);
 
     const cs = facility.construction;
@@ -84,7 +104,17 @@ export function ConstructionCompactRow({
             : Infinity;
 
     let estimateDisplay: React.ReactNode = null;
-    if (ticksRemaining > 0 && isFinite(ticksRemaining)) {
+    if (cs.suspended) {
+        const suspendedMessage = smallScreen ? 'Suspended.' : 'Suspended — resume to continue construction.';
+        estimateDisplay = (
+            <div className='flex flex-row w-full justify-center text-xs text-muted-foreground'>
+                <span className='flex items-center gap-1'>
+                    <Pause className='h-3 w-3' />
+                    {suspendedMessage}
+                </span>
+            </div>
+        );
+    } else if (ticksRemaining > 0 && isFinite(ticksRemaining)) {
         const wallTimeMs = ticksRemaining * tickIntervalMs;
         const wallTime = formatWallTime(wallTimeMs, smallScreen);
         const completionDate = mapTickToDate(currentTick + Math.ceil(ticksRemaining), smallScreen);
@@ -155,24 +185,63 @@ export function ConstructionCompactRow({
                             </p>
                         </Badge>
 
-                        <span className='font-medium text-foreground'>{pct.toFixed(0)}%</span>
+                        <span className='flex items-center gap-1.5'>
+                            {cs.suspended && (
+                                <Badge
+                                    variant='secondary'
+                                    className='text-muted-foreground border-muted-foreground/30 text-[10px] px-1.5 py-0 gap-1'
+                                >
+                                    <Pause className='h-3 w-3' />
+                                    Suspended
+                                </Badge>
+                            )}
+                            <span className='font-medium text-foreground'>{pct.toFixed(0)}%</span>
+                        </span>
                     </div>
-                    <Progress value={pct} className='h-2.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500' />
+                    <Progress
+                        value={pct}
+                        className={`h-2.5 bg-amber-100 dark:bg-amber-950/40 ${cs.suspended ? '[&>div]:bg-muted-foreground/50' : '[&>div]:bg-amber-500'}`}
+                    />
                     {estimateDisplay}
                 </div>
             </div>
 
             {!hideCancel && (
                 <div className='mt-auto space-y-2'>
-                    <Button
-                        size='sm'
-                        variant='destructive'
-                        className='w-full text-xs gap-1'
-                        disabled={cancelMutation.isPending || isPendingCancel}
-                        onClick={() => setShowCancelDialog(true)}
-                    >
-                        {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
-                    </Button>
+                    <div className='flex gap-2'>
+                        <Button
+                            size='sm'
+                            variant={cs.suspended ? 'default' : 'outline'}
+                            className='flex-1 text-xs gap-1'
+                            disabled={suspendMutation.isPending || isPendingSuspension}
+                            onClick={() =>
+                                suspendMutation.mutate({
+                                    agentId,
+                                    planetId,
+                                    facilityId: facility.id,
+                                    suspended: !cs.suspended,
+                                })
+                            }
+                        >
+                            {cs.suspended ? <Play className='h-3.5 w-3.5' /> : <Pause className='h-3.5 w-3.5' />}
+                            {suspendMutation.isPending || isPendingSuspension
+                                ? cs.suspended
+                                    ? 'Resuming…'
+                                    : 'Suspending…'
+                                : cs.suspended
+                                  ? 'Resume'
+                                  : 'Suspend'}
+                        </Button>
+                        <Button
+                            size='sm'
+                            variant='destructive'
+                            className='flex-1 text-xs gap-1'
+                            disabled={cancelMutation.isPending || isPendingCancel}
+                            onClick={() => setShowCancelDialog(true)}
+                        >
+                            {cancelMutation.isPending || isPendingCancel ? 'Cancelling…' : 'Cancel'}
+                        </Button>
+                    </div>
                 </div>
             )}
 

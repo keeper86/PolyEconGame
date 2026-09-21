@@ -24,6 +24,7 @@ import {
     workerRequestLoan,
     workerSetAutomation,
     workerSetBuyBids,
+    workerSetConstructionSuspended,
     workerSetFacilityScale,
     workerSetSellOffers,
     workerSetShipConstructionTarget,
@@ -714,6 +715,44 @@ export const cancelConstruction = () => {
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
+            });
+
+            return result;
+        });
+};
+
+export const setConstructionSuspended = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                agentId: z.string().min(1),
+                planetId: z.string().min(1),
+                facilityId: z.string().min(1),
+                suspended: z.boolean(),
+            }),
+        )
+        .output(z.object({ processedAtTick: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+
+            const row = await db('user_data').where({ user_id: userId }).first();
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+            }
+            if (row.agent_id !== input.agentId) {
+                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+            }
+
+            logger.info(
+                { component: 'set-construction-suspended' },
+                `User ${userId} ${input.suspended ? 'suspending' : 'resuming'} construction for agent ${input.agentId} facility ${input.facilityId} on planet ${input.planetId}`,
+            );
+
+            const { result } = await workerSetConstructionSuspended({
+                agentId: input.agentId,
+                planetId: input.planetId,
+                facilityId: input.facilityId,
+                suspended: input.suspended,
             });
 
             return result;

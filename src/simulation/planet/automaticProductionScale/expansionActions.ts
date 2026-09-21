@@ -33,6 +33,7 @@ export function initiateCapacityExpansion(
         maximumConstructionServiceConsumption: cost / time,
         progress: 0,
         lastTickInvestedConstructionServices: 0,
+        suspended: false,
     };
     return true;
 }

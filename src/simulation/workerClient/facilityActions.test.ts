@@ -8,6 +8,7 @@ import {
     handleCancelConstruction,
     handleContractFacility,
     handleExpandFacility,
+    handleSetConstructionSuspended,
     handleSetFacilityScale,
 } from './facilityActions';
 import type { OutboundMessage } from './messages';
@@ -42,6 +43,7 @@ function makeNewFacility(planetId: string, id = 'fac-1'): ProductionFacility {
             totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
             maximumConstructionServiceConsumption: 1,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         },
         planetId,
         lastTickResults: {
@@ -325,6 +327,7 @@ function makeExpansionFacility(planetId: string, id = 'fac-2'): ProductionFacili
             totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
             maximumConstructionServiceConsumption: 1,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         },
     } as unknown as ProductionFacility;
 }
@@ -475,6 +478,7 @@ function makeNewShipyard(planetId: string, id = 'sy-1'): ShipConstructionFacilit
             totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
             maximumConstructionServiceConsumption: 1,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         },
         lastTickResults: {
             overallEfficiency: 0,
@@ -531,6 +535,7 @@ describe('handleCancelConstruction — shipyard expansion', () => {
                 totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
                 maximumConstructionServiceConsumption: 1,
                 lastTickInvestedConstructionServices: 0,
+                suspended: false,
             },
         } as unknown as ShipConstructionFacility;
         company.assets[planet.id].shipConstructionFacilities.push(shipyard);
@@ -595,6 +600,7 @@ describe('handleCancelConstruction — storage shell expansion', () => {
             totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
             maximumConstructionServiceConsumption: 1,
             lastTickInvestedConstructionServices: 0,
+            suspended: false,
         };
         const { messages, post } = makeMessages();
 
@@ -642,6 +648,171 @@ describe('handleCancelConstruction — storage shell not under construction', ()
         expect(messages[0]).toMatchObject({
             type: 'constructionCancelFailed',
             reason: 'Facility is not under construction',
+        });
+    });
+
+    describe('handleSetConstructionSuspended', () => {
+        it('suspends a new facility construction', () => {
+            const { gameState, planet, company } = setupWorld();
+            const facility = makeNewFacility(planet.id, 'fac-suspend');
+            company.assets[planet.id].productionFacilities.push(facility);
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r15',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    facilityId: 'fac-suspend',
+                    suspended: true,
+                },
+                post,
+            );
+
+            expect(messages).toHaveLength(1);
+            expect(messages[0]).toMatchObject({
+                type: 'constructionSuspensionSet',
+                agentId: company.id,
+                facilityId: 'fac-suspend',
+                suspended: true,
+            });
+            expect(facility.construction!.suspended).toBe(true);
+        });
+
+        it('resumes a suspended expansion', () => {
+            const { gameState, planet, company } = setupWorld();
+            const facility = makeExpansionFacility(planet.id, 'fac-resume');
+            facility.construction!.suspended = true;
+            company.assets[planet.id].productionFacilities.push(facility);
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r16',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    facilityId: 'fac-resume',
+                    suspended: false,
+                },
+                post,
+            );
+
+            expect(messages[0]).toMatchObject({
+                type: 'constructionSuspensionSet',
+                facilityId: 'fac-resume',
+                suspended: false,
+            });
+            expect(facility.construction!.suspended).toBe(false);
+        });
+
+        it('toggles suspension on a storage shell expansion', () => {
+            const { gameState, planet, company } = setupWorld();
+            const solid = company.assets[planet.id].storage.shells.solid;
+            solid.construction = {
+                type: 'expansion',
+                progress: 0,
+                constructionTargetMaxScale: solid.maxScale + 1,
+                totalConstructionServiceRequired: MINIMUM_CONSTRUCTION_TIME_IN_TICKS,
+                maximumConstructionServiceConsumption: 1,
+                lastTickInvestedConstructionServices: 0,
+                suspended: false,
+            };
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r17',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    facilityId: solid.id,
+                    suspended: true,
+                },
+                post,
+            );
+
+            expect(messages[0]).toMatchObject({
+                type: 'constructionSuspensionSet',
+                facilityId: solid.id,
+                suspended: true,
+            });
+            expect(solid.construction!.suspended).toBe(true);
+        });
+
+        it('fails when agent not found', () => {
+            const { gameState, planet } = setupWorld();
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r18',
+                    agentId: 'unknown-agent',
+                    planetId: planet.id,
+                    facilityId: 'fac-1',
+                    suspended: true,
+                },
+                post,
+            );
+
+            expect(messages[0]).toMatchObject({ type: 'constructionSuspensionSetFailed', reason: 'Agent not found' });
+        });
+
+        it('fails when facility not found', () => {
+            const { gameState, planet, company } = setupWorld();
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r19',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    facilityId: 'no-such-fac',
+                    suspended: true,
+                },
+                post,
+            );
+
+            expect(messages[0]).toMatchObject({
+                type: 'constructionSuspensionSetFailed',
+                reason: expect.stringContaining('not found'),
+            });
+        });
+
+        it('fails when facility is not under construction', () => {
+            const { gameState, planet, company } = setupWorld();
+            const facility = {
+                ...makeNewFacility(planet.id, 'fac-idle-suspend'),
+                construction: null,
+            } as unknown as ProductionFacility;
+            company.assets[planet.id].productionFacilities.push(facility);
+            const { messages, post } = makeMessages();
+
+            handleSetConstructionSuspended(
+                gameState,
+                {
+                    type: 'setConstructionSuspended',
+                    requestId: 'r20',
+                    agentId: company.id,
+                    planetId: planet.id,
+                    facilityId: 'fac-idle-suspend',
+                    suspended: true,
+                },
+                post,
+            );
+
+            expect(messages[0]).toMatchObject({
+                type: 'constructionSuspensionSetFailed',
+                reason: 'Facility is not under construction',
+            });
         });
     });
 });
