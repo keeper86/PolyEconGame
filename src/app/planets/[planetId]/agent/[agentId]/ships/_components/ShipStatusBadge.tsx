@@ -23,6 +23,24 @@ const STATUS_VARIANTS: Record<string, BadgeVariant> = {
     'passenger_unloading': 'outline',
 };
 
+const STATUS_LABELS: Record<string, string> = {
+    'idle': 'Idle',
+    'listed': 'Listed for sale',
+    'derelict': 'Derelict',
+    'lost': 'Lost',
+    'transporting': 'In transit',
+    'passenger_transporting': 'In transit',
+    'construction_transporting': 'In transit',
+    'loading': 'Loading',
+    'unloading': 'Unloading',
+    'pre-fabrication': 'Pre-fabrication',
+    'reconstruction': 'Reconstruction',
+    'passenger_boarding': 'Boarding',
+    'passenger_provisioning': 'Provisioning',
+    'passenger_unloading': 'Unloading',
+};
+
 export function ShipStatusBadge({ ship }: { ship: Ship }): React.ReactElement {
-    return <Badge variant={STATUS_VARIANTS[ship.state.type] ?? 'secondary'}>{ship.state.type}</Badge>;
+    const status = ship.state.type;
+    return <Badge variant={STATUS_VARIANTS[status] ?? 'secondary'}>{STATUS_LABELS[status] ?? status}</Badge>;
 }

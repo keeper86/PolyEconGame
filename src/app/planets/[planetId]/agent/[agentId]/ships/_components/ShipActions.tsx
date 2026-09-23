@@ -3,12 +3,12 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useTRPC } from '@/lib/trpc';
 import type { Ship } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
+import { PendingActionIndicator } from '../../production/_component/PendingActionIndicator';
 import { DispatchConstructionShipDialog } from './DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './DispatchPassengerShipDialog';
 import { DispatchShipDialog } from './DispatchShipDialog';
@@ -171,12 +171,7 @@ export function ShipActions({
                 </div>
             )}
 
-            {pending && (
-                <div className='flex items-center justify-center gap-2 rounded-lg bg-muted/70 py-2 text-sm font-medium text-foreground'>
-                    <Spinner className='h-4 w-4' />
-                    Awaiting next day…
-                </div>
-            )}
+            {pending && <PendingActionIndicator message='Awaiting next day…' />}
         </div>
     );
 }

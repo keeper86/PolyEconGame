@@ -124,6 +124,7 @@ export function ShipsPanel({
                         listings={listingsData?.listings ?? []}
                         contracts={contractsData?.contracts ?? []}
                         offers={buyingData?.offers ?? []}
+                        planetSummaries={planetSummariesData?.planets ?? []}
                         contractsLoading={contractsLoading}
                         offersLoading={offersLoading}
                         listingsLoading={listingsLoading}

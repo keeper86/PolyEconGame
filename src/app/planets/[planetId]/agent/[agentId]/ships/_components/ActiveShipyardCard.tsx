@@ -4,9 +4,7 @@ import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
@@ -24,6 +22,8 @@ import { FacilityCardShell } from '../../production/_component/FacilityCardShell
 import { FacilityConditionRow } from '../../production/_component/FacilityConditionRow';
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
 import { FacilityHeader } from '../../production/_component/FacilityHeader';
+import { PendingActionIndicator } from '../../production/_component/PendingActionIndicator';
+import { ShipBuildProgressRow } from './ShipBuildProgressRow';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 
 export function ActiveShipyardCard({
@@ -117,6 +117,8 @@ export function ActiveShipyardCard({
             <ShipSelectionDialog
                 open={shipDialogOpen}
                 onOpenChange={setShipDialogOpen}
+                agentId={agentId}
+                planetId={planetId}
                 isPending={setTargetMutation.isPending}
                 error={setTargetMutation.error?.message}
                 onConfirm={(shipTypeName, shipName) =>
@@ -210,15 +212,7 @@ export function ActiveShipyardCard({
                 </div>
                 {facility.produces && (
                     <>
-                        <div>
-                            <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                                <span>Build progress</span>
-                                <span className='tabular-nums font-medium text-foreground'>
-                                    {Math.round(facility.progress * 100)}%
-                                </span>
-                            </div>
-                            <Progress value={facility.progress * 100} className='h-2' />
-                        </div>
+                        <ShipBuildProgressRow shipName={facility.shipName} progress={facility.progress} />
                         <Separator />
                     </>
                 )}
@@ -253,12 +247,7 @@ export function ActiveShipyardCard({
                         </Button>
                     </div>
                 )}
-                {pending && (
-                    <div className='flex items-center justify-center gap-2 rounded-lg bg-muted/70 py-2 text-sm font-medium text-foreground'>
-                        <Spinner className='h-4 w-4' />
-                        Awaiting next day…
-                    </div>
-                )}
+                {pending && <PendingActionIndicator message='Awaiting next day…' />}
             </FacilityCardShell>
         </>
     );

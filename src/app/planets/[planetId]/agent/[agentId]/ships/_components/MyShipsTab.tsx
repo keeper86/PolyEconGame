@@ -4,10 +4,11 @@ import React from 'react';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { usePendingActions } from '@/hooks/useActionOverlay';
 import type { Ship } from '@/simulation/ships/ships';
+import { ActionPendingOverlay } from '../../production/_component/ActionPendingOverlay';
+import { CardHeaderBlock } from '../../production/_component/CardHeaderBlock';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { ShipActions } from './ShipActions';
 import { ShipConditionRow } from './ShipConditionRow';
-import { ShipHeader } from './ShipHeader';
 import { ShipStatusBadge } from './ShipStatusBadge';
 import { ShipStatusDetail } from './ShipStatusDetail';
 import type { ShipListing, ShipPlanetSummary } from './shipTypes';
@@ -58,12 +59,13 @@ export function MyShipsTab({
                     return (
                         <FacilityCardShell
                             key={ship.id}
-                            className={ship.disabled || pending ? 'opacity-50 pointer-events-none' : ''}
-                            contentClassName='flex flex-col flex-1 gap-2'
+                            className={ship.disabled ? 'opacity-50 pointer-events-none' : ''}
+                            contentClassName='relative flex flex-col flex-1 gap-2'
                             icon={<FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' size={240} />}
                             headerContent={
-                                <ShipHeader
-                                    ship={ship}
+                                <CardHeaderBlock
+                                    title={ship.name}
+                                    titleClassName=''
                                     badge={<ShipStatusBadge ship={ship} />}
                                     details={
                                         <>
@@ -94,6 +96,8 @@ export function MyShipsTab({
                                 )}
 
                             <ShipActions agentId={agentId} planetId={planetId} ship={ship} listings={listings} />
+
+                            {pending && <ActionPendingOverlay message='Awaiting next day…' />}
                         </FacilityCardShell>
                     );
                 })}

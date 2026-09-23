@@ -159,7 +159,7 @@ type BaseShipStatusUnloading = {
     posterAgentId?: string;
 };
 
-type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
+export type PassengerShipStatusUnloading = BaseShipStatusUnloading & {
     type: 'passenger_unloading';
     manifest: PassengerManifest;
 };

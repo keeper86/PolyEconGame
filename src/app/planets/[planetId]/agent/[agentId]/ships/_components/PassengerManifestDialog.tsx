@@ -18,7 +18,7 @@ type GroupedRow = {
     count: number;
 };
 
-function countManifestPassengers(manifest: PassengerManifest): number {
+export function countManifestPassengers(manifest: PassengerManifest): number {
     return Object.values(manifest).reduce((sum, cat) => sum + cat.total, 0);
 }
 

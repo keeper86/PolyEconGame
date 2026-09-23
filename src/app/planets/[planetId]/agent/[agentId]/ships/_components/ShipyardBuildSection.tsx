@@ -2,18 +2,19 @@
 
 import { FacilityOrShipIcon, defaultHeight } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation } from '@tanstack/react-query';
-import { HardHat, PlusCircle } from 'lucide-react';
+import { HardHat } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
+import { ActionPendingOverlay } from '../../production/_component/ActionPendingOverlay';
+import { BuildPlaceholderCard } from '../../production/_component/BuildPlaceholderCard';
+import { CardHeaderBlock } from '../../production/_component/CardHeaderBlock';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
 import { selectPendingShipyardBuilds } from './shipyardHelpers';
@@ -25,9 +26,10 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
             contentClassName='flex flex-col flex-1 gap-2'
             icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' buildProgress={0} />}
             headerContent={
-                <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                    <div className='flex items-center gap-1 flex-col mb-auto'>
-                        <h3 className='font-semibold leading-tight text-amber-600 dark:text-amber-400'>{name}</h3>
+                <CardHeaderBlock
+                    title={name}
+                    titleClassName='text-amber-600 dark:text-amber-400'
+                    badge={
                         <Badge
                             variant='secondary'
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
@@ -35,18 +37,14 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
                             <HardHat className='h-3.5 w-3.5' />
                             Under Construction
                         </Badge>
-                    </div>
-                </span>
+                    }
+                    details={null}
+                />
             }
         >
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                    <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                        <Spinner className='h-4 w-4' />
-                        Awaiting next day…
-                    </span>
-                </div>
+                <ActionPendingOverlay message='Awaiting next day…' />
             </div>
         </FacilityCardShell>
     );
@@ -140,14 +138,7 @@ function ShipyardBuildForm({
                         });
                     }}
                 />
-                {buildMutation.isPending && (
-                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Spinner className='h-4 w-4' />
-                            Sending build…
-                        </span>
-                    </div>
-                )}
+                {buildMutation.isPending && <ActionPendingOverlay message='Sending build…' />}
             </div>
         </FacilityCardShell>
     );
@@ -187,16 +178,7 @@ export function ShipyardBuildSection({
     return (
         <>
             {pendingCards}
-            <Card
-                className='min-w-[300px] flex items-center justify-center cursor-pointer border-dashed text-muted-foreground hover:text-foreground hover:border-foreground/50 transition-colors'
-                style={{ minHeight: '160px' }}
-                onClick={() => setConfiguring(true)}
-            >
-                <CardContent className='flex flex-col items-center gap-2 p-6'>
-                    <PlusCircle className='h-8 w-8' />
-                    <span className='text-xs font-medium'>Build shipyard</span>
-                </CardContent>
-            </Card>
+            <BuildPlaceholderCard label='Build shipyard' onClick={() => setConfiguring(true)} />
         </>
     );
 }

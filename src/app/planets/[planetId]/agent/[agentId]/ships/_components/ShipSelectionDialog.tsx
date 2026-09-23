@@ -4,15 +4,11 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { getAssetPath } from '@/lib/assetManifest';
-import { formatNumberWithUnit } from '@/lib/utils';
-import Image from 'next/image';
-import { shiptypes, constructionShipType } from '@/simulation/ships/ships';
-import type { TransportShipType, ConstructionShipType, PassengerShipType } from '@/simulation/ships/ships';
+import { constructionShipType, shiptypes } from '@/simulation/ships/ships';
+import type { ConstructionShipType, PassengerShipType, TransportShipType } from '@/simulation/ships/ships';
 import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Zap, Package, Clock, Users } from 'lucide-react';
+import { ShipBuildPlanPanel } from './ShipBuildPlanPanel';
+import { ShipTypeButton } from './ShipTypeButton';
 
 const categoryLabels: Record<keyof typeof shiptypes, string> = {
     solid: 'Bulk Carriers',
@@ -27,22 +23,26 @@ const allShipTypesByCategory = Object.entries(shiptypes).map(([key, types]) => (
     ships: Object.values(types) as (TransportShipType | PassengerShipType)[],
 }));
 
+type SelectableShipType = TransportShipType | ConstructionShipType | PassengerShipType;
+
 export function ShipSelectionDialog({
     open,
     onOpenChange,
     onConfirm,
+    agentId,
+    planetId,
     isPending,
     error,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onConfirm: (shipTypeName: string, shipName: string) => void;
+    agentId: string;
+    planetId: string;
     isPending: boolean;
     error?: string | null;
 }): React.ReactElement {
-    const [selectedShipType, setSelectedShipType] = useState<
-        TransportShipType | ConstructionShipType | PassengerShipType | null
-    >(null);
+    const [selectedShipType, setSelectedShipType] = useState<SelectableShipType | null>(null);
     const [shipName, setShipName] = useState('');
 
     const handleConfirm = () => {
@@ -73,36 +73,11 @@ export function ShipSelectionDialog({
                             Construction Ships
                         </p>
                         <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
-                            {[constructionShipType].map((shipType) => {
-                                const isSelected = selectedShipType?.name === shipType.name;
-                                return (
-                                    <button
-                                        key={shipType.name}
-                                        type='button'
-                                        onClick={() => setSelectedShipType(shipType)}
-                                        className={`flex flex-col items-center rounded-lg border p-2 gap-2 text-left transition-all hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50 ${
-                                            isSelected
-                                                ? 'border-primary bg-primary/5 ring-2 ring-primary/40'
-                                                : 'border-border bg-muted/30'
-                                        }`}
-                                    >
-                                        <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
-                                        <span className='text-xs font-medium text-center leading-tight'>
-                                            {shipType.name}
-                                        </span>
-                                        <div className='flex flex-wrap gap-1 justify-center'>
-                                            <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                <Zap className='h-2.5 w-2.5' />
-                                                {shipType.speed}
-                                            </Badge>
-                                            <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                <Clock className='h-2.5 w-2.5' />
-                                                {shipType.buildingTime}t
-                                            </Badge>
-                                        </div>
-                                    </button>
-                                );
-                            })}
+                            <ShipTypeButton
+                                shipType={constructionShipType}
+                                selected={selectedShipType?.name === constructionShipType.name}
+                                onSelect={() => setSelectedShipType(constructionShipType)}
+                            />
                         </div>
                     </div>
                     {allShipTypesByCategory.map(({ key, label, ships }) => (
@@ -111,63 +86,14 @@ export function ShipSelectionDialog({
                                 {label}
                             </p>
                             <div className='grid grid-cols-2 gap-2 sm:grid-cols-4'>
-                                {ships.map((shipType) => {
-                                    const isSelected = selectedShipType?.name === shipType.name;
-                                    return (
-                                        <button
-                                            key={shipType.name}
-                                            type='button'
-                                            onClick={() => setSelectedShipType(shipType)}
-                                            className={`flex flex-col items-center rounded-lg border p-2 gap-2 text-left transition-all hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/50 ${
-                                                isSelected
-                                                    ? 'border-primary bg-primary/5 ring-2 ring-primary/40'
-                                                    : 'border-border bg-muted/30'
-                                            }`}
-                                        >
-                                            <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
-                                            <span className='flex flex-row items-center gap-1 text-xs font-medium text-center leading-tight'>
-                                                {shipType.name}{' '}
-                                                {shipType.type === 'transport' ? (
-                                                    <Image
-                                                        src={getAssetPath(`form_${shipType.cargoSpecification.type}`)}
-                                                        alt={shipType.cargoSpecification.type}
-                                                        width={10}
-                                                        height={10}
-                                                    />
-                                                ) : null}
-                                            </span>
-                                            <div className='flex flex-wrap gap-1 justify-center'>
-                                                <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                    <Zap className='h-2.5 w-2.5' />
-                                                    {shipType.speed}
-                                                </Badge>
-                                                {shipType.type === 'transport' ? (
-                                                    <>
-                                                        <Badge
-                                                            variant='outline'
-                                                            className='text-[10px] px-1 py-0 gap-0.5'
-                                                        >
-                                                            <Package className='h-2.5 w-2.5' />
-                                                            {formatNumberWithUnit(
-                                                                shipType.cargoSpecification.volume,
-                                                                'm3',
-                                                            )}
-                                                        </Badge>
-                                                    </>
-                                                ) : (
-                                                    <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                        <Users className='h-2.5 w-2.5' />
-                                                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons')}
-                                                    </Badge>
-                                                )}
-                                                <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
-                                                    <Clock className='h-2.5 w-2.5' />
-                                                    {shipType.buildingTime}t
-                                                </Badge>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
+                                {ships.map((shipType) => (
+                                    <ShipTypeButton
+                                        key={shipType.name}
+                                        shipType={shipType}
+                                        selected={selectedShipType?.name === shipType.name}
+                                        onSelect={() => setSelectedShipType(shipType)}
+                                    />
+                                ))}
                             </div>
                         </div>
                     ))}
@@ -175,6 +101,7 @@ export function ShipSelectionDialog({
 
                 {selectedShipType && (
                     <div className='border-t pt-4 space-y-3'>
+                        <ShipBuildPlanPanel shipType={selectedShipType} planetId={planetId} agentId={agentId} />
                         <div className='space-y-1'>
                             <Label className='text-xs'>Ship name</Label>
                             <Input

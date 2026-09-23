@@ -1,28 +1,57 @@
 'use client';
 
-import React, { useState } from 'react';
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
+import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useTRPC } from '@/lib/trpc';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Ship, TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
+import type { Ship, TransportShip } from '@/simulation/ships/ships';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useState } from 'react';
+import { CardHeaderBlock } from '../../production/_component/CardHeaderBlock';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
-import { AcceptShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/AcceptShipBuyingOfferDialog';
-import { AcceptTransportContractDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/AcceptTransportContractDialog';
-import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/PostShipBuyingOfferDialog';
-import { PostTransportContractDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/PostTransportContractDialog';
+import { AcceptShipBuyingOfferDialog } from './AcceptShipBuyingOfferDialog';
+import { AcceptTransportContractDialog } from './AcceptTransportContractDialog';
+import { PlanetRoute, PlanetRouteIcon } from './PlanetRoute';
+import { PostShipBuyingOfferDialog } from './PostShipBuyingOfferDialog';
+import { PostTransportContractDialog } from './PostTransportContractDialog';
+import { ShipConditionRow } from './ShipConditionRow';
+import type { PlanetSummary } from './shipFormatting';
 import type { ShipBuyingOffer, ShipListing, TransportContract } from './shipTypes';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
     string,
     { name: string }
 >;
+
+function SectionHeader({
+    title,
+    count,
+    children,
+}: {
+    title: string;
+    count: number;
+    children: React.ReactNode;
+}): React.ReactElement {
+    return (
+        <div className='flex items-center justify-between'>
+            <h3 className='text-sm font-semibold'>
+                {title}
+                {count > 0 && (
+                    <Badge variant='secondary' className='ml-2 text-xs'>
+                        {count}
+                    </Badge>
+                )}
+            </h3>
+            {children}
+        </div>
+    );
+}
 
 export function ShipMarketTab({
     agentId,
@@ -32,6 +61,7 @@ export function ShipMarketTab({
     listings,
     contracts,
     offers,
+    planetSummaries,
     contractsLoading,
     offersLoading,
     listingsLoading,
@@ -43,6 +73,7 @@ export function ShipMarketTab({
     listings: ShipListing[];
     contracts: TransportContract[];
     offers: ShipBuyingOffer[];
+    planetSummaries: PlanetSummary[];
     contractsLoading: boolean;
     offersLoading: boolean;
     listingsLoading: boolean;
@@ -97,21 +128,13 @@ export function ShipMarketTab({
     return (
         <div className='space-y-6 mt-3'>
             <section className='space-y-3'>
-                <div className='flex items-center justify-between'>
-                    <h3 className='text-sm font-semibold'>
-                        Transport Contracts
-                        {openContracts.length > 0 && (
-                            <Badge variant='secondary' className='ml-2 text-xs'>
-                                {openContracts.length}
-                            </Badge>
-                        )}
-                    </h3>
+                <SectionHeader title='Transport Contracts' count={openContracts.length}>
                     <PostTransportContractDialog agentId={agentId} planetId={planetId} tick={tick}>
                         <Button size='sm' variant='outline'>
                             Post Contract
                         </Button>
                     </PostTransportContractDialog>
-                </div>
+                </SectionHeader>
                 {contractsLoading && <p className='text-sm text-muted-foreground'>Loading contracts…</p>}
                 {!contractsLoading && openContracts.length === 0 && (
                     <p className='text-sm text-muted-foreground'>No open transport contracts on this planet.</p>
@@ -119,40 +142,52 @@ export function ShipMarketTab({
                 <div className='flex flex-row gap-3 flex-wrap'>
                     {openContracts.map((contract) => {
                         const isMyContract = contract._agentId === agentId;
-                        const cargoName = contract.cargo.resource.name;
                         const hasEligibleShip = idleTransportShipsHere.length > 0;
                         return (
                             <FacilityCardShell
                                 key={contract.id}
                                 contentClassName='flex flex-col flex-1 gap-2'
                                 icon={
-                                    <div className='text-xs font-bold text-muted-foreground flex items-center justify-center h-12 w-12 rounded bg-muted'>
-                                        {contract.fromPlanetId}
-                                        <br />→<br />
-                                        {contract.toPlanetId}
-                                    </div>
+                                    <PlanetRouteIcon
+                                        fromPlanetId={contract.fromPlanetId}
+                                        toPlanetId={contract.toPlanetId}
+                                    />
                                 }
                                 headerContent={
-                                    <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
-                                        <div className='flex items-center gap-1 flex-col mb-1'>
-                                            <h3 className='font-semibold leading-tight text-sm'>
-                                                {contract.fromPlanetId} → {contract.toPlanetId}
-                                            </h3>
+                                    <CardHeaderBlock
+                                        title={
+                                            <PlanetRoute
+                                                fromPlanetId={contract.fromPlanetId}
+                                                toPlanetId={contract.toPlanetId}
+                                                planetSummaries={planetSummaries}
+                                            />
+                                        }
+                                        titleClassName=''
+                                        badge={
                                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                                 {contract.status}
                                             </Badge>
-                                        </div>
-                                    </span>
+                                        }
+                                        details={
+                                            <span className='flex flex-wrap items-center gap-2'>
+                                                <ProductQuantity
+                                                    resource={contract.cargo.resource}
+                                                    quantity={contract.cargo.quantity}
+                                                    efficiency={1}
+                                                    isLimiting={false}
+                                                    planetId={planetId}
+                                                    agentId={agentId}
+                                                />
+                                                <span>
+                                                    Reward{' '}
+                                                    {formatNumberWithUnit(contract.offeredReward, 'currency', planetId)}
+                                                </span>
+                                                <span>Max {contract.maxDurationInTicks} days</span>
+                                            </span>
+                                        }
+                                    />
                                 }
                             >
-                                <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
-                                    <p>
-                                        Cargo: {contract.cargo.quantity} × {cargoName}
-                                    </p>
-                                    <p>Reward: {contract.offeredReward}</p>
-                                    <p>Max duration: {contract.maxDurationInTicks} ticks</p>
-                                </div>
-
                                 <div className='mt-auto space-y-2'>
                                     <Separator />
                                     {isMyContract && (
@@ -201,23 +236,14 @@ export function ShipMarketTab({
                     })}
                 </div>
             </section>
-
             <section className='space-y-3'>
-                <div className='flex items-center justify-between'>
-                    <h3 className='text-sm font-semibold'>
-                        Ship Market
-                        {openBuyingOffers.length + openListings.length > 0 && (
-                            <Badge variant='secondary' className='ml-2 text-xs'>
-                                {openBuyingOffers.length + openListings.length}
-                            </Badge>
-                        )}
-                    </h3>
+                <SectionHeader title='Ship Market' count={openBuyingOffers.length + openListings.length}>
                     <PostShipBuyingOfferDialog agentId={agentId} planetId={planetId}>
                         <Button size='sm' variant='outline'>
                             Post Buy Offer
                         </Button>
                     </PostShipBuyingOfferDialog>
-                </div>
+                </SectionHeader>
                 {(offersLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>Loading…</p>}
                 {!offersLoading && !listingsLoading && openBuyingOffers.length === 0 && openListings.length === 0 && (
                     <p className='text-sm text-muted-foreground'>No open ship offers on this planet.</p>
@@ -241,26 +267,38 @@ export function ShipMarketTab({
                                             />
                                         }
                                         headerContent={
-                                            <span
-                                                className='flex flex-col gap-2'
-                                                style={{ minHeight: `${defaultHeight}px` }}
-                                            >
-                                                <div className='flex items-center gap-1 flex-col mb-1'>
-                                                    <h3 className='font-semibold leading-tight'>{listing.shipName}</h3>
-                                                    {isMyListing && (
+                                            <CardHeaderBlock
+                                                title={listing.shipName}
+                                                titleClassName=''
+                                                badge={
+                                                    isMyListing ? (
                                                         <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
                                                             Your listing
                                                         </Badge>
-                                                    )}
-                                                </div>
-                                            </span>
+                                                    ) : null
+                                                }
+                                                details={
+                                                    <>
+                                                        <span>{listing.shipTypeName}</span>
+                                                        <ShipConditionRow
+                                                            ship={{
+                                                                maintainanceStatus: listing.maintainanceStatus,
+                                                                maxMaintenance: listing.maxMaintenance,
+                                                            }}
+                                                        />
+                                                        <span>
+                                                            Ask{' '}
+                                                            {formatNumberWithUnit(
+                                                                listing.askPrice,
+                                                                'currency',
+                                                                planetId,
+                                                            )}
+                                                        </span>
+                                                    </>
+                                                }
+                                            />
                                         }
                                     >
-                                        <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
-                                            <p>{listing.shipTypeName}</p>
-                                            <p>Ask price: {listing.askPrice}</p>
-                                        </div>
-
                                         {!isMyListing && (
                                             <div className='mt-auto space-y-2'>
                                                 <Separator />
@@ -287,7 +325,6 @@ export function ShipMarketTab({
                         </div>
                     </>
                 )}
-
                 {openBuyingOffers.length > 0 && (
                     <>
                         <p className='text-xs font-medium text-muted-foreground uppercase tracking-wide mt-3'>
@@ -318,25 +355,25 @@ export function ShipMarketTab({
                                             )
                                         }
                                         headerContent={
-                                            <span
-                                                className='flex flex-col gap-2'
-                                                style={{ minHeight: `${defaultHeight}px` }}
-                                            >
-                                                <div className='flex items-center gap-1 flex-col mb-1'>
-                                                    <h3 className='font-semibold leading-tight'>{offer.shipType}</h3>
-                                                    {isMyOffer && (
+                                            <CardHeaderBlock
+                                                title={shipTypeDef?.name ?? offer.shipType}
+                                                titleClassName=''
+                                                badge={
+                                                    isMyOffer ? (
                                                         <Badge variant='secondary' className='text-[10px] px-1.5 py-0'>
                                                             Your offer
                                                         </Badge>
-                                                    )}
-                                                </div>
-                                            </span>
+                                                    ) : null
+                                                }
+                                                details={
+                                                    <span>
+                                                        Offered{' '}
+                                                        {formatNumberWithUnit(offer.price, 'currency', planetId)}
+                                                    </span>
+                                                }
+                                            />
                                         }
                                     >
-                                        <div className='flex-1 space-y-1 text-xs text-muted-foreground'>
-                                            <p>Offered price: {offer.price}</p>
-                                        </div>
-
                                         {canSell && (
                                             <div className='mt-auto space-y-2'>
                                                 <Separator />
@@ -375,7 +412,6 @@ export function ShipMarketTab({
                     </>
                 )}
             </section>
-
             {acceptContractTarget && (
                 <AcceptTransportContractDialog
                     agentId={agentId}

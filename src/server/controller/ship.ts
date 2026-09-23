@@ -237,7 +237,15 @@ export const listShipListings = () =>
         const { agents } = getAllAgentsSync();
         const listings = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
-            return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
+            return (assets?.shipListings ?? []).map((l) => {
+                const ship = agent.ships?.find((s) => s.id === l.shipId);
+                return {
+                    ...l,
+                    _agentId: agent.id,
+                    maintainanceStatus: ship?.maintainanceStatus ?? 1,
+                    maxMaintenance: ship?.maxMaintenance ?? 1,
+                };
+            });
         });
         return { listings };
     });
