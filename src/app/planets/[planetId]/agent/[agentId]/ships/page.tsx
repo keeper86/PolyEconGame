@@ -2,15 +2,50 @@
 
 import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/AgentAccessGuard';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
+import { Page } from '@/components/client/Page';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ShipyardsTab } from './_components/ShipyardsTab';
+import { useEffect, useState } from 'react';
 import { MyShipsTab } from './_components/MyShipsTab';
 import { ShipMarketTab } from './_components/ShipMarketTab';
-import { Page } from '@/components/client/Page';
+import { ShipyardsTab } from './_components/ShipyardsTab';
+
+const SHIP_TABS = ['shipyards', 'my-ships', 'marketplace'] as const;
+type ShipTab = (typeof SHIP_TABS)[number];
+const DEFAULT_TAB: ShipTab = 'my-ships';
+
+function readTabFromHash(): ShipTab {
+    if (typeof window === 'undefined') {
+        return DEFAULT_TAB;
+    }
+    const hash = window.location.hash.slice(1);
+    return (SHIP_TABS as readonly string[]).includes(hash) ? (hash as ShipTab) : DEFAULT_TAB;
+}
 
 export default function AgentShipsPage() {
-    const { agentId, planetId, isOwnAgent, isOwnAgentUnknown, isAuthenticatedWithoutAgentId, myAgentId, tick, assets } =
-        useAgentPlanetDetail();
+    const {
+        agentId,
+        planetId,
+        isOwnAgent,
+        isOwnAgentUnknown,
+        isAuthenticatedWithoutAgentId,
+        myAgentId,
+        tick,
+        assets,
+        isLoading,
+        hasNoAssets,
+    } = useAgentPlanetDetail();
+
+    const [activeTab, setActiveTab] = useState<ShipTab>(readTabFromHash);
+
+    useEffect(() => {
+        setActiveTab(readTabFromHash());
+    }, []);
+
+    const handleTabChange = (value: string) => {
+        const tab = (SHIP_TABS as readonly string[]).includes(value) ? (value as ShipTab) : DEFAULT_TAB;
+        setActiveTab(tab);
+        window.history.replaceState(null, '', `#${tab}`);
+    };
 
     return (
         <Page title={`Ship Management`}>
@@ -19,9 +54,13 @@ export default function AgentShipsPage() {
                 isOwnAgent={isOwnAgent}
                 isOwnAgentUnknown={isOwnAgentUnknown}
                 isAuthenticatedWithoutAgentId={isAuthenticatedWithoutAgentId}
+                hasNoAssets={hasNoAssets}
+                detailLoading={isLoading}
+                agentId={agentId}
+                planetId={planetId}
             >
                 <div data-tour='ships-tabs'>
-                    <Tabs defaultValue='my-ships'>
+                    <Tabs value={activeTab} onValueChange={handleTabChange}>
                         <TabsList className='w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0 border-b border-border pb-2'>
                             <TabsTrigger
                                 value='shipyards'

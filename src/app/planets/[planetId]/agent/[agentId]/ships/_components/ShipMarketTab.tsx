@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -34,6 +35,7 @@ export function ShipMarketTab({
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
 
     const { data: contractsData, isLoading: contractsLoading } = useSimulationQuery(
         trpc.listTransportContracts.queryOptions({ planetId }),
@@ -70,7 +72,17 @@ export function ShipMarketTab({
 
     const acceptListingMutation = useMutation(
         trpc.acceptShipListing.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data, variables) => {
+                const listing = (listingsData?.listings ?? []).find((l) => l.id === variables.listingId);
+                if (listing) {
+                    addPending({
+                        type: 'shipAccept',
+                        agentId,
+                        planetId,
+                        shipId: listing.shipId,
+                        triggerTick: data.processedAtTick,
+                    });
+                }
                 void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
             },

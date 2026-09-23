@@ -27,10 +27,20 @@ export type PendingAction = {
         | 'marketCancelBuy'
         | 'marketCancelSell'
         | 'loanRequest'
-        | 'loanRepay';
+        | 'loanRepay'
+        | 'shipBuild'
+        | 'shipSetTarget'
+        | 'shipExpand'
+        | 'shipDispatch'
+        | 'shipList'
+        | 'shipCancelListing'
+        | 'shipAccept'
+        | 'shipAcceptBuyOffer';
 
     facilityKey?: string;
     facilityId?: string;
+    facilityName?: string;
+    shipId?: string;
     loanId?: string;
 
     targetScale?: number;
@@ -59,7 +69,7 @@ interface StoredEntry {
 }
 
 function actionStorageKey(a: PendingAction): string {
-    const discriminator = a.facilityId ?? a.facilityKey ?? a.loanId ?? a.resourceName ?? '';
+    const discriminator = a.facilityId ?? a.facilityKey ?? a.shipId ?? a.loanId ?? a.resourceName ?? '';
     return `${a.agentId}|${a.planetId}|${a.type}|${discriminator}`;
 }
 
@@ -134,6 +144,12 @@ interface PendingActionContextValue {
         actionType?: PendingAction['type'],
     ) => void;
     removePendingByKey: (agentId: string, planetId: string, facilityKey: string) => void;
+    removePendingByShip: (
+        agentId: string,
+        planetId: string,
+        shipId: string,
+        actionType?: PendingAction['type'],
+    ) => void;
     removePendingByResource: (
         agentId: string,
         planetId: string,
@@ -147,6 +163,7 @@ const PendingActionContext = createContext<PendingActionContextValue>({
     getPending: () => [],
     removePendingById: () => {},
     removePendingByKey: () => {},
+    removePendingByShip: () => {},
     removePendingByResource: () => {},
 });
 
@@ -227,6 +244,10 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
                         a.resourceName === action.resourceName
                     ),
             );
+        } else if (action.shipId) {
+            next = current.filter(
+                (a) => !(agentPlanetKey(a) === actionKey && a.type === action.type && a.shipId === action.shipId),
+            );
         } else {
             next = [...current];
         }
@@ -277,6 +298,23 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
         setAllActions(next);
     }, []);
 
+    const removePendingByShip = useCallback(
+        (agentId: string, planetId: string, shipId: string, actionType?: PendingAction['type']) => {
+            const key = `${agentId}|${planetId}`;
+            const stored = readAllStored();
+            const current = stored.map((e) => e.a);
+            const next = current.filter(
+                (a) => !(agentPlanetKey(a) === key && a.shipId === shipId && (!actionType || a.type === actionType)),
+            );
+            if (next.length === current.length) {
+                return;
+            }
+            writeAll(next, stored);
+            setAllActions(next);
+        },
+        [],
+    );
+
     const removePendingByResource = useCallback(
         (agentId: string, planetId: string, resourceName: string, actionType?: PendingAction['type']) => {
             const key = `${agentId}|${planetId}`;
@@ -306,6 +344,7 @@ export function PendingActionProvider({ children }: { children: React.ReactNode 
                 getPending,
                 removePendingById,
                 removePendingByKey,
+                removePendingByShip,
                 removePendingByResource,
             }}
         >
@@ -330,6 +369,10 @@ export function useRemovePendingById() {
 
 export function useRemovePendingByKey() {
     return useContext(PendingActionContext).removePendingByKey;
+}
+
+export function useRemovePendingByShip() {
+    return useContext(PendingActionContext).removePendingByShip;
 }
 
 export function useRemovePendingByResource() {

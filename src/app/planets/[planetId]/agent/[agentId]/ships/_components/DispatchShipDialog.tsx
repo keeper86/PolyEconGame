@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StorageResourceSelect } from '@/components/client/StorageResourceSelect';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
@@ -25,6 +26,7 @@ type Props = {
 export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCargoType, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -36,7 +38,8 @@ export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCa
 
     const mutation = useMutation(
         trpc.dispatchShip.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({ type: 'shipDispatch', agentId, planetId, shipId, triggerTick: data.processedAtTick });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
                 setOpen(false);
                 resetForm();

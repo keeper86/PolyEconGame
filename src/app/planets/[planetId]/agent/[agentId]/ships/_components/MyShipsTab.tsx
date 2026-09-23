@@ -1,42 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
-import type { ConstructionShip, PassengerShip, TransportShip } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
-import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { DispatchShipDialog } from './DispatchShipDialog';
 import { DispatchConstructionShipDialog } from './DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './DispatchPassengerShipDialog';
+import { ShipConditionRow } from './ShipConditionRow';
+import { ShipHeader } from './ShipHeader';
+import { ShipStatusBadge } from './ShipStatusBadge';
 import { ShipStatusDetail } from './ShipStatusDetail';
-
-function statusBadge(ship: TransportShip | ConstructionShip | PassengerShip) {
-    const { state } = ship;
-    const variants: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-        idle: 'secondary',
-        transporting: 'default',
-        loading: 'outline',
-        unloading: 'outline',
-    };
-    return <Badge variant={variants[state.type] ?? 'secondary'}>{state.type}</Badge>;
-}
-
-function conditionColor(status: number) {
-    if (status >= 0.75) {
-        return 'text-green-600';
-    }
-    if (status >= 0.4) {
-        return 'text-yellow-600';
-    }
-    return 'text-red-600';
-}
 
 export function MyShipsTab({
     agentId,
@@ -49,13 +30,31 @@ export function MyShipsTab({
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
+    const pendingActions = usePendingActions(agentId, planetId);
 
     const [sellMode, setSellMode] = useState<Record<string, boolean>>({});
     const [sellPrice, setSellPrice] = useState<Record<string, string>>({});
 
+    const { data: listingsData } = useSimulationQuery(trpc.listShipListings.queryOptions({ planetId }));
+
+    const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
+        trpc.listAgentShips.queryOptions({ agentId }),
+    );
+
+    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
+    const planetSummaries = planetSummariesData?.planets ?? [];
+
     const sellMutation = useMutation(
         trpc.postShipListing.mutationOptions({
-            onSuccess: (_data, variables) => {
+            onSuccess: (data, variables) => {
+                addPending({
+                    type: 'shipList',
+                    agentId,
+                    planetId,
+                    shipId: variables.shipId,
+                    triggerTick: data.processedAtTick,
+                });
                 setSellMode((prev) => ({ ...prev, [variables.shipId]: false }));
                 setSellPrice((prev) => ({ ...prev, [variables.shipId]: '' }));
                 void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
@@ -66,21 +65,22 @@ export function MyShipsTab({
 
     const cancelListingMutation = useMutation(
         trpc.cancelShipListing.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data, variables) => {
+                const listing = (listingsData?.listings ?? []).find((l) => l.id === variables.listingId);
+                if (listing) {
+                    addPending({
+                        type: 'shipCancelListing',
+                        agentId,
+                        planetId,
+                        shipId: listing.shipId,
+                        triggerTick: data.processedAtTick,
+                    });
+                }
                 void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
             },
         }),
     );
-
-    const { data: listingsData } = useSimulationQuery(trpc.listShipListings.queryOptions({ planetId }));
-
-    const { data: shipsData, isLoading: shipsLoading } = useSimulationQuery(
-        trpc.listAgentShips.queryOptions({ agentId }),
-    );
-
-    const { data: planetSummariesData } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
-    const planetSummaries = planetSummariesData?.planets ?? [];
 
     const shipsHere = (shipsData?.ships ?? [])
         .filter(
@@ -111,37 +111,32 @@ export function MyShipsTab({
             <div className='flex flex-row gap-3 flex-wrap'>
                 {shipsHere.map((ship) => {
                     const isIdle = ship.state.type === 'idle';
+                    const pending = pendingActions.find((a) => a.shipId === ship.id);
                     return (
                         <FacilityCardShell
                             key={ship.id}
-                            className={ship.disabled ? 'opacity-50 pointer-events-none' : ''}
+                            className={ship.disabled || pending ? 'opacity-50 pointer-events-none' : ''}
                             contentClassName='flex flex-col flex-1 gap-2'
                             icon={<FacilityOrShipIcon facilityOrShipName={ship.type.name} suffix='' size={240} />}
                             headerContent={
-                                <span
-                                    className='flex flex-col space-between gap-2'
-                                    style={{ minHeight: `${defaultHeight}px` }}
-                                >
-                                    <div className='flex items-center gap-1 flex-col mb-1'>
-                                        <h3 className='font-semibold leading-tight'>{ship.name}</h3>
-                                        <span className='flex flex-col items-center gap-1'>{statusBadge(ship)}</span>
-                                    </div>
-                                    <span className='flex flex-col text-muted-foreground text-xs gap-2'>
-                                        <span>
-                                            {ship.type.name} · speed {ship.type.speed}
-                                        </span>
-                                        {ship.type.type === 'transport' && (
-                                            <span className='flex flex-wrap'>
-                                                {ship.type.cargoSpecification.volume} m³ ·{' '}
-                                                {ship.type.cargoSpecification.type} ·{' '}
+                                <ShipHeader
+                                    ship={ship}
+                                    badge={<ShipStatusBadge ship={ship} />}
+                                    details={
+                                        <>
+                                            <span>
+                                                {ship.type.name} · speed {ship.type.speed}
                                             </span>
-                                        )}
-                                        <span className={`font-medium ${conditionColor(ship.maintainanceStatus)}`}>
-                                            Condition: {Math.round(ship.maintainanceStatus * 100)}% /{' '}
-                                            {Math.round(ship.maxMaintenance * 100)}% max
-                                        </span>
-                                    </span>
-                                </span>
+                                            {ship.type.type === 'transport' && (
+                                                <span className='flex flex-wrap'>
+                                                    {ship.type.cargoSpecification.volume} m³ ·{' '}
+                                                    {ship.type.cargoSpecification.type}
+                                                </span>
+                                            )}
+                                            <ShipConditionRow ship={ship} />
+                                        </>
+                                    }
+                                />
                             }
                         >
                             {ship.state.type !== 'idle' &&
@@ -276,6 +271,12 @@ export function MyShipsTab({
                                         >
                                             Cancel
                                         </Button>
+                                    </div>
+                                )}
+                                {pending && (
+                                    <div className='flex items-center justify-center gap-2 rounded-lg bg-muted/70 py-2 text-sm font-medium text-foreground'>
+                                        <Spinner className='h-4 w-4' />
+                                        Awaiting next day…
                                     </div>
                                 )}
                             </div>

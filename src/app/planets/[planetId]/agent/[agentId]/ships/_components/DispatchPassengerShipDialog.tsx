@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PlanetIcon } from '@/components/client/PlanetIcon';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ export function DispatchPassengerShipDialog({
 }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -43,7 +45,8 @@ export function DispatchPassengerShipDialog({
 
     const mutation = useMutation(
         trpc.dispatchPassengerShip.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({ type: 'shipDispatch', agentId, planetId, shipId, triggerTick: data.processedAtTick });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
                 setOpen(false);
                 setToPlanetId('');

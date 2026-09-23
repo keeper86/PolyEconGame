@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { useTRPC } from '@/lib/trpc';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +25,7 @@ type Props = {
 export function DispatchConstructionShipDialog({ agentId, planetId, shipId, shipName, children }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -37,7 +39,8 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
 
     const mutation = useMutation(
         trpc.dispatchConstructionShip.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({ type: 'shipDispatch', agentId, planetId, shipId, triggerTick: data.processedAtTick });
                 void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
                 setOpen(false);
                 setToPlanetId('');

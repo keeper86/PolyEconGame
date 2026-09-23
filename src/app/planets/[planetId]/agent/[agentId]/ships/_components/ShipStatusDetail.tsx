@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import type { TransportShip, ConstructionShip, PassengerShip } from '@/simulation/ships/ships';
 import { PassengerManifestDialog } from './PassengerManifestDialog';
+import { ShipCargoProgress } from './ShipCargoProgress';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import {
@@ -38,33 +39,38 @@ export function ShipStatusDetail({ ship, planetSummaries, tick, agentId }: Props
 
         if (s.type === 'loading') {
             return (
-                <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
-                    {s.cargoGoal && s.currentCargo && s.cargoGoal.quantity !== 0 ? (
-                        <>
-                            <ProductIcon productName={s.cargoGoal.resource.name} />
-                            <span>
-                                Loading{' '}
-                                <span className='tabular-nums text-foreground'>
-                                    {formatNumberWithUnit(
-                                        s.currentCargo.quantity,
-                                        resourceFormToUnit(s.cargoGoal.resource.form),
-                                    )}
+                <div className='space-y-1.5'>
+                    <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
+                        {s.cargoGoal && s.currentCargo && s.cargoGoal.quantity !== 0 ? (
+                            <>
+                                <ProductIcon productName={s.cargoGoal.resource.name} />
+                                <span>
+                                    Loading{' '}
+                                    <span className='tabular-nums text-foreground'>
+                                        {formatNumberWithUnit(
+                                            s.currentCargo.quantity,
+                                            resourceFormToUnit(s.cargoGoal.resource.form),
+                                        )}
+                                    </span>
+                                    {' / '}
+                                    <span className='tabular-nums'>
+                                        {formatNumberWithUnit(
+                                            s.cargoGoal.quantity,
+                                            resourceFormToUnit(s.cargoGoal.resource.form),
+                                        )}
+                                    </span>{' '}
+                                    {s.cargoGoal.resource.name}
                                 </span>
-                                {' / '}
-                                <span className='tabular-nums'>
-                                    {formatNumberWithUnit(
-                                        s.cargoGoal.quantity,
-                                        resourceFormToUnit(s.cargoGoal.resource.form),
-                                    )}
-                                </span>{' '}
-                                {s.cargoGoal.resource.name}
-                            </span>
-                        </>
-                    ) : (
-                        <span>Repositioning (empty)</span>
+                            </>
+                        ) : (
+                            <span>Repositioning (empty)</span>
+                        )}
+                        <ArrowRight className='h-3 w-3' />
+                        <span>{planetName(planetSummaries, s.to)}</span>
+                    </div>
+                    {s.cargoGoal && s.cargoGoal.quantity !== 0 && (
+                        <ShipCargoProgress goal={s.cargoGoal} current={s.currentCargo} />
                     )}
-                    <ArrowRight className='h-3 w-3' />
-                    <span>{planetName(planetSummaries, s.to)}</span>
                 </div>
             );
         }

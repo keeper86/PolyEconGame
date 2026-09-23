@@ -6,9 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Spinner } from '@/components/ui/spinner';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { usePlanetId } from '@/hooks/usePlanetId';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { isFacilityOperating } from '@/simulation/planet/facility';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
@@ -19,27 +22,41 @@ import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { FacilityConditionRow } from '../../production/_component/FacilityConditionRow';
-import { WorkerBars } from '../../production/_component/WorkerBars';
+import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
+import { FacilityHeader } from '../../production/_component/FacilityHeader';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 
 export function ActiveShipyardCard({
     facility,
     agentId,
     planetId,
+    constructionServicePrice,
 }: {
     facility: ShipConstructionFacility;
     agentId: string;
     planetId: string;
+    constructionServicePrice: number;
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const currentPlanetId = usePlanetId();
     const { agentId: currentAgentId } = useAgentId();
 
+    const addPending = useAddPendingAction();
+    const pendingActions = usePendingActions(agentId, planetId);
+    const pendingTarget = pendingActions.find((a) => a.type === 'shipSetTarget' && a.facilityId === facility.id);
+    const pendingExpand = pendingActions.find((a) => a.type === 'shipExpand' && a.facilityId === facility.id);
+    const pending = pendingTarget ?? pendingExpand;
+
     const [shipDialogOpen, setShipDialogOpen] = useState(false);
+    const [showExpand, setShowExpand] = useState(false);
 
     const isSmallScreen = useIsSmallScreen();
     const isMobile = isSmallScreen;
+
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
+    );
 
     const invalidate = () =>
         void queryClient.invalidateQueries({
@@ -48,9 +65,32 @@ export function ActiveShipyardCard({
 
     const setTargetMutation = useMutation(
         trpc.setShipConstructionTarget.mutationOptions({
-            onSuccess: () => {
+            onSuccess: (data) => {
+                addPending({
+                    type: 'shipSetTarget',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    triggerTick: data.processedAtTick,
+                });
                 invalidate();
                 setShipDialogOpen(false);
+            },
+        }),
+    );
+
+    const expandMutation = useMutation(
+        trpc.expandShipConstructionFacility.mutationOptions({
+            onSuccess: (data) => {
+                addPending({
+                    type: 'shipExpand',
+                    agentId,
+                    planetId,
+                    facilityId: facility.id,
+                    triggerTick: data.processedAtTick,
+                });
+                invalidate();
+                setShowExpand(false);
             },
         }),
     );
@@ -94,24 +134,19 @@ export function ActiveShipyardCard({
                 contentClassName='flex flex-col flex-1 gap-2'
                 icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' suffix={String(facility.scale)} />}
                 headerContent={
-                    <span className='flex flex-col gap-2'>
-                        <div className='flex items-center gap-1 flex-col mb-auto'>
-                            <h3 className='font-semibold leading-tight'>{facility.name}</h3>
+                    <FacilityHeader
+                        facility={facility}
+                        results={results}
+                        planetId={planetId}
+                        agentId={agentId}
+                        badge={
                             <div className='flex gap-1 flex-wrap'>
                                 <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
                                     Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
                                 </Badge>
                             </div>
-                        </div>
-                        <WorkerBars
-                            workerRequirement={facility.workerRequirement}
-                            scale={facility.scale}
-                            workerEfficiency={results?.workerEfficiency ?? {}}
-                            globalMin={globalMin}
-                            planetId={planetId}
-                            agentId={agentId}
-                        />
-                    </span>
+                        }
+                    />
                 }
             >
                 <div className='grid w-full items-center gap-x-2 py-1' style={{ gridTemplateColumns: '1fr auto 1fr' }}>
@@ -165,6 +200,7 @@ export function ActiveShipyardCard({
                                 size='sm'
                                 variant='outline'
                                 className='text-xs'
+                                disabled={!!pending}
                                 onClick={() => setShipDialogOpen(true)}
                             >
                                 Select ship to build
@@ -188,6 +224,40 @@ export function ActiveShipyardCard({
                 )}
                 {isFacilityOperating(facility) && (
                     <FacilityConditionRow facility={facility} agentId={agentId} planetId={planetId} />
+                )}
+                {showExpand ? (
+                    <FacilityConstructionPanel
+                        facilityType='ship_construction'
+                        fromScale={facility.maxScale}
+                        constructionServicePrice={constructionServicePrice}
+                        planetId={planetId}
+                        label='Expand shipyard'
+                        confirmLabel='Confirm Expand'
+                        pendingLabel='Ordering expansion…'
+                        isPending={expandMutation.isPending}
+                        financials={financials}
+                        onCancel={() => setShowExpand(false)}
+                        onConfirm={(targetScale) =>
+                            expandMutation.mutate({ agentId, planetId, facilityId: facility.id, targetScale })
+                        }
+                    />
+                ) : (
+                    <div className='flex gap-2 pt-1'>
+                        <Button
+                            size='sm'
+                            className='flex-1 text-xs gap-1'
+                            disabled={facility.construction !== null || !!pending}
+                            onClick={() => setShowExpand(true)}
+                        >
+                            Expand shipyard
+                        </Button>
+                    </div>
+                )}
+                {pending && (
+                    <div className='flex items-center justify-center gap-2 rounded-lg bg-muted/70 py-2 text-sm font-medium text-foreground'>
+                        <Spinner className='h-4 w-4' />
+                        Awaiting next day…
+                    </div>
                 )}
             </FacilityCardShell>
         </>

@@ -1,7 +1,12 @@
 'use client';
 
 import { useAgentId } from '@/hooks/useAgentId';
-import { usePendingActions, useRemovePendingById, useRemovePendingByKey } from '@/hooks/useActionOverlay';
+import {
+    usePendingActions,
+    useRemovePendingById,
+    useRemovePendingByKey,
+    useRemovePendingByShip,
+} from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { AgentPlanetDetail } from '@/server/controller/simulation';
@@ -43,6 +48,7 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
     const pendingActions = usePendingActions(agentId, planetId);
     const removeById = useRemovePendingById();
     const removeByKey = useRemovePendingByKey();
+    const removeByShip = useRemovePendingByShip();
 
     // Expose the real facilities directly (no fake data merging)
     const assets = useMemo(() => {
@@ -74,12 +80,14 @@ export function useAgentPlanetDetail(): UseAgentPlanetDetailResult {
                     removeByKey(agentId, planetId, action.facilityKey);
                 } else if (action.facilityId) {
                     removeById(agentId, planetId, action.facilityId, action.type);
+                } else if (action.shipId) {
+                    removeByShip(agentId, planetId, action.shipId, action.type);
                 } else if (action.loanId) {
                     removeByKey(agentId, planetId, action.loanId);
                 }
             }
         }
-    }, [snapshotTick, pendingActions, removeById, removeByKey, agentId, planetId]);
+    }, [snapshotTick, pendingActions, removeById, removeByKey, removeByShip, agentId, planetId]);
 
     const ships = (detail?.ships ?? []) as ConsumptionShipInfo[];
 

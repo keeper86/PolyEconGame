@@ -12,7 +12,7 @@ import { Wrench } from 'lucide-react';
 import React from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 
-function conditionTone(status: number): { text: string; bar: string } {
+export function conditionTone(status: number): { text: string; bar: string } {
     if (status >= 0.75) {
         return { text: 'text-green-600', bar: '[&>div]:bg-green-500' };
     }
