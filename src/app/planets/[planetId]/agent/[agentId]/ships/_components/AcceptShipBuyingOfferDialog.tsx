@@ -44,10 +44,10 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                     triggerTick: data.processedAtTick,
                 });
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listShipBuyingOffers.queryKey({ planetId }),
+                    queryKey: trpc.simulation.listShipBuyingOffers.queryKey({ planetId }),
                 });
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listAgentShips.queryKey({ agentId }),
+                    queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }),
                 });
                 onClose();
                 setShipId('');

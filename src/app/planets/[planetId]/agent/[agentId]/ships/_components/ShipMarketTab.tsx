@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction } from '@/hooks/useActionOverlay';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { TransportShip } from '@/simulation/ships/ships';
+import type { Ship, TransportShip } from '@/simulation/ships/ships';
 import { shiptypes } from '@/simulation/ships/ships';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { defaultHeight } from '@/components/client/FacilityOrShipIcon';
@@ -18,6 +17,7 @@ import { AcceptShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[age
 import { AcceptTransportContractDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/AcceptTransportContractDialog';
 import { PostShipBuyingOfferDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/PostShipBuyingOfferDialog';
 import { PostTransportContractDialog } from '@/app/planets/[planetId]/agent/[agentId]/ships/_components/PostTransportContractDialog';
+import type { ShipBuyingOffer, ShipListing, TransportContract } from './shipTypes';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
     string,
@@ -28,43 +28,42 @@ export function ShipMarketTab({
     agentId,
     planetId,
     tick,
+    ships,
+    listings,
+    contracts,
+    offers,
+    contractsLoading,
+    offersLoading,
+    listingsLoading,
 }: {
     agentId: string;
     planetId: string;
     tick: number;
+    ships: Ship[];
+    listings: ShipListing[];
+    contracts: TransportContract[];
+    offers: ShipBuyingOffer[];
+    contractsLoading: boolean;
+    offersLoading: boolean;
+    listingsLoading: boolean;
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
 
-    const { data: contractsData, isLoading: contractsLoading } = useSimulationQuery(
-        trpc.listTransportContracts.queryOptions({ planetId }),
-    );
-    const { data: buyingData, isLoading: buyingLoading } = useSimulationQuery(
-        trpc.listShipBuyingOffers.queryOptions({ planetId }),
-    );
-    const { data: listingsData, isLoading: listingsLoading } = useSimulationQuery(
-        trpc.listShipListings.queryOptions({ planetId }),
-    );
-    const { data: myShipsData } = useSimulationQuery(trpc.listAgentShips.queryOptions({ agentId }));
-
-    const idleTransportShipsHere = (myShipsData?.ships ?? []).filter(
+    const idleTransportShipsHere = ships.filter(
         (s): s is TransportShip =>
             s.state.type === 'idle' && s.state.planetId === planetId && s.type.type === 'transport',
     );
 
-    const [acceptContractTarget, setAcceptContractTarget] = useState<
-        NonNullable<typeof contractsData>['contracts'][number] | null
-    >(null);
-    const [acceptBuyingTarget, setAcceptBuyingTarget] = useState<
-        NonNullable<typeof buyingData>['offers'][number] | null
-    >(null);
+    const [acceptContractTarget, setAcceptContractTarget] = useState<TransportContract | null>(null);
+    const [acceptBuyingTarget, setAcceptBuyingTarget] = useState<ShipBuyingOffer | null>(null);
 
     const cancelContractMutation = useMutation(
         trpc.cancelTransportContract.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listTransportContracts.queryKey({ planetId }),
+                    queryKey: trpc.simulation.listTransportContracts.queryKey({ planetId }),
                 });
             },
         }),
@@ -73,7 +72,7 @@ export function ShipMarketTab({
     const acceptListingMutation = useMutation(
         trpc.acceptShipListing.mutationOptions({
             onSuccess: (data, variables) => {
-                const listing = (listingsData?.listings ?? []).find((l) => l.id === variables.listingId);
+                const listing = listings.find((l) => l.id === variables.listingId);
                 if (listing) {
                     addPending({
                         type: 'shipAccept',
@@ -83,15 +82,17 @@ export function ShipMarketTab({
                         triggerTick: data.processedAtTick,
                     });
                 }
-                void queryClient.invalidateQueries({ queryKey: trpc.listShipListings.queryKey({ planetId }) });
-                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.listShipListings.queryKey({ planetId }),
+                });
+                void queryClient.invalidateQueries({ queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }) });
             },
         }),
     );
 
-    const openContracts = (contractsData?.contracts ?? []).filter((c) => c.status === 'open');
-    const openBuyingOffers = (buyingData?.offers ?? []).filter((o) => o.status === 'open');
-    const openListings = listingsData?.listings ?? [];
+    const openContracts = contracts.filter((c) => c.status === 'open');
+    const openBuyingOffers = offers.filter((o) => o.status === 'open');
+    const openListings = listings;
 
     return (
         <div className='space-y-6 mt-3'>
@@ -217,8 +218,8 @@ export function ShipMarketTab({
                         </Button>
                     </PostShipBuyingOfferDialog>
                 </div>
-                {(buyingLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>Loading…</p>}
-                {!buyingLoading && !listingsLoading && openBuyingOffers.length === 0 && openListings.length === 0 && (
+                {(offersLoading || listingsLoading) && <p className='text-sm text-muted-foreground'>Loading…</p>}
+                {!offersLoading && !listingsLoading && openBuyingOffers.length === 0 && openListings.length === 0 && (
                     <p className='text-sm text-muted-foreground'>No open ship offers on this planet.</p>
                 )}
 

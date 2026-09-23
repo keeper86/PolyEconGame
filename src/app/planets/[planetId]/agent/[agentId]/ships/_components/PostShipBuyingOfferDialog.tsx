@@ -33,7 +33,7 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props
         trpc.postShipBuyingOffer.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listShipBuyingOffers.queryKey({ planetId }),
+                    queryKey: trpc.simulation.listShipBuyingOffers.queryKey({ planetId }),
                 });
                 setOpen(false);
                 setShipType('');

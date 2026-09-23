@@ -47,7 +47,7 @@ export function DispatchPassengerShipDialog({
         trpc.dispatchPassengerShip.mutationOptions({
             onSuccess: (data) => {
                 addPending({ type: 'shipDispatch', agentId, planetId, shipId, triggerTick: data.processedAtTick });
-                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }) });
                 setOpen(false);
                 setToPlanetId('');
                 setPassengerCount('');

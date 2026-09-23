@@ -41,7 +41,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
         trpc.dispatchConstructionShip.mutationOptions({
             onSuccess: (data) => {
                 addPending({ type: 'shipDispatch', agentId, planetId, shipId, triggerTick: data.processedAtTick });
-                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+                void queryClient.invalidateQueries({ queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }) });
                 setOpen(false);
                 setToPlanetId('');
                 setFacilityName(undefined);

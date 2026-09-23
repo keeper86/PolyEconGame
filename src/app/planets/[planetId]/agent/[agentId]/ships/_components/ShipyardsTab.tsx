@@ -1,34 +1,22 @@
 'use client';
 
 import React from 'react';
-import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
-import { PRICE_FLOOR } from '@/simulation/constants';
-import { constructionServiceResourceType } from '@/simulation/planet/services';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
 import { BuildCard } from '../../production/_component/BuildCard';
 import { ActiveShipyardCard } from './ActiveShipyardCard';
-import { ShipyardBuildCard } from './ShipyardBuildCard';
+import { ShipyardBuildSection } from './ShipyardBuildSection';
 
 export function ShipyardsTab({
     agentId,
     planetId,
     shipConstructionFacilities,
+    constructionServicePrice,
 }: {
     agentId: string;
     planetId: string;
     shipConstructionFacilities: ShipConstructionFacility[];
+    constructionServicePrice: number;
 }): React.ReactElement {
-    const trpc = useTRPC();
-
-    const { data: constructionMarket } = useQuery(
-        trpc.simulation.getPlanetMarket.queryOptions({
-            planetId,
-            resourceName: constructionServiceResourceType.name,
-        }),
-    );
-    const constructionServicePrice = constructionMarket?.market?.clearingPrice ?? PRICE_FLOOR;
-
     return (
         <div className='flex flex-row gap-3 flex-wrap mt-3'>
             {shipConstructionFacilities.map((sy) =>
@@ -52,7 +40,7 @@ export function ShipyardsTab({
                     />
                 ),
             )}
-            <ShipyardBuildCard
+            <ShipyardBuildSection
                 agentId={agentId}
                 planetId={planetId}
                 constructionServicePrice={constructionServicePrice}

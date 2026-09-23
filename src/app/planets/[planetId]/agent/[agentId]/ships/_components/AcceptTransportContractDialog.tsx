@@ -36,10 +36,10 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
         trpc.acceptTransportContract.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listTransportContracts.queryKey({ planetId }),
+                    queryKey: trpc.simulation.listTransportContracts.queryKey({ planetId }),
                 });
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listAgentShips.queryKey({ agentId }),
+                    queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }),
                 });
                 onClose();
                 setShipId('');
