@@ -197,12 +197,14 @@ describe('year tooltip labels', () => {
 
 describe('decadeDisplayRows', () => {
     it('keeps only the most recent DECADE_WINDOW buckets in ascending order', () => {
-        const rows = Array.from({ length: 20 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
+        const rows = Array.from({ length: DECADE_WINDOW + 3 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
 
         const display = decadeDisplayRows(rows);
 
         expect(display).toHaveLength(DECADE_WINDOW);
-        expect(display.map((p) => p.bucket)).toEqual([14, 15, 16, 17, 18, 19].map((i) => i * TICKS_PER_YEAR + 1));
+        expect(display.map((p) => p.bucket)).toEqual(
+            Array.from({ length: DECADE_WINDOW }, (_, i) => (i + 3) * TICKS_PER_YEAR + 1),
+        );
     });
 
     it('sorts unordered input before slicing', () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import {
+    DECADE_WINDOW,
+    DECADE_YEARS,
     YEAR_WINDOW,
     decadeAxis,
     decadeCentre,
@@ -92,10 +94,20 @@ describe('historyChartAxis', () => {
         expect(withHistory.gridValues).toEqual(plain.gridValues);
     });
 
-    it('keeps the decade window at six decades when there is no history yet', () => {
-        expect(decadeWindowAxis(undefined, undefined).domain).toEqual([START_YEAR, START_YEAR + 60]);
-        expect(decadeWindowAxis(undefined, START_YEAR + 3.4).domain).toEqual([START_YEAR, START_YEAR + 60]);
-        expect(decadeWindowAxis(undefined, START_YEAR + 80.2).domain).toEqual([START_YEAR + 30, START_YEAR + 90]);
+    it('shrinks the decade window to the available decades when there is no history yet', () => {
+        expect(decadeWindowAxis(undefined, undefined).domain).toEqual([START_YEAR, START_YEAR + DECADE_YEARS]);
+        expect(decadeWindowAxis(undefined, START_YEAR + 3.4).domain).toEqual([START_YEAR, START_YEAR + DECADE_YEARS]);
+        expect(decadeWindowAxis(undefined, START_YEAR + 80.2).domain).toEqual([START_YEAR, START_YEAR + 90]);
+    });
+
+    it('ends the decade axis at the last available decade instead of a fixed window', () => {
+        expect(decadeAxis(START_YEAR, START_YEAR + 23).domain).toEqual([START_YEAR, START_YEAR + 30]);
+        expect(decadeWindowAxis(START_YEAR, START_YEAR + 23).domain).toEqual([START_YEAR, START_YEAR + 30]);
+    });
+
+    it('caps the decade axis at DECADE_WINDOW decades', () => {
+        const long = START_YEAR + DECADE_WINDOW * DECADE_YEARS + 200;
+        expect(decadeAxis(START_YEAR, long).domain).toEqual([START_YEAR, START_YEAR + DECADE_WINDOW * DECADE_YEARS]);
     });
 
     it('keeps the history window once decade points exist', () => {

@@ -199,9 +199,13 @@ export function PlanetCostOfLivingChart({
                 gridValues: axis.gridValues,
             };
         }
+        const lastDecadeX =
+            decadeDisplayData.length > 0
+                ? bucketDecadeMid(decadeDisplayData[decadeDisplayData.length - 1].bucket)
+                : undefined;
         const decade = decadeWindowAxis(
             decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : undefined,
-            liveRow?.xVal,
+            liveRow?.xVal ?? lastDecadeX,
         );
         return {
             dataKey: 'xVal' as const,

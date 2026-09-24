@@ -86,10 +86,10 @@ export function yearWindowAxis(firstYear: number | undefined, endYear: number | 
 }
 
 export function decadeAxis(firstDecade: number, extendTo?: number): HistoryAxis {
-    const last = Math.max(
-        firstDecade + DECADE_WINDOW * DECADE_YEARS,
-        ...(extendTo === undefined ? [] : [Math.ceil(extendTo / DECADE_YEARS) * DECADE_YEARS]),
-    );
+    const windowEnd = firstDecade + DECADE_WINDOW * DECADE_YEARS;
+    const dataEnd =
+        extendTo === undefined ? firstDecade + DECADE_YEARS : Math.ceil(extendTo / DECADE_YEARS) * DECADE_YEARS;
+    const last = Math.min(windowEnd, Math.max(firstDecade + DECADE_YEARS, dataEnd));
     const span = (last - firstDecade) / DECADE_YEARS;
     return {
         domain: [firstDecade, last],

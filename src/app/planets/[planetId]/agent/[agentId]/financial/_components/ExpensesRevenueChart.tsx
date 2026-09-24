@@ -188,9 +188,10 @@ export function ExpensesRevenueChart({
             };
         }
         const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
+        const lastDecadeX = decadePts.length > 0 ? bucketDecadeMid(decadePts[decadePts.length - 1].bucket) : undefined;
         const decade = decadeWindowAxis(
             decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : undefined,
-            liveX ?? undefined,
+            liveX ?? lastDecadeX,
         );
         return {
             dataKey: 'xVal' as const,
