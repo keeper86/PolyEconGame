@@ -11,6 +11,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 
 import {
     DECADE_WINDOW,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
     decadeStart,
@@ -157,6 +158,7 @@ function SimplePriceAreaChart({
     verticalGridValues,
     rescaleMode,
     planetId,
+    xAllowDataOverflow,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -172,6 +174,7 @@ function SimplePriceAreaChart({
     verticalGridValues?: number[];
     rescaleMode: PriceScaleMode;
     planetId: string;
+    xAllowDataOverflow?: boolean;
 }) {
     const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
@@ -249,6 +252,7 @@ function SimplePriceAreaChart({
                     domain={xDomain ?? ['dataMin', 'dataMax']}
                     ticks={xTicks}
                     tickFormatter={xTickFormatter}
+                    allowDataOverflow={xAllowDataOverflow}
                     minTickGap={xTicks ? 0 : 36}
                 />
                 <YAxis
@@ -545,11 +549,14 @@ function MonthlyChart({
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
     const monthTooltipLabel = (monthIdx: number): string => {
+        const pt = data.find((p) => p.monthIdx === monthIdx);
+        const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
+        if (monthIdx === PREVIOUS_DECEMBER_IDX) {
+            return `End of ${MONTH_NAMES[11]} ${yearInt}`;
+        }
         if (!Number.isInteger(monthIdx)) {
             return `Live data`;
         }
-        const pt = data.find((p) => p.monthIdx === monthIdx);
-        const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
         const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
         return `End of ${label} ${yearInt}`;
     };
@@ -564,6 +571,7 @@ function MonthlyChart({
                 xDomain={[0, 12]}
                 xTicks={[0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]}
                 xTickFormatter={formatMonthTick}
+                xAllowDataOverflow
                 tooltipLabelFormatter={monthTooltipLabel}
                 scale='linear'
                 yDomain={yDomain}

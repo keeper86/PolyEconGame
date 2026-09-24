@@ -8,6 +8,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
     decadeStart,
@@ -112,7 +113,7 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
         result.unshift({
             tick: prevDecPoint.bucket,
             year: prevDecPoint.bucket / TICKS_PER_YEAR,
-            monthIdx: 0,
+            monthIdx: PREVIOUS_DECEMBER_IDX,
             value: prevDecPoint.avgPopulation,
         });
     } else {
@@ -121,7 +122,7 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
             result.unshift({
                 tick: lastBefore.bucket,
                 year: lastBefore.bucket / TICKS_PER_YEAR,
-                monthIdx: 0,
+                monthIdx: PREVIOUS_DECEMBER_IDX,
                 value: lastBefore.avgPopulation,
             });
         }
@@ -265,6 +266,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                         domain={monthlyX.domain}
                         ticks={monthlyX.ticks}
                         tickFormatter={monthlyX.tickFormatter}
+                        allowDataOverflow
                         minTickGap={0}
                     />
                     <YAxis

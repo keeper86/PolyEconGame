@@ -10,9 +10,11 @@ import {
     type FinancialLive,
     type FinancialPoint,
 } from './financialChartLogic';
+import { PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
-const isLivePoint = (point: { monthIdx: number }): boolean => point.monthIdx !== 0 && point.monthIdx % 1 !== 0.5;
+const isLivePoint = (point: { monthIdx: number }): boolean =>
+    point.monthIdx !== PREVIOUS_DECEMBER_IDX && point.monthIdx % 1 !== 0.5;
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
     return gameYear * TICKS_PER_YEAR + monthIndex * TICKS_PER_MONTH + (day - 1) + 1;

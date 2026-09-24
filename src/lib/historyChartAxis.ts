@@ -20,7 +20,7 @@ export const MONTHS_PER_YEAR = 12;
 export const YEAR_WINDOW = 11;
 export const DECADE_WINDOW = 50;
 export const DECADE_YEARS = 10;
-export const PREVIOUS_DECEMBER_IDX = 0;
+export const PREVIOUS_DECEMBER_IDX = -0.5;
 
 export type HistoryAxis = {
     domain: [number, number];

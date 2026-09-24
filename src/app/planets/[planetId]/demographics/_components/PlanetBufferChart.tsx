@@ -4,6 +4,7 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
     decadeStart,
@@ -104,7 +105,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         return year === latestYear - 1 && monthIndex === 11;
     });
     if (prevDecPoint) {
-        const prev: ChartPoint = { tick: prevDecPoint.bucket, year: latestYear - 1, monthIdx: 0 };
+        const prev: ChartPoint = { tick: prevDecPoint.bucket, year: latestYear - 1, monthIdx: PREVIOUS_DECEMBER_IDX };
         for (const key of BUFFER_KEYS) {
             const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
             prev[key] = toPercent(prevDecPoint[dbKey] as number);
@@ -116,7 +117,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
             const prev: ChartPoint = {
                 tick: lastBefore.bucket,
                 year: latestYear - 1,
-                monthIdx: 0,
+                monthIdx: PREVIOUS_DECEMBER_IDX,
             };
             for (const key of BUFFER_KEYS) {
                 const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
@@ -277,6 +278,7 @@ function BufferAreaChart({
     gridVertical,
     gridValues,
     tickFormatter,
+    xAllowDataOverflow,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -288,6 +290,7 @@ function BufferAreaChart({
     gridVertical: boolean;
     gridValues?: number[];
     tickFormatter?: (v: number) => string;
+    xAllowDataOverflow?: boolean;
 }) {
     const chartData = useMemo(() => mergeMonthlyChartData(data, ghostData), [data, ghostData]);
 
@@ -319,6 +322,7 @@ function BufferAreaChart({
                         domain={xDomain ?? ['dataMin', 'dataMax']}
                         ticks={xTicks}
                         tickFormatter={xFormatter}
+                        allowDataOverflow={xAllowDataOverflow}
                         minTickGap={xTicks ? 0 : 36}
                     />
                     <YAxis
@@ -387,6 +391,9 @@ function BufferAreaChart({
                                     const tick = payload?.tick;
                                     const dotKey = monthIdx ?? tick;
                                     const value = payload?.[key];
+                                    if (monthIdx === PREVIOUS_DECEMBER_IDX) {
+                                        return <circle key={`${key}_${dotKey}_anchor`} r={0} visibility='hidden' />;
+                                    }
                                     if (value == null || typeof value !== 'number') {
                                         return <circle key={`${key}_${dotKey}_null`} r={0} visibility='hidden' />;
                                     }
@@ -539,6 +546,7 @@ export default function PlanetBufferChart({
                         xFormatter={monthlyX.tickFormatter}
                         gridVertical={true}
                         gridValues={monthlyX.gridValues}
+                        xAllowDataOverflow
                     />
                 ) : (
                     <EmptyChart />

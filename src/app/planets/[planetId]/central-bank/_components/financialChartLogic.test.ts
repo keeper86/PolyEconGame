@@ -10,7 +10,7 @@ import {
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
-import { DECADE_WINDOW, decadeStart } from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, decadeStart } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
@@ -18,7 +18,7 @@ function gameTickFor(gameYear: number, monthIndex: number, day: number): number 
 }
 
 const isLivePoint = (point: { monthIdx?: number }): boolean =>
-    point.monthIdx !== undefined && point.monthIdx !== 0 && point.monthIdx % 1 !== 0.5;
+    point.monthIdx !== undefined && point.monthIdx !== PREVIOUS_DECEMBER_IDX && point.monthIdx % 1 !== 0.5;
 
 function macroYear(gameYear: number, gdp: number): EconomyPoint[] {
     return Array.from({ length: 12 }, (_, monthIndex) => ({

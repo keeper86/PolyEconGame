@@ -3,6 +3,7 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/consta
 import {
     DECADE_WINDOW,
     DECADE_YEARS,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeAxis,
     decadeCentre,
@@ -129,7 +130,7 @@ describe('historyChartAxis', () => {
 
     it('detects live points by their off-centre month position', () => {
         expect(isLiveMonthPoint(undefined)).toBe(false);
-        expect(isLiveMonthPoint(0)).toBe(false);
+        expect(isLiveMonthPoint(PREVIOUS_DECEMBER_IDX)).toBe(false);
         expect(isLiveMonthPoint(3.5)).toBe(false);
         expect(isLiveMonthPoint(3.4667)).toBe(true);
     });

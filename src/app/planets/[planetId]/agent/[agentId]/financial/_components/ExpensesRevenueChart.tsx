@@ -253,6 +253,7 @@ export function ExpensesRevenueChart({
                             domain={xAxisProps.domain}
                             ticks={xAxisProps.ticks}
                             tickFormatter={xAxisProps.tickFormatter}
+                            allowDataOverflow={granularity === 'monthly'}
                             tick={{ fontSize: 10, fill: '#94a3b8' }}
                             axisLine={{ stroke: '#334155' }}
                             tickLine={false}

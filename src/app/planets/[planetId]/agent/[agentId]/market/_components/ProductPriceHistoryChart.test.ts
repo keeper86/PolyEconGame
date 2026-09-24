@@ -1,6 +1,7 @@
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { tickToDate } from '@/components/client/TickDisplay';
+import { PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { describe, expect, it } from 'vitest';
 
@@ -73,7 +74,7 @@ describe('MonthlyChart data invariant: data.length + ghost.length === 14', () =>
         }
     });
 
-    it('should have exactly 1 anchor point (monthIdx === 0) at all times', () => {
+    it('should have exactly 1 anchor point (monthIdx === PREVIOUS_DECEMBER_IDX) at all times', () => {
         const failures: string[] = [];
 
         for (let monthIndex = 0; monthIndex < 12; monthIndex++) {
@@ -83,12 +84,12 @@ describe('MonthlyChart data invariant: data.length + ghost.length === 14', () =>
                 const completedBuckets = allPoints.filter((p) => p.bucket < tick);
 
                 const data = computeMonthlyData(completedBuckets, live, PRODUCT_NAME);
-                const anchorPoints = data.filter((p) => p.monthIdx === 0);
+                const anchorPoints = data.filter((p) => p.monthIdx === PREVIOUS_DECEMBER_IDX);
 
                 if (anchorPoints.length !== 1) {
                     const { year, monthIndex: mi, day: d } = tickToDate(tick);
                     failures.push(
-                        `${MONTH_NAMES[mi]} ${d} Y${year}: expected 1 anchor (monthIdx=0), got ${anchorPoints.length}`,
+                        `${MONTH_NAMES[mi]} ${d} Y${year}: expected 1 anchor (monthIdx=${PREVIOUS_DECEMBER_IDX}), got ${anchorPoints.length}`,
                     );
                 }
             }

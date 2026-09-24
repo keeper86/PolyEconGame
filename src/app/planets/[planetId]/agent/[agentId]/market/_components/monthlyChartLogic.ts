@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
+import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -60,7 +60,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
         result.unshift({
             tick: prevDecPoint.bucket,
             year: prevDecPoint.bucket / TICKS_PER_YEAR,
-            monthIdx: 0,
+            monthIdx: PREVIOUS_DECEMBER_IDX,
             avgPrice: prevDecPoint.avgPrice,
             minPrice: prevDecPoint.minPrice,
             maxPrice: prevDecPoint.maxPrice,
@@ -72,7 +72,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
             result.unshift({
                 tick: lastBeforeCurrentYear.bucket,
                 year: lastBeforeCurrentYear.bucket / TICKS_PER_YEAR,
-                monthIdx: 0,
+                monthIdx: PREVIOUS_DECEMBER_IDX,
                 avgPrice: lastBeforeCurrentYear.avgPrice,
                 minPrice: lastBeforeCurrentYear.minPrice,
                 maxPrice: lastBeforeCurrentYear.maxPrice,
@@ -83,7 +83,7 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
             result.unshift({
                 tick: 0,
                 year: latestYear - 1,
-                monthIdx: 0,
+                monthIdx: PREVIOUS_DECEMBER_IDX,
                 avgPrice: fallbackPrice,
                 minPrice: fallbackPrice,
                 maxPrice: fallbackPrice,
