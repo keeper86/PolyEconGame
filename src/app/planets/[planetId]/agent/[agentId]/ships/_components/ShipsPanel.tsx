@@ -39,7 +39,10 @@ export function ShipsPanel({
     const [activeTab, setActiveTab] = useState<ShipTab>(readTabFromHash);
 
     useEffect(() => {
-        setActiveTab(readTabFromHash());
+        const applyHash = () => setActiveTab(readTabFromHash());
+        applyHash();
+        window.addEventListener('hashchange', applyHash);
+        return () => window.removeEventListener('hashchange', applyHash);
     }, []);
 
     const handleTabChange = (value: string) => {

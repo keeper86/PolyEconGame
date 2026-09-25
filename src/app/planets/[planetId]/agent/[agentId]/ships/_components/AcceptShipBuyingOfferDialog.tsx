@@ -35,12 +35,12 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
 
     const mutation = useMutation(
         trpc.acceptShipBuyingOffer.mutationOptions({
-            onSuccess: (data) => {
+            onSuccess: (data, variables) => {
                 addPending({
                     type: 'shipAcceptBuyOffer',
                     agentId,
                     planetId,
-                    shipId,
+                    shipId: variables.shipId,
                     triggerTick: data.processedAtTick,
                 });
                 void queryClient.invalidateQueries({

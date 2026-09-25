@@ -76,13 +76,18 @@ export default function ProductionFacilitiesPanel({
     });
 
     useEffect(() => {
-        const hash = window.location.hash.slice(1);
-        if (!hash) {
-            return;
-        }
-        if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
-            setActiveTab(hash as ResourceProcessLevel);
-        }
+        const applyHash = () => {
+            const hash = window.location.hash.slice(1);
+            if (!hash) {
+                return;
+            }
+            if (FACILITY_LEVELS.includes(hash as ResourceProcessLevel)) {
+                setActiveTab(hash as ResourceProcessLevel);
+            }
+        };
+        applyHash();
+        window.addEventListener('hashchange', applyHash);
+        return () => window.removeEventListener('hashchange', applyHash);
     }, []);
 
     const handleTabChange = (value: string) => {
