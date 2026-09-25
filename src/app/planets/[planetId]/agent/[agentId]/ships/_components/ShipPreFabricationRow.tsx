@@ -14,7 +14,11 @@ export function ShipPreFabricationRow({
     state: ConstructionShipStatusLoading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
-    const pct = state.progress;
+    const construction = state.buildingTarget?.construction ?? null;
+    const pct =
+        construction && construction.totalConstructionServiceRequired > 0
+            ? Math.min(100, (construction.progress / construction.totalConstructionServiceRequired) * 100)
+            : 0;
 
     return (
         <div className='space-y-1.5'>
@@ -30,7 +34,7 @@ export function ShipPreFabricationRow({
                 <ArrowRight className='h-3 w-3' />
                 <span>{planetName(planetSummaries, state.to)}</span>
             </div>
-            {state.buildingTarget && (
+            {construction && (
                 <div>
                     <div className='flex justify-between text-xs text-muted-foreground mb-1'>
                         <span>Prefabrication</span>

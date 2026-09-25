@@ -242,8 +242,8 @@ export const listShipListings = () =>
                 return {
                     ...l,
                     _agentId: agent.id,
-                    maintainanceStatus: ship?.maintainanceStatus ?? 1,
-                    maxMaintenance: ship?.maxMaintenance ?? 1,
+                    maintainanceStatus: ship?.maintainanceStatus,
+                    maxMaintenance: ship?.maxMaintenance,
                 };
             });
         });

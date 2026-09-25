@@ -280,12 +280,15 @@ export function ShipMarketTab({
                                                 details={
                                                     <>
                                                         <span>{listing.shipTypeName}</span>
-                                                        <ShipConditionRow
-                                                            ship={{
-                                                                maintainanceStatus: listing.maintainanceStatus,
-                                                                maxMaintenance: listing.maxMaintenance,
-                                                            }}
-                                                        />
+                                                        {listing.maintainanceStatus !== undefined &&
+                                                            listing.maxMaintenance !== undefined && (
+                                                                <ShipConditionRow
+                                                                    ship={{
+                                                                        maintainanceStatus: listing.maintainanceStatus,
+                                                                        maxMaintenance: listing.maxMaintenance,
+                                                                    }}
+                                                                />
+                                                            )}
                                                         <span>
                                                             Ask{' '}
                                                             {formatNumberWithUnit(

@@ -30,10 +30,6 @@ export function useSimulationTick(): number {
     return data?.tick ?? 0;
 }
 
-/**
- * True for simulation snapshot queries that should be refetched when the tick
- * advances. The heartbeat (getCurrentTick) is excluded.
- */
 export function shouldInvalidateOnTick(queryKey: readonly unknown[]): boolean {
     const path = Array.isArray(queryKey[0]) ? (queryKey[0] as unknown[]) : queryKey;
     return path[0] === 'simulation' && path[1] !== 'getCurrentTick';

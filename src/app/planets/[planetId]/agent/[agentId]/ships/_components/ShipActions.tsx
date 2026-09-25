@@ -3,12 +3,11 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
-import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useTRPC } from '@/lib/trpc';
 import type { Ship } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { PendingActionIndicator } from '../../_component/PendingActionIndicator';
 import { DispatchConstructionShipDialog } from './DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './DispatchPassengerShipDialog';
 import { DispatchShipDialog } from './DispatchShipDialog';
@@ -28,8 +27,6 @@ export function ShipActions({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
-    const pendingActions = usePendingActions(agentId, planetId);
-    const pending = pendingActions.find((a) => a.shipId === ship.id);
     const isIdle = ship.state.type === 'idle';
 
     const [sellMode, setSellMode] = useState(false);
@@ -153,7 +150,7 @@ export function ShipActions({
                     <Button
                         size='sm'
                         className='text-xs'
-                        disabled={!sellPrice || sellMutation.isPending}
+                        disabled={!sellPrice || Number(sellPrice) <= 0 || sellMutation.isPending}
                         onClick={() =>
                             sellMutation.mutate({
                                 agentId,
@@ -170,8 +167,6 @@ export function ShipActions({
                     </Button>
                 </div>
             )}
-
-            {pending && <PendingActionIndicator message='Awaiting next day…' />}
         </div>
     );
 }
