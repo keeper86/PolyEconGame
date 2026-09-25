@@ -7,9 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
+import {
+    DECADE_WINDOW,
+    DECADE_YEARS,
+    HISTORY_BUCKET_LIMIT,
+    MONTHS_PER_YEAR,
+    YEAR_WINDOW,
+} from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { START_YEAR } from '@/simulation/constants';
+import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
 import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import {
@@ -375,7 +382,7 @@ function ProductQuerySlot({
     onResult: (name: string, history: Row[], isLoading: boolean) => void;
 }): null {
     const trpc = useTRPC();
-    const limit = granularity === 'monthly' ? 13 : granularity === 'yearly' ? 11 : 100;
+    const limit = HISTORY_BUCKET_LIMIT[granularity];
     const query = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions({
             planetId,
@@ -429,6 +436,19 @@ function useQueryResults() {
     }, []);
 
     return { results, onResult, clear };
+}
+
+const EMPTY_WINDOWS: Record<Granularity, { unit: number; buckets: number }> = {
+    monthly: { unit: TICKS_PER_MONTH, buckets: MONTHS_PER_YEAR },
+    yearly: { unit: TICKS_PER_YEAR, buckets: YEAR_WINDOW },
+    decade: { unit: TICKS_PER_YEAR * DECADE_YEARS, buckets: DECADE_WINDOW },
+};
+
+export function emptyXDomain(granularity: Granularity, liveTick: number): [number, number] {
+    const { unit, buckets } = EMPTY_WINDOWS[granularity];
+    const span = unit * buckets;
+    const end = Math.max(span, Math.ceil(liveTick / unit) * unit);
+    return [end - span, end];
 }
 
 export default function MultiProductPriceChart({
@@ -606,7 +626,9 @@ export default function MultiProductPriceChart({
     }, [mergedData]);
 
     const xDomain: [number, number] =
-        mergedData.length >= 2 ? [mergedData[0].bucket, mergedData[mergedData.length - 1].bucket] : [0, 1];
+        mergedData.length >= 2
+            ? [mergedData[0].bucket, mergedData[mergedData.length - 1].bucket]
+            : emptyXDomain(granularity, liveTick);
 
     const yTickFormatter = (v: number) =>
         rescaleMode === 'relative' ? `${v.toFixed(1)}×` : formatNumberWithUnit(v, 'currency', planetId);

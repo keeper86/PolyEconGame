@@ -4,10 +4,7 @@ import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/pro
 import { ConstructionCompactRow } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ConstructionCompactRow';
 import { FacilityCardShell } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityCardShell';
 import { FacilityConstructionPanel } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityConstructionPanel';
-import {
-    FacilityHeader,
-    limitingEfficiency,
-} from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
+import { FacilityHeader, limitingEfficiency } from '@/app/planets/[planetId]/agent/[agentId]/_component/FacilityHeader';
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';

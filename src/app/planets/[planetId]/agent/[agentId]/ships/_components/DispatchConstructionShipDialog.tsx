@@ -1,17 +1,16 @@
 'use client';
 
+import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { useTRPC } from '@/lib/trpc';
-import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { PlanetIcon } from '@/components/client/PlanetIcon';
+import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { PlanetDestinationSelect } from './PlanetDestinationSelect';
+import { useShipDispatch } from './useShipDispatch';
 
 type Props = {
     agentId: string;
@@ -23,22 +22,16 @@ type Props = {
 
 export function DispatchConstructionShipDialog({ agentId, planetId, shipId, shipName, children }: Props) {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
+    const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
     const [facilityName, setFacilityName] = useState<string | undefined>(undefined);
 
-    const { data: planetSummaries } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
-    const planets = useMemo(
-        () => (planetSummaries?.planets ?? []).filter((p) => p.planetId !== planetId),
-        [planetSummaries, planetId],
-    );
-
     const mutation = useMutation(
         trpc.dispatchConstructionShip.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({ queryKey: trpc.listAgentShips.queryKey({ agentId }) });
+            onSuccess: (data) => {
+                markDispatched(data.processedAtTick);
                 setOpen(false);
                 setToPlanetId('');
                 setFacilityName(undefined);
@@ -65,24 +58,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
                     <DialogTitle>Dispatch {shipName}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
-                    <div className='space-y-1.5'>
-                        <Label>Destination Planet</Label>
-                        <Select value={toPlanetId} onValueChange={setToPlanetId} required>
-                            <SelectTrigger>
-                                <SelectValue placeholder='Select destination…' />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {planets.map((p) => (
-                                    <SelectItem key={p.planetId} value={p.planetId}>
-                                        <span className='flex items-center gap-2'>
-                                            <PlanetIcon planetId={p.planetId} />
-                                            {p.name}
-                                        </span>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <PlanetDestinationSelect fromPlanetId={planetId} value={toPlanetId} onChange={setToPlanetId} />
                     <div className='space-y-1.5'>
                         <Label>Facility to Construct</Label>
                         <div className='max-h-[420px] overflow-y-auto rounded-md border'>

@@ -1,54 +1,87 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
-import { formatNumberWithUnit } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { FacilityOrShipIcon, defaultHeight } from '@/components/client/FacilityOrShipIcon';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
+import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
+import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { useMutation } from '@tanstack/react-query';
+import { HardHat } from 'lucide-react';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { calculateCostsForConstruction } from '@/simulation/planet/facility';
-import { Anchor, PlusCircle, Users, Zap } from 'lucide-react';
+import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
+import { BuildPlaceholderCard } from '../../_component/BuildPlaceholderCard';
+import { CardHeaderBlock } from '../../_component/CardHeaderBlock';
+import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
+import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
+import { selectPendingShipyardBuilds } from './shipyardHelpers';
 
-export function ShipyardBuildSection({
+function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
+    return (
+        <FacilityCardShell
+            className='max-w-[600px]'
+            contentClassName='flex flex-col flex-1 gap-2'
+            icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' buildProgress={0} />}
+            headerContent={
+                <CardHeaderBlock
+                    title={name}
+                    titleClassName='text-amber-600 dark:text-amber-400'
+                    badge={
+                        <Badge
+                            variant='secondary'
+                            className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
+                        >
+                            <HardHat className='h-3.5 w-3.5' />
+                            Under Construction
+                        </Badge>
+                    }
+                    details={null}
+                />
+            }
+        >
+            <div className='relative mt-auto space-y-2'>
+                <Separator />
+                <ActionPendingOverlay message='Awaiting next day…' />
+            </div>
+        </FacilityCardShell>
+    );
+}
+
+function ShipyardBuildForm({
     agentId,
     planetId,
     constructionServicePrice,
-    onBuilt,
+    onCancel,
 }: {
     agentId: string;
     planetId: string;
-    constructionServicePrice: number | undefined;
-    onBuilt: () => void;
+    constructionServicePrice: number;
+    onCancel: () => void;
 }): React.ReactElement {
     const trpc = useTRPC();
-    const queryClient = useQueryClient();
-
-    const [showForm, setShowForm] = useState(false);
-    const [targetScale, setTargetScale] = useState(1);
+    const addPending = useAddPendingAction();
     const [shipyardName, setShipyardName] = useState('');
 
-    const buildCost = useMemo(
-        () => calculateCostsForConstruction('ship_construction', 0, targetScale).cost,
-        [targetScale],
+    const { data: financials } = useSimulationQuery(
+        trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
-    const estimatedCredits =
-        constructionServicePrice && constructionServicePrice > 0 ? buildCost * constructionServicePrice : null;
 
     const buildMutation = useMutation(
         trpc.buildShipConstructionFacility.mutationOptions({
-            onSuccess: () => {
-                toast.success('Shipyard construction ordered. Changes take effect on the next tick.');
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.simulation.getAgentPlanetDetail.queryKey({ agentId, planetId }),
+            onSuccess: (data) => {
+                addPending({
+                    type: 'shipBuild',
+                    agentId,
+                    planetId,
+                    facilityId: data.facilityId,
+                    facilityName: shipyardName.trim(),
+                    triggerTick: data.processedAtTick,
                 });
-                setShowForm(false);
-                setShipyardName('');
-                setTargetScale(1);
-                onBuilt();
+                toast.success('Shipyard construction ordered. Changes take effect on the next day.');
+                onCancel();
             },
             onError: (err) => {
                 toast.error(err instanceof Error ? err.message : 'Shipyard build failed');
@@ -56,94 +89,96 @@ export function ShipyardBuildSection({
         }),
     );
 
-    if (!showForm) {
-        return (
-            <div className='flex items-center gap-3 p-3 rounded-lg border border-dashed text-muted-foreground'>
-                <Anchor className='h-5 w-5 shrink-0' />
-                <div className='flex-1 text-sm'>Build a new shipyard to construct and maintain transport ships.</div>
-                <Button size='sm' variant='outline' className='gap-1' onClick={() => setShowForm(true)}>
-                    <PlusCircle className='h-3.5 w-3.5' />
-                    Build shipyard
-                </Button>
-            </div>
-        );
-    }
-
     return (
-        <div className='rounded-lg border p-4 space-y-4'>
-            <div className='flex items-center gap-2'>
-                <Anchor className='h-5 w-5 text-muted-foreground' />
-                <h3 className='font-semibold text-sm'>New Shipyard</h3>
-            </div>
-
-            <div className='grid gap-3 text-xs text-muted-foreground'>
-                <div className='flex items-center gap-2'>
-                    <Users className='h-3.5 w-3.5' />
-                    <span>Workers: 10 unskilled · 20 primary · 10 secondary · 5 tertiary (per scale)</span>
-                </div>
-                <div className='flex items-center gap-2'>
-                    <Zap className='h-3.5 w-3.5' />
-                    <span>2 MW power per scale</span>
-                </div>
-            </div>
-
-            <Separator />
-
-            <div className='space-y-2'>
-                <Label className='text-xs'>Shipyard name</Label>
-                <Input
-                    className='h-8 text-xs'
-                    placeholder='Enter a unique name, e.g. "Shipyard Alpha"'
-                    value={shipyardName}
-                    maxLength={50}
-                    onChange={(e) => setShipyardName(e.target.value)}
-                />
-            </div>
-
-            <div className='space-y-2'>
-                <div className='flex items-center justify-between text-xs'>
-                    <Label className='text-xs'>Initial scale</Label>
-                    <span className='tabular-nums font-medium'>{targetScale}</span>
-                </div>
-                <Slider min={1} max={10} step={1} value={[targetScale]} onValueChange={([v]) => setTargetScale(v)} />
-            </div>
-
-            <div className='text-xs text-muted-foreground'>
-                Construction cost: {formatNumberWithUnit(buildCost, 'units')} cs
-                {estimatedCredits ? (
-                    <span> ≈ {formatNumberWithUnit(estimatedCredits, 'currency', planetId)} ₵</span>
-                ) : null}
-            </div>
-
-            {buildMutation.error && <p className='text-destructive text-xs'>{buildMutation.error.message}</p>}
-
-            <div className='flex gap-2'>
-                <Button
-                    size='sm'
-                    disabled={!shipyardName.trim() || buildMutation.isPending}
-                    onClick={() =>
+        <FacilityCardShell
+            className='max-w-[600px]'
+            contentClassName='flex flex-col flex-1 gap-2'
+            icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' />}
+            headerContent={
+                <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
+                    <div className='flex flex-col gap-1 mb-auto'>
+                        <h3 className='font-semibold leading-tight'>New Shipyard</h3>
+                        <div className='flex flex-col gap-1'>
+                            <Label className='text-xs text-muted-foreground'>Shipyard name</Label>
+                            <Input
+                                className='h-8 text-xs'
+                                placeholder='Enter a unique name, e.g. "Shipyard Alpha"'
+                                value={shipyardName}
+                                maxLength={50}
+                                onChange={(e) => setShipyardName(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </span>
+            }
+        >
+            <div className='relative mt-auto space-y-2'>
+                <Separator />
+                <FacilityConstructionPanel
+                    facilityType='ship_construction'
+                    fromScale={0}
+                    constructionServicePrice={constructionServicePrice}
+                    planetId={planetId}
+                    label='Build at scale'
+                    confirmLabel='Build'
+                    pendingLabel='Sending build…'
+                    isPending={buildMutation.isPending}
+                    financials={financials}
+                    onCancel={onCancel}
+                    onConfirm={(targetScale) => {
+                        if (!shipyardName.trim()) {
+                            toast.error('Please enter a shipyard name');
+                            return;
+                        }
                         buildMutation.mutate({
                             agentId,
                             planetId,
                             facilityName: shipyardName.trim(),
                             targetScale,
-                        })
-                    }
-                >
-                    Build
-                </Button>
-                <Button
-                    size='sm'
-                    variant='destructive'
-                    onClick={() => {
-                        setShowForm(false);
-                        setShipyardName('');
-                        setTargetScale(1);
+                        });
                     }}
-                >
-                    Cancel
-                </Button>
+                />
+                {buildMutation.isPending && <ActionPendingOverlay message='Sending build…' />}
             </div>
-        </div>
+        </FacilityCardShell>
+    );
+}
+
+export function ShipyardBuildSection({
+    agentId,
+    planetId,
+    constructionServicePrice,
+}: {
+    agentId: string;
+    planetId: string;
+    constructionServicePrice: number;
+}): React.ReactElement {
+    const pendingActions = usePendingActions(agentId, planetId);
+    const pendingBuilds = selectPendingShipyardBuilds(pendingActions);
+    const [configuring, setConfiguring] = useState(false);
+
+    const pendingCards = pendingBuilds.map((build, index) => (
+        <PendingShipyardCard key={build.facilityId ?? `${build.name}-${index}`} name={build.name} />
+    ));
+
+    if (configuring) {
+        return (
+            <>
+                {pendingCards}
+                <ShipyardBuildForm
+                    agentId={agentId}
+                    planetId={planetId}
+                    constructionServicePrice={constructionServicePrice}
+                    onCancel={() => setConfiguring(false)}
+                />
+            </>
+        );
+    }
+
+    return (
+        <>
+            {pendingCards}
+            <BuildPlaceholderCard label='Build shipyard' onClick={() => setConfiguring(true)} />
+        </>
     );
 }

@@ -152,22 +152,27 @@ export default function MarketPanel({
     });
 
     useEffect(() => {
-        const hash = window.location.hash.slice(1);
-        if (!hash) {
-            return;
-        }
-        if (hash === 'all') {
-            setActiveTab('all');
-            return;
-        }
-        if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
-            setActiveTab(hash);
-            return;
-        }
-        const resourceName = slugToResourceName(hash);
-        if (resourceName) {
-            setActiveTab(getLevelForResource(resourceName));
-        }
+        const applyHash = () => {
+            const hash = window.location.hash.slice(1);
+            if (!hash) {
+                return;
+            }
+            if (hash === 'all') {
+                setActiveTab('all');
+                return;
+            }
+            if ((LEVEL_ORDER as readonly string[]).includes(hash)) {
+                setActiveTab(hash);
+                return;
+            }
+            const resourceName = slugToResourceName(hash);
+            if (resourceName) {
+                setActiveTab(getLevelForResource(resourceName));
+            }
+        };
+        applyHash();
+        window.addEventListener('hashchange', applyHash);
+        return () => window.removeEventListener('hashchange', applyHash);
     }, []);
 
     const [localStates, setLocalStates] = useState<Record<string, LocalResourceState>>(() =>

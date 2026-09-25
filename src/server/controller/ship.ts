@@ -137,6 +137,7 @@ export const dispatchShip = () =>
                     .nullable(),
             }),
         )
+        .output(z.object({ shipId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
@@ -145,14 +146,14 @@ export const dispatchShip = () =>
                 if (!resource) {
                     throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid resource name in cargo goal' });
                 }
-                const { result: shipId } = await workerDispatchShip({
+                const { result: shipId, processedAtTick } = await workerDispatchShip({
                     ...input,
                     cargoGoal: { ...input.cargoGoal, resource },
                 });
-                return { shipId };
+                return { shipId, processedAtTick };
             } else {
-                const { result: shipId } = await workerDispatchShip({ ...input, cargoGoal: null });
-                return { shipId };
+                const { result: shipId, processedAtTick } = await workerDispatchShip({ ...input, cargoGoal: null });
+                return { shipId, processedAtTick };
             }
         });
 
@@ -167,11 +168,12 @@ export const dispatchConstructionShip = () =>
                 facilityName: z.string().min(1).optional(),
             }),
         )
+        .output(z.object({ shipId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: shipId } = await workerDispatchConstructionShip(input);
-            return { shipId };
+            const { result: shipId, processedAtTick } = await workerDispatchConstructionShip(input);
+            return { shipId, processedAtTick };
         });
 
 export const dispatchPassengerShip = () =>
@@ -185,11 +187,12 @@ export const dispatchPassengerShip = () =>
                 passengerCount: z.number().int().min(0),
             }),
         )
+        .output(z.object({ shipId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: shipId } = await workerDispatchPassengerShip(input);
-            return { shipId };
+            const { result: shipId, processedAtTick } = await workerDispatchPassengerShip(input);
+            return { shipId, processedAtTick };
         });
 
 export const postShipBuyingOffer = () =>
@@ -202,11 +205,12 @@ export const postShipBuyingOffer = () =>
                 price: z.number().positive(),
             }),
         )
+        .output(z.object({ offerId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: offerId } = await workerPostShipBuyingOffer(input);
-            return { offerId };
+            const { result: offerId, processedAtTick } = await workerPostShipBuyingOffer(input);
+            return { offerId, processedAtTick };
         });
 
 export const acceptShipBuyingOffer = () =>
@@ -220,11 +224,12 @@ export const acceptShipBuyingOffer = () =>
                 shipId: z.string().min(1),
             }),
         )
+        .output(z.object({ offerId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: offerId } = await workerAcceptShipBuyingOffer(input);
-            return { offerId };
+            const { result: offerId, processedAtTick } = await workerAcceptShipBuyingOffer(input);
+            return { offerId, processedAtTick };
         });
 
 export const listShipListings = () =>
@@ -232,7 +237,15 @@ export const listShipListings = () =>
         const { agents } = getAllAgentsSync();
         const listings = (agents ?? []).flatMap((agent) => {
             const assets = agent.assets?.[input.planetId];
-            return (assets?.shipListings ?? []).map((l) => ({ ...l, _agentId: agent.id }));
+            return (assets?.shipListings ?? []).map((l) => {
+                const ship = agent.ships?.find((s) => s.id === l.shipId);
+                return {
+                    ...l,
+                    _agentId: agent.id,
+                    maintainanceStatus: ship?.maintainanceStatus,
+                    maxMaintenance: ship?.maxMaintenance,
+                };
+            });
         });
         return { listings };
     });
@@ -256,11 +269,12 @@ export const postShipListing = () =>
                 askPrice: z.number().positive(),
             }),
         )
+        .output(z.object({ listingId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: listingId } = await workerPostShipListing(input);
-            return { listingId };
+            const { result: listingId, processedAtTick } = await workerPostShipListing(input);
+            return { listingId, processedAtTick };
         });
 
 export const cancelShipListing = () =>
@@ -272,11 +286,12 @@ export const cancelShipListing = () =>
                 listingId: z.string().min(1),
             }),
         )
+        .output(z.object({ listingId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.agentId);
-            const { result: listingId } = await workerCancelShipListing(input);
-            return { listingId };
+            const { result: listingId, processedAtTick } = await workerCancelShipListing(input);
+            return { listingId, processedAtTick };
         });
 
 export const acceptShipListing = () =>
@@ -289,11 +304,12 @@ export const acceptShipListing = () =>
                 listingId: z.string().min(1),
             }),
         )
+        .output(z.object({ listingId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             await assertAgentOwnership(userId, input.buyerAgentId);
-            const { result: listingId } = await workerAcceptShipListing(input);
-            return { listingId };
+            const { result: listingId, processedAtTick } = await workerAcceptShipListing(input);
+            return { listingId, processedAtTick };
         });
 
 export const getAgentPlanetStorage = () =>

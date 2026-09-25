@@ -37,7 +37,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
         trpc.postTransportContract.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listTransportContracts.queryKey({ planetId }),
+                    queryKey: trpc.simulation.listTransportContracts.queryKey({ planetId }),
                 });
                 setOpen(false);
                 resetForm();

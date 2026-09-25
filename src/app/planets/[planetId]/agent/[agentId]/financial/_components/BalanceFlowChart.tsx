@@ -5,11 +5,11 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
-    decadeAxis,
     decadeStart,
+    decadeWindowAxis,
     formatMonthLabel,
-    yearAxis,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
@@ -154,7 +154,10 @@ export function BalanceFlowChart({
         }
         if (granularity === 'yearly') {
             const yearlyPts = (data as FinancialPoint[]).slice(-YEAR_WINDOW);
-            const axis = yearAxis(yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : 0, liveRow?.xVal);
+            const axis = yearWindowAxis(
+                yearlyPts.length > 0 ? yearStart(yearlyPts[0].bucket) : undefined,
+                liveRow?.xVal,
+            );
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
@@ -166,7 +169,11 @@ export function BalanceFlowChart({
             };
         }
         const decadePts = (data as FinancialPoint[]).slice(-DECADE_WINDOW);
-        const decade = decadeAxis(decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : 0, liveRow?.xVal);
+        const lastDecadeX = decadePts.length > 0 ? bucketDecadeMid(decadePts[decadePts.length - 1].bucket) : undefined;
+        const decade = decadeWindowAxis(
+            decadePts.length > 0 ? decadeStart(decadePts[0].bucket) : undefined,
+            liveRow?.xVal ?? lastDecadeX,
+        );
         return {
             dataKey: 'xVal' as const,
             type: 'number' as const,
@@ -223,6 +230,7 @@ export function BalanceFlowChart({
                             domain={xAxisProps.domain}
                             ticks={xAxisProps.ticks}
                             tickFormatter={xAxisProps.tickFormatter}
+                            allowDataOverflow={granularity === 'monthly'}
                             tick={{ fontSize: 10, fill: '#94a3b8' }}
                             axisLine={{ stroke: '#334155' }}
                             tickLine={false}

@@ -30,6 +30,11 @@ export function useSimulationTick(): number {
     return data?.tick ?? 0;
 }
 
+export function shouldInvalidateOnTick(queryKey: readonly unknown[]): boolean {
+    const path = Array.isArray(queryKey[0]) ? (queryKey[0] as unknown[]) : queryKey;
+    return path[0] === 'simulation' && path[1] !== 'getCurrentTick';
+}
+
 /**
  * Renders exactly once in the app tree (inside AppProviders).
  * Listens for tick advances and invalidates all stale simulation queries
@@ -53,12 +58,7 @@ export function SimulationTickPoller() {
         }
 
         void queryClient.invalidateQueries({
-            predicate: (query) => {
-                // tRPC generates nested query keys: [['simulation', 'procedureName'], ...]
-                const path = Array.isArray(query.queryKey[0]) ? query.queryKey[0] : query.queryKey;
-                // Only invalidate simulation queries, but NOT the currentTick heartbeat itself
-                return path[0] === 'simulation' && path[1] !== 'getCurrentTick';
-            },
+            predicate: (query) => shouldInvalidateOnTick(query.queryKey),
         });
     }, [data, queryClient]);
 

@@ -8,10 +8,12 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
+    HISTORY_BUCKET_LIMIT,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
-    decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     formatDecadeLabel,
     formatMonthLabel,
     formatYearLabel,
@@ -19,9 +21,9 @@ import {
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
-    yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -112,7 +114,7 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
         result.unshift({
             tick: prevDecPoint.bucket,
             year: prevDecPoint.bucket / TICKS_PER_YEAR,
-            monthIdx: 0,
+            monthIdx: PREVIOUS_DECEMBER_IDX,
             value: prevDecPoint.avgPopulation,
         });
     } else {
@@ -121,7 +123,7 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
             result.unshift({
                 tick: lastBefore.bucket,
                 year: lastBefore.bucket / TICKS_PER_YEAR,
-                monthIdx: 0,
+                monthIdx: PREVIOUS_DECEMBER_IDX,
                 value: lastBefore.avgPopulation,
             });
         }
@@ -265,6 +267,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                         domain={monthlyX.domain}
                         ticks={monthlyX.ticks}
                         tickFormatter={monthlyX.tickFormatter}
+                        allowDataOverflow
                         minTickGap={0}
                     />
                     <YAxis
@@ -358,7 +361,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
     }, [yearlyPoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const xAxis = yearWindowAxis(data.length > 0 ? yearStart(data[0].tick) : undefined, data[data.length - 1]?.year);
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -443,7 +446,10 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
     }, [decadePoints, live]);
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
-    const xAxis = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const xAxis = decadeWindowAxis(
+        data.length > 0 ? decadeStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -523,19 +529,19 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     // Query buffer history (includes population) once instead of separate population queries
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'monthly', limit: 13 },
+            { planetId, granularity: 'monthly', limit: HISTORY_BUCKET_LIMIT.monthly },
             { enabled: granularity === 'monthly' },
         ),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'yearly', limit: 11 },
+            { planetId, granularity: 'yearly', limit: HISTORY_BUCKET_LIMIT.yearly },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'decade' },
+            { planetId, granularity: 'decade', limit: HISTORY_BUCKET_LIMIT.decade },
             { enabled: granularity === 'decade' },
         ),
     );

@@ -22,7 +22,7 @@ import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConditionRow } from './FacilityConditionRow';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
-import { FacilityHeader, limitingEfficiency } from './FacilityHeader';
+import { FacilityHeader, limitingEfficiency } from '../../_component/FacilityHeader';
 import { FacilityProductionIORow } from './FacilityIORow';
 
 export function ActiveFacilityCard({

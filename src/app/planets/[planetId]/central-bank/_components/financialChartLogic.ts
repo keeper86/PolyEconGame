@@ -1,5 +1,11 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { DECADE_WINDOW, ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import {
+    DECADE_WINDOW,
+    PREVIOUS_DECEMBER_IDX,
+    ghostMonthVisible,
+    monthAxis,
+    monthCentre,
+} from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
@@ -93,11 +99,11 @@ export function computeMacroMonthlyData(
         return year === latestYear - 1 && monthIndex === 11;
     });
     if (prevDecPoint) {
-        current.unshift(toMacroPoint(prevDecPoint, 0, false));
+        current.unshift(toMacroPoint(prevDecPoint, PREVIOUS_DECEMBER_IDX, false));
     } else {
         const lastBefore = [...sorted].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
         if (lastBefore) {
-            current.unshift(toMacroPoint(lastBefore, 0, false));
+            current.unshift(toMacroPoint(lastBefore, PREVIOUS_DECEMBER_IDX, false));
         }
     }
 
@@ -212,11 +218,11 @@ export function computeCostOfLivingMonthlyData(
         return year === latestYear - 1 && monthIndex === 11;
     });
     if (prevDecPoint) {
-        current.unshift(toCostOfLivingPoint(prevDecPoint, 0, false));
+        current.unshift(toCostOfLivingPoint(prevDecPoint, PREVIOUS_DECEMBER_IDX, false));
     } else {
         const lastBefore = [...sorted].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
         if (lastBefore) {
-            current.unshift(toCostOfLivingPoint(lastBefore, 0, false));
+            current.unshift(toCostOfLivingPoint(lastBefore, PREVIOUS_DECEMBER_IDX, false));
         }
     }
 

@@ -11,15 +11,17 @@ import { formatNumberWithUnit } from '@/lib/utils';
 
 import {
     DECADE_WINDOW,
+    HISTORY_BUCKET_LIMIT,
+    PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
-    decadeAxis,
     decadeCentre,
     decadeStart,
+    decadeWindowAxis,
     formatDecadeLabel,
     formatYearLabel,
-    yearAxis,
     yearCentre,
     yearStart,
+    yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import React, { useMemo } from 'react';
 import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic';
@@ -157,6 +159,7 @@ function SimplePriceAreaChart({
     verticalGridValues,
     rescaleMode,
     planetId,
+    xAllowDataOverflow,
 }: {
     data: ChartPoint[];
     ghostData?: ChartPoint[];
@@ -172,6 +175,7 @@ function SimplePriceAreaChart({
     verticalGridValues?: number[];
     rescaleMode: PriceScaleMode;
     planetId: string;
+    xAllowDataOverflow?: boolean;
 }) {
     const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
@@ -249,6 +253,7 @@ function SimplePriceAreaChart({
                     domain={xDomain ?? ['dataMin', 'dataMax']}
                     ticks={xTicks}
                     tickFormatter={xTickFormatter}
+                    allowDataOverflow={xAllowDataOverflow}
                     minTickGap={xTicks ? 0 : 36}
                 />
                 <YAxis
@@ -545,11 +550,14 @@ function MonthlyChart({
     const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
 
     const monthTooltipLabel = (monthIdx: number): string => {
+        const pt = data.find((p) => p.monthIdx === monthIdx);
+        const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
+        if (monthIdx === PREVIOUS_DECEMBER_IDX) {
+            return `End of ${MONTH_NAMES[11]} ${yearInt}`;
+        }
         if (!Number.isInteger(monthIdx)) {
             return `Live data`;
         }
-        const pt = data.find((p) => p.monthIdx === monthIdx);
-        const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
         const label = MONTH_NAMES[(monthIdx + 11) % 12] ?? '';
         return `End of ${label} ${yearInt}`;
     };
@@ -564,6 +572,7 @@ function MonthlyChart({
                 xDomain={[0, 12]}
                 xTicks={[0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]}
                 xTickFormatter={formatMonthTick}
+                xAllowDataOverflow
                 tooltipLabelFormatter={monthTooltipLabel}
                 scale='linear'
                 yDomain={yDomain}
@@ -629,7 +638,10 @@ function YearlyChart({
     );
     const gradId = `grad_yr_${productName.replace(/\s+/g, '_')}`;
 
-    const yearlyAxis = yearAxis(data.length > 0 ? yearStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const yearlyAxis = yearWindowAxis(
+        data.length > 0 ? yearStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -691,7 +703,10 @@ function DecadesChart({
     );
     const gradId = `grad_dec_${productName.replace(/\s+/g, '_')}`;
 
-    const decade = decadeAxis(data.length > 0 ? decadeStart(data[0].tick) : 0, data[data.length - 1]?.year);
+    const decade = decadeWindowAxis(
+        data.length > 0 ? decadeStart(data[0].tick) : undefined,
+        data[data.length - 1]?.year,
+    );
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -727,7 +742,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 planetId,
                 productName,
                 granularity: 'monthly',
-                limit: 13,
+                limit: HISTORY_BUCKET_LIMIT.monthly,
             },
             { enabled: granularity === 'monthly' },
         ),
@@ -738,14 +753,14 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 planetId,
                 productName,
                 granularity: 'yearly',
-                limit: 11,
+                limit: HISTORY_BUCKET_LIMIT.yearly,
             },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
-            { planetId, productName, granularity: 'decade' },
+            { planetId, productName, granularity: 'decade', limit: HISTORY_BUCKET_LIMIT.decade },
             { enabled: granularity === 'decade' },
         ),
     );

@@ -1,5 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
@@ -110,11 +110,11 @@ export function computeFinancialMonthlyData(
     });
 
     if (prevDecPoint) {
-        result.unshift({ ...prevDecPoint, monthIdx: 0 });
+        result.unshift({ ...prevDecPoint, monthIdx: PREVIOUS_DECEMBER_IDX });
     } else {
         const lastBeforeCurrentYear = [...pts].reverse().find((p) => tickToDate(p.bucket).year < latestYear);
         if (lastBeforeCurrentYear) {
-            result.unshift({ ...lastBeforeCurrentYear, monthIdx: 0 });
+            result.unshift({ ...lastBeforeCurrentYear, monthIdx: PREVIOUS_DECEMBER_IDX });
         }
     }
 

@@ -47,18 +47,22 @@ function ShipFleet({
     planetId: string;
     ships: { id: string; type: { type: string; name: string }; state: { type: string; planetId: string } }[];
 }) {
+    const groups = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const ship of ships) {
+            map.set(ship.type.name, (map.get(ship.type.name) ?? 0) + 1);
+        }
+        return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    }, [ships]);
+
     return (
         <div className='space-y-2'>
             <p className='text-xs font-semibold text-muted-foreground'>Ships</p>
             <div className='flex items-center flex-wrap gap-3'>
-                {ships.map((ship) => (
-                    <FacilityOrShipListCard
-                        key={ship.id}
-                        name={ship.type.name}
-                        subtitle={`${ship.state.type}${ship.state.planetId ? ` at ${ship.state.planetId}` : ''}`}
-                    />
+                {groups.map(([name, count]) => (
+                    <FacilityOrShipListCard key={name} name={name} count={count} />
                 ))}
-                {ships.length === 0 && (
+                {groups.length === 0 && (
                     <FacilityOrShipListCard key={'no_ships'} name={'No ships (on ' + planetId + ')'} unknown />
                 )}
             </div>

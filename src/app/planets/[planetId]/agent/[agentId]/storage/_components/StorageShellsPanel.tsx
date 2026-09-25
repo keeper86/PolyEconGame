@@ -1,7 +1,7 @@
 'use client';
 
 import { ActiveFacilityCard } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/ActiveFacilityCard';
-import { limitingEfficiency } from '@/app/planets/[planetId]/agent/[agentId]/production/_component/FacilityHeader';
+import { limitingEfficiency } from '@/app/planets/[planetId]/agent/[agentId]/_component/FacilityHeader';
 import { ProductQuantity } from '@/components/client/ProductQuantity';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';

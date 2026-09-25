@@ -10,7 +10,7 @@ import {
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
-import { DECADE_WINDOW, decadeStart } from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, decadeStart } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
@@ -18,7 +18,7 @@ function gameTickFor(gameYear: number, monthIndex: number, day: number): number 
 }
 
 const isLivePoint = (point: { monthIdx?: number }): boolean =>
-    point.monthIdx !== undefined && point.monthIdx !== 0 && point.monthIdx % 1 !== 0.5;
+    point.monthIdx !== undefined && point.monthIdx !== PREVIOUS_DECEMBER_IDX && point.monthIdx % 1 !== 0.5;
 
 function macroYear(gameYear: number, gdp: number): EconomyPoint[] {
     return Array.from({ length: 12 }, (_, monthIndex) => ({
@@ -197,12 +197,14 @@ describe('year tooltip labels', () => {
 
 describe('decadeDisplayRows', () => {
     it('keeps only the most recent DECADE_WINDOW buckets in ascending order', () => {
-        const rows = Array.from({ length: 20 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
+        const rows = Array.from({ length: DECADE_WINDOW + 3 }, (_, i) => ({ bucket: i * TICKS_PER_YEAR + 1 }));
 
         const display = decadeDisplayRows(rows);
 
         expect(display).toHaveLength(DECADE_WINDOW);
-        expect(display.map((p) => p.bucket)).toEqual([14, 15, 16, 17, 18, 19].map((i) => i * TICKS_PER_YEAR + 1));
+        expect(display.map((p) => p.bucket)).toEqual(
+            Array.from({ length: DECADE_WINDOW }, (_, i) => (i + 3) * TICKS_PER_YEAR + 1),
+        );
     });
 
     it('sorts unordered input before slicing', () => {

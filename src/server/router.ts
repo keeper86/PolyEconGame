@@ -119,6 +119,11 @@ const simulationRouter = trpcRoot.router({
     getUsedLogos: getUsedLogos(),
     getMyBankruptcy: getMyBankruptcy(),
     generateNewsReport: generateNewsReport(),
+    listAgentShips: listAgentShips(),
+    listTransportContracts: listTransportContracts(),
+    listShipBuyingOffers: listShipBuyingOffers(),
+    listShipListings: listShipListings(),
+    getShipMarketHistory: getShipMarketHistory(),
 });
 
 const protectedAppRouter = trpcRoot.router({
@@ -144,11 +149,6 @@ const protectedAppRouter = trpcRoot.router({
     setFacilityScale: setFacilityScale(),
     leaseClaim: leaseClaim(),
     quitClaim: quitClaim(),
-    listAgentShips: listAgentShips(),
-    listTransportContracts: listTransportContracts(),
-    listShipBuyingOffers: listShipBuyingOffers(),
-    listShipListings: listShipListings(),
-    getShipMarketHistory: getShipMarketHistory(),
     postTransportContract: postTransportContract(),
     acceptTransportContract: acceptTransportContract(),
     cancelTransportContract: cancelTransportContract(),

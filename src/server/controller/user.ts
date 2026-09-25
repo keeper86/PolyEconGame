@@ -1063,7 +1063,7 @@ export const buildShipConstructionFacility = () => {
                 targetScale: z.number().int().min(1).max(100).default(1),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             const row = await db('user_data').where({ user_id: userId }).first();
@@ -1077,13 +1077,13 @@ export const buildShipConstructionFacility = () => {
                 { component: 'build-ship-construction-facility' },
                 `User ${userId} building ship construction facility '${input.facilityName}' for agent ${input.agentId} on planet ${input.planetId}`,
             );
-            const { result: facilityId } = await workerBuildShipConstructionFacility({
+            const { result: facilityId, processedAtTick } = await workerBuildShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityName: input.facilityName,
                 targetScale: input.targetScale,
             });
-            return { facilityId };
+            return { facilityId, processedAtTick };
         });
 };
 
@@ -1097,7 +1097,7 @@ export const expandShipConstructionFacility = () => {
                 targetScale: z.number().int().min(2).max(100),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             const row = await db('user_data').where({ user_id: userId }).first();
@@ -1107,13 +1107,13 @@ export const expandShipConstructionFacility = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const { result: facilityId } = await workerExpandShipConstructionFacility({
+            const { result: facilityId, processedAtTick } = await workerExpandShipConstructionFacility({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
                 targetScale: input.targetScale,
             });
-            return { facilityId };
+            return { facilityId, processedAtTick };
         });
 };
 
@@ -1128,7 +1128,7 @@ export const setShipConstructionTarget = () => {
                 shipName: z.string().max(50),
             }),
         )
-        .output(z.object({ facilityId: z.string() }))
+        .output(z.object({ facilityId: z.string(), processedAtTick: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
             const row = await db('user_data').where({ user_id: userId }).first();
@@ -1138,14 +1138,14 @@ export const setShipConstructionTarget = () => {
             if (row.agent_id !== input.agentId) {
                 throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
             }
-            const { result: facilityId } = await workerSetShipConstructionTarget({
+            const { result: facilityId, processedAtTick } = await workerSetShipConstructionTarget({
                 agentId: input.agentId,
                 planetId: input.planetId,
                 facilityId: input.facilityId,
                 shipTypeName: input.shipTypeName,
                 shipName: input.shipName,
             });
-            return { facilityId };
+            return { facilityId, processedAtTick };
         });
 };
 

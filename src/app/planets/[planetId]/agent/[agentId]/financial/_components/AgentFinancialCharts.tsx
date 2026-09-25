@@ -2,6 +2,7 @@
 
 import { GranularityHeader, useGranularity } from '@/components/client/GranularityButtonGroup';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { HISTORY_BUCKET_LIMIT } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { Search } from 'lucide-react';
 import { useMemo } from 'react';
@@ -31,20 +32,20 @@ export default function AgentFinancialCharts({
 
     const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, planetId, granularity: 'monthly', limit: 13 },
+            { agentId, planetId, granularity: 'monthly', limit: HISTORY_BUCKET_LIMIT.monthly },
             { enabled: granularity === 'monthly' },
         ),
     );
 
     const { data: yearlyData, isLoading: loadingYearly } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, planetId, granularity: 'yearly', limit: 11 },
+            { agentId, planetId, granularity: 'yearly', limit: HISTORY_BUCKET_LIMIT.yearly },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decadeData, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getAgentFinancialHistory.queryOptions(
-            { agentId, planetId, granularity: 'decade', limit: 100 },
+            { agentId, planetId, granularity: 'decade', limit: HISTORY_BUCKET_LIMIT.decade },
             { enabled: granularity === 'decade' },
         ),
     );

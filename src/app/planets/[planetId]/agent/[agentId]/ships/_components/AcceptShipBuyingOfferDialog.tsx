@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAddPendingAction } from '@/hooks/useActionOverlay';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,16 +30,24 @@ type Props = {
 export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatchingShips, open, onClose }: Props) {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const addPending = useAddPendingAction();
     const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
         trpc.acceptShipBuyingOffer.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    queryKey: trpc.listShipBuyingOffers.queryKey({ planetId }),
+            onSuccess: (data, variables) => {
+                addPending({
+                    type: 'shipAcceptBuyOffer',
+                    agentId,
+                    planetId,
+                    shipId: variables.shipId,
+                    triggerTick: data.processedAtTick,
                 });
                 void queryClient.invalidateQueries({
-                    queryKey: trpc.listAgentShips.queryKey({ agentId }),
+                    queryKey: trpc.simulation.listShipBuyingOffers.queryKey({ planetId }),
+                });
+                void queryClient.invalidateQueries({
+                    queryKey: trpc.simulation.listAgentShips.queryKey({ agentId }),
                 });
                 onClose();
                 setShipId('');

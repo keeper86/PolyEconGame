@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Agent, Planet } from '../planet/planet';
 import { agentMap, makeAgent, makePlanetWithPopulation } from '../utils/testHelper';
 
+import { seedRng } from '../utils/stochasticRound';
 import { automaticLoanRepayment } from './financialTick';
 import {
     consolidateLoans,
@@ -181,5 +182,22 @@ describe('emergency loans', () => {
         expect(repaid).toBe(60);
         expect(loans.some((l) => l.remainingPrincipal > 0 && l.takenAtTick === 2)).toBe(true);
         expect(loans.some((l) => l.remainingPrincipal > 0 && l.takenAtTick === 1)).toBe(false);
+    });
+});
+
+describe('loan ids', () => {
+    it('stays unique when loans are created from a reset rng', () => {
+        seedRng(42);
+        const beforeRecovery = makeLoan('wageCoverage', 100, 0.05, 1, 361, false);
+        seedRng(42);
+        const afterRecovery = makeLoan('wageCoverage', 100, 0.05, 1, 361, false);
+
+        expect(beforeRecovery.id).not.toBe(afterRecovery.id);
+    });
+
+    it('stays unique across many loans', () => {
+        const ids = new Set(Array.from({ length: 1000 }, () => makeLoan('wageCoverage', 100, 0.05, 1, 361, false).id));
+
+        expect(ids.size).toBe(1000);
     });
 });

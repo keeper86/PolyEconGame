@@ -4,7 +4,6 @@ import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { useTour } from '@/components/tour/TourContext';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Spinner } from '@/components/ui/spinner';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -15,10 +14,11 @@ import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
-import { FacilityHeader } from './FacilityHeader';
+import { FacilityHeader } from '../../_component/FacilityHeader';
 import { FacilityIORow } from './FacilityIORow';
 
 function BuildForm({
@@ -122,15 +122,7 @@ function BuildForm({
                     onScaleChange={setPreviewScale}
                 />
 
-                {/* Blocking overlay only over the action controls (build form or awaiting tick) */}
-                {overlayMessage && (
-                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Spinner className='h-4 w-4' />
-                            {overlayMessage}
-                        </span>
-                    </div>
-                )}
+                {overlayMessage && <ActionPendingOverlay message={overlayMessage} />}
             </div>
         </FacilityCardShell>
     );
@@ -218,15 +210,7 @@ function ConstructionDisplay({
                     hideCancel={hideCancel}
                 />
 
-                {/* Blocking overlay only over the action controls */}
-                {pendingAction && (
-                    <div className='absolute inset-0 z-10 flex items-center justify-center bg-background/95 dark:bg-card shadow-inner rounded-b-lg'>
-                        <span className='flex items-center gap-2 text-sm font-medium text-foreground'>
-                            <Spinner className='h-4 w-4' />
-                            {pendingMessage ?? 'Awaiting next day…'}
-                        </span>
-                    </div>
-                )}
+                {pendingAction && <ActionPendingOverlay message={pendingMessage ?? 'Awaiting next day…'} />}
             </div>
         </FacilityCardShell>
     );

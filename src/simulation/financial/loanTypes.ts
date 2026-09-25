@@ -1,14 +1,8 @@
 import { TICKS_PER_YEAR } from '../constants';
 import type { Bank } from '../planet/planet';
 import type { AgentPlanetAssets } from '../planet/planet';
-import { nextRandom } from '../utils/stochasticRound';
 
 const LOAN_LIMIT = 1000;
-
-function nextLoanId(): string {
-    const hex = (n: number) => ((n * 0x100000000) >>> 0).toString(16).padStart(8, '0');
-    return `${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}-${hex(nextRandom())}`;
-}
 
 export const LOAN_TYPES = [
     'starter',
@@ -80,7 +74,7 @@ export function makeLoan(
     earlyRepaymentAllowed: boolean,
 ): Loan {
     return {
-        id: nextLoanId(),
+        id: crypto.randomUUID(),
         type,
         principal,
         remainingPrincipal: principal,

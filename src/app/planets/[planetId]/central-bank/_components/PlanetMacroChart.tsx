@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeAxis, decadeStart, formatMonthLabel, yearAxis, yearStart } from '@/lib/historyChartAxis';
+import { decadeStart, decadeWindowAxis, formatMonthLabel, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -154,7 +154,10 @@ export function PlanetMacroChart({
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             const displayData = sorted.slice(-11);
-            const axis = yearAxis(displayData.length > 0 ? yearStart(displayData[0].bucket) : 0, liveRow?.xVal);
+            const axis = yearWindowAxis(
+                displayData.length > 0 ? yearStart(displayData[0].bucket) : undefined,
+                liveRow?.xVal,
+            );
             return {
                 dataKey: 'xVal' as const,
                 type: 'number' as const,
@@ -165,9 +168,13 @@ export function PlanetMacroChart({
                 gridValues: axis.gridValues,
             };
         }
-        const decade = decadeAxis(
-            decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : 0,
-            liveRow?.xVal,
+        const lastDecadeX =
+            decadeDisplayData.length > 0
+                ? bucketDecadeMid(decadeDisplayData[decadeDisplayData.length - 1].bucket)
+                : undefined;
+        const decade = decadeWindowAxis(
+            decadeDisplayData.length > 0 ? decadeStart(decadeDisplayData[0].bucket) : undefined,
+            liveRow?.xVal ?? lastDecadeX,
         );
         return {
             dataKey: 'xVal' as const,
@@ -225,6 +232,7 @@ export function PlanetMacroChart({
                             domain={xAxisProps.domain}
                             ticks={xAxisProps.ticks}
                             tickFormatter={xAxisProps.tickFormatter}
+                            allowDataOverflow={granularity === 'monthly'}
                             tick={{ fontSize: 10, fill: '#94a3b8' }}
                             axisLine={{ stroke: '#334155' }}
                             tickLine={false}
