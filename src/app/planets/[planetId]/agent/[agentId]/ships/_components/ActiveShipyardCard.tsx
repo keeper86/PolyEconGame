@@ -21,8 +21,8 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { FacilityConditionRow } from '../../production/_component/FacilityConditionRow';
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
-import { FacilityHeader } from '../../production/_component/FacilityHeader';
-import { PendingActionIndicator } from '../../production/_component/PendingActionIndicator';
+import { FacilityHeader } from '../../_component/FacilityHeader';
+import { PendingActionIndicator } from '../../_component/PendingActionIndicator';
 import { ShipBuildProgressRow } from './ShipBuildProgressRow';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 

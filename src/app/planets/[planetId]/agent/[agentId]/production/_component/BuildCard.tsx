@@ -14,11 +14,11 @@ import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { ActionPendingOverlay } from './ActionPendingOverlay';
+import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
 import { ConstructionCompactRow } from './ConstructionCompactRow';
 import { FacilityCardShell } from './FacilityCardShell';
 import { FacilityConstructionPanel } from './FacilityConstructionPanel';
-import { FacilityHeader } from './FacilityHeader';
+import { FacilityHeader } from '../../_component/FacilityHeader';
 import { FacilityIORow } from './FacilityIORow';
 
 function BuildForm({

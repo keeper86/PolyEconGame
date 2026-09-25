@@ -8,7 +8,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { Ship } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { PendingActionIndicator } from '../../production/_component/PendingActionIndicator';
+import { PendingActionIndicator } from '../../_component/PendingActionIndicator';
 import { DispatchConstructionShipDialog } from './DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './DispatchPassengerShipDialog';
 import { DispatchShipDialog } from './DispatchShipDialog';

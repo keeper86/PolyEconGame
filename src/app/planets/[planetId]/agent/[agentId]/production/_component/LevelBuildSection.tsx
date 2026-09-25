@@ -5,7 +5,7 @@ import { usePendingActions } from '@/hooks/useActionOverlay';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
 import React from 'react';
 import { BuildCard, type Mode } from './BuildCard';
-import { BuildPlaceholderCard } from './BuildPlaceholderCard';
+import { BuildPlaceholderCard } from '../../_component/BuildPlaceholderCard';
 
 export type { Mode } from './BuildCard';
 

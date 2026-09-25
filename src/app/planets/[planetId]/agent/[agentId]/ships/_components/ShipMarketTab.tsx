@@ -13,7 +13,7 @@ import { shiptypes } from '@/simulation/ships/ships';
 import type { Ship, TransportShip } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { CardHeaderBlock } from '../../production/_component/CardHeaderBlock';
+import { CardHeaderBlock } from '../../_component/CardHeaderBlock';
 import { FacilityCardShell } from '../../production/_component/FacilityCardShell';
 import { AcceptShipBuyingOfferDialog } from './AcceptShipBuyingOfferDialog';
 import { AcceptTransportContractDialog } from './AcceptTransportContractDialog';
