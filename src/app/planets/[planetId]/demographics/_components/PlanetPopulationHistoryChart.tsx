@@ -8,6 +8,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
+    HISTORY_BUCKET_LIMIT,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
@@ -528,19 +529,19 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
     // Query buffer history (includes population) once instead of separate population queries
     const { data: monthly, isLoading: loadingMonthly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'monthly', limit: 13 },
+            { planetId, granularity: 'monthly', limit: HISTORY_BUCKET_LIMIT.monthly },
             { enabled: granularity === 'monthly' },
         ),
     );
     const { data: yearly, isLoading: loadingYearly } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'yearly', limit: 11 },
+            { planetId, granularity: 'yearly', limit: HISTORY_BUCKET_LIMIT.yearly },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getPlanetBufferHistory.queryOptions(
-            { planetId, granularity: 'decade' },
+            { planetId, granularity: 'decade', limit: HISTORY_BUCKET_LIMIT.decade },
             { enabled: granularity === 'decade' },
         ),
     );

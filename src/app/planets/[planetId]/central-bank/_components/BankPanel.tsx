@@ -4,6 +4,7 @@ import { GranularityHeader, useGranularity } from '@/components/client/Granulari
 import { Stat } from '@/components/client/Stat';
 import { Separator } from '@/components/ui/separator';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { HISTORY_BUCKET_LIMIT } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { Bank } from '@/simulation/planet/planet';
@@ -27,7 +28,10 @@ export default function BankPanel({ bank, planetId, governmentBalance }: Props):
     const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: economyData, isLoading: loadingEconomy } = useSimulationQuery(
-        trpc.simulation.getPlanetEconomyHistory.queryOptions({ planetId, granularity, limit: 100 }, { enabled: true }),
+        trpc.simulation.getPlanetEconomyHistory.queryOptions(
+            { planetId, granularity, limit: HISTORY_BUCKET_LIMIT[granularity] },
+            { enabled: true },
+        ),
     );
 
     const { data: economySnapshot } = useSimulationQuery(trpc.simulation.getPlanetEconomy.queryOptions({ planetId }));

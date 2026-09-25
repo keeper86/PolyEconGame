@@ -7,7 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
-import { DECADE_WINDOW, DECADE_YEARS, MONTHS_PER_YEAR, YEAR_WINDOW } from '@/lib/historyChartAxis';
+import {
+    DECADE_WINDOW,
+    DECADE_YEARS,
+    HISTORY_BUCKET_LIMIT,
+    MONTHS_PER_YEAR,
+    YEAR_WINDOW,
+} from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -376,7 +382,7 @@ function ProductQuerySlot({
     onResult: (name: string, history: Row[], isLoading: boolean) => void;
 }): null {
     const trpc = useTRPC();
-    const limit = granularity === 'monthly' ? 13 : granularity === 'yearly' ? 11 : 100;
+    const limit = HISTORY_BUCKET_LIMIT[granularity];
     const query = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions({
             planetId,

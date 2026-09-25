@@ -3,6 +3,8 @@ import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/consta
 import {
     DECADE_WINDOW,
     DECADE_YEARS,
+    HISTORY_BUCKET_LIMIT,
+    MONTHS_PER_YEAR,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeAxis,
@@ -133,5 +135,11 @@ describe('historyChartAxis', () => {
         expect(isLiveMonthPoint(PREVIOUS_DECEMBER_IDX)).toBe(false);
         expect(isLiveMonthPoint(3.5)).toBe(false);
         expect(isLiveMonthPoint(3.4667)).toBe(true);
+    });
+
+    it('clamps fetched history buckets to the same windows the axes use', () => {
+        expect(HISTORY_BUCKET_LIMIT.monthly).toBe(MONTHS_PER_YEAR + 1);
+        expect(HISTORY_BUCKET_LIMIT.yearly).toBe(YEAR_WINDOW);
+        expect(HISTORY_BUCKET_LIMIT.decade).toBe(DECADE_WINDOW);
     });
 });

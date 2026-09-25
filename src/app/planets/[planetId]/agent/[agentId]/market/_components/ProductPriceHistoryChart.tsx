@@ -11,6 +11,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 
 import {
     DECADE_WINDOW,
+    HISTORY_BUCKET_LIMIT,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     decadeCentre,
@@ -741,7 +742,7 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 planetId,
                 productName,
                 granularity: 'monthly',
-                limit: 13,
+                limit: HISTORY_BUCKET_LIMIT.monthly,
             },
             { enabled: granularity === 'monthly' },
         ),
@@ -752,14 +753,14 @@ export default function ProductPriceHistoryChart({ planetId, productName, live }
                 planetId,
                 productName,
                 granularity: 'yearly',
-                limit: 11,
+                limit: HISTORY_BUCKET_LIMIT.yearly,
             },
             { enabled: granularity === 'yearly' },
         ),
     );
     const { data: decade, isLoading: loadingDecade } = useSimulationQuery(
         trpc.simulation.getProductPriceHistory.queryOptions(
-            { planetId, productName, granularity: 'decade' },
+            { planetId, productName, granularity: 'decade', limit: HISTORY_BUCKET_LIMIT.decade },
             { enabled: granularity === 'decade' },
         ),
     );
