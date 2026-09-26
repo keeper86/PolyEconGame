@@ -99,11 +99,7 @@ export function PlanetsNavEntry() {
         <SidebarMenuItem>
             <DropdownMenu open={open} onOpenChange={(next) => hasCompany && setOpen(next)}>
                 <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton
-                        size='default'
-                        className='text-md w-full'
-                        disabled={!hasCompany || !activePlanet}
-                    >
+                    <SidebarMenuButton size='default' className='text-md w-full' disabled={!hasCompany}>
                         {activePlanet ? (
                             <PlanetIcon planetId={activePlanet.planetId} />
                         ) : (

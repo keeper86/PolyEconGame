@@ -80,13 +80,16 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
     });
 };
 
+const ownDeletedColumn = (direction: 'inbox' | 'sent'): 'recipient_deleted_at' | 'sender_deleted_at' =>
+    direction === 'inbox' ? 'recipient_deleted_at' : 'sender_deleted_at';
+
 const listMessages = async (
     direction: 'inbox' | 'sent',
     userId: string,
     input: { limit: number; offset: number },
 ): Promise<{ messages: MessageSummary[]; total: number }> => {
     const column = direction === 'inbox' ? 'recipient_user_id' : 'sender_user_id';
-    const base = db('messages').where(column, userId);
+    const base = db('messages').where(column, userId).whereNull(ownDeletedColumn(direction));
 
     const totalRow = await base.clone().count<{ count: string }>('* as count').first();
     const rows = await base.clone().orderBy('created_at', 'desc').offset(input.offset).limit(input.limit);
@@ -199,6 +202,7 @@ export const getUnreadCount = () => {
             const row = await db('messages')
                 .where({ recipient_user_id: userId })
                 .whereNull('read_at')
+                .whereNull('recipient_deleted_at')
                 .count<{ count: string }>('* as count')
                 .first();
             return { count: row ? Number(row.count) : 0 };
@@ -236,5 +240,53 @@ export const markAllRead = () => {
                 .whereNull('read_at')
                 .update({ read_at: db.fn.now() });
             return { updated };
+        });
+};
+
+export const deleteMessage = () => {
+    return protectedProcedure
+        .input(z.object({ messageId: z.string().min(1) }))
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('messages').where({ id: input.messageId }).first();
+
+            if (!row || (row.sender_user_id !== userId && row.recipient_user_id !== userId)) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+            }
+
+            const isSender = row.sender_user_id === userId;
+            const otherDeleted = isSender ? row.recipient_deleted_at !== null : row.sender_deleted_at !== null;
+
+            if (otherDeleted) {
+                await db('messages').where({ id: input.messageId }).del();
+                return;
+            }
+
+            await db('messages')
+                .where({ id: input.messageId })
+                .update(isSender ? { sender_deleted_at: db.fn.now() } : { recipient_deleted_at: db.fn.now() });
+        });
+};
+
+export const deleteAllRead = () => {
+    return protectedProcedure
+        .input(z.object({ direction: z.enum(['inbox', 'sent']) }))
+        .output(z.object({ deleted: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const ownerColumn = input.direction === 'inbox' ? 'recipient_user_id' : 'sender_user_id';
+            const ownColumn = ownDeletedColumn(input.direction);
+            const otherColumn = input.direction === 'inbox' ? 'sender_deleted_at' : 'recipient_deleted_at';
+
+            const deleted = await db('messages')
+                .where(ownerColumn, userId)
+                .whereNotNull('read_at')
+                .whereNull(ownColumn)
+                .update({ [ownColumn]: db.fn.now() });
+
+            await db('messages').where(ownerColumn, userId).whereNotNull(ownColumn).whereNotNull(otherColumn).del();
+
+            return { deleted };
         });
 };

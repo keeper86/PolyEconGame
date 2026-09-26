@@ -66,3 +66,33 @@ export function useMarkAllRead() {
         }),
     );
 }
+
+export function useDeleteMessage() {
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    return useMutation(
+        trpc.message.deleteMessage.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    predicate: (query) => isMessageQuery(query.queryKey),
+                });
+            },
+        }),
+    );
+}
+
+export function useDeleteAllRead() {
+    const trpc = useTRPC();
+    const queryClient = useQueryClient();
+
+    return useMutation(
+        trpc.message.deleteAllRead.mutationOptions({
+            onSuccess: () => {
+                void queryClient.invalidateQueries({
+                    predicate: (query) => isMessageQuery(query.queryKey),
+                });
+            },
+        }),
+    );
+}

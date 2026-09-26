@@ -7,7 +7,9 @@ exports.up = async function (knex) {
             subject           TEXT        NOT NULL,
             body              TEXT        NOT NULL,
             created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            read_at           TIMESTAMPTZ NULL
+            read_at           TIMESTAMPTZ NULL,
+            sender_deleted_at    TIMESTAMPTZ NULL,
+            recipient_deleted_at TIMESTAMPTZ NULL
         )
     `);
 

@@ -142,6 +142,8 @@ export type Messages = {
     body: string;
     created_at: Date;
     read_at: Date | null;
+    sender_deleted_at: Date | null;
+    recipient_deleted_at: Date | null;
 };
 
 export type PlanetEconomyDecade = {

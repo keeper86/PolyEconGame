@@ -1,4 +1,4 @@
-import { getCaller, getUnauthenticatedCaller, testUsers } from 'tests/vitest/setupTestcontainer';
+import { getCaller, getDb, getUnauthenticatedCaller, testUsers } from 'tests/vitest/setupTestcontainer';
 import { describe, expect, it } from 'vitest';
 
 describe('message endpoints (integration)', async () => {
@@ -159,5 +159,139 @@ describe('message endpoints (integration)', async () => {
 
         await expect(anon.message.listInbox({ limit: 25, offset: 0 })).rejects.toThrow();
         await expect(anon.message.getUnreadCount()).rejects.toThrow();
+    });
+
+    it('hides a deleted message from the recipient but keeps it for the sender', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Delete me',
+            body: 'body',
+        });
+
+        await recipient.message.deleteMessage({ messageId: id });
+
+        const inbox = await recipient.message.listInbox({ limit: 100, offset: 0 });
+        expect(inbox.messages.some((message) => message.id === id)).toBe(false);
+
+        const sent = await sender.message.listSent({ limit: 100, offset: 0 });
+        expect(sent.messages.some((message) => message.id === id)).toBe(true);
+    });
+
+    it('excludes a deleted unread message from the unread count', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const before = await recipient.message.getUnreadCount();
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Unread then deleted',
+            body: 'body',
+        });
+        await recipient.message.deleteMessage({ messageId: id });
+
+        const after = await recipient.message.getUnreadCount();
+        expect(after.count).toBe(before.count);
+    });
+
+    it('hides a deleted message from the sender but keeps it for the recipient', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Sender delete',
+            body: 'body',
+        });
+
+        await sender.message.deleteMessage({ messageId: id });
+
+        const sent = await sender.message.listSent({ limit: 100, offset: 0 });
+        expect(sent.messages.some((message) => message.id === id)).toBe(false);
+
+        const inbox = await recipient.message.listInbox({ limit: 100, offset: 0 });
+        expect(inbox.messages.some((message) => message.id === id)).toBe(true);
+    });
+
+    it('removes the row once both participants have deleted it', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Both delete',
+            body: 'body',
+        });
+
+        await sender.message.deleteMessage({ messageId: id });
+        await recipient.message.deleteMessage({ messageId: id });
+
+        const row = await getDb()('messages').where({ id }).first();
+        expect(row).toBeUndefined();
+    });
+
+    it('rejects deleting a message the caller is not part of', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const outsider = getCaller(testUsers.otherUserUnpublished.user_id);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Not yours',
+            body: 'body',
+        });
+
+        await expect(outsider.message.deleteMessage({ messageId: id })).rejects.toThrow();
+    });
+
+    it('deletes only read inbox messages and reports the count', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserUnpublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        await sender.message.sendMessage({ recipientUserId: recipientId, subject: 'Unread stays', body: 'body' });
+
+        const before = await recipient.message.getUnreadCount();
+        const { deleted } = await recipient.message.deleteAllRead({ direction: 'inbox' });
+        expect(deleted).toBeGreaterThanOrEqual(1);
+
+        const inbox = await recipient.message.listInbox({ limit: 100, offset: 0 });
+        expect(inbox.messages.some((message) => message.readAt === null)).toBe(true);
+        expect(inbox.messages.some((message) => message.readAt !== null)).toBe(false);
+
+        const after = await recipient.message.getUnreadCount();
+        expect(after.count).toBe(before.count);
+    });
+
+    it('deletes read messages from the sent folder', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Read then bulk delete',
+            body: 'body',
+        });
+        await recipient.message.markRead({ messageId: id });
+
+        const { deleted } = await sender.message.deleteAllRead({ direction: 'sent' });
+        expect(deleted).toBeGreaterThanOrEqual(1);
+
+        const sent = await sender.message.listSent({ limit: 100, offset: 0 });
+        expect(sent.messages.some((message) => message.id === id)).toBe(false);
+    });
+
+    it('rejects unauthenticated delete requests', async () => {
+        const anon = getUnauthenticatedCaller();
+
+        await expect(anon.message.deleteMessage({ messageId: 'anything' })).rejects.toThrow();
+        await expect(anon.message.deleteAllRead({ direction: 'inbox' })).rejects.toThrow();
     });
 });
