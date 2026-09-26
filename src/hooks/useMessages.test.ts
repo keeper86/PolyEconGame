@@ -10,6 +10,7 @@ describe('message query predicates', () => {
     it('recognises every procedure of the message router', () => {
         expect(isMessageQuery(nestedKey('listRecipients'))).toBe(true);
         expect(isMessageQuery(nestedKey('listInbox'))).toBe(true);
+        expect(isMessageQuery(nestedKey('getMessage'))).toBe(true);
     });
 
     it('polls only queries that produce live message data', () => {
@@ -17,6 +18,7 @@ describe('message query predicates', () => {
         expect(isPolledMessageQuery(nestedKey('listInbox'))).toBe(true);
         expect(isPolledMessageQuery(nestedKey('listSent'))).toBe(true);
         expect(isPolledMessageQuery(nestedKey('listRecipients'))).toBe(false);
+        expect(isPolledMessageQuery(nestedKey('getMessage'))).toBe(false);
     });
 
     it('ignores queries outside the message router', () => {

@@ -25,7 +25,6 @@ const pagination = z.object({
 const messageSummary = z.object({
     id: z.string(),
     subject: z.string(),
-    body: z.string(),
     createdAt: z.string(),
     readAt: z.string().nullable(),
     counterpartUserId: z.string(),
@@ -76,7 +75,6 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
         return {
             id: row.id,
             subject: row.subject,
-            body: row.body,
             createdAt: row.created_at.toISOString(),
             readAt: row.read_at ? row.read_at.toISOString() : null,
             counterpartUserId,
@@ -268,6 +266,30 @@ export const listSent = () => {
         .output(z.object({ messages: z.array(messageSummary), total: z.number() }))
         .query(async ({ input, ctx }) => {
             return listMessages('sent', getUserIdFromContext(ctx), input);
+        });
+};
+
+export const getMessage = () => {
+    return protectedProcedure
+        .input(z.object({ messageId: z.string().min(1) }))
+        .output(z.object({ id: z.string(), body: z.string() }))
+        .query(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('messages').where({ id: input.messageId }).first();
+
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+            }
+
+            const isSender = row.sender_user_id === userId;
+            const isRecipient = row.recipient_user_id === userId;
+            const ownDeletedAt = isRecipient ? row.recipient_deleted_at : row.sender_deleted_at;
+
+            if ((!isSender && !isRecipient) || ownDeletedAt !== null) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+            }
+
+            return { id: row.id, body: row.body };
         });
 };
 

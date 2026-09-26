@@ -19,6 +19,7 @@ import {
     useDeleteMessages,
     useMarkAllRead,
     useMarkRead,
+    useMessageBody,
     useUnreadMessageCount,
 } from '@/hooks/useMessages';
 import { recipientLabel } from '@/app/messages/_components/recipientLabel';
@@ -201,6 +202,8 @@ export default function MessagesPage() {
     const [inboxPage, setInboxPage] = useState(0);
     const [sentPage, setSentPage] = useState(0);
 
+    const selectedBody = useMessageBody(selected?.message.id ?? null);
+
     const inbox = useQuery({
         ...trpc.message.listInbox.queryOptions({ limit: PAGE_SIZE, offset: inboxPage * PAGE_SIZE }),
         enabled: loggedIn,
@@ -359,7 +362,7 @@ export default function MessagesPage() {
                             {selected ? ` · ${formatTimestamp(selected.message.createdAt)}` : ''}
                         </DialogDescription>
                     </DialogHeader>
-                    <p className='whitespace-pre-wrap text-sm'>{selected?.message.body}</p>
+                    <p className='whitespace-pre-wrap text-sm'>{selectedBody ?? 'Loading…'}</p>
                     <DialogFooter>
                         <Button
                             variant='destructive'

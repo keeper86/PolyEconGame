@@ -36,13 +36,11 @@ export const authOptions: AuthOptions = {
                     user_id: string;
                     display_name: string;
                     email: string;
-                    has_assessment_published: boolean;
                     username?: string;
                 } = {
                     user_id: userId,
                     display_name: displayName,
                     email,
-                    has_assessment_published: false,
                 };
 
                 if (username !== null) {

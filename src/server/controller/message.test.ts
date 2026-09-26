@@ -30,11 +30,14 @@ describe('message endpoints (integration)', async () => {
         const stored = inbox.messages.find((message) => message.id === id);
         expect(stored).toBeDefined();
         expect(stored?.subject).toBe('Hello');
-        expect(stored?.body).toBe('Trade offer');
+        expect(stored).not.toHaveProperty('body');
         expect(stored?.counterpartUserId).toBe(senderId);
         expect(stored?.readAt).toBeNull();
         expect(stored?.counterpartCompanyName).toBeNull();
         expect(stored?.counterpartCompanyLogo).toBeNull();
+
+        const fetched = await getCaller(recipientId).message.getMessage({ messageId: id });
+        expect(fetched.body).toBe('Trade offer');
 
         const sent = await sender.message.listSent({ limit: 25, offset: 0 });
         expect(sent.messages.some((message) => message.id === id)).toBe(true);
@@ -456,5 +459,59 @@ describe('message endpoints (integration)', async () => {
         const caller = getCaller(testUsers.testUser.user_id);
 
         await expect(caller.message.listRecipients({ search: 'a'.repeat(101), limit: 25 })).rejects.toThrow();
+    });
+
+    it('lets both participants read the body of a message', async () => {
+        const senderId = testUsers.testUser.user_id;
+        const recipientId = testUsers.otherUserPublished.user_id;
+
+        const { id } = await getCaller(senderId).message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Body access',
+            body: 'only for participants',
+        });
+
+        await expect(getCaller(senderId).message.getMessage({ messageId: id })).resolves.toEqual({
+            id,
+            body: 'only for participants',
+        });
+        await expect(getCaller(recipientId).message.getMessage({ messageId: id })).resolves.toEqual({
+            id,
+            body: 'only for participants',
+        });
+    });
+
+    it('hides the body from someone who is not a participant', async () => {
+        const { id } = await getCaller(testUsers.testUser.user_id).message.sendMessage({
+            recipientUserId: testUsers.otherUserPublished.user_id,
+            subject: 'Private',
+            body: 'secret',
+        });
+
+        await expect(
+            getCaller(testUsers.otherUserUnpublished.user_id).message.getMessage({ messageId: id }),
+        ).rejects.toThrow();
+    });
+
+    it('hides the body of a message the requester deleted', async () => {
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await getCaller(testUsers.testUser.user_id).message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Deleted body',
+            body: 'gone',
+        });
+        await recipient.message.deleteMessage({ messageId: id });
+
+        await expect(recipient.message.getMessage({ messageId: id })).rejects.toThrow();
+    });
+
+    it('rejects reading the body of an unknown message', async () => {
+        await expect(
+            getCaller(testUsers.testUser.user_id).message.getMessage({
+                messageId: '00000000-0000-0000-0000-000000000000',
+            }),
+        ).rejects.toThrow();
     });
 });

@@ -11,6 +11,7 @@ const h = vi.hoisted(() => ({
     inboxInputs: [] as { limit: number; offset: number }[],
     sentInputs: [] as { limit: number; offset: number }[],
     unreadCount: { current: 0 },
+    messageBody: { current: 'Message body' },
     deleteMessage: vi.fn(),
     deleteMessages: vi.fn(),
     markRead: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('@/components/client/CompanyLogo', () => ({ CompanyLogo: () => null }));
 
 vi.mock('@/hooks/useMessages', () => ({
     useUnreadMessageCount: () => h.unreadCount.current,
+    useMessageBody: (messageId: string | null) => (messageId ? h.messageBody.current : null),
     useMarkRead: () => ({ mutate: h.markRead, isPending: false }),
     useMarkAllRead: () => ({ mutate: h.markAllRead, isPending: false }),
     useDeleteMessage: () => ({ mutate: h.deleteMessage, isPending: false }),
@@ -78,7 +80,6 @@ import MessagesPage from './page';
 const message = (overrides: Partial<MessageSummary>): MessageSummary => ({
     id: 'm1',
     subject: 'Hello there',
-    body: 'Message body',
     createdAt: '2026-09-26T12:00:00.000Z',
     readAt: null,
     counterpartUserId: 'user-2',
@@ -113,6 +114,7 @@ describe('MessagesPage delete controls', () => {
         h.inboxInputs.length = 0;
         h.sentInputs.length = 0;
         h.unreadCount.current = 0;
+        h.messageBody.current = 'Message body';
     });
 
     it('enables delete all read in the inbox when a read message exists', () => {
@@ -250,6 +252,17 @@ describe('MessagesPage delete controls', () => {
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
         expect(screen.queryByRole('button', { name: 'Mark all read' })).not.toBeInTheDocument();
+    });
+
+    it('loads and shows the message body when a message is opened', async () => {
+        h.messageBody.current = 'Fetched body';
+        render(<MessagesPage />);
+
+        await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
+
+        expect(
+            within(screen.getByRole('dialog', { name: 'Unread subject' })).getByText('Fetched body'),
+        ).toBeInTheDocument();
     });
 
     it('confirms and deletes a single message from the message dialog', async () => {

@@ -15,9 +15,6 @@ exports.up = async function (knex) {
     await knex.raw(
         `CREATE INDEX idx_user_data_username_trgm ON user_data USING gin (immutable_unaccent(lower(username)) gin_trgm_ops)`,
     );
-    await knex.raw(
-        `CREATE INDEX idx_user_data_user_id_trgm ON user_data USING gin (immutable_unaccent(lower(user_id)) gin_trgm_ops)`,
-    );
 
     await knex.raw(`
         CREATE TABLE messages (
@@ -42,7 +39,6 @@ exports.down = async function (knex) {
     await knex.schema.dropTableIfExists('messages');
     await knex.raw('DROP INDEX IF EXISTS idx_user_data_display_name_trgm');
     await knex.raw('DROP INDEX IF EXISTS idx_user_data_username_trgm');
-    await knex.raw('DROP INDEX IF EXISTS idx_user_data_user_id_trgm');
     await knex.raw('DROP FUNCTION IF EXISTS immutable_unaccent(text)');
     await knex.raw('DROP EXTENSION IF EXISTS unaccent');
     await knex.raw('DROP EXTENSION IF EXISTS pg_trgm');

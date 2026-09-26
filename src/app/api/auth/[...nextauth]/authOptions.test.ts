@@ -11,7 +11,6 @@ describe('authOptions callbacks', () => {
             user_id: 'u1',
             display_name: 'Nice Name',
             email: 'abc@example.com',
-            has_assessment_published: false,
         };
         let insertArgs: Record<string, unknown> | null = null;
 
@@ -47,6 +46,7 @@ describe('authOptions callbacks', () => {
         expect(onConflict).toHaveBeenCalledWith('user_id');
         expect(merge).toHaveBeenCalled();
         expect(insertArgs).toEqual({ ...user, username: 'nice-name' });
+        expect(insertArgs).not.toHaveProperty('has_assessment_published');
     });
 
     it('does not overwrite a stored username when the profile carries none', async () => {
@@ -54,7 +54,6 @@ describe('authOptions callbacks', () => {
             user_id: 'u2',
             display_name: 'No Handle',
             email: 'def@example.com',
-            has_assessment_published: false,
         };
         let insertArgs: Record<string, unknown> | null = null;
 
@@ -84,5 +83,6 @@ describe('authOptions callbacks', () => {
 
         expect(insertArgs).toEqual(user);
         expect(insertArgs).not.toHaveProperty('username');
+        expect(insertArgs).not.toHaveProperty('has_assessment_published');
     });
 });

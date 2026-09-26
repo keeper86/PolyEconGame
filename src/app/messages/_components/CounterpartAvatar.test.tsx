@@ -15,7 +15,6 @@ import { CounterpartAvatar } from './CounterpartAvatar';
 const message = (overrides: Partial<MessageSummary>): MessageSummary => ({
     id: 'm1',
     subject: 'Hello',
-    body: 'Body',
     createdAt: '2026-09-26T12:00:00.000Z',
     readAt: null,
     counterpartUserId: 'user-2',

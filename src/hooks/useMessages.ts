@@ -64,6 +64,18 @@ export function useUnreadMessageCount(): number {
     return data?.count ?? 0;
 }
 
+export function useMessageBody(messageId: string | null): string | null {
+    const loggedIn = useSession().status === 'authenticated';
+    const trpc = useTRPC();
+
+    const { data } = useQuery({
+        ...trpc.message.getMessage.queryOptions({ messageId: messageId ?? '' }),
+        enabled: loggedIn && messageId !== null,
+    });
+
+    return data?.body ?? null;
+}
+
 export function useSendMessage() {
     const trpc = useTRPC();
     const queryClient = useQueryClient();

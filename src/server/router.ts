@@ -3,6 +3,7 @@ import { logs } from './controller/logs';
 import {
     deleteMessages,
     deleteMessage,
+    getMessage,
     getUnreadCount,
     listInbox,
     listRecipients,
@@ -141,6 +142,7 @@ const messageRouter = trpcRoot.router({
     listRecipients: listRecipients(),
     listInbox: listInbox(),
     listSent: listSent(),
+    getMessage: getMessage(),
     getUnreadCount: getUnreadCount(),
     sendMessage: sendMessage(),
     markRead: markRead(),
