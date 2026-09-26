@@ -67,6 +67,7 @@ const message = (overrides: Partial<MessageSummary>): MessageSummary => ({
     counterpartUsername: 'bobby',
     counterpartAvatar: null,
     counterpartCompanyName: null,
+    counterpartDeleted: false,
     ...overrides,
 });
 
@@ -166,6 +167,16 @@ describe('MessagesPage delete controls', () => {
 
         expect(screen.getByText('Unread')).toBeInTheDocument();
         expect(screen.getByText('Read')).toBeInTheDocument();
+    });
+
+    it('shows a sent message as deleted when the recipient deleted it', async () => {
+        h.sent.current = [message({ id: 'sent-deleted', subject: 'Gone', counterpartDeleted: true })];
+        render(<MessagesPage />);
+
+        await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
+
+        expect(screen.getByText('Deleted')).toBeInTheDocument();
+        expect(screen.queryByText('Unread')).not.toBeInTheDocument();
     });
 
     it('groups mark all read with delete all read in the inbox', () => {

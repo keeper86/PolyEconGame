@@ -41,6 +41,16 @@ const counterpartName = (message: MessageSummary): string =>
         companyName: message.counterpartCompanyName,
     });
 
+const sentMessageStatus = (message: MessageSummary): { label: string; className: string } => {
+    if (message.counterpartDeleted) {
+        return { label: 'Deleted', className: 'shrink-0' };
+    }
+    if (message.readAt) {
+        return { label: 'Read', className: 'shrink-0' };
+    }
+    return { label: 'Unread', className: 'shrink-0 font-medium text-primary' };
+};
+
 type ConfirmTarget = { kind: 'message'; messageId: string } | { kind: 'inboxRead' } | { kind: 'sentAll' };
 
 const confirmCopy = (confirm: ConfirmTarget): { title: string; description: string } => {
@@ -73,6 +83,7 @@ function MessageRow({
     onSelect: () => void;
 }) {
     const unread = direction === 'inbox' && message.readAt === null;
+    const status = sentMessageStatus(message);
 
     return (
         <button
@@ -86,11 +97,7 @@ function MessageRow({
             </span>
             <span className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
                 <span className='flex min-w-0 items-center gap-2'>
-                    {direction === 'sent' && (
-                        <span className={message.readAt ? 'shrink-0' : 'shrink-0 font-medium text-primary'}>
-                            {message.readAt ? 'Read' : 'Unread'}
-                        </span>
-                    )}
+                    {direction === 'sent' && <span className={status.className}>{status.label}</span>}
                     <span className='truncate'>{counterpartName(message)}</span>
                 </span>
                 <span className='shrink-0'>{formatTimestamp(message.createdAt)}</span>

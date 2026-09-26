@@ -218,6 +218,24 @@ describe('message endpoints (integration)', async () => {
         expect(inbox.messages.some((message) => message.id === id)).toBe(true);
     });
 
+    it('flags a sent message the recipient deleted as deleted for the sender', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Recipient delete',
+            body: 'body',
+        });
+
+        await recipient.message.deleteMessage({ messageId: id });
+
+        const sent = await sender.message.listSent({ limit: 100, offset: 0 });
+        const stored = sent.messages.find((message) => message.id === id);
+        expect(stored?.counterpartDeleted).toBe(true);
+    });
+
     it('removes the row once both participants have deleted it', async () => {
         const sender = getCaller(testUsers.testUser.user_id);
         const recipientId = testUsers.otherUserPublished.user_id;

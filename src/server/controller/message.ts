@@ -24,6 +24,7 @@ const messageSummary = z.object({
     counterpartUsername: z.string().nullable(),
     counterpartAvatar: z.string().nullable(),
     counterpartCompanyName: z.string().nullable(),
+    counterpartDeleted: z.boolean(),
 });
 export type MessageSummary = z.infer<typeof messageSummary>;
 
@@ -65,6 +66,7 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
     return rows.map((row) => {
         const counterpartUserId = mineIsRecipient ? row.sender_user_id : row.recipient_user_id;
         const counterpart = counterparts.get(counterpartUserId);
+        const counterpartDeletedAt = mineIsRecipient ? row.sender_deleted_at : row.recipient_deleted_at;
         return {
             id: row.id,
             subject: row.subject,
@@ -76,6 +78,7 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
             counterpartUsername: counterpart?.username ?? null,
             counterpartAvatar: counterpart?.avatar ?? null,
             counterpartCompanyName: counterpart?.agentId ? (companies.get(counterpart.agentId) ?? null) : null,
+            counterpartDeleted: counterpartDeletedAt !== null,
         };
     });
 };
