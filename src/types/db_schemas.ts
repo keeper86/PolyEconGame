@@ -9,6 +9,7 @@ export enum Table {
     GameSnapshots = 'game_snapshots',
     KnexMigrations = 'knex_migrations',
     KnexMigrationsLock = 'knex_migrations_lock',
+    Messages = 'messages',
     PlanetEconomyDecade = 'planet_economy_decade',
     PlanetEconomyHistory = 'planet_economy_history',
     PlanetEconomyMonthly = 'planet_economy_monthly',
@@ -32,6 +33,7 @@ export type Tables = {
     game_snapshots: GameSnapshots;
     knex_migrations: KnexMigrations;
     knex_migrations_lock: KnexMigrationsLock;
+    messages: Messages;
     planet_economy_decade: PlanetEconomyDecade;
     planet_economy_history: PlanetEconomyHistory;
     planet_economy_monthly: PlanetEconomyMonthly;
@@ -130,6 +132,16 @@ export type KnexMigrations = {
 export type KnexMigrationsLock = {
     index: number;
     is_locked: number | null;
+};
+
+export type Messages = {
+    id: string;
+    sender_user_id: string;
+    recipient_user_id: string;
+    subject: string;
+    body: string;
+    created_at: Date;
+    read_at: Date | null;
 };
 
 export type PlanetEconomyDecade = {

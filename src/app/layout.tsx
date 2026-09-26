@@ -1,5 +1,6 @@
 import Footer from '@/app/Footer';
 import TickDisplay from '@/components/client/TickDisplay';
+import { MessagesIndicator } from '@/components/client/MessagesIndicator';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import { TourJoyride } from '@/components/tour/TourJoyride';
 import { ModeToggle } from '@/components/modeToggle';
@@ -60,6 +61,8 @@ export default async function RootLayout({
                                             <KeyStatDisplay />
 
                                             <TickDisplay />
+
+                                            <MessagesIndicator />
 
                                             <ModeToggle />
                                         </div>
