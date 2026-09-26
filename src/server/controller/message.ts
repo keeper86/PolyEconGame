@@ -269,9 +269,9 @@ export const deleteMessage = () => {
         });
 };
 
-export const deleteAllRead = () => {
+export const deleteMessages = () => {
     return protectedProcedure
-        .input(z.object({ direction: z.enum(['inbox', 'sent']) }))
+        .input(z.object({ direction: z.enum(['inbox', 'sent']), onlyRead: z.boolean() }))
         .output(z.object({ deleted: z.number() }))
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
@@ -279,11 +279,9 @@ export const deleteAllRead = () => {
             const ownColumn = ownDeletedColumn(input.direction);
             const otherColumn = input.direction === 'inbox' ? 'sender_deleted_at' : 'recipient_deleted_at';
 
-            const deleted = await db('messages')
-                .where(ownerColumn, userId)
-                .whereNotNull('read_at')
-                .whereNull(ownColumn)
-                .update({ [ownColumn]: db.fn.now() });
+            const base = db('messages').where(ownerColumn, userId).whereNull(ownColumn);
+            const target = input.onlyRead ? base.clone().whereNotNull('read_at') : base;
+            const deleted = await target.update({ [ownColumn]: db.fn.now() });
 
             await db('messages').where(ownerColumn, userId).whereNotNull(ownColumn).whereNotNull(otherColumn).del();
 

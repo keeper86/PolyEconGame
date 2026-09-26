@@ -258,7 +258,7 @@ describe('message endpoints (integration)', async () => {
         await sender.message.sendMessage({ recipientUserId: recipientId, subject: 'Unread stays', body: 'body' });
 
         const before = await recipient.message.getUnreadCount();
-        const { deleted } = await recipient.message.deleteAllRead({ direction: 'inbox' });
+        const { deleted } = await recipient.message.deleteMessages({ direction: 'inbox', onlyRead: true });
         expect(deleted).toBeGreaterThanOrEqual(1);
 
         const inbox = await recipient.message.listInbox({ limit: 100, offset: 0 });
@@ -269,29 +269,30 @@ describe('message endpoints (integration)', async () => {
         expect(after.count).toBe(before.count);
     });
 
-    it('deletes read messages from the sent folder', async () => {
-        const sender = getCaller(testUsers.testUser.user_id);
+    it('deletes all messages from the sent folder', async () => {
         const recipientId = testUsers.otherUserPublished.user_id;
         const recipient = getCaller(recipientId);
+        const sender = getCaller(testUsers.testUser.user_id);
 
-        const { id } = await sender.message.sendMessage({
+        await sender.message.sendMessage({ recipientUserId: recipientId, subject: 'Kept unread', body: 'body' });
+        const { id: readId } = await sender.message.sendMessage({
             recipientUserId: recipientId,
-            subject: 'Read then bulk delete',
+            subject: 'Was read',
             body: 'body',
         });
-        await recipient.message.markRead({ messageId: id });
+        await recipient.message.markRead({ messageId: readId });
 
-        const { deleted } = await sender.message.deleteAllRead({ direction: 'sent' });
-        expect(deleted).toBeGreaterThanOrEqual(1);
+        const { deleted } = await sender.message.deleteMessages({ direction: 'sent', onlyRead: false });
+        expect(deleted).toBeGreaterThanOrEqual(2);
 
         const sent = await sender.message.listSent({ limit: 100, offset: 0 });
-        expect(sent.messages.some((message) => message.id === id)).toBe(false);
+        expect(sent.total).toBe(0);
     });
 
     it('rejects unauthenticated delete requests', async () => {
         const anon = getUnauthenticatedCaller();
 
         await expect(anon.message.deleteMessage({ messageId: 'anything' })).rejects.toThrow();
-        await expect(anon.message.deleteAllRead({ direction: 'inbox' })).rejects.toThrow();
+        await expect(anon.message.deleteMessages({ direction: 'inbox', onlyRead: true })).rejects.toThrow();
     });
 });

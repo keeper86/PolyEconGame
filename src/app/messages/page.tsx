@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-    useDeleteAllRead,
     useDeleteMessage,
+    useDeleteMessages,
     useMarkAllRead,
     useMarkRead,
     useUnreadMessageCount,
@@ -26,7 +26,7 @@ import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCheck, Trash2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 const POLL_INTERVAL_MS = 5000;
@@ -41,7 +41,39 @@ const counterpartName = (message: MessageSummary): string =>
         companyName: message.counterpartCompanyName,
     });
 
-function MessageRow({ message, unread, onSelect }: { message: MessageSummary; unread: boolean; onSelect: () => void }) {
+type ConfirmTarget = { kind: 'message'; messageId: string } | { kind: 'inboxRead' } | { kind: 'sentAll' };
+
+const confirmCopy = (confirm: ConfirmTarget): { title: string; description: string } => {
+    switch (confirm.kind) {
+        case 'message':
+            return {
+                title: 'Delete message?',
+                description: 'This removes the message from your view. This cannot be undone.',
+            };
+        case 'inboxRead':
+            return {
+                title: 'Delete all read messages?',
+                description: 'This removes all read messages from your inbox. This cannot be undone.',
+            };
+        case 'sentAll':
+            return {
+                title: 'Delete all sent messages?',
+                description: 'This removes all messages from your sent folder. This cannot be undone.',
+            };
+    }
+};
+
+function MessageRow({
+    message,
+    direction,
+    onSelect,
+}: {
+    message: MessageSummary;
+    direction: 'inbox' | 'sent';
+    onSelect: () => void;
+}) {
+    const unread = direction === 'inbox' && message.readAt === null;
+
     return (
         <button
             type='button'
@@ -53,7 +85,14 @@ function MessageRow({ message, unread, onSelect }: { message: MessageSummary; un
                 <span className={unread ? 'truncate font-semibold' : 'truncate'}>{message.subject}</span>
             </span>
             <span className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
-                <span className='truncate'>{counterpartName(message)}</span>
+                <span className='flex min-w-0 items-center gap-2'>
+                    {direction === 'sent' && (
+                        <span className={message.readAt ? 'shrink-0' : 'shrink-0 font-medium text-primary'}>
+                            {message.readAt ? 'Read' : 'Unread'}
+                        </span>
+                    )}
+                    <span className='truncate'>{counterpartName(message)}</span>
+                </span>
                 <span className='shrink-0'>{formatTimestamp(message.createdAt)}</span>
             </span>
         </button>
@@ -68,8 +107,7 @@ function MessagePane({
     messages,
     direction,
     onSelect,
-    onDeleteAllRead,
-    isDeletingAllRead,
+    headerAction,
 }: {
     title: string;
     description: string;
@@ -78,11 +116,8 @@ function MessagePane({
     messages: MessageSummary[];
     direction: 'inbox' | 'sent';
     onSelect: (message: MessageSummary, direction: 'inbox' | 'sent') => void;
-    onDeleteAllRead: () => void;
-    isDeletingAllRead: boolean;
+    headerAction: ReactNode;
 }) {
-    const hasReadMessages = messages.some((message) => message.readAt !== null);
-
     return (
         <div className='rounded-lg border border-border'>
             <div className='flex items-start justify-between gap-3 border-b border-border px-3 py-3'>
@@ -90,16 +125,7 @@ function MessagePane({
                     <span className='font-medium'>{title}</span>
                     <span className='text-xs text-muted-foreground'>{description}</span>
                 </div>
-                <Button
-                    variant='outline'
-                    size='sm'
-                    className='gap-2'
-                    disabled={!hasReadMessages || isDeletingAllRead}
-                    onClick={onDeleteAllRead}
-                >
-                    <Trash2 className='h-4 w-4' />
-                    Delete all read
-                </Button>
+                {headerAction}
             </div>
             {isLoading ? (
                 <div className='px-3 py-6 text-sm text-muted-foreground'>Loading…</div>
@@ -110,7 +136,7 @@ function MessagePane({
                     <MessageRow
                         key={message.id}
                         message={message}
-                        unread={direction === 'inbox' && message.readAt === null}
+                        direction={direction}
                         onSelect={() => onSelect(message, direction)}
                     />
                 ))
@@ -126,12 +152,10 @@ export default function MessagesPage() {
     const markAllRead = useMarkAllRead();
     const markRead = useMarkRead();
     const deleteMessage = useDeleteMessage();
-    const deleteAllRead = useDeleteAllRead();
+    const deleteMessages = useDeleteMessages();
 
     const [selected, setSelected] = useState<{ message: MessageSummary; direction: 'inbox' | 'sent' } | null>(null);
-    const [confirm, setConfirm] = useState<
-        { kind: 'message'; messageId: string } | { kind: 'allRead'; direction: 'inbox' | 'sent' } | null
-    >(null);
+    const [confirm, setConfirm] = useState<ConfirmTarget | null>(null);
 
     const inbox = useQuery({
         ...trpc.message.listInbox.queryOptions({ limit: 25, offset: 0 }),
@@ -143,6 +167,10 @@ export default function MessagesPage() {
         enabled: loggedIn,
         refetchInterval: POLL_INTERVAL_MS,
     });
+
+    const inboxMessages = inbox.data?.messages ?? [];
+    const sentMessages = sent.data?.messages ?? [];
+    const inboxHasRead = inboxMessages.some((message) => message.readAt !== null);
 
     const handleSelect = (message: MessageSummary, direction: 'inbox' | 'sent') => {
         setSelected({ message, direction });
@@ -169,8 +197,8 @@ export default function MessagesPage() {
                 },
             );
         } else {
-            deleteAllRead.mutate(
-                { direction: confirm.direction },
+            deleteMessages.mutate(
+                { direction: confirm.kind === 'inboxRead' ? 'inbox' : 'sent', onlyRead: confirm.kind === 'inboxRead' },
                 {
                     onSuccess: ({ deleted }) =>
                         toast.success(deleted > 0 ? `${deleted} messages deleted` : 'Nothing to delete'),
@@ -189,15 +217,6 @@ export default function MessagesPage() {
             headerComponent={
                 <span className='flex items-center gap-2'>
                     {unreadCount > 0 && <Badge variant='destructive'>{unreadCount} unread</Badge>}
-                    <Button
-                        variant='outline'
-                        className='gap-2'
-                        disabled={unreadCount === 0 || markAllRead.isPending}
-                        onClick={() => markAllRead.mutate()}
-                    >
-                        <CheckCheck className='h-4 w-4' />
-                        Mark all read
-                    </Button>
                     <ComposeMessageDialog />
                 </span>
             }
@@ -213,11 +232,33 @@ export default function MessagesPage() {
                         description={inbox.data ? `${inbox.data.total} messages` : 'Incoming messages'}
                         emptyText='No messages yet.'
                         isLoading={inbox.isLoading}
-                        messages={inbox.data?.messages ?? []}
+                        messages={inboxMessages}
                         direction='inbox'
                         onSelect={handleSelect}
-                        onDeleteAllRead={() => setConfirm({ kind: 'allRead', direction: 'inbox' })}
-                        isDeletingAllRead={deleteAllRead.isPending}
+                        headerAction={
+                            <div className='flex items-center gap-2'>
+                                <Button
+                                    variant='outline'
+                                    size='sm'
+                                    className='gap-2'
+                                    disabled={unreadCount === 0 || markAllRead.isPending}
+                                    onClick={() => markAllRead.mutate()}
+                                >
+                                    <CheckCheck className='h-4 w-4' />
+                                    Mark all read
+                                </Button>
+                                <Button
+                                    variant='outline'
+                                    size='sm'
+                                    className='gap-2'
+                                    disabled={!inboxHasRead || deleteMessages.isPending}
+                                    onClick={() => setConfirm({ kind: 'inboxRead' })}
+                                >
+                                    <Trash2 className='h-4 w-4' />
+                                    Delete all read
+                                </Button>
+                            </div>
+                        }
                     />
                 </TabsContent>
                 <TabsContent value='sent' className='pt-4'>
@@ -226,11 +267,21 @@ export default function MessagesPage() {
                         description={sent.data ? `${sent.data.total} messages` : 'Sent messages'}
                         emptyText='No sent messages yet.'
                         isLoading={sent.isLoading}
-                        messages={sent.data?.messages ?? []}
+                        messages={sentMessages}
                         direction='sent'
                         onSelect={handleSelect}
-                        onDeleteAllRead={() => setConfirm({ kind: 'allRead', direction: 'sent' })}
-                        isDeletingAllRead={deleteAllRead.isPending}
+                        headerAction={
+                            <Button
+                                variant='outline'
+                                size='sm'
+                                className='gap-2'
+                                disabled={sentMessages.length === 0 || deleteMessages.isPending}
+                                onClick={() => setConfirm({ kind: 'sentAll' })}
+                            >
+                                <Trash2 className='h-4 w-4' />
+                                Delete all
+                            </Button>
+                        }
                     />
                 </TabsContent>
             </Tabs>
@@ -264,20 +315,18 @@ export default function MessagesPage() {
             <Dialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>
-                            {confirm?.kind === 'allRead' ? 'Delete all read messages?' : 'Delete message?'}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {confirm?.kind === 'allRead'
-                                ? 'This removes all read messages from this folder. This cannot be undone.'
-                                : 'This removes the message from your view. This cannot be undone.'}
-                        </DialogDescription>
+                        <DialogTitle>{confirm ? confirmCopy(confirm).title : ''}</DialogTitle>
+                        <DialogDescription>{confirm ? confirmCopy(confirm).description : ''}</DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
                         <Button variant='outline' onClick={() => setConfirm(null)}>
                             Cancel
                         </Button>
-                        <Button variant='destructive' disabled={deleteMessage.isPending} onClick={handleConfirm}>
+                        <Button
+                            variant='destructive'
+                            disabled={deleteMessage.isPending || deleteMessages.isPending}
+                            onClick={handleConfirm}
+                        >
                             Delete
                         </Button>
                     </DialogFooter>

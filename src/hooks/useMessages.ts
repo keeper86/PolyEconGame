@@ -82,12 +82,12 @@ export function useDeleteMessage() {
     );
 }
 
-export function useDeleteAllRead() {
+export function useDeleteMessages() {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
     return useMutation(
-        trpc.message.deleteAllRead.mutationOptions({
+        trpc.message.deleteMessages.mutationOptions({
             onSuccess: () => {
                 void queryClient.invalidateQueries({
                     predicate: (query) => isMessageQuery(query.queryKey),

@@ -1,7 +1,7 @@
 import { health } from './controller/health';
 import { logs } from './controller/logs';
 import {
-    deleteAllRead,
+    deleteMessages,
     deleteMessage,
     getUnreadCount,
     listInbox,
@@ -146,7 +146,7 @@ const messageRouter = trpcRoot.router({
     markRead: markRead(),
     markAllRead: markAllRead(),
     deleteMessage: deleteMessage(),
-    deleteAllRead: deleteAllRead(),
+    deleteMessages: deleteMessages(),
 });
 
 const protectedAppRouter = trpcRoot.router({
