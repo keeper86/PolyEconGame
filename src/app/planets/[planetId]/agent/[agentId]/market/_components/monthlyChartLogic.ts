@@ -1,11 +1,5 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import {
-    PREVIOUS_DECEMBER_IDX,
-    blendLive,
-    bucketProgress,
-    ghostMonthVisible,
-    monthCentre,
-} from '@/lib/historyChartAxis';
+import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -103,17 +97,15 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
         if (liveYear === latestYear) {
             const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
             const fractionalMonthIdx = liveMonthIdx + dayFraction;
-            const prevPoint = result.length > 0 ? result[result.length - 1] : undefined;
-            const progress = bucketProgress(live.tick, 'monthly');
 
             result.push({
                 tick: live.tick,
                 year: live.tick / TICKS_PER_YEAR,
                 monthIdx: fractionalMonthIdx,
-                avgPrice: blendLive(prevPoint?.avgPrice, live.avgPrice ?? live.price, progress),
-                minPrice: blendLive(prevPoint?.minPrice, live.minPrice ?? live.price, progress),
-                maxPrice: blendLive(prevPoint?.maxPrice, live.maxPrice ?? live.price, progress),
-                priceFloor: blendLive(prevPoint?.priceFloor, live.priceFloor ?? live.price, progress),
+                avgPrice: live.avgPrice ?? live.price,
+                minPrice: live.minPrice ?? live.price,
+                maxPrice: live.maxPrice ?? live.price,
+                priceFloor: live.priceFloor ?? live.price,
             });
         }
     }

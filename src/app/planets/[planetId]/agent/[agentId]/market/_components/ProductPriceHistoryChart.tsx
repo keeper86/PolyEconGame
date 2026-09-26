@@ -14,8 +14,6 @@ import {
     HISTORY_BUCKET_LIMIT,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
-    blendLive,
-    bucketProgress,
     decadeCentre,
     decadeStart,
     decadeWindowAxis,
@@ -586,23 +584,18 @@ function MonthlyChart({
     );
 }
 
-function priceLivePoint(
-    live: LiveData | undefined,
-    previous: ChartPoint | undefined,
-    granularity: 'yearly' | 'decade',
-): ChartPoint | null {
+function priceLivePoint(live?: LiveData): ChartPoint | null {
     if (!live || live.tick <= 0) {
         return null;
     }
     const fallback = live.price;
-    const progress = bucketProgress(live.tick, granularity);
     return {
         tick: live.tick,
         year: liveYearX(live.tick),
-        avgPrice: blendLive(previous?.avgPrice, live.avgPrice ?? fallback, progress),
-        minPrice: blendLive(previous?.minPrice, live.minPrice ?? fallback, progress),
-        maxPrice: blendLive(previous?.maxPrice, live.maxPrice ?? fallback, progress),
-        priceFloor: blendLive(previous?.priceFloor, live.priceFloor ?? fallback, progress),
+        avgPrice: live.avgPrice ?? fallback,
+        minPrice: live.minPrice ?? fallback,
+        maxPrice: live.maxPrice ?? fallback,
+        priceFloor: live.priceFloor ?? fallback,
     };
 }
 
@@ -631,7 +624,7 @@ function YearlyChart({
                 maxPrice: p.maxPrice,
                 priceFloor: p.priceFloor,
             }));
-        const livePoint = priceLivePoint(live, rows[rows.length - 1], 'yearly');
+        const livePoint = priceLivePoint(live);
         return livePoint ? [...rows, livePoint] : rows;
     }, [yearlyPoints, live]);
 
@@ -696,7 +689,7 @@ function DecadesChart({
                 maxPrice: p.maxPrice,
                 priceFloor: p.priceFloor,
             }));
-        const livePoint = priceLivePoint(live, rows[rows.length - 1], 'decade');
+        const livePoint = priceLivePoint(live);
         return livePoint ? [...rows, livePoint] : rows;
     }, [decadePoints, live]);
 

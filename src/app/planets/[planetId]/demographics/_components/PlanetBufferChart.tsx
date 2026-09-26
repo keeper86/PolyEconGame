@@ -6,8 +6,6 @@ import {
     DECADE_WINDOW,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
-    blendLive,
-    bucketProgress,
     decadeCentre,
     decadeStart,
     decadeWindowAxis,
@@ -135,8 +133,6 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
         if (liveYear === latestYear) {
             const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
             const fractionalMonthIdx = liveMi + dayFraction;
-            const previous = result[result.length - 1];
-            const progress = bucketProgress(live.tick, 'monthly');
 
             const livePoint: ChartPoint = {
                 tick: live.tick,
@@ -144,8 +140,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
                 monthIdx: fractionalMonthIdx,
             };
             for (const key of BUFFER_KEYS) {
-                const livePercent = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
-                livePoint[key] = blendLive(previous?.[key], livePercent, progress);
+                livePoint[key] = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
             }
             result.push(livePoint);
         }
@@ -503,30 +498,12 @@ export default function PlanetBufferChart({
     }, [live]);
     const yearlyChartData = useMemo(() => {
         const rows = computeYearlyData(yearlyPoints);
-        if (!liveRow || !live) {
-            return rows;
-        }
-        const previous = rows[rows.length - 1];
-        const progress = bucketProgress(live.tick, 'yearly');
-        const point: ChartPoint = { ...liveRow };
-        for (const key of BUFFER_KEYS) {
-            point[key] = blendLive(previous?.[key], liveRow[key], progress);
-        }
-        return [...rows, point];
-    }, [yearlyPoints, liveRow, live]);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [yearlyPoints, liveRow]);
     const decadeChartData = useMemo(() => {
         const rows = computeDecadeData(decadePoints);
-        if (!liveRow || !live) {
-            return rows;
-        }
-        const previous = rows[rows.length - 1];
-        const progress = bucketProgress(live.tick, 'decade');
-        const point: ChartPoint = { ...liveRow };
-        for (const key of BUFFER_KEYS) {
-            point[key] = blendLive(previous?.[key], liveRow[key], progress);
-        }
-        return [...rows, point];
-    }, [decadePoints, liveRow, live]);
+        return liveRow ? [...rows, liveRow] : rows;
+    }, [decadePoints, liveRow]);
 
     const monthlyX = monthAxis();
     const yearlyX =

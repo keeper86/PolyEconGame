@@ -45,14 +45,13 @@ describe('computeMacroMonthlyData live point', () => {
     const data = [...macroYear(0, 100), ...macroYear(1, 200)];
     const live: MacroLive = { tick: gameTickFor(1, 2, 5), gdp: 999, bankEquity: 888, moneySupply: 777 };
 
-    it('appends the live point at the fractional month index, mixed with the previous point', () => {
+    it('appends the raw live point at the fractional month index', () => {
         const result = computeMacroMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
-        const fraction = 4 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
-        expect(livePoint?.gdp).toBeCloseTo(200 + (999 - 200) * fraction, 6);
-        expect(livePoint?.bankEquity).toBeCloseTo(400 + (888 - 400) * fraction, 6);
-        expect(livePoint?.moneySupply).toBeCloseTo(600 + (777 - 600) * fraction, 6);
+        expect(livePoint?.gdp).toBe(999);
+        expect(livePoint?.bankEquity).toBe(888);
+        expect(livePoint?.moneySupply).toBe(777);
         expect(livePoint?.monthIdx).toBeCloseTo(2 + 4 / TICKS_PER_MONTH, 5);
     });
 
@@ -82,16 +81,15 @@ describe('computeCostOfLivingMonthlyData live point', () => {
         wageEdu3: 400,
     };
 
-    it('appends the live point at the fractional month index, mixed with the previous point', () => {
+    it('appends the raw live point at the fractional month index', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
-        const fraction = 9 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
-        expect(livePoint?.costOfLiving).toBeCloseTo(8 + (12 - 8) * fraction, 6);
-        expect(livePoint?.costOfLivingRich).toBeCloseTo(16 + (20 - 16) * fraction, 6);
-        expect(livePoint?.costOfLivingRichDiff).toBeCloseTo(8, 6);
-        expect(livePoint?.wageEdu0).toBeCloseTo(10 + (100 - 10) * fraction, 6);
-        expect(livePoint?.wageEdu3).toBeCloseTo(40 + (400 - 40) * fraction, 6);
+        expect(livePoint?.costOfLiving).toBe(12);
+        expect(livePoint?.costOfLivingRich).toBe(20);
+        expect(livePoint?.costOfLivingRichDiff).toBe(8);
+        expect(livePoint?.wageEdu0).toBe(100);
+        expect(livePoint?.wageEdu3).toBe(400);
         expect(livePoint?.monthIdx).toBeCloseTo(4 + 9 / TICKS_PER_MONTH, 5);
     });
 

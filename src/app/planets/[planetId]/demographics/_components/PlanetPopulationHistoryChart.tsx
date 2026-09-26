@@ -11,8 +11,6 @@ import {
     HISTORY_BUCKET_LIMIT,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
-    blendLive,
-    bucketProgress,
     decadeCentre,
     decadeStart,
     decadeWindowAxis,
@@ -136,13 +134,11 @@ function computeMonthlyData(allPts: PopulationRawPoint[], live: LiveData): Chart
         if (liveYear === latestYear) {
             const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
             const fractionalMonthIdx = liveMi + dayFraction;
-            const previous = result[result.length - 1];
-            const progress = bucketProgress(live.tick, 'monthly');
             result.push({
                 tick: live.tick,
                 year: live.tick / TICKS_PER_YEAR,
                 monthIdx: fractionalMonthIdx,
-                value: blendLive(previous?.value, live.population, progress),
+                value: live.population,
             });
         }
     }
@@ -359,13 +355,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                 value: p.avgPopulation,
             }));
         if (live && live.tick > 0) {
-            const previous = rows[rows.length - 1];
-            const progress = bucketProgress(live.tick, 'yearly');
-            rows.push({
-                tick: live.tick,
-                year: liveYearX(live.tick),
-                value: blendLive(previous?.value, live.population, progress),
-            });
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
         }
         return rows;
     }, [yearlyPoints, live]);
@@ -450,13 +440,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                 value: p.avgPopulation,
             }));
         if (live && live.tick > 0) {
-            const previous = rows[rows.length - 1];
-            const progress = bucketProgress(live.tick, 'decade');
-            rows.push({
-                tick: live.tick,
-                year: liveYearX(live.tick),
-                value: blendLive(previous?.value, live.population, progress),
-            });
+            rows.push({ tick: live.tick, year: liveYearX(live.tick), value: live.population });
         }
         return rows;
     }, [decadePoints, live]);
