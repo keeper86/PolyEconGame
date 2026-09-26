@@ -10,7 +10,7 @@ import {
     type FinancialLive,
     type FinancialPoint,
 } from './financialChartLogic';
-import { PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
+import { PREVIOUS_DECEMBER_IDX, blendLive, bucketProgress } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 const isLivePoint = (point: { monthIdx: number }): boolean =>
@@ -44,17 +44,27 @@ describe('computeFinancialMonthlyData live point', () => {
         sumClaimPayments: 6,
     };
 
-    it('appends the live point at the fractional month index', () => {
+    it('appends the live point at the fractional month index, mixed with the previous point', () => {
         const result = computeFinancialMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
+        const progress = bucketProgress(live.tick, 'monthly');
         expect(livePoint).toBeDefined();
-        expect(livePoint?.avgNetBalance).toBe(1111);
-        expect(livePoint?.avgAssetValue).toBe(2222);
-        expect(livePoint?.avgMonthlyNetIncome).toBe(3333);
-        expect(livePoint?.avgWages).toBe(444);
-        expect(livePoint?.sumPurchases).toBe(55);
-        expect(livePoint?.sumClaimPayments).toBe(6);
+        expect(livePoint?.avgNetBalance).toBeCloseTo(blendLive(200, 1111, progress), 6);
+        expect(livePoint?.avgAssetValue).toBeCloseTo(blendLive(400, 2222, progress), 6);
+        expect(livePoint?.avgMonthlyNetIncome).toBeCloseTo(blendLive(100, 3333, progress), 6);
+        expect(livePoint?.avgWages).toBeCloseTo(blendLive(50, 444, progress), 6);
+        expect(livePoint?.sumPurchases).toBeCloseTo(blendLive(25, 55, progress), 6);
+        expect(livePoint?.sumClaimPayments).toBeCloseTo(blendLive(12.5, 6, progress), 6);
         expect(livePoint?.monthIdx).toBeCloseTo(3 + 5 / TICKS_PER_MONTH, 5);
+    });
+
+    it('starts the live point at the previous value on the first tick of a month', () => {
+        const firstDay = { ...live, tick: gameTickFor(1, 3, 1) };
+        const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay);
+        const livePoint = result.find(isLivePoint);
+        expect(livePoint?.avgNetBalance).toBeCloseTo(200, 6);
+        expect(livePoint?.avgAssetValue).toBeCloseTo(400, 6);
+        expect(livePoint?.sumPurchases).toBeCloseTo(25, 6);
     });
 
     it('omits the live point when no live data is provided', () => {

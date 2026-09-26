@@ -2,7 +2,15 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeStart, decadeWindowAxis, formatMonthLabel, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
+import {
+    blendLive,
+    bucketProgress,
+    decadeStart,
+    decadeWindowAxis,
+    formatMonthLabel,
+    yearStart,
+    yearWindowAxis,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -71,7 +79,22 @@ export function PlanetMacroChart({
         if (granularity === 'monthly') {
             return computeMacroMonthlyData(data, currentTick, live);
         }
-        const takeLive = (rows: MacroChartPoint[]): MacroChartPoint[] => (liveRow ? [...rows, liveRow] : rows);
+        const takeLive = (rows: MacroChartPoint[]): MacroChartPoint[] => {
+            if (!liveRow || !live) {
+                return rows;
+            }
+            const previous = rows[rows.length - 1];
+            const progress = bucketProgress(live.tick, granularity);
+            return [
+                ...rows,
+                {
+                    ...liveRow,
+                    gdp: blendLive(previous?.gdp ?? undefined, live.gdp, progress),
+                    bankEquity: blendLive(previous?.bankEquity ?? undefined, live.bankEquity, progress),
+                    moneySupply: blendLive(previous?.moneySupply ?? undefined, live.moneySupply, progress),
+                },
+            ];
+        };
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             return takeLive(

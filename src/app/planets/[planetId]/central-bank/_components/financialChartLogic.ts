@@ -2,6 +2,8 @@ import { tickToDate } from '@/components/client/TickDisplay';
 import {
     DECADE_WINDOW,
     PREVIOUS_DECEMBER_IDX,
+    blendLive,
+    bucketProgress,
     ghostMonthVisible,
     monthAxis,
     monthCentre,
@@ -117,12 +119,14 @@ export function computeMacroMonthlyData(
 
     if (live && live.tick > 0) {
         const { monthIdx, year } = liveMonthIndex(live.tick);
+        const previous = current[current.length - 1];
+        const progress = bucketProgress(live.tick, 'monthly');
         merged.push({
             monthIdx,
             year,
-            gdp: live.gdp,
-            bankEquity: live.bankEquity,
-            moneySupply: live.moneySupply,
+            gdp: blendLive(previous?.gdp ?? undefined, live.gdp, progress),
+            bankEquity: blendLive(previous?.bankEquity ?? undefined, live.bankEquity, progress),
+            moneySupply: blendLive(previous?.moneySupply ?? undefined, live.moneySupply, progress),
             ghostGdp: null,
             ghostBankEquity: null,
             ghostMoneySupply: null,
@@ -241,17 +245,20 @@ export function computeCostOfLivingMonthlyData(
 
     if (live && live.tick > 0) {
         const { monthIdx, year } = liveMonthIndex(live.tick);
+        const previous = current[current.length - 1];
+        const progress = bucketProgress(live.tick, 'monthly');
+        const liveRichDiff = live.costOfLivingRich - live.costOfLiving;
         const [w0, w1, w2, w3] = raiseWagesMonotone([live.wageEdu0, live.wageEdu1, live.wageEdu2, live.wageEdu3]);
         merged.push({
             monthIdx,
             year,
-            costOfLiving: live.costOfLiving,
-            costOfLivingRich: live.costOfLivingRich,
-            costOfLivingRichDiff: live.costOfLivingRich - live.costOfLiving,
-            wageEdu0: w0,
-            wageEdu1: w1,
-            wageEdu2: w2,
-            wageEdu3: w3,
+            costOfLiving: blendLive(previous?.costOfLiving ?? undefined, live.costOfLiving, progress),
+            costOfLivingRich: blendLive(previous?.costOfLivingRich ?? undefined, live.costOfLivingRich, progress),
+            costOfLivingRichDiff: blendLive(previous?.costOfLivingRichDiff ?? undefined, liveRichDiff, progress),
+            wageEdu0: blendLive(previous?.wageEdu0 ?? undefined, w0, progress),
+            wageEdu1: blendLive(previous?.wageEdu1 ?? undefined, w1, progress),
+            wageEdu2: blendLive(previous?.wageEdu2 ?? undefined, w2, progress),
+            wageEdu3: blendLive(previous?.wageEdu3 ?? undefined, w3, progress),
         });
     }
 

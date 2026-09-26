@@ -5,6 +5,8 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
+    blendLive,
+    bucketProgress,
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
@@ -129,8 +131,22 @@ export function BalanceFlowChart({
                 ghostNetIncome: null,
             };
         });
-        return liveRow ? [...rows, liveRow] : rows;
-    }, [data, ghostData, granularity, liveRow]);
+        if (!liveRow || !live) {
+            return rows;
+        }
+        const previous = rows[rows.length - 1];
+        const progress = bucketProgress(live.tick, granularity);
+        return [
+            ...rows,
+            {
+                ...liveRow,
+                cashBalance: blendLive(previous?.cashBalance, liveRow.cashBalance, progress),
+                assetValue: blendLive(previous?.assetValue, liveRow.assetValue, progress),
+                netPosition: blendLive(previous?.netPosition, liveRow.netPosition, progress),
+                netIncome: blendLive(previous?.netIncome, liveRow.netIncome, progress),
+            },
+        ];
+    }, [data, ghostData, granularity, live, liveRow]);
 
     const [domainBalance, domainIncome] = useMemo(() => {
         const balanceVals = chartData

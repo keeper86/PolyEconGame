@@ -8,7 +8,6 @@ import { Users, Warehouse } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Spinner } from '../ui/spinner';
-import { MessagesIndicator } from './MessagesIndicator';
 
 export function hrProductivityColor(value: number): string {
     if (value < 0.8) {
@@ -66,7 +65,6 @@ function ConditionIndicators({ agentId, planetId }: { agentId: string; planetId:
 
     return (
         <div className='flex items-center gap-2'>
-            <MessagesIndicator />
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Link

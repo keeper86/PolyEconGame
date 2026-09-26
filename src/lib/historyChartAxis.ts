@@ -46,6 +46,27 @@ export function isLiveMonthPoint(monthIdx?: number): boolean {
     return monthIdx !== undefined && monthIdx > PREVIOUS_DECEMBER_IDX && monthIdx % 1 !== 0.5;
 }
 
+export function bucketProgress(tick: number, granularity: 'monthly' | 'yearly' | 'decade'): number {
+    const { year, monthIndex, day } = tickToDate(tick);
+    const monthFrac = monthIndex + Math.max(day - 1, 0) / TICKS_PER_MONTH;
+    if (granularity === 'monthly') {
+        return Math.min(1, Math.max(day - 1, 0) / TICKS_PER_MONTH);
+    }
+    if (granularity === 'yearly') {
+        return monthFrac / MONTHS_PER_YEAR;
+    }
+    const decadeStartYear = Math.floor(year / DECADE_YEARS) * DECADE_YEARS;
+    return (year - decadeStartYear + monthFrac / MONTHS_PER_YEAR) / DECADE_YEARS;
+}
+
+export function blendLive(previous: number | undefined, live: number, progress: number): number {
+    if (previous === undefined) {
+        return live;
+    }
+    const weight = Math.min(1, Math.max(0, progress));
+    return previous * (1 - weight) + live * weight;
+}
+
 export function yearCentre(bucket: number): number {
     return tickToDate(bucket).year + 0.5;
 }

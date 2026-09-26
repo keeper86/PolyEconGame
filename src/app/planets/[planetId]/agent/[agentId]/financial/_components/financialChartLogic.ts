@@ -1,5 +1,12 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import {
+    PREVIOUS_DECEMBER_IDX,
+    blendLive,
+    bucketProgress,
+    ghostMonthVisible,
+    monthAxis,
+    monthCentre,
+} from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
@@ -119,7 +126,17 @@ export function computeFinancialMonthlyData(
     }
 
     if (live && live.tick > 0) {
-        result.push(liveFinancialPoint(live));
+        const previous = result[result.length - 1];
+        const progress = bucketProgress(live.tick, 'monthly');
+        result.push({
+            ...liveFinancialPoint(live),
+            avgNetBalance: blendLive(previous?.avgNetBalance, live.avgNetBalance, progress),
+            avgAssetValue: blendLive(previous?.avgAssetValue, live.avgAssetValue, progress),
+            avgMonthlyNetIncome: blendLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
+            avgWages: blendLive(previous?.avgWages, live.avgWages, progress),
+            sumPurchases: blendLive(previous?.sumPurchases, live.sumPurchases, progress),
+            sumClaimPayments: blendLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+        });
     }
 
     return result;

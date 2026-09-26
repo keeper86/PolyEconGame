@@ -1,5 +1,11 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
+import {
+    PREVIOUS_DECEMBER_IDX,
+    blendLive,
+    bucketProgress,
+    ghostMonthVisible,
+    monthCentre,
+} from '@/lib/historyChartAxis';
 import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketPrices';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
@@ -97,35 +103,17 @@ export function computeMonthlyData(allPts: RawPoint[], live: LiveData, productNa
         if (liveYear === latestYear) {
             const dayFraction = Math.max(liveDay - 1, 0.001) / TICKS_PER_MONTH;
             const fractionalMonthIdx = liveMonthIdx + dayFraction;
-            const liveAvg = live.avgPrice ?? live.price;
-            const liveMin = live.minPrice ?? live.price;
-            const liveMax = live.maxPrice ?? live.price;
-            const livePriceFloor = live.priceFloor ?? live.price;
-
-            const BLEND_TICKS = 10;
-            const tickInMonth = liveDay;
-            const prevPoint = result.length > 0 ? result[result.length - 1] : null;
-            let blendedAvg = liveAvg;
-            let blendedMin = liveMin;
-            let blendedMax = liveMax;
-            let blendedPriceFloor = livePriceFloor;
-            if (prevPoint && tickInMonth < BLEND_TICKS && tickInMonth > 0) {
-                const newWeight = tickInMonth / BLEND_TICKS;
-                const oldWeight = 1 - newWeight;
-                blendedAvg = oldWeight * prevPoint.avgPrice + newWeight * liveAvg;
-                blendedMin = oldWeight * prevPoint.minPrice + newWeight * liveMin;
-                blendedMax = oldWeight * prevPoint.maxPrice + newWeight * liveMax;
-                blendedPriceFloor = oldWeight * prevPoint.priceFloor + newWeight * livePriceFloor;
-            }
+            const prevPoint = result.length > 0 ? result[result.length - 1] : undefined;
+            const progress = bucketProgress(live.tick, 'monthly');
 
             result.push({
                 tick: live.tick,
                 year: live.tick / TICKS_PER_YEAR,
                 monthIdx: fractionalMonthIdx,
-                avgPrice: blendedAvg,
-                minPrice: blendedMin,
-                maxPrice: blendedMax,
-                priceFloor: blendedPriceFloor,
+                avgPrice: blendLive(prevPoint?.avgPrice, live.avgPrice ?? live.price, progress),
+                minPrice: blendLive(prevPoint?.minPrice, live.minPrice ?? live.price, progress),
+                maxPrice: blendLive(prevPoint?.maxPrice, live.maxPrice ?? live.price, progress),
+                priceFloor: blendLive(prevPoint?.priceFloor, live.priceFloor ?? live.price, progress),
             });
         }
     }

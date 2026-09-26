@@ -10,7 +10,7 @@ import {
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
-import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, decadeStart } from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, blendLive, bucketProgress, decadeStart } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
@@ -45,13 +45,14 @@ describe('computeMacroMonthlyData live point', () => {
     const data = [...macroYear(0, 100), ...macroYear(1, 200)];
     const live: MacroLive = { tick: gameTickFor(1, 2, 5), gdp: 999, bankEquity: 888, moneySupply: 777 };
 
-    it('appends the live point at the fractional month index', () => {
+    it('appends the live point at the fractional month index, mixed with the previous point', () => {
         const result = computeMacroMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
+        const progress = bucketProgress(live.tick, 'monthly');
         expect(livePoint).toBeDefined();
-        expect(livePoint?.gdp).toBe(999);
-        expect(livePoint?.bankEquity).toBe(888);
-        expect(livePoint?.moneySupply).toBe(777);
+        expect(livePoint?.gdp).toBeCloseTo(blendLive(200, 999, progress), 6);
+        expect(livePoint?.bankEquity).toBeCloseTo(blendLive(400, 888, progress), 6);
+        expect(livePoint?.moneySupply).toBeCloseTo(blendLive(600, 777, progress), 6);
         expect(livePoint?.monthIdx).toBeCloseTo(2 + 4 / TICKS_PER_MONTH, 5);
     });
 
@@ -81,15 +82,16 @@ describe('computeCostOfLivingMonthlyData live point', () => {
         wageEdu3: 400,
     };
 
-    it('appends the live point at the fractional month index', () => {
+    it('appends the live point at the fractional month index, mixed with the previous point', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
+        const progress = bucketProgress(live.tick, 'monthly');
         expect(livePoint).toBeDefined();
-        expect(livePoint?.costOfLiving).toBe(12);
-        expect(livePoint?.costOfLivingRich).toBe(20);
-        expect(livePoint?.costOfLivingRichDiff).toBe(8);
-        expect(livePoint?.wageEdu0).toBe(100);
-        expect(livePoint?.wageEdu3).toBe(400);
+        expect(livePoint?.costOfLiving).toBeCloseTo(blendLive(8, 12, progress), 6);
+        expect(livePoint?.costOfLivingRich).toBeCloseTo(blendLive(16, 20, progress), 6);
+        expect(livePoint?.costOfLivingRichDiff).toBeCloseTo(blendLive(8, 8, progress), 6);
+        expect(livePoint?.wageEdu0).toBeCloseTo(blendLive(10, 100, progress), 6);
+        expect(livePoint?.wageEdu3).toBeCloseTo(blendLive(40, 400, progress), 6);
         expect(livePoint?.monthIdx).toBeCloseTo(4 + 9 / TICKS_PER_MONTH, 5);
     });
 

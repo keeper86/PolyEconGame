@@ -5,6 +5,8 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
+    blendLive,
+    bucketProgress,
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
@@ -142,14 +144,32 @@ export function ExpensesRevenueChart({
             };
         });
         if (live && live.tick > 0) {
+            const previous = rows[rows.length - 1];
+            const progress = bucketProgress(live.tick, granularity);
+            const liveRevenue = live.avgMonthlyNetIncome;
+            const liveWages = live.avgWages;
+            const livePurchases = live.sumPurchases / monthsPerBucket;
+            const liveClaimPayments = live.sumClaimPayments / monthsPerBucket;
             rows.push({
                 xVal: liveYearX(live.tick),
                 year: tickToDate(live.tick).year,
                 monthIndex: 0,
-                revenue: scale === 'log' && live.avgMonthlyNetIncome <= 0 ? null : live.avgMonthlyNetIncome,
-                wages: scale === 'log' && live.avgWages <= 0 ? null : live.avgWages,
-                purchases: scale === 'log' && live.sumPurchases <= 0 ? null : live.sumPurchases,
-                claimPayments: scale === 'log' && live.sumClaimPayments <= 0 ? null : live.sumClaimPayments,
+                revenue:
+                    scale === 'log' && liveRevenue <= 0
+                        ? null
+                        : blendLive(previous?.revenue ?? undefined, liveRevenue, progress),
+                wages:
+                    scale === 'log' && liveWages <= 0
+                        ? null
+                        : blendLive(previous?.wages ?? undefined, liveWages, progress),
+                purchases:
+                    scale === 'log' && livePurchases <= 0
+                        ? null
+                        : blendLive(previous?.purchases ?? undefined, livePurchases, progress),
+                claimPayments:
+                    scale === 'log' && liveClaimPayments <= 0
+                        ? null
+                        : blendLive(previous?.claimPayments ?? undefined, liveClaimPayments, progress),
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,

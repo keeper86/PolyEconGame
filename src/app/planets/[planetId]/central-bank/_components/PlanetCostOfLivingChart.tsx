@@ -2,7 +2,15 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeStart, decadeWindowAxis, formatMonthLabel, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
+import {
+    blendLive,
+    bucketProgress,
+    decadeStart,
+    decadeWindowAxis,
+    formatMonthLabel,
+    yearStart,
+    yearWindowAxis,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -87,8 +95,34 @@ export function PlanetCostOfLivingChart({
         if (granularity === 'monthly') {
             return computeCostOfLivingMonthlyData(data, currentTick, live);
         }
-        const takeLive = (rows: CostOfLivingChartPoint[]): CostOfLivingChartPoint[] =>
-            liveRow ? [...rows, liveRow] : rows;
+        const takeLive = (rows: CostOfLivingChartPoint[]): CostOfLivingChartPoint[] => {
+            if (!liveRow || !live) {
+                return rows;
+            }
+            const previous = rows[rows.length - 1];
+            const progress = bucketProgress(live.tick, granularity);
+            return [
+                ...rows,
+                {
+                    ...liveRow,
+                    costOfLiving: blendLive(previous?.costOfLiving ?? undefined, liveRow.costOfLiving ?? 0, progress),
+                    costOfLivingRich: blendLive(
+                        previous?.costOfLivingRich ?? undefined,
+                        liveRow.costOfLivingRich ?? 0,
+                        progress,
+                    ),
+                    costOfLivingRichDiff: blendLive(
+                        previous?.costOfLivingRichDiff ?? undefined,
+                        liveRow.costOfLivingRichDiff ?? 0,
+                        progress,
+                    ),
+                    wageEdu0: blendLive(previous?.wageEdu0 ?? undefined, liveRow.wageEdu0 ?? 0, progress),
+                    wageEdu1: blendLive(previous?.wageEdu1 ?? undefined, liveRow.wageEdu1 ?? 0, progress),
+                    wageEdu2: blendLive(previous?.wageEdu2 ?? undefined, liveRow.wageEdu2 ?? 0, progress),
+                    wageEdu3: blendLive(previous?.wageEdu3 ?? undefined, liveRow.wageEdu3 ?? 0, progress),
+                },
+            ];
+        };
         if (granularity === 'yearly') {
             const sorted = [...data].sort((a, b) => a.bucket - b.bucket);
             return takeLive(

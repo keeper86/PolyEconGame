@@ -13,6 +13,8 @@ import {
     HISTORY_BUCKET_LIMIT,
     MONTHS_PER_YEAR,
     YEAR_WINDOW,
+    blendLive,
+    bucketProgress,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -542,6 +544,14 @@ export default function MultiProductPriceChart({
         }
 
         if (liveTick > 0 && livePrices.size > 0 && selectedProducts.length > 0) {
+            let previousBucket = -Infinity;
+            for (const bucket of allBuckets.keys()) {
+                if (bucket < liveTick && bucket > previousBucket) {
+                    previousBucket = bucket;
+                }
+            }
+            const previousPoint = previousBucket === -Infinity ? undefined : allBuckets.get(previousBucket);
+            const progress = bucketProgress(liveTick, granularity);
             const livePoint: MergedPoint = { bucket: liveTick };
             let hasLive = false;
             for (const name of selectedProducts) {
@@ -549,7 +559,8 @@ export default function MultiProductPriceChart({
                 if (!live) {
                     continue;
                 }
-                livePoint[name] = rescaleMode === 'relative' ? live.relative : live.price;
+                const liveValue = rescaleMode === 'relative' ? live.relative : live.price;
+                livePoint[name] = blendLive(previousPoint?.[name] ?? undefined, liveValue, progress);
                 hasLive = true;
             }
             if (hasLive) {
