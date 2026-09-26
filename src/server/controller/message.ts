@@ -2,7 +2,7 @@ import { rankRecipients, type RecipientCandidate } from '@/lib/recipientSearch';
 import { getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import type { Messages } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
-import z from 'zod';
+import { z } from 'zod';
 import { db } from '../db';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
@@ -22,8 +22,8 @@ const messageSummary = z.object({
     counterpartUserId: z.string(),
     counterpartDisplayName: z.string().nullable(),
     counterpartUsername: z.string().nullable(),
-    counterpartAvatar: z.string().nullable(),
     counterpartCompanyName: z.string().nullable(),
+    counterpartCompanyLogo: z.string().nullable(),
     counterpartDeleted: z.boolean(),
 });
 export type MessageSummary = z.infer<typeof messageSummary>;
@@ -31,13 +31,12 @@ export type MessageSummary = z.infer<typeof messageSummary>;
 type Counterpart = {
     displayName: string | null;
     username: string | null;
-    avatar: string | null;
     agentId: string | null;
 };
 
-const companyNames = (): Map<string, string> => {
+const agentDirectory = (): Map<string, { name: string; logo: string }> => {
     const { agents } = getAllAgentsSync();
-    return new Map(agents.map((agent) => [agent.id, agent.name]));
+    return new Map(agents.map((agent) => [agent.id, { name: agent.name, logo: agent.logo }]));
 };
 
 const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterpart>> => {
@@ -51,7 +50,6 @@ const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterp
             {
                 displayName: row.display_name,
                 username: row.username,
-                avatar: row.avatar ? row.avatar.toString('base64') : null,
                 agentId: row.agent_id,
             },
         ]),
@@ -61,12 +59,13 @@ const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterp
 const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<MessageSummary[]> => {
     const counterpartIds = rows.map((row) => (mineIsRecipient ? row.sender_user_id : row.recipient_user_id));
     const counterparts = await loadCounterparts(counterpartIds);
-    const companies = companyNames();
+    const agents = agentDirectory();
 
     return rows.map((row) => {
         const counterpartUserId = mineIsRecipient ? row.sender_user_id : row.recipient_user_id;
         const counterpart = counterparts.get(counterpartUserId);
         const counterpartDeletedAt = mineIsRecipient ? row.sender_deleted_at : row.recipient_deleted_at;
+        const agent = counterpart?.agentId ? agents.get(counterpart.agentId) : undefined;
         return {
             id: row.id,
             subject: row.subject,
@@ -76,8 +75,8 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
             counterpartUserId,
             counterpartDisplayName: counterpart?.displayName ?? null,
             counterpartUsername: counterpart?.username ?? null,
-            counterpartAvatar: counterpart?.avatar ?? null,
-            counterpartCompanyName: counterpart?.agentId ? (companies.get(counterpart.agentId) ?? null) : null,
+            counterpartCompanyName: agent?.name ?? null,
+            counterpartCompanyLogo: agent?.logo ?? null,
             counterpartDeleted: counterpartDeletedAt !== null,
         };
     });
@@ -125,18 +124,19 @@ export const listRecipients = () => {
         )
         .query(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            const rows = await db('user_data')
+            const search = input.search.trim();
+            const base = db('user_data')
                 .whereNot('user_id', userId)
                 .select('user_id', 'display_name', 'username', 'agent_id')
-                .orderBy('display_name')
-                .limit(RECIPIENT_SCAN_LIMIT);
-            const companies = companyNames();
+                .orderBy('display_name');
+            const rows = search === '' ? await base.limit(input.limit) : await base.limit(RECIPIENT_SCAN_LIMIT);
+            const agents = agentDirectory();
 
             const candidates: RecipientCandidate[] = rows.map((row) => ({
                 userId: row.user_id,
                 displayName: row.display_name,
                 username: row.username,
-                companyName: row.agent_id ? (companies.get(row.agent_id) ?? null) : null,
+                companyName: row.agent_id ? (agents.get(row.agent_id)?.name ?? null) : null,
             }));
 
             return { recipients: rankRecipients(candidates, input.search, input.limit) };

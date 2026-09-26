@@ -6,6 +6,10 @@ import type { MessageSummary } from '@/server/controller/message';
 const h = vi.hoisted(() => ({
     inbox: { current: [] as unknown[] },
     sent: { current: [] as unknown[] },
+    inboxTotal: { current: 0 },
+    sentTotal: { current: 0 },
+    inboxInputs: [] as { limit: number; offset: number }[],
+    sentInputs: [] as { limit: number; offset: number }[],
     unreadCount: { current: 0 },
     deleteMessage: vi.fn(),
     deleteMessages: vi.fn(),
@@ -25,6 +29,9 @@ vi.mock('@/app/messages/_components/ComposeMessageDialog', () => ({
     ComposeMessageDialog: () => null,
 }));
 
+vi.mock('@/components/client/UserAvatar', () => ({ default: () => null }));
+vi.mock('@/components/client/CompanyLogo', () => ({ CompanyLogo: () => null }));
+
 vi.mock('@/hooks/useMessages', () => ({
     useUnreadMessageCount: () => h.unreadCount.current,
     useMarkRead: () => ({ mutate: h.markRead, isPending: false }),
@@ -36,8 +43,18 @@ vi.mock('@/hooks/useMessages', () => ({
 vi.mock('@/lib/trpc', () => ({
     useTRPC: () => ({
         message: {
-            listInbox: { queryOptions: (input: unknown) => ({ queryKey: ['message', 'listInbox', input] }) },
-            listSent: { queryOptions: (input: unknown) => ({ queryKey: ['message', 'listSent', input] }) },
+            listInbox: {
+                queryOptions: (input: { limit: number; offset: number }) => {
+                    h.inboxInputs.push(input);
+                    return { queryKey: ['message', 'listInbox', input] };
+                },
+            },
+            listSent: {
+                queryOptions: (input: { limit: number; offset: number }) => {
+                    h.sentInputs.push(input);
+                    return { queryKey: ['message', 'listSent', input] };
+                },
+            },
         },
     }),
 }));
@@ -48,8 +65,10 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
         ...original,
         useQuery: (options: { queryKey?: unknown[] }) => {
             const kind = Array.isArray(options.queryKey) ? options.queryKey[1] : undefined;
-            const messages = kind === 'listSent' ? h.sent.current : h.inbox.current;
-            return { data: { messages, total: messages.length }, isLoading: false };
+            if (kind === 'listSent') {
+                return { data: { messages: h.sent.current, total: h.sentTotal.current }, isLoading: false };
+            }
+            return { data: { messages: h.inbox.current, total: h.inboxTotal.current }, isLoading: false };
         },
     };
 });
@@ -65,8 +84,8 @@ const message = (overrides: Partial<MessageSummary>): MessageSummary => ({
     counterpartUserId: 'user-2',
     counterpartDisplayName: 'Bob Brown',
     counterpartUsername: 'bobby',
-    counterpartAvatar: null,
     counterpartCompanyName: null,
+    counterpartCompanyLogo: null,
     counterpartDeleted: false,
     ...overrides,
 });
@@ -89,6 +108,10 @@ describe('MessagesPage delete controls', () => {
         vi.clearAllMocks();
         h.inbox.current = [unreadInbox, readInbox];
         h.sent.current = [sentUnread, sentRead];
+        h.inboxTotal.current = h.inbox.current.length;
+        h.sentTotal.current = h.sent.current.length;
+        h.inboxInputs.length = 0;
+        h.sentInputs.length = 0;
         h.unreadCount.current = 0;
     });
 
@@ -177,6 +200,24 @@ describe('MessagesPage delete controls', () => {
 
         expect(screen.getByText('Deleted')).toBeInTheDocument();
         expect(screen.queryByText('Unread')).not.toBeInTheDocument();
+    });
+
+    it('pages the inbox when there are more messages than fit on one page', async () => {
+        h.inboxTotal.current = 60;
+        render(<MessagesPage />);
+
+        expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+        expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+        expect(h.inboxInputs.at(-1)).toEqual({ limit: 25, offset: 25 });
+    });
+
+    it('does not show pagination when everything fits on one page', () => {
+        render(<MessagesPage />);
+
+        expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     });
 
     it('groups mark all read with delete all read in the inbox', () => {

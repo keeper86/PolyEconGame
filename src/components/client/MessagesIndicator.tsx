@@ -1,7 +1,7 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { useUnreadMessageCount } from '@/hooks/useMessages';
+import { useMessagePolling, useUnreadMessageCount } from '@/hooks/useMessages';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import { Mail } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -10,6 +10,7 @@ import Link from 'next/link';
 export function MessagesIndicator() {
     const loggedIn = useSession().status === 'authenticated';
     const unreadCount = useUnreadMessageCount();
+    useMessagePolling();
 
     if (!loggedIn) {
         return null;

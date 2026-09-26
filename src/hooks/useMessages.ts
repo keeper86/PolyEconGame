@@ -1,13 +1,37 @@
 import { useTRPC } from '@/lib/trpc';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
 
-const UNREAD_POLL_INTERVAL_MS = 5000;
+export const MESSAGE_POLL_INTERVAL_MS = 5000;
 
 export const isMessageQuery = (queryKey: readonly unknown[]): boolean => {
     const path = Array.isArray(queryKey[0]) ? (queryKey[0] as unknown[]) : queryKey;
     return path[0] === 'message';
 };
+
+const invalidateMessageQueries = (queryClient: QueryClient): void => {
+    void queryClient.invalidateQueries({
+        predicate: (query) => isMessageQuery(query.queryKey),
+    });
+};
+
+export function useMessagePolling(): void {
+    const loggedIn = useSession().status === 'authenticated';
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!loggedIn) {
+            return;
+        }
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                invalidateMessageQueries(queryClient);
+            }
+        }, MESSAGE_POLL_INTERVAL_MS);
+        return () => clearInterval(interval);
+    }, [loggedIn, queryClient]);
+}
 
 export function useUnreadMessageCount(): number {
     const loggedIn = useSession().status === 'authenticated';
@@ -15,7 +39,6 @@ export function useUnreadMessageCount(): number {
 
     const { data } = useQuery({
         ...trpc.message.getUnreadCount.queryOptions(),
-        refetchInterval: UNREAD_POLL_INTERVAL_MS,
         enabled: loggedIn,
     });
 
@@ -28,11 +51,7 @@ export function useSendMessage() {
 
     return useMutation(
         trpc.message.sendMessage.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    predicate: (query) => isMessageQuery(query.queryKey),
-                });
-            },
+            onSuccess: () => invalidateMessageQueries(queryClient),
         }),
     );
 }
@@ -43,11 +62,7 @@ export function useMarkRead() {
 
     return useMutation(
         trpc.message.markRead.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    predicate: (query) => isMessageQuery(query.queryKey),
-                });
-            },
+            onSuccess: () => invalidateMessageQueries(queryClient),
         }),
     );
 }
@@ -58,11 +73,7 @@ export function useMarkAllRead() {
 
     return useMutation(
         trpc.message.markAllRead.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    predicate: (query) => isMessageQuery(query.queryKey),
-                });
-            },
+            onSuccess: () => invalidateMessageQueries(queryClient),
         }),
     );
 }
@@ -73,11 +84,7 @@ export function useDeleteMessage() {
 
     return useMutation(
         trpc.message.deleteMessage.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    predicate: (query) => isMessageQuery(query.queryKey),
-                });
-            },
+            onSuccess: () => invalidateMessageQueries(queryClient),
         }),
     );
 }
@@ -88,11 +95,7 @@ export function useDeleteMessages() {
 
     return useMutation(
         trpc.message.deleteMessages.mutationOptions({
-            onSuccess: () => {
-                void queryClient.invalidateQueries({
-                    predicate: (query) => isMessageQuery(query.queryKey),
-                });
-            },
+            onSuccess: () => invalidateMessageQueries(queryClient),
         }),
     );
 }

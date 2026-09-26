@@ -2,6 +2,7 @@
 
 import { Page } from '@/components/client/Page';
 import { ComposeMessageDialog } from '@/app/messages/_components/ComposeMessageDialog';
+import { CounterpartAvatar } from '@/app/messages/_components/CounterpartAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,10 +27,10 @@ import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCheck, Trash2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
-const POLL_INTERVAL_MS = 5000;
+const PAGE_SIZE = 25;
 
 const formatTimestamp = (iso: string): string => new Date(iso).toLocaleString();
 
@@ -89,18 +90,21 @@ function MessageRow({
         <button
             type='button'
             onClick={onSelect}
-            className='flex w-full flex-col gap-1 border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/60'
+            className='flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/60'
         >
-            <span className='flex items-center gap-2'>
-                {unread && <span className='h-2 w-2 shrink-0 rounded-full bg-primary' />}
-                <span className={unread ? 'truncate font-semibold' : 'truncate'}>{message.subject}</span>
-            </span>
-            <span className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
-                <span className='flex min-w-0 items-center gap-2'>
-                    {direction === 'sent' && <span className={status.className}>{status.label}</span>}
-                    <span className='truncate'>{counterpartName(message)}</span>
+            <CounterpartAvatar message={message} />
+            <span className='flex min-w-0 flex-1 flex-col gap-1'>
+                <span className='flex items-center gap-2'>
+                    {unread && <span className='h-2 w-2 shrink-0 rounded-full bg-primary' />}
+                    <span className={unread ? 'truncate font-semibold' : 'truncate'}>{message.subject}</span>
                 </span>
-                <span className='shrink-0'>{formatTimestamp(message.createdAt)}</span>
+                <span className='flex items-center justify-between gap-2 text-xs text-muted-foreground'>
+                    <span className='flex min-w-0 items-center gap-2'>
+                        {direction === 'sent' && <span className={status.className}>{status.label}</span>}
+                        <span className='truncate'>{counterpartName(message)}</span>
+                    </span>
+                    <span className='shrink-0'>{formatTimestamp(message.createdAt)}</span>
+                </span>
             </span>
         </button>
     );
@@ -115,6 +119,9 @@ function MessagePane({
     direction,
     onSelect,
     headerAction,
+    page,
+    total,
+    onPageChange,
 }: {
     title: string;
     description: string;
@@ -124,6 +131,9 @@ function MessagePane({
     direction: 'inbox' | 'sent';
     onSelect: (message: MessageSummary, direction: 'inbox' | 'sent') => void;
     headerAction: ReactNode;
+    page: number;
+    total: number;
+    onPageChange: (page: number) => void;
 }) {
     return (
         <div className='rounded-lg border border-border'>
@@ -148,6 +158,31 @@ function MessagePane({
                     />
                 ))
             )}
+            {total > PAGE_SIZE && (
+                <div className='flex items-center justify-between border-t border-border px-3 py-2 text-xs text-muted-foreground'>
+                    <span>
+                        Page {page + 1} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+                    </span>
+                    <div className='flex items-center gap-2'>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            disabled={page === 0}
+                            onClick={() => onPageChange(page - 1)}
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            variant='outline'
+                            size='sm'
+                            disabled={(page + 1) * PAGE_SIZE >= total}
+                            onClick={() => onPageChange(page + 1)}
+                        >
+                            Next
+                        </Button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -163,21 +198,35 @@ export default function MessagesPage() {
 
     const [selected, setSelected] = useState<{ message: MessageSummary; direction: 'inbox' | 'sent' } | null>(null);
     const [confirm, setConfirm] = useState<ConfirmTarget | null>(null);
+    const [inboxPage, setInboxPage] = useState(0);
+    const [sentPage, setSentPage] = useState(0);
 
     const inbox = useQuery({
-        ...trpc.message.listInbox.queryOptions({ limit: 25, offset: 0 }),
+        ...trpc.message.listInbox.queryOptions({ limit: PAGE_SIZE, offset: inboxPage * PAGE_SIZE }),
         enabled: loggedIn,
-        refetchInterval: POLL_INTERVAL_MS,
     });
     const sent = useQuery({
-        ...trpc.message.listSent.queryOptions({ limit: 25, offset: 0 }),
+        ...trpc.message.listSent.queryOptions({ limit: PAGE_SIZE, offset: sentPage * PAGE_SIZE }),
         enabled: loggedIn,
-        refetchInterval: POLL_INTERVAL_MS,
     });
 
     const inboxMessages = inbox.data?.messages ?? [];
     const sentMessages = sent.data?.messages ?? [];
+    const inboxTotal = inbox.data?.total ?? 0;
+    const sentTotal = sent.data?.total ?? 0;
     const inboxHasRead = inboxMessages.some((message) => message.readAt !== null);
+
+    useEffect(() => {
+        if (inboxPage > 0 && inboxPage * PAGE_SIZE >= inboxTotal) {
+            setInboxPage((page) => Math.max(page - 1, 0));
+        }
+    }, [inboxPage, inboxTotal]);
+
+    useEffect(() => {
+        if (sentPage > 0 && sentPage * PAGE_SIZE >= sentTotal) {
+            setSentPage((page) => Math.max(page - 1, 0));
+        }
+    }, [sentPage, sentTotal]);
 
     const handleSelect = (message: MessageSummary, direction: 'inbox' | 'sent') => {
         setSelected({ message, direction });
@@ -242,6 +291,9 @@ export default function MessagesPage() {
                         messages={inboxMessages}
                         direction='inbox'
                         onSelect={handleSelect}
+                        page={inboxPage}
+                        total={inboxTotal}
+                        onPageChange={setInboxPage}
                         headerAction={
                             <div className='flex items-center gap-2'>
                                 <Button
@@ -277,6 +329,9 @@ export default function MessagesPage() {
                         messages={sentMessages}
                         direction='sent'
                         onSelect={handleSelect}
+                        page={sentPage}
+                        total={sentTotal}
+                        onPageChange={setSentPage}
                         headerAction={
                             <Button
                                 variant='outline'

@@ -60,7 +60,7 @@ export function RecipientPicker({
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setHighlighted((index) => Math.min(index + 1, recipients.length - 1));
+            setHighlighted((index) => Math.min(index + 1, Math.max(recipients.length - 1, 0)));
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
             setHighlighted((index) => Math.max(index - 1, 0));

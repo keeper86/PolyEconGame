@@ -21,6 +21,8 @@ describe('message endpoints (integration)', async () => {
         expect(stored?.body).toBe('Trade offer');
         expect(stored?.counterpartUserId).toBe(senderId);
         expect(stored?.readAt).toBeNull();
+        expect(stored?.counterpartCompanyName).toBeNull();
+        expect(stored?.counterpartCompanyLogo).toBeNull();
 
         const sent = await sender.message.listSent({ limit: 25, offset: 0 });
         expect(sent.messages.some((message) => message.id === id)).toBe(true);

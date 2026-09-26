@@ -69,7 +69,7 @@
                     "temporary": false
                 }
             ],
-            "realmRoles": ["user", "admin"],
+            "realmRoles": ["user"],
             "clientRoles": {
                 "account": ["view-profile", "manage-account"],
                 "realm-management": ["realm-admin"]
