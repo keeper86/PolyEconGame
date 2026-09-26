@@ -1,4 +1,7 @@
 exports.up = async function (knex) {
+    await knex.raw('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+    await knex.raw('CREATE EXTENSION IF NOT EXISTS unaccent');
+
     await knex.raw(`
         CREATE TABLE messages (
             id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -14,11 +17,12 @@ exports.up = async function (knex) {
     `);
 
     await knex.raw(`CREATE INDEX idx_messages_recipient_unread ON messages (recipient_user_id, read_at)`);
-    await knex.raw(
-        `CREATE INDEX idx_messages_conversation ON messages (sender_user_id, recipient_user_id, created_at DESC)`,
-    );
+    await knex.raw(`CREATE INDEX idx_messages_recipient_created ON messages (recipient_user_id, created_at DESC)`);
+    await knex.raw(`CREATE INDEX idx_messages_sender_created ON messages (sender_user_id, created_at DESC)`);
 };
 
 exports.down = async function (knex) {
     await knex.schema.dropTableIfExists('messages');
+    await knex.raw('DROP EXTENSION IF EXISTS unaccent');
+    await knex.raw('DROP EXTENSION IF EXISTS pg_trgm');
 };

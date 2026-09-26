@@ -3,16 +3,35 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { useSession } from 'next-auth/react';
 import { useEffect } from 'react';
 
-export const MESSAGE_POLL_INTERVAL_MS = 5000;
+export const MESSAGE_POLL_INTERVAL_MS = 10000;
 
-export const isMessageQuery = (queryKey: readonly unknown[]): boolean => {
+const MESSAGE_QUERY_ROOT = 'message';
+const POLLED_MESSAGE_PROCEDURES = new Set(['getUnreadCount', 'listInbox', 'listSent']);
+
+const messageProcedure = (queryKey: readonly unknown[]): string | null => {
     const path = Array.isArray(queryKey[0]) ? (queryKey[0] as unknown[]) : queryKey;
-    return path[0] === 'message';
+    if (path[0] !== MESSAGE_QUERY_ROOT || typeof path[1] !== 'string') {
+        return null;
+    }
+    return path[1];
+};
+
+export const isMessageQuery = (queryKey: readonly unknown[]): boolean => messageProcedure(queryKey) !== null;
+
+export const isPolledMessageQuery = (queryKey: readonly unknown[]): boolean => {
+    const procedure = messageProcedure(queryKey);
+    return procedure !== null && POLLED_MESSAGE_PROCEDURES.has(procedure);
 };
 
 const invalidateMessageQueries = (queryClient: QueryClient): void => {
     void queryClient.invalidateQueries({
         predicate: (query) => isMessageQuery(query.queryKey),
+    });
+};
+
+const invalidatePolledMessageQueries = (queryClient: QueryClient): void => {
+    void queryClient.invalidateQueries({
+        predicate: (query) => isPolledMessageQuery(query.queryKey),
     });
 };
 
@@ -26,7 +45,7 @@ export function useMessagePolling(): void {
         }
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                invalidateMessageQueries(queryClient);
+                invalidatePolledMessageQueries(queryClient);
             }
         }, MESSAGE_POLL_INTERVAL_MS);
         return () => clearInterval(interval);

@@ -1,4 +1,4 @@
-import { rankRecipients, type RecipientCandidate } from '@/lib/recipientSearch';
+import { fieldScore, normalizeSearchText } from '@/lib/recipientSearch';
 import { getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import type { Messages } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
-const RECIPIENT_SCAN_LIMIT = 2000;
+const RECIPIENT_MIN_SCORE = 0.3;
 
 const pagination = z.object({
     limit: z.number().int().min(1).max(100).default(25),
@@ -102,6 +102,37 @@ const listMessages = async (
     };
 };
 
+const normalizedSearchColumn = (column: string): string => `unaccent(lower(coalesce(${column}, '')))`;
+
+const searchFieldScore = (column: string): string => {
+    const field = normalizedSearchColumn(column);
+    return `CASE
+        WHEN ${field} = :query THEN 1.0
+        WHEN left(${field}, length(:query)) = :query THEN 0.9
+        WHEN position(:query in ${field}) > 0 THEN 0.8
+        ELSE GREATEST(similarity(${field}, :query), strict_word_similarity(:query, ${field}))
+    END`;
+};
+
+const recipientScore = `GREATEST(
+    ${searchFieldScore('display_name')},
+    ${searchFieldScore('username')} * 0.98,
+    ${searchFieldScore('user_id')} * 0.95,
+    CASE WHEN agent_id = ANY(:agentIds) THEN 0.5 ELSE 0 END
+)`;
+
+const matchingAgentIds = (normalizedQuery: string): string[] =>
+    getAllAgentsSync()
+        .agents.filter((agent) => fieldScore(normalizedQuery, agent.name) > 0)
+        .map((agent) => agent.id);
+
+type RecipientRow = {
+    user_id: string;
+    display_name: string | null;
+    username: string | null;
+    agent_id: string | null;
+};
+
 export const listRecipients = () => {
     return protectedProcedure
         .input(
@@ -124,22 +155,45 @@ export const listRecipients = () => {
         )
         .query(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            const search = input.search.trim();
-            const base = db('user_data')
-                .whereNot('user_id', userId)
-                .select('user_id', 'display_name', 'username', 'agent_id')
-                .orderBy('display_name');
-            const rows = search === '' ? await base.limit(input.limit) : await base.limit(RECIPIENT_SCAN_LIMIT);
+            const query = normalizeSearchText(input.search.trim());
             const agents = agentDirectory();
+            const fields = ['user_id', 'display_name', 'username', 'agent_id'] as const;
 
-            const candidates: RecipientCandidate[] = rows.map((row) => ({
-                userId: row.user_id,
-                displayName: row.display_name,
-                username: row.username,
-                companyName: row.agent_id ? (agents.get(row.agent_id)?.name ?? null) : null,
-            }));
+            const rows: RecipientRow[] =
+                query === ''
+                    ? await db('user_data')
+                          .whereNot('user_id', userId)
+                          .select(...fields)
+                          .orderBy('display_name')
+                          .limit(input.limit)
+                    : await db
+                          .from(
+                              db('user_data')
+                                  .select(...fields)
+                                  .select(
+                                      db.raw(`${recipientScore} as score`, {
+                                          query,
+                                          agentIds: matchingAgentIds(query),
+                                      }),
+                                  )
+                                  .whereNot('user_id', userId)
+                                  .as('ranked'),
+                          )
+                          .select(...fields)
+                          .where('score', '>=', RECIPIENT_MIN_SCORE)
+                          .orderBy('score', 'desc')
+                          .orderBy('display_name')
+                          .orderBy('user_id')
+                          .limit(input.limit);
 
-            return { recipients: rankRecipients(candidates, input.search, input.limit) };
+            return {
+                recipients: rows.map((row) => ({
+                    userId: row.user_id,
+                    displayName: row.display_name,
+                    username: row.username,
+                    companyName: row.agent_id ? (agents.get(row.agent_id)?.name ?? null) : null,
+                })),
+            };
         });
 };
 
@@ -220,6 +274,7 @@ export const markRead = () => {
             const userId = getUserIdFromContext(ctx);
             const updated = await db('messages')
                 .where({ id: input.messageId, recipient_user_id: userId })
+                .whereNull('recipient_deleted_at')
                 .whereNull('read_at')
                 .update({ read_at: db.fn.now() });
 
@@ -240,6 +295,7 @@ export const markAllRead = () => {
             const userId = getUserIdFromContext(ctx);
             const updated = await db('messages')
                 .where({ recipient_user_id: userId })
+                .whereNull('recipient_deleted_at')
                 .whereNull('read_at')
                 .update({ read_at: db.fn.now() });
             return { updated };
@@ -252,23 +308,25 @@ export const deleteMessage = () => {
         .output(z.void())
         .mutation(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            const row = await db('messages').where({ id: input.messageId }).first();
+            await db.transaction(async (trx) => {
+                const row = await trx('messages').where({ id: input.messageId }).forUpdate().first();
 
-            if (!row || (row.sender_user_id !== userId && row.recipient_user_id !== userId)) {
-                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
-            }
+                if (!row || (row.sender_user_id !== userId && row.recipient_user_id !== userId)) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+                }
 
-            const isSender = row.sender_user_id === userId;
-            const otherDeleted = isSender ? row.recipient_deleted_at !== null : row.sender_deleted_at !== null;
+                const isSender = row.sender_user_id === userId;
+                const otherDeleted = isSender ? row.recipient_deleted_at !== null : row.sender_deleted_at !== null;
 
-            if (otherDeleted) {
-                await db('messages').where({ id: input.messageId }).del();
-                return;
-            }
+                if (otherDeleted) {
+                    await trx('messages').where({ id: input.messageId }).del();
+                    return;
+                }
 
-            await db('messages')
-                .where({ id: input.messageId })
-                .update(isSender ? { sender_deleted_at: db.fn.now() } : { recipient_deleted_at: db.fn.now() });
+                await trx('messages')
+                    .where({ id: input.messageId })
+                    .update(isSender ? { sender_deleted_at: trx.fn.now() } : { recipient_deleted_at: trx.fn.now() });
+            });
         });
 };
 
@@ -282,12 +340,18 @@ export const deleteMessages = () => {
             const ownColumn = ownDeletedColumn(input.direction);
             const otherColumn = input.direction === 'inbox' ? 'sender_deleted_at' : 'recipient_deleted_at';
 
-            const base = db('messages').where(ownerColumn, userId).whereNull(ownColumn);
-            const target = input.onlyRead ? base.clone().whereNotNull('read_at') : base;
-            const deleted = await target.update({ [ownColumn]: db.fn.now() });
+            return db.transaction(async (trx) => {
+                const base = trx('messages').where(ownerColumn, userId).whereNull(ownColumn);
+                const target = input.onlyRead ? base.clone().whereNotNull('read_at') : base;
+                const deleted = await target.update({ [ownColumn]: trx.fn.now() });
 
-            await db('messages').where(ownerColumn, userId).whereNotNull(ownColumn).whereNotNull(otherColumn).del();
+                await trx('messages')
+                    .where(ownerColumn, userId)
+                    .whereNotNull(ownColumn)
+                    .whereNotNull(otherColumn)
+                    .del();
 
-            return { deleted };
+                return { deleted };
+            });
         });
 };

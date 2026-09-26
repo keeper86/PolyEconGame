@@ -5,8 +5,6 @@ export type RecipientCandidate = {
     companyName: string | null;
 };
 
-const MIN_SCORE = 0.3;
-
 export const normalizeSearchText = (value: string): string =>
     value
         .normalize('NFD')
@@ -106,37 +104,6 @@ export const fieldScore = (normalizedQuery: string, rawField: string | null): nu
         return 0.35;
     }
     return 0;
-};
-
-export const scoreCandidate = (candidate: RecipientCandidate, rawQuery: string): number => {
-    const query = normalizeSearchText(rawQuery);
-    if (query === '') {
-        return 1;
-    }
-    return Math.max(
-        fieldScore(query, candidate.displayName),
-        fieldScore(query, candidate.username) * 0.98,
-        fieldScore(query, candidate.companyName) * 0.98,
-        fieldScore(query, candidate.userId) * 0.95,
-    );
-};
-
-export const rankRecipients = (
-    candidates: RecipientCandidate[],
-    rawQuery: string,
-    limit: number,
-): RecipientCandidate[] => {
-    if (normalizeSearchText(rawQuery) === '') {
-        return candidates.slice(0, limit);
-    }
-    return candidates
-        .map((candidate) => ({ candidate, score: scoreCandidate(candidate, rawQuery) }))
-        .filter((entry) => entry.score >= MIN_SCORE)
-        .sort(
-            (a, b) => b.score - a.score || (a.candidate.displayName ?? '').localeCompare(b.candidate.displayName ?? ''),
-        )
-        .slice(0, limit)
-        .map((entry) => entry.candidate);
 };
 
 export const recipientLabel = (recipient: RecipientCandidate): string => {

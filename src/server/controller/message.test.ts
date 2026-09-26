@@ -315,4 +315,75 @@ describe('message endpoints (integration)', async () => {
         await expect(anon.message.deleteMessage({ messageId: 'anything' })).rejects.toThrow();
         await expect(anon.message.deleteMessages({ direction: 'inbox', onlyRead: true })).rejects.toThrow();
     });
+
+    it('searches recipients server-side across the whole user table, ignoring diacritics', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+        const db = getDb();
+
+        await db('user_data').insert({
+            user_id: 'diacritic-user',
+            display_name: 'Björn Ödegård',
+            username: 'bjorn-o',
+            email: 'bjorn@example.com',
+            has_assessment_published: false,
+            agent_id: null,
+            avatar: null,
+            planet_id: null,
+        });
+
+        try {
+            const { recipients } = await caller.message.listRecipients({ search: 'bjorn', limit: 25 });
+            const match = recipients.find((recipient) => recipient.userId === 'diacritic-user');
+            expect(match).toBeDefined();
+            expect(match?.displayName).toBe('Björn Ödegård');
+        } finally {
+            await db('user_data').where({ user_id: 'diacritic-user' }).del();
+        }
+    });
+
+    it('finds recipients by a middle substring of their display name', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: 'ther', limit: 25 });
+
+        expect(recipients.map((recipient) => recipient.userId)).toEqual(
+            expect.arrayContaining([testUsers.otherUserPublished.user_id, testUsers.otherUserUnpublished.user_id]),
+        );
+    });
+
+    it('ignores marking a deleted message as read', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserPublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Deleted then read',
+            body: 'body',
+        });
+        await recipient.message.deleteMessage({ messageId: id });
+
+        await expect(recipient.message.markRead({ messageId: id })).resolves.toBeUndefined();
+
+        const row = await getDb()('messages').where({ id }).first();
+        expect(row?.read_at).toBeNull();
+    });
+
+    it('does not mark deleted messages read in bulk', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserUnpublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Deleted bulk',
+            body: 'body',
+        });
+        await recipient.message.deleteMessage({ messageId: id });
+
+        await recipient.message.markAllRead();
+
+        const row = await getDb()('messages').where({ id }).first();
+        expect(row?.read_at).toBeNull();
+    });
 });

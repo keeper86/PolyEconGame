@@ -1,77 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { rankRecipients, recipientLabel, type RecipientCandidate } from './recipientSearch';
+import { fieldScore, recipientLabel } from './recipientSearch';
 
-const alice: RecipientCandidate = {
-    userId: 'alice-1',
-    displayName: 'Alice Anderson',
-    username: 'aa-dev',
-    companyName: 'AnderTech',
-};
-const bob: RecipientCandidate = {
-    userId: 'bob-2',
-    displayName: 'Bob Brown',
-    username: 'bobby',
-    companyName: 'Brown Industries',
-};
-const bjorn: RecipientCandidate = {
-    userId: 'bjorn-3',
-    displayName: 'Björn Ödegård',
-    username: 'bjorn-o',
-    companyName: null,
-};
-const candidates = [alice, bob, bjorn];
-
-describe('rankRecipients', () => {
-    it('returns the input order for an empty query, capped at the limit', () => {
-        expect(rankRecipients(candidates, '', 10)).toEqual(candidates);
-        expect(rankRecipients(candidates, '   ', 2)).toEqual([alice, bob]);
+describe('fieldScore', () => {
+    it('scores exact, prefix and substring matches', () => {
+        expect(fieldScore('alice anderson', 'Alice Anderson')).toBe(1);
+        expect(fieldScore('alice', 'Alice Anderson')).toBe(0.9);
+        expect(fieldScore('and', 'Alice Anderson')).toBe(0.8);
     });
 
-    it('ranks an exact display name match first', () => {
-        expect(rankRecipients(candidates, 'Alice Anderson', 10)[0]).toBe(alice);
+    it('scores prefixes, substrings and initials', () => {
+        expect(fieldScore('bjorn', 'Björn Ödegård')).toBe(0.9);
+        expect(fieldScore('odegard', 'Björn Ödegård')).toBe(0.8);
+        expect(fieldScore('aa', 'Alice Anderson')).toBe(0.65);
     });
 
-    it('matches on a substring of the display name', () => {
-        const result = rankRecipients(candidates, 'and', 10);
-        expect(result[0]).toBe(alice);
-        expect(result).not.toContain(bob);
+    it('tolerates typos', () => {
+        expect(fieldScore('alise', 'Alice Anderson')).toBeGreaterThan(0.3);
     });
 
-    it('matches on the company name', () => {
-        const result = rankRecipients(candidates, 'industries', 10);
-        expect(result).toEqual([bob]);
+    it('ignores diacritics in the field', () => {
+        expect(fieldScore('bjorn', 'Björn Ödegård')).toBeGreaterThan(0);
     });
 
-    it('matches on the user id', () => {
-        expect(rankRecipients(candidates, 'bob-2', 10)[0]).toBe(bob);
-    });
-
-    it('matches a typo via string distance', () => {
-        const result = rankRecipients(candidates, 'alise', 10);
-        expect(result[0]).toBe(alice);
-        expect(result).not.toContain(bob);
-    });
-
-    it('ignores diacritics', () => {
-        expect(rankRecipients(candidates, 'bjorn', 10)[0]).toBe(bjorn);
-    });
-
-    it('returns no matches for an unrelated query', () => {
-        expect(rankRecipients(candidates, 'zzzzzz', 10)).toEqual([]);
-    });
-
-    it('matches on the user name', () => {
-        expect(rankRecipients(candidates, 'bobby', 10)).toEqual([bob]);
-    });
-
-    it('never exceeds the limit', () => {
-        expect(rankRecipients(candidates, 'o', 1)).toHaveLength(1);
+    it('returns zero for missing or unrelated fields', () => {
+        expect(fieldScore('bob', null)).toBe(0);
+        expect(fieldScore('bob', '')).toBe(0);
+        expect(fieldScore('zzzzzz', 'Alice Anderson')).toBe(0);
     });
 });
 
 describe('recipientLabel', () => {
     it('prefers the display name and appends the company', () => {
-        expect(recipientLabel(alice)).toBe('Alice Anderson (AnderTech)');
+        expect(
+            recipientLabel({
+                userId: 'alice-1',
+                displayName: 'Alice Anderson',
+                username: 'aa-dev',
+                companyName: 'AnderTech',
+            }),
+        ).toBe('Alice Anderson (AnderTech)');
     });
 
     it('falls back to the user name when there is no display name', () => {
