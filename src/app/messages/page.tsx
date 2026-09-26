@@ -21,7 +21,7 @@ import {
     useMarkRead,
     useUnreadMessageCount,
 } from '@/hooks/useMessages';
-import { recipientLabel } from '@/lib/recipientSearch';
+import { recipientLabel } from '@/app/messages/_components/recipientLabel';
 import { useTRPC } from '@/lib/trpc';
 import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';

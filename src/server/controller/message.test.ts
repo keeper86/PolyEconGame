@@ -1,7 +1,19 @@
 import { getCaller, getDb, getUnauthenticatedCaller, testUsers } from 'tests/vitest/setupTestcontainer';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const h = vi.hoisted(() => ({
+    agents: [] as { id: string; name: string; logo: string }[],
+}));
+
+vi.mock('@/simulation/workerClient/syncQueries', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('@/simulation/workerClient/syncQueries')>()),
+    getAllAgentsSync: () => ({ tick: 0, agents: h.agents }),
+}));
 
 describe('message endpoints (integration)', async () => {
+    beforeEach(() => {
+        h.agents = [];
+    });
     it('sends a message that appears in the recipient inbox and the sender sent box', async () => {
         const senderId = testUsers.testUser.user_id;
         const recipientId = testUsers.otherUserPublished.user_id;
@@ -385,5 +397,64 @@ describe('message endpoints (integration)', async () => {
 
         const row = await getDb()('messages').where({ id }).first();
         expect(row?.read_at).toBeNull();
+    });
+
+    it('does not count a message the recipient deleted as unread', async () => {
+        const sender = getCaller(testUsers.testUser.user_id);
+        const recipientId = testUsers.otherUserUnpublished.user_id;
+        const recipient = getCaller(recipientId);
+
+        const before = await recipient.message.getUnreadCount();
+        const { id } = await sender.message.sendMessage({
+            recipientUserId: recipientId,
+            subject: 'Deleted unread',
+            body: 'body',
+        });
+        expect((await recipient.message.getUnreadCount()).count).toBe(before.count + 1);
+
+        await recipient.message.deleteMessage({ messageId: id });
+
+        expect((await recipient.message.getUnreadCount()).count).toBe(before.count);
+    });
+
+    it('finds recipients by their company name even when no user field matches', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+        const db = getDb();
+        h.agents = [{ id: 'agent-company-1', name: 'Zephyr Trading Co', logo: 'logo-zephyr' }];
+
+        await db('user_data').insert({
+            user_id: 'company-owner',
+            display_name: 'Owner Name',
+            username: 'owner',
+            email: 'owner@example.com',
+            has_assessment_published: false,
+            agent_id: 'agent-company-1',
+            avatar: null,
+            planet_id: null,
+        });
+
+        try {
+            const { recipients } = await caller.message.listRecipients({ search: 'zephyr', limit: 25 });
+            const match = recipients.find((recipient) => recipient.userId === 'company-owner');
+            expect(match).toBeDefined();
+            expect(match?.companyName).toBe('Zephyr Trading Co');
+        } finally {
+            h.agents = [];
+            await db('user_data').where({ user_id: 'company-owner' }).del();
+        }
+    });
+
+    it('treats LIKE wildcards in the search literally', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: '%', limit: 25 });
+
+        expect(recipients).toHaveLength(0);
+    });
+
+    it('rejects an overly long recipient search', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        await expect(caller.message.listRecipients({ search: 'a'.repeat(101), limit: 25 })).rejects.toThrow();
     });
 });

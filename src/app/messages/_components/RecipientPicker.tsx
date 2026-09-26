@@ -2,25 +2,28 @@
 
 import { Input } from '@/components/ui/input';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { recipientLabel, type RecipientCandidate } from '@/lib/recipientSearch';
+import { recipientLabel, type RecipientCandidate } from '@/app/messages/_components/recipientLabel';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 const SEARCH_DEBOUNCE_MS = 200;
 const RESULT_LIMIT = 50;
 
 export function RecipientPicker({
+    id,
     value,
     onChange,
 }: {
+    id: string;
     value: RecipientCandidate | null;
     onChange: (recipient: RecipientCandidate | null) => void;
 }) {
     const trpc = useTRPC();
     const containerRef = useRef<HTMLDivElement>(null);
+    const listboxId = useId();
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [highlighted, setHighlighted] = useState(0);
@@ -80,6 +83,12 @@ export function RecipientPicker({
     return (
         <div ref={containerRef} className='relative'>
             <Input
+                id={id}
+                role='combobox'
+                aria-expanded={open}
+                aria-controls={listboxId}
+                aria-activedescendant={open && recipients.length > 0 ? `${listboxId}-option-${activeIndex}` : undefined}
+                aria-autocomplete='list'
                 value={open ? query : value ? recipientLabel(value) : ''}
                 readOnly={!open}
                 onChange={(event) => {
@@ -110,7 +119,11 @@ export function RecipientPicker({
             )}
 
             {open && (
-                <div className='absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 shadow-md'>
+                <div
+                    id={listboxId}
+                    role='listbox'
+                    className='absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-md border bg-popover p-1 shadow-md'
+                >
                     {recipients.length === 0 ? (
                         <div className='px-2 py-6 text-center text-sm text-muted-foreground'>
                             {isFetching ? 'Searching…' : 'No player found.'}
@@ -119,6 +132,9 @@ export function RecipientPicker({
                         recipients.map((recipient, index) => (
                             <button
                                 key={recipient.userId}
+                                id={`${listboxId}-option-${index}`}
+                                role='option'
+                                aria-selected={index === activeIndex}
                                 type='button'
                                 onMouseDown={(event) => event.preventDefault()}
                                 onMouseEnter={() => setHighlighted(index)}

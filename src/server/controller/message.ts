@@ -1,4 +1,3 @@
-import { fieldScore, normalizeSearchText } from '@/lib/recipientSearch';
 import { getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import type { Messages } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
@@ -7,6 +6,16 @@ import { db } from '../db';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
 const RECIPIENT_MIN_SCORE = 0.3;
+const MAX_SEARCH_LENGTH = 100;
+
+const normalizeSearchText = (value: string): string =>
+    value
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .trim();
+
+const escapeLikePattern = (value: string): string => value.replace(/([\\%_])/g, '\\$1');
 
 const pagination = z.object({
     limit: z.number().int().min(1).max(100).default(25),
@@ -34,10 +43,8 @@ type Counterpart = {
     agentId: string | null;
 };
 
-const agentDirectory = (): Map<string, { name: string; logo: string }> => {
-    const { agents } = getAllAgentsSync();
-    return new Map(agents.map((agent) => [agent.id, { name: agent.name, logo: agent.logo }]));
-};
+const agentMap = (agents: { id: string; name: string; logo: string }[]): Map<string, { name: string; logo: string }> =>
+    new Map(agents.map((agent) => [agent.id, { name: agent.name, logo: agent.logo }]));
 
 const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterpart>> => {
     if (userIds.length === 0) {
@@ -59,7 +66,7 @@ const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterp
 const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<MessageSummary[]> => {
     const counterpartIds = rows.map((row) => (mineIsRecipient ? row.sender_user_id : row.recipient_user_id));
     const counterparts = await loadCounterparts(counterpartIds);
-    const agents = agentDirectory();
+    const agents = agentMap(getAllAgentsSync().agents);
 
     return rows.map((row) => {
         const counterpartUserId = mineIsRecipient ? row.sender_user_id : row.recipient_user_id;
@@ -102,29 +109,38 @@ const listMessages = async (
     };
 };
 
-const normalizedSearchColumn = (column: string): string => `unaccent(lower(coalesce(${column}, '')))`;
+const normalizedField = (expression: string): string => `immutable_unaccent(lower(${expression}))`;
 
-const searchFieldScore = (column: string): string => {
-    const field = normalizedSearchColumn(column);
+const fieldScoreSql = (expression: string): string => {
+    const field = normalizedField(expression);
     return `CASE
         WHEN ${field} = :query THEN 1.0
         WHEN left(${field}, length(:query)) = :query THEN 0.9
         WHEN position(:query in ${field}) > 0 THEN 0.8
-        ELSE GREATEST(similarity(${field}, :query), strict_word_similarity(:query, ${field}))
+        ELSE similarity(${field}, :query)
     END`;
 };
 
-const recipientScore = `GREATEST(
-    ${searchFieldScore('display_name')},
-    ${searchFieldScore('username')} * 0.98,
-    ${searchFieldScore('user_id')} * 0.95,
-    CASE WHEN agent_id = ANY(:agentIds) THEN 0.5 ELSE 0 END
+const fieldMatchSql = (expression: string): string => {
+    const field = normalizedField(expression);
+    return `(${field} % :query OR ${field} LIKE '%' || :likeQuery || '%')`;
+};
+
+const agentMatchSql = `EXISTS (
+    SELECT 1
+    FROM unnest(CAST(:agentIds AS text[]), CAST(:agentNames AS text[])) AS matched_agent(matched_agent_id, agent_name)
+    WHERE matched_agent.matched_agent_id = user_data.agent_id
+      AND ${fieldMatchSql('matched_agent.agent_name')}
 )`;
 
-const matchingAgentIds = (normalizedQuery: string): string[] =>
-    getAllAgentsSync()
-        .agents.filter((agent) => fieldScore(normalizedQuery, agent.name) > 0)
-        .map((agent) => agent.id);
+const recipientScoreSql = `GREATEST(
+    ${fieldScoreSql('display_name')},
+    ${fieldScoreSql('username')} * 0.98,
+    ${fieldScoreSql('user_id')} * 0.95,
+    CASE WHEN ${agentMatchSql} THEN 0.5 ELSE 0 END
+)`;
+
+const recipientMatchSql = `(${fieldMatchSql('display_name')} OR ${fieldMatchSql('username')} OR ${fieldMatchSql('user_id')} OR ${agentMatchSql})`;
 
 type RecipientRow = {
     user_id: string;
@@ -137,7 +153,7 @@ export const listRecipients = () => {
     return protectedProcedure
         .input(
             z.object({
-                search: z.string().optional().default(''),
+                search: z.string().max(MAX_SEARCH_LENGTH).optional().default(''),
                 limit: z.number().int().min(1).max(100).default(25),
             }),
         )
@@ -155,43 +171,48 @@ export const listRecipients = () => {
         )
         .query(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            const query = normalizeSearchText(input.search.trim());
-            const agents = agentDirectory();
+            const query = normalizeSearchText(input.search);
+            const { agents } = getAllAgentsSync();
+            const directory = agentMap(agents);
             const fields = ['user_id', 'display_name', 'username', 'agent_id'] as const;
 
-            const rows: RecipientRow[] =
-                query === ''
-                    ? await db('user_data')
-                          .whereNot('user_id', userId)
-                          .select(...fields)
-                          .orderBy('display_name')
-                          .limit(input.limit)
-                    : await db
-                          .from(
-                              db('user_data')
-                                  .select(...fields)
-                                  .select(
-                                      db.raw(`${recipientScore} as score`, {
-                                          query,
-                                          agentIds: matchingAgentIds(query),
-                                      }),
-                                  )
-                                  .whereNot('user_id', userId)
-                                  .as('ranked'),
-                          )
-                          .select(...fields)
-                          .where('score', '>=', RECIPIENT_MIN_SCORE)
-                          .orderBy('score', 'desc')
-                          .orderBy('display_name')
-                          .orderBy('user_id')
-                          .limit(input.limit);
+            let rows: RecipientRow[];
+            if (query === '') {
+                rows = await db('user_data')
+                    .whereNot('user_id', userId)
+                    .select(...fields)
+                    .orderBy('display_name')
+                    .limit(input.limit);
+            } else {
+                const bindings = {
+                    query,
+                    likeQuery: escapeLikePattern(query),
+                    agentIds: agents.map((agent) => agent.id),
+                    agentNames: agents.map((agent) => agent.name),
+                };
+                rows = await db
+                    .from(
+                        db('user_data')
+                            .select(...fields)
+                            .select(db.raw(`${recipientScoreSql} as score`, bindings))
+                            .whereNot('user_id', userId)
+                            .whereRaw(recipientMatchSql, bindings)
+                            .as('ranked'),
+                    )
+                    .select(...fields)
+                    .where('score', '>=', RECIPIENT_MIN_SCORE)
+                    .orderBy('score', 'desc')
+                    .orderBy('display_name')
+                    .orderBy('user_id')
+                    .limit(input.limit);
+            }
 
             return {
                 recipients: rows.map((row) => ({
                     userId: row.user_id,
                     displayName: row.display_name,
                     username: row.username,
-                    companyName: row.agent_id ? (agents.get(row.agent_id)?.name ?? null) : null,
+                    companyName: row.agent_id ? (directory.get(row.agent_id)?.name ?? null) : null,
                 })),
             };
         });

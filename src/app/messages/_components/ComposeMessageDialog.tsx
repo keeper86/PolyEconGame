@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RecipientPicker } from '@/app/messages/_components/RecipientPicker';
 import { useSendMessage } from '@/hooks/useMessages';
-import type { RecipientCandidate } from '@/lib/recipientSearch';
+import type { RecipientCandidate } from '@/app/messages/_components/recipientLabel';
 import { PenSquare } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -77,8 +77,8 @@ export function ComposeMessageDialog() {
 
                 <div className='flex flex-col gap-4 py-2'>
                     <div className='flex flex-col gap-2'>
-                        <span className='text-sm font-medium leading-none'>Recipient</span>
-                        <RecipientPicker value={recipient} onChange={setRecipient} />
+                        <Label htmlFor='message-recipient'>Recipient</Label>
+                        <RecipientPicker id='message-recipient' value={recipient} onChange={setRecipient} />
                     </div>
 
                     <div className='flex flex-col gap-2'>
