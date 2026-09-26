@@ -63,7 +63,7 @@ export function PlanetCostOfLivingChart({
     currentTick: number;
     live?: CostOfLivingLive;
 }) {
-    const liveRow: CostOfLivingChartPoint | null = useMemo(
+    const liveRow = useMemo(
         () =>
             live && live.tick > 0
                 ? (() => {
@@ -105,21 +105,21 @@ export function PlanetCostOfLivingChart({
                 ...rows,
                 {
                     ...liveRow,
-                    costOfLiving: blendLive(previous?.costOfLiving ?? undefined, liveRow.costOfLiving ?? 0, progress),
+                    costOfLiving: blendLive(previous?.costOfLiving ?? undefined, liveRow.costOfLiving, progress),
                     costOfLivingRich: blendLive(
                         previous?.costOfLivingRich ?? undefined,
-                        liveRow.costOfLivingRich ?? 0,
+                        liveRow.costOfLivingRich,
                         progress,
                     ),
                     costOfLivingRichDiff: blendLive(
                         previous?.costOfLivingRichDiff ?? undefined,
-                        liveRow.costOfLivingRichDiff ?? 0,
+                        liveRow.costOfLivingRichDiff,
                         progress,
                     ),
-                    wageEdu0: blendLive(previous?.wageEdu0 ?? undefined, liveRow.wageEdu0 ?? 0, progress),
-                    wageEdu1: blendLive(previous?.wageEdu1 ?? undefined, liveRow.wageEdu1 ?? 0, progress),
-                    wageEdu2: blendLive(previous?.wageEdu2 ?? undefined, liveRow.wageEdu2 ?? 0, progress),
-                    wageEdu3: blendLive(previous?.wageEdu3 ?? undefined, liveRow.wageEdu3 ?? 0, progress),
+                    wageEdu0: blendLive(previous?.wageEdu0 ?? undefined, liveRow.wageEdu0, progress),
+                    wageEdu1: blendLive(previous?.wageEdu1 ?? undefined, liveRow.wageEdu1, progress),
+                    wageEdu2: blendLive(previous?.wageEdu2 ?? undefined, liveRow.wageEdu2, progress),
+                    wageEdu3: blendLive(previous?.wageEdu3 ?? undefined, liveRow.wageEdu3, progress),
                 },
             ];
         };

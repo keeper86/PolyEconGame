@@ -10,7 +10,7 @@ import {
     raiseWagesMonotone,
 } from './financialChartLogic';
 import type { CostOfLivingLive, CostOfLivingPoint, EconomyPoint, MacroLive } from './financialChartLogic';
-import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, blendLive, bucketProgress, decadeStart } from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, decadeStart } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 function gameTickFor(gameYear: number, monthIndex: number, day: number): number {
@@ -48,11 +48,11 @@ describe('computeMacroMonthlyData live point', () => {
     it('appends the live point at the fractional month index, mixed with the previous point', () => {
         const result = computeMacroMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
-        const progress = bucketProgress(live.tick, 'monthly');
+        const fraction = 4 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
-        expect(livePoint?.gdp).toBeCloseTo(blendLive(200, 999, progress), 6);
-        expect(livePoint?.bankEquity).toBeCloseTo(blendLive(400, 888, progress), 6);
-        expect(livePoint?.moneySupply).toBeCloseTo(blendLive(600, 777, progress), 6);
+        expect(livePoint?.gdp).toBeCloseTo(200 + (999 - 200) * fraction, 6);
+        expect(livePoint?.bankEquity).toBeCloseTo(400 + (888 - 400) * fraction, 6);
+        expect(livePoint?.moneySupply).toBeCloseTo(600 + (777 - 600) * fraction, 6);
         expect(livePoint?.monthIdx).toBeCloseTo(2 + 4 / TICKS_PER_MONTH, 5);
     });
 
@@ -85,13 +85,13 @@ describe('computeCostOfLivingMonthlyData live point', () => {
     it('appends the live point at the fractional month index, mixed with the previous point', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
-        const progress = bucketProgress(live.tick, 'monthly');
+        const fraction = 9 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
-        expect(livePoint?.costOfLiving).toBeCloseTo(blendLive(8, 12, progress), 6);
-        expect(livePoint?.costOfLivingRich).toBeCloseTo(blendLive(16, 20, progress), 6);
-        expect(livePoint?.costOfLivingRichDiff).toBeCloseTo(blendLive(8, 8, progress), 6);
-        expect(livePoint?.wageEdu0).toBeCloseTo(blendLive(10, 100, progress), 6);
-        expect(livePoint?.wageEdu3).toBeCloseTo(blendLive(40, 400, progress), 6);
+        expect(livePoint?.costOfLiving).toBeCloseTo(8 + (12 - 8) * fraction, 6);
+        expect(livePoint?.costOfLivingRich).toBeCloseTo(16 + (20 - 16) * fraction, 6);
+        expect(livePoint?.costOfLivingRichDiff).toBeCloseTo(8, 6);
+        expect(livePoint?.wageEdu0).toBeCloseTo(10 + (100 - 10) * fraction, 6);
+        expect(livePoint?.wageEdu3).toBeCloseTo(40 + (400 - 40) * fraction, 6);
         expect(livePoint?.monthIdx).toBeCloseTo(4 + 9 / TICKS_PER_MONTH, 5);
     });
 

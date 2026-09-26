@@ -1,6 +1,7 @@
 import Footer from '@/app/Footer';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import KeyStatDisplay from '@/components/client/KeyStatDisplay';
+import { MessagesIndicator } from '@/components/client/MessagesIndicator';
 import TickDisplay from '@/components/client/TickDisplay';
 import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
@@ -17,7 +18,6 @@ import { Toaster } from '../components/ui/sonner';
 import { authOptions } from './api/auth/[...nextauth]/authOptions';
 import AppProviders from './AppProviders';
 import './globals.css';
-import { MessagesIndicator } from '@/components/client/MessagesIndicator';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',

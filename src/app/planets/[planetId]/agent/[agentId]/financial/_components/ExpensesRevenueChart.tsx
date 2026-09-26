@@ -5,8 +5,6 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
-    blendLive,
-    bucketProgress,
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
@@ -22,7 +20,7 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     bucketDecadeMid,
-    bucketYearMid,
+    computeExpensesRevenueBuckets,
     formatDecadeLabel,
     formatYearLabel,
     type FinancialChartPoint,
@@ -123,60 +121,7 @@ export function ExpensesRevenueChart({
                     };
                 });
         }
-        const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        const rows = (data as FinancialPoint[]).map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
-            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
-            const normPurchases = p.sumPurchases / monthsPerBucket;
-            const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
-            return {
-                xVal,
-                year: xVal,
-                monthIndex,
-                revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
-                wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
-                purchases: scale === 'log' && normPurchases <= 0 ? null : normPurchases,
-                claimPayments: scale === 'log' && normClaimPayments <= 0 ? null : normClaimPayments,
-                ghostRevenue: null,
-                ghostWages: null,
-                ghostPurchases: null,
-                ghostClaimPayments: null,
-            };
-        });
-        if (live && live.tick > 0) {
-            const previous = rows[rows.length - 1];
-            const progress = bucketProgress(live.tick, granularity);
-            const liveRevenue = live.avgMonthlyNetIncome;
-            const liveWages = live.avgWages;
-            const livePurchases = live.sumPurchases / monthsPerBucket;
-            const liveClaimPayments = live.sumClaimPayments / monthsPerBucket;
-            rows.push({
-                xVal: liveYearX(live.tick),
-                year: tickToDate(live.tick).year,
-                monthIndex: 0,
-                revenue:
-                    scale === 'log' && liveRevenue <= 0
-                        ? null
-                        : blendLive(previous?.revenue ?? undefined, liveRevenue, progress),
-                wages:
-                    scale === 'log' && liveWages <= 0
-                        ? null
-                        : blendLive(previous?.wages ?? undefined, liveWages, progress),
-                purchases:
-                    scale === 'log' && livePurchases <= 0
-                        ? null
-                        : blendLive(previous?.purchases ?? undefined, livePurchases, progress),
-                claimPayments:
-                    scale === 'log' && liveClaimPayments <= 0
-                        ? null
-                        : blendLive(previous?.claimPayments ?? undefined, liveClaimPayments, progress),
-                ghostRevenue: null,
-                ghostWages: null,
-                ghostPurchases: null,
-                ghostClaimPayments: null,
-            });
-        }
-        return rows;
+        return computeExpensesRevenueBuckets(data as FinancialPoint[], granularity, scale, live);
     }, [data, ghostData, granularity, scale, live]);
 
     const xAxisProps = useMemo(() => {
