@@ -8,6 +8,7 @@ import { Spinner } from '../ui/spinner';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { getAssetPath } from '@/lib/assetManifest';
 import Image from 'next/image';
+import { useIsSmallScreen } from '@/hooks/useMobile';
 
 export default function KeyStatDisplay() {
     const params = useParams<'/planets/[planetId]'>();
@@ -26,6 +27,7 @@ export default function KeyStatDisplay() {
 
 function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string }) {
     const trpc = useTRPC();
+    const smallScreen = useIsSmallScreen();
     const { data, isLoading } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
@@ -41,7 +43,7 @@ function MoneyDisplay({ agentId, planetId }: { agentId: string; planetId: string
 
     return (
         <div className='flex items-center text-sm text-muted-foreground text-outline-strong'>
-            <span className='pr-2'>Deposits</span>
+            {!smallScreen && <span className='pr-2'>Deposits</span>}
             <span className='tabular-nums whitespace-nowrap font-bold text-foreground text-md'>
                 {formatNumberWithUnit(data.deposits, 'none')}
             </span>

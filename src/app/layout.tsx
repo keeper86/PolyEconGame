@@ -1,12 +1,12 @@
 import Footer from '@/app/Footer';
-import TickDisplay from '@/components/client/TickDisplay';
-import { MessagesIndicator } from '@/components/client/MessagesIndicator';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
-import { TourJoyride } from '@/components/tour/TourJoyride';
+import KeyStatDisplay from '@/components/client/KeyStatDisplay';
+import TickDisplay from '@/components/client/TickDisplay';
 import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
 import { ThemeProvider } from '@/components/themeProvider';
 import ThemeWrapper from '@/components/themeWrapper';
+import { TourJoyride } from '@/components/tour/TourJoyride';
 import BackToTopButton from '@/components/ui/BackToTopButton';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
@@ -17,7 +17,6 @@ import { Toaster } from '../components/ui/sonner';
 import { authOptions } from './api/auth/[...nextauth]/authOptions';
 import AppProviders from './AppProviders';
 import './globals.css';
-import KeyStatDisplay from '@/components/client/KeyStatDisplay';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -61,8 +60,6 @@ export default async function RootLayout({
                                             <KeyStatDisplay />
 
                                             <TickDisplay />
-
-                                            <MessagesIndicator />
 
                                             <ModeToggle />
                                         </div>
