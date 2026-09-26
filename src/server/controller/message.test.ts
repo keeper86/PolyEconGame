@@ -104,6 +104,34 @@ describe('message endpoints (integration)', async () => {
         expect(recipients.some((recipient) => recipient.userId === testUsers.otherUserPublished.user_id)).toBe(true);
     });
 
+    it('fuzzy searches recipients by display name without returning the current user', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: 'Other Uzer', limit: 100 });
+        const ids = recipients.map((recipient) => recipient.userId);
+
+        expect(ids).not.toContain(testUsers.testUser.user_id);
+        expect(ids).toEqual(
+            expect.arrayContaining([testUsers.otherUserPublished.user_id, testUsers.otherUserUnpublished.user_id]),
+        );
+    });
+
+    it('ranks a user id match first', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: 'other-user-published', limit: 100 });
+
+        expect(recipients[0]?.userId).toBe(testUsers.otherUserPublished.user_id);
+    });
+
+    it('respects the recipient result limit', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: '', limit: 1 });
+
+        expect(recipients).toHaveLength(1);
+    });
+
     it('rejects unauthenticated access', async () => {
         const anon = getUnauthenticatedCaller();
 

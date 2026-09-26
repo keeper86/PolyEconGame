@@ -1,9 +1,12 @@
+import { rankRecipients, type RecipientCandidate } from '@/lib/recipientSearch';
 import { getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
 import type { Messages } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
 import z from 'zod';
 import { db } from '../db';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+
+const RECIPIENT_SCAN_LIMIT = 2000;
 
 const pagination = z.object({
     limit: z.number().int().min(1).max(100).default(25),
@@ -111,23 +114,20 @@ export const listRecipients = () => {
         )
         .query(async ({ input, ctx }) => {
             const userId = getUserIdFromContext(ctx);
-            const query = db('user_data').whereNot('user_id', userId);
-
-            const search = input.search.trim();
-            if (search !== '') {
-                query.andWhere('display_name', 'ilike', `%${search}%`);
-            }
-
-            const rows = await query.orderBy('display_name').limit(input.limit);
+            const rows = await db('user_data')
+                .whereNot('user_id', userId)
+                .select('user_id', 'display_name', 'agent_id')
+                .orderBy('display_name')
+                .limit(RECIPIENT_SCAN_LIMIT);
             const companies = companyNames();
 
-            return {
-                recipients: rows.map((row) => ({
-                    userId: row.user_id,
-                    displayName: row.display_name,
-                    companyName: row.agent_id ? (companies.get(row.agent_id) ?? null) : null,
-                })),
-            };
+            const candidates: RecipientCandidate[] = rows.map((row) => ({
+                userId: row.user_id,
+                displayName: row.display_name,
+                companyName: row.agent_id ? (companies.get(row.agent_id) ?? null) : null,
+            }));
+
+            return { recipients: rankRecipients(candidates, input.search, input.limit) };
         });
 };
 

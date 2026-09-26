@@ -12,45 +12,35 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { RecipientPicker } from '@/app/messages/_components/RecipientPicker';
 import { useSendMessage } from '@/hooks/useMessages';
-import { useTRPC } from '@/lib/trpc';
-import { useQuery } from '@tanstack/react-query';
+import type { RecipientCandidate } from '@/lib/recipientSearch';
 import { PenSquare } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
-const recipientLabel = (displayName: string | null, companyName: string | null, userId: string): string => {
-    const name = displayName ?? companyName ?? userId;
-    if (companyName && displayName && companyName !== displayName) {
-        return `${name} (${companyName})`;
-    }
-    return name;
-};
-
 export function ComposeMessageDialog() {
-    const trpc = useTRPC();
     const [open, setOpen] = useState(false);
-    const [recipientUserId, setRecipientUserId] = useState('');
+    const [recipient, setRecipient] = useState<RecipientCandidate | null>(null);
     const [subject, setSubject] = useState('');
     const [body, setBody] = useState('');
-
-    const { data } = useQuery(trpc.message.listRecipients.queryOptions({ search: '', limit: 100 }));
-    const recipients = data?.recipients ?? [];
 
     const sendMessage = useSendMessage();
 
     const reset = () => {
-        setRecipientUserId('');
+        setRecipient(null);
         setSubject('');
         setBody('');
     };
 
-    const canSubmit = recipientUserId !== '' && subject.trim() !== '' && body.trim() !== '';
+    const canSubmit = recipient !== null && subject.trim() !== '' && body.trim() !== '';
 
     const handleSubmit = () => {
+        if (recipient === null) {
+            return;
+        }
         sendMessage.mutate(
-            { recipientUserId, subject: subject.trim(), body: body.trim() },
+            { recipientUserId: recipient.userId, subject: subject.trim(), body: body.trim() },
             {
                 onSuccess: () => {
                     toast.success('Message sent');
@@ -87,19 +77,8 @@ export function ComposeMessageDialog() {
 
                 <div className='flex flex-col gap-4 py-2'>
                     <div className='flex flex-col gap-2'>
-                        <Label htmlFor='message-recipient'>Recipient</Label>
-                        <Select value={recipientUserId} onValueChange={setRecipientUserId}>
-                            <SelectTrigger id='message-recipient'>
-                                <SelectValue placeholder='Select a recipient' />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {recipients.map((recipient) => (
-                                    <SelectItem key={recipient.userId} value={recipient.userId}>
-                                        {recipientLabel(recipient.displayName, recipient.companyName, recipient.userId)}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <span className='text-sm font-medium leading-none'>Recipient</span>
+                        <RecipientPicker value={recipient} onChange={setRecipient} />
                     </div>
 
                     <div className='flex flex-col gap-2'>
