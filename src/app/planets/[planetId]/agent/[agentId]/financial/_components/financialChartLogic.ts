@@ -1,8 +1,19 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import { PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthAxis, monthCentre } from '@/lib/historyChartAxis';
+import type { Granularity } from '@/components/client/GranularityButtonGroup';
+import { liveYearX } from '@/lib/chartTime';
+import {
+    PREVIOUS_DECEMBER_IDX,
+    blendLive,
+    bucketProgress,
+    decadeCentre,
+    ghostMonthVisible,
+    monthAxis,
+    monthCentre,
+    yearCentre,
+} from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
-export type { Granularity } from '@/components/client/GranularityButtonGroup';
+export type { Granularity };
 export { MONTH_NAMES, formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
 export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
 
@@ -119,7 +130,17 @@ export function computeFinancialMonthlyData(
     }
 
     if (live && live.tick > 0) {
-        result.push(liveFinancialPoint(live));
+        const previous = result[result.length - 1];
+        const progress = bucketProgress(live.tick, 'monthly');
+        result.push({
+            ...liveFinancialPoint(live),
+            avgNetBalance: blendLive(previous?.avgNetBalance, live.avgNetBalance, progress),
+            avgAssetValue: blendLive(previous?.avgAssetValue, live.avgAssetValue, progress),
+            avgMonthlyNetIncome: blendLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
+            avgWages: blendLive(previous?.avgWages, live.avgWages, progress),
+            sumPurchases: blendLive(previous?.sumPurchases, live.sumPurchases, progress),
+            sumClaimPayments: blendLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+        });
     }
 
     return result;
@@ -146,4 +167,78 @@ export function computeFinancialGhostData(
             ...p,
             monthIdx: monthCentre(p.bucket),
         }));
+}
+
+export type ExpensesRevenueBucketRow = {
+    xVal: number;
+    year: number;
+    monthIndex: number;
+    revenue: number | null;
+    wages: number | null;
+    purchases: number | null;
+    claimPayments: number | null;
+    ghostRevenue: null;
+    ghostWages: null;
+    ghostPurchases: null;
+    ghostClaimPayments: null;
+};
+
+export function computeExpensesRevenueBuckets(
+    data: FinancialPoint[],
+    granularity: 'yearly' | 'decade',
+    scale: 'linear' | 'log',
+    live?: FinancialLive,
+): ExpensesRevenueBucketRow[] {
+    const monthsPerBucket = granularity === 'decade' ? 120 : 12;
+    const rows: ExpensesRevenueBucketRow[] = [...data]
+        .sort((a, b) => a.bucket - b.bucket)
+        .map((p) => {
+            const xVal = granularity === 'decade' ? decadeCentre(p.bucket) : yearCentre(p.bucket);
+            return {
+                xVal,
+                year: xVal,
+                monthIndex: tickToDate(p.bucket).monthIndex,
+                revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
+                wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
+                purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases / monthsPerBucket,
+                claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments / monthsPerBucket,
+                ghostRevenue: null,
+                ghostWages: null,
+                ghostPurchases: null,
+                ghostClaimPayments: null,
+            };
+        });
+
+    if (!live || live.tick <= 0) {
+        return rows;
+    }
+
+    const previous = rows[rows.length - 1];
+    const progress = bucketProgress(live.tick, granularity);
+    rows.push({
+        xVal: liveYearX(live.tick),
+        year: tickToDate(live.tick).year,
+        monthIndex: 0,
+        revenue:
+            scale === 'log' && live.avgMonthlyNetIncome <= 0
+                ? null
+                : blendLive(previous?.revenue ?? undefined, live.avgMonthlyNetIncome, progress),
+        wages:
+            scale === 'log' && live.avgWages <= 0
+                ? null
+                : blendLive(previous?.wages ?? undefined, live.avgWages, progress),
+        purchases:
+            scale === 'log' && live.sumPurchases <= 0
+                ? null
+                : blendLive(previous?.purchases ?? undefined, live.sumPurchases, progress),
+        claimPayments:
+            scale === 'log' && live.sumClaimPayments <= 0
+                ? null
+                : blendLive(previous?.claimPayments ?? undefined, live.sumClaimPayments, progress),
+        ghostRevenue: null,
+        ghostWages: null,
+        ghostPurchases: null,
+        ghostClaimPayments: null,
+    });
+    return rows;
 }

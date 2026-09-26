@@ -32,6 +32,7 @@ exports.seed = async function (knex) {
         const row = {
             user_id: keycloakUserId,
             email: email,
+            username: user.username ?? null,
         };
 
         await knex('user_data').insert(row).onConflict('user_id').ignore();

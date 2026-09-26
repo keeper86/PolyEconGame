@@ -54,6 +54,25 @@
                 "account": ["view-profile", "manage-account"],
                 "realm-management": ["realm-admin"]
             }
+        },
+        {
+            "id": "21111111-1111-5111-8111-111111111111",
+            "username": "test",
+            "email": "test@example.com",
+            "firstName": "Test",
+            "lastName": "User",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "test",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": ["user"],
+            "clientRoles": {
+                "account": ["view-profile"]
+            }
         }
     ]
 }

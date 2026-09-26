@@ -45,7 +45,7 @@ describe('computeMacroMonthlyData live point', () => {
     const data = [...macroYear(0, 100), ...macroYear(1, 200)];
     const live: MacroLive = { tick: gameTickFor(1, 2, 5), gdp: 999, bankEquity: 888, moneySupply: 777 };
 
-    it('appends the live point at the fractional month index', () => {
+    it('appends the raw live point at the fractional month index', () => {
         const result = computeMacroMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
         expect(livePoint).toBeDefined();
@@ -81,7 +81,7 @@ describe('computeCostOfLivingMonthlyData live point', () => {
         wageEdu3: 400,
     };
 
-    it('appends the live point at the fractional month index', () => {
+    it('appends the raw live point at the fractional month index', () => {
         const result = computeCostOfLivingMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
         expect(livePoint).toBeDefined();

@@ -1,0 +1,415 @@
+import { getAllAgentsSync } from '@/simulation/workerClient/syncQueries';
+import type { Messages } from '@/types/db_schemas';
+import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { db } from '../db';
+import { rateLimitExceeded } from '../rateLimit';
+import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
+
+const RECIPIENT_MIN_SCORE = 0.3;
+const MAX_SEARCH_LENGTH = 100;
+const MESSAGE_SEND_LIMIT = 30;
+const MESSAGE_SEND_WINDOW_MS = 60_000;
+const REACHABLE_RECIPIENT_SQL = '(display_name IS NOT NULL OR username IS NOT NULL OR agent_id IS NOT NULL)';
+
+const messageSendTimestamps = new Map<string, number[]>();
+
+const normalizeSearchText = (value: string): string =>
+    value
+        .normalize('NFD')
+        .replace(/\p{Diacritic}/gu, '')
+        .toLowerCase()
+        .trim();
+
+const escapeLikePattern = (value: string): string => value.replace(/([\\%_])/g, '\\$1');
+
+const pagination = z.object({
+    limit: z.number().int().min(1).max(100).default(25),
+    offset: z.number().int().min(0).default(0),
+});
+
+const messageSummary = z.object({
+    id: z.string(),
+    subject: z.string(),
+    createdAt: z.string(),
+    readAt: z.string().nullable(),
+    counterpartUserId: z.string(),
+    counterpartDisplayName: z.string().nullable(),
+    counterpartUsername: z.string().nullable(),
+    counterpartCompanyName: z.string().nullable(),
+    counterpartCompanyLogo: z.string().nullable(),
+    counterpartDeleted: z.boolean(),
+});
+export type MessageSummary = z.infer<typeof messageSummary>;
+
+type Counterpart = {
+    displayName: string | null;
+    username: string | null;
+    agentId: string | null;
+};
+
+const agentMap = (agents: { id: string; name: string; logo: string }[]): Map<string, { name: string; logo: string }> =>
+    new Map(agents.map((agent) => [agent.id, { name: agent.name, logo: agent.logo }]));
+
+const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterpart>> => {
+    if (userIds.length === 0) {
+        return new Map();
+    }
+    const rows = await db('user_data').whereIn('user_id', userIds);
+    return new Map(
+        rows.map((row) => [
+            row.user_id,
+            {
+                displayName: row.display_name,
+                username: row.username,
+                agentId: row.agent_id,
+            },
+        ]),
+    );
+};
+
+const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<MessageSummary[]> => {
+    const counterpartIds = rows.map((row) => (mineIsRecipient ? row.sender_user_id : row.recipient_user_id));
+    const counterparts = await loadCounterparts(counterpartIds);
+    const agents = agentMap(getAllAgentsSync().agents);
+
+    return rows.map((row) => {
+        const counterpartUserId = mineIsRecipient ? row.sender_user_id : row.recipient_user_id;
+        const counterpart = counterparts.get(counterpartUserId);
+        const counterpartDeletedAt = mineIsRecipient ? row.sender_deleted_at : row.recipient_deleted_at;
+        const agent = counterpart?.agentId ? agents.get(counterpart.agentId) : undefined;
+        return {
+            id: row.id,
+            subject: row.subject,
+            createdAt: row.created_at.toISOString(),
+            readAt: row.read_at ? row.read_at.toISOString() : null,
+            counterpartUserId,
+            counterpartDisplayName: counterpart?.displayName ?? null,
+            counterpartUsername: counterpart?.username ?? null,
+            counterpartCompanyName: agent?.name ?? null,
+            counterpartCompanyLogo: agent?.logo ?? null,
+            counterpartDeleted: counterpartDeletedAt !== null,
+        };
+    });
+};
+
+const ownDeletedColumn = (direction: 'inbox' | 'sent'): 'recipient_deleted_at' | 'sender_deleted_at' =>
+    direction === 'inbox' ? 'recipient_deleted_at' : 'sender_deleted_at';
+
+const listMessages = async (
+    direction: 'inbox' | 'sent',
+    userId: string,
+    input: { limit: number; offset: number },
+): Promise<{ messages: MessageSummary[]; total: number }> => {
+    const column = direction === 'inbox' ? 'recipient_user_id' : 'sender_user_id';
+    const base = db('messages').where(column, userId).whereNull(ownDeletedColumn(direction));
+
+    const totalRow = await base.clone().count<{ count: string }>('* as count').first();
+    const rows = await base.clone().orderBy('created_at', 'desc').offset(input.offset).limit(input.limit);
+
+    return {
+        messages: await toSummaries(rows, direction === 'inbox'),
+        total: totalRow ? Number(totalRow.count) : 0,
+    };
+};
+
+const normalizedField = (expression: string): string => `immutable_unaccent(lower(${expression}))`;
+
+const fieldScoreSql = (expression: string): string => {
+    const field = normalizedField(expression);
+    return `CASE
+        WHEN ${field} = :query THEN 1.0
+        WHEN left(${field}, length(:query)) = :query THEN 0.9
+        WHEN position(:query in ${field}) > 0 THEN 0.8
+        ELSE similarity(${field}, :query)
+    END`;
+};
+
+const fieldMatchSql = (expression: string): string => {
+    const field = normalizedField(expression);
+    return `(${field} % :query OR ${field} LIKE '%' || :likeQuery || '%')`;
+};
+
+const agentMatchSql = `EXISTS (
+    SELECT 1
+    FROM unnest(CAST(:agentIds AS text[]), CAST(:agentNames AS text[])) AS matched_agent(matched_agent_id, agent_name)
+    WHERE matched_agent.matched_agent_id = user_data.agent_id
+      AND ${fieldMatchSql('matched_agent.agent_name')}
+)`;
+
+const recipientScoreSql = `GREATEST(
+    ${fieldScoreSql('display_name')},
+    ${fieldScoreSql('username')} * 0.98,
+    ${fieldScoreSql('user_id')} * 0.95,
+    CASE WHEN ${agentMatchSql} THEN 0.5 ELSE 0 END
+)`;
+
+const recipientMatchSql = `(${fieldMatchSql('display_name')} OR ${fieldMatchSql('username')} OR ${fieldMatchSql('user_id')} OR ${agentMatchSql})`;
+
+type RecipientRow = {
+    user_id: string;
+    display_name: string | null;
+    username: string | null;
+    agent_id: string | null;
+};
+
+export const listRecipients = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                search: z.string().max(MAX_SEARCH_LENGTH).optional().default(''),
+                limit: z.number().int().min(1).max(100).default(25),
+            }),
+        )
+        .output(
+            z.object({
+                recipients: z.array(
+                    z.object({
+                        userId: z.string(),
+                        displayName: z.string().nullable(),
+                        username: z.string().nullable(),
+                        companyName: z.string().nullable(),
+                    }),
+                ),
+            }),
+        )
+        .query(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const query = normalizeSearchText(input.search);
+            const { agents } = getAllAgentsSync();
+            const directory = agentMap(agents);
+            const fields = ['user_id', 'display_name', 'username', 'agent_id'] as const;
+
+            let rows: RecipientRow[];
+            if (query === '') {
+                rows = await db('user_data')
+                    .whereNot('user_id', userId)
+                    .whereRaw(REACHABLE_RECIPIENT_SQL)
+                    .select(...fields)
+                    .orderBy('display_name')
+                    .limit(input.limit);
+            } else {
+                const bindings = {
+                    query,
+                    likeQuery: escapeLikePattern(query),
+                    agentIds: agents.map((agent) => agent.id),
+                    agentNames: agents.map((agent) => agent.name),
+                };
+                rows = await db
+                    .from(
+                        db('user_data')
+                            .select(...fields)
+                            .select(db.raw(`${recipientScoreSql} as score`, bindings))
+                            .whereNot('user_id', userId)
+                            .whereRaw(recipientMatchSql, bindings)
+                            .whereRaw(REACHABLE_RECIPIENT_SQL)
+                            .as('ranked'),
+                    )
+                    .select(...fields)
+                    .where('score', '>=', RECIPIENT_MIN_SCORE)
+                    .orderBy('score', 'desc')
+                    .orderBy('display_name')
+                    .orderBy('user_id')
+                    .limit(input.limit);
+            }
+
+            return {
+                recipients: rows.map((row) => ({
+                    userId: row.user_id,
+                    displayName: row.display_name,
+                    username: row.username,
+                    companyName: row.agent_id ? (directory.get(row.agent_id)?.name ?? null) : null,
+                })),
+            };
+        });
+};
+
+export const sendMessage = () => {
+    return protectedProcedure
+        .input(
+            z.object({
+                recipientUserId: z.string().min(1),
+                subject: z.string().min(1).max(200),
+                body: z.string().min(1).max(5000),
+            }),
+        )
+        .output(z.object({ id: z.string() }))
+        .mutation(async ({ input, ctx }) => {
+            const senderUserId = getUserIdFromContext(ctx);
+
+            if (rateLimitExceeded(messageSendTimestamps, senderUserId, MESSAGE_SEND_LIMIT, MESSAGE_SEND_WINDOW_MS)) {
+                throw new TRPCError({
+                    code: 'TOO_MANY_REQUESTS',
+                    message: 'Too many messages sent. Please wait a moment before trying again.',
+                });
+            }
+
+            if (input.recipientUserId === senderUserId) {
+                throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot send a message to yourself' });
+            }
+
+            const recipient = await db('user_data').where({ user_id: input.recipientUserId }).first();
+            if (!recipient) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Recipient not found' });
+            }
+
+            const inserted = await db('messages')
+                .insert({
+                    sender_user_id: senderUserId,
+                    recipient_user_id: input.recipientUserId,
+                    subject: input.subject,
+                    body: input.body,
+                })
+                .returning<{ id: string }[]>('id');
+
+            return { id: inserted[0].id };
+        });
+};
+
+export const listInbox = () => {
+    return protectedProcedure
+        .input(pagination)
+        .output(z.object({ messages: z.array(messageSummary), total: z.number() }))
+        .query(async ({ input, ctx }) => {
+            return listMessages('inbox', getUserIdFromContext(ctx), input);
+        });
+};
+
+export const listSent = () => {
+    return protectedProcedure
+        .input(pagination)
+        .output(z.object({ messages: z.array(messageSummary), total: z.number() }))
+        .query(async ({ input, ctx }) => {
+            return listMessages('sent', getUserIdFromContext(ctx), input);
+        });
+};
+
+export const getMessage = () => {
+    return protectedProcedure
+        .input(z.object({ messageId: z.string().min(1) }))
+        .output(z.object({ id: z.string(), body: z.string() }))
+        .query(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('messages').where({ id: input.messageId }).first();
+
+            if (!row) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+            }
+
+            const isSender = row.sender_user_id === userId;
+            const isRecipient = row.recipient_user_id === userId;
+            const ownDeletedAt = isRecipient ? row.recipient_deleted_at : row.sender_deleted_at;
+
+            if ((!isSender && !isRecipient) || ownDeletedAt !== null) {
+                throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+            }
+
+            return { id: row.id, body: row.body };
+        });
+};
+
+export const getUnreadCount = () => {
+    return protectedProcedure
+        .input(z.void())
+        .output(z.object({ count: z.number() }))
+        .query(async ({ ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const row = await db('messages')
+                .where({ recipient_user_id: userId })
+                .whereNull('read_at')
+                .whereNull('recipient_deleted_at')
+                .count<{ count: string }>('* as count')
+                .first();
+            return { count: row ? Number(row.count) : 0 };
+        });
+};
+
+export const markRead = () => {
+    return protectedProcedure
+        .input(z.object({ messageId: z.string().min(1) }))
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const updated = await db('messages')
+                .where({ id: input.messageId, recipient_user_id: userId })
+                .whereNull('recipient_deleted_at')
+                .whereNull('read_at')
+                .update({ read_at: db.fn.now() });
+
+            if (updated === 0) {
+                const owned = await db('messages').where({ id: input.messageId, recipient_user_id: userId }).first();
+                if (!owned) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+                }
+            }
+        });
+};
+
+export const markAllRead = () => {
+    return protectedProcedure
+        .input(z.void())
+        .output(z.object({ updated: z.number() }))
+        .mutation(async ({ ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const updated = await db('messages')
+                .where({ recipient_user_id: userId })
+                .whereNull('recipient_deleted_at')
+                .whereNull('read_at')
+                .update({ read_at: db.fn.now() });
+            return { updated };
+        });
+};
+
+export const deleteMessage = () => {
+    return protectedProcedure
+        .input(z.object({ messageId: z.string().min(1) }))
+        .output(z.void())
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            await db.transaction(async (trx) => {
+                const row = await trx('messages').where({ id: input.messageId }).forUpdate().first();
+
+                if (!row || (row.sender_user_id !== userId && row.recipient_user_id !== userId)) {
+                    throw new TRPCError({ code: 'NOT_FOUND', message: 'Message not found' });
+                }
+
+                const isSender = row.sender_user_id === userId;
+                const otherDeleted = isSender ? row.recipient_deleted_at !== null : row.sender_deleted_at !== null;
+
+                if (otherDeleted) {
+                    await trx('messages').where({ id: input.messageId }).del();
+                    return;
+                }
+
+                await trx('messages')
+                    .where({ id: input.messageId })
+                    .update(isSender ? { sender_deleted_at: trx.fn.now() } : { recipient_deleted_at: trx.fn.now() });
+            });
+        });
+};
+
+export const deleteMessages = () => {
+    return protectedProcedure
+        .input(z.object({ direction: z.enum(['inbox', 'sent']), onlyRead: z.boolean() }))
+        .output(z.object({ deleted: z.number() }))
+        .mutation(async ({ input, ctx }) => {
+            const userId = getUserIdFromContext(ctx);
+            const ownerColumn = input.direction === 'inbox' ? 'recipient_user_id' : 'sender_user_id';
+            const ownColumn = ownDeletedColumn(input.direction);
+            const otherColumn = input.direction === 'inbox' ? 'sender_deleted_at' : 'recipient_deleted_at';
+
+            return db.transaction(async (trx) => {
+                const base = trx('messages').where(ownerColumn, userId).whereNull(ownColumn);
+                const target = input.onlyRead ? base.clone().whereNotNull('read_at') : base;
+                const deleted = await target.update({ [ownColumn]: trx.fn.now() });
+
+                await trx('messages')
+                    .where(ownerColumn, userId)
+                    .whereNotNull(ownColumn)
+                    .whereNotNull(otherColumn)
+                    .del();
+
+                return { deleted };
+            });
+        });
+};

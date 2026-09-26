@@ -11,6 +11,7 @@ exports.up = function (knex) {
         table.string('agent_id').nullable().unique().defaultTo(null);
         table.binary('avatar').nullable().defaultTo(null);
         table.string('planet_id').nullable().defaultTo(null);
+        table.string('username').nullable();
     });
 };
 

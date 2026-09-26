@@ -1,6 +1,18 @@
 import { health } from './controller/health';
 import { logs } from './controller/logs';
 import {
+    deleteMessages,
+    deleteMessage,
+    getMessage,
+    getUnreadCount,
+    listInbox,
+    listRecipients,
+    listSent,
+    markAllRead,
+    markRead,
+    sendMessage,
+} from './controller/message';
+import {
     getAgentClaims,
     getPlanetClaims,
     getPlanetDemographics,
@@ -126,6 +138,19 @@ const simulationRouter = trpcRoot.router({
     getShipMarketHistory: getShipMarketHistory(),
 });
 
+const messageRouter = trpcRoot.router({
+    listRecipients: listRecipients(),
+    listInbox: listInbox(),
+    listSent: listSent(),
+    getMessage: getMessage(),
+    getUnreadCount: getUnreadCount(),
+    sendMessage: sendMessage(),
+    markRead: markRead(),
+    markAllRead: markAllRead(),
+    deleteMessage: deleteMessage(),
+    deleteMessages: deleteMessages(),
+});
+
 const protectedAppRouter = trpcRoot.router({
     getUsers: getUsers(),
     getUser: getUser(),
@@ -165,6 +190,7 @@ const protectedAppRouter = trpcRoot.router({
     expandShipConstructionFacility: expandShipConstructionFacility(),
     setShipConstructionTarget: setShipConstructionTarget(),
     acquireLicense: acquireLicense(),
+    message: messageRouter,
 });
 
 export const publicAccessibleRouter = trpcRoot.router({

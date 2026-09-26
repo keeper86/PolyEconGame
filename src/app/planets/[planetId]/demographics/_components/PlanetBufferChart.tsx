@@ -140,24 +140,7 @@ function computeMonthlyData(allPts: RawPoint[], currentTick: number, live: LiveB
                 monthIdx: fractionalMonthIdx,
             };
             for (const key of BUFFER_KEYS) {
-                let livePercent = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
-
-                // Early-month blending: during days 1-7 of a new month, blend toward previous month's historic value
-                if (liveDay <= 7) {
-                    const prevMonthIdx = liveMi; // 0-based month index of the previous completed month
-                    const prevMonthPoint = pts.find((p) => {
-                        const { year, monthIndex } = tickToDate(p.bucket);
-                        return year === liveYear && monthIndex === prevMonthIdx;
-                    });
-                    if (prevMonthPoint) {
-                        const dbKey = `avg${key.charAt(0).toUpperCase() + key.slice(1)}Buffer` as keyof RawPoint;
-                        const prevPercent = toPercent(prevMonthPoint[dbKey] as number);
-                        const blend = liveDay / 8;
-                        livePercent = livePercent * blend + prevPercent * (1 - blend);
-                    }
-                }
-
-                livePoint[key] = livePercent;
+                livePoint[key] = toPercent(live[`${key}Buffer` as keyof LiveBufferData] as number);
             }
             result.push(livePoint);
         }

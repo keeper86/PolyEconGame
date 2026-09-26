@@ -5,6 +5,8 @@ import { liveYearX } from '@/lib/chartTime';
 import {
     DECADE_WINDOW,
     YEAR_WINDOW,
+    blendLive,
+    bucketProgress,
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
@@ -110,27 +112,43 @@ export function BalanceFlowChart({
                 });
         }
         const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        const rows = (data as FinancialPoint[]).map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
-            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
-            return {
-                xVal,
-                year: xVal,
-                monthIndex,
-                cashBalance: p.avgNetBalance,
-                assetValue: p.avgAssetValue,
-                netPosition: p.avgNetBalance + p.avgAssetValue,
-                netIncome:
-                    p.avgMonthlyNetIncome -
-                    (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
-                ghostCashBalance: null,
-                ghostAssetValue: null,
-                ghostNetPosition: null,
-                ghostNetIncome: null,
-            };
-        });
-        return liveRow ? [...rows, liveRow] : rows;
-    }, [data, ghostData, granularity, liveRow]);
+        const rows = [...(data as FinancialPoint[])]
+            .sort((a, b) => a.bucket - b.bucket)
+            .map((p) => {
+                const { monthIndex } = tickToDate(p.bucket);
+                const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
+                return {
+                    xVal,
+                    year: xVal,
+                    monthIndex,
+                    cashBalance: p.avgNetBalance,
+                    assetValue: p.avgAssetValue,
+                    netPosition: p.avgNetBalance + p.avgAssetValue,
+                    netIncome:
+                        p.avgMonthlyNetIncome -
+                        (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
+                    ghostCashBalance: null,
+                    ghostAssetValue: null,
+                    ghostNetPosition: null,
+                    ghostNetIncome: null,
+                };
+            });
+        if (!liveRow || !live) {
+            return rows;
+        }
+        const previous = rows[rows.length - 1];
+        const progress = bucketProgress(live.tick, granularity);
+        return [
+            ...rows,
+            {
+                ...liveRow,
+                cashBalance: blendLive(previous?.cashBalance, liveRow.cashBalance, progress),
+                assetValue: blendLive(previous?.assetValue, liveRow.assetValue, progress),
+                netPosition: blendLive(previous?.netPosition, liveRow.netPosition, progress),
+                netIncome: blendLive(previous?.netIncome, liveRow.netIncome, progress),
+            },
+        ];
+    }, [data, ghostData, granularity, live, liveRow]);
 
     const [domainBalance, domainIncome] = useMemo(() => {
         const balanceVals = chartData

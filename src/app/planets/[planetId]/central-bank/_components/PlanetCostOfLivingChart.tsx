@@ -55,7 +55,7 @@ export function PlanetCostOfLivingChart({
     currentTick: number;
     live?: CostOfLivingLive;
 }) {
-    const liveRow: CostOfLivingChartPoint | null = useMemo(
+    const liveRow = useMemo(
         () =>
             live && live.tick > 0
                 ? (() => {

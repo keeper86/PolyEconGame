@@ -20,7 +20,7 @@ import {
     MONTHLY_X_TICKS,
     MONTH_NAMES,
     bucketDecadeMid,
-    bucketYearMid,
+    computeExpensesRevenueBuckets,
     formatDecadeLabel,
     formatYearLabel,
     type FinancialChartPoint,
@@ -121,42 +121,7 @@ export function ExpensesRevenueChart({
                     };
                 });
         }
-        const monthsPerBucket = granularity === 'decade' ? 120 : granularity === 'yearly' ? 12 : 1;
-        const rows = (data as FinancialPoint[]).map((p) => {
-            const { monthIndex } = tickToDate(p.bucket);
-            const xVal = granularity === 'decade' ? bucketDecadeMid(p.bucket) : bucketYearMid(p.bucket);
-            const normPurchases = p.sumPurchases / monthsPerBucket;
-            const normClaimPayments = p.sumClaimPayments / monthsPerBucket;
-            return {
-                xVal,
-                year: xVal,
-                monthIndex,
-                revenue: scale === 'log' && p.avgMonthlyNetIncome <= 0 ? null : p.avgMonthlyNetIncome,
-                wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
-                purchases: scale === 'log' && normPurchases <= 0 ? null : normPurchases,
-                claimPayments: scale === 'log' && normClaimPayments <= 0 ? null : normClaimPayments,
-                ghostRevenue: null,
-                ghostWages: null,
-                ghostPurchases: null,
-                ghostClaimPayments: null,
-            };
-        });
-        if (live && live.tick > 0) {
-            rows.push({
-                xVal: liveYearX(live.tick),
-                year: tickToDate(live.tick).year,
-                monthIndex: 0,
-                revenue: scale === 'log' && live.avgMonthlyNetIncome <= 0 ? null : live.avgMonthlyNetIncome,
-                wages: scale === 'log' && live.avgWages <= 0 ? null : live.avgWages,
-                purchases: scale === 'log' && live.sumPurchases <= 0 ? null : live.sumPurchases,
-                claimPayments: scale === 'log' && live.sumClaimPayments <= 0 ? null : live.sumClaimPayments,
-                ghostRevenue: null,
-                ghostWages: null,
-                ghostPurchases: null,
-                ghostClaimPayments: null,
-            });
-        }
-        return rows;
+        return computeExpensesRevenueBuckets(data as FinancialPoint[], granularity, scale, live);
     }, [data, ghostData, granularity, scale, live]);
 
     const xAxisProps = useMemo(() => {

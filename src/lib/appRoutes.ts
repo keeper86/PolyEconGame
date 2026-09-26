@@ -5,6 +5,7 @@ import {
     FlaskConical,
     Gamepad,
     Home,
+    Mail,
     Network,
     Package,
     ShoppingCartIcon,
@@ -64,6 +65,13 @@ export const APP_ROUTES = {
             icon: User,
             description: 'User account settings',
         },
+    },
+    messages: {
+        path: '/messages',
+        label: 'Messages',
+        icon: Mail,
+        isSecondaryNav: true,
+        description: 'Direct messages from other players',
     },
     imprint: {
         path: '/imprint',
