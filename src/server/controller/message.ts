@@ -3,10 +3,16 @@ import type { Messages } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { db } from '../db';
+import { rateLimitExceeded } from '../rateLimit';
 import { getUserIdFromContext, protectedProcedure } from '../trpcRoot';
 
 const RECIPIENT_MIN_SCORE = 0.3;
 const MAX_SEARCH_LENGTH = 100;
+const MESSAGE_SEND_LIMIT = 30;
+const MESSAGE_SEND_WINDOW_MS = 60_000;
+const REACHABLE_RECIPIENT_SQL = '(display_name IS NOT NULL OR username IS NOT NULL OR agent_id IS NOT NULL)';
+
+const messageSendTimestamps = new Map<string, number[]>();
 
 const normalizeSearchText = (value: string): string =>
     value
@@ -178,6 +184,7 @@ export const listRecipients = () => {
             if (query === '') {
                 rows = await db('user_data')
                     .whereNot('user_id', userId)
+                    .whereRaw(REACHABLE_RECIPIENT_SQL)
                     .select(...fields)
                     .orderBy('display_name')
                     .limit(input.limit);
@@ -195,6 +202,7 @@ export const listRecipients = () => {
                             .select(db.raw(`${recipientScoreSql} as score`, bindings))
                             .whereNot('user_id', userId)
                             .whereRaw(recipientMatchSql, bindings)
+                            .whereRaw(REACHABLE_RECIPIENT_SQL)
                             .as('ranked'),
                     )
                     .select(...fields)
@@ -228,6 +236,13 @@ export const sendMessage = () => {
         .output(z.object({ id: z.string() }))
         .mutation(async ({ input, ctx }) => {
             const senderUserId = getUserIdFromContext(ctx);
+
+            if (rateLimitExceeded(messageSendTimestamps, senderUserId, MESSAGE_SEND_LIMIT, MESSAGE_SEND_WINDOW_MS)) {
+                throw new TRPCError({
+                    code: 'TOO_MANY_REQUESTS',
+                    message: 'Too many messages sent. Please wait a moment before trying again.',
+                });
+            }
 
             if (input.recipientUserId === senderUserId) {
                 throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot send a message to yourself' });

@@ -20,6 +20,7 @@ import {
     useMarkAllRead,
     useMarkRead,
     useMessageBody,
+    useMessageListPolling,
     useUnreadMessageCount,
 } from '@/hooks/useMessages';
 import { recipientLabel } from '@/app/messages/_components/recipientLabel';
@@ -196,6 +197,7 @@ export default function MessagesPage() {
     const markRead = useMarkRead();
     const deleteMessage = useDeleteMessage();
     const deleteMessages = useDeleteMessages();
+    useMessageListPolling();
 
     const [selected, setSelected] = useState<{ message: MessageSummary; direction: 'inbox' | 'sent' } | null>(null);
     const [confirm, setConfirm] = useState<ConfirmTarget | null>(null);
@@ -234,7 +236,14 @@ export default function MessagesPage() {
     const handleSelect = (message: MessageSummary, direction: 'inbox' | 'sent') => {
         setSelected({ message, direction });
         if (direction === 'inbox' && message.readAt === null) {
-            markRead.mutate({ messageId: message.id });
+            markRead.mutate(
+                { messageId: message.id },
+                {
+                    onError: (error) => {
+                        toast.error(error instanceof Error ? error.message : 'Failed to mark message read');
+                    },
+                },
+            );
         }
     };
 

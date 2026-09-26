@@ -12,7 +12,7 @@ vi.mock('next-auth/react', () => ({
 
 vi.mock('@/hooks/useMessages', () => ({
     useUnreadMessageCount: () => h.unread.current,
-    useMessagePolling: () => undefined,
+    useMessageCountPolling: () => undefined,
 }));
 
 import { MessagesIndicator } from './MessagesIndicator';

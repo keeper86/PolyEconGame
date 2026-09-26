@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { toast } from 'sonner';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MessageSummary } from '@/server/controller/message';
 
@@ -36,6 +37,7 @@ vi.mock('@/components/client/CompanyLogo', () => ({ CompanyLogo: () => null }));
 vi.mock('@/hooks/useMessages', () => ({
     useUnreadMessageCount: () => h.unreadCount.current,
     useMessageBody: (messageId: string | null) => (messageId ? h.messageBody.current : null),
+    useMessageListPolling: () => undefined,
     useMarkRead: () => ({ mutate: h.markRead, isPending: false }),
     useMarkAllRead: () => ({ mutate: h.markAllRead, isPending: false }),
     useDeleteMessage: () => ({ mutate: h.deleteMessage, isPending: false }),
@@ -263,6 +265,31 @@ describe('MessagesPage delete controls', () => {
         expect(
             within(screen.getByRole('dialog', { name: 'Unread subject' })).getByText('Fetched body'),
         ).toBeInTheDocument();
+    });
+
+    it('marks an unread inbox message read when it is opened', async () => {
+        render(<MessagesPage />);
+
+        await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
+
+        expect(h.markRead).toHaveBeenCalledWith({ messageId: 'unread' }, expect.anything());
+    });
+
+    it('does not mark an already read inbox message read again', async () => {
+        render(<MessagesPage />);
+
+        await userEvent.click(screen.getByRole('button', { name: /Read subject/ }));
+
+        expect(h.markRead).not.toHaveBeenCalled();
+    });
+
+    it('shows an error toast when marking a message read fails', async () => {
+        h.markRead.mockImplementationOnce((_input, options) => options.onError(new Error('nope')));
+        render(<MessagesPage />);
+
+        await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
+
+        expect(toast.error).toHaveBeenCalledWith('nope');
     });
 
     it('confirms and deletes a single message from the message dialog', async () => {

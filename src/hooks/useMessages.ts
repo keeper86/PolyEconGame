@@ -6,7 +6,8 @@ import { useEffect } from 'react';
 export const MESSAGE_POLL_INTERVAL_MS = 10000;
 
 const MESSAGE_QUERY_ROOT = 'message';
-const POLLED_MESSAGE_PROCEDURES = new Set(['getUnreadCount', 'listInbox', 'listSent']);
+const COUNT_POLLED_PROCEDURES = new Set(['getUnreadCount']);
+const LIST_POLLED_PROCEDURES = new Set(['listInbox', 'listSent']);
 
 const messageProcedure = (queryKey: readonly unknown[]): string | null => {
     const path = Array.isArray(queryKey[0]) ? (queryKey[0] as unknown[]) : queryKey;
@@ -16,12 +17,18 @@ const messageProcedure = (queryKey: readonly unknown[]): string | null => {
     return path[1];
 };
 
+const matchesProcedure = (queryKey: readonly unknown[], procedures: Set<string>): boolean => {
+    const procedure = messageProcedure(queryKey);
+    return procedure !== null && procedures.has(procedure);
+};
+
 export const isMessageQuery = (queryKey: readonly unknown[]): boolean => messageProcedure(queryKey) !== null;
 
-export const isPolledMessageQuery = (queryKey: readonly unknown[]): boolean => {
-    const procedure = messageProcedure(queryKey);
-    return procedure !== null && POLLED_MESSAGE_PROCEDURES.has(procedure);
-};
+export const isCountPolledMessageQuery = (queryKey: readonly unknown[]): boolean =>
+    matchesProcedure(queryKey, COUNT_POLLED_PROCEDURES);
+
+export const isListPolledMessageQuery = (queryKey: readonly unknown[]): boolean =>
+    matchesProcedure(queryKey, LIST_POLLED_PROCEDURES);
 
 const invalidateMessageQueries = (queryClient: QueryClient): void => {
     void queryClient.invalidateQueries({
@@ -29,27 +36,34 @@ const invalidateMessageQueries = (queryClient: QueryClient): void => {
     });
 };
 
-const invalidatePolledMessageQueries = (queryClient: QueryClient): void => {
+const invalidateByProcedure = (queryClient: QueryClient, procedures: Set<string>): void => {
     void queryClient.invalidateQueries({
-        predicate: (query) => isPolledMessageQuery(query.queryKey),
+        predicate: (query) => matchesProcedure(query.queryKey, procedures),
     });
 };
 
-export function useMessagePolling(): void {
-    const loggedIn = useSession().status === 'authenticated';
+function useVisiblePolling(enabled: boolean, procedures: Set<string>): void {
     const queryClient = useQueryClient();
 
     useEffect(() => {
-        if (!loggedIn) {
+        if (!enabled) {
             return;
         }
         const interval = setInterval(() => {
             if (document.visibilityState === 'visible') {
-                invalidatePolledMessageQueries(queryClient);
+                invalidateByProcedure(queryClient, procedures);
             }
         }, MESSAGE_POLL_INTERVAL_MS);
         return () => clearInterval(interval);
-    }, [loggedIn, queryClient]);
+    }, [enabled, queryClient, procedures]);
+}
+
+export function useMessageCountPolling(): void {
+    useVisiblePolling(useSession().status === 'authenticated', COUNT_POLLED_PROCEDURES);
+}
+
+export function useMessageListPolling(): void {
+    useVisiblePolling(useSession().status === 'authenticated', LIST_POLLED_PROCEDURES);
 }
 
 export function useUnreadMessageCount(): number {

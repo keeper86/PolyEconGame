@@ -447,6 +447,32 @@ describe('message endpoints (integration)', async () => {
         }
     });
 
+    it('hides accounts with no display name, user name or company', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+        const db = getDb();
+
+        await db('user_data').insert({
+            user_id: 'faceless-user',
+            display_name: null,
+            username: null,
+            email: 'faceless@example.com',
+            has_assessment_published: false,
+            agent_id: null,
+            avatar: null,
+            planet_id: null,
+        });
+
+        try {
+            const listed = await caller.message.listRecipients({ search: '', limit: 100 });
+            expect(listed.recipients.some((recipient) => recipient.userId === 'faceless-user')).toBe(false);
+
+            const searched = await caller.message.listRecipients({ search: 'faceless-user', limit: 100 });
+            expect(searched.recipients.some((recipient) => recipient.userId === 'faceless-user')).toBe(false);
+        } finally {
+            await db('user_data').where({ user_id: 'faceless-user' }).del();
+        }
+    });
+
     it('treats LIKE wildcards in the search literally', async () => {
         const caller = getCaller(testUsers.testUser.user_id);
 
@@ -512,6 +538,19 @@ describe('message endpoints (integration)', async () => {
             getCaller(testUsers.testUser.user_id).message.getMessage({
                 messageId: '00000000-0000-0000-0000-000000000000',
             }),
+        ).rejects.toThrow();
+    });
+
+    it('rejects messages from a sender who exceeds the send rate limit', async () => {
+        const sender = getCaller(testUsers.otherUserUnpublished.user_id);
+        const recipientId = testUsers.testUser.user_id;
+
+        for (let i = 0; i < 30; i += 1) {
+            await sender.message.sendMessage({ recipientUserId: recipientId, subject: `Bulk ${i}`, body: 'body' });
+        }
+
+        await expect(
+            sender.message.sendMessage({ recipientUserId: recipientId, subject: 'One too many', body: 'body' }),
         ).rejects.toThrow();
     });
 });
