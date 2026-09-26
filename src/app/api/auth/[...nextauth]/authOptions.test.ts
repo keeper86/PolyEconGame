@@ -32,7 +32,12 @@ describe('authOptions callbacks', () => {
         const signInFn = authOptions.callbacks!.signIn!;
         const res = await signInFn({
             account: { providerAccountId: user.user_id, provider: 'keycloak', type: 'oauth' },
-            profile: { email: user.email, name: user.display_name, sub: user.user_id },
+            profile: {
+                email: user.email,
+                name: user.display_name,
+                preferred_username: 'nice-name',
+                sub: user.user_id,
+            } as unknown as Parameters<typeof signInFn>[0]['profile'],
             user: { id: user.user_id, email: user.email },
         });
 
@@ -41,6 +46,6 @@ describe('authOptions callbacks', () => {
         expect(insert).toHaveBeenCalled();
         expect(onConflict).toHaveBeenCalledWith('user_id');
         expect(merge).toHaveBeenCalled();
-        expect(insertArgs).toEqual(user);
+        expect(insertArgs).toEqual({ ...user, username: 'nice-name' });
     });
 });

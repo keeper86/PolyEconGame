@@ -21,6 +21,7 @@ const messageSummary = z.object({
     readAt: z.string().nullable(),
     counterpartUserId: z.string(),
     counterpartDisplayName: z.string().nullable(),
+    counterpartUsername: z.string().nullable(),
     counterpartAvatar: z.string().nullable(),
     counterpartCompanyName: z.string().nullable(),
 });
@@ -28,6 +29,7 @@ export type MessageSummary = z.infer<typeof messageSummary>;
 
 type Counterpart = {
     displayName: string | null;
+    username: string | null;
     avatar: string | null;
     agentId: string | null;
 };
@@ -47,6 +49,7 @@ const loadCounterparts = async (userIds: string[]): Promise<Map<string, Counterp
             row.user_id,
             {
                 displayName: row.display_name,
+                username: row.username,
                 avatar: row.avatar ? row.avatar.toString('base64') : null,
                 agentId: row.agent_id,
             },
@@ -70,6 +73,7 @@ const toSummaries = async (rows: Messages[], mineIsRecipient: boolean): Promise<
             readAt: row.read_at ? row.read_at.toISOString() : null,
             counterpartUserId,
             counterpartDisplayName: counterpart?.displayName ?? null,
+            counterpartUsername: counterpart?.username ?? null,
             counterpartAvatar: counterpart?.avatar ?? null,
             counterpartCompanyName: counterpart?.agentId ? (companies.get(counterpart.agentId) ?? null) : null,
         };
@@ -107,6 +111,7 @@ export const listRecipients = () => {
                     z.object({
                         userId: z.string(),
                         displayName: z.string().nullable(),
+                        username: z.string().nullable(),
                         companyName: z.string().nullable(),
                     }),
                 ),
@@ -116,7 +121,7 @@ export const listRecipients = () => {
             const userId = getUserIdFromContext(ctx);
             const rows = await db('user_data')
                 .whereNot('user_id', userId)
-                .select('user_id', 'display_name', 'agent_id')
+                .select('user_id', 'display_name', 'username', 'agent_id')
                 .orderBy('display_name')
                 .limit(RECIPIENT_SCAN_LIMIT);
             const companies = companyNames();
@@ -124,6 +129,7 @@ export const listRecipients = () => {
             const candidates: RecipientCandidate[] = rows.map((row) => ({
                 userId: row.user_id,
                 displayName: row.display_name,
+                username: row.username,
                 companyName: row.agent_id ? (companies.get(row.agent_id) ?? null) : null,
             }));
 

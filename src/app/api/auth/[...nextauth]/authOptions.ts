@@ -30,9 +30,16 @@ export const authOptions: AuthOptions = {
                 }
 
                 const displayName = profile?.name ?? user?.name ?? 'No name set';
+                const username = (profile as { preferred_username?: string } | undefined)?.preferred_username ?? null;
 
                 await db('user_data')
-                    .insert({ user_id: userId, display_name: displayName, email, has_assessment_published: false })
+                    .insert({
+                        user_id: userId,
+                        display_name: displayName,
+                        username,
+                        email,
+                        has_assessment_published: false,
+                    })
                     .onConflict('user_id')
                     .merge();
 

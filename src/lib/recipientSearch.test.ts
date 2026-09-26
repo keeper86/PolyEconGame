@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { rankRecipients, type RecipientCandidate } from './recipientSearch';
+import { rankRecipients, recipientLabel, type RecipientCandidate } from './recipientSearch';
 
-const alice: RecipientCandidate = { userId: 'alice-1', displayName: 'Alice Anderson', companyName: 'AnderTech' };
-const bob: RecipientCandidate = { userId: 'bob-2', displayName: 'Bob Brown', companyName: 'Brown Industries' };
-const bjorn: RecipientCandidate = { userId: 'bjorn-3', displayName: 'Björn Ödegård', companyName: null };
+const alice: RecipientCandidate = {
+    userId: 'alice-1',
+    displayName: 'Alice Anderson',
+    username: 'aa-dev',
+    companyName: 'AnderTech',
+};
+const bob: RecipientCandidate = {
+    userId: 'bob-2',
+    displayName: 'Bob Brown',
+    username: 'bobby',
+    companyName: 'Brown Industries',
+};
+const bjorn: RecipientCandidate = {
+    userId: 'bjorn-3',
+    displayName: 'Björn Ödegård',
+    username: 'bjorn-o',
+    companyName: null,
+};
 const candidates = [alice, bob, bjorn];
 
 describe('rankRecipients', () => {
@@ -45,7 +60,33 @@ describe('rankRecipients', () => {
         expect(rankRecipients(candidates, 'zzzzzz', 10)).toEqual([]);
     });
 
+    it('matches on the user name', () => {
+        expect(rankRecipients(candidates, 'bobby', 10)).toEqual([bob]);
+    });
+
     it('never exceeds the limit', () => {
         expect(rankRecipients(candidates, 'o', 1)).toHaveLength(1);
+    });
+});
+
+describe('recipientLabel', () => {
+    it('prefers the display name and appends the company', () => {
+        expect(recipientLabel(alice)).toBe('Alice Anderson (AnderTech)');
+    });
+
+    it('falls back to the user name when there is no display name', () => {
+        expect(recipientLabel({ userId: 'x', displayName: null, username: 'x-handle', companyName: null })).toBe(
+            'x-handle',
+        );
+    });
+
+    it('falls back to the company when there is no display name or user name', () => {
+        expect(recipientLabel({ userId: 'x', displayName: null, username: null, companyName: 'X Corp' })).toBe(
+            'X Corp',
+        );
+    });
+
+    it('only uses the user id as a last resort', () => {
+        expect(recipientLabel({ userId: 'x-id', displayName: null, username: null, companyName: null })).toBe('x-id');
     });
 });

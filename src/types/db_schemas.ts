@@ -303,4 +303,5 @@ export type UserData = {
     agent_id: string | null;
     avatar: Buffer | null;
     planet_id: string | null;
+    username: string | null;
 };

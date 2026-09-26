@@ -132,6 +132,28 @@ describe('message endpoints (integration)', async () => {
         expect(recipients).toHaveLength(1);
     });
 
+    it('matches recipients by user name', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: 'otheruser', limit: 100 });
+        const ids = recipients.map((recipient) => recipient.userId);
+
+        expect(ids).not.toContain(testUsers.testUser.user_id);
+        expect(ids).toEqual(
+            expect.arrayContaining([testUsers.otherUserPublished.user_id, testUsers.otherUserUnpublished.user_id]),
+        );
+    });
+
+    it('returns the user name alongside the display name', async () => {
+        const caller = getCaller(testUsers.testUser.user_id);
+
+        const { recipients } = await caller.message.listRecipients({ search: 'other-user-published', limit: 100 });
+        const recipient = recipients.find((entry) => entry.userId === testUsers.otherUserPublished.user_id);
+
+        expect(recipient?.displayName).toBe('Other User');
+        expect(recipient?.username).toBe('otheruser');
+    });
+
     it('rejects unauthenticated access', async () => {
         const anon = getUnauthenticatedCaller();
 

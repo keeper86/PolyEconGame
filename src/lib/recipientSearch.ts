@@ -1,6 +1,7 @@
 export type RecipientCandidate = {
     userId: string;
     displayName: string | null;
+    username: string | null;
     companyName: string | null;
 };
 
@@ -114,6 +115,7 @@ export const scoreCandidate = (candidate: RecipientCandidate, rawQuery: string):
     }
     return Math.max(
         fieldScore(query, candidate.displayName),
+        fieldScore(query, candidate.username) * 0.98,
         fieldScore(query, candidate.companyName) * 0.98,
         fieldScore(query, candidate.userId) * 0.95,
     );
@@ -135,4 +137,12 @@ export const rankRecipients = (
         )
         .slice(0, limit)
         .map((entry) => entry.candidate);
+};
+
+export const recipientLabel = (recipient: RecipientCandidate): string => {
+    const name = recipient.displayName ?? recipient.username ?? recipient.companyName ?? recipient.userId;
+    if (recipient.companyName && recipient.companyName !== name) {
+        return `${name} (${recipient.companyName})`;
+    }
+    return name;
 };

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useMarkAllRead, useMarkRead, useUnreadMessageCount } from '@/hooks/useMessages';
+import { recipientLabel } from '@/lib/recipientSearch';
 import { useTRPC } from '@/lib/trpc';
 import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';
@@ -19,7 +20,12 @@ const POLL_INTERVAL_MS = 5000;
 const formatTimestamp = (iso: string): string => new Date(iso).toLocaleString();
 
 const counterpartName = (message: MessageSummary): string =>
-    message.counterpartDisplayName ?? message.counterpartCompanyName ?? message.counterpartUserId;
+    recipientLabel({
+        userId: message.counterpartUserId,
+        displayName: message.counterpartDisplayName,
+        username: message.counterpartUsername,
+        companyName: message.counterpartCompanyName,
+    });
 
 function MessageRow({ message, unread, onSelect }: { message: MessageSummary; unread: boolean; onSelect: () => void }) {
     return (
