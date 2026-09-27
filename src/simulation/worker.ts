@@ -317,6 +317,8 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                     consumption_value: assets.monthAcc.consumptionValue,
                     purchases: assets.monthAcc.purchases,
                     claim_payments: assets.monthAcc.claimPayments,
+                    interest_paid: assets.monthAcc.interestPaid,
+                    wealth_tax_paid: assets.monthAcc.wealthTaxPaid,
                     facility_count: facilityCount,
                     storage_value: storageValue,
                 };

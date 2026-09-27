@@ -30,6 +30,8 @@ export type FinancialPoint = {
     avgWages: number;
     sumPurchases: number;
     sumClaimPayments: number;
+    sumInterestPaid: number;
+    sumWealthTaxPaid: number;
 };
 
 export function alignedYDomains(valsA: number[], valsB: number[]): [[number, number], [number, number]] {
@@ -80,6 +82,8 @@ export type FinancialLive = {
     avgWages: number;
     sumPurchases: number;
     sumClaimPayments: number;
+    sumInterestPaid: number;
+    sumWealthTaxPaid: number;
 };
 
 function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
@@ -92,6 +96,8 @@ function liveFinancialPoint(live: FinancialLive): FinancialChartPoint {
         avgWages: live.avgWages,
         sumPurchases: live.sumPurchases,
         sumClaimPayments: live.sumClaimPayments,
+        sumInterestPaid: live.sumInterestPaid,
+        sumWealthTaxPaid: live.sumWealthTaxPaid,
         monthIdx: monthIndex + Math.max(day - 1, 0.001) / TICKS_PER_MONTH,
     };
 }
@@ -140,6 +146,8 @@ export function computeFinancialMonthlyData(
             avgWages: blendLive(previous?.avgWages, live.avgWages, progress),
             sumPurchases: blendLive(previous?.sumPurchases, live.sumPurchases, progress),
             sumClaimPayments: blendLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+            sumInterestPaid: blendLive(previous?.sumInterestPaid, live.sumInterestPaid, progress),
+            sumWealthTaxPaid: blendLive(previous?.sumWealthTaxPaid, live.sumWealthTaxPaid, progress),
         });
     }
 
@@ -177,10 +185,12 @@ export type ExpensesRevenueBucketRow = {
     wages: number | null;
     purchases: number | null;
     claimPayments: number | null;
+    misc: number | null;
     ghostRevenue: null;
     ghostWages: null;
     ghostPurchases: null;
     ghostClaimPayments: null;
+    ghostMisc: null;
 };
 
 export function computeExpensesRevenueBuckets(
@@ -202,10 +212,15 @@ export function computeExpensesRevenueBuckets(
                 wages: scale === 'log' && p.avgWages <= 0 ? null : p.avgWages,
                 purchases: scale === 'log' && p.sumPurchases <= 0 ? null : p.sumPurchases / monthsPerBucket,
                 claimPayments: scale === 'log' && p.sumClaimPayments <= 0 ? null : p.sumClaimPayments / monthsPerBucket,
+                misc:
+                    scale === 'log' && p.sumInterestPaid + p.sumWealthTaxPaid <= 0
+                        ? null
+                        : (p.sumInterestPaid + p.sumWealthTaxPaid) / monthsPerBucket,
                 ghostRevenue: null,
                 ghostWages: null,
                 ghostPurchases: null,
                 ghostClaimPayments: null,
+                ghostMisc: null,
             };
         });
 
@@ -235,10 +250,15 @@ export function computeExpensesRevenueBuckets(
             scale === 'log' && live.sumClaimPayments <= 0
                 ? null
                 : blendLive(previous?.claimPayments ?? undefined, live.sumClaimPayments, progress),
+        misc:
+            scale === 'log' && live.sumInterestPaid + live.sumWealthTaxPaid <= 0
+                ? null
+                : blendLive(previous?.misc ?? undefined, live.sumInterestPaid + live.sumWealthTaxPaid, progress),
         ghostRevenue: null,
         ghostWages: null,
         ghostPurchases: null,
         ghostClaimPayments: null,
+        ghostMisc: null,
     });
     return rows;
 }

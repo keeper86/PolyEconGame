@@ -2,6 +2,7 @@
 
 import { Stat } from '@/components/client/Stat';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { computeNetIncome } from '@/simulation/financial/netIncome';
 import type { MonthAccumulator } from '@/simulation/planet/planet';
 import {
     Coins,
@@ -102,20 +103,22 @@ export default function AgentFinancialOverview({
     const lastMonthlyInterest = lastMonthAcc.interestPaid;
     const currentMonthlyWealthTax = monthAcc.wealthTaxPaid;
     const lastMonthlyWealthTax = lastMonthAcc.wealthTaxPaid;
-    const currentNetCashFlow =
-        currentMonthlyRevenue -
-        currentMonthlyWages -
-        currentMonthlyPurchases -
-        currentMonthlyClaimPayments -
-        currentMonthlyInterest -
-        currentMonthlyWealthTax;
-    const lastNetCashFlow =
-        loanConditions.lastMonthlyRevenue -
-        loanConditions.lastMonthlyWages -
-        loanConditions.lastMonthlyPurchases -
-        loanConditions.lastMonthlyClaimPayments -
-        lastMonthlyInterest -
-        lastMonthlyWealthTax;
+    const currentNetCashFlow = computeNetIncome({
+        revenue: currentMonthlyRevenue,
+        wages: currentMonthlyWages,
+        purchases: currentMonthlyPurchases,
+        claimPayments: currentMonthlyClaimPayments,
+        interestPaid: currentMonthlyInterest,
+        wealthTaxPaid: currentMonthlyWealthTax,
+    });
+    const lastNetCashFlow = computeNetIncome({
+        revenue: loanConditions.lastMonthlyRevenue,
+        wages: loanConditions.lastMonthlyWages,
+        purchases: loanConditions.lastMonthlyPurchases,
+        claimPayments: loanConditions.lastMonthlyClaimPayments,
+        interestPaid: lastMonthlyInterest,
+        wealthTaxPaid: lastMonthlyWealthTax,
+    });
 
     return (
         <div className='space-y-3' data-tour='financial-overview'>

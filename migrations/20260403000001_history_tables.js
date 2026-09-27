@@ -45,6 +45,8 @@ exports.up = async function (knex) {
             consumption_value   DOUBLE PRECISION          DEFAULT 0,
             purchases           DOUBLE PRECISION          DEFAULT 0,
             claim_payments      DOUBLE PRECISION          DEFAULT 0,
+            interest_paid       DOUBLE PRECISION          DEFAULT 0,
+            wealth_tax_paid     DOUBLE PRECISION          DEFAULT 0,
             facility_count      INTEGER                   DEFAULT 0,
             storage_value       DOUBLE PRECISION          DEFAULT 0,
             created_at          TIMESTAMPTZ      NOT NULL DEFAULT NOW(),
@@ -143,6 +145,8 @@ exports.up = async function (knex) {
             sum(consumption_value)::float8         AS sum_consumption_value,
             sum(purchases)::float8                 AS sum_purchases,
             sum(claim_payments)::float8            AS sum_claim_payments,
+            sum(interest_paid)::float8             AS sum_interest_paid,
+            sum(wealth_tax_paid)::float8           AS sum_wealth_tax_paid,
             avg(facility_count)::float8            AS avg_facility_count,
             avg(storage_value)::float8             AS avg_storage_value
         FROM agent_monthly_history
@@ -199,7 +203,9 @@ exports.up = async function (knex) {
             sum(sum_production_value)      AS sum_production_value,
             sum(sum_consumption_value)     AS sum_consumption_value,
             sum(sum_purchases)             AS sum_purchases,
-            sum(sum_claim_payments)        AS sum_claim_payments
+            sum(sum_claim_payments)        AS sum_claim_payments,
+            sum(sum_interest_paid)         AS sum_interest_paid,
+            sum(sum_wealth_tax_paid)       AS sum_wealth_tax_paid
         FROM agent_monthly_summary
         GROUP BY time_bucket(360, bucket, 1), planet_id, agent_id
         WITH NO DATA
@@ -254,7 +260,9 @@ exports.up = async function (knex) {
             sum(sum_production_value)      AS sum_production_value,
             sum(sum_consumption_value)     AS sum_consumption_value,
             sum(sum_purchases)             AS sum_purchases,
-            sum(sum_claim_payments)        AS sum_claim_payments
+            sum(sum_claim_payments)        AS sum_claim_payments,
+            sum(sum_interest_paid)         AS sum_interest_paid,
+            sum(sum_wealth_tax_paid)       AS sum_wealth_tax_paid
         FROM agent_yearly_summary
         GROUP BY time_bucket(3600, bucket, 1), planet_id, agent_id
         WITH NO DATA

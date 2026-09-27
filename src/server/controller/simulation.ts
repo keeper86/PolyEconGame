@@ -702,6 +702,8 @@ export const getAgentFinancialHistory = () =>
                         avgWages: z.number(),
                         sumPurchases: z.number(),
                         sumClaimPayments: z.number(),
+                        sumInterestPaid: z.number(),
+                        sumWealthTaxPaid: z.number(),
                     }),
                 ),
             }),
@@ -728,6 +730,8 @@ export const getAgentFinancialHistory = () =>
                         avgWages: r.avg_wages ?? 0,
                         sumPurchases: r.sum_purchases ?? 0,
                         sumClaimPayments: r.sum_claim_payments ?? 0,
+                        sumInterestPaid: r.sum_interest_paid ?? 0,
+                        sumWealthTaxPaid: r.sum_wealth_tax_paid ?? 0,
                     }))
                     .sort((a, b) => a.bucket - b.bucket),
             };

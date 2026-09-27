@@ -84,6 +84,8 @@ export default function FinancialPage() {
                                         avgWages: assets.monthAcc.wages,
                                         sumPurchases: assets.monthAcc.purchases,
                                         sumClaimPayments: assets.monthAcc.claimPayments,
+                                        sumInterestPaid: assets.monthAcc.interestPaid,
+                                        sumWealthTaxPaid: assets.monthAcc.wealthTaxPaid,
                                     }}
                                 />
                                 <ProductResolutionPanel

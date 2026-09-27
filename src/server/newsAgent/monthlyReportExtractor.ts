@@ -1,6 +1,7 @@
 import { computeSupplyChainBalance } from '@/app/supply-chain/_components/computeBalance';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
+import { netIncomeFromAccumulator } from '@/simulation/financial/netIncome';
 import { currencyMapping, DEFAULT_EXCHANGE_RATE, getCurrencyResourceName } from '@/simulation/market/currencyResources';
 import { computeNormalizedBuffer } from '@/simulation/market/serviceBufferNormalizer';
 import { computeCostOfLiving } from '@/simulation/market/serviceDefinitions';
@@ -479,7 +480,7 @@ function extractMonthlyReport(): MonthlyReport {
 
         for (const assets of Object.values(a.assets ?? {})) {
             netBalance += (assets.deposits ?? 0) - totalOutstandingLoans(assets.activeLoans ?? []);
-            monthlyNetIncome += assets.monthAcc?.revenue ?? 0;
+            monthlyNetIncome += assets.monthAcc ? netIncomeFromAccumulator(assets.monthAcc) : 0;
             totalWorkers += Math.round((assets.monthAcc?.totalWorkersTicks ?? 0) / TICKS_PER_MONTH);
             facilityCount += assets.productionFacilities?.length ?? 0;
         }

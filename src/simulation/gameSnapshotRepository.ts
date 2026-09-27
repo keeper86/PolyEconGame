@@ -93,6 +93,8 @@ export interface InsertAgentMonthlyHistory {
     storage_value: number;
     purchases: number;
     claim_payments: number;
+    interest_paid: number;
+    wealth_tax_paid: number;
 }
 
 export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonthlyHistory[]): Promise<void> {
@@ -115,6 +117,8 @@ export async function insertAgentMonthlyHistory(db: Knex, rows: InsertAgentMonth
             storage_value: r.storage_value,
             purchases: r.purchases,
             claim_payments: r.claim_payments,
+            interest_paid: r.interest_paid,
+            wealth_tax_paid: r.wealth_tax_paid,
         })),
     );
 }
@@ -296,6 +300,8 @@ export interface AgentFinancialBucket {
     avg_wages: number;
     sum_purchases: number;
     sum_claim_payments: number;
+    sum_interest_paid: number;
+    sum_wealth_tax_paid: number;
 }
 
 export async function getAgentHistoryAggregated(
@@ -356,6 +362,8 @@ export async function getAgentFinancialHistoryAggregated(
             'avg_wages',
             'sum_purchases',
             'sum_claim_payments',
+            'sum_interest_paid',
+            'sum_wealth_tax_paid',
         );
 }
 

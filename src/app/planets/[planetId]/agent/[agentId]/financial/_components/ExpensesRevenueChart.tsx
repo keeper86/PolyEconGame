@@ -62,9 +62,16 @@ export function ExpensesRevenueChart({
             p.avgWages,
             p.sumPurchases,
             p.sumClaimPayments,
+            p.sumInterestPaid + p.sumWealthTaxPaid,
         ]);
         if (live && live.tick > 0) {
-            allVals.push(live.avgMonthlyNetIncome, live.avgWages, live.sumPurchases, live.sumClaimPayments);
+            allVals.push(
+                live.avgMonthlyNetIncome,
+                live.avgWages,
+                live.sumPurchases,
+                live.sumClaimPayments,
+                live.sumInterestPaid + live.sumWealthTaxPaid,
+            );
         }
         const positive = allVals.filter((v) => v > 0);
         if (positive.length >= 2) {
@@ -114,10 +121,12 @@ export function ExpensesRevenueChart({
                         wages: nullIfZeroLog(curr?.avgWages ?? null),
                         purchases: nullIfZeroLog(curr?.sumPurchases ?? null),
                         claimPayments: nullIfZeroLog(curr?.sumClaimPayments ?? null),
+                        misc: nullIfZeroLog(curr ? curr.sumInterestPaid + curr.sumWealthTaxPaid : null),
                         ghostRevenue: nullIfZeroLog(ghost ? ghost.avgMonthlyNetIncome : null),
                         ghostWages: nullIfZeroLog(ghost?.avgWages ?? null),
                         ghostPurchases: nullIfZeroLog(ghost?.sumPurchases ?? null),
                         ghostClaimPayments: nullIfZeroLog(ghost?.sumClaimPayments ?? null),
+                        ghostMisc: nullIfZeroLog(ghost ? ghost.sumInterestPaid + ghost.sumWealthTaxPaid : null),
                     };
                 });
         }
@@ -204,6 +213,10 @@ export function ExpensesRevenueChart({
                                 <stop offset='5%' stopColor='#8b5cf6' stopOpacity={0.5} />
                                 <stop offset='95%' stopColor='#8b5cf6' stopOpacity={0.1} />
                             </linearGradient>
+                            <linearGradient id='gradMisc' x1='0' x2='0' y1='0' y2='1'>
+                                <stop offset='5%' stopColor='#ec4899' stopOpacity={0.5} />
+                                <stop offset='95%' stopColor='#ec4899' stopOpacity={0.1} />
+                            </linearGradient>
                         </defs>
                         <CartesianGrid
                             vertical={xAxisProps.gridVertical}
@@ -262,11 +275,23 @@ export function ExpensesRevenueChart({
                         />
                         <Area
                             type='monotone'
-                            dataKey='claimPayments'
+                            dataKey='claims'
                             stroke='#8b5cf6'
                             strokeWidth={1.5}
                             fill='url(#gradClaims)'
                             dot={{ r: 2.5, fill: '#8b5cf6' }}
+                            activeDot={{ r: 3 }}
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='misc'
+                            name='interest&tax'
+                            stroke='#ec4899'
+                            strokeWidth={1.5}
+                            fill='url(#gradMisc)'
+                            dot={{ r: 2.5, fill: '#ec4899' }}
                             activeDot={{ r: 3 }}
                             isAnimationActive={false}
                             connectNulls={false}
@@ -319,6 +344,20 @@ export function ExpensesRevenueChart({
                             strokeDasharray='4 2'
                             fill='none'
                             dot={{ r: 2, fill: '#8b5cf6', fillOpacity: 0.4, stroke: 'none' }}
+                            activeDot={false}
+                            legendType='none'
+                            isAnimationActive={false}
+                            connectNulls={false}
+                        />
+                        <Area
+                            type='monotone'
+                            dataKey='ghostMisc'
+                            stroke='#ec4899'
+                            strokeWidth={1}
+                            strokeOpacity={0.5}
+                            strokeDasharray='4 2'
+                            fill='none'
+                            dot={{ r: 2, fill: '#ec4899', fillOpacity: 0.4, stroke: 'none' }}
                             activeDot={false}
                             legendType='none'
                             isAnimationActive={false}

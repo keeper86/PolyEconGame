@@ -14,6 +14,7 @@ import {
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { computeNetIncome } from '@/simulation/financial/netIncome';
 import { useMemo } from 'react';
 import {
     Area,
@@ -63,7 +64,14 @@ export function BalanceFlowChart({
             cashBalance: live.avgNetBalance,
             assetValue: live.avgAssetValue,
             netPosition: live.avgNetBalance + live.avgAssetValue,
-            netIncome: live.avgMonthlyNetIncome - (live.avgWages + live.sumPurchases + live.sumClaimPayments),
+            netIncome: computeNetIncome({
+                revenue: live.avgMonthlyNetIncome,
+                wages: live.avgWages,
+                purchases: live.sumPurchases,
+                claimPayments: live.sumClaimPayments,
+                interestPaid: live.sumInterestPaid,
+                wealthTaxPaid: live.sumWealthTaxPaid,
+            }),
             ghostCashBalance: null,
             ghostAssetValue: null,
             ghostNetPosition: null,
@@ -86,10 +94,24 @@ export function BalanceFlowChart({
                     const ghost = ghostByMonthIdx.get(monthIdx);
                     const year = curr ? tickToDate(curr.bucket).year : ghost ? tickToDate(ghost.bucket).year : 0;
                     const netIncome = curr
-                        ? curr.avgMonthlyNetIncome - (curr.avgWages + curr.sumPurchases + curr.sumClaimPayments)
+                        ? computeNetIncome({
+                              revenue: curr.avgMonthlyNetIncome,
+                              wages: curr.avgWages,
+                              purchases: curr.sumPurchases,
+                              claimPayments: curr.sumClaimPayments,
+                              interestPaid: curr.sumInterestPaid,
+                              wealthTaxPaid: curr.sumWealthTaxPaid,
+                          })
                         : null;
                     const ghostNetIncome = ghost
-                        ? ghost.avgMonthlyNetIncome - (ghost.avgWages + ghost.sumPurchases + ghost.sumClaimPayments)
+                        ? computeNetIncome({
+                              revenue: ghost.avgMonthlyNetIncome,
+                              wages: ghost.avgWages,
+                              purchases: ghost.sumPurchases,
+                              claimPayments: ghost.sumClaimPayments,
+                              interestPaid: ghost.sumInterestPaid,
+                              wealthTaxPaid: ghost.sumWealthTaxPaid,
+                          })
                         : null;
                     return {
                         monthIdx,
@@ -124,9 +146,14 @@ export function BalanceFlowChart({
                     cashBalance: p.avgNetBalance,
                     assetValue: p.avgAssetValue,
                     netPosition: p.avgNetBalance + p.avgAssetValue,
-                    netIncome:
-                        p.avgMonthlyNetIncome -
-                        (p.avgWages + p.sumPurchases / monthsPerBucket + p.sumClaimPayments / monthsPerBucket),
+                    netIncome: computeNetIncome({
+                        revenue: p.avgMonthlyNetIncome,
+                        wages: p.avgWages,
+                        purchases: p.sumPurchases / monthsPerBucket,
+                        claimPayments: p.sumClaimPayments / monthsPerBucket,
+                        interestPaid: p.sumInterestPaid / monthsPerBucket,
+                        wealthTaxPaid: p.sumWealthTaxPaid / monthsPerBucket,
+                    }),
                     ghostCashBalance: null,
                     ghostAssetValue: null,
                     ghostNetPosition: null,
