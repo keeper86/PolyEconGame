@@ -1,6 +1,7 @@
 import Footer from '@/app/Footer';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import KeyStatDisplay from '@/components/client/KeyStatDisplay';
+import { LocaleSwitcher } from '@/components/client/LocaleSwitcher';
 import { MessagesIndicator } from '@/components/client/MessagesIndicator';
 import TickDisplay from '@/components/client/TickDisplay';
 import { ModeToggle } from '@/components/modeToggle';
@@ -11,6 +12,8 @@ import { TourJoyride } from '@/components/tour/TourJoyride';
 import BackToTopButton from '@/components/ui/BackToTopButton';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
+import { NextIntlClientProvider } from 'next-intl';
+import { getLocale } from 'next-intl/server';
 import { getServerSession } from 'next-auth';
 import { Geist, Geist_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
@@ -42,40 +45,45 @@ export default async function RootLayout({
     children: ReactNode;
 }>) {
     const session = await getServerSession(authOptions);
+    const locale = await getLocale();
 
     return (
-        <html lang='en' suppressHydrationWarning>
+        <html lang={locale} suppressHydrationWarning>
             <body className={`${geistSans.variable} ${geistMono.variable}`}>
                 <ThemeWrapper>
                     <ThemeProvider attribute='class' defaultTheme='system' enableSystem disableTransitionOnChange>
-                        <AppProviders session={session}>
-                            <SidebarProvider className='h-dvh overflow-hidden'>
-                                <AppSidebar />
-                                <SidebarInset className='min-w-0 overflow-hidden'>
-                                    <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
-                                        <div className='flex items-center gap-2 '>
-                                            <SidebarTrigger className='-ml-1' />
-                                            <MessagesIndicator />
-                                            <AgentConditionIndicators />
-                                        </div>
-                                        <div className='flex items-center gap-2'>
-                                            <KeyStatDisplay />
+                        <NextIntlClientProvider>
+                            <AppProviders session={session}>
+                                <SidebarProvider className='h-dvh overflow-hidden'>
+                                    <AppSidebar />
+                                    <SidebarInset className='min-w-0 overflow-hidden'>
+                                        <header className='sticky top-0 z-30 flex h-12 sm:h-14 shrink-0 items-center justify-between gap-2 px-2 sm:px-4 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'>
+                                            <div className='flex items-center gap-2 '>
+                                                <SidebarTrigger className='-ml-1' />
+                                                <MessagesIndicator />
+                                                <AgentConditionIndicators />
+                                            </div>
+                                            <div className='flex items-center gap-2'>
+                                                <KeyStatDisplay />
 
-                                            <TickDisplay />
+                                                <TickDisplay />
 
-                                            <ModeToggle />
-                                        </div>
-                                    </header>
-                                    <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>
-                                        {children}
-                                        <TourJoyride />
-                                    </main>
-                                    <Footer />
-                                </SidebarInset>
-                                <BackToTopButton />
-                            </SidebarProvider>
-                            <Toaster />
-                        </AppProviders>
+                                                <LocaleSwitcher />
+
+                                                <ModeToggle />
+                                            </div>
+                                        </header>
+                                        <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>
+                                            {children}
+                                            <TourJoyride />
+                                        </main>
+                                        <Footer />
+                                    </SidebarInset>
+                                    <BackToTopButton />
+                                </SidebarProvider>
+                                <Toaster />
+                            </AppProviders>
+                        </NextIntlClientProvider>
                     </ThemeProvider>
                 </ThemeWrapper>
             </body>
