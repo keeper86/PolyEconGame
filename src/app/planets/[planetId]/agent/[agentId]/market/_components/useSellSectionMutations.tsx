@@ -12,6 +12,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName } from './marketHelpers';
 import { termFor } from '@/i18n/terms';
+import { readDomainError, useErrorMessage } from '@/i18n/errors';
 import type { AutoConfigLocalState, LocalResourceState, MarketOfferEntry } from './marketTypes';
 import { localToAutoConfig, SELL_PRICING_KEYS, SELL_VOLUME_KEYS } from './marketTypes';
 
@@ -91,45 +92,34 @@ export function useSellSectionMutations({
     const t = useTranslations('Toasts');
     const tErrors = useTranslations('Errors');
     const locale = useLocale();
+    const showError = useErrorMessage();
     const resource = getResourceByName(resourceName);
     const inventoryQty = queryStorageFacility(assets.storage, resourceName);
 
+    const reportError = (err: unknown, fallback: string) => {
+        const message = err instanceof Error ? showError(err) : fallback;
+        if (readDomainError(err)?.code === 'insufficientDeposits') {
+            toast.error(depositWarning(t, message, agentId, planetId));
+        } else {
+            toast.error(message);
+        }
+    };
+
     const sellMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateSellOffersFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
     const sellPricingMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateSellOffersFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
     const sellVolumeMutation = useMutation(
         trpc.setSellOffers.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateSellOffersFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateSellOffersFailed')),
         }),
     );
 
@@ -149,7 +139,7 @@ export function useSellSectionMutations({
         if (!isNaN(offerPrice)) {
             const validation = validateSellOffer(offerPrice, inventoryQty);
             if (!validation.isValid) {
-                toast.error(`${t('sellValidationFailedPrefix')}${validation.error}`);
+                toast.error(`${t('sellValidationFailedPrefix')}${tErrors(validation.code, validation.params)}`);
                 return;
             }
         }
@@ -217,15 +207,7 @@ export function useSellSectionMutations({
                     }
                     toast.success(t('sellOffersSaved'));
                 },
-                onError: (err) => {
-                    setSellAutomationSaving(false);
-                    const errorMessage = err instanceof Error ? err.message : t('updateSellOffersFailed');
-                    if (errorMessage.includes('Insufficient deposits')) {
-                        toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                    } else {
-                        toast.error(errorMessage);
-                    }
-                },
+                onError: () => setSellAutomationSaving(false),
             },
         );
     };
@@ -257,10 +239,7 @@ export function useSellSectionMutations({
                     }
                     toast.success(t('pricingConfigSaved'));
                 },
-                onError: (err) => {
-                    setSellPricingConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
-                },
+                onError: () => setSellPricingConfigSaving(false),
             },
         );
     };
@@ -292,10 +271,7 @@ export function useSellSectionMutations({
                     }
                     toast.success(t('volumeConfigSaved'));
                 },
-                onError: (err) => {
-                    setSellVolumeConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
-                },
+                onError: () => setSellVolumeConfigSaving(false),
             },
         );
     };

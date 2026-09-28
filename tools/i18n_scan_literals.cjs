@@ -222,6 +222,22 @@ const findLiterals = (file) => {
         ) {
             reportConditional(node.expression);
         }
+        if (ts.isBindingElement(node) && node.initializer) {
+            const name = ts.isIdentifier(node.name) ? node.name.text : null;
+            if (name !== null && (TEXT_KEYS.has(name) || TEXT_SUFFIX_RE.test(name))) {
+                reportValue(hits, node.initializer, source, `default:${name}`);
+            }
+        }
+        if (
+            ts.isBinaryExpression(node) &&
+            (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+                node.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+        ) {
+            const text = staticTextOf(node.right);
+            if (text !== null && /\s/.test(text) && /^[A-Z]/.test(text.replace(/\s+/g, ' ').trim())) {
+                reportValue(hits, node.right, source, 'fallback');
+            }
+        }
         ts.forEachChild(node, visit);
     };
     visit(source);

@@ -16,17 +16,10 @@ export const useErrorMessage = () => {
         if (!domainError) {
             return error instanceof Error ? error.message : t('unexpected');
         }
-        if (domainError.code === 'unknownResource') {
-            return t('unknownResource', {
-                resourceName: termFor(locale, String(domainError.params.resourceName)),
-            });
+        const params: Record<string, string | number> = { ...domainError.params };
+        if (typeof params.resourceName === 'string') {
+            params.resourceName = termFor(locale, params.resourceName);
         }
-        if (domainError.code === 'invalidBuyBid' || domainError.code === 'invalidSellOffer') {
-            return t(domainError.code, {
-                resourceName: termFor(locale, String(domainError.params.resourceName)),
-                detail: String(domainError.params.detail),
-            });
-        }
-        return t(domainError.code);
+        return t(domainError.code, params);
     };
 };

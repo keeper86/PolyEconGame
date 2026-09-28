@@ -33,6 +33,17 @@
         "operationFailed": "Vorgang fehlgeschlagen",
         "invalidBuyBid": "Ungültiges Kaufgebot für {resourceName}: {detail}",
         "invalidSellOffer": "Ungültiges Verkaufsangebot für {resourceName}: {detail}",
+        "priceInvalid": "Der Preis muss eine gültige Zahl sein",
+        "priceNotPositive": "Der Preis muss größer als 0 sein",
+        "priceBelowFloor": "Der Preis muss mindestens {floor} betragen",
+        "priceAboveCeiling": "Der Preis darf {ceiling} nicht überschreiten",
+        "quantityInvalid": "Die Menge muss eine gültige Zahl sein",
+        "quantityNegative": "Die Menge darf nicht negativ sein",
+        "quantityBelowMinimum": "Die Menge muss mindestens {minimum} betragen",
+        "quantityExceedsStorage": "Die Menge überschreitet die verfügbare Lagerkapazität ({available})",
+        "insufficientDeposits": "Nicht genügend Einlagen (benötigt {required}, verfügbar {available})",
+        "sellThroughAboveLimit": "Die angestrebte Absatzquote darf für Dienstleistungen 100 % nicht überschreiten",
+        "fillRateAboveLimit": "Die angestrebte Erfüllungsquote darf für Dienstleistungen 100 % nicht überschreiten",
         "noAccountOnIssuingPlanet": "Kein Konto auf dem ausgebenden Planeten. Besuche diesen Planeten zuerst, um ein Konto zu eröffnen."
     },
     "Bankruptcy": {
@@ -110,7 +121,8 @@
     "Sidebar": {
         "login": "Anmelden",
         "logout": "Abmelden",
-        "loading": "Lädt…"
+        "loading": "Lädt…",
+        "noNameSet": "Kein Name gesetzt"
     },
     "Settings": {
         "title": "Einstellungen",
@@ -252,8 +264,8 @@
         "lastBought": "Zuletzt gekauft",
         "lastOffered": "Zuletzt angeboten",
         "lastSold": "Zuletzt verkauft",
-        "smoothedFillRate": "Geglättete Erfüllungsrate",
-        "smoothedSellThrough": "Geglättete Absatzrate",
+        "smoothedFillRate": "Gegl. Erfüllungsrate",
+        "smoothedSellThrough": "Gegl. Absatzrate",
         "lastSpent": "Zuletzt ausgegeben",
         "lastRevenue": "Zuletzt erzielter Erlös",
         "production": "Produktion",
@@ -306,6 +318,7 @@
         "selectProductsPrompt": "Produkte auswählen, um Preistrends zu vergleichen",
         "onlyRelevantResources": "Nur relevante Ressourcen",
         "emptyPlaceholder": "-leer-",
+        "pricePlaceholder": "z. B. 1,50",
         "dailyClearanceChart": "Tägliches Markträumungs-Diagramm",
         "full": "voll",
         "outOfStock": "Nicht vorrätig",
@@ -723,7 +736,17 @@
         "simulationOffline": "Simulationsdaten nicht verfügbar — {count, plural, one {# Abfrage} other {# Abfragen}} haben das Abrufen eingestellt.",
         "resetToNoExperience": "Auf keine Erfahrung zurücksetzen",
         "setLevel": "Stufe auf {level} setzen",
-        "userAvatarAlt": "Benutzeravatar"
+        "userAvatarAlt": "Benutzeravatar",
+        "errorTitle": "Laden fehlgeschlagen",
+        "errorDescription": "Etwas ist schiefgelaufen. Bitte versuche es später erneut.",
+        "selectResource": "Ressource auswählen…",
+        "logoCategories": {
+            "raw": "Rohstoffe",
+            "refinement": "Veredelung",
+            "manufacturing": "Fertigung",
+            "services": "Dienstleistungen",
+            "general": "Allgemein"
+        }
     },
     "Charts": {
         "year": "Jahr {year}",

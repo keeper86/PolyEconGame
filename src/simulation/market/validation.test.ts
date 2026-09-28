@@ -4,7 +4,14 @@ import { shellFormOfResource } from '../planet/facility';
 import { makeManagementFacility, makeStorageFacility } from '../utils/testHelper';
 import type { Resource } from '../planet/claims';
 import type { Storage } from '../planet/facility';
-import { validateAutoConfigTargets, validateBuyBid, validateSellOffer } from './validation';
+import { validateAutoConfigTargets, validateBuyBid, validateSellOffer, type ValidationResult } from './validation';
+
+const invalid = (result: ValidationResult) => {
+    if (result.isValid) {
+        throw new Error('expected an invalid validation result');
+    }
+    return result;
+};
 
 function makeAssets(deposits: number, resource: Resource, storageScale = 1e9) {
     const storage = makeStorageFacility({
@@ -25,19 +32,18 @@ describe('market validation', () => {
         it('returns valid for a normal sell offer', () => {
             const result = validateSellOffer(1.5, 200);
             expect(result.isValid).toBe(true);
-            expect(result.error).toBeUndefined();
         });
 
         it('returns invalid for price 0', () => {
             const result = validateSellOffer(0, 200);
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Price must be greater than 0');
+            expect(invalid(result).code).toBe('priceNotPositive');
         });
 
         it('returns invalid for negative price', () => {
             const result = validateSellOffer(-1, 200);
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Price must be greater than 0');
+            expect(invalid(result).code).toBe('priceNotPositive');
         });
 
         it('returns valid for pieces resource with integer quantity', () => {
@@ -65,31 +71,33 @@ describe('market validation', () => {
         it('returns valid for a normal buy bid', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, coalAssets(1000));
             expect(result.isValid).toBe(true);
-            expect(result.error).toBeUndefined();
         });
 
         it('returns invalid for price 0', () => {
             const result = validateBuyBid({ bidPrice: 0, bidStorageTarget: 100 }, coalResource, coalAssets(1000));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Price must be greater than 0');
+            expect(invalid(result).code).toBe('priceNotPositive');
         });
 
         it('returns invalid for negative price', () => {
             const result = validateBuyBid({ bidPrice: -1, bidStorageTarget: 100 }, coalResource, coalAssets(1000));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Price must be greater than 0');
+            expect(invalid(result).code).toBe('priceNotPositive');
         });
 
         it('returns invalid for negative quantity', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: -10 }, coalResource, coalAssets(1000));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Quantity must be non-negative');
+            expect(invalid(result).code).toBe('quantityNegative');
         });
 
         it('returns invalid when cost exceeds deposits', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 600 }, coalResource, coalAssets(1000));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Insufficient deposits');
+            expect(invalid(result).code).toBe('insufficientDeposits');
+            const { required, available } = invalid(result).params;
+            expect(required).toBeGreaterThan(available);
+            expect(available).toBe(1000);
         });
 
         it('returns valid for pieces resource with integer quantity', () => {
@@ -133,7 +141,7 @@ describe('market validation', () => {
         it('returns invalid when quantity exceeds available storage capacity', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, coalAssets(1000, 0));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Quantity exceeds available storage capacity');
+            expect(invalid(result).code).toBe('quantityExceedsStorage');
         });
 
         it('returns valid when quantity equals available storage capacity', () => {
@@ -149,7 +157,7 @@ describe('market validation', () => {
         it('resolves effectiveQty from bidStorageTarget minus current inventory', () => {
             const result = validateBuyBid({ bidPrice: 2.0, bidStorageTarget: 100 }, coalResource, coalAssets(150));
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('Insufficient deposits');
+            expect(invalid(result).code).toBe('insufficientDeposits');
         });
 
         it('returns valid when storageTarget already met by inventory', () => {
@@ -180,13 +188,13 @@ describe('market validation', () => {
         it('rejects service targetSellThrough above 100%', () => {
             const result = validateAutoConfigTargets({ targetSellThrough: 1.5 }, serviceResource);
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('sell-through');
+            expect(invalid(result).code).toBe('sellThroughAboveLimit');
         });
 
         it('rejects service targetFillRate above 100%', () => {
             const result = validateAutoConfigTargets({ targetFillRate: 1.5 }, serviceResource);
             expect(result.isValid).toBe(false);
-            expect(result.error).toContain('fill rate');
+            expect(invalid(result).code).toBe('fillRateAboveLimit');
         });
 
         it('is valid when the config is undefined', () => {

@@ -33,7 +33,23 @@ export function CompanyLogoChooser({
 }) {
     const usedLogosSet = new Set(usedLogos);
     const t = useTranslations('Agent');
+    const tc = useTranslations('Common');
     const [open, setOpen] = useState(false);
+
+    const labelForCategory = (category: (typeof CATEGORY_ORDER)[number]): string => {
+        switch (category) {
+            case 'Raw':
+                return tc('logoCategories.raw');
+            case 'Refinement':
+                return tc('logoCategories.refinement');
+            case 'Manufacturing':
+                return tc('logoCategories.manufacturing');
+            case 'Services':
+                return tc('logoCategories.services');
+            default:
+                return tc('logoCategories.general');
+        }
+    };
 
     return (
         <div className='grid gap-2'>
@@ -63,7 +79,7 @@ export function CompanyLogoChooser({
                         <TabsList className='flex-wrap h-auto'>
                             {CATEGORY_ORDER.map((category) => (
                                 <TabsTrigger key={category} value={category} className='text-xs'>
-                                    {category}
+                                    {labelForCategory(category)}
                                     <span className='ml-1 text-muted-foreground'>
                                         ({LOGOS_BY_CATEGORY[category].length})
                                     </span>

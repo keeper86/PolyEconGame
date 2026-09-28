@@ -30,6 +30,17 @@ export const DOMAIN_ERROR_CODES = [
     'invalidResourceNameInCargoGoal',
     'invalidBuyBid',
     'invalidSellOffer',
+    'priceInvalid',
+    'priceNotPositive',
+    'priceBelowFloor',
+    'priceAboveCeiling',
+    'quantityInvalid',
+    'quantityNegative',
+    'quantityBelowMinimum',
+    'quantityExceedsStorage',
+    'insufficientDeposits',
+    'sellThroughAboveLimit',
+    'fillRateAboveLimit',
     'noAccountOnIssuingPlanet',
 ] as const;
 

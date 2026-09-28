@@ -582,9 +582,9 @@ export const setSellOffers = () => {
                 if (!validation.isValid) {
                     throw domainError(
                         'BAD_REQUEST',
-                        'invalidSellOffer',
-                        `Invalid sell offer for ${resourceName}: ${validation.error}`,
-                        { resourceName, detail: String(validation.error ?? '') },
+                        validation.code,
+                        `Invalid sell offer for ${resourceName}: ${validation.code}`,
+                        validation.params,
                     );
                 }
 
@@ -592,9 +592,9 @@ export const setSellOffers = () => {
                 if (!targetValidation.isValid) {
                     throw domainError(
                         'BAD_REQUEST',
-                        'invalidSellOffer',
-                        `Invalid sell offer for ${resourceName}: ${targetValidation.error}`,
-                        { resourceName, detail: String(targetValidation.error ?? '') },
+                        targetValidation.code,
+                        `Invalid sell offer for ${resourceName}: ${targetValidation.code}`,
+                        targetValidation.params,
                     );
                 }
             }
@@ -848,9 +848,9 @@ export const setBuyBids = () => {
                 if (!validation.isValid) {
                     throw domainError(
                         'BAD_REQUEST',
-                        'invalidBuyBid',
-                        `Invalid buy bid for ${resourceName}: ${validation.error}`,
-                        { resourceName, detail: String(validation.error ?? '') },
+                        validation.code,
+                        `Invalid buy bid for ${resourceName}: ${validation.code}`,
+                        validation.params,
                     );
                 }
 
@@ -858,9 +858,9 @@ export const setBuyBids = () => {
                 if (!targetValidation.isValid) {
                     throw domainError(
                         'BAD_REQUEST',
-                        'invalidBuyBid',
-                        `Invalid buy bid for ${resourceName}: ${targetValidation.error}`,
-                        { resourceName, detail: String(targetValidation.error ?? '') },
+                        targetValidation.code,
+                        `Invalid buy bid for ${resourceName}: ${targetValidation.code}`,
+                        targetValidation.params,
                     );
                 }
             }

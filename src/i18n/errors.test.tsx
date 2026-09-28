@@ -74,6 +74,15 @@ describe('useErrorMessage', () => {
         );
     });
 
+    it('renders the structured market validation errors', () => {
+        const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
+
+        expect(result.current(domainError('insufficientDeposits', { required: 1200, available: 1000 }))).toBe(
+            'Nicht genügend Einlagen (benötigt 1200, verfügbar 1000)',
+        );
+        expect(result.current(domainError('priceNotPositive'))).toBe('Der Preis muss größer als 0 sein');
+    });
+
     it('has a message key for every domain error code', () => {
         const missingEn = DOMAIN_ERROR_CODES.filter((code) => !(code in en.Errors));
         const missingDe = DOMAIN_ERROR_CODES.filter((code) => !(code in de.Errors));

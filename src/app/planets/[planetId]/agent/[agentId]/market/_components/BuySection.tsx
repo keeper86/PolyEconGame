@@ -704,7 +704,7 @@ export default function BuySection({
                                                         placeholder={
                                                             bid?.bidPrice !== undefined
                                                                 ? bid.bidPrice.toFixed(2)
-                                                                : (defaultPrice ?? 'e.g. 1.50')
+                                                                : (defaultPrice ?? tr('pricePlaceholder'))
                                                         }
                                                         value={local.bidPrice}
                                                         disabled={buyPriceSaving}

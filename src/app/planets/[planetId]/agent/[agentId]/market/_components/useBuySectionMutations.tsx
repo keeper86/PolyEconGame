@@ -7,6 +7,7 @@ import { validateBuyBid } from '@/simulation/market/validation';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
 import { termFor } from '@/i18n/terms';
+import { readDomainError, useErrorMessage } from '@/i18n/errors';
 import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -91,44 +92,33 @@ export function useBuySectionMutations({
     const t = useTranslations('Toasts');
     const tErrors = useTranslations('Errors');
     const locale = useLocale();
+    const showError = useErrorMessage();
     const resource = getResourceByName(resourceName);
+
+    const reportError = (err: unknown, fallback: string) => {
+        const message = err instanceof Error ? showError(err) : fallback;
+        if (readDomainError(err)?.code === 'insufficientDeposits') {
+            toast.error(depositWarning(t, message, agentId, planetId));
+        } else {
+            toast.error(message);
+        }
+    };
 
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateBuyBidsFailed')),
         }),
     );
 
     const buyPricingMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateBuyBidsFailed')),
         }),
     );
 
     const buyVolumeMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
-            onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
-                if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                } else {
-                    toast.error(errorMessage);
-                }
-            },
+            onError: (err) => reportError(err, t('updateBuyBidsFailed')),
         }),
     );
 
@@ -155,17 +145,7 @@ export function useBuySectionMutations({
                 assets,
             );
             if (!validation.isValid) {
-                const errorText = validation.error;
-                if (errorText && errorText.includes('Insufficient deposits')) {
-                    toast.error(
-                        <span>
-                            {t('buyValidationFailedPrefix')}
-                            {depositWarning(t, errorText, agentId, planetId)}
-                        </span>,
-                    );
-                } else {
-                    toast.error(`${t('buyValidationFailedPrefix')}${errorText}`);
-                }
+                toast.error(`${t('buyValidationFailedPrefix')}${tErrors(validation.code, validation.params)}`);
                 return;
             }
         }
@@ -240,15 +220,7 @@ export function useBuySectionMutations({
                     }
                     toast.success(t('buyBidsSaved'));
                 },
-                onError: (err) => {
-                    setBuyAutomationSaving(false);
-                    const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
-                    if (errorMessage.includes('Insufficient deposits')) {
-                        toast.error(depositWarning(t, errorMessage, agentId, planetId));
-                    } else {
-                        toast.error(errorMessage);
-                    }
-                },
+                onError: () => setBuyAutomationSaving(false),
             },
         );
     };
@@ -280,10 +252,7 @@ export function useBuySectionMutations({
                     }
                     toast.success(t('pricingConfigSaved'));
                 },
-                onError: (err) => {
-                    setBuyPricingConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
-                },
+                onError: () => setBuyPricingConfigSaving(false),
             },
         );
     };
@@ -315,10 +284,7 @@ export function useBuySectionMutations({
                     }
                     toast.success(t('volumeConfigSaved'));
                 },
-                onError: (err) => {
-                    setBuyVolumeConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
-                },
+                onError: () => setBuyVolumeConfigSaving(false),
             },
         );
     };

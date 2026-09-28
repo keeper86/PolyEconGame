@@ -238,7 +238,7 @@ export default function SellSection({
                     })}
             </div>
         ),
-        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities, locale],
+        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities, locale, tr],
     );
 
     const overlay = (message: string | null | undefined) =>
@@ -670,7 +670,7 @@ export default function SellSection({
                                                         placeholder={
                                                             offer?.offerPrice !== undefined
                                                                 ? offer.offerPrice.toFixed(2)
-                                                                : (defaultPrice ?? 'e.g. 1.50')
+                                                                : (defaultPrice ?? tr('pricePlaceholder'))
                                                         }
                                                         value={local.offerPrice}
                                                         disabled={sellPriceSaving}

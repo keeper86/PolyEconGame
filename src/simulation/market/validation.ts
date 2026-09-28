@@ -9,10 +9,22 @@ import type { Resource } from '../planet/claims';
 import { getAvailableStorageCapacity, queryStorageFacility } from '../planet/facility';
 import type { BuyBid } from '../../server/controller/user';
 
-export interface ValidationResult {
-    isValid: boolean;
-    error?: string;
-}
+export type ValidationErrorCode =
+    | 'priceInvalid'
+    | 'priceNotPositive'
+    | 'priceBelowFloor'
+    | 'priceAboveCeiling'
+    | 'quantityInvalid'
+    | 'quantityNegative'
+    | 'quantityBelowMinimum'
+    | 'quantityExceedsStorage'
+    | 'insufficientDeposits'
+    | 'sellThroughAboveLimit'
+    | 'fillRateAboveLimit';
+
+export type ValidationResult =
+    | { isValid: true }
+    | { isValid: false; code: ValidationErrorCode; params: Record<string, number> };
 
 export function validateSellOffer(price: number | undefined, _availableStock: number): ValidationResult {
     if (price === undefined) {
@@ -20,19 +32,19 @@ export function validateSellOffer(price: number | undefined, _availableStock: nu
     }
 
     if (isNaN(price)) {
-        return { isValid: false, error: 'Price must be a valid number' };
+        return { isValid: false, code: 'priceInvalid', params: {} };
     }
 
     if (price <= 0) {
-        return { isValid: false, error: 'Price must be greater than 0' };
+        return { isValid: false, code: 'priceNotPositive', params: {} };
     }
 
     if (price < PRICE_FLOOR) {
-        return { isValid: false, error: `Price must be at least ${PRICE_FLOOR}` };
+        return { isValid: false, code: 'priceBelowFloor', params: { floor: PRICE_FLOOR } };
     }
 
     if (price > PRICE_CEIL) {
-        return { isValid: false, error: `Price must not exceed ${PRICE_CEIL}` };
+        return { isValid: false, code: 'priceAboveCeiling', params: { ceiling: PRICE_CEIL } };
     }
 
     return { isValid: true };
@@ -49,39 +61,40 @@ function validateBidFields(
 
     if (bidPrice !== undefined) {
         if (isNaN(bidPrice)) {
-            return { isValid: false, error: 'Price must be a valid number' };
+            return { isValid: false, code: 'priceInvalid', params: {} };
         }
 
         if (bidPrice <= 0) {
-            return { isValid: false, error: 'Price must be greater than 0' };
+            return { isValid: false, code: 'priceNotPositive', params: {} };
         }
 
         if (bidPrice < PRICE_FLOOR) {
-            return { isValid: false, error: `Price must be at least ${PRICE_FLOOR}` };
+            return { isValid: false, code: 'priceBelowFloor', params: { floor: PRICE_FLOOR } };
         }
 
         if (bidPrice > PRICE_CEIL) {
-            return { isValid: false, error: `Price must not exceed ${PRICE_CEIL}` };
+            return { isValid: false, code: 'priceAboveCeiling', params: { ceiling: PRICE_CEIL } };
         }
     }
 
     if (quantity !== undefined) {
         if (isNaN(quantity)) {
-            return { isValid: false, error: 'Quantity must be a valid number' };
+            return { isValid: false, code: 'quantityInvalid', params: {} };
         }
 
         if (quantity < 0) {
-            return { isValid: false, error: 'Quantity must be non-negative' };
+            return { isValid: false, code: 'quantityNegative', params: {} };
         }
 
         if (quantity > 0 && quantity < EPSILON) {
-            return { isValid: false, error: `Quantity must be at least ${EPSILON}` };
+            return { isValid: false, code: 'quantityBelowMinimum', params: { minimum: EPSILON } };
         }
 
         if (quantity > availableStorageCapacity + EPSILON) {
             return {
                 isValid: false,
-                error: `Quantity exceeds available storage capacity (${availableStorageCapacity.toFixed(2)})`,
+                code: 'quantityExceedsStorage',
+                params: { available: availableStorageCapacity },
             };
         }
     }
@@ -97,7 +110,7 @@ export function validateBuyBid(
     const { bidPrice, bidStorageTarget } = bid;
 
     if (bidStorageTarget !== undefined && bidStorageTarget < 0) {
-        return { isValid: false, error: 'Quantity must be non-negative' };
+        return { isValid: false, code: 'quantityNegative', params: {} };
     }
     const availableStorageCapacity = getAvailableStorageCapacity(assets.storage, resource);
     const currentInventory = queryStorageFacility(assets.storage, resource.name);
@@ -113,7 +126,8 @@ export function validateBuyBid(
         if (maxCost > assets.deposits + EPSILON) {
             return {
                 isValid: false,
-                error: `Insufficient deposits (need ${maxCost.toFixed(2)}, have ${assets.deposits.toFixed(2)})`,
+                code: 'insufficientDeposits',
+                params: { required: maxCost, available: assets.deposits },
             };
         }
     }
@@ -142,7 +156,7 @@ export function validateAndPrepareSellOffer(
     const validation = validateSellOffer(offer.offerPrice, availableStock);
 
     if (!validation.isValid) {
-        console.warn(`Invalid sell offer for ${offer.resource.name}: ${validation.error}`);
+        console.warn(`Invalid sell offer for ${offer.resource.name}: ${validation.code}`);
         return null;
     }
 
@@ -201,11 +215,11 @@ export function validateAutoConfigTargets(
     }
 
     if (autoConfig.targetSellThrough !== undefined && autoConfig.targetSellThrough > 1) {
-        return { isValid: false, error: 'Target sell-through must not exceed 100% for services' };
+        return { isValid: false, code: 'sellThroughAboveLimit', params: {} };
     }
 
     if (autoConfig.targetFillRate !== undefined && autoConfig.targetFillRate > 1) {
-        return { isValid: false, error: 'Target fill rate must not exceed 100% for services' };
+        return { isValid: false, code: 'fillRateAboveLimit', params: {} };
     }
 
     return { isValid: true };

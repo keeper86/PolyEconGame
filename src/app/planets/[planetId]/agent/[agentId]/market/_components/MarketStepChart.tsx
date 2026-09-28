@@ -413,7 +413,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                 cumDemand += entry.quantity;
                 const meta: AgentMeta = {
                     agentId: entry.agentId ?? 'population',
-                    agentName: entry.agentName ?? 'Population',
+                    agentName: entry.agentName ?? t('population'),
                     isOwn: entry.isOwn ?? false,
                     kind: entry.kind,
                     price: entry.price,
@@ -518,7 +518,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
         }
 
         return { chartData: croppedData, xDomain, xTicks, ownSupplyArea, ownDemandArea };
-    }, [market, agentId]);
+    }, [market, agentId, t]);
 
     const resource = market ? getResourceByName(market.resourceName) : undefined;
     const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';

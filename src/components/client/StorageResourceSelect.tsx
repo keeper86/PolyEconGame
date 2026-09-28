@@ -28,10 +28,12 @@ export function StorageResourceSelect({
     value,
     onValueChange,
     required,
-    placeholder = 'Select resource…',
+    placeholder,
 }: Props) {
     const locale = useLocale();
     const t = useTranslations('Storage');
+    const tc = useTranslations('Common');
+    const resolvedPlaceholder = placeholder ?? tc('selectResource');
     const trpc = useTRPC();
     const { data: storage } = useSimulationQuery(trpc.getAgentPlanetStorage.queryOptions({ agentId, planetId }));
 
@@ -60,10 +62,10 @@ export function StorageResourceSelect({
                 {value ? (
                     <span className='flex items-center gap-2'>
                         <ProductIcon productName={value} size={24} />
-                        <span>{value}</span>
+                        <span>{termFor(locale, value)}</span>
                     </span>
                 ) : (
-                    <SelectValue placeholder={placeholder} />
+                    <SelectValue placeholder={resolvedPlaceholder} />
                 )}
             </SelectTrigger>
             <SelectContent>

@@ -29,12 +29,12 @@ export const authOptions: AuthOptions = {
                     return true;
                 }
 
-                const displayName = profile?.name ?? user?.name ?? 'No name set';
+                const displayName = profile?.name ?? user?.name ?? null;
                 const username = (profile as { preferred_username?: string } | undefined)?.preferred_username ?? null;
 
                 const row: {
                     user_id: string;
-                    display_name: string;
+                    display_name: string | null;
                     email: string;
                     username?: string;
                 } = {

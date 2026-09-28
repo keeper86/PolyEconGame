@@ -33,6 +33,17 @@
         "operationFailed": "Operation failed",
         "invalidBuyBid": "Invalid buy bid for {resourceName}: {detail}",
         "invalidSellOffer": "Invalid sell offer for {resourceName}: {detail}",
+        "priceInvalid": "Price must be a valid number",
+        "priceNotPositive": "Price must be greater than 0",
+        "priceBelowFloor": "Price must be at least {floor}",
+        "priceAboveCeiling": "Price must not exceed {ceiling}",
+        "quantityInvalid": "Quantity must be a valid number",
+        "quantityNegative": "Quantity must be non-negative",
+        "quantityBelowMinimum": "Quantity must be at least {minimum}",
+        "quantityExceedsStorage": "Quantity exceeds available storage capacity ({available})",
+        "insufficientDeposits": "Insufficient deposits (need {required}, have {available})",
+        "sellThroughAboveLimit": "Target sell-through must not exceed 100% for services",
+        "fillRateAboveLimit": "Target fill rate must not exceed 100% for services",
         "noAccountOnIssuingPlanet": "No account on the issuing planet. Visit that planet first to open an account."
     },
     "Bankruptcy": {
@@ -110,7 +121,8 @@
     "Sidebar": {
         "login": "Login",
         "logout": "Log out",
-        "loading": "Loading…"
+        "loading": "Loading…",
+        "noNameSet": "No name set"
     },
     "Settings": {
         "title": "Settings",
@@ -306,6 +318,7 @@
         "selectProductsPrompt": "Select products to compare price trends",
         "onlyRelevantResources": "Only relevant resources",
         "emptyPlaceholder": "-empty-",
+        "pricePlaceholder": "e.g. 1.50",
         "dailyClearanceChart": "Daily market clearance chart",
         "full": "full",
         "outOfStock": "Out of stock",
@@ -723,7 +736,17 @@
         "simulationOffline": "Simulation data unavailable — {count, plural, one {# query} other {# queries}} stopped polling.",
         "resetToNoExperience": "Reset to no experience",
         "setLevel": "Set level to {level}",
-        "userAvatarAlt": "User Avatar"
+        "userAvatarAlt": "User Avatar",
+        "errorTitle": "Failed to load",
+        "errorDescription": "Something went wrong. Please try again later.",
+        "selectResource": "Select resource…",
+        "logoCategories": {
+            "raw": "Raw",
+            "refinement": "Refinement",
+            "manufacturing": "Manufacturing",
+            "services": "Services",
+            "general": "General"
+        }
     },
     "Charts": {
         "year": "Year {year}",
