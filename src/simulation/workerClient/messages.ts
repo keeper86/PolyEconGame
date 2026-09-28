@@ -1,3 +1,4 @@
+import type { DomainErrorPacket } from 'src/server/domainError';
 import type { TickerEvent } from 'src/server/controller/simulation';
 import type { ResourceQuantity } from '../planet/claims';
 import type { WireGameState } from '../snapshotCompression';
@@ -360,7 +361,7 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'transportContractPostFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'transportContractPostFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'transportContractAccepted';
           requestId: string;
@@ -368,7 +369,7 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'transportContractAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'transportContractAcceptFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'transportContractCancelled';
           requestId: string;
@@ -376,11 +377,11 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'transportContractCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'transportContractCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'shipDispatched'; requestId: string; agentId: string; shipId: string; processedAtTick: number }
-    | { type: 'shipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipDispatchFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'passengerShipDispatched'; requestId: string; agentId: string; shipId: string; processedAtTick: number }
-    | { type: 'passengerShipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'passengerShipDispatchFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'constructionShipDispatched';
           requestId: string;
@@ -388,7 +389,7 @@ export type OutboundMessage =
           shipId: string;
           processedAtTick: number;
       }
-    | { type: 'constructionShipDispatchFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionShipDispatchFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'constructionContractPosted';
           requestId: string;
@@ -396,7 +397,7 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'constructionContractPostFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionContractPostFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'constructionContractAccepted';
           requestId: string;
@@ -404,7 +405,7 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'constructionContractAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionContractAcceptFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'constructionContractCancelled';
           requestId: string;
@@ -412,15 +413,15 @@ export type OutboundMessage =
           contractId: string;
           processedAtTick: number;
       }
-    | { type: 'constructionContractCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionContractCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'shipBuyingOfferPosted'; requestId: string; agentId: string; offerId: string; processedAtTick: number }
-    | { type: 'shipBuyingOfferPostFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipBuyingOfferPostFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'shipBuyingOfferAccepted'; requestId: string; agentId: string; offerId: string; processedAtTick: number }
-    | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipBuyingOfferAcceptFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'shipListingPosted'; requestId: string; agentId: string; listingId: string; processedAtTick: number }
-    | { type: 'shipListingPostFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipListingPostFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'shipListingCancelled'; requestId: string; agentId: string; listingId: string; processedAtTick: number }
-    | { type: 'shipListingCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipListingCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'shipListingAccepted';
           requestId: string;
@@ -428,7 +429,7 @@ export type OutboundMessage =
           listingId: string;
           processedAtTick: number;
       }
-    | { type: 'shipListingAcceptFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipListingAcceptFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'shipConstructionFacilityBuilt';
           requestId: string;

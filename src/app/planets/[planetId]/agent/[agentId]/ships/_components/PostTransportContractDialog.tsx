@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { StorageResourceSelect } from '@/components/client/StorageResourceSelect';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -23,6 +24,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const t = useTranslations('Ships');
+    const showError = useErrorMessage();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -149,7 +151,7 @@ export function PostTransportContractDialog({ agentId, planetId, tick, children 
                         />
                         <p className='text-xs text-muted-foreground'>{t('contract.escrowNote')}</p>
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending}>
                             {mutation.isPending ? t('market.posting') : t('market.postContract')}

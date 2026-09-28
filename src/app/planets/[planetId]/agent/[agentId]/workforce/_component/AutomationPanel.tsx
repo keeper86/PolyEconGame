@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Bot, CheckCircle2 } from 'lucide-react';
@@ -25,6 +26,7 @@ export default function AutomationPanel({
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
     const tr = useTranslations('Workforce');
+    const showError = useErrorMessage();
 
     const [workerAuto, setWorkerAuto] = useState(initialWorker);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export default function AutomationPanel({
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : tr('automationFailed'));
+                setErrorMsg(showError(err));
                 setSuccessMsg(null);
             },
         }),

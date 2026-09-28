@@ -10,6 +10,7 @@ import { useAgentId } from '@/hooks/useAgentId';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { usePlanetId } from '@/hooks/usePlanetId';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { isFacilityOperating } from '@/simulation/planet/facility';
 import type { ShipConstructionFacility } from '@/simulation/planet/facility';
@@ -42,6 +43,7 @@ export function ActiveShipyardCard({
     const queryClient = useQueryClient();
     const t = useTranslations('Ships');
     const tt = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const currentPlanetId = usePlanetId();
     const { agentId: currentAgentId } = useAgentId();
 
@@ -123,7 +125,7 @@ export function ActiveShipyardCard({
                 agentId={agentId}
                 planetId={planetId}
                 isPending={setTargetMutation.isPending}
-                error={setTargetMutation.error?.message}
+                error={setTargetMutation.error ? showError(setTargetMutation.error) : null}
                 onConfirm={(shipTypeName, shipName) =>
                     setTargetMutation.mutate({
                         agentId,

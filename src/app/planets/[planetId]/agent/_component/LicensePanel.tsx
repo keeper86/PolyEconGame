@@ -1,5 +1,6 @@
 'use client';
 
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -24,6 +25,7 @@ type LicenseCardProps = {
 function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, description, icon: Icon }: LicenseCardProps) {
     const locale = useLocale();
     const t = useTranslations('Agent');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -91,7 +93,7 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                     </div>
                 )}
                 {acquireMutation.isError && (
-                    <p className='text-xs text-destructive mt-1'>{acquireMutation.error.message}</p>
+                    <p className='text-xs text-destructive mt-1'>{showError(acquireMutation.error)}</p>
                 )}
             </CardContent>
         </Card>

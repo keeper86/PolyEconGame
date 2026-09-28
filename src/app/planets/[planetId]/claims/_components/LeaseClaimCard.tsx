@@ -3,6 +3,7 @@
 import { useTour } from '@/components/tour/TourContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ClaimResourceSummary } from '@/server/controller/planet';
@@ -25,6 +26,7 @@ export function LeaseClaimCard({
 }): React.ReactElement {
     const locale = useLocale();
     const t = useTranslations('Claims');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [tierIndex, setTierIndex] = useState(0);
@@ -82,7 +84,7 @@ export function LeaseClaimCard({
                             leaseMutation.mutate({ agentId, planetId, resourceName: summary.resourceName, quantity })
                         }
                         submitLabel={t('lease')}
-                        errorMessage={leaseMutation.error?.message}
+                        errorMessage={leaseMutation.error ? showError(leaseMutation.error) : undefined}
                     />
                 </div>
             </CardContent>

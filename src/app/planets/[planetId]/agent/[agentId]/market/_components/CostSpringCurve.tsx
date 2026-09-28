@@ -244,7 +244,7 @@ export function CostSpringCurve({
                         axisLine={false}
                         tickLine={false}
                         label={{
-                            value: 'Price / Cost',
+                            value: t('priceOverCostAxis'),
                             position: 'insideBottom',
                             offset: -2,
                             fontSize: 10,
@@ -284,7 +284,7 @@ export function CostSpringCurve({
                         tickLine={false}
                         width={38}
                         label={{
-                            value: 'Spring push',
+                            value: t('springPushAxis'),
                             angle: -90,
                             position: 'insideLeft',
                             fontSize: 10,

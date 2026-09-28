@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
 import { termFor } from '@/i18n/terms';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTRPC } from '@/lib/trpc';
@@ -34,6 +35,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
     const queryClient = useQueryClient();
     const t = useTranslations('Ships');
     const locale = useLocale();
+    const showError = useErrorMessage();
     const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
@@ -100,7 +102,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
                             </SelectContent>
                         </Select>
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending || !shipId}>
                             {mutation.isPending ? t('market.accepting') : t('market.acceptContract')}

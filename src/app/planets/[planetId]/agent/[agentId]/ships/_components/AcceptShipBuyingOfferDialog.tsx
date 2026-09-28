@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAddPendingAction } from '@/hooks/useActionOverlay';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +34,7 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
     const t = useTranslations('Ships');
+    const showError = useErrorMessage();
     const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
@@ -98,7 +100,7 @@ export function AcceptShipBuyingOfferDialog({ agentId, planetId, offer, idleMatc
                             </SelectContent>
                         </Select>
                     </div>
-                    {mutation.error && <p className='text-xs text-destructive'>{mutation.error.message}</p>}
+                    {mutation.error && <p className='text-xs text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={mutation.isPending || !shipId}>
                             {mutation.isPending ? t('offer.selling') : t('offer.sellTitle')}

@@ -83,6 +83,19 @@ describe('useErrorMessage', () => {
         expect(result.current(domainError('priceNotPositive'))).toBe('Der Preis muss größer als 0 sein');
     });
 
+    it('resolves facility and ship type names in ship and contract errors', () => {
+        const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
+
+        expect(result.current(domainError('unknownFacility', { facilityName: 'Sawmill' }))).toBe(
+            'Unbekannte Anlage: Sägewerk',
+        );
+        expect(result.current(domainError('unknownShipType', { shipType: 'Bulk Carrier 1' }))).toBe(
+            'Unbekannter Schiffstyp: Massengutfrachter 1',
+        );
+        expect(result.current(domainError('shipNotIdle'))).toBe('Schiff ist nicht im Leerlauf');
+        expect(result.current(domainError('shipNotFound', { shipId: 'ship-1' }))).toBe('Schiff nicht gefunden: ship-1');
+    });
+
     it('has a message key for every domain error code', () => {
         const missingEn = DOMAIN_ERROR_CODES.filter((code) => !(code in en.Errors));
         const missingDe = DOMAIN_ERROR_CODES.filter((code) => !(code in de.Errors));

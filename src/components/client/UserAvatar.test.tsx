@@ -140,7 +140,7 @@ describe('UserAvatar', () => {
             data: undefined,
             isLoading: false,
             isError: true,
-            error: { message: errMsg },
+            error: new Error(errMsg),
         });
 
         renderWithIntl(<UserAvatar userId={'err-user'} />);

@@ -98,7 +98,7 @@ function LoanRow({
     agentId: string;
     planetId: string;
     onRepaid: (amount: number) => void;
-    onError: (msg: string) => void;
+    onError: (error: unknown) => void;
 }) {
     const locale = useLocale();
     const t = useTranslations('Financial');
@@ -131,7 +131,7 @@ function LoanRow({
                 });
             },
             onError: (err) => {
-                onError(err instanceof Error ? err.message : 'Repayment failed');
+                onError(err);
             },
         }),
     );
@@ -387,6 +387,7 @@ function OutstandingLoansSection({
     const locale = useLocale();
     const t = useTranslations('Toasts');
     const tf = useTranslations('Financial');
+    const showError = useErrorMessage();
     return (
         <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
             <CollapsibleTrigger
@@ -413,9 +414,7 @@ function OutstandingLoansSection({
                                     }),
                                 );
                             }}
-                            onError={(msg) => {
-                                toast.error(msg);
-                            }}
+                            onError={showError}
                         />
                     ))}
                 </div>

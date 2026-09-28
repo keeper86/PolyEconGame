@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -32,6 +33,7 @@ export function DispatchPassengerShipDialog({
     const locale = useLocale();
     const t = useTranslations('Ships');
     const tc = useTranslations('Common');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const [open, setOpen] = useState(false);
@@ -86,9 +88,7 @@ export function DispatchPassengerShipDialog({
                             })}
                         </p>
                     </div>
-                    {mutation.isError && (
-                        <p className='text-sm text-destructive'>{(mutation.error as unknown as Error).message}</p>
-                    )}
+                    {mutation.isError && <p className='text-sm text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
                             {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}

@@ -116,7 +116,10 @@ describe('handleDispatchPassengerShip validation', () => {
     it('fails when agent not found', () => {
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], []);
         dispatch(state, { agentId: 'missing', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: 'ship-1' }, post);
-        expect(messages[0]).toMatchObject({ type: 'passengerShipDispatchFailed', reason: 'Agent not found' });
+        expect(messages[0]).toMatchObject({
+            type: 'passengerShipDispatchFailed',
+            error: { code: 'agentNotFound', params: {} },
+        });
     });
 
     it('fails when source planet not found', () => {
@@ -155,7 +158,10 @@ describe('handleDispatchPassengerShip validation', () => {
         agent.ships.push(ship);
         const state = makeGameState([makePlanet({ id: 'p1' }), makePlanet({ id: 'p2' })], [agent]);
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id }, post);
-        expect(messages[0]).toMatchObject({ type: 'passengerShipDispatchFailed', reason: 'Ship is not idle' });
+        expect(messages[0]).toMatchObject({
+            type: 'passengerShipDispatchFailed',
+            error: { code: 'shipNotIdle', params: {} },
+        });
     });
 
     it('fails when ship is not on source planet', () => {
@@ -206,7 +212,7 @@ describe('handleDispatchPassengerShip validation', () => {
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id }, post);
         expect(messages[0]).toMatchObject({
             type: 'passengerShipDispatchFailed',
-            reason: 'No commercial license on destination planet',
+            error: { code: 'noCommercialLicenseOnDestination', params: {} },
         });
     });
 
@@ -220,7 +226,7 @@ describe('handleDispatchPassengerShip validation', () => {
         dispatch(state, { agentId: 'a1', fromPlanetId: 'p1', toPlanetId: 'p2', shipId: ship.id }, post);
         expect(messages[0]).toMatchObject({
             type: 'passengerShipDispatchFailed',
-            reason: 'No commercial license on destination planet',
+            error: { code: 'noCommercialLicenseOnDestination', params: {} },
         });
     });
 

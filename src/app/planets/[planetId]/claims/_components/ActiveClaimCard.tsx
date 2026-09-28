@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { AgentClaimEntry, ClaimResourceSummary } from '@/server/controller/planet';
@@ -47,6 +48,7 @@ export function ActiveClaimCard({
 }): React.ReactElement {
     const locale = useLocale();
     const t = useTranslations('Claims');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [showExpand, setShowExpand] = useState(false);
@@ -185,7 +187,7 @@ export function ActiveClaimCard({
                             }
                             onCancel={() => setShowExpand(false)}
                             submitLabel={t('expand')}
-                            errorMessage={expandMutation.error?.message}
+                            errorMessage={expandMutation.error ? showError(expandMutation.error) : undefined}
                         />
                     </div>
                 ) : confirmQuit ? (
@@ -223,7 +225,9 @@ export function ActiveClaimCard({
                                 {t('cancel')}
                             </Button>
                         </div>
-                        {quitMutation.error && <p className='text-xs text-destructive'>{quitMutation.error.message}</p>}
+                        {quitMutation.error && (
+                            <p className='text-xs text-destructive'>{showError(quitMutation.error)}</p>
+                        )}
                     </div>
                 ) : (
                     <div className='flex gap-2 border-t pt-3 mt-auto'>

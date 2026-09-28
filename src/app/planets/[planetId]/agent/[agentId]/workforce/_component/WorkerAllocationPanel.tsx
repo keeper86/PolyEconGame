@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { EducationLevelType } from '@/simulation/population/education';
@@ -40,6 +41,7 @@ export default function WorkerAllocationPanel({
     const locale = useLocale();
     const tr = useTranslations('Workforce');
     const tc = useTranslations('Common');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -64,14 +66,14 @@ export default function WorkerAllocationPanel({
     const mutation = useMutation(
         trpc.setWorkerAllocationTargets.mutationOptions({
             onSuccess: () => {
-                setSuccessMsg('Workforce targets saved. Changes take effect on the next hire tick.');
+                setSuccessMsg(tr('targetsSaved'));
                 setErrorMsg(null);
                 void queryClient.invalidateQueries({
                     queryKey: trpc.simulation.getAgentPlanetDetail.queryKey(),
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : 'Failed to update workforce targets');
+                setErrorMsg(showError(err));
                 setSuccessMsg(null);
             },
         }),

@@ -57,7 +57,8 @@ const TEXT_KEYS = new Set([
     'loadingLabel',
     'emptyLabel',
 ]);
-const TEXT_SUFFIX_RE = /(?:Labels?|Text|Title|Message|Description|Placeholder|Caption|Subtitle|Heading|Legend|Tooltip)$/;
+const TEXT_SUFFIX_RE = /(?:Labels?|Text|Title|Message|Msg|Description|Placeholder|Caption|Subtitle|Heading|Legend|Tooltip)$/;
+const STATE_SETTER_RE = /^set[A-Z]/;
 const MAP_NAME_RE = /(LABELS?|_TEXTS?|_NAMES|_POOL|_STEPS)$/;
 const SKIP_DECLARATIONS = new Set(['PLANET_NAMES', 'FACILITY_LEVEL_LABELS', 'STORAGE_SHELL_FORM_NAMES']);
 
@@ -189,7 +190,31 @@ const findLiterals = (file) => {
                 } else if (name === 'name') {
                     const text = staticTextOf(expr);
                     if (text !== null && !isDataKey(text.trim())) reportText(hits, expr, source, name, text);
+                } else if (name === 'label') {
+                    const value = unwrap(expr);
+                    if (ts.isObjectLiteralExpression(value)) {
+                        for (const prop of value.properties) {
+                            if (
+                                ts.isPropertyAssignment(prop) &&
+                                ts.isIdentifier(prop.name) &&
+                                prop.name.text === 'value'
+                            ) {
+                                reportValue(hits, prop.initializer, source, 'labelValue');
+                            }
+                        }
+                    }
                 }
+            }
+        }
+        if (
+            ts.isCallExpression(node) &&
+            ts.isIdentifier(node.expression) &&
+            STATE_SETTER_RE.test(node.expression.text) &&
+            node.arguments.length > 0
+        ) {
+            const text = staticTextOf(node.arguments[0]);
+            if (text !== null && (/\s/.test(text.trim()) || /^[A-Z]/.test(text.trim()))) {
+                reportText(hits, node.arguments[0], source, `set:${node.expression.text}`, text);
             }
         }
         if (
@@ -238,6 +263,14 @@ const findLiterals = (file) => {
             !(node.parent && ts.isJsxAttribute(node.parent))
         ) {
             reportConditional(node.expression);
+        }
+        if (ts.isConditionalExpression(node) && !(node.parent && ts.isJsxExpression(node.parent))) {
+            for (const branch of [node.whenTrue, node.whenFalse]) {
+                const text = staticTextOf(branch);
+                if (text !== null && /\s/.test(text.trim()) && /[A-Z]/.test(text)) {
+                    reportText(hits, branch, source, 'ternary', text);
+                }
+            }
         }
         if (ts.isBindingElement(node) && node.initializer) {
             const name = ts.isIdentifier(node.name) ? node.name.text : null;

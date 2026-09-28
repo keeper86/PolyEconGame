@@ -1223,7 +1223,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractPostFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1232,7 +1232,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractPostFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1260,7 +1260,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractAcceptFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1269,7 +1269,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractAcceptFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1295,7 +1295,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractCancelFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1304,7 +1304,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'transportContractCancelFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1322,7 +1322,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipDispatchFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1331,7 +1331,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipDispatchFailed',
                     requestId,
-                    reason: `Planet '${toPlanetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1357,7 +1357,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionShipDispatchFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1366,7 +1366,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionShipDispatchFailed',
                     requestId,
-                    reason: `Planet '${toPlanetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1392,7 +1392,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'passengerShipDispatchFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1401,7 +1401,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'passengerShipDispatchFailed',
                     requestId,
-                    reason: `Planet '${toPlanetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: toPlanetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1436,7 +1436,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractPostFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1445,7 +1445,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractPostFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1473,7 +1473,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractAcceptFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1482,7 +1482,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractAcceptFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1508,7 +1508,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractCancelFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1517,7 +1517,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'constructionContractCancelFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1535,7 +1535,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipBuyingOfferPostFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1544,7 +1544,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipBuyingOfferPostFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1562,7 +1562,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipBuyingOfferAcceptFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1571,7 +1571,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipBuyingOfferAcceptFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1597,7 +1597,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipListingPostFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1606,7 +1606,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipListingPostFailed',
                     requestId,
-                    reason: `Planet '${planetId}' not found`,
+                    error: { code: 'planetNotFound', params: { planetId: planetId } },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1624,7 +1624,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipListingCancelFailed',
                     requestId,
-                    reason: 'Agent not found',
+                    error: { code: 'agentNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1642,7 +1642,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipListingAcceptFailed',
                     requestId,
-                    reason: 'Buyer agent not found',
+                    error: { code: 'shipBuyerNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;
@@ -1651,7 +1651,7 @@ export default async function simulationTask(task: TaskPayload): Promise<void> {
                 safePostMessage({
                     type: 'shipListingAcceptFailed',
                     requestId,
-                    reason: 'Seller agent not found',
+                    error: { code: 'shipSellerNotFound', params: {} },
                     processedAtTick: state.tick,
                 });
                 return;

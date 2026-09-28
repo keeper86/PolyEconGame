@@ -3,7 +3,7 @@ import type { InboundMessage, OutboundMessage } from './messages';
 export interface CommandSpec<
     _TInbound extends InboundMessage & { requestId: string },
     TSuccess extends OutboundMessage & { requestId: string },
-    TFailure extends OutboundMessage & { requestId: string; reason: string },
+    TFailure extends OutboundMessage & { requestId: string },
     TResult,
 > {
     readonly successType: TSuccess['type'];

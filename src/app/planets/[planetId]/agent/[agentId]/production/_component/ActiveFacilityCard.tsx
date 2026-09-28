@@ -220,10 +220,11 @@ export function ActiveFacilityCard({
         return { estimatedPayout: marketValue * RECYCLER_PAYMENT_RATIO * recyclerRatio, amount };
     }, [csPrice, recyclerRatio, amount]);
 
-    // Compute the pending scale fraction from the pending action (if any)
     const pendingScaleFraction = pendingScaleAction?.targetScaleFraction;
     const pendingScaleText =
-        pendingScaleFraction !== undefined ? `Pending → ${Math.round(pendingScaleFraction * 100)}%` : null;
+        pendingScaleFraction !== undefined
+            ? tp('pendingScale', { percent: Math.round(pendingScaleFraction * 100) })
+            : null;
 
     const operatingScaleSection = (
         <div className='space-y-1 pt-2 pb-1.5'>

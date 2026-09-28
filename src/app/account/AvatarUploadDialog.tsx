@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import UserAvatar from '@/components/client/UserAvatar';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -25,6 +26,7 @@ export function AvatarUploadDialog() {
     const t = useTranslations('Account');
     const tErrors = useTranslations('Errors');
     const tc = useTranslations('Common');
+    const showError = useErrorMessage();
 
     const [open, setOpen] = useState(false);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -44,7 +46,7 @@ export function AvatarUploadDialog() {
                 }
             },
             onError: (err) => {
-                setError(err instanceof Error ? err.message : tErrors('operationFailed'));
+                setError(showError(err));
             },
         }),
     );

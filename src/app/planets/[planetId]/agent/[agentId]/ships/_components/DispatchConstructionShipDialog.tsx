@@ -5,6 +5,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTRPC } from '@/lib/trpc';
 import { termFor } from '@/i18n/terms';
 import { FACILITY_LEVELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
@@ -37,6 +38,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
     const tc = useTranslations('Common');
     const tl = useTranslations('Levels');
     const locale = useLocale();
+    const showError = useErrorMessage();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -106,9 +108,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
                             </Accordion>
                         </div>
                     </div>
-                    {mutation.isError && (
-                        <p className='text-sm text-destructive'>{(mutation.error as unknown as Error).message}</p>
-                    )}
+                    {mutation.isError && <p className='text-sm text-destructive'>{showError(mutation.error)}</p>}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
                             {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}
