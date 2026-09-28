@@ -2,7 +2,7 @@
 
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { FlowRates } from './resourceFlowNormalizer';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 function paceBadge(label: string, pct: number): React.ReactElement {
     const abs = Math.abs(pct);
@@ -25,6 +25,7 @@ function paceBadge(label: string, pct: number): React.ReactElement {
 }
 
 function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
+    const tr = useTranslations('Storage');
     const max = Math.max(rates.prevMonthAvgRate, rates.currentMonthAvgRate, rates.lastTickRate, 0.001);
     const prevPct = (rates.prevMonthAvgRate / max) * 100;
     const currPct = (rates.currentMonthAvgRate / max) * 100;
@@ -44,9 +45,9 @@ function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
                 />
             </div>
             <div className='flex justify-between text-[9px] text-muted-foreground/60'>
-                <span>Prev Mo</span>
-                <span>MTD</span>
-                <span>Last</span>
+                <span>{tr('prevMo')}</span>
+                <span>{tr('mtd')}</span>
+                <span>{tr('last')}</span>
             </div>
         </div>
     );
@@ -54,6 +55,7 @@ function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
 
 export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Storage');
     const vsMtdPct =
         rates.currentMonthAvgRate > 0
             ? ((rates.lastTickRate - rates.currentMonthAvgRate) / rates.currentMonthAvgRate) * 100
@@ -71,19 +73,19 @@ export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.Reac
         <div className='space-y-2 min-w-[160px]'>
             <div className='space-y-1 text-[11px]'>
                 <div className='flex justify-between'>
-                    <span className='text-muted-foreground'>Previous Month</span>
+                    <span className='text-muted-foreground'>{tr('previousMonth')}</span>
                     <span className='font-medium tabular-nums'>
                         {formatNumberWithUnit(rates.prevMonthAvgRate, 'none', undefined, locale)} u/t
                     </span>
                 </div>
                 <div className='flex justify-between'>
-                    <span className='text-muted-foreground'>Current Month</span>
+                    <span className='text-muted-foreground'>{tr('currentMonth')}</span>
                     <span className='font-medium tabular-nums'>
                         {formatNumberWithUnit(rates.currentMonthAvgRate, 'none', undefined, locale)} u/t
                     </span>
                 </div>
                 <div className='flex justify-between border-t border-border/20 pt-1'>
-                    <span className='font-medium'>Last Tick</span>
+                    <span className='font-medium'>{tr('lastTick')}</span>
                     <span className='font-bold tabular-nums'>
                         {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)} u/t
                     </span>
@@ -93,8 +95,8 @@ export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.Reac
             <MicroBulletChart rates={rates} />
 
             <div className='flex flex-wrap gap-x-2 gap-y-0.5 pt-1 border-t border-border/20'>
-                {paceBadge('vs MTD', vsMtdPct)}
-                {paceBadge('vs Prev. Mo', vsPrevPct)}
+                {paceBadge(tr('vsMtd'), vsMtdPct)}
+                {paceBadge(tr('vsPrevMo'), vsPrevPct)}
             </div>
         </div>
     );

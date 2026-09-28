@@ -11,7 +11,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type AllocationTargets = Record<EducationLevelType, number>;
 
@@ -24,12 +24,12 @@ type Props = {
     automateWorkerAllocation: boolean;
 };
 
-const EDU_LEVELS: { key: EducationLevelType; label: string; description: string }[] = [
-    { key: 'none', label: 'Uneducated', description: 'Workers with no formal education' },
-    { key: 'primary', label: 'Primary', description: 'Workers with primary school education' },
-    { key: 'secondary', label: 'Secondary', description: 'Workers with secondary / high-school education' },
-    { key: 'tertiary', label: 'Tertiary', description: 'Workers with a university degree' },
-];
+const EDU_LEVELS = [
+    { key: 'none', label: 'uneducated', description: 'uneducatedDesc' },
+    { key: 'primary', label: 'primary', description: 'primaryDesc' },
+    { key: 'secondary', label: 'secondary', description: 'secondaryDesc' },
+    { key: 'tertiary', label: 'tertiary', description: 'tertiaryDesc' },
+] as const;
 
 export default function WorkerAllocationPanel({
     agentId,
@@ -38,6 +38,7 @@ export default function WorkerAllocationPanel({
     automateWorkerAllocation,
 }: Props): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Workforce');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -93,10 +94,10 @@ export default function WorkerAllocationPanel({
             <span className='flex items-center justify-between gap-2 cursor-pointer'>
                 <div className='flex items-center gap-2'>
                     <Users className='h-4 w-4 text-muted-foreground' />
-                    <span className='text-sm font-semibold'>Workforce Allocation Targets</span>
+                    <span className='text-sm font-semibold'>{tr('allocationTargets')}</span>
                     {automateWorkerAllocation && (
                         <span className='text-[10px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded px-1.5 py-0.5 font-medium'>
-                            AI managed
+                            {tr('aiManaged')}
                         </span>
                     )}
                 </div>
@@ -104,18 +105,18 @@ export default function WorkerAllocationPanel({
 
             <div className='space-y-4'>
                 {automateWorkerAllocation ? (
-                    <p className='text-xs text-muted-foreground'>Automatic worker allocation is enabled.</p>
+                    <p className='text-xs text-muted-foreground'>{tr('autoEnabled')}</p>
                 ) : (
-                    <p className='text-xs text-muted-foreground'>Set the desired headcount per education level.</p>
+                    <p className='text-xs text-muted-foreground'>{tr('setHeadcount')}</p>
                 )}
 
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                     {EDU_LEVELS.map(({ key, label, description }) => (
                         <div key={key} className='space-y-1'>
                             <Label htmlFor={`worker-target-${key}`} className='text-xs font-medium'>
-                                {label}
+                                {tr(label)}
                             </Label>
-                            <p className='text-[11px] text-muted-foreground'>{description}</p>
+                            <p className='text-[11px] text-muted-foreground'>{tr(description)}</p>
                             <Input
                                 id={`worker-target-${key}`}
                                 type='number'
@@ -132,7 +133,7 @@ export default function WorkerAllocationPanel({
 
                 <div className='flex items-center justify-between gap-2'>
                     <span className='text-xs text-muted-foreground tabular-nums'>
-                        Total target:{' '}
+                        {tr('totalTarget')}{' '}
                         <span className='font-medium text-foreground'>
                             {formatNumberWithUnit(totalTarget, 'persons', undefined, locale)}
                         </span>

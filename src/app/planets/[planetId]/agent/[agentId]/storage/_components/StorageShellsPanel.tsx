@@ -25,10 +25,11 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { StorageBalanceRow } from './StorageBalanceRow';
 import { StorageBufferGauge } from './StorageBufferGauge';
 import { StorageStarvationBar } from './StorageStarvationBar';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Storage');
     const used = usageOfShell(shell);
     const capacity = { volume: shell.capacity.volume * shell.maxScale, mass: shell.capacity.mass * shell.maxScale };
     const volumePct = capacity.volume > 0 ? Math.min(1, used.volume / capacity.volume) : 0;
@@ -45,7 +46,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
         <div className='flex flex-col gap-2 py-2'>
             <div className='space-y-1'>
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
-                    <span>Volume used</span>
+                    <span>{tr('volumeUsed')}</span>
                     <span className='tabular-nums'>
                         {formatNumberWithUnit(used.volume, 'm3', undefined, locale)} /{' '}
                         {formatNumberWithUnit(capacity.volume, 'm3', undefined, locale)}
@@ -55,7 +56,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
             </div>
             <div className='space-y-1'>
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
-                    <span>Mass used</span>
+                    <span>{tr('massUsed')}</span>
                     <span className='tabular-nums'>
                         {formatNumberWithUnit(used.mass, 'tonnes', undefined, locale)} /{' '}
                         {formatNumberWithUnit(capacity.mass, 'tonnes', undefined, locale)}

@@ -10,7 +10,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { WorkforceSummary } from './workforceSummary';
 import type { DemographicEventCounters } from '@/simulation/planet/planet';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export type EducationLevelCardsProps = {
     summary: WorkforceSummary;
@@ -55,6 +55,7 @@ function EducationCard({
     isTotal?: boolean;
 }): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Workforce');
     const formatNumbersNextTotal = (next: number, total: number): string =>
         `${formatNumberWithUnit(next, 'persons', undefined, locale)}  (${formatNumberWithUnit(total, 'persons', undefined, locale)})`;
     const { label, badgeClassName } = header;
@@ -96,7 +97,7 @@ function EducationCard({
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
-                                        <div className='font-medium'>Overqualified workers</div>
+                                        <div className='font-medium'>{tr('overqualified')}</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
                                             Facilities filled{' '}
                                             {formatNumberWithUnit(overqualifiedCount, 'persons', undefined, locale)}{' '}
@@ -146,7 +147,7 @@ function EducationCard({
                     aria-controls={onboardingId}
                     className='flex items-center gap-2 text-left'
                 >
-                    <span className='truncate text-muted-foreground'>Onboarding</span>
+                    <span className='truncate text-muted-foreground'>{tr('onboarding')}</span>
                     <svg
                         className={`w-3 h-3 text-muted-foreground transition-transform ${onboardingOpen ? 'rotate-180' : ''}`}
                         viewBox='0 0 20 20'
@@ -209,7 +210,7 @@ function EducationCard({
                     aria-controls={onNoticeId}
                     className='flex items-center gap-2 text-left'
                 >
-                    <span className='truncate text-muted-foreground'>On notice</span>
+                    <span className='truncate text-muted-foreground'>{tr('onNotice')}</span>
                     <svg
                         className={`w-3 h-3 text-muted-foreground transition-transform ${onNoticeOpen ? 'rotate-180' : ''}`}
                         viewBox='0 0 20 20'
@@ -262,7 +263,7 @@ function EducationCard({
             <Rule />
 
             <div className='flex items-baseline justify-between gap-2'>
-                <span className='text-muted-foreground'>Age / Tenure (XP)</span>
+                <span className='text-muted-foreground'>{tr('ageTenure')}</span>
                 <span className='tabular-nums font-medium'>
                     {hasWorkers ? `${meanAge.toFixed(1)}` : '—'}
                     <span className='text-muted-foreground mx-0.5'>/</span>
@@ -270,7 +271,7 @@ function EducationCard({
                 </span>
             </div>
             <div className='flex items-baseline justify-between gap-2'>
-                <span className='text-muted-foreground'>Productivity</span>
+                <span className='text-muted-foreground'>{tr('productivity')}</span>
                 <span
                     className={`tabular-nums font-medium ${
                         hasWorkers && combinedProd < 1.0
@@ -304,6 +305,7 @@ export function EducationLevelCards({
     deaths,
     disabilities,
 }: EducationLevelCardsProps): React.ReactElement {
+    const tr = useTranslations('Workforce');
     const totalActive = summary.totalActive;
     const totalOnboarding = summary.totalOnboarding;
     const totalFired = summary.totalFired;
@@ -356,7 +358,7 @@ export function EducationLevelCards({
 
             <EducationCard
                 header={{
-                    label: 'Total',
+                    label: tr('total'),
                     badgeClassName: 'border-foreground/30 bg-muted text-foreground font-semibold',
                 }}
                 headcount={{
