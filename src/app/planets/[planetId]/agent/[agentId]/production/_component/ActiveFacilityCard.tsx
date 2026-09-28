@@ -13,6 +13,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { RECYCLER_BASE_RECOVERY_EFFICIENCY, RECYCLER_PAYMENT_RATIO } from '@/simulation/constants';
 import type { ManagementFacility, ProductionFacility, StorageFacility } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction, getFacilityType, isFacilityOperating } from '@/simulation/planet/facility';
+import { useErrorMessage } from '@/i18n/errors';
 import { useMutation } from '@tanstack/react-query';
 import { Clock, Percent, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -24,7 +25,7 @@ import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
 import { FacilityHeader, limitingEfficiency } from '../../_component/FacilityHeader';
 import { FacilityProductionIORow } from './FacilityIORow';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ActiveFacilityCard({
     facility,
@@ -48,6 +49,8 @@ export function ActiveFacilityCard({
     dataTour?: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
@@ -100,12 +103,12 @@ export function ActiveFacilityCard({
                     targetScale: previewScale,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Expansion ordered. Changes take effect on the next tick.');
+                toast.success(t('expansionOrdered'));
                 setShowExpand(false);
                 onExpanded?.();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Expand failed');
+                toast.error(err instanceof Error ? showError(err) : t('expandFailed'));
             },
         }),
     );
@@ -121,10 +124,10 @@ export function ActiveFacilityCard({
                     targetScaleFraction: SCALE_FRACTIONS[scaleFractionIndex] ?? 1,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Operating scale updated. Changes take effect on the next tick.');
+                toast.success(t('scaleUpdated'));
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Scale change failed');
+                toast.error(err instanceof Error ? showError(err) : t('scaleChangeFailed'));
             },
         }),
     );
@@ -140,12 +143,12 @@ export function ActiveFacilityCard({
                     targetScale: reduceTarget,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Capacity reduction ordered. Changes take effect on the next tick.');
+                toast.success(t('capacityReductionOrdered'));
                 setShowReduce(false);
                 onExpanded?.();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Contract failed');
+                toast.error(err instanceof Error ? showError(err) : t('contractFailed'));
             },
         }),
     );

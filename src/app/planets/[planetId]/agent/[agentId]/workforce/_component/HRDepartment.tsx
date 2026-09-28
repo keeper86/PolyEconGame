@@ -24,8 +24,10 @@ import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { humanResourcesOfficeFacilityType, PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import { hrBufferStatus, type HrBufferStatus } from '@/simulation/workforce/hrBuffer';
+import { useErrorMessage } from '@/i18n/errors';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React, { useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
@@ -84,6 +86,8 @@ function HRBuildCard({
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
     const { isTourActive, markActionCompleted } = useTour();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
@@ -99,14 +103,14 @@ function HRBuildCard({
                     facilityKey: entry.name,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Construction ordered. Changes take effect on the next tick.');
+                toast.success(t('constructionOrdered'));
                 if (isTourActive) {
                     markActionCompleted('build-hr');
                 }
                 onBuilt();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Build failed');
+                toast.error(err instanceof Error ? showError(err) : t('buildFailed'));
             },
         }),
     );

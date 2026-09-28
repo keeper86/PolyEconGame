@@ -10,8 +10,10 @@ import { useTRPC } from '@/lib/trpc';
 import type { Facility, ManagementFacility, ProductionFacility } from '@/simulation/planet/facility';
 import { getFacilityType } from '@/simulation/planet/facility';
 import { oilWellName } from '@/simulation/planet/productionFacilities';
+import { useErrorMessage } from '@/i18n/errors';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React, { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
@@ -44,6 +46,8 @@ function BuildForm({
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
     const { isTourActive, markActionCompleted } = useTour();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
 
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
@@ -62,14 +66,14 @@ function BuildForm({
                     facilityKey: entry.name,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Construction ordered. Changes take effect on the next tick.');
+                toast.success(t('constructionOrdered'));
                 if (isTourActive && isOilWell) {
                     markActionCompleted('build-oil-well');
                 }
                 onBuilt();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Build failed');
+                toast.error(err instanceof Error ? showError(err) : t('buildFailed'));
             },
         }),
     );

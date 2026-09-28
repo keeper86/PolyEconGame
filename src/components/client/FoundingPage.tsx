@@ -14,6 +14,7 @@ import { getLandboundRessourceByName } from '@/simulation/planet/landBoundResour
 import { bankEquity } from '@/simulation/planet/planet';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -24,7 +25,7 @@ import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
 import { CompanyLogoChooser } from './CompanyLogoChooser';
-import { useLocale } from 'next-intl';
+import { useErrorMessage } from '@/i18n/errors';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -56,6 +57,8 @@ function CarouselNav() {
 
 export function FoundingPage() {
     const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const router = useRouter();
     const { setTourActive } = useTour();
@@ -117,10 +120,10 @@ export function FoundingPage() {
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
                 setFoundedAtTick(Math.max(tick, data.tick));
                 setCreatedAgentId(data.agentId);
-                toast.success('Company registered');
+                toast.success(t('companyRegistered'));
             },
             onError: (err: unknown) => {
-                const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+                const message = showError(err);
                 setAgentNameError(message);
                 toast.error(message);
             },
@@ -144,7 +147,7 @@ export function FoundingPage() {
         }
         if (!logo || logo === 'unknown') {
             setShowLogoPrompt(true);
-            toast.error('Please select a company logo');
+            toast.error(t('selectLogo'));
             return;
         }
         setTourActive(enableTour);

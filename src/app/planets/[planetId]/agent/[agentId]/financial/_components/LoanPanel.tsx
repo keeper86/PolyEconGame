@@ -16,7 +16,8 @@ import { Separator } from '@/components/ui/separator';
 import { useTour } from '@/components/tour/TourContext';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
-import { useLocale } from 'next-intl';
+import { useErrorMessage } from '@/i18n/errors';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -168,6 +169,8 @@ function LoanRow({
 
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
@@ -191,7 +194,9 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
         trpc.requestLoan.mutationOptions({
             onSuccess: (result) => {
                 toast.success(
-                    `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId, locale)} will be credited after this tick.`,
+                    t('loanRequested', {
+                        amount: formatNumberWithUnit(result.grantedAmount, 'currency', planetId, locale),
+                    }),
                 );
 
                 addPending({
@@ -212,7 +217,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
             },
             onError: (err) => {
                 removePendingByKey(agentId, planetId, LOAN_REQUEST_PENDING_KEY);
-                toast.error(err instanceof Error ? err.message : 'Loan request failed');
+                toast.error(err instanceof Error ? showError(err) : t('loanRequestFailed'));
             },
         }),
     );
@@ -350,6 +355,7 @@ function OutstandingLoansSection({
     planetId: string;
 }) {
     const locale = useLocale();
+    const t = useTranslations('Toasts');
     return (
         <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
             <CollapsibleTrigger
@@ -371,7 +377,9 @@ function OutstandingLoansSection({
                             planetId={planetId}
                             onRepaid={(amount) => {
                                 toast.success(
-                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId, locale)} — loan partially or fully settled.`,
+                                    t('loanRepaid', {
+                                        amount: formatNumberWithUnit(amount, 'currency', planetId, locale),
+                                    }),
                                 );
                             }}
                             onError={(msg) => {

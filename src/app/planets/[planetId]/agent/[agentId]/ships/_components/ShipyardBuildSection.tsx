@@ -8,8 +8,10 @@ import { Separator } from '@/components/ui/separator';
 import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
+import { useErrorMessage } from '@/i18n/errors';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
@@ -63,6 +65,8 @@ function ShipyardBuildForm({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const [shipyardName, setShipyardName] = useState('');
 
     const { data: financials } = useSimulationQuery(
@@ -80,11 +84,11 @@ function ShipyardBuildForm({
                     facilityName: shipyardName.trim(),
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Shipyard construction ordered. Changes take effect on the next day.');
+                toast.success(t('shipyardOrdered'));
                 onCancel();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Shipyard build failed');
+                toast.error(err instanceof Error ? showError(err) : t('shipyardBuildFailed'));
             },
         }),
     );
@@ -127,7 +131,7 @@ function ShipyardBuildForm({
                     onCancel={onCancel}
                     onConfirm={(targetScale) => {
                         if (!shipyardName.trim()) {
-                            toast.error('Please enter a shipyard name');
+                            toast.error(t('shipyardNameRequired'));
                             return;
                         }
                         buildMutation.mutate({

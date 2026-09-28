@@ -6,21 +6,24 @@ import { useTRPC } from '@/lib/trpc';
 import { validateBuyBid } from '@/simulation/market/validation';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { AutoConfigLocalState, LocalResourceState, MarketBidEntry } from './marketTypes';
 import { BUY_PRICING_KEYS, BUY_VOLUME_KEYS, localToAutoConfig } from './marketTypes';
 
-function depositWarning(message: string, agentId: string, planetId: string) {
+type ToastTranslator = ReturnType<typeof useTranslations<'Toasts'>>;
+
+function depositWarning(t: ToastTranslator, message: string, agentId: string, planetId: string) {
     return (
         <span>
-            {message}. You can borrow funds on the{' '}
+            {message}. {t('depositBorrowPrefix')}
             <a
                 href={`/planets/${planetId}/agent/${agentId}/financial`}
                 className='underline font-medium hover:text-blue-700'
             >
-                Financial page
+                {t('depositBorrowLink')}
             </a>
             .
         </span>
@@ -84,14 +87,16 @@ export function useBuySectionMutations({
     const addPending = useAddPendingAction();
     const pendingActions = usePendingActions(agentId, planetId);
     const { isTourActive: marketIsTourActive, markActionCompleted: marketMarkActionCompleted } = useTour();
+    const t = useTranslations('Toasts');
+    const tErrors = useTranslations('Errors');
     const resource = getResourceByName(resourceName);
 
     const buyMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
             onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
                 if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
+                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
                 } else {
                     toast.error(errorMessage);
                 }
@@ -102,9 +107,9 @@ export function useBuySectionMutations({
     const buyPricingMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
             onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
                 if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
+                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
                 } else {
                     toast.error(errorMessage);
                 }
@@ -115,9 +120,9 @@ export function useBuySectionMutations({
     const buyVolumeMutation = useMutation(
         trpc.setBuyBids.mutationOptions({
             onError: (err) => {
-                const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
                 if (errorMessage.includes('Insufficient deposits')) {
-                    toast.error(depositWarning(errorMessage, agentId, planetId));
+                    toast.error(depositWarning(t, errorMessage, agentId, planetId));
                 } else {
                     toast.error(errorMessage);
                 }
@@ -132,7 +137,7 @@ export function useBuySectionMutations({
 
     const handleSaveBuy = () => {
         if (!resource) {
-            toast.error(`Unknown resource: ${resourceName}`);
+            toast.error(tErrors('unknownResource', { resourceName }));
             return;
         }
 
@@ -150,16 +155,21 @@ export function useBuySectionMutations({
             if (!validation.isValid) {
                 const errorText = validation.error;
                 if (errorText && errorText.includes('Insufficient deposits')) {
-                    toast.error(<span>Buy validation failed: {depositWarning(errorText, agentId, planetId)}</span>);
+                    toast.error(
+                        <span>
+                            {t('buyValidationFailedPrefix')}
+                            {depositWarning(t, errorText, agentId, planetId)}
+                        </span>,
+                    );
                 } else {
-                    toast.error(`Buy validation failed: ${errorText}`);
+                    toast.error(`${t('buyValidationFailedPrefix')}${errorText}`);
                 }
                 return;
             }
         }
 
         if (isNaN(bidPrice) || bidPrice <= 0) {
-            toast.error(`Buy validation failed: Invalid bid price.`);
+            toast.error(t('invalidBidPrice'));
             return;
         }
 
@@ -226,13 +236,13 @@ export function useBuySectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Buy bids saved. Changes take effect on the next market tick.');
+                    toast.success(t('buyBidsSaved'));
                 },
                 onError: (err) => {
                     setBuyAutomationSaving(false);
-                    const errorMessage = err instanceof Error ? err.message : 'Failed to update buy bids';
+                    const errorMessage = err instanceof Error ? err.message : t('updateBuyBidsFailed');
                     if (errorMessage.includes('Insufficient deposits')) {
-                        toast.error(depositWarning(errorMessage, agentId, planetId));
+                        toast.error(depositWarning(t, errorMessage, agentId, planetId));
                     } else {
                         toast.error(errorMessage);
                     }
@@ -266,11 +276,11 @@ export function useBuySectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Pricing config saved.');
+                    toast.success(t('pricingConfigSaved'));
                 },
                 onError: (err) => {
                     setBuyPricingConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : 'Failed to save');
+                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
                 },
             },
         );
@@ -301,11 +311,11 @@ export function useBuySectionMutations({
                             triggerTick: data.processedAtTick,
                         });
                     }
-                    toast.success('Volume config saved.');
+                    toast.success(t('volumeConfigSaved'));
                 },
                 onError: (err) => {
                     setBuyVolumeConfigSaving(false);
-                    toast.error(err instanceof Error ? err.message : 'Failed to save');
+                    toast.error(err instanceof Error ? err.message : t('saveFailed'));
                 },
             },
         );

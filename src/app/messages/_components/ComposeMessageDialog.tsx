@@ -15,7 +15,9 @@ import { Label } from '@/components/ui/label';
 import { RecipientPicker } from '@/app/messages/_components/RecipientPicker';
 import { useSendMessage } from '@/hooks/useMessages';
 import type { RecipientCandidate } from '@/app/messages/_components/recipientLabel';
+import { useErrorMessage } from '@/i18n/errors';
 import { PenSquare } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -26,6 +28,8 @@ export function ComposeMessageDialog() {
     const [body, setBody] = useState('');
 
     const sendMessage = useSendMessage();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
 
     const reset = () => {
         setRecipient(null);
@@ -43,12 +47,12 @@ export function ComposeMessageDialog() {
             { recipientUserId: recipient.userId, subject: subject.trim(), body: body.trim() },
             {
                 onSuccess: () => {
-                    toast.success('Message sent');
+                    toast.success(t('messageSent'));
                     reset();
                     setOpen(false);
                 },
                 onError: (error) => {
-                    toast.error(error instanceof Error ? error.message : 'Failed to send message');
+                    toast.error(error instanceof Error ? showError(error) : t('messageSendFailed'));
                 },
             },
         );

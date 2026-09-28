@@ -24,6 +24,8 @@ import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { PRODUCED_STORAGE_QUANTITY, logisticsDepartmentFacilityType } from '@/simulation/planet/specialFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
+import { useErrorMessage } from '@/i18n/errors';
+import { useTranslations } from 'next-intl';
 import React, { useMemo, useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
@@ -97,6 +99,8 @@ function StorageBuildCard({
 }): React.ReactElement {
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
     );
@@ -112,11 +116,11 @@ function StorageBuildCard({
                     facilityKey: entry.name,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Construction ordered. Changes take effect on the next tick.');
+                toast.success(t('constructionOrdered'));
                 onBuilt();
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Build failed');
+                toast.error(err instanceof Error ? showError(err) : t('buildFailed'));
             },
         }),
     );

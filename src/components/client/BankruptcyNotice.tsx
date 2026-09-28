@@ -22,6 +22,7 @@ export function BankruptcyNotice() {
     const trpc = useTRPC();
     const router = useRouter();
     const t = useTranslations('Bankruptcy');
+    const tToasts = useTranslations('Toasts');
     const showError = useErrorMessage();
     const { update: updateSession } = useSession();
     const queryClient = useQueryClient();
@@ -39,7 +40,7 @@ export function BankruptcyNotice() {
             onSuccess: async () => {
                 await updateSession({ agentId: null, planetId: null });
                 void queryClient.invalidateQueries(trpc.getUser.queryFilter());
-                toast.success('Your company has been dissolved. Good luck with your next venture!');
+                toast.success(tToasts('bankruptcyDissolved'));
                 router.replace('/');
             },
             onError: (err: unknown) => {

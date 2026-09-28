@@ -20,6 +20,7 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit, formatWallTime } from '@/lib/utils';
+import { useErrorMessage } from '@/i18n/errors';
 import type { Facility } from '@/simulation/planet/facility';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import { useMutation } from '@tanstack/react-query';
@@ -28,7 +29,7 @@ import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ConstructionCompactRow({
     facility,
@@ -48,6 +49,8 @@ export function ConstructionCompactRow({
 
     const currentTick = useSimulationTick();
     const { tickIntervalMs } = useGameConfig();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const addPending = useAddPendingAction();
     const cancelMutation = useMutation(
         trpc.cancelConstruction.mutationOptions({
@@ -59,10 +62,10 @@ export function ConstructionCompactRow({
                     facilityId: facility.id,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success('Construction cancelled.');
+                toast.success(t('constructionCancelled'));
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Cancel failed');
+                toast.error(err instanceof Error ? showError(err) : t('cancelFailed'));
             },
         }),
     );
@@ -77,10 +80,10 @@ export function ConstructionCompactRow({
                     facilityId: facility.id,
                     triggerTick: data.processedAtTick,
                 });
-                toast.success(variables.suspended ? 'Construction suspended.' : 'Construction resumed.');
+                toast.success(variables.suspended ? t('constructionSuspended') : t('constructionResumed'));
             },
             onError: (err) => {
-                toast.error(err instanceof Error ? err.message : 'Suspension change failed');
+                toast.error(err instanceof Error ? showError(err) : t('suspensionChangeFailed'));
             },
         }),
     );

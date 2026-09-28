@@ -28,7 +28,8 @@ import { useTRPC } from '@/lib/trpc';
 import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCheck, Trash2 } from 'lucide-react';
-import { useFormatter } from 'next-intl';
+import { useErrorMessage } from '@/i18n/errors';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
@@ -193,6 +194,8 @@ export default function MessagesPage() {
     const loggedIn = useSession().status === 'authenticated';
     const trpc = useTRPC();
     const format = useFormatter();
+    const t = useTranslations('Toasts');
+    const showError = useErrorMessage();
     const unreadCount = useUnreadMessageCount();
     const markAllRead = useMarkAllRead();
     const markRead = useMarkRead();
@@ -241,7 +244,7 @@ export default function MessagesPage() {
                 { messageId: message.id },
                 {
                     onError: (error) => {
-                        toast.error(error instanceof Error ? error.message : 'Failed to mark message read');
+                        toast.error(error instanceof Error ? showError(error) : t('messageMarkReadFailed'));
                     },
                 },
             );
@@ -257,11 +260,11 @@ export default function MessagesPage() {
                 { messageId: confirm.messageId },
                 {
                     onSuccess: () => {
-                        toast.success('Message deleted');
+                        toast.success(t('messageDeleted'));
                         setSelected(null);
                     },
                     onError: (error) => {
-                        toast.error(error instanceof Error ? error.message : 'Failed to delete message');
+                        toast.error(error instanceof Error ? showError(error) : t('messageDeleteFailed'));
                     },
                 },
             );
@@ -270,9 +273,9 @@ export default function MessagesPage() {
                 { direction: confirm.kind === 'inboxRead' ? 'inbox' : 'sent', onlyRead: confirm.kind === 'inboxRead' },
                 {
                     onSuccess: ({ deleted }) =>
-                        toast.success(deleted > 0 ? `${deleted} messages deleted` : 'Nothing to delete'),
+                        toast.success(deleted > 0 ? t('messagesDeleted', { count: deleted }) : t('nothingToDelete')),
                     onError: (error) => {
-                        toast.error(error instanceof Error ? error.message : 'Failed to delete messages');
+                        toast.error(error instanceof Error ? showError(error) : t('messagesDeleteFailed'));
                     },
                 },
             );
