@@ -154,7 +154,7 @@ describe('handleAcknowledgeBankruptcy', () => {
         expect(messages).toContainEqual({
             type: 'bankruptcyAcknowledgeFailed',
             requestId: 'req-1',
-            reason: 'No bankruptcy record found for agent',
+            error: { code: 'noBankruptcyRecord', params: {} },
             processedAtTick: 0,
         });
     });

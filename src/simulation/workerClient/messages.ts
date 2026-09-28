@@ -296,9 +296,9 @@ export type OutboundMessage =
     | { type: 'tick'; tick: number; elapsedMs: number; tickerEvents?: TickerEvent[] }
     | { type: 'snapshot'; tick: number; elapsedMs: number; tickerEvents?: TickerEvent[]; data: WireGameState }
     | { type: 'agentCreated'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'agentCreationFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'agentCreationFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'loanGranted'; requestId: string; agentId: string; amount: number; processedAtTick: number }
-    | { type: 'loanDenied'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'loanDenied'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'loanRepaid';
           requestId: string;
@@ -307,21 +307,21 @@ export type OutboundMessage =
           amount: number;
           processedAtTick: number;
       }
-    | { type: 'repayDenied'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'repayDenied'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'automationSet'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'automationFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'automationFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'bankruptcyAcknowledged'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'bankruptcyAcknowledgeFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'bankruptcyAcknowledgeFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'workerAllocationSet'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'workerAllocationFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'workerAllocationFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'sellOffersSet'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'sellOffersFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'sellOffersFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'buyBidsSet'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'buyBidsFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'buyBidsFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'sellOfferCancelled'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'sellOfferCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'sellOfferCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'buyBidCancelled'; requestId: string; agentId: string; processedAtTick: number }
-    | { type: 'buyBidCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'buyBidCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'resourcesClaimed';
           requestId: string;
@@ -330,17 +330,17 @@ export type OutboundMessage =
           waterClaimId: string;
           processedAtTick: number;
       }
-    | { type: 'resourcesClaimFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'resourcesClaimFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'facilityBuilt'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
-    | { type: 'facilityBuildFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'facilityBuildFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'facilityExpanded'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
-    | { type: 'facilityExpandFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'facilityExpandFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'facilityContracted'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
-    | { type: 'facilityContractFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'facilityContractFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'facilityScaleSet'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
-    | { type: 'facilityScaleSetFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'facilityScaleSetFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'constructionCancelled'; requestId: string; agentId: string; facilityId: string; processedAtTick: number }
-    | { type: 'constructionCancelFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionCancelFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'constructionSuspensionSet';
           requestId: string;
@@ -349,11 +349,11 @@ export type OutboundMessage =
           suspended: boolean;
           processedAtTick: number;
       }
-    | { type: 'constructionSuspensionSetFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'constructionSuspensionSetFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'claimLeased'; requestId: string; agentId: string; claimId: string; processedAtTick: number }
-    | { type: 'claimLeaseFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'claimLeaseFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'claimQuit'; requestId: string; agentId: string; claimId: string; processedAtTick: number }
-    | { type: 'claimQuitFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'claimQuitFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'transportContractPosted';
           requestId: string;
@@ -437,7 +437,12 @@ export type OutboundMessage =
           facilityId: string;
           processedAtTick: number;
       }
-    | { type: 'shipConstructionFacilityBuildFailed'; requestId: string; reason: string; processedAtTick: number }
+    | {
+          type: 'shipConstructionFacilityBuildFailed';
+          requestId: string;
+          error: DomainErrorPacket;
+          processedAtTick: number;
+      }
     | {
           type: 'shipConstructionFacilityExpanded';
           requestId: string;
@@ -445,7 +450,12 @@ export type OutboundMessage =
           facilityId: string;
           processedAtTick: number;
       }
-    | { type: 'shipConstructionFacilityExpandFailed'; requestId: string; reason: string; processedAtTick: number }
+    | {
+          type: 'shipConstructionFacilityExpandFailed';
+          requestId: string;
+          error: DomainErrorPacket;
+          processedAtTick: number;
+      }
     | {
           type: 'shipConstructionTargetSet';
           requestId: string;
@@ -453,7 +463,7 @@ export type OutboundMessage =
           facilityId: string;
           processedAtTick: number;
       }
-    | { type: 'shipConstructionTargetSetFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'shipConstructionTargetSetFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | {
           type: 'licenseAcquired';
           requestId: string;
@@ -462,7 +472,7 @@ export type OutboundMessage =
           licenseType: 'commercial' | 'workforce';
           processedAtTick: number;
       }
-    | { type: 'licenseAcquisitionFailed'; requestId: string; reason: string; processedAtTick: number }
+    | { type: 'licenseAcquisitionFailed'; requestId: string; error: DomainErrorPacket; processedAtTick: number }
     | { type: 'workerLog'; level: 'log' | 'warn' | 'error'; message: string };
 
 export type PendingAction =

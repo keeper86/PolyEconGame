@@ -4,8 +4,9 @@ const ts = require('typescript');
 
 const root = path.join(__dirname, '..');
 const target = path.join(root, 'src');
-const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain'];
-const DEBUG_FILES = new Set(['FacilitiesMaintenanceDebug.tsx']);
+const scope = require('./i18n_scan_scope.json');
+const EXCLUDED_DIRS = scope.excludedDirsRelativeToSrc;
+const DEBUG_FILES = new Set(scope.excludedFileSuffixes);
 const TEXT_ATTRS = new Set([
     'label',
     'title',

@@ -4,8 +4,10 @@ const ts = require('typescript');
 
 const root = path.join(__dirname, '..');
 const target = path.join(root, 'src');
-const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain', 'server', 'app/api'];
-const DEBUG_FILES = new Set(['FacilitiesMaintenanceDebug.tsx']);
+const scope = require('./i18n_scan_scope.json');
+const UI_EXCLUDED_DIRS = scope.excludedDirsRelativeToSrc;
+const EXCLUDED_DIRS = [...UI_EXCLUDED_DIRS, 'server', 'app/api'];
+const DEBUG_FILES = new Set(scope.excludedFileSuffixes);
 const KEY_REF_FILES = new Set(['lib/appRoutes.ts']);
 const TOAST_METHODS = new Set(['success', 'error', 'info', 'warning', 'loading', 'message', 'custom']);
 const TEXT_ATTRS = new Set([
@@ -186,11 +188,6 @@ const findLiterals = (file) => {
             if (init) {
                 const expr = ts.isJsxExpression(init) ? init.expression : init;
                 if (TEXT_ATTRS.has(name)) {
-                    for (const text of staticTextsOf(expr)) reportText(hits, expr, source, name, text);
-                } else if (name === 'name') {
-                    const text = staticTextOf(expr);
-                    if (text !== null && !isDataKey(text.trim())) reportText(hits, expr, source, name, text);
-                } else if (name === 'label') {
                     const value = unwrap(expr);
                     if (ts.isObjectLiteralExpression(value)) {
                         for (const prop of value.properties) {
@@ -199,10 +196,15 @@ const findLiterals = (file) => {
                                 ts.isIdentifier(prop.name) &&
                                 prop.name.text === 'value'
                             ) {
-                                reportValue(hits, prop.initializer, source, 'labelValue');
+                                reportValue(hits, prop.initializer, source, `${name}Value`);
                             }
                         }
+                    } else {
+                        for (const text of staticTextsOf(expr)) reportText(hits, expr, source, name, text);
                     }
+                } else if (name === 'name') {
+                    const text = staticTextOf(expr);
+                    if (text !== null && !isDataKey(text.trim())) reportText(hits, expr, source, name, text);
                 }
             }
         }

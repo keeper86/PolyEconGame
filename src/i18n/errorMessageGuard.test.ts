@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import scope from '../../tools/i18n_scan_scope.json';
 
 const ROOT = process.cwd();
 const TARGETS = ['src/app', 'src/components'];
-const EXCLUDED_DIRS = ['src/app/simulation', 'src/app/supply-chain'];
+const EXCLUDED_DIRS = scope.excludedDirsRelativeToSrc.map((dir) => `src/${dir}`);
 const RAW_ERROR_MESSAGE_RE = /\.error\??\.message\b/;
 
 const collect = (dir: string, out: string[]): string[] => {

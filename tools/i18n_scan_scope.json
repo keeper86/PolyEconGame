@@ -1,0 +1,4 @@
+{
+    "excludedDirsRelativeToSrc": ["app/simulation", "app/supply-chain"],
+    "excludedFileSuffixes": ["FacilitiesMaintenanceDebug.tsx"]
+}

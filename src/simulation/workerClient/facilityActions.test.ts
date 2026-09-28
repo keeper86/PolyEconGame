@@ -119,7 +119,7 @@ describe('handleBuildFacility — HR Department', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'facilityBuildFailed',
-            reason: expect.stringContaining('already exists'),
+            error: { code: 'facilityAlreadyExists' },
         });
     });
 });
@@ -408,7 +408,7 @@ describe('handleCancelConstruction — error cases', () => {
             post,
         );
 
-        expect(messages[0]).toMatchObject({ type: 'constructionCancelFailed', reason: 'Agent not found' });
+        expect(messages[0]).toMatchObject({ type: 'constructionCancelFailed', error: { code: 'agentNotFound' } });
     });
 
     it('fails when facility not found', () => {
@@ -429,7 +429,7 @@ describe('handleCancelConstruction — error cases', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'constructionCancelFailed',
-            reason: expect.stringContaining('not found'),
+            error: { code: 'facilityNotFound' },
         });
     });
 
@@ -456,7 +456,7 @@ describe('handleCancelConstruction — error cases', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'constructionCancelFailed',
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction' },
         });
     });
 });
@@ -588,7 +588,7 @@ describe('handleCancelConstruction — shipyard not under construction', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'constructionCancelFailed',
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction' },
         });
     });
 });
@@ -651,7 +651,7 @@ describe('handleCancelConstruction — storage shell not under construction', ()
 
         expect(messages[0]).toMatchObject({
             type: 'constructionCancelFailed',
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction' },
         });
     });
 });
@@ -766,7 +766,10 @@ describe('handleSetConstructionSuspended', () => {
             post,
         );
 
-        expect(messages[0]).toMatchObject({ type: 'constructionSuspensionSetFailed', reason: 'Agent not found' });
+        expect(messages[0]).toMatchObject({
+            type: 'constructionSuspensionSetFailed',
+            error: { code: 'agentNotFound' },
+        });
     });
 
     it('fails when facility not found', () => {
@@ -788,7 +791,7 @@ describe('handleSetConstructionSuspended', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'constructionSuspensionSetFailed',
-            reason: expect.stringContaining('not found'),
+            error: { code: 'facilityNotFound' },
         });
     });
 
@@ -816,7 +819,7 @@ describe('handleSetConstructionSuspended', () => {
 
         expect(messages[0]).toMatchObject({
             type: 'constructionSuspensionSetFailed',
-            reason: 'Facility is not under construction',
+            error: { code: 'facilityNotUnderConstruction' },
         });
     });
 

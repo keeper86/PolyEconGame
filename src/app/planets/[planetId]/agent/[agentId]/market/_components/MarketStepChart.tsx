@@ -4,8 +4,6 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import type { Units } from '@/lib/utils';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { PlanetMarketSnapshot } from '@/server/controller/planet';
-import { getDecimalSeparator } from '@/i18n/config';
-import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { useMemo } from 'react';
 import type { TooltipProps } from 'recharts';
 import {
@@ -616,7 +614,9 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                             stroke='#22c55e'
                             strokeWidth={4}
                             label={{
-                                value: `Cleared: ${formatNumbers(totalSold, getDecimalSeparator(locale))} ${qtyUnit}`,
+                                value: t('clearedLabel', {
+                                    quantity: formatNumberWithUnit(totalSold, qtyUnit, undefined, locale),
+                                }),
                                 fill: '#22c55e',
                                 position: 'top',
                                 fontSize: 10,

@@ -15,7 +15,7 @@ export function handleLeaseClaim(
         safePostMessage({
             type: 'claimLeaseFailed',
             requestId,
-            reason: 'Quantity must be positive',
+            error: { code: 'quantityNotPositive', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -23,7 +23,7 @@ export function handleLeaseClaim(
 
     const result = leaseClaim(state, agentId, planetId, resourceName, quantity);
     if (!result.ok) {
-        safePostMessage({ type: 'claimLeaseFailed', requestId, reason: result.reason, processedAtTick: state.tick });
+        safePostMessage({ type: 'claimLeaseFailed', requestId, error: result.error, processedAtTick: state.tick });
         return;
     }
 
@@ -43,7 +43,7 @@ export function handleQuitClaim(
         safePostMessage({
             type: 'claimQuitFailed',
             requestId,
-            reason: 'Agent or planet not found',
+            error: { code: 'agentOrPlanetNotFound', params: {} },
             processedAtTick: state.tick,
         });
         return;
@@ -62,7 +62,7 @@ export function handleQuitClaim(
         safePostMessage({
             type: 'claimQuitFailed',
             requestId,
-            reason: `Claim '${claimId}' not found for agent`,
+            error: { code: 'claimNotFoundForAgent', params: { claimId: claimId } },
             processedAtTick: state.tick,
         });
         return;

@@ -94,7 +94,7 @@ export function updateAgentClaims(gameState: GameState, planet: Planet): void {
             if (!result.ok) {
                 console.debug(
                     `[auto-claim] Agent ${agent.id} auto-lease failed for ${toAcquire} of ${resourceName}` +
-                        ` (required ${required}, had ${shortfall}). Reason: ${result.reason}`,
+                        ` (required ${required}, had ${shortfall}). Reason: ${result.error.code}`,
                 );
             }
         }

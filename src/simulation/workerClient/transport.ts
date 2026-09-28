@@ -14,7 +14,7 @@ const g = globalThis as unknown as {
 const DEFAULT_TIMEOUT_MS = 5_000;
 
 const failureToError = (msg: OutboundMessage & { requestId: string }): Error =>
-    'error' in msg ? domainErrorFromPacket(msg.error) : new Error((msg as { reason: string }).reason);
+    'error' in msg ? domainErrorFromPacket(msg.error) : new Error(msg.type);
 
 function ensureLogListener(): void {
     if (g[GLOBAL_KEY_LOG_LISTENER]) {

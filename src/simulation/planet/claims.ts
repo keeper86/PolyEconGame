@@ -1,4 +1,5 @@
 import { TICKS_PER_MONTH } from '../constants';
+import type { DomainErrorPacket } from '../../server/domainError';
 import type { Agent, GameState, Planet } from './planet';
 
 export type TradableResourceProcessLevel = 'raw' | 'refined' | 'manufactured' | 'services';
@@ -134,7 +135,7 @@ export function computeLeaseClaimUpfrontCost(pool: ResourcePool, quantity: numbe
     return costAmount * nonRenewableClaimCostMultiplier;
 }
 
-export type LeaseClaimResult = { ok: true; claimId: string } | { ok: false; reason: string };
+export type LeaseClaimResult = { ok: true; claimId: string } | { ok: false; error: DomainErrorPacket };
 
 export function leaseClaim(
     gameState: GameState,
@@ -145,31 +146,34 @@ export function leaseClaim(
 ): LeaseClaimResult {
     const planet = gameState.planets.get(planetId);
     if (!planet) {
-        return { ok: false, reason: 'Planet not found' };
+        return { ok: false, error: { code: 'planetNotFound', params: { planetId: planetId } } };
     }
     const agent = gameState.agents.get(agentId);
     if (!agent) {
-        return { ok: false, reason: 'Agent not found' };
+        return { ok: false, error: { code: 'agentNotFound', params: {} } };
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        return { ok: false, reason: `Agent has no assets on planet '${planetId}'` };
+        return { ok: false, error: { code: 'agentHasNoAssets', params: {} } };
     }
 
     const entry = planet.resources[resourceName];
     if (!entry) {
-        return { ok: false, reason: `Resource '${resourceName}' not found on planet` };
+        return { ok: false, error: { code: 'resourceNotFoundOnPlanet', params: { resourceName: resourceName } } };
     }
 
     if (quantity <= 0) {
-        return { ok: false, reason: 'Quantity must be positive' };
+        return { ok: false, error: { code: 'quantityNotPositive', params: {} } };
     }
 
     const { pool } = entry;
     if (pool.maximumCapacity < quantity) {
         return {
             ok: false,
-            reason: `Not enough untenanted ${resourceName} — requested ${quantity}, available ${pool.maximumCapacity}`,
+            error: {
+                code: 'claimCapacityExceeded',
+                params: { resourceName: resourceName, requested: quantity, available: pool.maximumCapacity },
+            },
         };
     }
 
@@ -180,7 +184,10 @@ export function leaseClaim(
     if (assets.deposits < upfrontCost) {
         return {
             ok: false,
-            reason: `Insufficient deposits — required ${upfrontCost} upfront, available ${assets.deposits}`,
+            error: {
+                code: 'insufficientDepositsForLease',
+                params: { required: upfrontCost, available: assets.deposits },
+            },
         };
     }
     assets.deposits -= upfrontCost;
@@ -247,36 +254,39 @@ export function reduceClaim(
 ): LeaseClaimResult {
     const planet = gameState.planets.get(planetId);
     if (!planet) {
-        return { ok: false, reason: 'Planet not found' };
+        return { ok: false, error: { code: 'planetNotFound', params: { planetId: planetId } } };
     }
     const agent = gameState.agents.get(agentId);
     if (!agent) {
-        return { ok: false, reason: 'Agent not found' };
+        return { ok: false, error: { code: 'agentNotFound', params: {} } };
     }
     const assets = agent.assets[planetId];
     if (!assets) {
-        return { ok: false, reason: `Agent has no assets on planet '${planetId}'` };
+        return { ok: false, error: { code: 'agentHasNoAssets', params: {} } };
     }
 
     const entry = planet.resources[resourceName];
     if (!entry) {
-        return { ok: false, reason: `Resource '${resourceName}' not found on planet` };
+        return { ok: false, error: { code: 'resourceNotFoundOnPlanet', params: { resourceName: resourceName } } };
     }
 
     if (quantity <= 0) {
-        return { ok: false, reason: 'Quantity must be positive' };
+        return { ok: false, error: { code: 'quantityNotPositive', params: {} } };
     }
 
     const claimId = `${planetId}-${resourceName}-${agentId}`;
     const existingClaim = entry.claims.find((c) => c.id === claimId && c.tenantAgentId === agentId);
     if (!existingClaim) {
-        return { ok: false, reason: `No claim '${claimId}' found for agent` };
+        return { ok: false, error: { code: 'claimNotFound', params: { claimId: claimId } } };
     }
 
     if (existingClaim.maximumCapacity < quantity) {
         return {
             ok: false,
-            reason: `Claim only has ${existingClaim.maximumCapacity} units, cannot reduce by ${quantity}`,
+            error: {
+                code: 'claimReductionExceedsCapacity',
+                params: { available: existingClaim.maximumCapacity, requested: quantity },
+            },
         };
     }
 
