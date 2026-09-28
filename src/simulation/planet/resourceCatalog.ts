@@ -100,10 +100,3 @@ export const getProductForm = (resourceName: string): Resource['form'] | undefin
 };
 
 export const RESOURCE_LEVELS: TradableResourceProcessLevel[] = ['raw', 'refined', 'manufactured', 'services'];
-
-export const RESOURCE_LEVEL_LABELS: Record<TradableResourceProcessLevel, string> = {
-    raw: 'Raw',
-    refined: 'Refined',
-    manufactured: 'Manufactured',
-    services: 'Services',
-};

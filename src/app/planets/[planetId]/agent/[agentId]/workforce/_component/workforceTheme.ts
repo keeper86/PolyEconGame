@@ -1,5 +1,5 @@
 import type { EducationLevelType } from '@/simulation/population/education';
-import { educationLevelKeys, educationLevels } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 
 export const EDU_COLORS: Record<EducationLevelType, { badge: string; text: string; chart: string }> = {
     none: { badge: 'border-slate-300 bg-slate-50 text-slate-700', text: 'text-slate-600', chart: '#94a3b8' },
@@ -24,7 +24,16 @@ export const DEPARTURE_COLORS = {
     retired: '#a3e635',
 } as const;
 
-export const eduLabel = (edu: EducationLevelType): string => educationLevels[edu].name;
+export const EDU_NAME_KEYS = {
+    none: 'uneducated',
+    primary: 'primary',
+    secondary: 'secondary',
+    tertiary: 'tertiary',
+} as const;
+
+type EduNameKey = (typeof EDU_NAME_KEYS)[EducationLevelType];
+
+export const eduLabel = (t: (key: EduNameKey) => string, edu: EducationLevelType): string => t(EDU_NAME_KEYS[edu]);
 
 export const sumByEdu = (rec: Partial<Record<EducationLevelType, number>>): number =>
     educationLevelKeys.reduce((sum, edu) => sum + (rec[edu] ?? 0), 0);

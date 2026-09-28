@@ -107,7 +107,7 @@ function EducationCard({
                                                     .filter(([, v]) => v && v > 0)
                                                     .map(([wEdu, count]) => (
                                                         <div key={wEdu} className='text-amber-600'>
-                                                            {eduLabel(wEdu as EducationLevelType)} ×{count}
+                                                            {eduLabel(tr, wEdu as EducationLevelType)} ×{count}
                                                         </div>
                                                     ))}
                                             </div>
@@ -316,7 +316,7 @@ export function EducationLevelCards({
             {educationLevelKeys.map((edu) => (
                 <EducationCard
                     key={edu}
-                    header={{ label: eduLabel(edu), badgeClassName: EDU_COLORS[edu].badge }}
+                    header={{ label: eduLabel(tr, edu), badgeClassName: EDU_COLORS[edu].badge }}
                     headcount={{
                         target: allocatedWorkers[edu] ?? 0,
                         active: summary.activeByEdu[edu],

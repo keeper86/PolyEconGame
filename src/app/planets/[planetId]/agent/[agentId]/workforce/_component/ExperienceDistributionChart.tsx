@@ -110,6 +110,7 @@ export function ExperienceDistributionChart({
     view: ViewMode;
 }): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Workforce');
     const isVerySmall = useIsSmallScreen();
 
     const statusData = useMemo(() => {
@@ -128,12 +129,12 @@ export function ExperienceDistributionChart({
         const raw: ChartRow[] = experienceChartByEdu.map((d) => {
             const row: ChartRow = { age: d.age };
             for (const edu of educationLevelKeys) {
-                row[eduLabel(edu)] = d.byEdu[edu] ?? 0;
+                row[eduLabel(tr, edu)] = d.byEdu[edu] ?? 0;
             }
             return row;
         });
         return isVerySmall ? mergePairs(raw) : raw;
-    }, [experienceChartByEdu, isVerySmall]);
+    }, [experienceChartByEdu, isVerySmall, tr]);
 
     const statusTooltip = useMemo(() => XPStatusTooltip, []);
     const eduTooltip = useMemo(() => XPEduTooltip, []);
@@ -204,7 +205,7 @@ export function ExperienceDistributionChart({
                         {educationLevelKeys.map((edu, idx) => (
                             <Bar
                                 key={edu}
-                                dataKey={eduLabel(edu)}
+                                dataKey={eduLabel(tr, edu)}
                                 stackId='a'
                                 fill={EDU_COLORS[edu].chart}
                                 isAnimationActive={false}

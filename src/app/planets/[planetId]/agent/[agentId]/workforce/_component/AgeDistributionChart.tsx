@@ -111,6 +111,7 @@ export function AgeDistributionChart({
     view: ViewMode;
 }): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Workforce');
     const isVerySmall = useIsSmallScreen();
 
     const statusData = useMemo(() => {
@@ -129,12 +130,12 @@ export function AgeDistributionChart({
         const raw: ChartRow[] = ageChartByEdu.map((d) => {
             const row: ChartRow = { age: d.age };
             for (const edu of educationLevelKeys) {
-                row[eduLabel(edu)] = d.byEdu[edu] ?? 0;
+                row[eduLabel(tr, edu)] = d.byEdu[edu] ?? 0;
             }
             return row;
         });
         return isVerySmall ? mergePairs(raw) : raw;
-    }, [ageChartByEdu, isVerySmall]);
+    }, [ageChartByEdu, isVerySmall, tr]);
 
     const statusTooltip = useMemo(() => StatusTooltip, []);
     const eduTooltip = useMemo(() => EduTooltip, []);
@@ -205,7 +206,7 @@ export function AgeDistributionChart({
                         {educationLevelKeys.map((edu, idx) => (
                             <Bar
                                 key={edu}
-                                dataKey={eduLabel(edu)}
+                                dataKey={eduLabel(tr, edu)}
                                 stackId='a'
                                 fill={EDU_COLORS[edu].chart}
                                 isAnimationActive={false}

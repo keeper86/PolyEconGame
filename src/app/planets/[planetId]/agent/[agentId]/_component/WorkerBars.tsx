@@ -2,10 +2,13 @@
 
 import React from 'react';
 import type { EducationLevelType } from '@/simulation/population/education';
-import { educationLevels, educationLevelKeys } from '@/simulation/population/education';
+import { educationLevelKeys } from '@/simulation/population/education';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { EDU_COLORS } from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/workforceTheme';
+import {
+    EDU_COLORS,
+    EDU_NAME_KEYS,
+} from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/workforceTheme';
 import { borderColor, fillColor } from '@/components/client/ProductQuantity';
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
@@ -31,6 +34,7 @@ export function WorkerBars({
 }): React.ReactElement {
     const locale = useLocale();
     const t = useTranslations('Agent');
+    const tw = useTranslations('Workforce');
     const hasLink = planetId !== undefined && agentId !== undefined;
     const href = hasLink ? `/planets/${planetId}/agent/${agentId}/workforce` : undefined;
 
@@ -52,7 +56,7 @@ export function WorkerBars({
                             style={{ width: `${Math.round(eff * 100)}%` }}
                         />
                         <span className='relative z-10 flex items-center justify-between w-full px-2 py-0.5 text-xs text-outline-strong'>
-                            <span>{educationLevels[edu].name}</span>
+                            <span>{tw(EDU_NAME_KEYS[edu])}</span>
                             <span className='tabular-nums'>
                                 {formatNumberWithUnit(Math.round(eff * required), 'persons', undefined, locale)}
                             </span>
@@ -61,7 +65,7 @@ export function WorkerBars({
                 </TooltipTrigger>
                 <TooltipContent side='top' hidden={!hasRequirement}>
                     {t('workerEfficiencyTooltip', {
-                        name: educationLevels[edu].name,
+                        name: tw(EDU_NAME_KEYS[edu]),
                         percent: pctStr(eff),
                     })}
                 </TooltipContent>

@@ -19,7 +19,7 @@ import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import type { ResourceProcessLevel } from '@/simulation/planet/claims';
-import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import {
     beverageResourceType,
     cementResourceType,
@@ -71,6 +71,13 @@ import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useLocale, useTranslations } from 'next-intl';
+
+const LEVEL_LABEL_KEYS = {
+    raw: 'levelRaw',
+    refined: 'levelRefined',
+    manufactured: 'levelManufactured',
+    services: 'levelServices',
+} as const;
 
 const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------
@@ -254,6 +261,7 @@ function ProductSelector({
     selected: string[];
     onChange: (names: string[]) => void;
 }) {
+    const t = useTranslations('Market');
     const toggle = (name: string) => {
         if (selected.includes(name)) {
             onChange(selected.filter((s) => s !== name));
@@ -280,7 +288,7 @@ function ProductSelector({
             {groups.map(({ level, names }) => (
                 <div key={level}>
                     <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1 select-none'>
-                        {RESOURCE_LEVEL_LABELS[level]}
+                        {t(LEVEL_LABEL_KEYS[level])}
                     </div>
                     <div className='flex flex-wrap gap-2 w-[325px]'>
                         {names.map((name) => (
