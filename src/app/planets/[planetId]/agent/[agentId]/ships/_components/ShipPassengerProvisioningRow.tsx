@@ -41,7 +41,8 @@ export function ShipPassengerProvisioningRow({
         <div className='space-y-1.5'>
             <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
                 <span>
-                    Provisioning <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span>{' '}
+                    Provisioning{' '}
+                    <span className='tabular-nums text-foreground'>{formatNumberWithUnit(total, 'persons')}</span>{' '}
                     passengers
                 </span>
                 <ArrowRight className='h-3 w-3' />

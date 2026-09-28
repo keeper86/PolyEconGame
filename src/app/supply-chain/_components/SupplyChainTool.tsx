@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -733,7 +734,7 @@ export default function SupplyChainTool() {
                     />
                 </div>
                 <span className='text-sm text-muted-foreground'>
-                    Service demand: {population.toLocaleString()} units/tick per service
+                    Service demand: {formatNumberWithUnit(population, 'units')} units/tick per service
                 </span>
                 <div className='ml-auto flex items-center gap-2'>
                     <Button variant='outline' size='sm' onClick={incrementAllScales}>

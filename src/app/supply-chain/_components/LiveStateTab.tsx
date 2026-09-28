@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { formatNumberWithUnit } from '@/lib/utils';
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useTRPC } from '@/lib/trpc';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
@@ -863,7 +864,8 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                     Agents: <span className='font-mono font-semibold'>{totalAgents}</span>
                 </span>
                 <span>
-                    Population: <span className='font-mono font-semibold'>{livePop.toLocaleString()}</span>
+                    Population:{' '}
+                    <span className='font-mono font-semibold'>{formatNumberWithUnit(livePop, 'persons')}</span>
                 </span>
                 <span>
                     Facility types: <span className='font-mono font-semibold'>{facilityRows.length}</span>

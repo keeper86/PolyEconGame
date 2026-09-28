@@ -28,13 +28,12 @@ import { useTRPC } from '@/lib/trpc';
 import type { MessageSummary } from '@/server/controller/message';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCheck, Trash2 } from 'lucide-react';
+import { useFormatter } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
 const PAGE_SIZE = 25;
-
-const formatTimestamp = (iso: string): string => new Date(iso).toLocaleString();
 
 const counterpartName = (message: MessageSummary): string =>
     recipientLabel({
@@ -85,6 +84,7 @@ function MessageRow({
     direction: 'inbox' | 'sent';
     onSelect: () => void;
 }) {
+    const format = useFormatter();
     const unread = direction === 'inbox' && message.readAt === null;
     const status = sentMessageStatus(message);
 
@@ -105,7 +105,7 @@ function MessageRow({
                         {direction === 'sent' && <span className={status.className}>{status.label}</span>}
                         <span className='truncate'>{counterpartName(message)}</span>
                     </span>
-                    <span className='shrink-0'>{formatTimestamp(message.createdAt)}</span>
+                    <span className='shrink-0'>{format.dateTime(new Date(message.createdAt), 'timestamp')}</span>
                 </span>
             </span>
         </button>
@@ -192,6 +192,7 @@ function MessagePane({
 export default function MessagesPage() {
     const loggedIn = useSession().status === 'authenticated';
     const trpc = useTRPC();
+    const format = useFormatter();
     const unreadCount = useUnreadMessageCount();
     const markAllRead = useMarkAllRead();
     const markRead = useMarkRead();
@@ -368,7 +369,7 @@ export default function MessagesPage() {
                             {selected
                                 ? `${selected.direction === 'inbox' ? 'From' : 'To'} ${counterpartName(selected.message)}`
                                 : ''}
-                            {selected ? ` · ${formatTimestamp(selected.message.createdAt)}` : ''}
+                            {selected ? ` · ${format.dateTime(new Date(selected.message.createdAt), 'timestamp')}` : ''}
                         </DialogDescription>
                     </DialogHeader>
                     <p className='whitespace-pre-wrap text-sm'>{selectedBody ?? 'Loading…'}</p>

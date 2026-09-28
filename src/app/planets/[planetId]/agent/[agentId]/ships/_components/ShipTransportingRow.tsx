@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { TransportShipStatusTransporting } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
@@ -21,7 +22,9 @@ export function ShipTransportingRow({
                 <>
                     <ProductIcon productName={state.cargo.resource.name} size={18} />
                     <span>
-                        <span className='tabular-nums text-foreground'>{state.cargo.quantity.toLocaleString()}</span>{' '}
+                        <span className='tabular-nums text-foreground'>
+                            {formatNumberWithUnit(state.cargo.quantity, 'units')}
+                        </span>{' '}
                         {state.cargo.resource.name}
                     </span>
                 </>

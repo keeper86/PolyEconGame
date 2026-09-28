@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import type { PassengerShipStatusUnloading } from '@/simulation/ships/ships';
 import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
@@ -19,7 +20,8 @@ export function ShipPassengerUnloadingRow({
     return (
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             <span>
-                Unloading <span className='tabular-nums text-foreground'>{total.toLocaleString()}</span> passengers
+                Unloading <span className='tabular-nums text-foreground'>{formatNumberWithUnit(total, 'persons')}</span>{' '}
+                passengers
             </span>
             <PassengerManifestButton manifest={state.manifest} toPlanetName={destination} phase={state.type} />
         </div>

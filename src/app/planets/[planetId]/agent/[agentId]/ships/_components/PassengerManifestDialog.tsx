@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PassengerManifest } from '@/simulation/ships/manifest';
 import { parseManifestKey } from '@/simulation/ships/manifest';
@@ -62,7 +63,7 @@ export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanet
                     </div>
                     <div className='rounded bg-muted px-3 py-2 text-sm'>
                         <span className='text-muted-foreground'>Total passengers: </span>
-                        <span className='tabular-nums font-semibold'>{total.toLocaleString()}</span>
+                        <span className='tabular-nums font-semibold'>{formatNumberWithUnit(total, 'persons')}</span>
                     </div>
                     {rows.length > 0 ? (
                         <div className='overflow-auto max-h-80'>
@@ -83,7 +84,7 @@ export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanet
                                             <td className='py-1.5 pr-3 capitalize'>{row.occupation}</td>
                                             <td className='py-1.5 pr-3 capitalize'>{row.educationLevel}</td>
                                             <td className='py-1.5 text-right tabular-nums'>
-                                                {row.count.toLocaleString()}
+                                                {formatNumberWithUnit(row.count, 'persons')}
                                             </td>
                                         </tr>
                                     ))}

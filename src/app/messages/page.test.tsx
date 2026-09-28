@@ -1,6 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MessageSummary } from '@/server/controller/message';
 
@@ -120,7 +121,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('enables delete all read in the inbox when a read message exists', () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(deleteAllReadButton()).toBeInTheDocument();
         expect(deleteAllReadButton()).toBeEnabled();
@@ -128,13 +129,13 @@ describe('MessagesPage delete controls', () => {
 
     it('disables delete all read when the inbox has no read message', () => {
         h.inbox.current = [unreadInbox, message({ id: 'unread-2', subject: 'Also unread' })];
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(deleteAllReadButton()).toBeDisabled();
     });
 
     it('offers delete all but not delete all read in the sent folder', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
@@ -144,7 +145,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('confirms and deletes all read inbox messages', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(deleteAllReadButton()!);
 
@@ -155,7 +156,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('confirms and deletes all sent messages', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
         await userEvent.click(deleteAllButton()!);
@@ -168,7 +169,7 @@ describe('MessagesPage delete controls', () => {
 
     it('disables the sent delete all button when there is nothing to delete', async () => {
         h.sent.current = [];
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
@@ -176,7 +177,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('does not delete when the confirmation is cancelled', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(deleteAllReadButton()!);
 
@@ -188,7 +189,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('shows whether a sent message has been read', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
@@ -198,7 +199,7 @@ describe('MessagesPage delete controls', () => {
 
     it('shows a sent message as deleted when the recipient deleted it', async () => {
         h.sent.current = [message({ id: 'sent-deleted', subject: 'Gone', counterpartDeleted: true })];
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
@@ -208,7 +209,7 @@ describe('MessagesPage delete controls', () => {
 
     it('pages the inbox when there are more messages than fit on one page', async () => {
         h.inboxTotal.current = 60;
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
 
@@ -219,14 +220,14 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('does not show pagination when everything fits on one page', () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     });
 
     it('groups mark all read with delete all read in the inbox', () => {
         h.unreadCount.current = 2;
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(screen.getByRole('button', { name: 'Mark all read' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Delete all read' })).toBeInTheDocument();
@@ -234,7 +235,7 @@ describe('MessagesPage delete controls', () => {
 
     it('marks all messages read when clicked', async () => {
         h.unreadCount.current = 2;
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
 
@@ -242,14 +243,14 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('disables mark all read when there are no unread messages', () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         expect(screen.getByRole('button', { name: 'Mark all read' })).toBeDisabled();
     });
 
     it('does not show mark all read in the sent folder', async () => {
         h.unreadCount.current = 2;
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('tab', { name: 'Sent' }));
 
@@ -258,7 +259,7 @@ describe('MessagesPage delete controls', () => {
 
     it('loads and shows the message body when a message is opened', async () => {
         h.messageBody.current = 'Fetched body';
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
 
@@ -268,7 +269,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('marks an unread inbox message read when it is opened', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
 
@@ -276,7 +277,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('does not mark an already read inbox message read again', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: /Read subject/ }));
 
@@ -285,7 +286,7 @@ describe('MessagesPage delete controls', () => {
 
     it('shows an error toast when marking a message read fails', async () => {
         h.markRead.mockImplementationOnce((_input, options) => options.onError(new Error('nope')));
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
 
@@ -293,7 +294,7 @@ describe('MessagesPage delete controls', () => {
     });
 
     it('confirms and deletes a single message from the message dialog', async () => {
-        render(<MessagesPage />);
+        renderWithIntl(<MessagesPage />);
 
         await userEvent.click(screen.getByRole('button', { name: /Unread subject/ }));
 

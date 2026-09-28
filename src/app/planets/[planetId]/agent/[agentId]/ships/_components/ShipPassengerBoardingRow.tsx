@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
 import type { PassengerShipStatusLoading } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
@@ -22,9 +23,12 @@ export function ShipPassengerBoardingRow({
             <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
                 <span>
                     Boarding:{' '}
-                    <span className='tabular-nums text-foreground'>{state.currentPassengers.toLocaleString()}</span>
+                    <span className='tabular-nums text-foreground'>
+                        {formatNumberWithUnit(state.currentPassengers, 'persons')}
+                    </span>
                     {' / '}
-                    <span className='tabular-nums'>{state.passengerGoal.toLocaleString()}</span> passengers
+                    <span className='tabular-nums'>{formatNumberWithUnit(state.passengerGoal, 'persons')}</span>{' '}
+                    passengers
                 </span>
                 <ArrowRight className='h-3 w-3' />
                 <span>{destination}</span>

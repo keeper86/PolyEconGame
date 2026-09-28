@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
@@ -70,7 +71,9 @@ export function StorageResourceSelect({
                         <span className='flex items-center gap-2'>
                             <ProductIcon productName={resourceName} size={24} />
                             <span>{resourceName}</span>
-                            <span className='ml-auto text-xs text-muted-foreground'>{qty.toLocaleString()}</span>
+                            <span className='ml-auto text-xs text-muted-foreground'>
+                                {formatNumberWithUnit(qty, 'units')}
+                            </span>
                         </span>
                     </SelectItem>
                 ))}

@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import type { PassengerManifest } from '@/simulation/ships/manifest';
 import { ShipPassengerTransportingRow } from './ShipPassengerTransportingRow';
 
@@ -9,7 +10,7 @@ const manifest = { '30:worker:low': { total: 5 } } as unknown as PassengerManife
 
 describe('ShipPassengerTransportingRow', () => {
     it('shows the passenger total, destination, ETA and manifest button', () => {
-        render(
+        renderWithIntl(
             <ShipPassengerTransportingRow
                 state={{ type: 'passenger_transporting', from: 'p1', to: 'p2', arrivalTick: 40, manifest }}
                 planetSummaries={summaries}

@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -73,10 +74,10 @@ export function DispatchPassengerShipDialog({
                             max={passengerCapacity}
                             value={passengerCount}
                             onChange={(e) => setPassengerCount(e.target.value)}
-                            placeholder={`0 – ${passengerCapacity.toLocaleString()}`}
+                            placeholder={`0 – ${formatNumberWithUnit(passengerCapacity, 'persons')}`}
                         />
                         <p className='text-xs text-muted-foreground'>
-                            Max capacity: {passengerCapacity.toLocaleString()}
+                            Max capacity: {formatNumberWithUnit(passengerCapacity, 'persons')}
                         </p>
                     </div>
                     {mutation.isError && (

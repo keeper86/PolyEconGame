@@ -1,5 +1,6 @@
 'use client';
 
+import { formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { TransportShipStatusUnloading } from '@/simulation/ships/ships';
 import React from 'react';
@@ -9,7 +10,10 @@ export function ShipTransportUnloadingRow({ state }: { state: TransportShipStatu
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             <ProductIcon productName={state.cargo.resource.name} size={18} />
             <span>
-                Unloading <span className='tabular-nums text-foreground'>{state.cargo.quantity.toLocaleString()}</span>{' '}
+                Unloading{' '}
+                <span className='tabular-nums text-foreground'>
+                    {formatNumberWithUnit(state.cargo.quantity, 'units')}
+                </span>{' '}
                 {state.cargo.resource.name}
             </span>
         </div>
