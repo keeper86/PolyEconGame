@@ -177,6 +177,16 @@ describe('historyChartAxis', () => {
         expect(blendLive(10, 20, -1)).toBe(30);
     });
 
+    it('keeps a flat daily series flat instead of sagging mid-bucket', () => {
+        const perDay = 10;
+        const previous = TICKS_PER_MONTH * perDay;
+        for (let day = 1; day <= TICKS_PER_MONTH; day++) {
+            const live = day * perDay;
+            const progress = bucketProgress(tickFor(START_YEAR, 0, day), 'monthly');
+            expect(blendLive(previous, live, progress)).toBeCloseTo(previous, 6);
+        }
+    });
+
     it('clamps fetched history buckets to the same windows the axes use', () => {
         expect(HISTORY_BUCKET_LIMIT.monthly).toBe(MONTHS_PER_YEAR + 1);
         expect(HISTORY_BUCKET_LIMIT.yearly).toBe(YEAR_WINDOW);

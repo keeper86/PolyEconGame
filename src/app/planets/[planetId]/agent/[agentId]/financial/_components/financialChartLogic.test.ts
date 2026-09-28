@@ -49,7 +49,7 @@ describe('computeFinancialMonthlyData live point', () => {
         sumWealthTaxPaid: 8,
     };
 
-    it('appends the live point at the fractional month index, blended with the previous point', () => {
+    it('appends the live point at the fractional month index, filled up from the previous point', () => {
         const result = computeFinancialMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
         const progress = 6 / TICKS_PER_MONTH;
@@ -167,7 +167,7 @@ describe('computeExpensesRevenueBuckets', () => {
         expect(rows.map((r) => r.misc)).toEqual([3]);
     });
 
-    it('adds the live monthly figures on top of the previous bucket share without dividing by the bucket length', () => {
+    it('adds the live monthly equivalent to the remaining share of the previous bucket without dividing by the bucket length', () => {
         const live: FinancialLive = {
             tick: gameTickFor(2, 6, 1),
             avgNetBalance: 0,
@@ -189,7 +189,7 @@ describe('computeExpensesRevenueBuckets', () => {
         expect(liveRow.misc).toBeCloseTo(360, 6);
     });
 
-    it('adds the live monthly figures on a decade view without dividing by 120', () => {
+    it('adds the live monthly equivalent to the remaining share of the previous decade bucket without dividing by 120', () => {
         const live: FinancialLive = {
             tick: gameTickFor(5, 0, 1),
             avgNetBalance: 0,
