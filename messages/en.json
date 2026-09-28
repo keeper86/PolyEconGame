@@ -1020,6 +1020,7 @@
         "facilities": "Facilities",
         "ships": "Ships",
         "noShips": "No ships (on {planetId})",
+        "noFacilities": "No facilities",
         "management": "Management",
         "serviceDepartments": "Service Departments",
         "notBuilt": "Not built",

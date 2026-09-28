@@ -1,5 +1,6 @@
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import type { DomainErrorPacket } from '@/server/domainError';
+import { termFor } from './terms';
 
 export const readDomainError = (error: unknown): DomainErrorPacket | null => {
     const data = (error as { data?: { domainError?: DomainErrorPacket | null } } | null)?.data;
@@ -8,6 +9,7 @@ export const readDomainError = (error: unknown): DomainErrorPacket | null => {
 
 export const useErrorMessage = () => {
     const t = useTranslations('Errors');
+    const locale = useLocale();
 
     return (error: unknown): string => {
         const domainError = readDomainError(error);
@@ -15,7 +17,9 @@ export const useErrorMessage = () => {
             return error instanceof Error ? error.message : t('unexpected');
         }
         if (domainError.code === 'unknownResource') {
-            return t('unknownResource', { resourceName: String(domainError.params.resourceName) });
+            return t('unknownResource', {
+                resourceName: termFor(locale, String(domainError.params.resourceName)),
+            });
         }
         return t(domainError.code);
     };

@@ -38,7 +38,9 @@ function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
                 {groups.map(([name, count]) => (
                     <FacilityOrShipListCard key={name} name={name} count={count} />
                 ))}
-                {groups.length === 0 && <FacilityOrShipListCard key={'no_facilities'} name={'No facilities'} unknown />}
+                {groups.length === 0 && (
+                    <FacilityOrShipListCard key={'no_facilities'} name={tr('noFacilities')} unknown />
+                )}
             </div>
         </div>
     );

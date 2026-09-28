@@ -6,7 +6,8 @@ import { useTRPC } from '@/lib/trpc';
 import { validateBuyBid } from '@/simulation/market/validation';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
@@ -89,6 +90,7 @@ export function useBuySectionMutations({
     const { isTourActive: marketIsTourActive, markActionCompleted: marketMarkActionCompleted } = useTour();
     const t = useTranslations('Toasts');
     const tErrors = useTranslations('Errors');
+    const locale = useLocale();
     const resource = getResourceByName(resourceName);
 
     const buyMutation = useMutation(
@@ -137,7 +139,7 @@ export function useBuySectionMutations({
 
     const handleSaveBuy = () => {
         if (!resource) {
-            toast.error(tErrors('unknownResource', { resourceName }));
+            toast.error(tErrors('unknownResource', { resourceName: termFor(locale, resourceName) }));
             return;
         }
 

@@ -38,7 +38,7 @@ describe('useErrorMessage', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 
         expect(result.current(domainError('unknownResource', { resourceName: 'Crude Oil' }))).toBe(
-            'Unbekannte Ressource: Crude Oil',
+            'Unbekannte Ressource: Rohöl',
         );
     });
 

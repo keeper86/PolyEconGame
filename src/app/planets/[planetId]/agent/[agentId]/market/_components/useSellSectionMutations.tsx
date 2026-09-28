@@ -7,10 +7,11 @@ import { validateSellOffer } from '@/simulation/market/validation';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import type { AgentPlanetAssets, AutomatedPricingConfig } from '@/simulation/planet/planet';
 import { useMutation } from '@tanstack/react-query';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { getResourceByName } from './marketHelpers';
+import { termFor } from '@/i18n/terms';
 import type { AutoConfigLocalState, LocalResourceState, MarketOfferEntry } from './marketTypes';
 import { localToAutoConfig, SELL_PRICING_KEYS, SELL_VOLUME_KEYS } from './marketTypes';
 
@@ -89,6 +90,7 @@ export function useSellSectionMutations({
     const pendingActions = usePendingActions(agentId, planetId);
     const t = useTranslations('Toasts');
     const tErrors = useTranslations('Errors');
+    const locale = useLocale();
     const resource = getResourceByName(resourceName);
     const inventoryQty = queryStorageFacility(assets.storage, resourceName);
 
@@ -138,7 +140,7 @@ export function useSellSectionMutations({
 
     const handleSaveSell = () => {
         if (!resource) {
-            toast.error(tErrors('unknownResource', { resourceName }));
+            toast.error(tErrors('unknownResource', { resourceName: termFor(locale, resourceName) }));
             return;
         }
 
