@@ -12,7 +12,7 @@ import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import { oilReservoirResourceType } from '@/simulation/planet/landBoundResources';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function LeaseClaimCard({
     summary,
@@ -24,6 +24,7 @@ export function LeaseClaimCard({
     planetId: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Claims');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [tierIndex, setTierIndex] = useState(0);
@@ -63,8 +64,10 @@ export function LeaseClaimCard({
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale)} of{' '}
-                    {formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale)}
+                    {t('available', {
+                        current: formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale),
+                        total: formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale),
+                    })}
                 </p>
                 <div className='space-y-3'>
                     <ClaimSizeForm
@@ -78,7 +81,7 @@ export function LeaseClaimCard({
                         onSubmit={(quantity) =>
                             leaseMutation.mutate({ agentId, planetId, resourceName: summary.resourceName, quantity })
                         }
-                        submitLabel='Lease'
+                        submitLabel={t('lease')}
                         errorMessage={leaseMutation.error?.message}
                     />
                 </div>

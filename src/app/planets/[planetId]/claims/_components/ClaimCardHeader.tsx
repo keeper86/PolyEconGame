@@ -5,10 +5,11 @@ import { CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Leaf } from 'lucide-react';
 import { termFor } from '@/i18n/terms';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ClaimCardHeader({ resourceName, renewable }: { resourceName: string; renewable: boolean }) {
     const locale = useLocale();
+    const t = useTranslations('Claims');
     return (
         <CardHeader className='pb-2'>
             <CardTitle className='flex items-center gap-2 text-sm font-semibold'>
@@ -19,7 +20,7 @@ export function ClaimCardHeader({ resourceName, renewable }: { resourceName: str
                         <TooltipTrigger asChild>
                             <Leaf className='h-4 w-4 text-green-500' />
                         </TooltipTrigger>
-                        <TooltipContent>{'Renewable'}</TooltipContent>
+                        <TooltipContent>{t('renewable')}</TooltipContent>
                     </Tooltip>
                 )}
             </CardTitle>

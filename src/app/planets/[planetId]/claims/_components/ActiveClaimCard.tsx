@@ -15,19 +15,23 @@ import React, { useEffect, useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
-function formatDepletion(ticks: number | null): string {
+type ClaimsTranslator = ReturnType<typeof useTranslations<'Claims'>>;
+
+function formatDepletion(t: ClaimsTranslator, ticks: number | null): string {
     if (ticks === null) {
-        return 'Sustainable';
+        return t('sustainable');
     }
     const months = Math.floor(ticks / TICKS_PER_MONTH);
     if (months < MONTHS_PER_YEAR) {
-        return `~${months} month${months !== 1 ? 's' : ''}`;
+        return t('depletionMonths', { count: months });
     }
     const years = Math.floor(months / MONTHS_PER_YEAR);
     const remMonths = months % MONTHS_PER_YEAR;
-    return remMonths > 0 ? `~${years}y ${remMonths}m` : `~${years} year${years !== 1 ? 's' : ''}`;
+    return remMonths > 0
+        ? t('depletionYearsMonths', { years, months: remMonths })
+        : t('depletionYears', { count: years });
 }
 
 export function ActiveClaimCard({
@@ -42,6 +46,7 @@ export function ActiveClaimCard({
     planetId: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Claims');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [showExpand, setShowExpand] = useState(false);
@@ -104,12 +109,14 @@ export function ActiveClaimCard({
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale)} of{' '}
-                    {formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale)}
+                    {t('available', {
+                        current: formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale),
+                        total: formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale),
+                    })}
                 </p>
                 <div className='space-y-1'>
                     <div className='flex justify-between text-xs'>
-                        <span className='text-muted-foreground'>Stock</span>
+                        <span className='text-muted-foreground'>{t('stock')}</span>
                         <span className='font-medium'>
                             {formatNumberWithUnit(claim.quantity, 'units', undefined, locale)} /{' '}
                             {formatNumberWithUnit(claim.maximumCapacity, 'units', undefined, locale)} ({fillPct}%)
@@ -121,35 +128,35 @@ export function ActiveClaimCard({
                 </div>
                 {claim.claimStatus === 'paused' && (
                     <Badge variant='outline' className='text-amber-600 border-amber-600 text-xs w-fit'>
-                        Paused — insufficient funds
+                        {t('paused')}
                     </Badge>
                 )}
                 <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Extraction / tick</p>
+                        <p className='text-muted-foreground'>{t('extractionPerTick')}</p>
                         <p className='font-medium'>
                             {formatNumberWithUnit(claim.extractionRatePerTick, 'units', undefined, locale)}
                         </p>
                     </div>
                     <div className='space-y-0.5'>
-                        <p className='text-muted-foreground'>Depletion</p>
+                        <p className='text-muted-foreground'>{t('depletion')}</p>
                         <p
                             className={`font-medium flex items-center gap-1 ${isSustainable ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}
                         >
                             {isSustainable && <RefreshCw className='h-3 w-3' />}
-                            {formatDepletion(claim.depletionTicksEstimate)}
+                            {formatDepletion(t, claim.depletionTicksEstimate)}
                         </p>
                     </div>
                     {summary.renewable && (
                         <>
                             <div className='space-y-0.5'>
-                                <p className='text-muted-foreground'>Cost / tick</p>
+                                <p className='text-muted-foreground'>{t('costPerTick')}</p>
                                 <p className='font-medium'>
                                     {formatNumberWithUnit(claim.costPerTick, 'currency', planetId, locale)}
                                 </p>
                             </div>
                             <div className='space-y-0.5'>
-                                <p className='text-muted-foreground'>Regen / tick</p>
+                                <p className='text-muted-foreground'>{t('regenPerTick')}</p>
                                 <p className='font-medium text-green-600 dark:text-green-400'>
                                     +{formatNumberWithUnit(claim.regenerationRate, 'units', undefined, locale)}
                                 </p>
@@ -177,16 +184,14 @@ export function ActiveClaimCard({
                                 })
                             }
                             onCancel={() => setShowExpand(false)}
-                            submitLabel='Expand'
+                            submitLabel={t('expand')}
                             errorMessage={expandMutation.error?.message}
                         />
                     </div>
                 ) : confirmQuit ? (
                     <div className='space-y-2 border-t pt-3 mt-auto'>
                         <p className='text-xs text-destructive font-medium'>
-                            {summary.renewable
-                                ? 'Billing continues until the claim is released.'
-                                : 'There is no refund!'}
+                            {summary.renewable ? t('billingContinues') : t('noRefund')}
                         </p>
                         <div className='flex gap-2'>
                             <Button
@@ -201,12 +206,12 @@ export function ActiveClaimCard({
                                 {quitMutation.isPending || noticeGiven ? (
                                     <>
                                         <Loader2 className='h-3 w-3 animate-spin mr-1' />
-                                        Takes effect next tick…
+                                        {t('takesEffectNextTick')}
                                     </>
                                 ) : summary.renewable ? (
-                                    'Confirm Notice'
+                                    t('confirmNotice')
                                 ) : (
-                                    'Confirm Release'
+                                    t('confirmRelease')
                                 )}
                             </Button>
                             <Button
@@ -215,7 +220,7 @@ export function ActiveClaimCard({
                                 disabled={quitMutation.isPending || noticeGiven}
                                 onClick={() => setConfirmQuit(false)}
                             >
-                                Cancel
+                                {t('cancel')}
                             </Button>
                         </div>
                         {quitMutation.error && <p className='text-xs text-destructive'>{quitMutation.error.message}</p>}
@@ -224,19 +229,19 @@ export function ActiveClaimCard({
                     <div className='flex gap-2 border-t pt-3 mt-auto'>
                         {summary.availableCapacity > 0 && claim.noticePeriodEndsAtTick === null && !noticeGiven && (
                             <Button size='sm' variant='outline' onClick={() => setShowExpand(true)}>
-                                Expand
+                                {t('expand')}
                             </Button>
                         )}
                         {claim.noticePeriodEndsAtTick === null && !noticeGiven && (
                             <Button size='sm' variant='outline' onClick={() => setConfirmQuit(true)}>
-                                {summary.renewable ? 'Give Notice' : 'Release'}
+                                {summary.renewable ? t('giveNotice') : t('release')}
                             </Button>
                         )}
                     </div>
                 )}
                 {claim.noticePeriodEndsAtTick !== null && (
                     <Badge variant='outline' className='text-red-600 border-red-600 text-xs w-fit'>
-                        Claim ends: {mapTickToDate(claim.noticePeriodEndsAtTick)}
+                        {t('claimEnds', { date: mapTickToDate(claim.noticePeriodEndsAtTick, false, locale) })}
                     </Badge>
                 )}
             </CardContent>
