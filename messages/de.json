@@ -309,13 +309,34 @@
         "supply": "Angebot",
         "demand": "Nachfrage",
         "totalSold": "Verkauft gesamt",
-        "own": "Eigen",
         "bandDepressed": "defizitär",
         "bandLossy": "verlustbringend",
         "bandMarginal": "grenzwertig",
         "bandProfitable": "profitabel",
         "bandExceptional": "außergewöhnlich",
-        "bandInsane": "extrem hoch"
+        "bandInsane": "extrem hoch",
+        "colStock": "Bestand",
+        "colPrice": "Preis",
+        "colProd": "Prod.",
+        "colCons": "Verbr.",
+        "colSupply": "Angebot",
+        "colDemand": "Nachfrage",
+        "colSold": "Verkauft",
+        "colPriceCost": "Preis/Kosten",
+        "colStockTitle": "Aktueller Lagerbestand",
+        "colPriceTitle": "Räumungspreis",
+        "colProdTitle": "Gesamtproduktion",
+        "colConsTitle": "Gesamtverbrauch",
+        "colSupplyTitle": "Gesamtangebot",
+        "colDemandTitle": "Gesamtnachfrage",
+        "colSoldTitle": "Verkauft gesamt",
+        "colPriceCostTitle": "Erlös / Kosten",
+        "levelRaw": "Roh",
+        "levelRefined": "Veredelt",
+        "levelManufactured": "Gefertigt",
+        "levelServices": "Dienste",
+        "levelCurrency": "Währung",
+        "levelAll": "Alle"
     },
     "Ships": {
         "tabs": {
@@ -617,7 +638,299 @@
         "next": "Weiter",
         "open": "Dialog öffnen",
         "skip": "Tour überspringen",
-        "of": "von"
+        "of": "von",
+        "steps": {
+            "financial": {
+                "0": {
+                    "content": "Willkommen bei Enterprise Engine (der Name ist vorläufig)! Dies ist eine lebendige, atmende makroökonomische Simulation. Du führst ein Unternehmen auf einem dynamischen Planeten. Jede Aktion — Kredite, Einstellungen, Produktion, Handel — wird in eine Warteschlange gestellt und jeden Tag abgearbeitet.",
+                    "title": "🌍 Willkommen bei Enterprise Engine!"
+                },
+                "1": {
+                    "content": "Klicke oben auf den Button, um deinen Startkredit aufzunehmen. Er liefert Startkapital, um die Infrastruktur deines Unternehmens aufzubauen und Arbeitskräfte einzustellen. Der Kredit wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist.",
+                    "title": "🏦 Nimm deinen Startkredit auf"
+                },
+                "2": {
+                    "content": "Deine Kreditanfrage wurde in die Warteschlange gestellt! Sie wird gutgeschrieben, sobald der aktuelle Tag abgeschlossen ist. Beachte das \"Pending\"-Overlay — Aktionen werden in die Warteschlange gestellt und am nächsten Tag verarbeitet. So funktioniert die Simulation: Du stellst Aktionen ein, sie werden aufgelöst, wenn die Zeit voranschreitet.",
+                    "title": "✅ Kredit erfolgreich aufgenommen!"
+                },
+                "3": {
+                    "content": "Das ist deine Finanzübersicht. Die linke Spalte zeigt deinen monatlichen Cashflow: Erlös, Löhne, Einkäufe und Anspruchszahlungen. Die rechte Spalte zeigt deine Positionen: Einlagen, Kredite und Nettoposition. Der Netto-Cashflow ist deine wichtigste Kennzahl — grün bedeutet Gewinn, rot bedeutet, du verbrennst Geld!",
+                    "title": "📈 Finanzübersicht"
+                },
+                "4": {
+                    "content": "Deine Anlagen, Schiffe und dein Lager haben einen Sicherheitenwert, der bestimmt, wie viel du leihen kannst. Je mehr Vermögenswerte du aufbaust, desto mehr Kredit schaltest du frei.",
+                    "title": "🏭 Sicherheiten"
+                },
+                "5": {
+                    "content": "Dieses Diagramm schlüsselt deine Ausgaben und Einnahmen über die Zeit auf. Verfolge, wie sich deine Betriebskosten zu den Einnahmen verhalten — der Erlös sollte mit wachsender Produktion steigen.",
+                    "title": "📈 Ausgaben- & Einnahmendiagramm"
+                },
+                "6": {
+                    "content": "Das Kassabestandsdiagramm zeigt deine Netto-Kassaposition über die Zeit. Ein steigender Trend bedeutet, dass du Rücklagen aufbaust. Ein fallender Trend signalisiert, dass du deinen Betrieb anpassen oder einen Kredit aufnehmen musst.",
+                    "title": "📈 Kassabestandsdiagramm"
+                },
+                "7": {
+                    "content": "Das Panel zur Produktauflösung schlüsselt deinen monatlichen Gewinn und Verlust nach Produkt auf. Sieh, welche Produkte dir Geld bringen und welche dich Geld kosten.",
+                    "title": "📊 Produkt-Gewinn und -Verlust"
+                },
+                "8": {
+                    "content": "Im Panel zur Kreditverwaltung kannst du zusätzliche Kredite beantragen oder bestehende vorzeitig zurückzahlen. Kreditbeträge hängen von deinem Cashflow und deinen Sicherheiten ab. Verbessere deinen Erlös und deine Vermögenswerte, um größere Kredite zu besseren Konditionen freizuschalten.",
+                    "title": "🏦 Kreditverwaltung & Konditionen"
+                },
+                "9": {
+                    "content": "Jetzt schauen wir uns die Einstellung von Arbeitskräften an. Dein Unternehmen braucht Arbeitskräfte, um Anlagen zu betreiben. Wir wechseln nun zur Seite für Arbeitskräfte. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Arbeitskräfte"
+                }
+            },
+            "workforce": {
+                "0": {
+                    "content": "Arbeitskräfte betreiben deine Anlagen. Sie werden aus dem Bevölkerungsreservoir des Planeten eingestellt. Dieses Panel zeigt deine aktuellen Löhne je Bildungsstufe im Vergleich zum Planetendurchschnitt (in Klammern). Löhne werden automatisch von der KI verwaltet.",
+                    "title": "👷 Arbeitskräfteverwaltung"
+                },
+                "1": {
+                    "content": "Bildungsstufen: Ungelernt (einfache Arbeit), Primar, Sekundar (qualifiziert) und Tertiär (Spezialisten). Unterschiedliche Anlagen brauchen unterschiedliche Bildungsanteile. Höhere Löhne ziehen qualifiziertere Mitarbeitende an, erhöhen aber deine Kosten.",
+                    "title": "🏫 Bildungsstufen"
+                },
+                "2": {
+                    "content": "Klappe das Panel für die Automatisierungssteuerung auf und aktiviere \"Automatische Arbeitskräftezuweisung\". Die KI berechnet dann jeden Tag optimale Mitarbeiterziele auf Basis deiner Anlagenanforderungen. Das ist der empfohlene Weg — manuelle Zuweisung ist mühsam!",
+                    "title": "🤖 Automatisierung aktivieren"
+                },
+                "3": {
+                    "content": "Die Automatisierung ist jetzt aktiviert! Die KI berechnet jeden Tag optimale Mitarbeiterziele auf Basis deiner Anlagenanforderungen.",
+                    "title": "✅ Automatisierung erfolgreich aktiviert!"
+                },
+                "4": {
+                    "content": "Dieses Panel zeigt die Ziele der Arbeitskräftezuweisung je Bildungsstufe. Mit aktivierter Automatisierung setzt die KI diese jeden Tag für dich. Ohne Automatisierung würdest du sie hier manuell festlegen.",
+                    "title": "🔄 Arbeitskräftezuweisung"
+                },
+                "5": {
+                    "content": "Der Abschnitt zur Arbeitskräfte-Demografie zeigt die Zusammensetzung deiner Belegschaft: Mitarbeiterzahl nach Bildung, Altersverteilung und Betriebszugehörigkeit. Verfolge, wie sich deine Belegschaft entwickelt.",
+                    "title": "📊 Arbeitskräfte-Demografie"
+                },
+                "6": {
+                    "content": "Das Diagramm zur Altersverteilung schlüsselt deine Belegschaft nach Altersgruppen auf. Eine ausgewogene Alterspyramide spricht für eine gesunde Erneuerung der Belegschaft. Zu viele ältere Arbeitskräfte können auf künftige Rentenwellen hindeuten.",
+                    "title": "📈 Altersverteilung"
+                },
+                "7": {
+                    "content": "Das Diagramm zur Betriebszugehörigkeit zeigt, wie lange deine Arbeitskräfte schon beschäftigt sind. Hohe Zugehörigkeit bedeutet erfahrenes Personal, neue Einstellungen bringen frisches Know-how. Verfolge hier Trends bei Bindung und Einarbeitung.",
+                    "title": "📈 Betriebszugehörigkeit pro Kopf"
+                },
+                "8": {
+                    "content": "Diese Diagramme verfolgen die Gesamtzahl der Arbeitskräfte und die Lohnkosten über die Zeit. Beobachte das Wachstum deiner Belegschaft und sorge dafür, dass die Löhne wettbewerbsfähig bleiben.",
+                    "title": "📈 Arbeitskräfte-Diagramme"
+                },
+                "9": {
+                    "content": "Änderungen bei den Arbeitskräften werden jeden Tag verarbeitet, aber Übergänge brauchen Zeit. Neu eingestellte Arbeitskräfte kommen in eine Einarbeitungswarteschlange, und ausscheidende Arbeitskräfte (entlassen, in Rente oder freiwillig) haben jeweils ihre eigene dreimonatige Abgangswarteschlange. Hab Geduld — Änderungen der Belegschaft erfolgen schrittweise!",
+                    "title": "⏳ Geduld zahlt sich aus"
+                },
+                "10": {
+                    "content": "Dein Unternehmen braucht eine HR-Abteilung, um die Belegschaft zu verwalten. Die HR-Abteilung verbraucht Verwaltungsdienste und erzeugt Personalressourcen. Ohne sie sinkt die Produktivität deiner Arbeitskräfte drastisch. Klicke auf \"Bauen\", um den Bau zu beauftragen — das ist nötig, bevor du fortfahren kannst.",
+                    "title": "🏢 HR-Abteilung bauen"
+                },
+                "11": {
+                    "content": "Der Bau deiner HR-Abteilung ist jetzt in der Warteschlange! Nach dem nächsten Tag erscheint sie als \"Im Bau\" und braucht ein paar Tage bis zur Fertigstellung. Die benötigten Verwaltungsdienste werden automatisch am Markt gekauft, sobald wir das eingerichtet haben.",
+                    "title": "✅ HR-Bau in der Warteschlange!"
+                },
+                "12": {
+                    "content": "Sobald sie aktiv ist, erzeugt die HR-Abteilung Personalressourcen aus Verwaltungsdiensten. Die Anzeige zeigt deinen HR-Puffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer. Solange der Puffer deine Arbeitskräfte deckt, läuft die Produktivität bei 100 % — geht er zur Neige, sinkt die Produktivität und dein ganzes Unternehmen leidet.",
+                    "title": "🏢 So funktioniert die HR-Abteilung"
+                },
+                "13": {
+                    "content": "Wir brauchen Bauleistungen, um Anlagen zu bauen. Lass uns zum Markt gehen und welche kaufen. Wir wechseln nun zur Marktseite. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Markt"
+                }
+            },
+            "market": {
+                "0": {
+                    "content": "Der Markt ist der Ort, an dem du Produktionseinsätze kaufst und Fertigwaren verkaufst. Preise entstehen aus Angebot und Nachfrage — wie in einer echten Wirtschaft! Wir sind hier, um Bauleistungen zu kaufen, die für den Bau von Anlagen benötigt werden.",
+                    "title": "🏪 Marktübersicht"
+                },
+                "1": {
+                    "content": "Ressourcen sind nach Stufe gruppiert: Roh, Veredelt, Gefertigt, Dienste und Währung (Devisen). Bauleistungen findest du im Tab für Dienste. Klicke auf den Tab für Dienste, um sie zu finden.",
+                    "title": "📂 Ressourcenstufen"
+                },
+                "2": {
+                    "content": "Jede Ressourcenzeile zeigt wichtige Daten: Räumungspreis, Gesamtangebot, Gesamtnachfrage, Produktion und Verbrauch. Klicke auf Spaltenköpfe, um zu sortieren. Klicke auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
+                    "title": "📊 Marktdaten"
+                },
+                "3": {
+                    "content": "Klicke auf die Zeile für Bauleistungen, um sie aufzuklappen und Kauf-/Verkaufsoptionen zu sehen.",
+                    "title": "🔍 Bauleistungen aufklappen"
+                },
+                "4": {
+                    "content": "Aktiviere diesen Schalter, um automatische Käufe einzuschalten. Die KI kauft dann jeden Tag Bauleistungen, um deinen Bestand aufzufüllen, wenn du die Ressource benötigst. Preis- und Mengenstrategien kannst du unten konfigurieren.",
+                    "title": "🛒 Kauf für Bauleistungen aktivieren"
+                },
+                "5": {
+                    "content": "Automatische Käufe sind jetzt aktiviert! Die KI übernimmt die Einkäufe für dich. Deine Anlage hat immer die Bauleistungen, die sie braucht.",
+                    "title": "✅ Kauf aktiviert!"
+                },
+                "6": {
+                    "content": "Verwaltung ist der bürokratische Aufwand für den Betrieb deines Unternehmens: Sowohl die HR-Abteilung als auch die Lagerabteilung verbrauchen sie jeden Tag. Klicke auf die Zeile für Verwaltung, um sie aufzuklappen.",
+                    "title": "🔍 Verwaltung aufklappen"
+                },
+                "7": {
+                    "content": "Aktiviere diesen Schalter, um den Kauf von Verwaltungsdiensten zu automatisieren. Deine Abteilungen brauchen sie jeden Tag — geht sie aus, werden HR und Lager langsamer. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Verwaltung selbst über ein Verwaltungszentrum zu produzieren.",
+                    "title": "🛒 Kauf für Verwaltung aktivieren"
+                },
+                "8": {
+                    "content": "Logistik ist die Transportkapazität, die Waren in dein Lager und wieder hinaus bewegt. Die Lagerabteilung verbraucht sie jeden Tag. Klicke auf die Zeile für Logistik, um sie aufzuklappen.",
+                    "title": "🔍 Logistik aufklappen"
+                },
+                "9": {
+                    "content": "Aktiviere diesen Schalter, um den Kauf von Logistikdiensten zu automatisieren. Ohne ausreichend Logistik hungert dein Lagerdurchsatz aus und Waren gehen verloren. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Logistik selbst über einen Logistikknoten zu produzieren.",
+                    "title": "🛒 Kauf für Logistik aktivieren"
+                },
+                "10": {
+                    "content": "Wartung hält deine Anlagen in gutem Zustand. Jede Anlage verbraucht jeden Tag Wartungsdienste — ohne sie sinkt der Zustand und die Leistung fällt. Klicke auf die Zeile für Wartung, um sie aufzuklappen.",
+                    "title": "🔍 Wartung aufklappen"
+                },
+                "11": {
+                    "content": "Aktiviere diesen Schalter, um den Kauf von Wartungsdiensten zu automatisieren. Deine Anlagen brauchen sie jeden Tag, um gesund zu bleiben. Wenn dein Unternehmen richtig groß wird, kann es sinnvoll sein, eine Grundmenge Wartung selbst über eine Wartungsanlage zu produzieren.",
+                    "title": "🛒 Kauf für Wartung aktivieren"
+                },
+                "12": {
+                    "content": "Im Verkaufsbereich kannst du Angebote zum Verkauf deiner Produkte einstellen. Vorerst konzentrieren wir uns auf den Einkauf — später verkaufst du hier deine veredelten Waren.",
+                    "title": "📤 Verkauf & Auto-Verkauf"
+                },
+                "13": {
+                    "content": "Jede Ressource hat ein Preishistoriendiagramm. Nutze es, um Trends zu erkennen und deine Geschäfte zu timen. Die rote Linie sind die geschätzten Produktionskosten.",
+                    "title": "📈 Preishistorie"
+                },
+                "14": {
+                    "content": "Dieser Schalter filtert den Markt so, dass nur Ressourcen angezeigt werden, die du benötigst oder produzierst.",
+                    "title": "🔍 Relevante Ressourcen"
+                },
+                "15": {
+                    "content": "Jetzt, da Bauleistungen automatisch gekauft werden, lass uns eine Anlage bauen! Wir wechseln nun zur Produktionsseite. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Produktion"
+                }
+            },
+            "production": {
+                "0": {
+                    "content": "Produktionsanlagen verwandeln Rohstoffe in veredelte Güter, gefertigte Produkte und Dienstleistungen. So entsteht Wert — und so machst du Gewinn! Wir haben Bauleistungen bereit, also bauen wir ein Ölfeld.",
+                    "title": "🏭 Produktionsanlagen"
+                },
+                "1": {
+                    "content": "Anlagen sind nach Stufe geordnet: Roh (Förderung), Veredelt (Verarbeitung), Gefertigt (Montage) und Dienste. Das Ölfeld ist eine Anlage zur Rohstoffförderung — die Zahl auf dem Badge zeigt, wie viele du von jedem Typ besitzt.",
+                    "title": "📂 Anlagenstufen"
+                },
+                "2": {
+                    "content": "Klicke auf die Karte \"+ Anlage bauen\", um den Bau einer neuen Anlage zu starten. Wir bauen ein Ölfeld, um Rohöl zu fördern.",
+                    "title": "🛠️ Klicken, um zu bauen"
+                },
+                "3": {
+                    "content": "Das ist das Ölfeld. Es fördert Rohöl aus einem Landanspruch (Ölreservoir). Klicke auf \"Bauen\", um den Bau zu beauftragen. Der Bau nutzt Bauleistungen, die automatisch am Markt gekauft werden. Der Bau dauert ein paar Tage.",
+                    "title": "🛠️ Ölfeld bauen"
+                },
+                "4": {
+                    "content": "Dein Bauantrag für das Ölfeld wurde gesendet! Nach einem Tag erscheint es als \"Im Bau\". Der Bau verbraucht jeden Tag Bauleistungen aus deinem Lager, bis er abgeschlossen ist. Den Fortschritt siehst du auf der Karte — der Balken füllt sich, während der Bau voranschreitet.",
+                    "title": "⏳ Bau gestartet"
+                },
+                "5": {
+                    "content": "Sobald der Bau abgeschlossen ist, wird die Anlage aktiv. Die Karte zeigt: die verbrauchten Einsätze (links) und die erzeugten Ausgaben (rechts), Effizienzbalken für Arbeitskräfte und eine Ertragszeile mit Erlös, Einsatzkosten, Löhnen und Nettogewinn pro Tag. Behalte die Einsatzpuffer im Blick — gehen sie zur Neige, stoppt die Produktion!",
+                    "title": "⚙️ Aktive Anlage"
+                },
+                "6": {
+                    "content": "Du kannst die Skalierung jedes Anlagentyps erhöhen. Das skaliert die Einsatz-, Ausgabe- und Arbeitskräfteanforderungen der Anlage. Nutze den Regler für die Betriebsskalierung, um die Kapazität vorübergehend zwischen 0 % und 100 % einzustellen.",
+                    "title": "📡 Hochskalieren"
+                },
+                "7": {
+                    "content": "Das Ölfeld braucht einen Landanspruch auf ein Ölreservoir, um Rohöl zu fördern. Lass uns einen pachten, um es zu versorgen. Wir wechseln nun zur Seite für Landansprüche. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Landansprüche"
+                }
+            },
+            "claims": {
+                "0": {
+                    "content": "Landansprüche geben dir Zugang zu natürlichen Ressourcen auf dem Planeten. Dein Ölfeld braucht Zugang zu einem Ölreservoir, um Rohöl zu fördern. Ohne Anspruch hat das Feld nichts zu fördern!",
+                    "title": "🌍 Landansprüche"
+                },
+                "1": {
+                    "content": "Klicke auf der Karte des Ölreservoirs auf \"Pachten\", um deinen ersten Ressourcenanspruch zu sichern. Wähle eine Kapazität und bestätige — je nach gewählter Stufe fällt eine einmalige Pauschalgebühr an. Dieses Reservoir versorgt dein Ölfeld!",
+                    "title": "🔑 Ölreservoir pachten"
+                },
+                "2": {
+                    "content": "Dein Ölanspruch ist gepachtet! Die Ressourcen werden jeden Tag automatisch gefördert. Die geförderte Ressource fließt zu deinem Ölfeld, das Rohöl zum Veredeln oder Verkauf produziert. Beachte, dass die Karte des aktiven Anspruchs nun Bestände, Förderrate und Erschöpfungsschätzung zeigt.",
+                    "title": "✅ Ölanspruch erfolgreich gepachtet!"
+                },
+                "3": {
+                    "content": "Nach der Pacht hast du einen aktiven Anspruch. Die Ressourcen werden jeden Tag automatisch gefördert. Die Karte zeigt Bestände, Förderrate und Erschöpfungsschätzung. Erneuerbare Ressourcen (z. B. Farmen, Wasser) regenerieren sich mit der Zeit.",
+                    "title": "⚙️ Aktive Ansprüche"
+                },
+                "4": {
+                    "content": "Du kannst einen Anspruch erweitern, um die Förderkapazität zu erhöhen. Nicht erneuerbare Ressourcen erschöpfen sich irgendwann, also plane entsprechend!",
+                    "title": "🔍 Ansprüche skalieren"
+                },
+                "5": {
+                    "content": "Ressourcen bilden eine Kette: Rohstoffe (Stufe 0) versorgen Raffinerien (Stufe 1), diese versorgen Hersteller (Stufe 2) und so weiter. Du hast jetzt: Ölreservoir (roh) ➡️ Ölfeld (Förderung) ➡️ Markt. Beginne mit einfachen Ressourcen und arbeite dich die Wertschöpfungskette hinauf!",
+                    "title": "🔗 Ressourcenketten"
+                },
+                "6": {
+                    "content": "Deine Produkte lagern in deinem Lager. Lass uns deinen Bestand prüfen. Wir wechseln nun zur Lagerseite. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Lager"
+                }
+            },
+            "storage": {
+                "0": {
+                    "content": "Das ist deine Lageranlage — das Lagerhaus, in dem alle deine Güter liegen. Rohstoffe, Zwischenprodukte und Fertigwaren sind hier. Das Raster zeigt, was du hältst, was jeden Tick hinein- und herausfließt und was gekauft oder verkauft wird.",
+                    "title": "📦 Lagerübersicht"
+                },
+                "1": {
+                    "content": "Das Lager hat begrenzte Kapazität, sowohl beim Volumen (m³) als auch bei der Masse (Tonnen). Wenn du es füllst, stellen deine Anlagen die Produktion ein! Verkaufe überschüssige Güter am Markt oder erweitere das Lager, um Platz zu schaffen.",
+                    "title": "📁 Kapazität"
+                },
+                "2": {
+                    "content": "Die Lagerabteilung ist das Rückgrat deiner Logistik. Sie verbraucht Verwaltungs- und Logistikdienste und erzeugt den Lagerdurchsatz, der Güter in dein Lager hinein- und hinausbewegt. Die Anzeige zeigt deinen Lagerpuffer, und die Bilanzzeile zeigt Produktion − Bedarf → Puffer.",
+                    "title": "🏢 Lagerabteilung"
+                },
+                "3": {
+                    "content": "Jede aktive Anlage hat eine Wartungszeile: Sie verbraucht Wartungsdienste, um ihren Zustand hoch zu halten. Wird zu wenig gewartet, sinkt der Zustand und die Anlage produziert weniger. Deshalb kaufen wir Wartung am Markt!",
+                    "title": "🔧 Wartungszeile"
+                },
+                "4": {
+                    "content": "Wenn deine Lagerabteilung nicht hinterherkommt (Logistik-Unterversorgung), zahlst du einen echten Preis: Die Transporteffizienz sinkt — Güter gehen verloren, bevor sie überhaupt dein Lager erreichen — und der Lagerzustand verschlechtert sich. Bei voller Unterversorgung kann die Transporteffizienz auf etwa 50 % fallen. Erweitere die Lagerabteilung oder versorge sie mit mehr Logistik und Verwaltung, um Verluste zu vermeiden!",
+                    "title": "⚠️ Malus bei Logistik-Unterversorgung"
+                },
+                "5": {
+                    "content": "Jetzt schauen wir uns deine Flotte an. Wir wechseln nun zur Schiffsseite. Das kann ein paar Sekunden dauern.",
+                    "title": "➡️ Weiter: Schiffe"
+                }
+            },
+            "ships": {
+                "0": {
+                    "content": "Schiffe ermöglichen interplanetaren Handel. Mit einer Flotte kannst du Güter zwischen Planeten transportieren, auf ausländische Märkte zugreifen und eine wirklich galaktische Lieferkette aufbauen!",
+                    "title": "🚀 Schiffsverwaltung"
+                },
+                "1": {
+                    "content": "Im Tab für Werften baust du neue Schiffe. Wähle einen Schiffstyp, zahle die Baukosten und warte, bis das Schiff gebaut ist — genau wie beim Bau von Anlagen.",
+                    "title": "🛠️ Werften"
+                },
+                "2": {
+                    "content": "Meine Schiffe zeigt deine Flotte. Schiffe können untätig sein, unterwegs sein oder aktiv handeln. Verwalte Routen, sieh dir die Fracht an und verfolge die Einnahmen.",
+                    "title": "🚢 Meine Schiffe"
+                },
+                "3": {
+                    "content": "Der Schiffsmarktplatz lässt dich Schiffe mit anderen Unternehmen kaufen und verkaufen. Ein großartiger Weg, um loszulegen, ohne von Grund auf zu bauen!",
+                    "title": "🛒 Schiffsmarktplatz"
+                },
+                "4": {
+                    "content": "Schiffe erwirtschaften Erlös, indem sie Transportverträge zwischen Planeten erfüllen. Je mehr Handelsrouten du aufbaust, desto mehr Einnahmen erzeugt deine Flotte.",
+                    "title": "📦 Transportverträge"
+                },
+                "5": {
+                    "content": "Das große Ziel: Produktion auf mehreren Planeten aufbauen, mit deiner Flotte zwischen ihnen handeln und eine interplanetare Lieferkette aufbauen. Kaufe auf einem Planeten billig ein und verkaufe auf einem anderen teuer!",
+                    "title": "🌍 Multi-Planeten-Strategie"
+                },
+                "6": {
+                    "content": "Hier ist der zentrale Spielkreislauf: 👍 Landansprüche pachten, um Ressourcen zu erhalten ➡️ Produktionsanlagen bauen ➡️ Arbeitskräfte einstellen (mit Automatisierung!) ➡️ Güter produzieren ➡️ Am Markt mit Gewinn verkaufen ➡️ Reinvestieren, um zu wachsen ➡️ Schiffe bauen und auf andere Planeten expandieren!",
+                    "title": "🔄 Der Spielkreislauf"
+                },
+                "7": {
+                    "content": "🎉 Herzlichen Glückwunsch! Du hast die geführte Tour abgeschlossen. Du kennst jetzt die zentralen Mechanismen von Enterprise Engine. Erforsche jeden Bereich im Detail, experimentiere mit Strategien und baue dein interplanetares Wirtschaftsimperium auf. Viel Erfolg, CEO!",
+                    "title": "✅ Tour abgeschlossen"
+                }
+            }
+        }
     },
     "Planets": {
         "title": "Planeten",
@@ -767,6 +1080,10 @@
         "sendingBuild": "Bau wird gesendet…",
         "noMatchingResources": "Keine passenden Ressourcen im Lager",
         "max": "max",
+        "levelRaw": "Roh",
+        "levelRefined": "Veredelt",
+        "levelManufactured": "Gefertigt",
+        "levelServices": "Dienste",
         "statusOptimal": "Optimal",
         "statusStable": "Stabil",
         "statusStrained": "Angespannt",

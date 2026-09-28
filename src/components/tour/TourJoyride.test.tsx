@@ -393,7 +393,7 @@ describe('TourJoyride', () => {
     // ── getStepsForPage called correctly ───────────────────────────────
     it('calls getStepsForPage with correct arguments without routerPush', () => {
         renderTourJoyride();
-        expect(getStepsForPage).toHaveBeenCalledWith('financial', 'planet-1', 'agent-1', []);
+        expect(getStepsForPage).toHaveBeenCalledWith(expect.any(Function), 'financial', 'planet-1', 'agent-1', []);
     });
 
     // ── safeStepIndex clamping ────────────────────────────────────────

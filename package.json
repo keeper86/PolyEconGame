@@ -29,7 +29,7 @@
         "db:seed": "knex seed:run --env development",
         "db:types:check": "node ./tools/db_types.cjs check",
         "db:types:update": "node ./tools/db_types.cjs update",
-        "i18n:scan": "node ./tools/i18n_scan.cjs",
+        "i18n:scan": "node ./tools/i18n_scan.cjs && node ./tools/i18n_scan_literals.cjs",
         "db:waitFor": "npx wait-on --timeout=60000 tcp:localhost:5432",
         "generate-keycloak-realm": "set -a && . ./.env && set +a && envsubst < ./keycloak/data/template.json > ./keycloak/data/import/initialRealm.json"
     },

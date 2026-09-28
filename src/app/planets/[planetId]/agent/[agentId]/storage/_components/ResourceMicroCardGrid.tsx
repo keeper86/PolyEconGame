@@ -3,7 +3,7 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { getWholeStorage, queryStorageFacility } from '@/simulation/planet/facility';
-import { RESOURCES_BY_NAME, RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
+import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
@@ -209,9 +209,15 @@ export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactEleme
 
     const resourceGroups = useMemo(() => {
         const groups = groupEntriesByLevel(entries);
+        const levelLabels: Record<string, string> = {
+            raw: tr('levelRaw'),
+            refined: tr('levelRefined'),
+            manufactured: tr('levelManufactured'),
+            services: tr('levelServices'),
+        };
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: RESOURCE_LEVEL_LABELS[level as keyof typeof RESOURCE_LEVEL_LABELS] ?? level,
+            label: levelLabels[level] ?? level,
             resources: groups.get(level) ?? [],
         }));
         if (entries.length > 0) {

@@ -189,7 +189,7 @@ export default function ResourceTrigger({
                     <div
                         key={column.id}
                         className={cn(getColumnClasses(column.id), 'flex justify-end')}
-                        title={column.title + ' ' + overviewRow?.priceCostRatio.toFixed(2)}
+                        title={`${t(column.titleKey)} ${overviewRow?.priceCostRatio.toFixed(2)}`}
                     >
                         {value}
                     </div>
@@ -201,7 +201,7 @@ export default function ResourceTrigger({
                             'text-[11px] tabular-nums',
                             getTextColorClass(column.id, numericValue),
                         )}
-                        title={column.title}
+                        title={t(column.titleKey)}
                     >
                         {value || (overviewRow ? '—' : '')}
                     </span>

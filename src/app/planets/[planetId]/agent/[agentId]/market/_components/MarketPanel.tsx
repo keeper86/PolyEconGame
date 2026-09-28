@@ -19,7 +19,6 @@ import { useOnlyRelevantResourcesPreference } from '@/hooks/uiPreferences';
 import type { MarketOverviewRow } from '@/server/controller/planet';
 import { queryStorageFacility } from '@/simulation/planet/facility';
 import { CURRENCY_RESOURCE_PREFIX, getCurrencyResourceName } from '@/simulation/market/currencyResources';
-import { RESOURCE_LEVEL_LABELS } from '@/simulation/planet/resourceCatalog';
 import { getHeaderColumnClasses, LABEL_COLUMN_WIDTH } from './columnConfig';
 import {
     buildInitialState,
@@ -52,12 +51,6 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 }
 
 const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services', 'currency'] as const;
-
-const MARKET_LEVEL_LABELS: Record<string, string> = {
-    ...RESOURCE_LEVEL_LABELS,
-    currency: 'Currency',
-    all: 'All',
-};
 
 function getLevelForResource(resourceName: string): string {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
@@ -121,16 +114,24 @@ export default function MarketPanel({
     const resourceGroups = useMemo(() => {
         const groups = groupResourcesByLevel(resources);
 
+        const levelLabels: Record<string, string> = {
+            raw: t('levelRaw'),
+            refined: t('levelRefined'),
+            manufactured: t('levelManufactured'),
+            services: t('levelServices'),
+            currency: t('levelCurrency'),
+        };
+
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: MARKET_LEVEL_LABELS[level] ?? level,
+            label: levelLabels[level] ?? level,
             resources: groups.get(level) ?? [],
         }));
         if (resources.length > 0) {
-            return [{ level: 'all', label: 'All', resources }, ...levelGroups];
+            return [{ level: 'all', label: t('levelAll'), resources }, ...levelGroups];
         }
         return levelGroups;
-    }, [resources]);
+    }, [resources, t]);
 
     const [activeTab, setActiveTab] = useState<string>(() => {
         if (typeof window === 'undefined') {
@@ -417,9 +418,9 @@ export default function MarketPanel({
                                                     key={column.id}
                                                     onClick={() => handleColumnSort(column.id)}
                                                     className={`${getHeaderColumnClasses(column.id)} flex items-center justify-end gap-0.5 cursor-pointer hover:text-muted-foreground`}
-                                                    title={column.title}
+                                                    title={t(column.titleKey)}
                                                 >
-                                                    <span className='truncate'>{column.label}</span>
+                                                    <span className='truncate'>{t(column.labelKey)}</span>
                                                     {sortConfig.column === column.id ? (
                                                         sortConfig.direction === 'asc' ? (
                                                             <ChevronUp className='w-2.5 h-2.5 shrink-0' />

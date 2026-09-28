@@ -65,8 +65,8 @@ export function TourJoyride() {
         if (!currentPageRoute || !planetId) {
             return [];
         }
-        return getStepsForPage(currentPageRoute, planetId, agentId, completedActions);
-    }, [currentPageRoute, planetId, agentId, completedActions]);
+        return getStepsForPage(t, currentPageRoute, planetId, agentId, completedActions);
+    }, [t, currentPageRoute, planetId, agentId, completedActions]);
 
     const prevPageRouteRef = useRef(currentPageRoute);
     useEffect(() => {

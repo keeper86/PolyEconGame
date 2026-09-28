@@ -185,7 +185,7 @@ export default function ResourceAccordionItem({
                                     className='flex flex-col gap-0.5 rounded-md bg-muted/40 border border-border/40 px-2 py-1 min-w-[70px] items-end'
                                 >
                                     <span className='text-[9px] text-muted-foreground uppercase tracking-wide leading-none'>
-                                        {col.label}
+                                        {t(col.labelKey)}
                                     </span>
                                     <span className='text-xs font-medium leading-tight'>
                                         {getDroppedColumnValue(col.id)}

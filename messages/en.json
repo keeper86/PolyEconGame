@@ -309,13 +309,34 @@
         "supply": "Supply",
         "demand": "Demand",
         "totalSold": "Total sold",
-        "own": "Own",
         "bandDepressed": "depressed",
         "bandLossy": "lossy",
         "bandMarginal": "marginal",
         "bandProfitable": "profitable",
         "bandExceptional": "exceptional",
-        "bandInsane": "insane"
+        "bandInsane": "insane",
+        "colStock": "Stock",
+        "colPrice": "Price",
+        "colProd": "Prod",
+        "colCons": "Cons",
+        "colSupply": "Supply",
+        "colDemand": "Demand",
+        "colSold": "Sold",
+        "colPriceCost": "Price/Cost",
+        "colStockTitle": "Current storage quantity",
+        "colPriceTitle": "Clearing price",
+        "colProdTitle": "Total production",
+        "colConsTitle": "Total consumption",
+        "colSupplyTitle": "Total supply",
+        "colDemandTitle": "Total demand",
+        "colSoldTitle": "Total sold",
+        "colPriceCostTitle": "Revenue / cost",
+        "levelRaw": "Raw",
+        "levelRefined": "Refined",
+        "levelManufactured": "Manufactured",
+        "levelServices": "Services",
+        "levelCurrency": "Currency",
+        "levelAll": "All"
     },
     "Ships": {
         "tabs": {
@@ -617,7 +638,299 @@
         "next": "Next",
         "open": "Open the dialog",
         "skip": "Skip tour",
-        "of": "of"
+        "of": "of",
+        "steps": {
+            "financial": {
+                "0": {
+                    "content": "Welcome to Enterprise Engine (name is work in progress)! This is a living, breathing macro-economic simulation. You run a company on a dynamic planet. Every action — loans, hiring, production, trades — is queued up and processed each  day.",
+                    "title": "🌍 Welcome to Enterprise Engine!"
+                },
+                "1": {
+                    "content": "Click the button above to take your starter loan. It provides initial capital to build your company infrastructure and hire workers. The loan is credited after the current day completes.",
+                    "title": "🏦 Take your starter loan"
+                },
+                "2": {
+                    "content": "Your loan request has been queued! It will be credited after the current day completes. Notice the \"Pending\" overlay — actions are queued and processed on the next day. This is how the simulation works: you queue actions, they resolve when time advances.",
+                    "title": "✅ Loan taken successfully!"
+                },
+                "3": {
+                    "content": "This is your Financial Overview. The left column shows your monthly cash flow: revenue, wages, purchases, and claim payments. The right column shows your positions: deposits, loans, and net position. The Net Cash Flow is your most important metric — green means profit, red means burning cash!",
+                    "title": "📈 Financial Overview"
+                },
+                "4": {
+                    "content": "Your facilities, ships, and storage have collateral value, which determines how much you can borrow. The more assets you build, the more credit you unlock.",
+                    "title": "🏭 Collateral"
+                },
+                "5": {
+                    "content": "This chart breaks down your expenses and revenue over time. Track how your operational costs compare to income — revenue should trend up as your production grows.",
+                    "title": "📈 Expenses & Revenue Chart"
+                },
+                "6": {
+                    "content": "The Balance Flow chart shows your net cash position over time. A rising trend means you are building cash reserves. A falling trend signals you may need to adjust your operations or take a loan.",
+                    "title": "📈 Balance Flow Chart"
+                },
+                "7": {
+                    "content": "The Product Resolution panel breaks down your monthly profit and loss by product. See which products make you money and which are costing you.",
+                    "title": "📊 Product P&L"
+                },
+                "8": {
+                    "content": "The Loan Management panel lets you request additional loans or repay existing ones early. Loan amounts depend on your cash flow and collateral. Improve your revenue and assets to unlock larger loans at better rates.",
+                    "title": "🏦 Loan Management & Conditions"
+                },
+                "9": {
+                    "content": "Now let’s look at hiring workers. Your company needs a workforce to operate facilities. We now navigate to the Workforce page. This may take a few seconds.",
+                    "title": "➡️ Next: Workforce"
+                }
+            },
+            "workforce": {
+                "0": {
+                    "content": "Workers run your facilities. They are hired from the planet’s population pool. This panel shows your current wages per education level compared to the planet average (shown in parentheses). Wages are managed automatically by the AI.",
+                    "title": "👷 Workforce Management"
+                },
+                "1": {
+                    "content": "Education levels: Uneducated (basic labor), Primary, Secondary (skilled), and Tertiary (specialists). Different facilities need different education mixes. Higher pay attracts more skilled employees but increases your costs.",
+                    "title": "🏫 Education Levels"
+                },
+                "2": {
+                    "content": "Expand the Automation Controls panel and toggle on \"Automatic worker allocation\". The AI will then compute optimal headcount targets each day based on your facility requirements. This is the recommended approach — manual allocation is tedious!",
+                    "title": "🤖 Enable automation"
+                },
+                "3": {
+                    "content": "Automation is now enabled! The AI will compute optimal headcount targets each day based on your facility requirements.",
+                    "title": "✅ Automation enabled successfully!"
+                },
+                "4": {
+                    "content": "This panel shows worker allocation targets per education level. With automation on, the AI sets these for you each day. Without automation, you would set them manually here.",
+                    "title": "🔄 Worker Allocation"
+                },
+                "5": {
+                    "content": "The Workforce Demography section shows your workforce composition: headcount by education, age distribution, and tenure. Track how your workforce evolves.",
+                    "title": "📊 Workforce Demographics"
+                },
+                "6": {
+                    "content": "The age distribution chart breaks down your workforce by age group. A balanced age pyramid indicates healthy workforce renewal. Too many older workers may signal future retirement waves.",
+                    "title": "📈 Age Distribution"
+                },
+                "7": {
+                    "content": "The tenure chart shows how long your workers have been employed. High tenure means experienced staff, while new hires bring fresh skills. Track retention and onboarding trends here.",
+                    "title": "📈 Tenure per Capita"
+                },
+                "8": {
+                    "content": "These charts track total workers and wage costs over time. Monitor your workforce growth and ensure wages stay competitive.",
+                    "title": "📈 Workforce Charts"
+                },
+                "9": {
+                    "content": "Worker changes are processed each day, but transitions take time. Newly hired workers enter an onboarding queue, and departing workers (fired, retired, or voluntarily leaving) each have their own 3-month departure queue. Be patient — workforce changes are gradual!",
+                    "title": "⏳ Patience pays off"
+                },
+                "10": {
+                    "content": "Your company needs an HR Department to manage its workforce. The HR Department consumes Administration services and produces Human Resources. Without it, your workers’ productivity drops dramatically. Click \"Build\" to order construction — this is required before you can continue.",
+                    "title": "🏢 Build the HR Department"
+                },
+                "11": {
+                    "content": "Your HR Department construction is now queued! It will appear as \"Under Construction\" after the next day and take a few days to complete. The Administration services it needs will be bought on the Market automatically once we set that up.",
+                    "title": "✅ HR build queued!"
+                },
+                "12": {
+                    "content": "Once active, the HR Department produces Human Resources from Administration services. The gauge shows your HR buffer and the balance row shows production − demand → buffer. As long as the buffer covers your workers, productivity runs at 100% — if it runs dry, worker productivity drops and your whole company suffers.",
+                    "title": "🏢 How the HR Department works"
+                },
+                "13": {
+                    "content": "We need construction services to build facilities. Let’s go to the market to buy some. We now navigate to the Market page. This may take a few seconds.",
+                    "title": "➡️ Next: Market"
+                }
+            },
+            "market": {
+                "0": {
+                    "content": "The Market is where you buy production inputs and sell finished goods. Prices are determined by supply and demand — just like a real economy! We’re here to buy Construction Services, which are needed to build facilities.",
+                    "title": "🏪 Market Overview"
+                },
+                "1": {
+                    "content": "Resources are grouped by level: Raw, Refined, Manufactured, Services, and Currency (foreign exchange). Construction Services are in the Services tab. Click the Services tab to find them.",
+                    "title": "📂 Resource Levels"
+                },
+                "2": {
+                    "content": "Each resource row shows key data: clearing price, total supply, total demand, production, and consumption. Click column headers to sort. Click on the Construction Services row to expand it and see buy/sell options.",
+                    "title": "📊 Market Data"
+                },
+                "3": {
+                    "content": "Click on the Construction Services row to expand it and see buy/sell options.",
+                    "title": "🔍 Expand Construction"
+                },
+                "4": {
+                    "content": "Toggle this switch to enable automated purchasing. The AI will buy construction services each day to keep your stock filled when you require the resource. You can configure pricing and volume strategies below.",
+                    "title": "🛒 Enable Buy for Construction Services"
+                },
+                "5": {
+                    "content": "Automated buying is now enabled! The AI will manage purchases for you. Your facility will always have the construction services it needs.",
+                    "title": "✅ Buy enabled!"
+                },
+                "6": {
+                    "content": "Administration is the bureaucratic overhead of running your company: both the HR Department and the Storage Department consume it every day. Click the Administration row to expand it.",
+                    "title": "🔍 Expand Administration"
+                },
+                "7": {
+                    "content": "Toggle this switch to automate buying of Administration services. Your departments need it every day — if it runs out, HR and Storage slow down. When your company gets really large, it may become beneficial to produce a base level of Administration yourself via an Administrative Center.",
+                    "title": "🛒 Enable Buy for Administration"
+                },
+                "8": {
+                    "content": "Logistics is the transport capacity that moves goods into and out of your warehouse. The Storage Department consumes it every day. Click the Logistics row to expand it.",
+                    "title": "🔍 Expand Logistics"
+                },
+                "9": {
+                    "content": "Toggle this switch to automate buying of Logistics services. Without enough logistics, your storage throughput starves and goods get lost. When your company gets really large, it may become beneficial to produce a base level of Logistics yourself via a Logistics Hub.",
+                    "title": "🛒 Enable Buy for Logistics"
+                },
+                "10": {
+                    "content": "Maintenance keeps your facilities in good condition. Every facility consumes Maintenance services each day — without it, Condition degrades and output falls. Click the Maintenance row to expand it.",
+                    "title": "🔍 Expand Maintenance"
+                },
+                "11": {
+                    "content": "Toggle this switch to automate buying of Maintenance services. Your facilities need it every day to stay healthy. When your company gets really large, it may become beneficial to produce a base level of Maintenance yourself via a Maintenance Facility.",
+                    "title": "🛒 Enable Buy for Maintenance"
+                },
+                "12": {
+                    "content": "The Sell section lets you place offers to sell your products. For now, we focus on buying — later you will sell your refined goods here.",
+                    "title": "📤 Sell & Auto-Sell"
+                },
+                "13": {
+                    "content": "Every resource has a price history chart. Use this to spot trends and time your trades. The red line is estimated production cost.",
+                    "title": "📈 Price History"
+                },
+                "14": {
+                    "content": "This toggle filters the market to show only resources that you require or produce.",
+                    "title": "🔍 Relevant Resources"
+                },
+                "15": {
+                    "content": "Now that we have construction services being bought automatically, let’s build a facility! We now navigate to the Production page. This may take a few seconds.",
+                    "title": "➡️ Next: Production"
+                }
+            },
+            "production": {
+                "0": {
+                    "content": "Production facilities transform raw materials into refined goods, manufactured products, and services. This is how value is created — and how you make profit! We have construction services ready, so let’s build an Oil Well.",
+                    "title": "🏭 Production Facilities"
+                },
+                "1": {
+                    "content": "Facilities are organized by level: Raw (extraction), Refined (processing), Manufactured (assembly), and Services. The Oil Well is a Raw Extraction facility — the badge count shows how many of each type you own.",
+                    "title": "📂 Facility Levels"
+                },
+                "2": {
+                    "content": "Click the \"+ Build facility\" card to start constructing a new facility. We will build an Oil Well to extract crude oil.",
+                    "title": "🛠️ Click to build"
+                },
+                "3": {
+                    "content": "This is the Oil Well. It extracts Crude Oil from a land claim (Oil Reservoir). Click the \"Build\" button to order construction. The build uses Construction Services which will be automatically bought from the market. The build will take a few days to complete.",
+                    "title": "🛠️ Build Oil Well"
+                },
+                "4": {
+                    "content": "Your Oil Well build request has been sent! After a day, it will appear as \"Under Construction\". Construction consumes Construction Services from your storage each day until complete. You can track progress on the card — the bar fills up as construction progresses.",
+                    "title": "⏳ Construction started"
+                },
+                "5": {
+                    "content": "Once construction finishes, the facility becomes active. The card shows: inputs it consumes (left) and outputs it produces (right), worker efficiency bars, and a revenue row showing revenue, input costs, wages, and net profit per day. Keep an eye on input buffers — if they run out, production stops!",
+                    "title": "⚙️ Active Facility"
+                },
+                "6": {
+                    "content": "You can increase the scale of each facility type. This scales the input, output and worker requirements of the facility. Use the operating scale slider to set capacity from 0% to 100% temporarily.",
+                    "title": "📡 Scaling Up"
+                },
+                "7": {
+                    "content": "The Oil Well needs an Oil Reservoir land claim to extract Crude Oil. Let’s lease one to supply it. We now navigate to the Land Claims page. This may take a few seconds.",
+                    "title": "➡️ Next: Land Claims"
+                }
+            },
+            "claims": {
+                "0": {
+                    "content": "Land Claims give you access to natural resources on the planet. Your Oil Well needs access to an Oil Reservoir to extract Crude Oil. Without a claim, the well has nothing to extract!",
+                    "title": "🌍 Land Claims"
+                },
+                "1": {
+                    "content": "Click the \"Lease\" button on the Oil Reservoir card to secure your first resource claim. Select a capacity and confirm — a one-time flat cost will be charged based on the tier you choose. This reservoir will supply your Oil Well!",
+                    "title": "🔑 Lease Oil Reservoir"
+                },
+                "2": {
+                    "content": "Your oil claim has been leased! Resources are extracted automatically each day. The extracted resource flows to your Oil Well, which produces Crude Oil for refining or sale. Notice the active claim card now shows stock levels, extraction rate, and depletion estimate.",
+                    "title": "✅ Oil claim leased successfully!"
+                },
+                "3": {
+                    "content": "Once leased, you have an active claim. Resources are extracted automatically each day. The card shows stock levels, extraction rate, and depletion estimate. Renewable resources (e.g., farms, water) regenerate over time.",
+                    "title": "⚙️ Active Claims"
+                },
+                "4": {
+                    "content": "You can expand a claim to increase extraction capacity. Non-renewable resources will eventually deplete, so plan accordingly!",
+                    "title": "🔍 Scaling Claims"
+                },
+                "5": {
+                    "content": "Resources form a chain: raw materials (level 0) feed refineries (level 1), which feed manufacturers (level 2), and so on. You now have: Oil Reservoir (raw) ➡️ Oil Well (extraction) ➡️ Market. Start with basic resources and work your way up the value chain!",
+                    "title": "🔗 Resource Chains"
+                },
+                "6": {
+                    "content": "Your products are stored in your warehouse. Let’s check your inventory. We now navigate to the Storage page. This may take a few seconds.",
+                    "title": "➡️ Next: Storage"
+                }
+            },
+            "storage": {
+                "0": {
+                    "content": "This is your storage facility — the warehouse that holds all your goods. Raw materials, intermediate goods, and finished products all live here. The grid shows what you hold, what flows in and out each tick, and what is bought or sold.",
+                    "title": "📦 Storage Overview"
+                },
+                "1": {
+                    "content": "Storage has limited capacity in both volume (m³) and mass (tonnes). If you fill it, your facilities stop producing! Sell excess goods on the market or expand storage to free up space.",
+                    "title": "📁 Capacity"
+                },
+                "2": {
+                    "content": "The Storage Department is your logistics backbone. It consumes Administration and Logistics services and produces the Storage throughput that moves goods into and out of your warehouse. The gauge shows your storage buffer, and the balance row shows production − demand → buffer.",
+                    "title": "🏢 Storage Department"
+                },
+                "3": {
+                    "content": "Every active facility has a maintenance row: it consumes Maintenance services to keep its Condition high. If maintenance runs short, Condition degrades and the facility produces less. That’s why we buy Maintenance on the Market!",
+                    "title": "🔧 Maintenance Row"
+                },
+                "4": {
+                    "content": "When your Storage Department can’t keep up (logistics starvation), you pay a real price: Transport efficiency drops — goods get lost before they even reach your warehouse — and Storage health degrades. At full starvation, transport efficiency can fall to ~50%. Expand the Storage Department or feed it more Logistics and Administration to avoid losses!",
+                    "title": "⚠️ Logistics Starvation Malus"
+                },
+                "5": {
+                    "content": "Now let’s check out your fleet. We now navigate to the Ships page. This may take a few seconds.",
+                    "title": "➡️ Next: Ships"
+                }
+            },
+            "ships": {
+                "0": {
+                    "content": "Ships enable interplanetary trade. With a fleet, you can transport goods between planets, access foreign markets, and build a truly galactic supply chain!",
+                    "title": "🚀 Ship Management"
+                },
+                "1": {
+                    "content": "The Shipyards tab is where you build new ships. Select a ship type, pay the construction cost, and wait for it to be built — just like building facilities.",
+                    "title": "🛠️ Shipyards"
+                },
+                "2": {
+                    "content": "My Ships shows your fleet. Ships can be idle, traveling, or actively trading. Manage routes, view cargo, and track earnings.",
+                    "title": "🚢 My Ships"
+                },
+                "3": {
+                    "content": "The Ship Marketplace lets you buy and sell ships with other companies. A great way to get started without building from scratch!",
+                    "title": "🛒 Ship Marketplace"
+                },
+                "4": {
+                    "content": "Ships earn revenue by fulfilling transport contracts between planets. The more trade routes you establish, the more your fleet generates income.",
+                    "title": "📦 Transport Contracts"
+                },
+                "5": {
+                    "content": "The ultimate goal: establish production on multiple planets, trade between them using your fleet, and build an interplanetary supply chain. Buy low on one planet, sell high on another!",
+                    "title": "🌍 Multi-Planet Strategy"
+                },
+                "6": {
+                    "content": "Here’s the core gameplay loop: 👍 Lease land claims to get resources ➡️ Build production facilities ➡️ Hire workers (with automation!) ➡️ Produce goods ➡️ Sell on the market for profit ➡️ Reinvest to grow ➡️ Build ships and expand to other planets!",
+                    "title": "🔄 The Gameplay Loop"
+                },
+                "7": {
+                    "content": "🎉 Congratulations! You have completed the guided tour. You now understand the core mechanics of Enterprise Engine. Explore each section in detail, experiment with strategies, and build your interplanetary economic empire. Good luck, CEO!",
+                    "title": "✅ Tour Complete"
+                }
+            }
+        }
     },
     "Planets": {
         "title": "Planets",
@@ -767,6 +1080,10 @@
         "sendingBuild": "Sending build…",
         "noMatchingResources": "No matching resources in storage",
         "max": "max",
+        "levelRaw": "Raw",
+        "levelRefined": "Refined",
+        "levelManufactured": "Manufactured",
+        "levelServices": "Services",
         "statusOptimal": "Optimal",
         "statusStable": "Stable",
         "statusStrained": "Strained",
