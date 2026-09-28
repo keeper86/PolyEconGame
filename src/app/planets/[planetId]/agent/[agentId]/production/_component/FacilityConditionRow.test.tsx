@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { FacilityConditionRow } from './FacilityConditionRow';
@@ -15,7 +16,7 @@ describe('FacilityConditionRow', () => {
         facility.maxMaintenance = 1;
         facility.lastTickMaintenanceConsumption = 0.001;
 
-        render(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
+        renderWithIntl(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
 
         expect(screen.getByText('Condition')).toBeInTheDocument();
         expect(screen.getByText('50% / 100% max')).toBeInTheDocument();
@@ -26,7 +27,7 @@ describe('FacilityConditionRow', () => {
         facility.maxMaintenance = 1;
         facility.maintenanceStatus = 1;
 
-        render(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
+        renderWithIntl(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
 
         expect(screen.queryByText('Restoration')).not.toBeInTheDocument();
     });
@@ -37,7 +38,7 @@ describe('FacilityConditionRow', () => {
         facility.maintenanceStatus = 0.5;
         facility.lastTickRestorationConsumption = 0.002;
 
-        render(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
+        renderWithIntl(<FacilityConditionRow facility={facility} planetId='p' agentId='a' />);
 
         expect(screen.getByText('Restoration')).toBeInTheDocument();
         expect(screen.getByText('60%')).toBeInTheDocument();

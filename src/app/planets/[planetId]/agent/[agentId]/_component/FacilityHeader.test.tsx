@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { FacilityHeader } from './FacilityHeader';
@@ -51,7 +52,7 @@ describe('FacilityHeader', () => {
         });
         const results = makeResults();
 
-        render(<FacilityHeader facility={facility} results={results} badge={<span>badge</span>} />);
+        renderWithIntl(<FacilityHeader facility={facility} results={results} badge={<span>badge</span>} />);
 
         expect(screen.getByText('Worker efficiency')).toBeInTheDocument();
         const values = screen.getAllByText('12');
@@ -72,7 +73,7 @@ describe('FacilityHeader', () => {
             },
         });
 
-        render(<FacilityHeader facility={facility} badge={<span>badge</span>} />);
+        renderWithIntl(<FacilityHeader facility={facility} badge={<span>badge</span>} />);
 
         expect(screen.getByText('Worker Requirement')).toBeInTheDocument();
         const values = screen.getAllByText('25');
@@ -82,7 +83,7 @@ describe('FacilityHeader', () => {
     it('uses facility.scale when not active and not under construction', () => {
         const facility = makeFacility({ scale: 4, construction: null });
 
-        render(<FacilityHeader facility={facility} badge={<span>badge</span>} />);
+        renderWithIntl(<FacilityHeader facility={facility} badge={<span>badge</span>} />);
 
         expect(screen.getByText('Worker Requirement')).toBeInTheDocument();
         const values = screen.getAllByText('20');
@@ -104,7 +105,7 @@ describe('FacilityHeader', () => {
         });
         const results = makeResults();
 
-        render(<FacilityHeader facility={facility} results={results} badge={<span>badge</span>} />);
+        renderWithIntl(<FacilityHeader facility={facility} results={results} badge={<span>badge</span>} />);
 
         expect(screen.getByText('Worker efficiency')).toBeInTheDocument();
         const primaryValues = screen.getAllByText('8');

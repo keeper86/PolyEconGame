@@ -1,11 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, it, expect } from 'vitest';
 import React from 'react';
 import { HRBalanceRow } from './HRBalanceRow';
 
 describe('HRBalanceRow', () => {
     it('renders balance equation when demand > 0', () => {
-        render(<HRBalanceRow demand={10} buffer={20} production={15} />);
+        renderWithIntl(<HRBalanceRow demand={10} buffer={20} production={15} />);
 
         expect(screen.getByText('2 days')).toBeInTheDocument();
         expect(screen.getByText('1.5 days')).toBeInTheDocument();
@@ -16,7 +17,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('shows no-demand state when demand is zero', () => {
-        render(<HRBalanceRow demand={0} buffer={0} production={0} />);
+        renderWithIntl(<HRBalanceRow demand={0} buffer={0} production={0} />);
 
         const workerTexts = screen.getAllByText('0 workers');
         expect(workerTexts).toHaveLength(1);
@@ -27,7 +28,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('shows no-demand state when demand is zero with non-zero buffer', () => {
-        render(<HRBalanceRow demand={0} buffer={100} production={50} />);
+        renderWithIntl(<HRBalanceRow demand={0} buffer={100} production={50} />);
 
         expect(screen.queryByText('Infinity days')).not.toBeInTheDocument();
         expect(screen.queryByText('Infinity')).not.toBeInTheDocument();
@@ -36,7 +37,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('renders buffer below 1 day in red', () => {
-        render(<HRBalanceRow demand={10} buffer={5} production={10} />);
+        renderWithIntl(<HRBalanceRow demand={10} buffer={5} production={10} />);
 
         const bufferValue = screen.getByText('0.5 days');
         expect(bufferValue).toBeInTheDocument();
@@ -44,7 +45,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('renders buffer of 2+ days in green', () => {
-        render(<HRBalanceRow demand={10} buffer={20} production={10} />);
+        renderWithIntl(<HRBalanceRow demand={10} buffer={20} production={10} />);
 
         const bufferValue = screen.getByText('2 days');
         expect(bufferValue).toBeInTheDocument();
@@ -52,7 +53,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('renders children below the balance equation', () => {
-        render(
+        renderWithIntl(
             <HRBalanceRow demand={10} buffer={20} production={15}>
                 <span>starvation bar</span>
             </HRBalanceRow>,
@@ -62,7 +63,7 @@ describe('HRBalanceRow', () => {
     });
 
     it('renders children in the no-demand state', () => {
-        render(
+        renderWithIntl(
             <HRBalanceRow demand={0} buffer={0} production={0}>
                 <span>starvation bar</span>
             </HRBalanceRow>,
