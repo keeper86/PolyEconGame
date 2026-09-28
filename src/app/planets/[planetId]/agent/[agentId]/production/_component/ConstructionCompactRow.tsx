@@ -121,7 +121,7 @@ export function ConstructionCompactRow({
         );
     } else if (ticksRemaining > 0 && isFinite(ticksRemaining)) {
         const wallTimeMs = ticksRemaining * tickIntervalMs;
-        const wallTime = formatWallTime(wallTimeMs, smallScreen);
+        const wallTime = formatWallTime(wallTimeMs, smallScreen, locale);
         const completionDate = mapTickToDate(currentTick + Math.ceil(ticksRemaining), smallScreen);
         estimateDisplay = (
             <div className='flex flex-row w-full justify-between text-xs text-muted-foreground'>

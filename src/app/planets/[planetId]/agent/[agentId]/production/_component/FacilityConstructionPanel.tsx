@@ -21,7 +21,7 @@ import type { FacilityType } from '@/simulation/planet/facility';
 import { calculateCostsForConstruction } from '@/simulation/planet/facility';
 import { AlertTriangle, Clock, Percent, Timer, TrendingDown, Wallet } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function FacilityConstructionPanel({
     facilityType,
@@ -54,6 +54,7 @@ export function FacilityConstructionPanel({
     onScaleChange?: (targetScale: number) => void;
 }): React.ReactElement {
     const locale = useLocale();
+    const tCommon = useTranslations('Common');
     const minScale = fromScale + 1;
     const [targetScale, setTargetScale] = useState(minScale);
     const [showWarning, setShowWarning] = useState(false);
@@ -147,7 +148,8 @@ export function FacilityConstructionPanel({
             <div className='flex flex-row w-full justify-between items-center text-xs text-muted-foreground pt-1'>
                 <p className='text-xs font-medium text-muted-foreground'>{label}</p>
                 <span className='flex items-center gap-1'>
-                    <Timer className='h-3 w-3' /> Duration {' ' + formatWallTime(wallTimeMs, smallScreen)}
+                    <Timer className='h-3 w-3' /> {tCommon('duration')}{' '}
+                    {' ' + formatWallTime(wallTimeMs, smallScreen, locale)}
                 </span>
             </div>
             <LogSlider

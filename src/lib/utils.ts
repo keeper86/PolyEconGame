@@ -1,4 +1,4 @@
-import { getDecimalSeparator, type Locale } from '@/i18n/config';
+import { defaultLocale, getDecimalSeparator, type Locale } from '@/i18n/config';
 import { currencyMapping } from '@/simulation/market/currencyResources';
 import type { ResourceType } from '@/simulation/planet/claims';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
@@ -68,9 +68,11 @@ export const formatNumberWithUnit = (
 
     return formattedNumber;
 };
-export function formatWallTime(ms: number, short = false): string {
+export function formatWallTime(ms: number, short = false, locale: Locale = defaultLocale): string {
+    const units = catalogs[locale].Units;
+    const decimalSeparator = getDecimalSeparator(locale);
     if (ms < 1000) {
-        return '<1s';
+        return units.lessThanOneSecond;
     }
     const totalSeconds = Math.round(ms / 1000);
     const days = Math.floor(totalSeconds / 86400);
@@ -80,25 +82,25 @@ export function formatWallTime(ms: number, short = false): string {
 
     let result = '';
     if (days > 0) {
-        result += `${days}d `;
+        result += `${days}${units.daysShort} `;
         if (short) {
-            return `${(totalSeconds / 86400).toFixed(1)}d`;
+            return `${(totalSeconds / 86400).toFixed(1).replace('.', decimalSeparator)}${units.daysShort}`;
         }
     }
     if (hours > 0) {
-        result += `${hours}h `;
+        result += `${hours}${units.hoursShort} `;
         if (short) {
-            return `${(totalSeconds / 3600).toFixed(1)}h`;
+            return `${(totalSeconds / 3600).toFixed(1).replace('.', decimalSeparator)}${units.hoursShort}`;
         }
     }
     if (minutes > 0) {
-        result += `${minutes}m `;
+        result += `${minutes}${units.minutesShort} `;
         if (short) {
-            return `${(totalSeconds / 60).toFixed(1)}m`;
+            return `${(totalSeconds / 60).toFixed(1).replace('.', decimalSeparator)}${units.minutesShort}`;
         }
     }
     if (seconds > 0) {
-        result += `${seconds}s `;
+        result += `${seconds}${units.secondsShort} `;
     }
     return result.slice(0, -1);
 }

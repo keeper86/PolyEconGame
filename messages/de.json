@@ -59,7 +59,12 @@
     },
     "Units": {
         "day": "Tag",
-        "days": "Tage"
+        "days": "Tage",
+        "lessThanOneSecond": "<1s",
+        "daysShort": "T",
+        "hoursShort": "Std",
+        "minutesShort": "Min",
+        "secondsShort": "Sek"
     },
     "Nav": {
         "Enterprise Engine": "Enterprise Engine",
@@ -153,7 +158,8 @@
     },
     "Common": {
         "waitingForData": "Warte auf Simulationsdaten…",
-        "loading": "Lädt…"
+        "loading": "Lädt…",
+        "duration": "Dauer"
     },
     "Planets": {
         "title": "Planeten",

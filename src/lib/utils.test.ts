@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatNumberWithUnit } from './utils';
+import { formatNumberWithUnit, formatWallTime } from './utils';
 
 describe('formatNumberWithUnit', () => {
     it('formats with the given locale', () => {
@@ -27,5 +27,22 @@ describe('formatNumberWithUnit', () => {
 
     it('keeps the em dash for missing values', () => {
         expect(formatNumberWithUnit(null, 'none', undefined, 'de')).toBe('—');
+    });
+});
+
+describe('formatWallTime', () => {
+    it('renders sub-second durations from the catalog', () => {
+        expect(formatWallTime(500, false, 'de')).toBe('<1s');
+    });
+
+    it('uses the locale unit abbreviations', () => {
+        expect(formatWallTime(90_000, false, 'en')).toBe('1m 30s');
+        expect(formatWallTime(90_000, false, 'de')).toBe('1Min 30Sek');
+        expect(formatWallTime(3 * 3600 * 1000, false, 'en')).toBe('3h');
+    });
+
+    it('uses the locale decimal separator for short durations', () => {
+        expect(formatWallTime(5_400_000, true, 'en')).toBe('1.5h');
+        expect(formatWallTime(5_400_000, true, 'de')).toBe('1,5Std');
     });
 });
