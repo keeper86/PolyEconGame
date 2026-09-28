@@ -7,7 +7,7 @@ import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 import { getRadialNudge, resolveTickLabels, resolveZones, type TickLabelCandidate } from '../../_component/gaugeTicks';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const ZONE_RED = '#ef4444';
 const ZONE_AMBER = '#f59e0b';
@@ -29,6 +29,7 @@ export function HRBufferGauge({
     maxScaleOverride?: number;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Workforce');
     const { maxValue, subArcs, ticks } = useMemo(() => {
         const scale = maxScaleOverride ?? hrDepartment.maxScale;
         const maxValue = scale * PRODUCED_HR_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
@@ -50,7 +51,7 @@ export function HRBufferGauge({
                     <span className={tickStyle} style={getRadialNudge(maxValue, maxValue)}>
                         {maxValue > 0 && demand > 0
                             ? formatNumberWithUnit(maxValue / demand, 'days', undefined, locale)
-                            : 'max'}
+                            : t('max')}
                     </span>
                 ),
             },
@@ -59,7 +60,7 @@ export function HRBufferGauge({
                 priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(0, maxValue)}>
-                        0 days
+                        {t('daysLabel', { count: 0 })}
                     </span>
                 ),
             },
@@ -72,7 +73,7 @@ export function HRBufferGauge({
                     priority: 1,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand, maxValue)}>
-                            1 day
+                            {t('daysLabel', { count: 1 })}
                         </span>
                     ),
                 },
@@ -81,7 +82,7 @@ export function HRBufferGauge({
                     priority: 3,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue)}>
-                            2 days
+                            {t('daysLabel', { count: 2 })}
                         </span>
                     ),
                 },
@@ -90,7 +91,7 @@ export function HRBufferGauge({
                     priority: 4,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue)}>
-                            4 days
+                            {t('daysLabel', { count: 4 })}
                         </span>
                     ),
                 },
@@ -103,7 +104,7 @@ export function HRBufferGauge({
         }));
 
         return { maxValue, subArcs, ticks };
-    }, [demand, hrDepartment.maxScale, maxScaleOverride, locale]);
+    }, [demand, hrDepartment.maxScale, maxScaleOverride, locale, t]);
 
     return (
         <div className='flex flex-col items-center gap-1 py-2 translate-y-[-3px]'>

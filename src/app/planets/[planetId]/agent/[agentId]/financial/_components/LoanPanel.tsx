@@ -80,6 +80,7 @@ function LoanRow({
     onError: (msg: string) => void;
 }) {
     const locale = useLocale();
+    const t = useTranslations('Financial');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -128,11 +129,13 @@ function LoanRow({
                         <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
                     </span>
                     <span>
-                        Loan Rate {pct.toFixed(1)} % p.a. ·{' '}
-                        {formatNumberWithUnit(monthlyInterest, 'currency', planetId, locale)}/month
+                        {t('loanRate', {
+                            rate: pct.toFixed(1),
+                            monthly: formatNumberWithUnit(monthlyInterest, 'currency', planetId, locale),
+                        })}
                     </span>
-                    {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
-                    {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
+                    {loan.maturityTick > 0 && <span>{t('matures', { date: mapTickToDate(loan.maturityTick) })}</span>}
+                    {!loan.earlyRepaymentAllowed && <span className='italic'>{t('noEarlyRepayment')}</span>}
                 </div>
             </div>
 
@@ -170,6 +173,7 @@ function LoanRow({
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
     const locale = useLocale();
     const t = useTranslations('Toasts');
+    const tf = useTranslations('Financial');
     const showError = useErrorMessage();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
@@ -229,22 +233,22 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
     return (
         <div className='space-y-3' data-tour='financial-loan-panel'>
             {}
-            {isLoading && <p className='text-xs text-muted-foreground'>Loading credit conditions…</p>}
+            {isLoading && <p className='text-xs text-muted-foreground'>{tf('loadingConditions')}</p>}
 
             {!isLoading && conditions === null && (
-                <p className='text-xs text-muted-foreground'>
-                    Credit conditions unavailable. The agent or planet may not be loaded yet.
-                </p>
+                <p className='text-xs text-muted-foreground'>{tf('conditionsUnavailable')}</p>
             )}
 
             <p className='text-sm font-semibold flex items-center gap-2'>
                 <HandCoins className='h-4 w-4 text-muted-foreground' />
-                Request a loan
+                {tf('requestLoan')}
             </p>
             {conditions && (
                 <p className='text-xs text-muted-foreground'>
-                    Interest on new loans:{' '}
-                    <span className='text-foreground'>{(conditions.annualInterestRate * 100).toFixed(1)} % p.a. </span>
+                    {tf('interestOnNewLoans')}{' '}
+                    <span className='text-foreground'>
+                        {tf('interestRateValue', { rate: (conditions.annualInterestRate * 100).toFixed(1) })}
+                    </span>
                 </p>
             )}
             {conditions && (conditions.maxLoanAmount > 0 || conditions.isNewAgent) && (
@@ -269,13 +273,13 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                 />
                             </span>
                             <p className='text-xs text-muted-foreground'>
-                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.starter)}
+                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.starter) })}
                             </p>
                         </>
                     ) : (
                         <>
                             <p className='text-xs text-muted-foreground '>
-                                Maturity: {mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary)}
+                                {tf('maturity', { date: mapTickToDate(currentTick + LOAN_TERM_TICKS.discretionary) })}
                             </p>
                             <div className='flex justify-between gap-2'>
                                 {(
@@ -318,17 +322,12 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                         className='w-full h-[42px] flex items-center gap-2 border-muted-foreground/30 bg-muted/20 cursor-not-allowed'
                     >
                         <Ban className='h-5 w-5 text-muted-foreground' />
-                        <span className='text-md'>No additional credit available</span>
+                        <span className='text-md'>{tf('noAdditionalCredit')}</span>
                     </Button>
-                    <span className='text-[10px] right-0 text-muted-foreground'>
-                        Improve your cash flow (increase revenue or reduce costs) or raise your asset evaluation to
-                        unlock further borrowing.
-                    </span>
+                    <span className='text-[10px] right-0 text-muted-foreground'>{tf('improveCashFlow')}</span>
                 </div>
             ) : (
-                <p className='text-xs text-muted-foreground'>
-                    The funds will be credited to your account after the current tick completes.
-                </p>
+                <p className='text-xs text-muted-foreground'>{tf('fundsCredited')}</p>
             )}
 
             <Separator />
@@ -356,17 +355,18 @@ function OutstandingLoansSection({
 }) {
     const locale = useLocale();
     const t = useTranslations('Toasts');
+    const tf = useTranslations('Financial');
     return (
         <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
             <CollapsibleTrigger
                 className={`text-sm font-semibold flex items-center gap-2 hover:opacity-80 transition-opacity [&[data-state=closed]>svg:last-child]:rotate-0 [&[data-state=open]>svg:last-child]:rotate-180 ${activeLoans.length === 0 ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
                 <Landmark className='h-4 w-4 text-muted-foreground' />
-                Outstanding loans ({activeLoans.length})
+                {tf('outstandingLoansCount', { count: activeLoans.length })}
                 <ChevronDown className='h-4 w-4 text-muted-foreground transition-transform duration-200' />
             </CollapsibleTrigger>
             <CollapsibleContent>
-                <p className='text-xs text-muted-foreground'>Pay back early:</p>
+                <p className='text-xs text-muted-foreground'>{tf('payBackEarly')}</p>
                 <div className='space-y-2 pt-1'>
                     {activeLoans.map((loan) => (
                         <LoanRow

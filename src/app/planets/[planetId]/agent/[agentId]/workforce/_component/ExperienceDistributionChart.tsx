@@ -9,7 +9,7 @@ import type { ViewMode } from './AgeDistributionChart';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -35,12 +35,13 @@ function mergePairs(rows: ChartRow[]): ChartRow[] {
 }
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Workforce');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No experience data
+            {t('noExperienceData')}
         </div>
     );
 }
@@ -49,6 +50,7 @@ type PayloadEntry = NonNullable<TooltipProps<number, string>['payload']>[number]
 
 function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string>) {
     const locale = useLocale();
+    const t = useTranslations('Workforce');
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -58,7 +60,7 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
     const totalLeaving = (row?.Quitting ?? 0) + (row?.Fired ?? 0) + (row?.Retired ?? 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-            <div className='font-medium mb-1'>Age {label}</div>
+            <div className='font-medium mb-1'>{t('ageTooltip', { age: label ?? '' })}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
                     {entry.name}: {formatNumberWithUnit(entry.value as number, 'none', undefined, locale)}
@@ -66,11 +68,11 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
             ))}
             {totalLeaving > 0 && (
                 <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                    Total leaving XP: {formatNumberWithUnit(totalLeaving, 'none', undefined, locale)}
+                    {t('totalLeavingXp')} {formatNumberWithUnit(totalLeaving, 'none', undefined, locale)}
                 </div>
             )}
             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                Total: {formatNumberWithUnit(total, 'none', undefined, locale)}
+                {t('totalLabel')} {formatNumberWithUnit(total, 'none', undefined, locale)}
             </div>
         </div>
     );
@@ -78,20 +80,21 @@ function XPStatusTooltip({ active, payload, label }: TooltipProps<number, string
 
 function XPEduTooltip({ active, payload, label }: TooltipProps<number, string>) {
     const locale = useLocale();
+    const t = useTranslations('Workforce');
     if (!active || !payload || payload.length === 0) {
         return null;
     }
     const total = payload.reduce((sum: number, entry: PayloadEntry) => sum + ((entry.value as number) ?? 0), 0);
     return (
         <div className='rounded-lg border bg-card p-2 text-xs shadow-md'>
-            <div className='font-medium mb-1'>Age {label}</div>
+            <div className='font-medium mb-1'>{t('ageTooltip', { age: label ?? '' })}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
                     {entry.name}: {formatNumberWithUnit(entry.value as number, 'none', undefined, locale)}
                 </div>
             ))}
             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                Total: {formatNumberWithUnit(total, 'none', undefined, locale)}
+                {t('totalLabel')} {formatNumberWithUnit(total, 'none', undefined, locale)}
             </div>
         </div>
     );

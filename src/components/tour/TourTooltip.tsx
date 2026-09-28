@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import type { TooltipRenderProps } from 'react-joyride';
+import { useTranslations } from 'next-intl';
 
 export function TourTooltip({
     continuous,
@@ -16,6 +17,7 @@ export function TourTooltip({
     tooltipProps,
     skipProps: _skipProps,
 }: TooltipRenderProps) {
+    const t = useTranslations('Tour');
     const { title, content } = step;
     const isBlocking = (step.data as Record<string, unknown> | undefined)?.blocking === true;
 
@@ -28,7 +30,7 @@ export function TourTooltip({
             <button
                 {...closeProps}
                 className='absolute top-3 right-3 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground h-6 w-6 text-muted-foreground cursor-pointer'
-                aria-label='Close'
+                aria-label={t('close')}
             >
                 ✕
             </button>
@@ -45,7 +47,7 @@ export function TourTooltip({
                 <div className='flex items-center gap-2'>
                     {size > 1 && (
                         <span className='text-xs text-muted-foreground tabular-nums'>
-                            {index + 1} of {size}
+                            {index + 1} {t('of')} {size}
                         </span>
                     )}
                 </div>
@@ -53,7 +55,7 @@ export function TourTooltip({
                 <div className='flex items-center gap-1.5'>
                     {index > 0 && (
                         <Button {...backProps} data-action='back' variant='outline' size='sm' className='text-xs h-8'>
-                            Back
+                            {t('back')}
                         </Button>
                     )}
 
@@ -65,7 +67,7 @@ export function TourTooltip({
                             size='sm'
                             className='text-xs h-8'
                         >
-                            {isLastStep ? 'Finish' : 'Next'}
+                            {isLastStep ? t('finish') : t('next')}
                         </Button>
                     )}
                 </div>

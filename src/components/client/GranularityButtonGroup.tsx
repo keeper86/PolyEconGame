@@ -4,6 +4,7 @@ import { useSimulationTick } from '@/hooks/useSimulationQuery';
 import { useGranularityPreference } from '@/hooks/uiPreferences';
 import { TICKS_PER_YEAR } from '@/simulation/constants';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export type Granularity = 'monthly' | 'yearly' | 'decade';
 
@@ -54,6 +55,7 @@ type GranularityButtonGroupProps = {
 };
 
 export function GranularityButtonGroup({ granularity, onChange, currentTick }: GranularityButtonGroupProps) {
+    const t = useTranslations('Charts');
     const yearsElapsed = currentTick / TICKS_PER_YEAR;
     const showYearly = yearsElapsed >= 2;
     const showDecade = yearsElapsed >= 10;
@@ -61,21 +63,21 @@ export function GranularityButtonGroup({ granularity, onChange, currentTick }: G
     return (
         <div className='flex gap-1'>
             <GranularityButton active={granularity === 'monthly'} onClick={() => onChange('monthly')}>
-                Monthly
+                {t('monthly')}
             </GranularityButton>
             <GranularityButton
                 active={granularity === 'yearly'}
                 disabled={!showYearly}
                 onClick={() => onChange('yearly')}
             >
-                Yearly
+                {t('yearly')}
             </GranularityButton>
             <GranularityButton
                 active={granularity === 'decade'}
                 disabled={!showDecade}
                 onClick={() => onChange('decade')}
             >
-                Decade
+                {t('decadeShort')}
             </GranularityButton>
         </div>
     );

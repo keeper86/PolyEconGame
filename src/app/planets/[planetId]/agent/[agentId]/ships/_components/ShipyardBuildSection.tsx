@@ -22,6 +22,8 @@ import { FacilityConstructionPanel } from '../../production/_component/FacilityC
 import { selectPendingShipyardBuilds } from './shipyardHelpers';
 
 function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
+    const tc = useTranslations('Common');
+    const tt = useTranslations('Toasts');
     return (
         <FacilityCardShell
             className='max-w-[600px]'
@@ -37,7 +39,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <HardHat className='h-3.5 w-3.5' />
-                            Under Construction
+                            {tc('underConstruction')}
                         </Badge>
                     }
                     details={null}
@@ -46,7 +48,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
         >
             <div className='relative mt-auto space-y-2'>
                 <Separator />
-                <ActionPendingOverlay message='Awaiting next day…' />
+                <ActionPendingOverlay message={tt('awaitingNextDay')} />
             </div>
         </FacilityCardShell>
     );
@@ -66,6 +68,8 @@ function ShipyardBuildForm({
     const trpc = useTRPC();
     const addPending = useAddPendingAction();
     const t = useTranslations('Toasts');
+    const ts = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const showError = useErrorMessage();
     const [shipyardName, setShipyardName] = useState('');
 
@@ -101,12 +105,12 @@ function ShipyardBuildForm({
             headerContent={
                 <span className='flex flex-col gap-2' style={{ minHeight: `${defaultHeight}px` }}>
                     <div className='flex flex-col gap-1 mb-auto'>
-                        <h3 className='font-semibold leading-tight'>New Shipyard</h3>
+                        <h3 className='font-semibold leading-tight'>{ts('build.newShipyard')}</h3>
                         <div className='flex flex-col gap-1'>
-                            <Label className='text-xs text-muted-foreground'>Shipyard name</Label>
+                            <Label className='text-xs text-muted-foreground'>{ts('build.shipyardName')}</Label>
                             <Input
                                 className='h-8 text-xs'
-                                placeholder='Enter a unique name, e.g. "Shipyard Alpha"'
+                                placeholder={ts('build.shipyardNamePlaceholder')}
                                 value={shipyardName}
                                 maxLength={50}
                                 onChange={(e) => setShipyardName(e.target.value)}
@@ -123,9 +127,9 @@ function ShipyardBuildForm({
                     fromScale={0}
                     constructionServicePrice={constructionServicePrice}
                     planetId={planetId}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Sending build…'
+                    label={tc('buildAtScale')}
+                    confirmLabel={tc('build')}
+                    pendingLabel={ts('build.sendingBuild')}
                     isPending={buildMutation.isPending}
                     financials={financials}
                     onCancel={onCancel}
@@ -142,7 +146,7 @@ function ShipyardBuildForm({
                         });
                     }}
                 />
-                {buildMutation.isPending && <ActionPendingOverlay message='Sending build…' />}
+                {buildMutation.isPending && <ActionPendingOverlay message={ts('build.sendingBuild')} />}
             </div>
         </FacilityCardShell>
     );
@@ -158,6 +162,7 @@ export function ShipyardBuildSection({
     constructionServicePrice: number;
 }): React.ReactElement {
     const pendingActions = usePendingActions(agentId, planetId);
+    const ts = useTranslations('Ships');
     const pendingBuilds = selectPendingShipyardBuilds(pendingActions);
     const [configuring, setConfiguring] = useState(false);
 
@@ -182,7 +187,7 @@ export function ShipyardBuildSection({
     return (
         <>
             {pendingCards}
-            <BuildPlaceholderCard label='Build shipyard' onClick={() => setConfiguring(true)} />
+            <BuildPlaceholderCard label={ts('build.buildShipyard')} onClick={() => setConfiguring(true)} />
         </>
     );
 }

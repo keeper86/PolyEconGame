@@ -11,9 +11,9 @@ export default async function ImprintPage() {
                 <p>{t('intro')}</p>
                 <p>
                     {t('responsible')} <br />
-                    Tobias
+                    {t('responsibleName')}
                     <br />
-                    {t('email')} info@polyecongame.local
+                    {t('email')} {t('responsibleEmail')}
                 </p>
                 <p>{t('placeholder')}</p>
                 {t('assets')}

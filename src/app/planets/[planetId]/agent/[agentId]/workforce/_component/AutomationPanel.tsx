@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Bot, CheckCircle2 } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import React, { useEffect, useState } from 'react';
 
 type Props = {
@@ -23,6 +24,7 @@ export default function AutomationPanel({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
+    const tr = useTranslations('Workforce');
 
     const [workerAuto, setWorkerAuto] = useState(initialWorker);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function AutomationPanel({
     const setAutomationMutation = useMutation(
         trpc.setAutomation.mutationOptions({
             onSuccess: () => {
-                setSuccessMsg('Automation settings saved. Changes take effect on the next tick.');
+                setSuccessMsg(tr('automationSaved'));
                 setErrorMsg(null);
 
                 void queryClient.invalidateQueries({
@@ -43,7 +45,7 @@ export default function AutomationPanel({
                 });
             },
             onError: (err) => {
-                setErrorMsg(err instanceof Error ? err.message : 'Failed to update automation settings');
+                setErrorMsg(err instanceof Error ? err.message : tr('automationFailed'));
                 setSuccessMsg(null);
             },
         }),
@@ -72,7 +74,7 @@ export default function AutomationPanel({
                     <span className='flex items-center gap-2'>
                         <Bot className='h-4 w-4 text-muted-foreground' />
                         <Label htmlFor='worker-auto-toggle' className='text-xs font-medium cursor-pointer'>
-                            Automatic worker allocation
+                            {tr('automaticWorkerAllocation')}
                         </Label>
                     </span>
                     <Switch
@@ -84,11 +86,7 @@ export default function AutomationPanel({
                 </div>
             </CardHeader>
             <CardContent className='p-3'>
-                <p className='text-[11px] text-muted-foreground'>
-                    {workerAuto
-                        ? 'The AI computes optimal headcount targets each tick based on facility requirements.'
-                        : 'You control worker allocation targets. The AI will not touch them.'}
-                </p>
+                <p className='text-[11px] text-muted-foreground'>{workerAuto ? tr('autoOn') : tr('autoOff')}</p>
 
                 {successMsg && (
                     <Alert className='border-green-500 bg-green-50 dark:bg-green-950'>

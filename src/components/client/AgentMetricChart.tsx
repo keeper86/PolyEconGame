@@ -10,7 +10,7 @@ import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type AgentMetric =
     | 'netBalance'
@@ -173,6 +173,7 @@ function MonthlyMetricChart({
     history: HistoryPoint[];
 }) {
     const locale = useLocale();
+    const t = useTranslations('Charts');
     const yDomain = useMemo(() => yDomainForMerged(mergedData), [mergedData]);
     const { year: currentYear } = tickToDate(
         currentTick > 0 ? currentTick : (history[history.length - 1]?.bucket ?? 0),
@@ -264,7 +265,7 @@ function MonthlyMetricChart({
                                             )}
                                             {hasGhostVal && (
                                                 <div style={{ color: '#64748b' }}>
-                                                    Last year:{' '}
+                                                    {t('lastYear')}{' '}
                                                     {formatNumberWithUnit(
                                                         ghost.value as number,
                                                         'units',

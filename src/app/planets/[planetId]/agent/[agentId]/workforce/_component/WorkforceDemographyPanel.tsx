@@ -12,6 +12,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
+import { useTranslations } from 'next-intl';
 
 export type WorkforceDemographyPanelProps = {
     assets: AgentPlanetAssets;
@@ -19,6 +20,7 @@ export type WorkforceDemographyPanelProps = {
 
 export default function WorkforceDemographyPanel({ assets }: WorkforceDemographyPanelProps): React.ReactElement {
     const [view, setView] = useState<ViewMode>('status');
+    const t = useTranslations('Workforce');
     const { workforceDemography, allocatedWorkers, unusedWorkers, overqualifiedWorkers, deaths, disabilities } = assets;
 
     const summary = useMemo(
@@ -51,7 +53,7 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
             <CardHeader className='pb-3'>
                 <CardTitle className='flex items-center gap-2 text-base' data-tour='workforce-demographics-title'>
                     <Users className='h-4 w-4' />
-                    Workforce Demography
+                    {t('demographyTitle')}
                 </CardTitle>
             </CardHeader>
             <CardContent className='space-y-4'>
@@ -61,7 +63,7 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                     <>
                         <div>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
-                                Headcount by education
+                                {t('headcountByEducation')}
                             </h5>
                             <EducationLevelCards
                                 summary={summary}
@@ -79,17 +81,17 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
                         <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
                             <TabsList className='h-7 mb-2'>
                                 <TabsTrigger value='status' className='text-[10px] px-2 py-0.5'>
-                                    By status
+                                    {t('byStatus')}
                                 </TabsTrigger>
                                 <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                                    By education
+                                    {t('byEducation')}
                                 </TabsTrigger>
                             </TabsList>
                         </Tabs>
 
                         <div data-tour='workforce-age-distribution'>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
-                                Age distribution
+                                {t('ageDistribution')}
                             </h5>
                             <AgeDistributionChart
                                 view={view}
@@ -100,7 +102,7 @@ export default function WorkforceDemographyPanel({ assets }: WorkforceDemography
 
                         <div data-tour='workforce-tenure-chart'>
                             <h5 className='text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wider'>
-                                Tenure per capita (in years)
+                                {t('tenurePerCapita')}
                             </h5>
                             <ExperienceDistributionChart
                                 view={view}

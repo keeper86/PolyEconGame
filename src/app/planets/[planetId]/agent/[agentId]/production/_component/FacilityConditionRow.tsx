@@ -9,6 +9,7 @@ import {
 } from '@/simulation/planet/facilityMaintenance';
 import { constructionServiceResourceType, maintenanceServiceResourceType } from '@/simulation/planet/services';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { ConditionBar } from './ConditionBar';
 
@@ -21,6 +22,7 @@ export function FacilityConditionRow({
     planetId: string;
     agentId: string;
 }): React.ReactElement {
+    const t = useTranslations('Production');
     const maxMaintenance = facility.maxMaintenance;
     const status = facility.maintenanceStatus;
 
@@ -72,7 +74,7 @@ export function FacilityConditionRow({
 
                     <div className='flex flex-wrap gap-1.5 sm:pl-4 justify-center'>
                         <div className='flex flex-row w-full justify-between text-xs text-muted-foreground mb-1'>
-                            <span>Restoration</span>
+                            <span>{t('restoration')}</span>
                             <span className='font-medium text-foreground'>{Math.round(maxMaintenance * 100)}%</span>
                         </div>
                         <Progress

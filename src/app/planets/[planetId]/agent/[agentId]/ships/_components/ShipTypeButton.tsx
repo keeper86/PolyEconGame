@@ -8,7 +8,7 @@ import type { ConstructionShipType, PassengerShipType, TransportShipType } from 
 import { Clock, Package, Users, Zap } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipTypeButton({
     shipType,
@@ -20,6 +20,7 @@ export function ShipTypeButton({
     onSelect: () => void;
 }): React.ReactElement {
     const locale = useLocale();
+    const tu = useTranslations('Units');
     return (
         <button
             type='button'
@@ -59,7 +60,8 @@ export function ShipTypeButton({
                 ) : null}
                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                     <Clock className='h-2.5 w-2.5' />
-                    {shipType.buildingTime}t
+                    {shipType.buildingTime}
+                    {tu('ticks')}
                 </Badge>
             </div>
         </button>

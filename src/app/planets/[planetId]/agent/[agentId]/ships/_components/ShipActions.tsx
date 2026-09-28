@@ -8,6 +8,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { Ship } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { DispatchConstructionShipDialog } from './DispatchConstructionShipDialog';
 import { DispatchPassengerShipDialog } from './DispatchPassengerShipDialog';
 import { DispatchShipDialog } from './DispatchShipDialog';
@@ -27,6 +28,8 @@ export function ShipActions({
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const isIdle = ship.state.type === 'idle';
 
     const [sellMode, setSellMode] = useState(false);
@@ -87,7 +90,7 @@ export function ShipActions({
                     disabled={cancelListingMutation.isPending}
                     onClick={() => cancelListingMutation.mutate({ agentId, planetId, listingId: listing.id })}
                 >
-                    Cancel Listing
+                    {t('market.cancelListing')}
                 </Button>
             )}
 
@@ -102,7 +105,7 @@ export function ShipActions({
                             shipCargoType={ship.type.cargoSpecification.type}
                         >
                             <Button size='sm' variant='outline' className='flex-1 text-xs'>
-                                Dispatch
+                                {tc('dispatch')}
                             </Button>
                         </DispatchShipDialog>
                     )}
@@ -114,7 +117,7 @@ export function ShipActions({
                             shipName={ship.name}
                         >
                             <Button size='sm' variant='outline' className='flex-1 text-xs'>
-                                Dispatch
+                                {tc('dispatch')}
                             </Button>
                         </DispatchConstructionShipDialog>
                     )}
@@ -127,12 +130,12 @@ export function ShipActions({
                             passengerCapacity={ship.type.passengerCapacity}
                         >
                             <Button size='sm' variant='outline' className='flex-1 text-xs'>
-                                Dispatch
+                                {tc('dispatch')}
                             </Button>
                         </DispatchPassengerShipDialog>
                     )}
                     <Button size='sm' variant='outline' className='flex-1 text-xs' onClick={() => setSellMode(true)}>
-                        Sell
+                        {t('market.sell')}
                     </Button>
                 </div>
             )}
@@ -143,7 +146,7 @@ export function ShipActions({
                         type='number'
                         min={1}
                         className='flex-1 min-w-[100px] h-8 text-sm'
-                        placeholder='Ask price'
+                        placeholder={t('market.askPrice')}
                         value={sellPrice}
                         onChange={(e) => setSellPrice(e.target.value)}
                     />
@@ -160,10 +163,10 @@ export function ShipActions({
                             })
                         }
                     >
-                        Confirm
+                        {tc('confirm')}
                     </Button>
                     <Button size='sm' variant='destructive' className='text-xs' onClick={() => setSellMode(false)}>
-                        Cancel
+                        {tc('cancel')}
                     </Button>
                 </div>
             )}

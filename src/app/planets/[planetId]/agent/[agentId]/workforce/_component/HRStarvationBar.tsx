@@ -6,9 +6,11 @@ import { useIsSmallScreen } from '@/hooks/useMobile';
 import { computeProductivityMultiplier } from '@/simulation/workforce/hrBuffer';
 import { Users } from 'lucide-react';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export function HRStarvationBar({ starvation }: { starvation: number }): React.ReactElement {
     const smallScreen = useIsSmallScreen();
+    const tr = useTranslations('Workforce');
     const pct = Math.round(computeProductivityMultiplier(starvation) * 100);
     const color = BANDS[classifyBand(starvation)].color;
 
@@ -22,7 +24,7 @@ export function HRStarvationBar({ starvation }: { starvation: number }): React.R
                     <div className='flex w-full flex-row justify-between'>
                         <span className='flex items-center gap-1'>
                             <Users className='h-4 w-4' />
-                            HR {smallScreen ? '' : 'productivity'}
+                            {smallScreen ? tr('hr') : tr('hrProductivity')}
                         </span>
                         <span style={{ color }}>{pct}%</span>
                     </div>
@@ -37,12 +39,14 @@ export function HRStarvationBar({ starvation }: { starvation: number }): React.R
             </TooltipTrigger>
             <TooltipContent side='bottom' className='max-w-[200px]'>
                 <div className='text-xs space-y-1'>
-                    <div style={{ color }}>HR productivity: {pct}%</div>
-                    <div style={{ color }}>Starvation: {Math.round(starvation * 100)}%</div>
+                    <div style={{ color }}>
+                        {tr('hrProductivityTooltip')} {pct}%
+                    </div>
+                    <div style={{ color }}>
+                        {tr('starvationTooltip')} {Math.round(starvation * 100)}%
+                    </div>
                     <div className='text-muted-foreground'>
-                        {starvation >= 0.5
-                            ? 'Your HR Department cannot keep up with worker demand. Expand it to restore productivity.'
-                            : 'Your HR Department is keeping workers supplied.'}
+                        {starvation >= 0.5 ? tr('hrCantKeepUp') : tr('hrKeepingUp')}
                     </div>
                 </div>
             </TooltipContent>

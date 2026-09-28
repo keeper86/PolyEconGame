@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '@/simulation/constants';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type LicenseCardProps = {
     type: 'commercial' | 'workforce';
@@ -23,6 +23,7 @@ type LicenseCardProps = {
 
 function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, description, icon: Icon }: LicenseCardProps) {
     const locale = useLocale();
+    const t = useTranslations('Agent');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -40,16 +41,16 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
     const statusBadge = held ? (
         frozen ? (
             <Badge variant='destructive' className='text-xs'>
-                Frozen
+                {t('licenseFrozen')}
             </Badge>
         ) : (
             <Badge variant='outline' className='text-xs border-green-500 text-green-600'>
-                Active
+                {t('licenseActive')}
             </Badge>
         )
     ) : (
         <Badge variant='outline' className='text-xs border-dashed text-muted-foreground'>
-            Not acquired
+            {t('licenseNotAcquired')}
         </Badge>
     );
 
@@ -59,7 +60,7 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                 <div className='flex items-center justify-between'>
                     <CardTitle className='text-sm flex items-center gap-2'>
                         <Icon className='h-4 w-4 text-muted-foreground' />
-                        {type === 'commercial' ? 'Commercial License' : 'Workforce License'}
+                        {type === 'commercial' ? t('commercialLicense') : t('workforceLicense')}
                     </CardTitle>
                     {statusBadge}
                 </div>
@@ -69,14 +70,14 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                 {!held && isOwnAgent && (
                     <div className='flex items-center justify-between gap-2 mt-1'>
                         <span className='text-xs text-muted-foreground'>
-                            Cost:{' '}
+                            {t('licenseCost')}{' '}
                             {formatNumberWithUnit(
                                 type === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST,
                                 'currency',
                                 planetId,
                                 locale,
                             )}{' '}
-                            {type === 'commercial' && '(initial loan)'}
+                            {type === 'commercial' && t('initialLoan')}
                         </span>
                         <Button
                             size='sm'
@@ -85,7 +86,7 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                             disabled={acquireMutation.isPending}
                             onClick={() => acquireMutation.mutate({ agentId, planetId, licenseType: type })}
                         >
-                            {acquireMutation.isPending ? 'Acquiring…' : 'Acquire'}
+                            {acquireMutation.isPending ? t('acquiring') : t('acquire')}
                         </Button>
                     </div>
                 )}
@@ -108,6 +109,7 @@ type Props = {
 };
 
 export function LicensePanel({ agentId, planetId, isOwnAgent, licenses }: Props) {
+    const t = useTranslations('Agent');
     const commercialLicense = licenses?.commercial;
     const workforceLicense = licenses?.workforce;
 
@@ -121,7 +123,7 @@ export function LicensePanel({ agentId, planetId, isOwnAgent, licenses }: Props)
                     agentId={agentId}
                     planetId={planetId}
                     isOwnAgent={isOwnAgent}
-                    description='Required for bank account, storage access and market participation.'
+                    description={t('commercialLicenseDesc')}
                     icon={Briefcase}
                 />
                 <span className={`${commercialLicense === undefined ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -132,7 +134,7 @@ export function LicensePanel({ agentId, planetId, isOwnAgent, licenses }: Props)
                         agentId={agentId}
                         planetId={planetId}
                         isOwnAgent={isOwnAgent}
-                        description='Required to hire employees and run production facilities.'
+                        description={t('workforceLicenseDesc')}
                         icon={Users}
                     />
                 </span>

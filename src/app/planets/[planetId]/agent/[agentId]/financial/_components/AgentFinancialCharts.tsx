@@ -6,6 +6,7 @@ import { HISTORY_BUCKET_LIMIT } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { Search } from 'lucide-react';
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import { BalanceFlowChart } from './BalanceFlowChart';
 import { ExpensesRevenueChart } from './ExpensesRevenueChart';
 import {
@@ -28,6 +29,7 @@ export default function AgentFinancialCharts({
     live?: FinancialLive;
 }) {
     const trpc = useTRPC();
+    const t = useTranslations('Financial');
     const { granularity, setGranularity, currentTick } = useGranularity();
 
     const { data: monthlyData, isLoading: loadingMonthly } = useSimulationQuery(
@@ -75,7 +77,7 @@ export default function AgentFinancialCharts({
     return (
         <div className='space-y-2' data-tour='financial-charts'>
             <GranularityHeader
-                title='Details'
+                title={t('details')}
                 icon={<Search className='h-4 w-4 text-muted-foreground' />}
                 granularity={granularity}
                 onGranularityChange={setGranularity}

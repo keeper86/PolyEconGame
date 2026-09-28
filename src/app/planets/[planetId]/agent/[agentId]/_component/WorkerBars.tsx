@@ -8,7 +8,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { EDU_COLORS } from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/workforceTheme';
 import { borderColor, fillColor } from '@/components/client/ProductQuantity';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
@@ -30,6 +30,7 @@ export function WorkerBars({
     agentId?: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Agent');
     const hasLink = planetId !== undefined && agentId !== undefined;
     const href = hasLink ? `/planets/${planetId}/agent/${agentId}/workforce` : undefined;
 
@@ -59,7 +60,10 @@ export function WorkerBars({
                     </div>
                 </TooltipTrigger>
                 <TooltipContent side='top' hidden={!hasRequirement}>
-                    {educationLevels[edu].name} workers: {pctStr(eff)} efficiency
+                    {t('workerEfficiencyTooltip', {
+                        name: educationLevels[edu].name,
+                        percent: pctStr(eff),
+                    })}
                 </TooltipContent>
             </Tooltip>
         );

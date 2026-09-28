@@ -56,6 +56,7 @@ function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
 export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.ReactElement {
     const locale = useLocale();
     const tr = useTranslations('Storage');
+    const tu = useTranslations('Units');
     const vsMtdPct =
         rates.currentMonthAvgRate > 0
             ? ((rates.lastTickRate - rates.currentMonthAvgRate) / rates.currentMonthAvgRate) * 100
@@ -75,19 +76,20 @@ export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.Reac
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>{tr('previousMonth')}</span>
                     <span className='font-medium tabular-nums'>
-                        {formatNumberWithUnit(rates.prevMonthAvgRate, 'none', undefined, locale)} u/t
+                        {formatNumberWithUnit(rates.prevMonthAvgRate, 'none', undefined, locale)} {tu('unitsPerTick')}
                     </span>
                 </div>
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>{tr('currentMonth')}</span>
                     <span className='font-medium tabular-nums'>
-                        {formatNumberWithUnit(rates.currentMonthAvgRate, 'none', undefined, locale)} u/t
+                        {formatNumberWithUnit(rates.currentMonthAvgRate, 'none', undefined, locale)}{' '}
+                        {tu('unitsPerTick')}
                     </span>
                 </div>
                 <div className='flex justify-between border-t border-border/20 pt-1'>
                     <span className='font-medium'>{tr('lastTick')}</span>
                     <span className='font-bold tabular-nums'>
-                        {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)} u/t
+                        {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)} {tu('unitsPerTick')}
                     </span>
                 </div>
             </div>

@@ -8,6 +8,7 @@ import { initialMarketPrices } from '@/simulation/initialUniverse/initialMarketP
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { constructionServiceResourceType } from '@/simulation/planet/services';
 import React, { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { MyShipsTab } from './MyShipsTab';
 import { ShipMarketTab } from './ShipMarketTab';
 import { ShipyardsTab } from './ShipyardsTab';
@@ -36,6 +37,7 @@ export function ShipsPanel({
     tick: number;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const t = useTranslations('Ships');
     const [activeTab, setActiveTab] = useState<ShipTab>(readTabFromHash);
 
     useEffect(() => {
@@ -82,21 +84,21 @@ export function ShipsPanel({
                         className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                         data-tour='ships-shipyards'
                     >
-                        Shipyards
+                        {t('tabs.shipyards')}
                     </TabsTrigger>
                     <TabsTrigger
                         value='my-ships'
                         className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                         data-tour='ships-my-ships'
                     >
-                        My Ships
+                        {t('tabs.myShips')}
                     </TabsTrigger>
                     <TabsTrigger
                         value='marketplace'
                         className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                         data-tour='ships-marketplace'
                     >
-                        Marketplace
+                        {t('tabs.marketplace')}
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value='shipyards'>

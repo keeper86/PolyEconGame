@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl as render } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { CostSpringCurve } from './CostSpringCurve';

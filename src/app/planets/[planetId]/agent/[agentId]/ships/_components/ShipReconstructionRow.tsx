@@ -4,8 +4,10 @@ import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Progress } from '@/components/ui/progress';
 import type { ConstructionShipStatusUnloading } from '@/simulation/ships/ships';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export function ShipReconstructionRow({ state }: { state: ConstructionShipStatusUnloading }): React.ReactElement {
+    const t = useTranslations('Ships');
     const pct = (1 - state.progress) * 100;
 
     return (
@@ -16,7 +18,7 @@ export function ShipReconstructionRow({ state }: { state: ConstructionShipStatus
             </div>
             <div>
                 <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                    <span>Reconstruction</span>
+                    <span>{t('status.reconstruction')}</span>
                     <span className='tabular-nums font-medium text-foreground'>{pct.toFixed(1)}%</span>
                 </div>
                 <Progress value={pct} className='h-1.5 bg-amber-100 dark:bg-amber-950/40 [&>div]:bg-amber-500' />

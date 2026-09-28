@@ -9,6 +9,7 @@ import { useTRPC } from '@/lib/trpc';
 import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
 
@@ -23,6 +24,8 @@ type Props = {
 export function DispatchConstructionShipDialog({ agentId, planetId, shipId, shipName, children }: Props) {
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -55,12 +58,12 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Dispatch {shipName}</DialogTitle>
+                    <DialogTitle>{t('dispatch.title', { shipName })}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <PlanetDestinationSelect fromPlanetId={planetId} value={toPlanetId} onChange={setToPlanetId} />
                     <div className='space-y-1.5'>
-                        <Label>Facility to Construct</Label>
+                        <Label>{t('dispatch.facilityToConstruct')}</Label>
                         <div className='max-h-[420px] overflow-y-auto rounded-md border'>
                             <Accordion type='single' collapsible className='px-3'>
                                 {FACILITY_LEVELS.map((level) => (
@@ -95,7 +98,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
                     )}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
-                            {mutation.isPending ? 'Dispatching…' : 'Dispatch'}
+                            {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}
                         </Button>
                     </DialogFooter>
                 </form>

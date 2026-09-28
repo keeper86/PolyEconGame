@@ -47,6 +47,8 @@ function BuildForm({
     const addPending = useAddPendingAction();
     const { isTourActive, markActionCompleted } = useTour();
     const t = useTranslations('Toasts');
+    const tp = useTranslations('Production');
+    const tc = useTranslations('Common');
     const showError = useErrorMessage();
 
     const { data: financials } = useSimulationQuery(
@@ -83,7 +85,7 @@ function BuildForm({
     const sending = buildMutation.isPending;
 
     // Overlay message for pending states
-    const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
+    const overlayMessage = awaitingTick ? t('awaitingNextDay') : sending ? tp('sendingBuild') : null;
     const isOilWell = entry.name === oilWellName;
     return (
         <FacilityCardShell
@@ -95,7 +97,7 @@ function BuildForm({
                     facility={entry}
                     badge={
                         <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                            new
+                            {tp('newBadge')}
                         </Badge>
                     }
                     planetId={planetId}
@@ -114,9 +116,9 @@ function BuildForm({
                     constructionServicePrice={constructionServicePrice}
                     planetId={planetId}
                     otherConstructionCosts={otherConstructionCosts}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Sending build…'
+                    label={tc('buildAtScale')}
+                    confirmLabel={tc('build')}
+                    pendingLabel={tp('sendingBuild')}
                     isPending={sending}
                     financials={financials}
                     onCancel={onCancel}
@@ -144,6 +146,8 @@ function ConstructionDisplay({
     hideCancel?: boolean;
 }): React.ReactElement {
     const cs = facility.construction!;
+    const tp = useTranslations('Production');
+    const tc = useTranslations('Common');
     const targetScale = cs.constructionTargetMaxScale;
     const pct =
         cs.totalConstructionServiceRequired > 0
@@ -157,11 +161,11 @@ function ConstructionDisplay({
     const isPendingSuspension = pendingAction?.type === 'suspend' || pendingAction?.type === 'resume';
     const pendingMessage =
         pendingAction?.type === 'cancel'
-            ? 'Cancellation pending…'
+            ? tp('cancellationPending')
             : pendingAction?.type === 'suspend'
-              ? 'Suspension pending…'
+              ? tp('suspensionPending')
               : pendingAction?.type === 'resume'
-                ? 'Resume pending…'
+                ? tp('resumePending')
                 : null;
 
     return (
@@ -189,7 +193,7 @@ function ConstructionDisplay({
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <HardHat className='h-3.5 w-3.5' />
-                            Under Construction
+                            {tc('underConstruction')}
                         </Badge>
                     }
                     planetId={planetId}
@@ -214,7 +218,7 @@ function ConstructionDisplay({
                     hideCancel={hideCancel}
                 />
 
-                {pendingAction && <ActionPendingOverlay message={pendingMessage ?? 'Awaiting next day…'} />}
+                {pendingAction && <ActionPendingOverlay message={pendingMessage ?? tp('awaitingNextDay')} />}
             </div>
         </FacilityCardShell>
     );

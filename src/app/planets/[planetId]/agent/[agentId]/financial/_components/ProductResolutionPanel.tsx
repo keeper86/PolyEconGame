@@ -6,7 +6,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { MonthAccumulator } from '@/simulation/planet/planet';
 import { LayoutGroup, motion } from 'motion/react';
 import Link from 'next/link';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     monthAcc: MonthAccumulator;
@@ -59,8 +59,9 @@ function ProductList({
     planetId: string;
     agentId: string;
 }): React.ReactElement {
+    const t = useTranslations('Financial');
     if (entries.length === 0) {
-        return <span className='text-xs text-muted-foreground'>None</span>;
+        return <span className='text-xs text-muted-foreground'>{t('none')}</span>;
     }
     return (
         <LayoutGroup>
@@ -87,6 +88,7 @@ export default function ProductResolutionPanel({
     planetId,
     agentId,
 }: Props): React.ReactElement {
+    const t = useTranslations('Financial');
     const allNames = new Set<string>();
     for (const acc of [monthAcc, lastMonthAcc]) {
         for (const name of Object.keys(acc.boughtResources)) {
@@ -109,7 +111,7 @@ export default function ProductResolutionPanel({
     if (allNames.size === 0) {
         return (
             <div className='space-y-3' data-tour='financial-product-resolution'>
-                <div className='text-xs text-muted-foreground'>No product resolution data available.</div>
+                <div className='text-xs text-muted-foreground'>{t('noData')}</div>
             </div>
         );
     }
@@ -149,20 +151,23 @@ export default function ProductResolutionPanel({
             <div className='flex flex-wrap gap-4'>
                 <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
                     <p className='text-xs font-medium text-muted-foreground'>
-                        Purchases: <span className='text-foreground'>current month </span> (last month)
+                        {t('purchasesLabel')} <span className='text-foreground'>{t('currentMonth')}</span>{' '}
+                        {t('lastMonth')}
                     </p>
                     <ProductList entries={boughtEntries} tick={tick} planetId={planetId} agentId={agentId} />
                 </div>
                 <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
                     <p className='text-xs font-medium text-muted-foreground'>
-                        Revenue: <span className='text-foreground'>current month </span> (last month)
+                        {t('revenueLabel')} <span className='text-foreground'>{t('currentMonth')}</span>{' '}
+                        {t('lastMonth')}
                     </p>
                     <ProductList entries={soldEntries} tick={tick} planetId={planetId} agentId={agentId} />
                 </div>
                 {depreciatedEntries.length > 0 && (
                     <div className='min-w-[200px] flex-1 basis-[250px] space-y-1.5'>
                         <p className='text-xs font-medium text-muted-foreground'>
-                            Depreciation: <span className='text-foreground'>current month</span> (last month)
+                            {t('depreciationLabel')} <span className='text-foreground'>{t('currentMonth')}</span>{' '}
+                            {t('lastMonth')}
                         </p>
                         <ProductList entries={depreciatedEntries} tick={tick} planetId={planetId} agentId={agentId} />
                     </div>

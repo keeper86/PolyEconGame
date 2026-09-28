@@ -84,7 +84,7 @@ function EducationCard({
             </Badge>
 
             <Stat
-                label='Target'
+                label={tr('target')}
                 value={
                     <>
                         {formatNumberWithUnit(target, 'persons', undefined, locale)}
@@ -99,11 +99,7 @@ function EducationCard({
                                     <div className='max-w-xs'>
                                         <div className='font-medium'>{tr('overqualified')}</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled{' '}
-                                            {formatNumberWithUnit(overqualifiedCount, 'persons', undefined, locale)}{' '}
-                                            slot
-                                            {overqualifiedCount !== 1 ? 's' : ''} with higher-educated workers because
-                                            lower-education workers were not available.
+                                            {tr('overqualifiedNote', { count: overqualifiedCount })}
                                         </div>
                                         {overqualifiedBreakdown && (
                                             <div className='mt-2 text-xs'>
@@ -124,20 +120,20 @@ function EducationCard({
                 }
             />
             <Stat
-                label='Current total'
+                label={tr('currentTotalLabel')}
                 value={formatNumberWithUnit(totalWorkforce, 'persons', undefined, locale)}
                 valueClassName='text-foreground'
                 bold
             />
             <Stat
-                label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
+                label={unused < 0 ? tr('workerShortage') : tr('unusedWorker')}
                 value={`${formatNumberWithUnit(Math.abs(unused), 'persons', undefined, locale)}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 
             <Rule />
 
-            <Stat label='Active' value={formatNumberWithUnit(active, 'persons', undefined, locale)} />
+            <Stat label={tr('activeLabel')} value={formatNumberWithUnit(active, 'persons', undefined, locale)} />
 
             <div className='flex items-baseline justify-between gap-2'>
                 <button
@@ -175,10 +171,10 @@ function EducationCard({
             {onboardingOpen && (
                 <>
                     <div id={onboardingId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
-                        next month
+                        {tr('nextMonth')}
                     </div>
                     <Stat
-                        label='Completing'
+                        label={tr('completing')}
                         value={formatNumberWithUnit(onboardingNext, 'persons', undefined, locale)}
                         valueClassName={onboardingNext > 0 ? 'text-violet-600' : 'text-muted-foreground'}
                         indent
@@ -188,7 +184,7 @@ function EducationCard({
 
             {typeof deaths === 'number' && (
                 <Stat
-                    label='Deaths'
+                    label={tr('deaths')}
                     value={formatNumberWithUnit(deaths, 'persons', undefined, locale)}
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
@@ -196,7 +192,7 @@ function EducationCard({
 
             {typeof disabilities === 'number' && (
                 <Stat
-                    label='Disabilities'
+                    label={tr('disabilities')}
                     value={formatNumberWithUnit(disabilities, 'persons', undefined, locale)}
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
@@ -237,22 +233,22 @@ function EducationCard({
             {onNoticeOpen && (
                 <>
                     <div id={onNoticeId} className='pl-3 text-[10px] text-muted-foreground mb-0.5'>
-                        next month · (pipeline)
+                        {tr('nextMonthPipeline')}
                     </div>
                     <Stat
-                        label='Voluntary'
+                        label={tr('voluntary')}
                         value={formatNumbersNextTotal(voluntaryNext, voluntaryTotal)}
                         valueClassName={voluntaryTotal > 0 ? 'text-amber-600' : 'text-muted-foreground'}
                         indent
                     />
                     <Stat
-                        label='Fired'
+                        label={tr('fired')}
                         value={formatNumbersNextTotal(firedNext, firedTotal)}
                         valueClassName={firedTotal > 0 ? 'text-red-500' : 'text-muted-foreground'}
                         indent
                     />
                     <Stat
-                        label='Retired'
+                        label={tr('retired')}
                         value={formatNumbersNextTotal(retiredNext, retiredTotal)}
                         valueClassName={retiredTotal > 0 ? 'text-blue-600' : 'text-muted-foreground'}
                         indent

@@ -7,7 +7,7 @@ import { useTRPC } from '@/lib/trpc';
 import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { ProductIcon } from './ProductIcon';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { termFor } from '@/i18n/terms';
 
 type Props = {
@@ -31,6 +31,7 @@ export function StorageResourceSelect({
     placeholder = 'Select resource…',
 }: Props) {
     const locale = useLocale();
+    const t = useTranslations('Storage');
     const trpc = useTRPC();
     const { data: storage } = useSimulationQuery(trpc.getAgentPlanetStorage.queryOptions({ agentId, planetId }));
 
@@ -67,7 +68,7 @@ export function StorageResourceSelect({
             </SelectTrigger>
             <SelectContent>
                 {options.length === 0 && (
-                    <div className='px-2 py-1.5 text-sm text-muted-foreground'>No matching resources in storage</div>
+                    <div className='px-2 py-1.5 text-sm text-muted-foreground'>{t('noMatchingResources')}</div>
                 )}
                 {options.map(([resourceName, qty]) => (
                     <SelectItem key={resourceName} value={resourceName}>

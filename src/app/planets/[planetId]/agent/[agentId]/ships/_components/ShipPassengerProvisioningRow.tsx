@@ -13,7 +13,7 @@ import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, type PlanetSummary } from './shipFormatting';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 function provisionEfficiency(provision: { currently: number; goal: number }): number {
     return provision.goal > 0 ? Math.min(provision.currently / provision.goal, 1) : 1;
@@ -29,6 +29,8 @@ export function ShipPassengerProvisioningRow({
     agentId: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Ships');
+    const tu = useTranslations('Units');
     const total = countManifestPassengers(state.manifest);
     const grocery = state.groceryProvisioned;
     const healthcare = state.healthcareProvisioned;
@@ -43,11 +45,11 @@ export function ShipPassengerProvisioningRow({
         <div className='space-y-1.5'>
             <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
                 <span>
-                    Provisioning{' '}
+                    {t('status.provisioning')}{' '}
                     <span className='tabular-nums text-foreground'>
                         {formatNumberWithUnit(total, 'persons', undefined, locale)}
                     </span>{' '}
-                    passengers
+                    {tu('passengers')}
                 </span>
                 <ArrowRight className='h-3 w-3' />
                 <span>{destination}</span>

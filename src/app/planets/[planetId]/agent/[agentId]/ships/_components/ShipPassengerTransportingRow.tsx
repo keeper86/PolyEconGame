@@ -7,7 +7,7 @@ import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, ShipEta, type PlanetSummary } from './shipFormatting';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ShipPassengerTransportingRow({
     state,
@@ -19,6 +19,7 @@ export function ShipPassengerTransportingRow({
     tick: number;
 }): React.ReactElement {
     const locale = useLocale();
+    const tu = useTranslations('Units');
     const total = countManifestPassengers(state.manifest);
     const destination = planetName(planetSummaries, state.to);
 
@@ -28,7 +29,7 @@ export function ShipPassengerTransportingRow({
                 <span className='tabular-nums text-foreground'>
                     {formatNumberWithUnit(total, 'persons', undefined, locale)}
                 </span>{' '}
-                passengers
+                {tu('passengers')}
             </span>
             <ArrowRight className='h-3 w-3' />
             <span>{destination}</span>

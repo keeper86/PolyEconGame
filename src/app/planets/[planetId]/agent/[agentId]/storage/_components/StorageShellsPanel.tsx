@@ -67,7 +67,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
             {held.length > 0 && (
                 <div className='flex flex-col gap-0.5 pt-1'>
                     <div className='text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60'>
-                        Held resources
+                        {tr('heldResources')}
                     </div>
                     {held.map(([name, entry]) => (
                         <div key={name} className='flex flex-row items-center justify-between text-xs'>

@@ -4,6 +4,7 @@ import { ShieldAlert } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useTranslations } from 'next-intl';
 import { NoAssetsMessage } from './NoAssetsMessage';
 
 type Props = {
@@ -37,6 +38,8 @@ export function AgentAccessGuard({
     children,
 }: Props) {
     const router = useRouter();
+    const t = useTranslations('Agent');
+    const tc = useTranslations('Common');
 
     // ── All hooks before any early return (rules-of-hooks) ────────────────
     useEffect(() => {
@@ -66,11 +69,8 @@ export function AgentAccessGuard({
         return (
             <div className='flex flex-col items-center justify-center gap-4 py-16 text-center'>
                 <ShieldAlert className='h-12 w-12 text-muted-foreground' />
-                <h2 className='text-xl font-semibold'>Classified Operations</h2>
-                <p className='text-sm text-muted-foreground max-w-sm'>
-                    You do not have clearance to view the internal operations of this company. Only the company{"'"}s
-                    owner can access these facilities.
-                </p>
+                <h2 className='text-xl font-semibold'>{t('classifiedOperations')}</h2>
+                <p className='text-sm text-muted-foreground max-w-sm'>{t('noClearance')}</p>
             </div>
         );
     }
@@ -81,7 +81,7 @@ export function AgentAccessGuard({
     }
 
     if (detailLoading) {
-        return <div className='text-sm text-muted-foreground'>Loading…</div>;
+        return <div className='text-sm text-muted-foreground'>{tc('loading')}</div>;
     }
 
     return <>{children}</>;

@@ -54,6 +54,7 @@ export function FacilityConstructionPanel({
     onScaleChange?: (targetScale: number) => void;
 }): React.ReactElement {
     const locale = useLocale();
+    const tp = useTranslations('Production');
     const tCommon = useTranslations('Common');
     const minScale = fromScale + 1;
     const [targetScale, setTargetScale] = useState(minScale);
@@ -162,30 +163,30 @@ export function FacilityConstructionPanel({
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 pb-1'>
                 <div className='grid grid-cols-1 gap-y-1'>
                     <Stat
-                        label='Estimated costs'
+                        label={tp('estimatedCosts')}
                         value={formatNumberWithUnit(estimatedCosts, 'currency', planetId, locale)}
                         icon={<TrendingDown className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Deposits'
+                        label={tp('deposits')}
                         value={formatNumberWithUnit(deposits, 'currency', planetId, locale)}
                         icon={<Wallet className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Other constructions'
+                        label={tp('otherConstructions')}
                         value={formatNumberWithUnit(otherCosts, 'currency', planetId, locale)}
                         icon={<TrendingDown className='h-3 w-3' />}
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1'>
-                    <Stat label='Completion' value={completionDate} icon={<Clock className='h-3 w-3' />} />
+                    <Stat label={tp('completion')} value={completionDate} icon={<Clock className='h-3 w-3' />} />
                     <Stat
-                        label='Monthly cash flow'
+                        label={tp('monthlyCashFlow')}
                         value={formatNumberWithUnit(monthlyNetCashFlow, 'currency', planetId, locale)}
                         icon={<Percent className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Net after commitments'
+                        label={tp('netAfterCommitments')}
                         value={formatNumberWithUnit(
                             estimatedDepositsDuringBuildingTime - estimatedCosts - otherCosts,
                             'currency',
@@ -206,7 +207,7 @@ export function FacilityConstructionPanel({
                     disabled={!onCancel}
                     onClick={onCancel}
                 >
-                    Cancel
+                    {tCommon('cancel')}
                 </Button>
                 <Button size='sm' className={`flex-1`} disabled={isPending} onClick={handleConfirmClick}>
                     <span className={`font-bold text-[14px] dark:text-[12px] ${colorClassCosts}`}>
@@ -221,18 +222,23 @@ export function FacilityConstructionPanel({
                     <DialogHeader>
                         <DialogTitle className='flex items-center gap-2'>
                             <AlertTriangle className='h-5 w-5 text-amber-600 dark:text-amber-400' />
-                            Insufficient Funds
+                            {tp('insufficientFunds')}
                         </DialogTitle>
                         <DialogDescription>
-                            Your current deposits together with your estimated cashflow (
-                            {formatNumberWithUnit(estimatedDepositsDuringBuildingTime, 'currency', planetId, locale)})
-                            may not cover the estimated cost of{' '}
-                            {formatNumberWithUnit(estimatedCosts, 'currency', planetId, locale)}.
+                            {tp('insufficientFundsBody', {
+                                cashflow: formatNumberWithUnit(
+                                    estimatedDepositsDuringBuildingTime,
+                                    'currency',
+                                    planetId,
+                                    locale,
+                                ),
+                                costs: formatNumberWithUnit(estimatedCosts, 'currency', planetId, locale),
+                            })}
                         </DialogDescription>
                     </DialogHeader>
                     <div className='rounded-md bg-muted p-3 text-xs space-y-1'>
                         <div className='flex justify-between'>
-                            <span className='text-muted-foreground'>Shortfall</span>
+                            <span className='text-muted-foreground'>{tp('shortfall')}</span>
                             <span className='font-medium text-destructive'>
                                 {formatNumberWithUnit(
                                     estimatedCosts - estimatedDepositsDuringBuildingTime,
@@ -251,7 +257,7 @@ export function FacilityConstructionPanel({
                                 variant='destructive'
                                 onClick={handleCancelWarning}
                             >
-                                Cancel
+                                {tCommon('cancel')}
                             </Button>
                             <Button
                                 size='sm'
@@ -259,7 +265,7 @@ export function FacilityConstructionPanel({
                                 variant='default'
                                 onClick={handleProceedAnyway}
                             >
-                                Proceed anyway
+                                {tp('proceedAnyway')}
                             </Button>
                         </div>
                     </DialogFooter>

@@ -5,6 +5,7 @@ const ts = require('typescript');
 const root = path.join(__dirname, '..');
 const target = path.join(root, 'src');
 const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain'];
+const DEBUG_FILES = new Set(['FacilitiesMaintenanceDebug.tsx']);
 const TEXT_ATTRS = new Set([
     'label',
     'title',
@@ -36,6 +37,11 @@ const collect = (dir, out) => {
 
 const isExcluded = (rel) => EXCLUDED_DIRS.some((dir) => rel.startsWith(dir));
 
+const isDebugFile = (rel) => [...DEBUG_FILES].some((file) => rel.endsWith(file));
+
+const DEBUG_MARKERS = new Set(['TEMP DEBUG']);
+const isEntityOnly = (text) => /^(&#?\w+;|\u00a0|\s)+$/.test(text);
+
 const findText = (file) => {
     const rel = path.relative(target, file);
     const source = ts.createSourceFile(
@@ -48,7 +54,7 @@ const findText = (file) => {
     const hits = [];
     const add = (node, kind, value) => {
         const text = value.replace(/\s+/g, ' ').trim();
-        if (!text || /^[\W_0-9]+$/.test(text)) return;
+        if (!text || /^[\W_0-9]+$/.test(text) || isEntityOnly(text) || DEBUG_MARKERS.has(text)) return;
         hits.push({ line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1, kind, text });
     };
     const visit = (node) => {
@@ -68,7 +74,7 @@ const findText = (file) => {
 const results = collect(target, [])
     .filter((file) => !/\.test\.|\.spec\./.test(file))
     .map((file) => ({ file, rel: path.relative(target, file) }))
-    .filter(({ rel }) => !isExcluded(rel))
+    .filter(({ rel }) => !isExcluded(rel) && !isDebugFile(rel))
     .map(({ file }) => findText(file))
     .filter(({ hits }) => hits.length > 0)
     .sort((a, b) => b.hits.length - a.hits.length);

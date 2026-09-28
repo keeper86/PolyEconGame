@@ -23,6 +23,7 @@ import { FacilityConditionRow } from '../../production/_component/FacilityCondit
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
 import { FacilityHeader } from '../../_component/FacilityHeader';
 import { PendingActionIndicator } from '../../_component/PendingActionIndicator';
+import { useTranslations } from 'next-intl';
 import { ShipBuildProgressRow } from './ShipBuildProgressRow';
 import { ShipSelectionDialog } from './ShipSelectionDialog';
 
@@ -39,6 +40,8 @@ export function ActiveShipyardCard({
 }): React.ReactElement {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
+    const t = useTranslations('Ships');
+    const tt = useTranslations('Toasts');
     const currentPlanetId = usePlanetId();
     const { agentId: currentAgentId } = useAgentId();
 
@@ -144,7 +147,8 @@ export function ActiveShipyardCard({
                         badge={
                             <div className='flex gap-1 flex-wrap'>
                                 <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                                    Scale {facility.scale} {facility.scale === facility.maxScale ? 'max' : ''}
+                                    {t('build.scaleLine', { scale: facility.scale })}
+                                    {facility.scale === facility.maxScale ? ` ${t('build.max')}` : ''}
                                 </Badge>
                             </div>
                         }
@@ -205,7 +209,7 @@ export function ActiveShipyardCard({
                                 disabled={!!pending}
                                 onClick={() => setShipDialogOpen(true)}
                             >
-                                Select ship to build
+                                {t('build.selectShipToBuild')}
                             </Button>
                         )}
                     </div>
@@ -225,9 +229,9 @@ export function ActiveShipyardCard({
                         fromScale={facility.maxScale}
                         constructionServicePrice={constructionServicePrice}
                         planetId={planetId}
-                        label='Expand shipyard'
-                        confirmLabel='Confirm Expand'
-                        pendingLabel='Ordering expansion…'
+                        label={t('build.expandShipyard')}
+                        confirmLabel={t('build.confirmExpand')}
+                        pendingLabel={t('build.orderingExpansion')}
                         isPending={expandMutation.isPending}
                         financials={financials}
                         onCancel={() => setShowExpand(false)}
@@ -243,11 +247,11 @@ export function ActiveShipyardCard({
                             disabled={facility.construction !== null || !!pending}
                             onClick={() => setShowExpand(true)}
                         >
-                            Expand shipyard
+                            {t('build.expandShipyard')}
                         </Button>
                     </div>
                 )}
-                {pending && <PendingActionIndicator message='Awaiting next day…' />}
+                {pending && <PendingActionIndicator message={tt('awaitingNextDay')} />}
             </FacilityCardShell>
         </>
     );

@@ -87,6 +87,8 @@ function HRBuildCard({
     const addPending = useAddPendingAction();
     const { isTourActive, markActionCompleted } = useTour();
     const t = useTranslations('Toasts');
+    const ts = useTranslations('Workforce');
+    const tc = useTranslations('Common');
     const showError = useErrorMessage();
     const { data: financials } = useSimulationQuery(
         trpc.simulation.getAgentFinancials.queryOptions({ agentId, planetId }),
@@ -116,7 +118,7 @@ function HRBuildCard({
     );
     const awaitingTick = isPending && !buildMutation.isPending;
     const sending = buildMutation.isPending;
-    const overlayMessage = awaitingTick ? 'Awaiting next day…' : sending ? 'Sending build…' : null;
+    const overlayMessage = awaitingTick ? t('awaitingNextDay') : sending ? ts('sendingBuild') : null;
 
     return (
         <FacilityCardShell
@@ -128,7 +130,7 @@ function HRBuildCard({
                     facility={entry}
                     badge={
                         <Badge variant='outline' className='text-[10px] px-1.5 py-0 text-muted-foreground'>
-                            new
+                            {ts('newBadge')}
                         </Badge>
                     }
                     planetId={planetId}
@@ -176,9 +178,9 @@ function HRBuildCard({
                     constructionServicePrice={constructionServicePrice}
                     planetId={planetId}
                     otherConstructionCosts={otherConstructionCosts}
-                    label='Build at scale'
-                    confirmLabel='Build'
-                    pendingLabel='Sending build…'
+                    label={tc('buildAtScale')}
+                    confirmLabel={tc('build')}
+                    pendingLabel={ts('sendingBuild')}
                     isPending={sending}
                     financials={financials}
                     onCancel={undefined}
@@ -219,6 +221,7 @@ function HRConstructionCard({
             : 0;
 
     const pendingActions = usePendingActions(agentId, planetId);
+    const tc = useTranslations('Common');
     const isPendingCancel = pendingActions.some((a) => a.type === 'cancel' && a.facilityId === facility.id);
     const isPendingSuspension = pendingActions.some(
         (a) => (a.type === 'suspend' || a.type === 'resume') && a.facilityId === facility.id,
@@ -239,7 +242,7 @@ function HRConstructionCard({
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <HardHat className='h-3.5 w-3.5' />
-                            Under Construction
+                            {tc('underConstruction')}
                         </Badge>
                     }
                     planetId={planetId}

@@ -4,6 +4,7 @@ import { useTour } from '@/components/tour/TourContext';
 import { usePendingActions } from '@/hooks/useActionOverlay';
 import type { FacilityCatalogEntry } from '@/simulation/planet/productionFacilities';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 import { BuildCard, type Mode } from './BuildCard';
 import { BuildPlaceholderCard } from '../../_component/BuildPlaceholderCard';
 
@@ -33,6 +34,7 @@ export function LevelBuildSection({
 }): React.ReactElement {
     const { isTourActive, markActionCompleted } = useTour();
     const pendingActions = usePendingActions(agentId, planetId);
+    const t = useTranslations('Production');
 
     const pendingBuildKeys = React.useMemo(() => {
         const keys = new Set<string>();
@@ -78,7 +80,7 @@ export function LevelBuildSection({
                     );
                 })}
                 {otherEntries.length > 0 && (
-                    <BuildPlaceholderCard label='Build more' onClick={() => onModeChange({ type: 'selecting' })} />
+                    <BuildPlaceholderCard label={t('buildMore')} onClick={() => onModeChange({ type: 'selecting' })} />
                 )}
             </>
         );
@@ -87,7 +89,7 @@ export function LevelBuildSection({
     if (mode.type === 'idle') {
         return (
             <BuildPlaceholderCard
-                label='Build facility'
+                label={t('buildFacility')}
                 dataTour='production-build'
                 onClick={() => {
                     if (isTourActive) {

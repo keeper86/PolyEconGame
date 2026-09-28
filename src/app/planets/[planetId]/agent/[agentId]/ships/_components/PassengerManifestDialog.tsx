@@ -4,7 +4,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { PassengerManifest } from '@/simulation/ships/manifest';
 import { parseManifestKey } from '@/simulation/ships/manifest';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     open: boolean;
@@ -44,6 +44,7 @@ function groupByOccupationAndEducation(manifest: PassengerManifest): GroupedRow[
 
 export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanetName, phase }: Props) {
     const locale = useLocale();
+    const t = useTranslations('Ships');
     const total = countManifestPassengers(manifest);
     const rows = groupByOccupationAndEducation(manifest);
 
@@ -51,20 +52,21 @@ export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanet
         <Dialog open={open} onOpenChange={onOpenChange} modal>
             <DialogContent className='max-w-lg'>
                 <DialogHeader>
-                    <DialogTitle>Passenger Manifest</DialogTitle>
+                    <DialogTitle>{t('manifest.title')}</DialogTitle>
                 </DialogHeader>
                 <div className='space-y-3'>
                     <div className='flex gap-4 text-sm text-muted-foreground'>
                         <span>
-                            Phase:{' '}
+                            {t('manifest.phase')}{' '}
                             <span className='text-foreground font-medium capitalize'>{phase.replace(/_/g, ' ')}</span>
                         </span>
                         <span>
-                            Destination: <span className='text-foreground font-medium'>{toPlanetName}</span>
+                            {t('manifest.destination')}{' '}
+                            <span className='text-foreground font-medium'>{toPlanetName}</span>
                         </span>
                     </div>
                     <div className='rounded bg-muted px-3 py-2 text-sm'>
-                        <span className='text-muted-foreground'>Total passengers: </span>
+                        <span className='text-muted-foreground'>{t('manifest.total')} </span>
                         <span className='tabular-nums font-semibold'>
                             {formatNumberWithUnit(total, 'persons', undefined, locale)}
                         </span>
@@ -74,9 +76,11 @@ export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanet
                             <table className='w-full text-sm border-collapse'>
                                 <thead>
                                     <tr className='text-xs text-muted-foreground border-b'>
-                                        <th className='text-left py-1.5 pr-3 font-medium'>Occupation</th>
-                                        <th className='text-left py-1.5 pr-3 font-medium'>Education</th>
-                                        <th className='text-right py-1.5 font-medium'>Count</th>
+                                        <th className='text-left py-1.5 pr-3 font-medium'>
+                                            {t('manifest.occupation')}
+                                        </th>
+                                        <th className='text-left py-1.5 pr-3 font-medium'>{t('manifest.education')}</th>
+                                        <th className='text-right py-1.5 font-medium'>{t('manifest.count')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -96,7 +100,7 @@ export function PassengerManifestDialog({ open, onOpenChange, manifest, toPlanet
                             </table>
                         </div>
                     ) : (
-                        <p className='text-sm text-muted-foreground'>No passengers boarded yet.</p>
+                        <p className='text-sm text-muted-foreground'>{t('manifest.none')}</p>
                     )}
                 </div>
             </DialogContent>

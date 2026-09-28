@@ -317,7 +317,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                                     </div>
                                     {filtered.map((p) => (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
-                                            Population:{' '}
+                                            {tr('populationLabel')}{' '}
                                             {formatNumberWithUnit(p.value as number, 'persons', undefined, locale)}
                                         </div>
                                     ))}

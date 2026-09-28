@@ -19,7 +19,7 @@ import {
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
 import { TbBuildingFactory2 } from 'react-icons/tb';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     deposits: number;
@@ -91,6 +91,7 @@ export default function AgentFinancialOverview({
     planetId,
 }: Props): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Financial');
     const netPosition = deposits - loans;
 
     const currentMonthlyRevenue = monthAcc.revenue;
@@ -128,14 +129,16 @@ export default function AgentFinancialOverview({
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 items-start'>
                 <div className='grid grid-cols-1 gap-x-6 gap-y-1' data-tour='financial-cash-flow'>
                     <div className={`flex justify-between gap-2`}>
-                        <span className=' text-xs font-semibold text-muted-foreground'>Monthly flow</span>
+                        <span className=' text-xs font-semibold text-muted-foreground'>{t('monthlyFlow')}</span>
                         <span className='inline-flex flex-row items-center flex-baseline gap-1 tabular-nums whitespace-nowrap text-xs'>
-                            <span className='text-foreground'>current</span>
-                            <span className={`text-[10px] w-[50px] text-right text-muted-foreground `}>(last)</span>
+                            <span className='text-foreground'>{t('current')}</span>
+                            <span className={`text-[10px] w-[50px] text-right text-muted-foreground `}>
+                                {t('last')}
+                            </span>
                         </span>
                     </div>
                     <Stat
-                        label='Revenue'
+                        label={t('revenue')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyRevenue}
@@ -146,7 +149,7 @@ export default function AgentFinancialOverview({
                         icon={<TrendingUp className='h-3 w-3' />}
                     />
                     <Stat
-                        label='Wages'
+                        label={t('wages')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyWages}
@@ -161,7 +164,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyWages === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
-                        label='Purchases'
+                        label={t('purchases')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyPurchases}
@@ -176,7 +179,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyPurchases === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
-                        label='Claims'
+                        label={t('claims')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyClaimPayments}
@@ -191,7 +194,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyClaimPayments === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
-                        label='Interest'
+                        label={t('interest')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyInterest}
@@ -206,7 +209,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyInterest === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
-                        label='Wealth tax'
+                        label={t('wealthTax')}
                         value={
                             <ValueWithSub
                                 value={currentMonthlyWealthTax}
@@ -221,7 +224,7 @@ export default function AgentFinancialOverview({
                         valueClassName={currentMonthlyWealthTax === 0 ? 'text-muted-foreground' : 'text-amber-500'}
                     />
                     <Stat
-                        label='Net cash flow'
+                        label={t('netCashFlow')}
                         value={
                             <ValueWithSub
                                 value={currentNetCashFlow}
@@ -241,9 +244,9 @@ export default function AgentFinancialOverview({
                     />
                 </div>
                 <div className='grid grid-cols-1 gap-y-1' data-tour='financial-positions'>
-                    <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
+                    <span className=' text-xs font-semibold text-muted-foreground'>{t('positions')}</span>
                     <Stat
-                        label='Firm deposits'
+                        label={t('firmDeposits')}
                         value={formatNumberWithUnit(deposits, 'currency', planetId, locale)}
                         icon={<Coins className='h-3 w-3' />}
                         valueClassName={
@@ -251,7 +254,7 @@ export default function AgentFinancialOverview({
                         }
                     />
                     <Stat
-                        label='Outstanding loans'
+                        label={t('outstandingLoans')}
                         value={formatNumberWithUnit(loans, 'currency', planetId, locale)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={
@@ -259,7 +262,7 @@ export default function AgentFinancialOverview({
                         }
                     />
                     <Stat
-                        label='Net position (deposits − loans)'
+                        label={t('netPositionLabel')}
                         value={formatNumberWithUnit(netPosition, 'currency', planetId, locale)}
                         icon={
                             netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
@@ -273,25 +276,25 @@ export default function AgentFinancialOverview({
                         }
                     />
                     <Stat
-                        label='Facilities value'
+                        label={t('facilitiesValue')}
                         value={formatNumberWithUnit(loanConditions.facilitiesCollateral, 'currency', planetId, locale)}
                         icon={<TbBuildingFactory2 className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
-                        label='Ships value'
+                        label={t('shipsValue')}
                         value={formatNumberWithUnit(loanConditions.shipsCollateral, 'currency', planetId, locale)}
                         icon={<GoRocket className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
-                        label='Storage value'
+                        label={t('storageValue')}
                         value={formatNumberWithUnit(loanConditions.storageCollateral, 'currency', planetId, locale)}
                         icon={<Package className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
-                        label='Depreciation* (last month)'
+                        label={t('depreciation')}
                         value={formatNumberWithUnit(lastMonthlyDepreciation, 'currency', planetId, locale)}
                         icon={<Trash className='h-3 w-3' />}
                         valueClassName={mutedCashFlowColor(-lastMonthlyDepreciation)}

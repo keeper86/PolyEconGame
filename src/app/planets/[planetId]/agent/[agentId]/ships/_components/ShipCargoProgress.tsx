@@ -3,6 +3,7 @@
 import { Progress } from '@/components/ui/progress';
 import type { ResourceQuantity } from '@/simulation/planet/claims';
 import React from 'react';
+import { useTranslations } from 'next-intl';
 
 export function cargoProgressPercent(goal: ResourceQuantity, current: ResourceQuantity | null): number {
     if (goal.quantity <= 0) {
@@ -19,11 +20,12 @@ export function ShipCargoProgress({
     goal: ResourceQuantity;
     current: ResourceQuantity | null;
 }): React.ReactElement {
+    const t = useTranslations('Ships');
     const pct = cargoProgressPercent(goal, current);
     return (
         <div className='w-full'>
             <div className='flex justify-between text-xs text-muted-foreground mb-1'>
-                <span>Loading cargo</span>
+                <span>{t('status.loadingCargo')}</span>
                 <span className='tabular-nums font-medium text-foreground'>{Math.round(pct)}%</span>
             </div>
             <Progress value={pct} className='h-1.5' />

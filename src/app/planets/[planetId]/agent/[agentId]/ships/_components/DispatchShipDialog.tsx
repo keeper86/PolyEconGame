@@ -9,6 +9,7 @@ import { useTRPC } from '@/lib/trpc';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
 
@@ -24,6 +25,8 @@ type Props = {
 export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCargoType, children }: Props) {
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -63,26 +66,26 @@ export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCa
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Dispatch {shipName}</DialogTitle>
+                    <DialogTitle>{t('dispatch.title', { shipName })}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <PlanetDestinationSelect fromPlanetId={planetId} value={toPlanetId} onChange={setToPlanetId} />
                     <div className='space-y-1.5'>
-                        <Label>Cargo (optional — leave blank to reposition)</Label>
+                        <Label>{t('dispatch.cargoOptional')}</Label>
                         <div className='grid grid-cols-2 gap-3'>
                             <div className='space-y-1.5'>
-                                <Label className='text-xs text-muted-foreground'>Resource</Label>
+                                <Label className='text-xs text-muted-foreground'>{t('resource')}</Label>
                                 <StorageResourceSelect
                                     agentId={agentId}
                                     planetId={planetId}
                                     allowedTypes={[shipCargoType]}
                                     value={resourceName}
                                     onValueChange={setResourceName}
-                                    placeholder='Select resource…'
+                                    placeholder={t('dispatch.selectResource')}
                                 />
                             </div>
                             <div className='space-y-1.5'>
-                                <Label className='text-xs text-muted-foreground'>Quantity</Label>
+                                <Label className='text-xs text-muted-foreground'>{t('quantity')}</Label>
                                 <Input
                                     type='number'
                                     min={1}
@@ -98,7 +101,7 @@ export function DispatchShipDialog({ agentId, planetId, shipId, shipName, shipCa
                     )}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
-                            {mutation.isPending ? 'Dispatching…' : 'Dispatch'}
+                            {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}
                         </Button>
                     </DialogFooter>
                 </form>

@@ -10,7 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -30,6 +30,8 @@ export function DispatchPassengerShipDialog({
     children,
 }: Props) {
     const locale = useLocale();
+    const t = useTranslations('Ships');
+    const tc = useTranslations('Common');
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const [open, setOpen] = useState(false);
@@ -64,12 +66,12 @@ export function DispatchPassengerShipDialog({
             <DialogTrigger asChild>{children}</DialogTrigger>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Dispatch {shipName}</DialogTitle>
+                    <DialogTitle>{t('dispatch.title', { shipName })}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className='space-y-4'>
                     <PlanetDestinationSelect fromPlanetId={planetId} value={toPlanetId} onChange={setToPlanetId} />
                     <div className='space-y-1.5'>
-                        <Label>Passengers to Board</Label>
+                        <Label>{t('dispatch.passengersToBoard')}</Label>
                         <Input
                             type='number'
                             min={0}
@@ -79,7 +81,9 @@ export function DispatchPassengerShipDialog({
                             placeholder={`0 – ${formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale)}`}
                         />
                         <p className='text-xs text-muted-foreground'>
-                            Max capacity: {formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale)}
+                            {t('dispatch.maxCapacity', {
+                                capacity: formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale),
+                            })}
                         </p>
                     </div>
                     {mutation.isError && (
@@ -87,7 +91,7 @@ export function DispatchPassengerShipDialog({
                     )}
                     <DialogFooter>
                         <Button type='submit' disabled={!toPlanetId || mutation.isPending}>
-                            {mutation.isPending ? 'Dispatching…' : 'Dispatch'}
+                            {mutation.isPending ? t('dispatch.dispatching') : tc('dispatch')}
                         </Button>
                     </DialogFooter>
                 </form>

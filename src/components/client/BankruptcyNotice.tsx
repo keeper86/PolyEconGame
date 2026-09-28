@@ -51,7 +51,7 @@ export function BankruptcyNotice() {
 
     if (isLoading || !data?.bankruptcy) {
         return (
-            <Page title='You are bankrupt'>
+            <Page title={t('title')}>
                 <Spinner />
             </Page>
         );
@@ -61,7 +61,7 @@ export function BankruptcyNotice() {
     const restructured = record.outcome === 'restructured';
 
     return (
-        <Page title='You are bankrupt'>
+        <Page title={t('title')}>
             <div className='grid gap-4 max-w-xl'>
                 <div className='flex items-center gap-3'>
                     {restructured ? (
@@ -72,15 +72,16 @@ export function BankruptcyNotice() {
                     <div>
                         <p className='font-semibold'>{record.agentName}</p>
                         <p className='text-sm text-muted-foreground'>
-                            {record.planetName ?? record.planetId} · year {tickToYear(record.tick)}
+                            {t('yearLabel', {
+                                planet: record.planetName ?? record.planetId,
+                                year: tickToYear(record.tick),
+                            })}
                         </p>
                     </div>
                 </div>
 
                 <p className='text-muted-foreground text-sm'>
-                    Your company was declared insolvent and handed over to the receiver. Outstanding debt was written
-                    off and the remaining assets were{' '}
-                    {restructured ? 'restructured under automated administration' : 'liquidated to cover the costs'}.
+                    {restructured ? t('insolventRestructured') : t('insolventLiquidated')}
                 </p>
 
                 <div className='rounded-md border border-border p-3 text-sm text-muted-foreground'>
@@ -92,7 +93,7 @@ export function BankruptcyNotice() {
                 <div>
                     <Button onClick={() => acknowledgeMutation.mutate()} disabled={acknowledgeMutation.isPending}>
                         {acknowledgeMutation.isPending ? <Spinner className='mr-2 h-4 w-4' /> : null}
-                        Found a new company
+                        {t('foundNewCompany')}
                     </Button>
                 </div>
             </div>
