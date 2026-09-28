@@ -17,6 +17,7 @@ import { computeSupplyChainBalance } from './computeBalance';
 import type { ArbitrageRouteRow } from '@/server/controller/simulation';
 import { ARBITRAGE_MIN_PROFIT_PER_TICK } from '@/simulation/constants';
 import { useLocale } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
@@ -545,6 +546,7 @@ function TradeOpportunityInline({
     route: ArbitrageRouteRow | null | undefined;
     direction: 'import' | 'export';
 }) {
+    const locale = useLocale();
     if (route === undefined) {
         return <span className='text-xs text-muted-foreground italic animate-pulse'>scanning trade routes…</span>;
     }
@@ -555,7 +557,7 @@ function TradeOpportunityInline({
     return (
         <div className='flex flex-wrap items-center gap-x-2 gap-y-0 text-xs mt-1 text-muted-foreground'>
             <span>🚢</span>
-            <span className='font-medium text-foreground'>{route.resourceName}</span>
+            <span className='font-medium text-foreground'>{termFor(locale, route.resourceName)}</span>
             <span>
                 {route.originPlanetName} → {route.destPlanetName}
             </span>
@@ -1035,7 +1037,9 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                         <div className='space-y-1.5'>
                             {worstResources.slice(0, 12).map((r) => (
                                 <div key={r.resourceName} className='flex items-center gap-2'>
-                                    <span className='text-xs w-52 shrink-0 truncate font-medium'>{r.resourceName}</span>
+                                    <span className='text-xs w-52 shrink-0 truncate font-medium'>
+                                        {termFor(locale, r.resourceName)}
+                                    </span>
                                     <div className='flex-1'>
                                         <EffBar eff={r.effectivenessRatio} />
                                     </div>
@@ -1216,7 +1220,9 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                                                   : ''
                                         }
                                     >
-                                        <TableCell className='font-medium text-sm'>{r.resourceName}</TableCell>
+                                        <TableCell className='font-medium text-sm'>
+                                            {termFor(locale, r.resourceName)}
+                                        </TableCell>
                                         <TableCell className='text-right font-mono text-sm'>
                                             {fmt(r.actualProducedPerTick)}
                                         </TableCell>

@@ -4,6 +4,8 @@ import type { Facility, LastTickResults } from '@/simulation/planet/facility';
 import React from 'react';
 import { CardHeaderBlock } from './CardHeaderBlock';
 import { WorkerBars } from './WorkerBars';
+import { termFor } from '@/i18n/terms';
+import { useLocale } from 'next-intl';
 
 export const limitingEfficiency = (results: LastTickResults | undefined): number =>
     results
@@ -28,12 +30,13 @@ export function FacilityHeader({
     badge: React.ReactNode;
     titleClassName?: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const active = results !== undefined;
     const workerScale = active ? facility.scale : (facility.construction?.constructionTargetMaxScale ?? facility.scale);
 
     return (
         <CardHeaderBlock
-            title={facility.name}
+            title={termFor(locale, facility.name)}
             titleClassName={titleClassName ?? ''}
             badge={badge}
             details={

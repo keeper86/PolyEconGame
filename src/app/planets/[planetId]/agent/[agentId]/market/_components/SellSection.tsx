@@ -49,6 +49,7 @@ import {
 } from './StrategyPresets';
 import { useSellSectionMutations } from './useSellSectionMutations';
 import { useLocale } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 type SellStatusKind =
     | 'offering'
@@ -235,7 +236,7 @@ export default function SellSection({
                             <Stat
                                 key={facility.id}
                                 icon={<Package className='h-3 w-3' />}
-                                label={facility.name}
+                                label={termFor(locale, facility.name)}
                                 value={`${formatNumberWithUnit(rate, unit, undefined, locale)}/day`}
                                 indent
                             />

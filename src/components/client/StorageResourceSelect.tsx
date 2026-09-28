@@ -8,6 +8,7 @@ import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { ProductIcon } from './ProductIcon';
 import { useLocale } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 type Props = {
     agentId: string;
@@ -72,7 +73,7 @@ export function StorageResourceSelect({
                     <SelectItem key={resourceName} value={resourceName}>
                         <span className='flex items-center gap-2'>
                             <ProductIcon productName={resourceName} size={24} />
-                            <span>{resourceName}</span>
+                            <span>{termFor(locale, resourceName)}</span>
                             <span className='ml-auto text-xs text-muted-foreground'>
                                 {formatNumberWithUnit(qty, 'units', undefined, locale)}
                             </span>

@@ -1,5 +1,9 @@
+'use client';
+
 import { getAssetPath } from '@/lib/assetManifest';
 import { getProductForm } from '@/simulation/planet/resourceCatalog';
+import { termFor } from '@/i18n/terms';
+import { useLocale } from 'next-intl';
 import Image from 'next/image';
 import { useMemo } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -15,8 +19,10 @@ export function ProductIcon({
     label?: string;
     className?: string;
 }) {
+    const locale = useLocale();
     const src = getAssetPath(productName);
     const form = getProductForm(productName);
+    const displayName = label ?? termFor(locale, productName);
 
     const formIcon = useMemo(() => {
         switch (form) {
@@ -40,13 +46,12 @@ export function ProductIcon({
                     }
                     style={{ width: size, height: size }}
                 >
-                    <Image src={src} alt={label ?? productName} fill sizes={`${size}px`} className='object-contain' />
+                    <Image src={src} alt={displayName} fill sizes={`${size}px`} className='object-contain' />
                 </span>
             </TooltipTrigger>
             <TooltipContent>
                 <span className='flex items-center gap-1'>
-                    {label ?? productName}{' '}
-                    {formIcon && <Image src={formIcon} alt={form ?? ''} width={16} height={16} />}
+                    {displayName} {formIcon && <Image src={formIcon} alt={form ?? ''} width={16} height={16} />}
                 </span>
             </TooltipContent>
         </Tooltip>
