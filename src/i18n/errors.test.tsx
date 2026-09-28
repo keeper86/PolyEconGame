@@ -2,8 +2,8 @@ import { renderHook } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from './messages/de.json';
+import en from './messages/en.json';
 import { DOMAIN_ERROR_CODES } from '@/server/domainError';
 import { useErrorMessage } from './errors';
 

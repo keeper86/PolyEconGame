@@ -4,8 +4,8 @@ import type { ResourceType } from '@/simulation/planet/claims';
 import { formatNumbers } from '@/simulation/utils/numberFormat';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from '../i18n/messages/de.json';
+import en from '../i18n/messages/en.json';
 
 const catalogs = { en, de } as const;
 

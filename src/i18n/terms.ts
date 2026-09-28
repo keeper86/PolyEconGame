@@ -1,5 +1,5 @@
-import de from '../../messages/terms.de.json';
-import en from '../../messages/terms.en.json';
+import de from './messages/terms.de.json';
+import en from './messages/terms.en.json';
 import type { Locale } from './config';
 
 const terms: Record<Locale, Record<string, string>> = { en, de };

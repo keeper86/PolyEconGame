@@ -1,7 +1,7 @@
 import { createTranslator } from 'next-intl';
 import { describe, expect, it } from 'vitest';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from './messages/de.json';
+import en from './messages/en.json';
 import type { TickerEventDetails } from '@/server/controller/simulation';
 import { renderTickerEventMessage } from './tickerEventMessage';
 

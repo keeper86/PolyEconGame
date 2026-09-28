@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createTranslator } from 'next-intl';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from './messages/de.json';
+import en from './messages/en.json';
 import { DOMAIN_ERROR_CODES } from '@/server/domainError';
 
 const flatten = (value: unknown, prefix = ''): Record<string, string> => {

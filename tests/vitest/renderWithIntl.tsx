@@ -1,8 +1,8 @@
 import { render, type RenderOptions } from '@testing-library/react';
 import { NextIntlClientProvider } from 'next-intl';
 import type { ReactElement, ReactNode } from 'react';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from '../../src/i18n/messages/de.json';
+import en from '../../src/i18n/messages/en.json';
 import { defaultLocale, type Locale } from '@/i18n/config';
 import { formats } from '@/i18n/formats';
 

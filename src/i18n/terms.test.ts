@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import de from '../../messages/terms.de.json';
-import en from '../../messages/terms.en.json';
+import de from './messages/terms.de.json';
+import en from './messages/terms.en.json';
 import { ALL_PRODUCTION_FACILITY_ENTRIES, facilityByName } from '@/simulation/planet/productionFacilities';
 import { STORAGE_SHELL_FORM_NAMES } from '@/simulation/planet/facility';
 import {

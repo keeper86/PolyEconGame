@@ -1,8 +1,8 @@
 import { tickToDate } from '@/components/client/TickDisplay';
 import { type Locale } from '@/i18n/config';
 import { START_YEAR, TICKS_PER_MONTH } from '@/simulation/constants';
-import de from '../../messages/de.json';
-import en from '../../messages/en.json';
+import de from '../i18n/messages/de.json';
+import en from '../i18n/messages/en.json';
 
 const catalogs = { en, de } as const;
 
