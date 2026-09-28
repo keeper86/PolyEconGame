@@ -116,5 +116,8 @@
     "none": "Keine",
     "primary": "Primar",
     "secondary": "Sekundär",
-    "tertiary": "Tertiär"
+    "tertiary": "Tertiär",
+    "solid": "Feststoff",
+    "liquid": "Flüssigkeit",
+    "pieces": "Stückgut"
 }

@@ -37,6 +37,14 @@ const shipTypeNames = [
     ),
 ];
 
+const cargoTypes = [
+    ...new Set(
+        Object.values(shiptypes)
+            .flatMap((category) => Object.values(category))
+            .flatMap((shipType) => ('cargoSpecification' in shipType ? [shipType.cargoSpecification.type] : [])),
+    ),
+];
+
 describe('term catalogs', () => {
     it('keeps every locale in sync with the default locale', () => {
         expect(Object.keys(de).sort()).toEqual(Object.keys(en).sort());
@@ -62,6 +70,12 @@ describe('term catalogs', () => {
 
     it('translates every ship type and license type', () => {
         const missing = [...shipTypeNames, ...LICENSE_TYPES].filter((name) => !(name in de));
+
+        expect(missing).toEqual([]);
+    });
+
+    it('translates every ship cargo type', () => {
+        const missing = cargoTypes.filter((name) => !(name in de));
 
         expect(missing).toEqual([]);
     });

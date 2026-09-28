@@ -83,7 +83,7 @@ export function MyShipsTab({
                                                 <span className='flex flex-wrap'>
                                                     {t('myShips.cargo', {
                                                         volume: ship.type.cargoSpecification.volume,
-                                                        cargoType: ship.type.cargoSpecification.type,
+                                                        cargoType: termFor(locale, ship.type.cargoSpecification.type),
                                                     })}
                                                 </span>
                                             )}
