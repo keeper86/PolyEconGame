@@ -37,6 +37,7 @@ import { revalidateTag } from 'next/cache';
 
 import type { UserData } from '@/types/db_schemas';
 import { TRPCError } from '@trpc/server';
+import { domainError } from '@/server/domainError';
 import z from 'zod';
 import { db } from '../db';
 import { logger } from '../logger';
@@ -373,10 +374,7 @@ export const requestLoan = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({
-                    code: 'FORBIDDEN',
-                    message: 'You do not own this agent',
-                });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -415,7 +413,7 @@ export const repayLoan = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -451,7 +449,7 @@ export const setAutomation = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -491,7 +489,7 @@ export const setWorkerAllocationTargets = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             const { agent: allocAgent } = getAgentSync(input.agentId);
@@ -545,7 +543,7 @@ export const setSellOffers = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             const { agent: sellAgent } = getAgentSync(input.agentId);
@@ -631,7 +629,7 @@ export const cancelSellOffer = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -667,7 +665,7 @@ export const cancelBuyBid = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -703,7 +701,7 @@ export const cancelConstruction = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -740,7 +738,7 @@ export const setConstructionSuspended = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -804,7 +802,7 @@ export const setBuyBids = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             const { agent: bidAgent } = getAgentSync(input.agentId);
@@ -895,7 +893,7 @@ export const buildFacility = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             const { agent: buildAgent } = getAgentSync(input.agentId);
@@ -944,7 +942,7 @@ export const expandFacility = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             const { agent: expandAgent } = getAgentSync(input.agentId);
@@ -996,7 +994,7 @@ export const contractFacility = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -1034,7 +1032,7 @@ export const setFacilityScale = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
 
             logger.info(
@@ -1071,7 +1069,7 @@ export const buildShipConstructionFacility = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             logger.info(
                 { component: 'build-ship-construction-facility' },
@@ -1105,7 +1103,7 @@ export const expandShipConstructionFacility = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             const { result: facilityId, processedAtTick } = await workerExpandShipConstructionFacility({
                 agentId: input.agentId,
@@ -1136,7 +1134,7 @@ export const setShipConstructionTarget = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             const { result: facilityId, processedAtTick } = await workerSetShipConstructionTarget({
                 agentId: input.agentId,
@@ -1167,7 +1165,7 @@ export const leaseClaim = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             const { result: claimId } = await workerLeaseClaim({
                 agentId: input.agentId,
@@ -1196,7 +1194,7 @@ export const quitClaim = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             const { result: claimId } = await workerQuitClaim({
                 agentId: input.agentId,
@@ -1226,7 +1224,7 @@ export const acquireLicense = () => {
                 throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
             }
             if (row.agent_id !== input.agentId) {
-                throw new TRPCError({ code: 'FORBIDDEN', message: 'You do not own this agent' });
+                throw domainError('FORBIDDEN', 'notOwner', 'You do not own this agent');
             }
             logger.info(
                 { component: 'acquire-license' },

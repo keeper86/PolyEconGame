@@ -1,4 +1,12 @@
 {
+    "Errors": {
+        "notLoggedIn": "Du musst angemeldet sein oder ein gültiges PAT angeben, um auf diese Ressource zuzugreifen.",
+        "notOwner": "Diese Firma gehört dir nicht",
+        "workforceLicenseRequired": "Für Arbeitskräfteziele auf diesem Planeten ist eine aktive Arbeitskräfte-Lizenz erforderlich",
+        "commercialLicenseRequired": "Für Verkaufsangebote auf diesem Planeten ist eine aktive Gewerbelizenz erforderlich",
+        "unknownResource": "Unbekannte Ressource: {resourceName}",
+        "unexpected": "Ein unerwarteter Fehler ist aufgetreten"
+    },
     "Bankruptcy": {
         "liquidated": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst und das Vermögen verwertet",
         "restructured": "{agentName} ist insolvent; als {successorName} unter Zwangsverwaltung umstrukturiert"

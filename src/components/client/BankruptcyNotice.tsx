@@ -6,6 +6,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Landmark } from 'lucide-react';
+import { useErrorMessage } from '@/i18n/errors';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -21,6 +22,7 @@ export function BankruptcyNotice() {
     const trpc = useTRPC();
     const router = useRouter();
     const t = useTranslations('Bankruptcy');
+    const showError = useErrorMessage();
     const { update: updateSession } = useSession();
     const queryClient = useQueryClient();
 
@@ -41,8 +43,7 @@ export function BankruptcyNotice() {
                 router.replace('/');
             },
             onError: (err: unknown) => {
-                const message = err instanceof Error ? err.message : 'An unexpected error occurred';
-                toast.error(message);
+                toast.error(showError(err));
             },
         }),
     );

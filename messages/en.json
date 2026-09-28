@@ -1,4 +1,12 @@
 {
+    "Errors": {
+        "notLoggedIn": "You must be logged in to access this resource or provide a valid PAT.",
+        "notOwner": "You do not own this agent",
+        "workforceLicenseRequired": "An active workforce license is required to set worker allocation targets on this planet",
+        "commercialLicenseRequired": "An active commercial license is required to place sell offers on this planet",
+        "unknownResource": "Unknown resource: {resourceName}",
+        "unexpected": "An unexpected error occurred"
+    },
     "Bankruptcy": {
         "liquidated": "{agentName} bankrupt; company dissolved and assets liquidated by the receiver",
         "restructured": "{agentName} bankrupt; restructured as {successorName} under automated administration"
