@@ -48,9 +48,9 @@ export function isLiveMonthPoint(monthIdx?: number): boolean {
 
 export function bucketProgress(tick: number, granularity: 'monthly' | 'yearly' | 'decade'): number {
     const { year, monthIndex, day } = tickToDate(tick);
-    const monthFrac = monthIndex + Math.max(day - 1, 0) / TICKS_PER_MONTH;
+    const monthFrac = monthIndex + Math.max(day, 0) / TICKS_PER_MONTH;
     if (granularity === 'monthly') {
-        return Math.min(1, Math.max(day - 1, 0) / TICKS_PER_MONTH);
+        return Math.min(1, Math.max(day, 0) / TICKS_PER_MONTH);
     }
     if (granularity === 'yearly') {
         return monthFrac / MONTHS_PER_YEAR;
