@@ -4,10 +4,26 @@ const ts = require('typescript');
 
 const root = path.join(__dirname, '..');
 const target = path.join(root, 'src');
-const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain'];
+const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain', 'server', 'app/api'];
 const DEBUG_FILES = new Set(['FacilitiesMaintenanceDebug.tsx']);
+const KEY_REF_FILES = new Set(['lib/appRoutes.ts']);
 const TOAST_METHODS = new Set(['success', 'error', 'info', 'warning', 'loading', 'message', 'custom']);
 const LABEL_ATTRS = new Set(['pendingLabel', 'actionLabel', 'errorLabel', 'loadingLabel', 'emptyLabel']);
+const TEXT_PROP_NAMES = new Set([
+    'label',
+    'title',
+    'tooltip',
+    'description',
+    'message',
+    'heading',
+    'placeholder',
+    'alt',
+    'caption',
+    'subtitle',
+    'legend',
+    'helpText',
+    'emptyText',
+]);
 
 const collect = (dir, out) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -19,7 +35,18 @@ const collect = (dir, out) => {
 };
 
 const isExcluded = (rel) =>
-    EXCLUDED_DIRS.some((dir) => rel.startsWith(dir)) || [...DEBUG_FILES].some((file) => rel.endsWith(file));
+    EXCLUDED_DIRS.some((dir) => rel.startsWith(dir)) ||
+    [...DEBUG_FILES, ...KEY_REF_FILES].some((file) => rel.endsWith(file));
+
+const enMessages = JSON.parse(fs.readFileSync(path.join(root, 'messages/en.json'), 'utf8'));
+const collectLeafKeys = (value, out) => {
+    for (const [key, child] of Object.entries(value)) {
+        if (typeof child === 'string') out.add(key);
+        else if (child && typeof child === 'object') collectLeafKeys(child, out);
+    }
+    return out;
+};
+const LEAF_KEYS = collectLeafKeys(enMessages, new Set());
 
 const unwrap = (node) => {
     let current = node;
@@ -34,6 +61,9 @@ const isTranslatable = (text) => {
     if (trimmed === 'true' || trimmed === 'false') return false;
     if (/^(text-|bg-|border-|fill-|stroke-|hover:|dark:)/.test(trimmed)) return false;
     if (trimmed.includes('/') && !trimmed.includes(' ')) return false;
+    if (trimmed.includes('[') || trimmed.includes(']')) return false;
+    if (/^[a-z]+([A-Z][a-zA-Z0-9]*)+$/.test(trimmed)) return false;
+    if (/^[a-z][a-z0-9]*$/.test(trimmed) && LEAF_KEYS.has(trimmed)) return false;
     return true;
 };
 
@@ -91,6 +121,15 @@ const findLiterals = (file) => {
         if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name) && LABEL_ATTRS.has(node.name.text)) {
             const init = node.initializer;
             if (init && ts.isStringLiteral(init)) reportLiteral(hits, node, source, node.name.text, init);
+        }
+        if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && TEXT_PROP_NAMES.has(node.name.text)) {
+            const init = node.initializer;
+            if (ts.isStringLiteral(init)) {
+                reportLiteral(hits, node, source, `prop:${node.name.text}`, init);
+            } else if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
+                const body = unwrap(init.body);
+                if (ts.isStringLiteral(body)) reportLiteral(hits, body, source, `prop:${node.name.text}`, body);
+            }
         }
         if (
             node.kind === ts.SyntaxKind.JsxExpression &&

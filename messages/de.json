@@ -305,7 +305,17 @@
         "storageScaled": "Lager",
         "noSpace": "kein Platz",
         "depositScaled": "Einlage",
-        "noFunds": "keine Mittel"
+        "noFunds": "keine Mittel",
+        "supply": "Angebot",
+        "demand": "Nachfrage",
+        "totalSold": "Verkauft gesamt",
+        "own": "Eigen",
+        "bandDepressed": "defizitär",
+        "bandLossy": "verlustbringend",
+        "bandMarginal": "grenzwertig",
+        "bandProfitable": "profitabel",
+        "bandExceptional": "außergewöhnlich",
+        "bandInsane": "extrem hoch"
     },
     "Ships": {
         "tabs": {
@@ -586,7 +596,13 @@
         "monthly": "Monatlich",
         "yearly": "Jährlich",
         "decadeShort": "Jahrzehnt",
-        "lastYear": "Letztes Jahr:"
+        "lastYear": "Letztes Jahr:",
+        "netBalance": "Netto-Saldo",
+        "monthlyNetIncome": "Monatliches Nettoeinkommen",
+        "productionValue": "Produktionswert",
+        "consumptionValue": "Verbrauchswert",
+        "wages": "Löhne",
+        "totalWorkers": "Arbeitskräfte gesamt"
     },
     "Guards": {
         "unsavedChanges": "Du hast ungespeicherte Änderungen.",
@@ -750,7 +766,15 @@
         "newBadge": "neu",
         "sendingBuild": "Bau wird gesendet…",
         "noMatchingResources": "Keine passenden Ressourcen im Lager",
-        "max": "max"
+        "max": "max",
+        "statusOptimal": "Optimal",
+        "statusStable": "Stabil",
+        "statusStrained": "Angespannt",
+        "statusCritical": "Kritisch",
+        "statusOptimalTooltip": "Logistikpuffer ist voll. Gesamter Durchsatz läuft bei 100 %.",
+        "statusStableTooltip": "Logistikpuffer gesund. Gesamter Durchsatz läuft bei 100 %.",
+        "statusStrainedTooltip": "Logistikdefizit! Durchsatz kann reduziert sein.",
+        "statusCriticalTooltip": "Schwerer Logistikausfall! Durchsatz stark reduziert."
     },
     "Workforce": {
         "education": "Bildung",
@@ -776,6 +800,14 @@
         "setHeadcount": "Lege die gewünschte Anzahl pro Bildungsstufe fest.",
         "totalTarget": "Gesamtziel:",
         "applyTargets": "Ziele anwenden",
+        "statusOptimal": "Optimal",
+        "statusStable": "Stabil",
+        "statusStrained": "Angespannt",
+        "statusCritical": "Kritisch",
+        "statusOptimalTooltip": "HR-Dienste laufen reibungslos ({percent}% Effizienz)",
+        "statusStableTooltip": "HR-Dienste vollständig abgedeckt ({percent}% Effizienz)",
+        "statusStrainedTooltip": "HR-Defizit! Arbeitsproduktivität auf {percent}% reduziert",
+        "statusCriticalTooltip": "Schwerer HR-Ausfall! Arbeitsproduktivität auf {percent}% gefallen",
         "target": "Ziel",
         "currentTotalLabel": "Aktuell gesamt",
         "workerShortage": "Arbeitskräftemangel",

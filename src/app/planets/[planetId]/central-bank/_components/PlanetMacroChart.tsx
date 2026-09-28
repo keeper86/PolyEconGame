@@ -2,7 +2,14 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeStart, decadeWindowAxis, formatMonthLabel, monthShortName, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
+import {
+    decadeStart,
+    decadeWindowAxis,
+    formatMonthLabel,
+    monthShortName,
+    yearStart,
+    yearWindowAxis,
+} from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {

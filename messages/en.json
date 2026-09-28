@@ -305,7 +305,17 @@
         "storageScaled": "storage",
         "noSpace": "no space",
         "depositScaled": "deposit",
-        "noFunds": "no funds"
+        "noFunds": "no funds",
+        "supply": "Supply",
+        "demand": "Demand",
+        "totalSold": "Total sold",
+        "own": "Own",
+        "bandDepressed": "depressed",
+        "bandLossy": "lossy",
+        "bandMarginal": "marginal",
+        "bandProfitable": "profitable",
+        "bandExceptional": "exceptional",
+        "bandInsane": "insane"
     },
     "Ships": {
         "tabs": {
@@ -586,7 +596,13 @@
         "monthly": "Monthly",
         "yearly": "Yearly",
         "decadeShort": "Decade",
-        "lastYear": "Last year:"
+        "lastYear": "Last year:",
+        "netBalance": "Net Balance",
+        "monthlyNetIncome": "Monthly Net Income",
+        "productionValue": "Production Value",
+        "consumptionValue": "Consumption Value",
+        "wages": "Wages",
+        "totalWorkers": "Total Workers"
     },
     "Guards": {
         "unsavedChanges": "You have unsaved changes.",
@@ -750,7 +766,15 @@
         "newBadge": "new",
         "sendingBuild": "Sending build…",
         "noMatchingResources": "No matching resources in storage",
-        "max": "max"
+        "max": "max",
+        "statusOptimal": "Optimal",
+        "statusStable": "Stable",
+        "statusStrained": "Strained",
+        "statusCritical": "Critical",
+        "statusOptimalTooltip": "Logistics buffer is full. All throughput running at 100%.",
+        "statusStableTooltip": "Logistics buffer healthy. All throughput running at 100%.",
+        "statusStrainedTooltip": "Logistics deficit! Throughput may be reduced.",
+        "statusCriticalTooltip": "Severe logistics failure! Throughput severely reduced."
     },
     "Workforce": {
         "education": "Education",
@@ -776,6 +800,14 @@
         "setHeadcount": "Set the desired headcount per education level.",
         "totalTarget": "Total target:",
         "applyTargets": "Apply targets",
+        "statusOptimal": "Optimal",
+        "statusStable": "Stable",
+        "statusStrained": "Strained",
+        "statusCritical": "Critical",
+        "statusOptimalTooltip": "HR services running smoothly ({percent}% efficiency)",
+        "statusStableTooltip": "HR services fully covered ({percent}% efficiency)",
+        "statusStrainedTooltip": "HR deficit! Worker productivity reduced to {percent}%",
+        "statusCriticalTooltip": "Severe HR failure! Worker productivity dropped to {percent}%",
         "target": "Target",
         "currentTotalLabel": "Current total",
         "workerShortage": "Worker shortage",

@@ -30,30 +30,43 @@ type HistoryPoint = {
     sumConsumptionValue: number;
 };
 
+type ChartTitleKey =
+    | 'netBalance'
+    | 'monthlyNetIncome'
+    | 'productionValue'
+    | 'consumptionValue'
+    | 'wages'
+    | 'totalWorkers';
+
 type ChartConfig = {
-    title: string;
+    titleKey: ChartTitleKey;
     color: string;
     gradId: string;
     dataKey: keyof HistoryPoint;
 };
 
 const CHART_CONFIGS: Record<AgentMetric, ChartConfig> = {
-    netBalance: { title: 'Net Balance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
+    netBalance: { titleKey: 'netBalance', color: '#4f46e5', gradId: 'gradBalance', dataKey: 'avgNetBalance' },
     monthlyNetIncome: {
-        title: 'Monthly Net Income',
+        titleKey: 'monthlyNetIncome',
         color: '#10b981',
         gradId: 'gradIncome',
         dataKey: 'avgMonthlyNetIncome',
     },
-    productionValue: { title: 'Production Value', color: '#f59e0b', gradId: 'gradProd', dataKey: 'sumProductionValue' },
+    productionValue: {
+        titleKey: 'productionValue',
+        color: '#f59e0b',
+        gradId: 'gradProd',
+        dataKey: 'sumProductionValue',
+    },
     consumptionValue: {
-        title: 'Consumption Value',
+        titleKey: 'consumptionValue',
         color: '#8b5cf6',
         gradId: 'gradCons',
         dataKey: 'sumConsumptionValue',
     },
-    wages: { title: 'Wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
-    totalWorkers: { title: 'Total Workers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
+    wages: { titleKey: 'wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
+    totalWorkers: { titleKey: 'totalWorkers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
 };
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
@@ -190,7 +203,7 @@ function MonthlyMetricChart({
     return (
         <Card>
             <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>{config.title}</p>
+                <p className='text-xs font-semibold text-muted-foreground mb-2'>{t(config.titleKey)}</p>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
                         <AreaChart data={mergedData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -254,7 +267,7 @@ function MonthlyMetricChart({
                                             </div>
                                             {hasCurrentVal && (
                                                 <div style={{ color: '#e2e8f0' }}>
-                                                    {config.title}:{' '}
+                                                    {t(config.titleKey)}:{' '}
                                                     {formatNumberWithUnit(
                                                         current.value as number,
                                                         'units',
@@ -321,6 +334,7 @@ function NonMonthlyMetricChart({
     granularity: 'yearly' | 'decade';
 }) {
     const locale = useLocale();
+    const t = useTranslations('Charts');
     const chartData = useMemo(
         () =>
             [...data]
@@ -341,7 +355,7 @@ function NonMonthlyMetricChart({
     return (
         <Card>
             <CardContent className='px-3 pt-3 pb-2'>
-                <p className='text-xs font-semibold text-muted-foreground mb-2'>{config.title}</p>
+                <p className='text-xs font-semibold text-muted-foreground mb-2'>{t(config.titleKey)}</p>
                 <div style={{ width: '100%', height: 200 }}>
                     <ResponsiveContainer width='100%' height='100%'>
                         <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
@@ -375,7 +389,7 @@ function NonMonthlyMetricChart({
                                 labelFormatter={(v) => tooltipLabel(v as number)}
                                 formatter={(v) => [
                                     formatNumberWithUnit(v as number, 'units', undefined, locale),
-                                    config.title,
+                                    t(config.titleKey),
                                 ]}
                             />
                             <Area

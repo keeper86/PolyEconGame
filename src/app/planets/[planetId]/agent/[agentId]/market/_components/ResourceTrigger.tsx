@@ -77,7 +77,7 @@ export default function ResourceTrigger({
                 const band = getPriceCostRatioBand(ratio);
                 return (
                     <Badge variant='outline' className={`text-[9px] px-1.5 py-0 h-5 ${band.className}`}>
-                        {band.label}
+                        {t(band.labelKey)}
                     </Badge>
                 );
             }

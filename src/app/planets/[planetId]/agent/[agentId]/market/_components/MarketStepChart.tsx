@@ -307,6 +307,7 @@ function ChartTooltip({
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const isLoading = !market;
 
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
@@ -538,10 +539,10 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
             return null;
         }
         const entries = [
-            { label: 'Supply', stroke: '#38bdf8', strokeWidth: 2, disabled: !hasSupply },
-            { label: 'Demand', stroke: '#ef444496', strokeWidth: 2, disabled: !hasDemand },
-            { label: 'Total sold', stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
-            { label: 'Own', stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
+            { label: t('supply'), stroke: '#38bdf8', strokeWidth: 2, disabled: !hasSupply },
+            { label: t('demand'), stroke: '#ef444496', strokeWidth: 2, disabled: !hasDemand },
+            { label: t('totalSold'), stroke: '#22c55e', strokeWidth: 2, disabled: !market || totalSold <= 0 },
+            { label: t('own'), stroke: '#fbbf24', strokeWidth: 2, disabled: !hasOwn },
         ];
         return (
             <div

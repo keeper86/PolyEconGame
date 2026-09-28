@@ -389,7 +389,9 @@ export default function MarketPanel({
                     {resourceGroups.map(({ level, resources: levelResources }) => (
                         <TabsContent key={level} value={level} className='mt-0'>
                             {levelResources.length === 0 ? (
-                                <p className='text-sm text-muted-foreground py-4 text-center'>{t('emptyPlaceholder')}</p>
+                                <p className='text-sm text-muted-foreground py-4 text-center'>
+                                    {t('emptyPlaceholder')}
+                                </p>
                             ) : (
                                 <>
                                     <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>

@@ -57,9 +57,15 @@ function CurveTooltip({ active, payload }: TooltipProps<number, string>) {
                 color: '#94a3b8',
             }}
         >
-            <div>{t('priceOverCostLabel')} {point.ratio.toFixed(2)}</div>
-            <div style={{ color: GHOST_COLOR }}>{t('savedPush')} {percent(point.ghost)}</div>
-            <div style={{ color: ACTIVE_COLOR }}>{t('draftPush')} {percent(point.active)}</div>
+            <div>
+                {t('priceOverCostLabel')} {point.ratio.toFixed(2)}
+            </div>
+            <div style={{ color: GHOST_COLOR }}>
+                {t('savedPush')} {percent(point.ghost)}
+            </div>
+            <div style={{ color: ACTIVE_COLOR }}>
+                {t('draftPush')} {percent(point.active)}
+            </div>
         </div>
     );
 }

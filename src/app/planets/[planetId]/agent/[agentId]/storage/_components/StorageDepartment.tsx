@@ -49,31 +49,19 @@ function storageBufferStatus(buffer: number, demand: number): StorageBufferStatu
     return 'critical';
 }
 
-const STORAGE_STATUS_CONFIG: Record<
-    StorageBufferStatus,
-    { label: string; badgeClassName: string; tooltip: () => string }
-> = {
-    optimal: {
-        label: 'Optimal',
-        badgeClassName: 'border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
-        tooltip: () => 'Logistics buffer is full. All throughput running at 100%.',
-    },
-    stable: {
-        label: 'Stable',
-        badgeClassName: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
-        tooltip: () => 'Logistics buffer healthy. All throughput running at 100%.',
-    },
-    strained: {
-        label: 'Strained',
-        badgeClassName: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
-        tooltip: () => 'Logistics deficit! Throughput may be reduced.',
-    },
-    critical: {
-        label: 'Critical',
-        badgeClassName: 'border-red-300 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
-        tooltip: () => 'Severe logistics failure! Throughput severely reduced.',
-    },
+const STORAGE_STATUS_BADGE_CLASS: Record<StorageBufferStatus, string> = {
+    optimal: 'border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
+    stable: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
+    strained: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
+    critical: 'border-red-300 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
 };
+
+const STORAGE_STATUS_KEYS = {
+    optimal: { label: 'statusOptimal', tooltip: 'statusOptimalTooltip' },
+    stable: { label: 'statusStable', tooltip: 'statusStableTooltip' },
+    strained: { label: 'statusStrained', tooltip: 'statusStrainedTooltip' },
+    critical: { label: 'statusCritical', tooltip: 'statusCriticalTooltip' },
+} as const;
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -312,6 +300,7 @@ export default function LogisticsDepartment({
     assets: AgentPlanetAssets;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const ts = useTranslations('Storage');
     const { data: constructionMarket } = useSimulationQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
@@ -344,16 +333,16 @@ export default function LogisticsDepartment({
         () => storageBufferStatus(department?.transportBuffer ?? 0, storageDemand),
         [department?.transportBuffer, storageDemand],
     );
-    const statusConfig = STORAGE_STATUS_CONFIG[status];
+    const statusKeys = STORAGE_STATUS_KEYS[status];
 
     const statusBadge = (
         <Tooltip>
             <TooltipTrigger asChild>
-                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}>
-                    {statusConfig.label}
+                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${STORAGE_STATUS_BADGE_CLASS[status]}`}>
+                    {ts(statusKeys.label)}
                 </Badge>
             </TooltipTrigger>
-            <TooltipContent>{statusConfig.tooltip()}</TooltipContent>
+            <TooltipContent>{ts(statusKeys.tooltip)}</TooltipContent>
         </Tooltip>
     );
 

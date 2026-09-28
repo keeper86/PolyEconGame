@@ -35,31 +35,19 @@ import { HRBalanceRow, HRBuildRow } from './HRBalanceRow';
 import { HRBufferGauge } from './HRBufferGauge';
 import { HRStarvationBar } from './HRStarvationBar';
 
-const HR_STATUS_CONFIG: Record<
-    HrBufferStatus,
-    { label: string; badgeClassName: string; tooltip: (pct: number) => string }
-> = {
-    optimal: {
-        label: 'Optimal',
-        badgeClassName: 'border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
-        tooltip: () => 'HR services running smoothly (100% Efficiency)',
-    },
-    stable: {
-        label: 'Stable',
-        badgeClassName: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
-        tooltip: () => 'HR services fully covered (100% Efficiency)',
-    },
-    strained: {
-        label: 'Strained',
-        badgeClassName: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
-        tooltip: (pct) => `HR deficit! Worker productivity reduced to ${pct}%`,
-    },
-    critical: {
-        label: 'Critical',
-        badgeClassName: 'border-red-300 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
-        tooltip: (pct) => `Severe HR failure! Worker productivity dropped to ${pct}%`,
-    },
+const HR_STATUS_BADGE_CLASS: Record<HrBufferStatus, string> = {
+    optimal: 'border-green-300 bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400',
+    stable: 'border-blue-300 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400',
+    strained: 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 text-yellow-700 dark:text-yellow-400',
+    critical: 'border-red-300 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400',
 };
+
+const HR_STATUS_KEYS = {
+    optimal: { label: 'statusOptimal', tooltip: 'statusOptimalTooltip' },
+    stable: { label: 'statusStable', tooltip: 'statusStableTooltip' },
+    strained: { label: 'statusStrained', tooltip: 'statusStrainedTooltip' },
+    critical: { label: 'statusCritical', tooltip: 'statusCriticalTooltip' },
+} as const;
 
 const PLACEHOLDER_PLANET = 'catalog';
 const PLACEHOLDER_ID = 'preview';
@@ -304,6 +292,7 @@ export default function HRDepartment({
     assets: AgentPlanetAssets;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const tr = useTranslations('Workforce');
     const { data: constructionMarket } = useSimulationQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
@@ -337,16 +326,16 @@ export default function HRDepartment({
         [hrDepartment?.hrBuffer, hrDemand],
     );
     const productivityPct = Math.round((assets.hrProductivityMultiplier ?? 1) * 100);
-    const statusConfig = HR_STATUS_CONFIG[status];
+    const statusKeys = HR_STATUS_KEYS[status];
 
     const statusBadge = (
         <Tooltip>
             <TooltipTrigger asChild>
-                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${statusConfig.badgeClassName}`}>
-                    {statusConfig.label}
+                <Badge variant='outline' className={`text-[10px] px-2 py-0.5 ${HR_STATUS_BADGE_CLASS[status]}`}>
+                    {tr(statusKeys.label)}
                 </Badge>
             </TooltipTrigger>
-            <TooltipContent>{statusConfig.tooltip(productivityPct)}</TooltipContent>
+            <TooltipContent>{tr(statusKeys.tooltip, { percent: productivityPct })}</TooltipContent>
         </Tooltip>
     );
 
