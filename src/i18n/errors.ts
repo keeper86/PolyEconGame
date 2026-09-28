@@ -14,19 +14,9 @@ export const useErrorMessage = () => {
         if (!domainError) {
             return error instanceof Error ? error.message : t('unexpected');
         }
-        switch (domainError.code) {
-            case 'notLoggedIn':
-                return t('notLoggedIn');
-            case 'notOwner':
-                return t('notOwner');
-            case 'workforceLicenseRequired':
-                return t('workforceLicenseRequired');
-            case 'commercialLicenseRequired':
-                return t('commercialLicenseRequired');
-            case 'unknownResource':
-                return t('unknownResource', { resourceName: String(domainError.params.resourceName) });
-            default:
-                return t('unexpected');
+        if (domainError.code === 'unknownResource') {
+            return t('unknownResource', { resourceName: String(domainError.params.resourceName) });
         }
+        return t(domainError.code);
     };
 };

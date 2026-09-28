@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import de from '../../messages/de.json';
 import en from '../../messages/en.json';
+import { DOMAIN_ERROR_CODES } from '@/server/domainError';
 import { useErrorMessage } from './errors';
 
 const wrapper = (locale: 'en' | 'de') => {
@@ -51,5 +52,21 @@ describe('useErrorMessage', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 
         expect(result.current('nonsense')).toBe('Ein unerwarteter Fehler ist aufgetreten');
+    });
+
+    it('renders the newly registered domain errors', () => {
+        const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
+
+        expect(result.current(domainError('messageNotFound'))).toBe('Nachricht nicht gefunden');
+        expect(result.current(domainError('agentHasNoAssets'))).toBe(
+            'Das Unternehmen hat keine Anlagen auf diesem Planeten',
+        );
+    });
+
+    it('has a message key for every domain error code', () => {
+        const missingEn = DOMAIN_ERROR_CODES.filter((code) => !(code in en.Errors));
+        const missingDe = DOMAIN_ERROR_CODES.filter((code) => !(code in de.Errors));
+
+        expect({ missingEn, missingDe }).toEqual({ missingEn: [], missingDe: [] });
     });
 });
