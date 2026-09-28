@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { formatNumberWithUnit } from './utils';
 
 describe('formatNumberWithUnit', () => {
-    it('falls back to the default locale', () => {
-        expect(formatNumberWithUnit(1500, 'none')).toBe('1.5k');
+    it('formats with the given locale', () => {
+        expect(formatNumberWithUnit(1500, 'none', undefined, 'en')).toBe('1.5k');
     });
 
     it('infers the decimal separator from the locale', () => {
