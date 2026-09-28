@@ -65,6 +65,7 @@ import {
     type PricingPresetType,
 } from './StrategyPresets';
 import { useBuySectionMutations } from './useBuySectionMutations';
+import { useLocale } from 'next-intl';
 
 type BuyStatusKind =
     | 'filled'
@@ -190,6 +191,7 @@ export default function BuySection({
     planetId,
     ships,
 }: BuySectionProps): React.ReactElement {
+    const locale = useLocale();
     const {
         saveBuy: onSaveBuy,
         resetBuy: onResetBuy,
@@ -512,13 +514,23 @@ export default function BuySection({
                                 value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
                                 bold
                             />
-                            <Stat label='Last wanted' value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit)} />
+                            <Stat
+                                label='Last wanted'
+                                value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit, undefined, locale)}
+                            />
                             <Stat
                                 label='Required'
-                                value={isFacilityInput ? `${formatNumberWithUnit(consumedPerTick, unit)}/day` : '—'}
+                                value={
+                                    isFacilityInput
+                                        ? `${formatNumberWithUnit(consumedPerTick, unit, undefined, locale)}/day`
+                                        : '—'
+                                }
                             />
 
-                            <Stat label='Last bought' value={formatNumberWithUnit(bid?.lastBought, unit, planetId)} />
+                            <Stat
+                                label='Last bought'
+                                value={formatNumberWithUnit(bid?.lastBought, unit, planetId, locale)}
+                            />
                             <Stat
                                 label='Smoothed fill rate'
                                 value={
@@ -529,7 +541,7 @@ export default function BuySection({
                             />
                             <Stat
                                 label='Last spent'
-                                value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId)}
+                                value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId, locale)}
                             />
                         </div>
 
@@ -728,7 +740,12 @@ export default function BuySection({
                                                                     })
                                                                 }
                                                             >
-                                                                {formatNumberWithUnit(price, 'currency', planetId)}
+                                                                {formatNumberWithUnit(
+                                                                    price,
+                                                                    'currency',
+                                                                    planetId,
+                                                                    locale,
+                                                                )}
                                                             </Button>
                                                         ))}
                                                 </span>
@@ -748,9 +765,10 @@ export default function BuySection({
                                             <Alert variant='destructive' className='py-2'>
                                                 <AlertCircle className='h-3.5 w-3.5' />
                                                 <AlertDescription className='text-xs'>
-                                                    Bid cost ({formatNumberWithUnit(totalBidCost, 'currency', planetId)}
-                                                    ) exceeds available deposits (
-                                                    {formatNumberWithUnit(deposits, 'currency', planetId)}).
+                                                    Bid cost (
+                                                    {formatNumberWithUnit(totalBidCost, 'currency', planetId, locale)})
+                                                    exceeds available deposits (
+                                                    {formatNumberWithUnit(deposits, 'currency', planetId, locale)}).
                                                 </AlertDescription>
                                             </Alert>
                                         )}
@@ -835,7 +853,7 @@ export default function BuySection({
                                                 <div className='space-y-0.5'>
                                                     <Stat
                                                         label='Required'
-                                                        value={`${formatNumberWithUnit(consumedPerTick, unit)}/day`}
+                                                        value={`${formatNumberWithUnit(consumedPerTick, unit, undefined, locale)}/day`}
                                                         bold
                                                     />
                                                     {consumptionInfo.breakdown.map((item, i) => {
@@ -862,7 +880,7 @@ export default function BuySection({
                                                                 key={i}
                                                                 icon={<Icon className='h-3 w-3' />}
                                                                 label={item.sourceName}
-                                                                value={`${formatNumberWithUnit(item.ratePerTick, unit)}/day`}
+                                                                value={`${formatNumberWithUnit(item.ratePerTick, unit, undefined, locale)}/day`}
                                                                 indent
                                                             />
                                                         );
@@ -940,7 +958,12 @@ export default function BuySection({
                                                         Free buy quantity (total)
                                                     </Label>
                                                     <span className='text-[11px] tabular-nums font-medium'>
-                                                        {formatNumberWithUnit(sliderVal('freeBuyQuantity', 0), 'none')}
+                                                        {formatNumberWithUnit(
+                                                            sliderVal('freeBuyQuantity', 0),
+                                                            'none',
+                                                            undefined,
+                                                            locale,
+                                                        )}
                                                         {(() => {
                                                             const committed = committedVal(
                                                                 committedConfig,
@@ -948,7 +971,7 @@ export default function BuySection({
                                                             );
                                                             const current = sliderVal('freeBuyQuantity', 0);
                                                             return committed !== undefined && committed !== current
-                                                                ? ` (now ${formatNumberWithUnit(committed, 'none')})`
+                                                                ? ` (now ${formatNumberWithUnit(committed, 'none', undefined, locale)})`
                                                                 : '';
                                                         })()}
                                                     </span>
@@ -962,7 +985,9 @@ export default function BuySection({
                                                         });
                                                     }}
                                                     disabled={buyVolumeConfigSaving || activeVolumePreset !== 'custom'}
-                                                    formatLabel={(v) => formatNumberWithUnit(v, 'none')}
+                                                    formatLabel={(v) =>
+                                                        formatNumberWithUnit(v, 'none', undefined, locale)
+                                                    }
                                                 />
                                             </div>
                                             <ConfigSlider

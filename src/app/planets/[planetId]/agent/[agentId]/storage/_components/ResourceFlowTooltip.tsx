@@ -2,6 +2,7 @@
 
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { FlowRates } from './resourceFlowNormalizer';
+import { useLocale } from 'next-intl';
 
 function paceBadge(label: string, pct: number): React.ReactElement {
     const abs = Math.abs(pct);
@@ -52,6 +53,7 @@ function MicroBulletChart({ rates }: { rates: FlowRates }): React.ReactElement {
 }
 
 export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.ReactElement {
+    const locale = useLocale();
     const vsMtdPct =
         rates.currentMonthAvgRate > 0
             ? ((rates.lastTickRate - rates.currentMonthAvgRate) / rates.currentMonthAvgRate) * 100
@@ -71,19 +73,19 @@ export function ResourceFlowTooltip({ rates }: { rates: FlowRates }): React.Reac
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Previous Month</span>
                     <span className='font-medium tabular-nums'>
-                        {formatNumberWithUnit(rates.prevMonthAvgRate, 'none')} u/t
+                        {formatNumberWithUnit(rates.prevMonthAvgRate, 'none', undefined, locale)} u/t
                     </span>
                 </div>
                 <div className='flex justify-between'>
                     <span className='text-muted-foreground'>Current Month</span>
                     <span className='font-medium tabular-nums'>
-                        {formatNumberWithUnit(rates.currentMonthAvgRate, 'none')} u/t
+                        {formatNumberWithUnit(rates.currentMonthAvgRate, 'none', undefined, locale)} u/t
                     </span>
                 </div>
                 <div className='flex justify-between border-t border-border/20 pt-1'>
                     <span className='font-medium'>Last Tick</span>
                     <span className='font-bold tabular-nums'>
-                        {formatNumberWithUnit(rates.lastTickRate, 'none')} u/t
+                        {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)} u/t
                     </span>
                 </div>
             </div>

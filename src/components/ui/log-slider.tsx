@@ -3,6 +3,7 @@
 import React from 'react';
 import { Slider } from '@/components/ui/slider';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { useLocale } from 'next-intl';
 
 interface LogSliderProps {
     /** The discrete values corresponding to each slider step, e.g. [1, 10, 100, 1000] */
@@ -25,7 +26,8 @@ export function LogSlider({
     formatLabel,
     className,
 }: LogSliderProps): React.ReactElement {
-    const labelFormatter = formatLabel ?? ((v: number) => formatNumberWithUnit(v, 'none'));
+    const locale = useLocale();
+    const labelFormatter = formatLabel ?? ((v: number) => formatNumberWithUnit(v, 'none', undefined, locale));
 
     // Degenerate case: fewer than 2 values → render a disabled, minimal slider stub
     if (values.length < 2) {

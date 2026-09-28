@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { COMMERCIAL_LICENSE_COST, WORKFORCE_LICENSE_COST } from '@/simulation/constants';
+import { useLocale } from 'next-intl';
 
 type LicenseCardProps = {
     type: 'commercial' | 'workforce';
@@ -21,6 +22,7 @@ type LicenseCardProps = {
 };
 
 function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, description, icon: Icon }: LicenseCardProps) {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -72,6 +74,7 @@ function LicenseCard({ type, held, frozen, agentId, planetId, isOwnAgent, descri
                                 type === 'commercial' ? COMMERCIAL_LICENSE_COST : WORKFORCE_LICENSE_COST,
                                 'currency',
                                 planetId,
+                                locale,
                             )}{' '}
                             {type === 'commercial' && '(initial loan)'}
                         </span>

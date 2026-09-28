@@ -16,8 +16,10 @@ import { DEFAULT_WAGE_PER_EDU } from '@/simulation/financial/financialTick';
 import type { EducationLevelType } from '@/simulation/population/education';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { Separator } from '@radix-ui/react-dropdown-menu';
+import { useLocale } from 'next-intl';
 
 export default function WorkforcePage() {
+    const locale = useLocale();
     const {
         agentId,
         planetId,
@@ -91,7 +93,12 @@ export default function WorkforcePage() {
                                                         <span className='text-muted-foreground capitalize'>{edu}</span>
                                                         <span className='tabular-nums'>
                                                             <span className='inline-block min-w-[7ch] text-right font-medium'>
-                                                                {formatNumberWithUnit(wage, 'currency', planetId)}
+                                                                {formatNumberWithUnit(
+                                                                    wage,
+                                                                    'currency',
+                                                                    planetId,
+                                                                    locale,
+                                                                )}
                                                             </span>
 
                                                             <span className='inline-block min-w-[9ch] text-right tabular-nums text-muted-foreground text-xs'>
@@ -100,6 +107,7 @@ export default function WorkforcePage() {
                                                                     planetWagePerEdu?.[edu] ?? DEFAULT_WAGE_PER_EDU,
                                                                     'currency',
                                                                     planetId,
+                                                                    locale,
                                                                 )}
                                                                 )
                                                             </span>

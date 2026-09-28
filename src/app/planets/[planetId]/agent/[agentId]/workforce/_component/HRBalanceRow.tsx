@@ -1,7 +1,10 @@
+'use client';
+
 import { Separator } from '@/components/ui/separator';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 
 export function HRBalanceRow({
     demand,
@@ -14,6 +17,7 @@ export function HRBalanceRow({
     production: number;
     children?: React.ReactNode;
 }): React.ReactElement {
+    const locale = useLocale();
     if (demand === 0) {
         return (
             <Link href={'' as never}>
@@ -56,7 +60,7 @@ export function HRBalanceRow({
                         {' '}
                         production{' '}
                         <span className='tabular-nums text-green-600 dark:text-green-400'>
-                            {formatNumberWithUnit(production / demand, 'days')}
+                            {formatNumberWithUnit(production / demand, 'days', undefined, locale)}
                         </span>
                     </div>
 
@@ -65,7 +69,7 @@ export function HRBalanceRow({
                         {' '}
                         demand{' '}
                         <span className='tabular-nums text-red-600 dark:text-red-400'>
-                            {formatNumberWithUnit(1, 'days')}
+                            {formatNumberWithUnit(1, 'days', undefined, locale)}
                         </span>
                     </div>
 
@@ -85,7 +89,7 @@ export function HRBalanceRow({
                                         : 'text-red-600 dark:text-red-400'
                             }`}
                         >
-                            {formatNumberWithUnit(scaledBuffer, 'days')}
+                            {formatNumberWithUnit(scaledBuffer, 'days', undefined, locale)}
                         </span>
                     </div>
                 </div>
@@ -98,6 +102,7 @@ export function HRBalanceRow({
 }
 
 export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
+    const locale = useLocale();
     return (
         <Link href={'' as never}>
             <Separator />
@@ -106,7 +111,7 @@ export function HRBuildRow({ scale }: { scale: number }): React.ReactElement {
                     {' '}
                     Can manage up to{' '}
                     <span className='tabular-nums text-green-600 dark:text-green-400'>
-                        {formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons')}
+                        {formatNumberWithUnit(scale * PRODUCED_HR_QUANTITY, 'persons', undefined, locale)}
                     </span>{' '}
                     workers.
                 </div>

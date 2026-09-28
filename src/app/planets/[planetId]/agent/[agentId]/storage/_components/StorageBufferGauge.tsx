@@ -7,6 +7,7 @@ import { SHELL_STORAGE_SERVICE_QUANTITY } from '@/simulation/planet/facility';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 import { getRadialNudge, resolveTickLabels, resolveZones, type TickLabelCandidate } from '../../_component/gaugeTicks';
+import { useLocale } from 'next-intl';
 
 const ZONE_RED = '#ef4444';
 const ZONE_AMBER = '#f59e0b';
@@ -30,6 +31,7 @@ export function StorageBufferGauge({
     servicePerScale: 'department' | 'shell';
     maxScaleOverride?: number;
 }): React.ReactElement {
+    const locale = useLocale();
     const { maxValue, subArcs, ticks } = useMemo(() => {
         const scale = maxScaleOverride ?? facility.maxScale;
         const perScale = servicePerScale === 'shell' ? SHELL_STORAGE_SERVICE_QUANTITY : PRODUCED_STORAGE_QUANTITY;
@@ -50,7 +52,7 @@ export function StorageBufferGauge({
                 priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(maxValue, maxValue)}>
-                        {maxValue > 0 ? formatNumberWithUnit(maxValue, 'tonnes') : 'max'}
+                        {maxValue > 0 ? formatNumberWithUnit(maxValue, 'tonnes', undefined, locale) : 'max'}
                     </span>
                 ),
             },
@@ -59,7 +61,7 @@ export function StorageBufferGauge({
                 priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(0, maxValue)}>
-                        {formatNumberWithUnit(0, 'tonnes')}
+                        {formatNumberWithUnit(0, 'tonnes', undefined, locale)}
                     </span>
                 ),
             },
@@ -72,7 +74,7 @@ export function StorageBufferGauge({
                     priority: 1,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand, maxValue)}>
-                            {formatNumberWithUnit(demand, 'tonnes')}
+                            {formatNumberWithUnit(demand, 'tonnes', undefined, locale)}
                         </span>
                     ),
                 },
@@ -81,7 +83,7 @@ export function StorageBufferGauge({
                     priority: 3,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand * 2, maxValue)}>
-                            {formatNumberWithUnit(demand * 2, 'tonnes')}
+                            {formatNumberWithUnit(demand * 2, 'tonnes', undefined, locale)}
                         </span>
                     ),
                 },
@@ -90,7 +92,7 @@ export function StorageBufferGauge({
                     priority: 4,
                     renderContent: () => (
                         <span className={tickStyle} style={getRadialNudge(demand * 4, maxValue)}>
-                            {formatNumberWithUnit(demand * 4, 'tonnes')}
+                            {formatNumberWithUnit(demand * 4, 'tonnes', undefined, locale)}
                         </span>
                     ),
                 },
@@ -103,7 +105,7 @@ export function StorageBufferGauge({
         }));
 
         return { maxValue, subArcs, ticks };
-    }, [demand, facility.maxScale, servicePerScale, maxScaleOverride]);
+    }, [demand, facility.maxScale, servicePerScale, maxScaleOverride, locale]);
 
     return (
         <div className='flex flex-col items-center gap-1 py-2 translate-y-[-1px]'>

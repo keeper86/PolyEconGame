@@ -7,6 +7,7 @@ import { useTRPC } from '@/lib/trpc';
 import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import type { TransportableResourceType } from '@/simulation/planet/claims';
 import { ProductIcon } from './ProductIcon';
+import { useLocale } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -28,6 +29,7 @@ export function StorageResourceSelect({
     required,
     placeholder = 'Select resource…',
 }: Props) {
+    const locale = useLocale();
     const trpc = useTRPC();
     const { data: storage } = useSimulationQuery(trpc.getAgentPlanetStorage.queryOptions({ agentId, planetId }));
 
@@ -72,7 +74,7 @@ export function StorageResourceSelect({
                             <ProductIcon productName={resourceName} size={24} />
                             <span>{resourceName}</span>
                             <span className='ml-auto text-xs text-muted-foreground'>
-                                {formatNumberWithUnit(qty, 'units')}
+                                {formatNumberWithUnit(qty, 'units', undefined, locale)}
                             </span>
                         </span>
                     </SelectItem>

@@ -42,6 +42,7 @@ import {
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale } from 'next-intl';
 
 export function BalanceFlowChart({
     data,
@@ -54,6 +55,7 @@ export function BalanceFlowChart({
     granularity: Granularity;
     live?: FinancialLive;
 }) {
+    const locale = useLocale();
     const liveRow = useMemo(() => {
         if (!live || live.tick <= 0) {
             return null;
@@ -289,7 +291,7 @@ export function BalanceFlowChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <YAxis
                             yAxisId='right'
@@ -300,7 +302,7 @@ export function BalanceFlowChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                         <ReferenceLine

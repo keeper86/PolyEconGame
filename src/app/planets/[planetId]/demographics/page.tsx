@@ -24,8 +24,10 @@ import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import TransferChart from './_components/TransferChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
+import { useLocale } from 'next-intl';
 
 export default function PlanetDemographicsPage() {
+    const locale = useLocale();
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
@@ -128,7 +130,7 @@ export default function PlanetDemographicsPage() {
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
                     <div className='font-semibold text-[11px] leading-tight'>
-                        {formatNumberWithUnit(groupPop[i], 'persons')}
+                        {formatNumberWithUnit(groupPop[i], 'persons', undefined, locale)}
                     </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
                         {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
@@ -147,7 +149,7 @@ export default function PlanetDemographicsPage() {
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                         <p className='text-lg font-semibold leading-tight'>
-                            {formatNumberWithUnit(groupPop[i], 'persons')}
+                            {formatNumberWithUnit(groupPop[i], 'persons', undefined, locale)}
                         </p>
                         <p className='text-xs text-muted-foreground'>
                             {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
@@ -171,7 +173,7 @@ export default function PlanetDemographicsPage() {
                 >
                     <div className='text-muted-foreground text-[9px] leading-tight truncate'>{groupLabels[key]}</div>
                     <div className='font-semibold text-[11px] leading-tight'>
-                        {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                        {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                     </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
                         {wealthShare[i].toFixed(1)}% of wealth
@@ -190,7 +192,7 @@ export default function PlanetDemographicsPage() {
                     <CardContent className='px-3 py-2.5 space-y-0.5'>
                         <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                         <p className='text-lg font-semibold leading-tight'>
-                            {formatNumberWithUnit(wealthMean[i], 'currency', planetId)}
+                            {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                         </p>
                         <p className='text-xs text-muted-foreground'>Ø wealth / person</p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
@@ -220,7 +222,7 @@ export default function PlanetDemographicsPage() {
                         </div>
                         <div className={`font-semibold text-[11px] leading-tight tabular-nums ${valueColor}`}>
                             {sign}
-                            {formatNumberWithUnit(t, 'currency', planetId)}
+                            {formatNumberWithUnit(t, 'currency', planetId, locale)}
                         </div>
                         <div className='text-[9px] text-muted-foreground leading-tight'>
                             {totalAbsoluteTransfer > 0
@@ -249,7 +251,7 @@ export default function PlanetDemographicsPage() {
                             <p className='text-[11px] text-muted-foreground font-medium'>{groupLabels[key]}</p>
                             <p className={`text-lg font-semibold leading-tight tabular-nums ${valueColor}`}>
                                 {sign}
-                                {formatNumberWithUnit(t, 'currency', planetId)}
+                                {formatNumberWithUnit(t, 'currency', planetId, locale)}
                             </p>
                             <p className='text-xs text-muted-foreground'>{label}</p>
                             <p className='text-[11px] text-muted-foreground pt-1'>

@@ -7,6 +7,7 @@ import { PRODUCED_HR_QUANTITY } from '@/simulation/planet/specialFacilities';
 import React, { useMemo } from 'react';
 import GaugeComponent from 'react-gauge-component';
 import { getRadialNudge, resolveTickLabels, resolveZones, type TickLabelCandidate } from '../../_component/gaugeTicks';
+import { useLocale } from 'next-intl';
 
 const ZONE_RED = '#ef4444';
 const ZONE_AMBER = '#f59e0b';
@@ -27,6 +28,7 @@ export function HRBufferGauge({
     hrDepartment: ManagementFacility;
     maxScaleOverride?: number;
 }): React.ReactElement {
+    const locale = useLocale();
     const { maxValue, subArcs, ticks } = useMemo(() => {
         const scale = maxScaleOverride ?? hrDepartment.maxScale;
         const maxValue = scale * PRODUCED_HR_QUANTITY * HR_BUFFER_CAPACITY_MULTIPLIER;
@@ -46,7 +48,9 @@ export function HRBufferGauge({
                 priority: 0,
                 renderContent: () => (
                     <span className={tickStyle} style={getRadialNudge(maxValue, maxValue)}>
-                        {maxValue > 0 && demand > 0 ? formatNumberWithUnit(maxValue / demand, 'days') : 'max'}
+                        {maxValue > 0 && demand > 0
+                            ? formatNumberWithUnit(maxValue / demand, 'days', undefined, locale)
+                            : 'max'}
                     </span>
                 ),
             },
@@ -99,7 +103,7 @@ export function HRBufferGauge({
         }));
 
         return { maxValue, subArcs, ticks };
-    }, [demand, hrDepartment.maxScale, maxScaleOverride]);
+    }, [demand, hrDepartment.maxScale, maxScaleOverride, locale]);
 
     return (
         <div className='flex flex-col items-center gap-1 py-2 translate-y-[-3px]'>

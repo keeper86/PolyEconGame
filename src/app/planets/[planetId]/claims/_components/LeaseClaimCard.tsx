@@ -12,6 +12,7 @@ import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
 import { oilReservoirResourceType } from '@/simulation/planet/landBoundResources';
+import { useLocale } from 'next-intl';
 
 export function LeaseClaimCard({
     summary,
@@ -22,6 +23,7 @@ export function LeaseClaimCard({
     agentId: string;
     planetId: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [tierIndex, setTierIndex] = useState(0);
@@ -61,8 +63,8 @@ export function LeaseClaimCard({
             <ClaimCardHeader resourceName={summary.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units')} of{' '}
-                    {formatNumberWithUnit(summary.totalCapacity, 'units')}
+                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale)} of{' '}
+                    {formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale)}
                 </p>
                 <div className='space-y-3'>
                     <ClaimSizeForm

@@ -24,6 +24,7 @@ import { InteractivePaperworkProcess } from './FakePaperWorkProcess';
 import { Page } from './Page';
 import { ProductQuantity } from './ProductQuantity';
 import { CompanyLogoChooser } from './CompanyLogoChooser';
+import { useLocale } from 'next-intl';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -54,6 +55,7 @@ function CarouselNav() {
 }
 
 export function FoundingPage() {
+    const locale = useLocale();
     const trpc = useTRPC();
     const router = useRouter();
     const { setTourActive } = useTour();
@@ -238,12 +240,22 @@ export function FoundingPage() {
                                                     <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-outline-strong'>
                                                         <span className='text-muted-foreground'>Population</span>
                                                         <span className='text-right font-medium'>
-                                                            {formatNumberWithUnit(p.populationTotal, 'persons')}
+                                                            {formatNumberWithUnit(
+                                                                p.populationTotal,
+                                                                'persons',
+                                                                undefined,
+                                                                locale,
+                                                            )}
                                                         </span>
 
                                                         <span className='text-muted-foreground'>GDP</span>
                                                         <span className='text-right font-medium'>
-                                                            {formatNumberWithUnit(p.gdp, 'currency', p.planetId)}
+                                                            {formatNumberWithUnit(
+                                                                p.gdp,
+                                                                'currency',
+                                                                p.planetId,
+                                                                locale,
+                                                            )}
                                                         </span>
 
                                                         <span className='text-muted-foreground'>Money Supply</span>
@@ -252,6 +264,7 @@ export function FoundingPage() {
                                                                 p.moneySupply,
                                                                 'currency',
                                                                 p.planetId,
+                                                                locale,
                                                             )}
                                                         </span>
 
@@ -261,6 +274,7 @@ export function FoundingPage() {
                                                                 bankEquity(p.bank),
                                                                 'currency',
                                                                 p.planetId,
+                                                                locale,
                                                             )}
                                                         </span>
 
@@ -275,20 +289,32 @@ export function FoundingPage() {
                                                                 p.costOfLiving,
                                                                 'currency',
                                                                 p.planetId,
+                                                                locale,
                                                             )}
                                                             {' – '}
                                                             {formatNumberWithUnit(
                                                                 p.costOfLivingRich,
                                                                 'currency',
                                                                 p.planetId,
+                                                                locale,
                                                             )}
                                                         </span>
 
                                                         <span className='text-muted-foreground'>Wages</span>
                                                         <span className='text-right font-medium'>
-                                                            {formatNumberWithUnit(minWage, 'currency', p.planetId)}
+                                                            {formatNumberWithUnit(
+                                                                minWage,
+                                                                'currency',
+                                                                p.planetId,
+                                                                locale,
+                                                            )}
                                                             {' – '}
-                                                            {formatNumberWithUnit(maxWage, 'currency', p.planetId)}
+                                                            {formatNumberWithUnit(
+                                                                maxWage,
+                                                                'currency',
+                                                                p.planetId,
+                                                                locale,
+                                                            )}
                                                         </span>
                                                     </div>
 

@@ -1,7 +1,10 @@
+'use client';
+
 import { getAssetPath } from '@/lib/assetManifest';
 import { formatNumberWithUnit } from '@/lib/utils';
 import Image from 'next/image';
 import type { JSX } from 'react';
+import { useLocale } from 'next-intl';
 
 export function FacilityOrShipIcon({
     facilityOrShipName,
@@ -16,6 +19,7 @@ export function FacilityOrShipIcon({
     buildProgress?: number;
     badge?: number | string | JSX.Element;
 }) {
+    const locale = useLocale();
     let src: string;
     if (suffix && suffix !== '') {
         src = getAssetPath(facilityOrShipName + '_' + suffix);
@@ -29,7 +33,7 @@ export function FacilityOrShipIcon({
 
     let badgeContent;
     if (typeof badge === 'number') {
-        badgeContent = formatNumberWithUnit(badge, 'none');
+        badgeContent = formatNumberWithUnit(badge, 'none', undefined, locale);
     } else if (typeof badge === 'string') {
         badgeContent = badge;
     } else if (badge) {

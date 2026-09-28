@@ -28,6 +28,7 @@ import {
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale } from 'next-intl';
 
 export function ExpensesRevenueChart({
     data,
@@ -40,6 +41,7 @@ export function ExpensesRevenueChart({
     granularity: Granularity;
     live?: FinancialLive;
 }) {
+    const locale = useLocale();
     const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
         const finite = vals.filter(Number.isFinite);
         if (finite.length === 0) {
@@ -247,7 +249,7 @@ export function ExpensesRevenueChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                         />
                         <Tooltip content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} />} />
                         <Legend wrapperStyle={{ fontSize: 10, color: '#94a3b8' }} />

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale } from 'next-intl';
 import { useParams } from 'next/navigation';
 
 const MAX_LOCAL_EVENTS = 60;
@@ -47,6 +48,7 @@ export default function Footer() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const params = useParams();
     const planetId = typeof params?.planetId === 'string' ? params.planetId : undefined;
+    const locale = useLocale();
 
     const toggleFullscreen = useCallback(async () => {
         try {
@@ -181,7 +183,7 @@ export default function Footer() {
             return;
         }
 
-        const dateStr = mapTickToDate(nextEvent.tick);
+        const dateStr = mapTickToDate(nextEvent.tick, false, locale);
         const width = measureTextWidth(dateStr, nextEvent.message);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
@@ -210,7 +212,7 @@ export default function Footer() {
             ...prev,
             { id: nextEvent.id, event: nextEvent, duration, startX: containerWidth },
         ]);
-    }, [computeSpeed, findNextEvent, measureTextWidth]);
+    }, [computeSpeed, findNextEvent, measureTextWidth, locale]);
 
     useEffect(() => {
         const intervalId = setInterval(trySpawn, 50);
@@ -279,7 +281,7 @@ export default function Footer() {
                         >
                             <span className='inline-flex items-center gap-1.5 text-md select-none'>
                                 <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
-                                    {mapTickToDate(event.tick)}
+                                    {mapTickToDate(event.tick, false, locale)}
                                 </span>
                                 <span className='text-foreground/90'>{event.message}</span>
                             </span>

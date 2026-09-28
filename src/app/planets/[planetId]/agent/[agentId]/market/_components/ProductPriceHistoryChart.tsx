@@ -7,6 +7,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { usePriceScaleModePreference, type PriceScaleMode } from '@/hooks/uiPreferences';
 import { liveYearX } from '@/lib/chartTime';
 import { useTRPC } from '@/lib/trpc';
+import type { Locale } from '@/i18n/config';
 import { formatNumberWithUnit } from '@/lib/utils';
 
 import {
@@ -28,6 +29,7 @@ import { computeMonthlyData, computeMonthlyGhostData } from './monthlyChartLogic
 import type { ChartPoint, LiveData, RawPoint } from './monthlyChartLogic';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale } from 'next-intl';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
@@ -110,6 +112,7 @@ const tooltipValueFormatter = (
     _name: string,
     rescaleMode: PriceScaleMode,
     planetId: string,
+    locale: Locale,
 ): [string, string] => {
     const labels: Record<string, string> = {
         avgPrice: 'Avg price',
@@ -127,7 +130,7 @@ const tooltipValueFormatter = (
         const label = labelMap[_name] ?? _name;
         return [`${value.toFixed(2)}×`, label];
     }
-    return [formatNumberWithUnit(value, 'currency', planetId), labels[_name] ?? _name];
+    return [formatNumberWithUnit(value, 'currency', planetId, locale), labels[_name] ?? _name];
 };
 
 type MergedPoint = {
@@ -177,6 +180,7 @@ function SimplePriceAreaChart({
     planetId: string;
     xAllowDataOverflow?: boolean;
 }) {
+    const locale = useLocale();
     const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -225,8 +229,9 @@ function SimplePriceAreaChart({
         if (rescaleMode === 'relative') {
             return (v: number) => `${v.toFixed(1)}×`;
         }
-        return (v: number) => (typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId) : String(v));
-    }, [rescaleMode, planetId]);
+        return (v: number) =>
+            typeof v === 'number' ? formatNumberWithUnit(v, 'currency', planetId, locale) : String(v);
+    }, [rescaleMode, planetId, locale]);
 
     return (
         <ResponsiveContainer width='100%' height='100%'>
@@ -306,6 +311,7 @@ function SimplePriceAreaChart({
                                         p.name as string,
                                         rescaleMode,
                                         planetId,
+                                        locale,
                                     );
                                     return (
                                         <div key={p.name} style={{ color: seriesColor[p.name as string] ?? '#e2e8f0' }}>

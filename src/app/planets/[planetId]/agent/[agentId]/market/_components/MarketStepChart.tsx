@@ -20,6 +20,7 @@ import {
     YAxis,
 } from 'recharts';
 import { clampArea, getResourceByName } from './marketHelpers';
+import { useLocale } from 'next-intl';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ function AgentInfoCard({
     color: string;
     small?: boolean;
 }) {
+    const locale = useLocale();
     const minW = small ? 'auto' : '140px';
     const labelFs = small ? '10px' : '11px';
     const nameFs = small ? '11px' : '13px';
@@ -99,8 +101,8 @@ function AgentInfoCard({
                         color: '#94a3b8',
                     }}
                 >
-                    <span>{formatNumberWithUnit(meta.quantity, qtyUnit)}</span>
-                    <span>{formatNumberWithUnit(meta.price, 'currency', planetId)}</span>
+                    <span>{formatNumberWithUnit(meta.quantity, qtyUnit, undefined, locale)}</span>
+                    <span>{formatNumberWithUnit(meta.price, 'currency', planetId, locale)}</span>
                 </div>
                 <div
                     style={{
@@ -110,8 +112,8 @@ function AgentInfoCard({
                     }}
                 >
                     {meta.fillRate >= 0.99
-                        ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (100%)`
-                        : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (${(meta.fillRate * 100).toFixed(1)}%)`}
+                        ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (100%)`
+                        : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (${(meta.fillRate * 100).toFixed(1)}%)`}
                 </div>
             </div>
         );
@@ -150,8 +152,12 @@ function AgentInfoCard({
                     color: '#94a3b8',
                 }}
             >
-                <span>{meta.quantity === 0 ? 'Out of stock' : `${formatNumberWithUnit(meta.quantity, qtyUnit)}`}</span>
-                <span>{formatNumberWithUnit(meta.price, 'currency', planetId)}</span>
+                <span>
+                    {meta.quantity === 0
+                        ? 'Out of stock'
+                        : `${formatNumberWithUnit(meta.quantity, qtyUnit, undefined, locale)}`}
+                </span>
+                <span>{formatNumberWithUnit(meta.price, 'currency', planetId, locale)}</span>
             </div>
 
             {/* Fill rate */}
@@ -163,8 +169,8 @@ function AgentInfoCard({
                 }}
             >
                 {meta.fillRate >= 0.99
-                    ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (100%)`
-                    : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit)} (${(meta.fillRate * 100).toFixed(1)}%)`}
+                    ? `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (100%)`
+                    : `${fillLabel}: ${formatNumberWithUnit(meta.filled, qtyUnit, undefined, locale)} (${(meta.fillRate * 100).toFixed(1)}%)`}
             </div>
 
             {/* Clearing indicator for own position */}
@@ -190,6 +196,7 @@ function ChartTooltip({
     planetId,
     resourceName,
 }: TooltipProps<number, string> & { planetId: string; resourceName: string }) {
+    const locale = useLocale();
     const isSmallScreen = useIsSmallScreen();
 
     if (!active || !payload || payload.length === 0) {
@@ -220,7 +227,7 @@ function ChartTooltip({
                 }}
             >
                 <div>
-                    Volume: {formatNumberWithUnit(vol, 'none')} {qtyUnit}
+                    Volume: {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
                 </div>
             </div>
         );
@@ -243,7 +250,7 @@ function ChartTooltip({
                     textAlign: 'center' as const,
                 }}
             >
-                Volume: {formatNumberWithUnit(vol, 'none')} {qtyUnit}
+                Volume: {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
             </div>
 
             {/* Layout: side-by-side on desktop, stacked on small screens */}
@@ -296,6 +303,7 @@ function ChartTooltip({
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 export default function MarketStepChart({ market, agentId, planetId }: MarketStepChartProps) {
+    const locale = useLocale();
     const isLoading = !market;
 
     const { chartData, xDomain, xTicks, ownSupplyArea, ownDemandArea } = useMemo(() => {
@@ -580,7 +588,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         tick={{ fontSize: 10, fill: '#94a3b8' }}
                         axisLine={{ stroke: '#334155' }}
                         tickLine={false}
-                        tickFormatter={(v) => `${formatNumberWithUnit(v, qtyUnit)}`}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, qtyUnit, undefined, locale)}`}
                     />
                     <YAxis
                         type='number'
@@ -589,7 +597,7 @@ export default function MarketStepChart({ market, agentId, planetId }: MarketSte
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId)}`}
+                        tickFormatter={(v) => `${formatNumberWithUnit(v, 'currency', planetId, locale)}`}
                     />
                     {market && (
                         <Tooltip

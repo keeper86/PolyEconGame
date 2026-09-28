@@ -28,6 +28,7 @@ import { useParams } from 'next/navigation';
 import React, { useState } from 'react';
 import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { toast } from 'sonner';
+import { useLocale } from 'next-intl';
 
 export function ConstructionCompactRow({
     facility,
@@ -40,6 +41,7 @@ export function ConstructionCompactRow({
     isPendingSuspension?: boolean;
     hideCancel?: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
     const { planetId, agentId } = useParams() as { planetId: string; agentId: string };
     const smallScreen = useIsSmallScreen();
     const trpc = useTRPC();
@@ -178,9 +180,9 @@ export function ConstructionCompactRow({
                             className='text-amber-600 border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 text-[10px] px-1.5 py-0 gap-1'
                         >
                             <p className='text-xs text-muted-foreground mt-0.5'>
-                                Build {formatNumberWithUnit(facility.maxScale, 'none')} →{' '}
+                                Build {formatNumberWithUnit(facility.maxScale, 'none', undefined, locale)} →{' '}
                                 <span className='font-medium text-foreground'>
-                                    {formatNumberWithUnit(cs.constructionTargetMaxScale, 'none')}
+                                    {formatNumberWithUnit(cs.constructionTargetMaxScale, 'none', undefined, locale)}
                                 </span>
                             </p>
                         </Badge>

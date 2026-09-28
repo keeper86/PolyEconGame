@@ -26,11 +26,13 @@ import {
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
+import type { Locale } from '@/i18n/config';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
+import { useLocale } from 'next-intl';
 
 type BufferRawPoint = {
     bucket: number;
@@ -163,7 +165,11 @@ function computeMonthlyGhostData(allPts: PopulationRawPoint[], live: LiveData): 
         });
 }
 
-function populationTooltipContent(label: string, value: number | undefined | null): React.ReactElement | null {
+function populationTooltipContent(
+    label: string,
+    value: number | undefined | null,
+    locale: Locale,
+): React.ReactElement | null {
     if (value == null) {
         return null;
     }
@@ -178,7 +184,9 @@ function populationTooltipContent(label: string, value: number | undefined | nul
             }}
         >
             <div style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</div>
-            <div style={{ color: '#e2e8f0' }}>Population: {formatNumberWithUnit(value, 'persons')}</div>
+            <div style={{ color: '#e2e8f0' }}>
+                Population: {formatNumberWithUnit(value, 'persons', undefined, locale)}
+            </div>
         </div>
     );
 }
@@ -195,6 +203,7 @@ function EmptyChart() {
 }
 
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
     const data = useMemo(
         () =>
             computeMonthlyData(
@@ -277,7 +286,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -305,7 +314,8 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
                                     </div>
                                     {filtered.map((p) => (
                                         <div key={p.name} style={{ color: '#e2e8f0' }}>
-                                            Population: {formatNumberWithUnit(p.value as number, 'persons')}
+                                            Population:{' '}
+                                            {formatNumberWithUnit(p.value as number, 'persons', undefined, locale)}
                                         </div>
                                     ))}
                                 </div>
@@ -345,6 +355,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 }
 
 function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
     const data = useMemo((): ChartPoint[] => {
         const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -398,7 +409,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -409,6 +420,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                             return populationTooltipContent(
                                 formatYearLabel(label as number),
                                 p?.value as number | undefined,
+                                locale,
                             );
                         }}
                     />
@@ -430,6 +442,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
 }
 
 function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
+    const locale = useLocale();
     const data = useMemo((): ChartPoint[] => {
         const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -486,7 +499,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                         axisLine={false}
                         tickLine={false}
                         width={52}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     />
                     <Tooltip
                         content={({ active, payload, label }) => {
@@ -497,6 +510,7 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                             return populationTooltipContent(
                                 formatDecadeLabel(label as number),
                                 p?.value as number | undefined,
+                                locale,
                             );
                         }}
                     />
@@ -523,6 +537,7 @@ type Props = {
 };
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -575,7 +590,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
             <CardContent className='px-4 pt-2 pb-4'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <GranularityHeader
-                        title={`Population ${formatNumberWithUnit(live?.population, 'persons')}`}
+                        title={`Population ${formatNumberWithUnit(live?.population, 'persons', undefined, locale)}`}
                         granularity={granularity}
                         onGranularityChange={setGranularity}
                         currentTick={currentTick}

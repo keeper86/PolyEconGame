@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Page } from '@/components/client/Page';
+import { useLocale } from 'next-intl';
 
 function CarouselNav() {
     const { scrollPrev, scrollNext, canScrollPrev, canScrollNext } = useCarousel();
@@ -42,6 +43,7 @@ function CarouselNav() {
 }
 
 export default function PlanetsPage() {
+    const locale = useLocale();
     const trpc = useTRPC();
 
     const { isLoading, data } = useSimulationQuery(trpc.simulation.getLatestPlanetSummaries.queryOptions());
@@ -87,17 +89,27 @@ export default function PlanetsPage() {
                                                 <div className='grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm text-outline-strong'>
                                                     <span className='text-muted-foreground'>Population</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.populationTotal, 'persons')}
+                                                        {formatNumberWithUnit(
+                                                            p.populationTotal,
+                                                            'persons',
+                                                            undefined,
+                                                            locale,
+                                                        )}
                                                     </span>
 
                                                     <span className='text-muted-foreground'>GDP</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.gdp, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(p.gdp, 'currency', p.planetId, locale)}
                                                     </span>
 
                                                     <span className='text-muted-foreground'>Money Supply</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.moneySupply, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(
+                                                            p.moneySupply,
+                                                            'currency',
+                                                            p.planetId,
+                                                            locale,
+                                                        )}
                                                     </span>
 
                                                     <span className='text-muted-foreground'>Bank Equity</span>
@@ -106,6 +118,7 @@ export default function PlanetsPage() {
                                                             bankEquity(p.bank),
                                                             'currency',
                                                             p.planetId,
+                                                            locale,
                                                         )}
                                                     </span>
 
@@ -116,20 +129,26 @@ export default function PlanetsPage() {
 
                                                     <span className='text-muted-foreground'>Cost of Living</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(p.costOfLiving, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(
+                                                            p.costOfLiving,
+                                                            'currency',
+                                                            p.planetId,
+                                                            locale,
+                                                        )}
                                                         {' – '}
                                                         {formatNumberWithUnit(
                                                             p.costOfLivingRich,
                                                             'currency',
                                                             p.planetId,
+                                                            locale,
                                                         )}
                                                     </span>
 
                                                     <span className='text-muted-foreground'>Wages</span>
                                                     <span className='text-right font-medium'>
-                                                        {formatNumberWithUnit(minWage, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(minWage, 'currency', p.planetId, locale)}
                                                         {' – '}
-                                                        {formatNumberWithUnit(maxWage, 'currency', p.planetId)}
+                                                        {formatNumberWithUnit(maxWage, 'currency', p.planetId, locale)}
                                                     </span>
                                                 </div>
 

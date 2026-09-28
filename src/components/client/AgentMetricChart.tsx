@@ -10,6 +10,7 @@ import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import type { Granularity } from '@/components/client/GranularityButtonGroup';
+import { useLocale } from 'next-intl';
 
 type AgentMetric =
     | 'netBalance'
@@ -171,6 +172,7 @@ function MonthlyMetricChart({
     currentTick: number;
     history: HistoryPoint[];
 }) {
+    const locale = useLocale();
     const yDomain = useMemo(() => yDomainForMerged(mergedData), [mergedData]);
     const { year: currentYear } = tickToDate(
         currentTick > 0 ? currentTick : (history[history.length - 1]?.bucket ?? 0),
@@ -222,7 +224,7 @@ function MonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units', undefined, locale)}
                             />
                             <Tooltip
                                 content={({ active, payload, label }) => {
@@ -252,12 +254,23 @@ function MonthlyMetricChart({
                                             {hasCurrentVal && (
                                                 <div style={{ color: '#e2e8f0' }}>
                                                     {config.title}:{' '}
-                                                    {formatNumberWithUnit(current.value as number, 'units')}
+                                                    {formatNumberWithUnit(
+                                                        current.value as number,
+                                                        'units',
+                                                        undefined,
+                                                        locale,
+                                                    )}
                                                 </div>
                                             )}
                                             {hasGhostVal && (
                                                 <div style={{ color: '#64748b' }}>
-                                                    Last year: {formatNumberWithUnit(ghost.value as number, 'units')}
+                                                    Last year:{' '}
+                                                    {formatNumberWithUnit(
+                                                        ghost.value as number,
+                                                        'units',
+                                                        undefined,
+                                                        locale,
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -306,6 +319,7 @@ function NonMonthlyMetricChart({
     config: ChartConfig;
     granularity: 'yearly' | 'decade';
 }) {
+    const locale = useLocale();
     const chartData = useMemo(
         () =>
             [...data]
@@ -354,11 +368,14 @@ function NonMonthlyMetricChart({
                                 axisLine={false}
                                 tickLine={false}
                                 width={56}
-                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units')}
+                                tickFormatter={(v) => formatNumberWithUnit(v as number, 'units', undefined, locale)}
                             />
                             <Tooltip
                                 labelFormatter={(v) => tooltipLabel(v as number)}
-                                formatter={(v) => [formatNumberWithUnit(v as number, 'units'), config.title]}
+                                formatter={(v) => [
+                                    formatNumberWithUnit(v as number, 'units', undefined, locale),
+                                    config.title,
+                                ]}
                             />
                             <Area
                                 type='monotone'

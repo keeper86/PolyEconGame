@@ -20,6 +20,7 @@ import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
+import { useLocale } from 'next-intl';
 
 const TOUR_BUY_RESOURCES = new Set(['Construction', 'Administration', 'Logistics', 'Maintenance']);
 
@@ -35,6 +36,7 @@ export default function ResourceAccordionItem({
     allPlanetDeposits,
     ships,
 }: ResourceAccordionItemProps): React.ReactElement {
+    const locale = useLocale();
     const bid = assets.market.buy[resourceName];
     const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
@@ -68,15 +70,22 @@ export default function ResourceAccordionItem({
         switch (columnId) {
             case 'currentStorage': {
                 const resource = getResourceByName(resourceName);
-                return formatNumberWithUnit(inventoryQty, resource ? resourceFormToUnit(resource.form) : 'units');
+                return formatNumberWithUnit(
+                    inventoryQty,
+                    resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
+                );
             }
             case 'clearingPrice':
-                return formatNumberWithUnit(overviewRow?.clearingPrice, 'currency', planetId);
+                return formatNumberWithUnit(overviewRow?.clearingPrice, 'currency', planetId, locale);
             case 'totalProduction': {
                 const resource = getResourceByName(resourceName);
                 return formatNumberWithUnit(
                     overviewRow?.totalProduction,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalConsumption': {
@@ -84,6 +93,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalConsumption,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalSupply': {
@@ -91,6 +102,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalSupply,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalDemand': {
@@ -98,6 +111,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalDemand,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'totalSold': {
@@ -105,6 +120,8 @@ export default function ResourceAccordionItem({
                 return formatNumberWithUnit(
                     overviewRow?.totalSold,
                     resource ? resourceFormToUnit(resource.form) : 'units',
+                    undefined,
+                    locale,
                 );
             }
             case 'priceCostRatio': {

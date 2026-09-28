@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { defaultLocale, isLocale, parseAcceptLanguage, resolveLocale } from './config';
+import { defaultLocale, getDecimalSeparator, isLocale, parseAcceptLanguage, resolveLocale } from './config';
+
+describe('getDecimalSeparator', () => {
+    it('returns a comma for German', () => {
+        expect(getDecimalSeparator('de')).toBe(',');
+    });
+
+    it('returns a dot for English', () => {
+        expect(getDecimalSeparator('en')).toBe('.');
+    });
+});
 
 describe('isLocale', () => {
     it('accepts supported locales', () => {

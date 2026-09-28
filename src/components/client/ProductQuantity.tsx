@@ -1,9 +1,12 @@
+'use client';
+
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumberWithUnit } from '@/lib/utils';
 
 import type { ResourceQuantity } from '@/simulation/planet/claims';
 import Link from 'next/link';
 import { resourceNameToSlug } from '../../app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
+import { useLocale } from 'next-intl';
 
 export function fillColor(efficiency: number, isLimiting: boolean, neutral?: boolean): string {
     if (neutral) {
@@ -55,6 +58,7 @@ export function ProductQuantity({
     quantityLabel?: string;
     neutral?: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
     const getHref = () => {
         if (planetId) {
             if (resource.form === 'landBoundResource') {
@@ -88,7 +92,7 @@ export function ProductQuantity({
                 {isUnknown ? (
                     <span className='text-muted-foreground'>{quantityLabel}</span>
                 ) : (
-                    formatNumberWithUnit(quantity, 'units')
+                    formatNumberWithUnit(quantity, 'units', undefined, locale)
                 )}
             </span>
         </div>,

@@ -10,6 +10,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
+import { useLocale } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -28,6 +29,7 @@ export function DispatchPassengerShipDialog({
     passengerCapacity,
     children,
 }: Props) {
+    const locale = useLocale();
     const trpc = useTRPC();
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const [open, setOpen] = useState(false);
@@ -74,10 +76,10 @@ export function DispatchPassengerShipDialog({
                             max={passengerCapacity}
                             value={passengerCount}
                             onChange={(e) => setPassengerCount(e.target.value)}
-                            placeholder={`0 – ${formatNumberWithUnit(passengerCapacity, 'persons')}`}
+                            placeholder={`0 – ${formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale)}`}
                         />
                         <p className='text-xs text-muted-foreground'>
-                            Max capacity: {formatNumberWithUnit(passengerCapacity, 'persons')}
+                            Max capacity: {formatNumberWithUnit(passengerCapacity, 'persons', undefined, locale)}
                         </p>
                     </div>
                     {mutation.isError && (

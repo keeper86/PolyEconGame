@@ -7,6 +7,7 @@ import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { ShipCargoProgress } from './ShipCargoProgress';
 import { planetName, type PlanetSummary } from './shipFormatting';
+import { useLocale } from 'next-intl';
 
 export function ShipLoadingRow({
     state,
@@ -15,6 +16,7 @@ export function ShipLoadingRow({
     state: TransportShipStatusLoading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
+    const locale = useLocale();
     const cargo =
         state.cargoGoal && state.currentCargo && state.cargoGoal.quantity !== 0
             ? {
@@ -33,11 +35,11 @@ export function ShipLoadingRow({
                         <span>
                             Loading{' '}
                             <span className='tabular-nums text-foreground'>
-                                {formatNumberWithUnit(cargo.current.quantity, cargo.unit)}
+                                {formatNumberWithUnit(cargo.current.quantity, cargo.unit, undefined, locale)}
                             </span>
                             {' / '}
                             <span className='tabular-nums'>
-                                {formatNumberWithUnit(cargo.goal.quantity, cargo.unit)}
+                                {formatNumberWithUnit(cargo.goal.quantity, cargo.unit, undefined, locale)}
                             </span>{' '}
                             {cargo.goal.resource.name}
                         </span>

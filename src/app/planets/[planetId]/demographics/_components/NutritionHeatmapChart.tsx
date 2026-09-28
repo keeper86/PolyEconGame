@@ -12,6 +12,7 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
+import { useLocale } from 'next-intl';
 
 const BANDS = [
     { key: 'fatalStarvation', label: 'Fatal', color: '#7f1d1d' },
@@ -139,6 +140,7 @@ function makeTooltip(
         payload?: { payload: ChartRow }[];
         label?: number;
     }) {
+        const locale = useLocale();
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -147,7 +149,7 @@ function makeTooltip(
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[210px]'>
                 <div className='font-medium mb-1'>
-                    Age {label} · {formatNumberWithUnit(totalPop, 'persons')}
+                    Age {label} · {formatNumberWithUnit(totalPop, 'persons', undefined, locale)}
                 </div>
                 {groupKeys.map((gk) => {
                     const pop = row[`${gk}_total`] ?? 0;
@@ -163,7 +165,7 @@ function makeTooltip(
                                     className='inline-block w-2 h-2 rounded-sm flex-shrink-0'
                                     style={{ background: groupColors[gk] }}
                                 />
-                                {groupLabels[gk]} · {formatNumberWithUnit(pop, 'persons')}
+                                {groupLabels[gk]} · {formatNumberWithUnit(pop, 'persons', undefined, locale)}
                             </div>
                             <div className='pl-3 text-muted-foreground'>
                                 starvation {formatPct(avgStarvation)} · buffer {formatPct(avgBuffer)}
@@ -176,7 +178,8 @@ function makeTooltip(
                                     }
                                     return (
                                         <span key={b.key} style={{ color: b.color }}>
-                                            {b.label.split(' ')[0]} {formatNumberWithUnit(cnt, 'persons')}
+                                            {b.label.split(' ')[0]}{' '}
+                                            {formatNumberWithUnit(cnt, 'persons', undefined, locale)}
                                         </span>
                                     );
                                 })}
@@ -222,6 +225,7 @@ function EmptyChart({ height = 200 }: { height?: number }) {
 }
 
 export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'grocery' }: Props): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
@@ -326,7 +330,7 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
                     <YAxis
                         width={40}
                         tick={{ fontSize: 10 }}
-                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                        tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                         domain={yDomain}
                     />
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

@@ -8,6 +8,7 @@ import { CHART_COLORS, DEPARTURE_COLORS, EDU_COLORS, eduLabel } from './workforc
 import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale } from 'next-intl';
 
 export type ViewMode = 'status' | 'education';
 
@@ -48,6 +49,7 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 type PayloadEntry = NonNullable<TooltipProps<number, string>['payload']>[number];
 
 function StatusTooltip({ active, payload, label }: TooltipProps<number, string>) {
+    const locale = useLocale();
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -60,22 +62,23 @@ function StatusTooltip({ active, payload, label }: TooltipProps<number, string>)
             <div className='font-medium mb-1'>Age {label}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
-                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons')}
+                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons', undefined, locale)}
                 </div>
             ))}
             {totalLeaving > 0 && (
                 <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                    Total leaving: {formatNumberWithUnit(totalLeaving, 'persons')}
+                    Total leaving: {formatNumberWithUnit(totalLeaving, 'persons', undefined, locale)}
                 </div>
             )}
             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                Total: {formatNumberWithUnit(total, 'persons')}
+                Total: {formatNumberWithUnit(total, 'persons', undefined, locale)}
             </div>
         </div>
     );
 }
 
 function EduTooltip({ active, payload, label }: TooltipProps<number, string>) {
+    const locale = useLocale();
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -85,11 +88,11 @@ function EduTooltip({ active, payload, label }: TooltipProps<number, string>) {
             <div className='font-medium mb-1'>Age {label}</div>
             {payload.map((entry: PayloadEntry) => (
                 <div key={entry.dataKey} style={{ color: entry.color }}>
-                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons')}
+                    {entry.name}: {formatNumberWithUnit(entry.value as number, 'persons', undefined, locale)}
                 </div>
             ))}
             <div className='mt-1 border-t pt-1 text-muted-foreground'>
-                Total: {formatNumberWithUnit(total, 'persons')}
+                Total: {formatNumberWithUnit(total, 'persons', undefined, locale)}
             </div>
         </div>
     );
@@ -104,6 +107,7 @@ export function AgeDistributionChart({
     ageChartByEdu: WorkforceSummary['ageChartByEdu'];
     view: ViewMode;
 }): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
     const statusData = useMemo(() => {
@@ -145,7 +149,7 @@ export function AgeDistributionChart({
                         <YAxis
                             width={40}
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                         />
                         {isVerySmall ? null : <Tooltip content={statusTooltip} />}
                         <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />
@@ -191,7 +195,7 @@ export function AgeDistributionChart({
                         <YAxis
                             width={40}
                             tick={{ fontSize: 10 }}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                         />
                         {isVerySmall ? null : <Tooltip content={eduTooltip} />}
                         <Legend verticalAlign='top' height={18} wrapperStyle={{ fontSize: 10 }} />

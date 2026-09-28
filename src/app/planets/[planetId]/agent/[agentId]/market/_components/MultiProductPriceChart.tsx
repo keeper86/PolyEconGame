@@ -69,6 +69,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { useLocale } from 'next-intl';
 
 const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------
@@ -457,6 +458,7 @@ export default function MultiProductPriceChart({
     isOpen: controlledIsOpen,
     onOpenChange,
 }: Props): React.ReactElement {
+    const locale = useLocale();
     const { granularity, setGranularity, currentTick } = useGranularity();
     const trpc = useTRPC();
 
@@ -631,7 +633,7 @@ export default function MultiProductPriceChart({
             : emptyXDomain(granularity, liveTick);
 
     const yTickFormatter = (v: number) =>
-        rescaleMode === 'relative' ? `${v.toFixed(1)}×` : formatNumberWithUnit(v, 'currency', planetId);
+        rescaleMode === 'relative' ? `${v.toFixed(1)}×` : formatNumberWithUnit(v, 'currency', planetId, locale);
 
     return (
         <div className='flex flex-col gap-3 text-outline-strong'>
@@ -774,6 +776,7 @@ export default function MultiProductPriceChart({
                                                                                       p.value as number,
                                                                                       'currency',
                                                                                       planetId,
+                                                                                      locale,
                                                                                   )}
                                                                         </div>
                                                                     ))}

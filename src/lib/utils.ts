@@ -1,13 +1,23 @@
+import { defaultLocale, getDecimalSeparator, type Locale } from '@/i18n/config';
 import { currencyMapping } from '@/simulation/market/currencyResources';
 import type { ResourceType } from '@/simulation/planet/claims';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import de from '../../messages/de.json';
+import en from '../../messages/en.json';
 
 export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
 import { formatNumbers } from '@/simulation/utils/numberFormat';
+
+const catalogs = { en, de } as const;
+
+const dayWord = (locale: Locale, count: number | null | undefined): string => {
+    const units = catalogs[locale].Units;
+    return count === 1 ? units.day : units.days;
+};
 
 export type Units = 'currency' | 'tonnes' | 'litres' | 'units' | 'persons' | 'percent' | 'm3' | 'days' | 'none';
 
@@ -25,8 +35,13 @@ export function resourceFormToUnit(form: ResourceType | undefined): Exclude<Unit
     }
 }
 
-export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, planetId?: string): string => {
-    const formattedNumber = formatNumbers(n);
+export const formatNumberWithUnit = (
+    n: number | null | undefined,
+    unit: Units,
+    planetId?: string,
+    locale: Locale = defaultLocale,
+): string => {
+    const formattedNumber = formatNumbers(n, getDecimalSeparator(locale));
     if (formattedNumber === '—') {
         return formattedNumber;
     }
@@ -49,10 +64,7 @@ export const formatNumberWithUnit = (n: number | null | undefined, unit: Units, 
         return `${formattedNumber}%`;
     }
     if (unit === 'days') {
-        if (formattedNumber === '1') {
-            return '1 day';
-        }
-        return `${formattedNumber} days`;
+        return `${formattedNumber} ${dayWord(locale, n)}`;
     }
 
     return formattedNumber;

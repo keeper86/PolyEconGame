@@ -15,6 +15,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
+import { useLocale } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -28,6 +29,7 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
         payload?: { payload: ChartRow }[];
         label?: number;
     }) {
+        const locale = useLocale();
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -51,7 +53,8 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
                                 {labels[key]}
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
-                                {formatNumberWithUnit(mean, 'currency')} · {formatNumberWithUnit(pop, 'persons')}
+                                {formatNumberWithUnit(mean, 'currency', undefined, locale)} ·{' '}
+                                {formatNumberWithUnit(pop, 'persons', undefined, locale)}
                             </span>
                         </div>
                     );
@@ -104,6 +107,7 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 }
 
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
@@ -170,7 +174,7 @@ export default function WealthDistributionChart({ rows, groupMode }: Props): Rea
                 <YAxis
                     width={48}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', undefined, locale)}
                     domain={yDomain}
                 />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

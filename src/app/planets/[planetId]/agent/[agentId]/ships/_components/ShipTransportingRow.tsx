@@ -6,6 +6,7 @@ import type { TransportShipStatusTransporting } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { planetName, ShipEta, type PlanetSummary } from './shipFormatting';
+import { useLocale } from 'next-intl';
 
 export function ShipTransportingRow({
     state,
@@ -16,6 +17,7 @@ export function ShipTransportingRow({
     planetSummaries: PlanetSummary[];
     tick: number;
 }): React.ReactElement {
+    const locale = useLocale();
     return (
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             {state.cargo ? (
@@ -23,7 +25,7 @@ export function ShipTransportingRow({
                     <ProductIcon productName={state.cargo.resource.name} size={18} />
                     <span>
                         <span className='tabular-nums text-foreground'>
-                            {formatNumberWithUnit(state.cargo.quantity, 'units')}
+                            {formatNumberWithUnit(state.cargo.quantity, 'units', undefined, locale)}
                         </span>{' '}
                         {state.cargo.resource.name}
                     </span>

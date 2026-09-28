@@ -16,6 +16,7 @@ import type { ManagementFacility, ProductionFacility, ShipConstructionFacility }
 import { computeSupplyChainBalance } from './computeBalance';
 import type { ArbitrageRouteRow } from '@/server/controller/simulation';
 import { ARBITRAGE_MIN_PROFIT_PER_TICK } from '@/simulation/constants';
+import { useLocale } from 'next-intl';
 
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
@@ -651,6 +652,7 @@ interface LiveStateTabProps {
 }
 
 export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
+    const locale = useLocale();
     const [selectedPlanetId, setSelectedPlanetId] = useState<string>('all');
     const [facSort, setFacSort] = useState<{ key: FacilitySortKey; dir: SortDir }>({ key: 'efficiency', dir: 'asc' });
     const [resSort, setResSort] = useState<{ key: ResourceSortKey; dir: SortDir }>({
@@ -865,7 +867,9 @@ export function LiveStateTab({ onApplyScales }: LiveStateTabProps) {
                 </span>
                 <span>
                     Population:{' '}
-                    <span className='font-mono font-semibold'>{formatNumberWithUnit(livePop, 'persons')}</span>
+                    <span className='font-mono font-semibold'>
+                        {formatNumberWithUnit(livePop, 'persons', undefined, locale)}
+                    </span>
                 </span>
                 <span>
                     Facility types: <span className='font-mono font-semibold'>{facilityRows.length}</span>

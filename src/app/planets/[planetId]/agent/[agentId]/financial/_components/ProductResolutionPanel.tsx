@@ -6,6 +6,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import type { MonthAccumulator } from '@/simulation/planet/planet';
 import { LayoutGroup, motion } from 'motion/react';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 
 type Props = {
     monthAcc: MonthAccumulator;
@@ -28,6 +29,7 @@ function ProductCell({
     planetId: string;
     agentId: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const href = `/planets/${planetId}/agent/${agentId}/market#${resourceNameToSlug(resourceName)}`;
     return (
         <motion.div layout>
@@ -37,9 +39,9 @@ function ProductCell({
             >
                 <ProductIcon productName={resourceName} size={36} />
                 <span className='flex flex-col flex-grow text-xs font-medium text-right'>
-                    {formatNumberWithUnit(currentValue, 'currency', planetId)}
+                    {formatNumberWithUnit(currentValue, 'currency', planetId, locale)}
                     <span className='text-muted-foreground'>
-                        {formatNumberWithUnit(lastValue, 'currency', planetId)}
+                        {formatNumberWithUnit(lastValue, 'currency', planetId, locale)}
                     </span>
                 </span>
             </Link>

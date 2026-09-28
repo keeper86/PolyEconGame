@@ -17,6 +17,7 @@ import type { AgentListSummary } from '@/simulation/snapshotRepository';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useIsSmallScreen } from '@/hooks/useMobile';
+import { useLocale } from 'next-intl';
 
 type AgentRow = AgentListSummary & { normalizedBalance: number; rank: number };
 
@@ -31,6 +32,7 @@ function sortAgents(agents: AgentRow[], key: SortKey, dir: SortDir): AgentRow[] 
 }
 
 export default function PlanetAgentsLeaderboardPage() {
+    const locale = useLocale();
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const smallScreen = useIsSmallScreen();
@@ -155,7 +157,7 @@ export default function PlanetAgentsLeaderboardPage() {
                                 </Link>
                             </TableCell>
                             <TableCell className='tabular-nums text-right'>
-                                {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId)}
+                                {formatNumberWithUnit(agent.normalizedBalance, 'currency', planetId, locale)}
                             </TableCell>
                             <TableCell className='tabular-nums text-right'>
                                 <PlanetIcon planetId={agent.associatedPlanetId} size={28} />

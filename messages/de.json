@@ -3,5 +3,9 @@
         "label": "Sprache",
         "en": "Englisch",
         "de": "Deutsch"
+    },
+    "Units": {
+        "day": "Tag",
+        "days": "Tage"
     }
 }

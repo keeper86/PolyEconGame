@@ -7,6 +7,7 @@ import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, type PlanetSummary } from './shipFormatting';
+import { useLocale } from 'next-intl';
 
 export function ShipPassengerBoardingRow({
     state,
@@ -15,6 +16,7 @@ export function ShipPassengerBoardingRow({
     state: PassengerShipStatusLoading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
+    const locale = useLocale();
     const pct = state.passengerGoal > 0 ? (state.currentPassengers / state.passengerGoal) * 100 : 0;
     const destination = planetName(planetSummaries, state.to);
 
@@ -24,10 +26,12 @@ export function ShipPassengerBoardingRow({
                 <span>
                     Boarding:{' '}
                     <span className='tabular-nums text-foreground'>
-                        {formatNumberWithUnit(state.currentPassengers, 'persons')}
+                        {formatNumberWithUnit(state.currentPassengers, 'persons', undefined, locale)}
                     </span>
                     {' / '}
-                    <span className='tabular-nums'>{formatNumberWithUnit(state.passengerGoal, 'persons')}</span>{' '}
+                    <span className='tabular-nums'>
+                        {formatNumberWithUnit(state.passengerGoal, 'persons', undefined, locale)}
+                    </span>{' '}
                     passengers
                 </span>
                 <ArrowRight className='h-3 w-3' />

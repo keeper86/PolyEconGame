@@ -8,6 +8,7 @@ import { formatNumberWithUnit } from '@/lib/utils';
 import { EDU_COLORS } from '@/app/planets/[planetId]/agent/[agentId]/workforce/_component/workforceTheme';
 import { borderColor, fillColor } from '@/components/client/ProductQuantity';
 import Link from 'next/link';
+import { useLocale } from 'next-intl';
 
 const pctStr = (frac: number): string => `${Math.round(frac * 100)}%`;
 
@@ -28,6 +29,7 @@ export function WorkerBars({
     planetId?: string;
     agentId?: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const hasLink = planetId !== undefined && agentId !== undefined;
     const href = hasLink ? `/planets/${planetId}/agent/${agentId}/workforce` : undefined;
 
@@ -51,7 +53,7 @@ export function WorkerBars({
                         <span className='relative z-10 flex items-center justify-between w-full px-2 py-0.5 text-xs text-outline-strong'>
                             <span>{educationLevels[edu].name}</span>
                             <span className='tabular-nums'>
-                                {formatNumberWithUnit(Math.round(eff * required), 'persons')}
+                                {formatNumberWithUnit(Math.round(eff * required), 'persons', undefined, locale)}
                             </span>
                         </span>
                     </div>

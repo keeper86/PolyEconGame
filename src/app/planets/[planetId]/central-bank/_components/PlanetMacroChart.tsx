@@ -32,6 +32,7 @@ import {
     type MacroLive,
     type Granularity,
 } from './financialChartLogic';
+import { useLocale } from 'next-intl';
 
 export type { EconomyPoint };
 
@@ -48,6 +49,7 @@ export function PlanetMacroChart({
     currentTick: number;
     live?: MacroLive;
 }) {
+    const locale = useLocale();
     const liveRow: MacroChartPoint | null = useMemo(
         () =>
             live && live.tick > 0
@@ -246,7 +248,7 @@ export function PlanetMacroChart({
                             axisLine={false}
                             tickLine={false}
                             width={56}
-                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', planetId)}
+                            tickFormatter={(v) => formatNumberWithUnit(v as number, 'currency', planetId, locale)}
                         />
                         <Tooltip
                             content={<FinancialTooltip labelFormatter={tooltipLabelFormatter} planetId={planetId} />}

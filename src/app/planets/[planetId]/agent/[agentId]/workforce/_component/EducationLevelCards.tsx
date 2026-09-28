@@ -10,6 +10,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { WorkforceSummary } from './workforceSummary';
 import type { DemographicEventCounters } from '@/simulation/planet/planet';
+import { useLocale } from 'next-intl';
 
 export type EducationLevelCardsProps = {
     summary: WorkforceSummary;
@@ -22,10 +23,6 @@ export type EducationLevelCardsProps = {
     deaths?: DemographicEventCounters;
     disabilities?: DemographicEventCounters;
 };
-
-function formatNumbersNextTotal(next: number, total: number): string {
-    return `${formatNumberWithUnit(next, 'persons')}  (${formatNumberWithUnit(total, 'persons')})`;
-}
 
 function Rule(): React.ReactElement {
     return <div className='border-t border-dashed my-1.5' />;
@@ -57,6 +54,9 @@ function EducationCard({
     productivity: { meanAge: number; ageProd: number; meanTenure: number; tenureProd: number; hasWorkers: boolean };
     isTotal?: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
+    const formatNumbersNextTotal = (next: number, total: number): string =>
+        `${formatNumberWithUnit(next, 'persons', undefined, locale)}  (${formatNumberWithUnit(total, 'persons', undefined, locale)})`;
     const { label, badgeClassName } = header;
     const { target, active, unused } = headcount;
     const { count: overqualifiedCount, breakdown: overqualifiedBreakdown } = overqualified ?? {};
@@ -86,19 +86,21 @@ function EducationCard({
                 label='Target'
                 value={
                     <>
-                        {formatNumberWithUnit(target, 'persons')}
+                        {formatNumberWithUnit(target, 'persons', undefined, locale)}
                         {overqualifiedCount && overqualifiedCount > 0 ? (
                             <Tooltip>
                                 <TooltipTrigger>
                                     <span className='text-amber-600 ml-1 tabular-nums'>
-                                        ({formatNumberWithUnit(overqualifiedCount, 'persons')})
+                                        ({formatNumberWithUnit(overqualifiedCount, 'persons', undefined, locale)})
                                     </span>
                                 </TooltipTrigger>
                                 <TooltipContent sideOffset={6}>
                                     <div className='max-w-xs'>
                                         <div className='font-medium'>Overqualified workers</div>
                                         <div className='text-xs text-muted-foreground mt-1'>
-                                            Facilities filled {formatNumberWithUnit(overqualifiedCount, 'persons')} slot
+                                            Facilities filled{' '}
+                                            {formatNumberWithUnit(overqualifiedCount, 'persons', undefined, locale)}{' '}
+                                            slot
                                             {overqualifiedCount !== 1 ? 's' : ''} with higher-educated workers because
                                             lower-education workers were not available.
                                         </div>
@@ -122,19 +124,19 @@ function EducationCard({
             />
             <Stat
                 label='Current total'
-                value={formatNumberWithUnit(totalWorkforce, 'persons')}
+                value={formatNumberWithUnit(totalWorkforce, 'persons', undefined, locale)}
                 valueClassName='text-foreground'
                 bold
             />
             <Stat
                 label={`${unused < 0 ? 'Worker shortage' : 'Unused Worker '}`}
-                value={`${formatNumberWithUnit(Math.abs(unused), 'persons')}`}
+                value={`${formatNumberWithUnit(Math.abs(unused), 'persons', undefined, locale)}`}
                 valueClassName={unused > 0 ? 'text-green-600' : unused < 0 ? 'text-red-500' : 'text-muted-foreground'}
             />
 
             <Rule />
 
-            <Stat label='Active' value={formatNumberWithUnit(active, 'persons')} />
+            <Stat label='Active' value={formatNumberWithUnit(active, 'persons', undefined, locale)} />
 
             <div className='flex items-baseline justify-between gap-2'>
                 <button
@@ -165,7 +167,7 @@ function EducationCard({
                     className='tabular-nums whitespace-nowrap text-purple-500'
                     style={{ color: CHART_COLORS.onboarding }}
                 >
-                    {formatNumberWithUnit(onboardingCurrent, 'persons')}
+                    {formatNumberWithUnit(onboardingCurrent, 'persons', undefined, locale)}
                 </span>
             </div>
 
@@ -176,7 +178,7 @@ function EducationCard({
                     </div>
                     <Stat
                         label='Completing'
-                        value={formatNumberWithUnit(onboardingNext, 'persons')}
+                        value={formatNumberWithUnit(onboardingNext, 'persons', undefined, locale)}
                         valueClassName={onboardingNext > 0 ? 'text-violet-600' : 'text-muted-foreground'}
                         indent
                     />
@@ -186,7 +188,7 @@ function EducationCard({
             {typeof deaths === 'number' && (
                 <Stat
                     label='Deaths'
-                    value={formatNumberWithUnit(deaths, 'persons')}
+                    value={formatNumberWithUnit(deaths, 'persons', undefined, locale)}
                     valueClassName={deaths > 0 ? 'text-red-700' : 'text-muted-foreground'}
                 />
             )}
@@ -194,7 +196,7 @@ function EducationCard({
             {typeof disabilities === 'number' && (
                 <Stat
                     label='Disabilities'
-                    value={formatNumberWithUnit(disabilities, 'persons')}
+                    value={formatNumberWithUnit(disabilities, 'persons', undefined, locale)}
                     valueClassName={disabilities > 0 ? 'text-orange-700' : 'text-muted-foreground'}
                 />
             )}

@@ -6,6 +6,7 @@ import React from 'react';
 import { countManifestPassengers } from './PassengerManifestDialog';
 import { PassengerManifestButton } from './PassengerManifestButton';
 import { planetName, type PlanetSummary } from './shipFormatting';
+import { useLocale } from 'next-intl';
 
 export function ShipPassengerUnloadingRow({
     state,
@@ -14,13 +15,17 @@ export function ShipPassengerUnloadingRow({
     state: PassengerShipStatusUnloading;
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
+    const locale = useLocale();
     const total = countManifestPassengers(state.manifest);
     const destination = planetName(planetSummaries, state.planetId);
 
     return (
         <div className='flex items-center gap-2 text-xs text-muted-foreground flex-wrap'>
             <span>
-                Unloading <span className='tabular-nums text-foreground'>{formatNumberWithUnit(total, 'persons')}</span>{' '}
+                Unloading{' '}
+                <span className='tabular-nums text-foreground'>
+                    {formatNumberWithUnit(total, 'persons', undefined, locale)}
+                </span>{' '}
                 passengers
             </span>
             <PassengerManifestButton manifest={state.manifest} toPlanetName={destination} phase={state.type} />

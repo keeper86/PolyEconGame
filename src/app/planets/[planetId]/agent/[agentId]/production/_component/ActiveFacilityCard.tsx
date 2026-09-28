@@ -24,6 +24,7 @@ import { FacilityConstructionPanel } from './FacilityConstructionPanel';
 import { FacilityFinancialRow } from './FacilityFinancialRow';
 import { FacilityHeader, limitingEfficiency } from '../../_component/FacilityHeader';
 import { FacilityProductionIORow } from './FacilityIORow';
+import { useLocale } from 'next-intl';
 
 export function ActiveFacilityCard({
     facility,
@@ -46,6 +47,7 @@ export function ActiveFacilityCard({
     headerBadge?: React.ReactElement;
     dataTour?: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const [previewScale, setPreviewScale] = useState(facility.maxScale + 1);
     const [showExpand, setShowExpand] = useState(false);
@@ -223,8 +225,13 @@ export function ActiveFacilityCard({
             <span className='flex flex-row text-muted-foreground text-xs gap-2'>
                 Operating scale
                 <span>
-                    {formatNumberWithUnit(facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1), 'units')}/
-                    {formatNumberWithUnit(facility.maxScale, 'units')}
+                    {formatNumberWithUnit(
+                        facility.maxScale * (SCALE_FRACTIONS[scaleFractionIndex] ?? 1),
+                        'units',
+                        undefined,
+                        locale,
+                    )}
+                    /{formatNumberWithUnit(facility.maxScale, 'units', undefined, locale)}
                 </span>
                 {pendingScaleText && (
                     <span className='text-amber-600 dark:text-amber-400 ml-auto text-[10px] italic'>
@@ -407,7 +414,7 @@ export function ActiveFacilityCard({
                                                     transform: `translateX(${translate})`,
                                                 }}
                                             >
-                                                {formatNumberWithUnit(v, 'none')}
+                                                {formatNumberWithUnit(v, 'none', undefined, locale)}
                                             </span>
                                         );
                                     })}
@@ -417,12 +424,17 @@ export function ActiveFacilityCard({
                                     <div className='grid grid-cols-1 gap-y-1'>
                                         <Stat
                                             label='Reduced capacity'
-                                            value={formatNumberWithUnit(facility.maxScale - reduceTarget, 'units')}
+                                            value={formatNumberWithUnit(
+                                                facility.maxScale - reduceTarget,
+                                                'units',
+                                                undefined,
+                                                locale,
+                                            )}
                                             icon={<TrendingDown className='h-3 w-3' />}
                                         />
                                         <Stat
                                             label='Estimated price'
-                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId)}
+                                            value={formatNumberWithUnit(estimatedPayout, 'currency', planetId, locale)}
                                             icon={<TrendingUp className='h-3 w-3' />}
                                         />
                                         <Stat
@@ -438,7 +450,12 @@ export function ActiveFacilityCard({
                                     <div className='grid grid-cols-1 gap-y-1'>
                                         <Stat
                                             label='Deposits'
-                                            value={formatNumberWithUnit(financials?.deposits, 'currency', planetId)}
+                                            value={formatNumberWithUnit(
+                                                financials?.deposits,
+                                                'currency',
+                                                planetId,
+                                                locale,
+                                            )}
                                             icon={<Wallet className='h-3 w-3' />}
                                         />
                                         <Stat
@@ -447,12 +464,13 @@ export function ActiveFacilityCard({
                                                 financials?.monthlyNetCashFlow,
                                                 'currency',
                                                 planetId,
+                                                locale,
                                             )}
                                             icon={<Percent className='h-3 w-3' />}
                                         />
                                         <Stat
                                             label='Loans'
-                                            value={formatNumberWithUnit(0, 'currency', planetId)}
+                                            value={formatNumberWithUnit(0, 'currency', planetId, locale)}
                                             icon={<TrendingDown className='h-3 w-3' />}
                                         />
                                     </div>

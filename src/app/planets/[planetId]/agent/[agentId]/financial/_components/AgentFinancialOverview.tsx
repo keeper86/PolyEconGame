@@ -19,6 +19,7 @@ import {
 import React from 'react';
 import { GoRocket } from 'react-icons/go';
 import { TbBuildingFactory2 } from 'react-icons/tb';
+import { useLocale } from 'next-intl';
 
 type Props = {
     deposits: number;
@@ -50,11 +51,12 @@ function ValueWithSub({
     planetId: string;
     subValueClassName?: string;
 }): React.ReactElement {
+    const locale = useLocale();
     return (
         <span className='inline-flex flex-row items-center flex-baseline gap-1'>
-            <span>{formatNumberWithUnit(value, 'currency', planetId)}</span>
+            <span>{formatNumberWithUnit(value, 'currency', planetId, locale)}</span>
             <span className={`text-[10px] w-[50px] text-right ${subValueClassName ?? 'text-muted-foreground'}`}>
-                ({formatNumberWithUnit(subValue, 'currency', planetId)})
+                ({formatNumberWithUnit(subValue, 'currency', planetId, locale)})
             </span>
         </span>
     );
@@ -88,6 +90,7 @@ export default function AgentFinancialOverview({
     lastMonthAcc,
     planetId,
 }: Props): React.ReactElement {
+    const locale = useLocale();
     const netPosition = deposits - loans;
 
     const currentMonthlyRevenue = monthAcc.revenue;
@@ -241,7 +244,7 @@ export default function AgentFinancialOverview({
                     <span className=' text-xs font-semibold text-muted-foreground'>Positions </span>
                     <Stat
                         label='Firm deposits'
-                        value={formatNumberWithUnit(deposits, 'currency', planetId)}
+                        value={formatNumberWithUnit(deposits, 'currency', planetId, locale)}
                         icon={<Coins className='h-3 w-3' />}
                         valueClassName={
                             deposits < loans ? 'text-amber-600' : deposits === 0 ? 'text-muted-foreground' : ''
@@ -249,7 +252,7 @@ export default function AgentFinancialOverview({
                     />
                     <Stat
                         label='Outstanding loans'
-                        value={formatNumberWithUnit(loans, 'currency', planetId)}
+                        value={formatNumberWithUnit(loans, 'currency', planetId, locale)}
                         icon={<TrendingDown className='h-3 w-3' />}
                         valueClassName={
                             loans === 0 ? 'text-muted-foreground' : loans > deposits ? 'text-red-600' : 'text-amber-600'
@@ -257,7 +260,7 @@ export default function AgentFinancialOverview({
                     />
                     <Stat
                         label='Net position (deposits − loans)'
-                        value={formatNumberWithUnit(netPosition, 'currency', planetId)}
+                        value={formatNumberWithUnit(netPosition, 'currency', planetId, locale)}
                         icon={
                             netPosition >= 0 ? <TrendingUp className='h-3 w-3' /> : <TrendingDown className='h-3 w-3' />
                         }
@@ -271,25 +274,25 @@ export default function AgentFinancialOverview({
                     />
                     <Stat
                         label='Facilities value'
-                        value={formatNumberWithUnit(loanConditions.facilitiesCollateral, 'currency', planetId)}
+                        value={formatNumberWithUnit(loanConditions.facilitiesCollateral, 'currency', planetId, locale)}
                         icon={<TbBuildingFactory2 className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
                         label='Ships value'
-                        value={formatNumberWithUnit(loanConditions.shipsCollateral, 'currency', planetId)}
+                        value={formatNumberWithUnit(loanConditions.shipsCollateral, 'currency', planetId, locale)}
                         icon={<GoRocket className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
                         label='Storage value'
-                        value={formatNumberWithUnit(loanConditions.storageCollateral, 'currency', planetId)}
+                        value={formatNumberWithUnit(loanConditions.storageCollateral, 'currency', planetId, locale)}
                         icon={<Package className='h-3 w-3' />}
                         valueClassName={'text-muted-foreground'}
                     />
                     <Stat
                         label='Depreciation* (last month)'
-                        value={formatNumberWithUnit(lastMonthlyDepreciation, 'currency', planetId)}
+                        value={formatNumberWithUnit(lastMonthlyDepreciation, 'currency', planetId, locale)}
                         icon={<Trash className='h-3 w-3' />}
                         valueClassName={mutedCashFlowColor(-lastMonthlyDepreciation)}
                     />

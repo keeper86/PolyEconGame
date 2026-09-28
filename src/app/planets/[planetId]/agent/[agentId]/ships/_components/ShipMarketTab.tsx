@@ -23,6 +23,7 @@ import { PostTransportContractDialog } from './PostTransportContractDialog';
 import { ShipConditionRow } from './ShipConditionRow';
 import type { PlanetSummary } from './shipFormatting';
 import type { ShipBuyingOffer, ShipListing, TransportContract } from './shipTypes';
+import { useLocale } from 'next-intl';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
     string,
@@ -78,6 +79,7 @@ export function ShipMarketTab({
     offersLoading: boolean;
     listingsLoading: boolean;
 }): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -180,7 +182,12 @@ export function ShipMarketTab({
                                                 />
                                                 <span>
                                                     Reward{' '}
-                                                    {formatNumberWithUnit(contract.offeredReward, 'currency', planetId)}
+                                                    {formatNumberWithUnit(
+                                                        contract.offeredReward,
+                                                        'currency',
+                                                        planetId,
+                                                        locale,
+                                                    )}
                                                 </span>
                                                 <span>Max {contract.maxDurationInTicks} days</span>
                                             </span>
@@ -295,6 +302,7 @@ export function ShipMarketTab({
                                                                 listing.askPrice,
                                                                 'currency',
                                                                 planetId,
+                                                                locale,
                                                             )}
                                                         </span>
                                                     </>
@@ -371,7 +379,12 @@ export function ShipMarketTab({
                                                 details={
                                                     <span>
                                                         Offered{' '}
-                                                        {formatNumberWithUnit(offer.price, 'currency', planetId)}
+                                                        {formatNumberWithUnit(
+                                                            offer.price,
+                                                            'currency',
+                                                            planetId,
+                                                            locale,
+                                                        )}
                                                     </span>
                                                 }
                                             />

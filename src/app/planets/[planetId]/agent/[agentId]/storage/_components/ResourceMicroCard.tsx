@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { FlowRates, ResourceFlowData } from './resourceFlowNormalizer';
 import { ResourceFlowTooltip } from './ResourceFlowTooltip';
+import { useLocale } from 'next-intl';
 
 type StatusLevel = 'green' | 'yellow' | 'red';
 
@@ -36,6 +37,7 @@ type FlowRowProps = {
 };
 
 function FlowRow({ label, icon, rates, color }: FlowRowProps): React.ReactElement {
+    const locale = useLocale();
     return (
         <Tooltip>
             <TooltipTrigger asChild>
@@ -45,7 +47,7 @@ function FlowRow({ label, icon, rates, color }: FlowRowProps): React.ReactElemen
                         <DivergenceMeter rates={rates} color={color} />
                     </div>
                     <span className='text-[9px] tabular-nums text-muted-foreground/60 w-12 text-right shrink-0'>
-                        {formatNumberWithUnit(rates.lastTickRate, 'none')}
+                        {formatNumberWithUnit(rates.lastTickRate, 'none', undefined, locale)}
                     </span>
                 </div>
             </TooltipTrigger>
@@ -76,6 +78,7 @@ export type MicroCardEntry = {
 };
 
 export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.ReactElement {
+    const locale = useLocale();
     const status = computeStatus(entry.stock, entry.flowData);
 
     return (
@@ -90,7 +93,7 @@ export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.R
             {/* Stock */}
             <div className='text-right'>
                 <span className='text-[11px] font-semibold tabular-nums'>
-                    {formatNumberWithUnit(entry.stock, 'none')}
+                    {formatNumberWithUnit(entry.stock, 'none', undefined, locale)}
                 </span>
             </div>
 

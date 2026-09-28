@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useTour } from '@/components/tour/TourContext';
 import { Spinner } from '@/components/ui/spinner';
 import { Button } from '@/components/ui/button';
+import { useLocale } from 'next-intl';
 
 type Props = {
     agentId: string;
@@ -77,6 +78,7 @@ function LoanRow({
     onRepaid: (amount: number) => void;
     onError: (msg: string) => void;
 }) {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -126,7 +128,7 @@ function LoanRow({
                     </span>
                     <span>
                         Loan Rate {pct.toFixed(1)} % p.a. ·{' '}
-                        {formatNumberWithUnit(monthlyInterest, 'currency', planetId)}/month
+                        {formatNumberWithUnit(monthlyInterest, 'currency', planetId, locale)}/month
                     </span>
                     {loan.maturityTick > 0 && <span>Matures: {mapTickToDate(loan.maturityTick)}</span>}
                     {!loan.earlyRepaymentAllowed && <span className='italic'>No early repayment</span>}
@@ -144,7 +146,7 @@ function LoanRow({
                                 key={fraction}
                                 variant='payback'
                                 label={label}
-                                amount={formatNumberWithUnit(amount, 'units', planetId)}
+                                amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
                                 isFull={fraction === 1}
                                 disabled={
                                     repayMutation.isPending || !canAfford || amount === 0 || !loan.earlyRepaymentAllowed
@@ -165,6 +167,7 @@ function LoanRow({
 }
 
 export default function LoanPanel({ agentId, planetId, deposits }: Props): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { isTourActive, markActionCompleted } = useTour();
@@ -188,7 +191,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
         trpc.requestLoan.mutationOptions({
             onSuccess: (result) => {
                 toast.success(
-                    `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId)} will be credited after this tick.`,
+                    `Loan request successful: ${formatNumberWithUnit(result.grantedAmount, 'currency', planetId, locale)} will be credited after this tick.`,
                 );
 
                 addPending({
@@ -248,7 +251,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     variant='starter'
                                     planetId={planetId}
                                     isFull={true}
-                                    label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId)}`}
+                                    label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId, locale)}`}
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
                                     onClick={() => {
@@ -283,7 +286,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                         <CreditButton
                                             key={label}
                                             label={label}
-                                            amount={formatNumberWithUnit(amount, 'units', planetId)}
+                                            amount={formatNumberWithUnit(amount, 'units', planetId, locale)}
                                             isFull={isFull}
                                             isPending={requestLoanMutation.isPending}
                                             disabled={conditions.maxLoanAmount === 0}
@@ -346,6 +349,7 @@ function OutstandingLoansSection({
     agentId: string;
     planetId: string;
 }) {
+    const locale = useLocale();
     return (
         <Collapsible defaultOpen={false} className={'space-y-2 '} disabled={activeLoans.length === 0}>
             <CollapsibleTrigger
@@ -367,7 +371,7 @@ function OutstandingLoansSection({
                             planetId={planetId}
                             onRepaid={(amount) => {
                                 toast.success(
-                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId)} — loan partially or fully settled.`,
+                                    `Repaid ${formatNumberWithUnit(amount, 'currency', planetId, locale)} — loan partially or fully settled.`,
                                 );
                             }}
                             onError={(msg) => {

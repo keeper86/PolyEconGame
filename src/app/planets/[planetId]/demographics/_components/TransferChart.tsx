@@ -9,6 +9,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
+import { useLocale } from 'next-intl';
 
 type Props = {
     matrix: PopulationTransferMatrix | undefined;
@@ -37,6 +38,7 @@ function mergePairs(rows: Record<string, number>[], keys: string[]): Record<stri
 }
 
 export default function TransferChart({ matrix, viewMode }: Props): React.ReactElement {
+    const locale = useLocale();
     const isSmallScreen = useIsSmallScreen();
 
     const lastOccData = useRef<Record<string, number>[]>([]);
@@ -132,7 +134,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                 <YAxis
                     width={40}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     domain={yDomain}
                 />
                 <Tooltip
@@ -156,13 +158,13 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                                     return (
                                         <div key={entry.dataKey as string} style={{ color: entry.color }}>
                                             {entry.name}: {val > 0 ? '+' : ''}
-                                            {formatNumberWithUnit(val, 'persons')}
+                                            {formatNumberWithUnit(val, 'persons', undefined, locale)}
                                         </div>
                                     );
                                 })}
                                 <div className='mt-1 pt-1 border-t text-muted-foreground'>
                                     Total: {ageTotal > 0 ? '+' : ''}
-                                    {formatNumberWithUnit(ageTotal, 'persons')}
+                                    {formatNumberWithUnit(ageTotal, 'persons', undefined, locale)}
                                 </div>
                             </div>
                         );

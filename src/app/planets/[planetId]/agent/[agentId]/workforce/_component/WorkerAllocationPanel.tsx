@@ -11,6 +11,7 @@ import type { EducationLevelType } from '@/simulation/population/education';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, CheckCircle2, Users } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useLocale } from 'next-intl';
 
 type AllocationTargets = Record<EducationLevelType, number>;
 
@@ -36,6 +37,7 @@ export default function WorkerAllocationPanel({
     allocatedWorkers,
     automateWorkerAllocation,
 }: Props): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -132,7 +134,7 @@ export default function WorkerAllocationPanel({
                     <span className='text-xs text-muted-foreground tabular-nums'>
                         Total target:{' '}
                         <span className='font-medium text-foreground'>
-                            {formatNumberWithUnit(totalTarget, 'persons')}
+                            {formatNumberWithUnit(totalTarget, 'persons', undefined, locale)}
                         </span>
                     </span>
                     <Button size='sm' onClick={handleSave} disabled={automateWorkerAllocation || mutation.isPending}>

@@ -2,6 +2,7 @@
 
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { TooltipProps } from 'recharts';
+import { useLocale } from 'next-intl';
 
 type Props = TooltipProps<number, string> & {
     labelFormatter?: (label: number) => string;
@@ -9,6 +10,7 @@ type Props = TooltipProps<number, string> & {
 };
 
 export function FinancialTooltip({ active, payload, label, labelFormatter, planetId }: Props) {
+    const locale = useLocale();
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -56,9 +58,9 @@ export function FinancialTooltip({ active, payload, label, labelFormatter, plane
                 >
                     <span style={{ color: combinedEntry.color }}>{combinedEntry.name}</span>
                     <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {formatNumberWithUnit(combinedEntry.low, 'currency', planetId)}
+                        {formatNumberWithUnit(combinedEntry.low, 'currency', planetId, locale)}
                         {' — '}
-                        {formatNumberWithUnit(combinedEntry.high, 'currency', planetId)}
+                        {formatNumberWithUnit(combinedEntry.high, 'currency', planetId, locale)}
                     </span>
                 </div>
             ) : null}
@@ -76,7 +78,7 @@ export function FinancialTooltip({ active, payload, label, labelFormatter, plane
                     <span style={{ color: entry.color }}>{entry.name}</span>
                     <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {entry.value !== null && entry.value !== undefined
-                            ? formatNumberWithUnit(entry.value, 'currency', planetId)
+                            ? formatNumberWithUnit(entry.value, 'currency', planetId, locale)
                             : ''}
                     </span>
                 </div>

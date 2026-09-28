@@ -17,6 +17,7 @@ import { computeStorageThroughputMass } from '@/simulation/planet/facility';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { formatNumberWithUnit } from '@/lib/utils';
+import { useLocale } from 'next-intl';
 
 function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
     const groups = useMemo(() => {
@@ -70,14 +71,13 @@ function ShipFleet({
     );
 }
 
-function fmt(n: number): string {
-    return formatNumberWithUnit(n, 'units');
-}
 function pct(n: number): string {
     return `${Math.round(Math.min(n, 999) * 100)}%`;
 }
 
 function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
+    const locale = useLocale();
+    const fmt = (n: number) => formatNumberWithUnit(n, 'units', undefined, locale);
     const hr = assets.humanResourcesDepartment;
     const stoDept = assets.storage.department;
 

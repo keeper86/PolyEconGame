@@ -37,3 +37,6 @@ export const resolveLocale = (cookieValue: unknown, acceptLanguage: string | nul
     }
     return parseAcceptLanguage(acceptLanguage) ?? defaultLocale;
 };
+
+export const getDecimalSeparator = (locale: Locale): string =>
+    new Intl.NumberFormat(locale).format(1.5).replace(/\d/g, '');

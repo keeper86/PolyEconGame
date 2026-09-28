@@ -25,8 +25,10 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { StorageBalanceRow } from './StorageBalanceRow';
 import { StorageBufferGauge } from './StorageBufferGauge';
 import { StorageStarvationBar } from './StorageStarvationBar';
+import { useLocale } from 'next-intl';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
+    const locale = useLocale();
     const used = usageOfShell(shell);
     const capacity = { volume: shell.capacity.volume * shell.maxScale, mass: shell.capacity.mass * shell.maxScale };
     const volumePct = capacity.volume > 0 ? Math.min(1, used.volume / capacity.volume) : 0;
@@ -45,7 +47,8 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
                     <span>Volume used</span>
                     <span className='tabular-nums'>
-                        {formatNumberWithUnit(used.volume, 'm3')} / {formatNumberWithUnit(capacity.volume, 'm3')}
+                        {formatNumberWithUnit(used.volume, 'm3', undefined, locale)} /{' '}
+                        {formatNumberWithUnit(capacity.volume, 'm3', undefined, locale)}
                     </span>
                 </div>
                 <Progress value={volumePct * 100} className={`h-2 ${volumeTone}`} />
@@ -54,7 +57,8 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
                 <div className='flex flex-row items-center justify-between text-xs text-muted-foreground'>
                     <span>Mass used</span>
                     <span className='tabular-nums'>
-                        {formatNumberWithUnit(used.mass, 'tonnes')} / {formatNumberWithUnit(capacity.mass, 'tonnes')}
+                        {formatNumberWithUnit(used.mass, 'tonnes', undefined, locale)} /{' '}
+                        {formatNumberWithUnit(capacity.mass, 'tonnes', undefined, locale)}
                     </span>
                 </div>
                 <Progress value={massPct * 100} className={`h-2 ${massTone}`} />
@@ -68,7 +72,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
                         <div key={name} className='flex flex-row items-center justify-between text-xs'>
                             <span>{name}</span>
                             <span className='tabular-nums text-muted-foreground'>
-                                {formatNumberWithUnit(entry.quantity, 'units')}
+                                {formatNumberWithUnit(entry.quantity, 'units', undefined, locale)}
                             </span>
                         </div>
                     ))}

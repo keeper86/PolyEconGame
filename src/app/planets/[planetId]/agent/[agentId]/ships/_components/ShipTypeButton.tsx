@@ -8,6 +8,7 @@ import type { ConstructionShipType, PassengerShipType, TransportShipType } from 
 import { Clock, Package, Users, Zap } from 'lucide-react';
 import Image from 'next/image';
 import React from 'react';
+import { useLocale } from 'next-intl';
 
 export function ShipTypeButton({
     shipType,
@@ -18,6 +19,7 @@ export function ShipTypeButton({
     selected: boolean;
     onSelect: () => void;
 }): React.ReactElement {
+    const locale = useLocale();
     return (
         <button
             type='button'
@@ -46,13 +48,13 @@ export function ShipTypeButton({
                 {shipType.type === 'transport' ? (
                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                         <Package className='h-2.5 w-2.5' />
-                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3')}
+                        {formatNumberWithUnit(shipType.cargoSpecification.volume, 'm3', undefined, locale)}
                     </Badge>
                 ) : null}
                 {shipType.type === 'passenger' ? (
                     <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>
                         <Users className='h-2.5 w-2.5' />
-                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons')}
+                        {formatNumberWithUnit(shipType.passengerCapacity, 'persons', undefined, locale)}
                     </Badge>
                 ) : null}
                 <Badge variant='outline' className='text-[10px] px-1 py-0 gap-0.5'>

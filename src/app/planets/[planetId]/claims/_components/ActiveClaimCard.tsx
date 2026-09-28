@@ -15,6 +15,7 @@ import React, { useEffect, useState } from 'react';
 import { ClaimCardHeader } from './ClaimCardHeader';
 import { ClaimSizeForm } from './ClaimSizeForm';
 import { resourceNameToSlug } from '@/app/planets/[planetId]/agent/[agentId]/market/_components/marketHelpers';
+import { useLocale } from 'next-intl';
 
 function formatDepletion(ticks: number | null): string {
     if (ticks === null) {
@@ -40,6 +41,7 @@ export function ActiveClaimCard({
     agentId: string;
     planetId: string;
 }): React.ReactElement {
+    const locale = useLocale();
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const [showExpand, setShowExpand] = useState(false);
@@ -102,15 +104,15 @@ export function ActiveClaimCard({
             <ClaimCardHeader resourceName={claim.resourceName} renewable={summary.renewable} />
             <CardContent className='flex flex-col gap-3 flex-1'>
                 <p className='text-xs text-muted-foreground'>
-                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units')} of{' '}
-                    {formatNumberWithUnit(summary.totalCapacity, 'units')}
+                    Available: {formatNumberWithUnit(summary.availableCapacity, 'units', undefined, locale)} of{' '}
+                    {formatNumberWithUnit(summary.totalCapacity, 'units', undefined, locale)}
                 </p>
                 <div className='space-y-1'>
                     <div className='flex justify-between text-xs'>
                         <span className='text-muted-foreground'>Stock</span>
                         <span className='font-medium'>
-                            {formatNumberWithUnit(claim.quantity, 'units')} /{' '}
-                            {formatNumberWithUnit(claim.maximumCapacity, 'units')} ({fillPct}%)
+                            {formatNumberWithUnit(claim.quantity, 'units', undefined, locale)} /{' '}
+                            {formatNumberWithUnit(claim.maximumCapacity, 'units', undefined, locale)} ({fillPct}%)
                         </span>
                     </div>
                     <div className='h-1.5 w-full rounded-full bg-secondary'>
@@ -125,7 +127,9 @@ export function ActiveClaimCard({
                 <div className='grid grid-cols-2 gap-2 text-xs'>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Extraction / tick</p>
-                        <p className='font-medium'>{formatNumberWithUnit(claim.extractionRatePerTick, 'units')}</p>
+                        <p className='font-medium'>
+                            {formatNumberWithUnit(claim.extractionRatePerTick, 'units', undefined, locale)}
+                        </p>
                     </div>
                     <div className='space-y-0.5'>
                         <p className='text-muted-foreground'>Depletion</p>
@@ -141,13 +145,13 @@ export function ActiveClaimCard({
                             <div className='space-y-0.5'>
                                 <p className='text-muted-foreground'>Cost / tick</p>
                                 <p className='font-medium'>
-                                    {formatNumberWithUnit(claim.costPerTick, 'currency', planetId)}
+                                    {formatNumberWithUnit(claim.costPerTick, 'currency', planetId, locale)}
                                 </p>
                             </div>
                             <div className='space-y-0.5'>
                                 <p className='text-muted-foreground'>Regen / tick</p>
                                 <p className='font-medium text-green-600 dark:text-green-400'>
-                                    +{formatNumberWithUnit(claim.regenerationRate, 'units')}
+                                    +{formatNumberWithUnit(claim.regenerationRate, 'units', undefined, locale)}
                                 </p>
                             </div>
                         </>

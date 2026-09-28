@@ -48,6 +48,7 @@ import {
     type SellVolumePresetType,
 } from './StrategyPresets';
 import { useSellSectionMutations } from './useSellSectionMutations';
+import { useLocale } from 'next-intl';
 
 type SellStatusKind =
     | 'offering'
@@ -148,6 +149,7 @@ export default function SellSection({
     onLocalChange,
     planetId,
 }: SellSectionProps): React.ReactElement {
+    const locale = useLocale();
     const {
         saveSell: onSaveSell,
         resetSell: onResetSell,
@@ -219,7 +221,7 @@ export default function SellSection({
             <div className='space-y-0.5'>
                 <Stat
                     label='Production'
-                    value={`${isFacilityOutput ? formatNumberWithUnit(producedPerTick, unit) : '-'}/day`}
+                    value={`${isFacilityOutput ? formatNumberWithUnit(producedPerTick, unit, undefined, locale) : '-'}/day`}
                     bold
                 />
                 {isFacilityOutput &&
@@ -234,14 +236,14 @@ export default function SellSection({
                                 key={facility.id}
                                 icon={<Package className='h-3 w-3' />}
                                 label={facility.name}
-                                value={`${formatNumberWithUnit(rate, unit)}/day`}
+                                value={`${formatNumberWithUnit(rate, unit, undefined, locale)}/day`}
                                 indent
                             />
                         );
                     })}
             </div>
         ),
-        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities],
+        [isFacilityOutput, unit, producedPerTick, resourceName, assets.productionFacilities, locale],
     );
 
     const overlay = (message: string | null | undefined) =>
@@ -468,7 +470,7 @@ export default function SellSection({
                                 label='Stock'
                                 value={
                                     isFacilityOutput && producedPerTick > 0
-                                        ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days')}`
+                                        ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days', undefined, locale)}`
                                         : '—'
                                 }
                                 bold
@@ -476,13 +478,25 @@ export default function SellSection({
 
                             <Stat
                                 label='Last offered'
-                                value={formatNumberWithUnit(offer?.diagnostics?.effectiveQuantity, unit)}
+                                value={formatNumberWithUnit(
+                                    offer?.diagnostics?.effectiveQuantity,
+                                    unit,
+                                    undefined,
+                                    locale,
+                                )}
                             />
                             <Stat
                                 label='Production'
-                                value={isFacilityOutput ? `${formatNumberWithUnit(producedPerTick, unit)}/day` : '—'}
+                                value={
+                                    isFacilityOutput
+                                        ? `${formatNumberWithUnit(producedPerTick, unit, undefined, locale)}/day`
+                                        : '—'
+                                }
                             />
-                            <Stat label='Last sold' value={formatNumberWithUnit(offer?.lastSold, unit)} />
+                            <Stat
+                                label='Last sold'
+                                value={formatNumberWithUnit(offer?.lastSold, unit, undefined, locale)}
+                            />
                             <Stat
                                 label='Smoothed sell-through'
                                 value={
@@ -493,7 +507,7 @@ export default function SellSection({
                             />
                             <Stat
                                 label='Last revenue'
-                                value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId)}
+                                value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId, locale)}
                             />
                         </div>
 
@@ -690,7 +704,12 @@ export default function SellSection({
                                                                     })
                                                                 }
                                                             >
-                                                                {formatNumberWithUnit(price, 'currency', planetId)}
+                                                                {formatNumberWithUnit(
+                                                                    price,
+                                                                    'currency',
+                                                                    planetId,
+                                                                    locale,
+                                                                )}
                                                             </Button>
                                                         ))}
                                                 </span>

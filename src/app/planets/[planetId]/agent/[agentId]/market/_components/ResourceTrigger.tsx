@@ -1,3 +1,5 @@
+'use client';
+
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
@@ -7,6 +9,7 @@ import { getColumnClasses } from './columnConfig';
 import { getResourceByName } from './marketHelpers';
 import type { ResourceTriggerProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
+import { useLocale } from 'next-intl';
 
 function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
     for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
@@ -29,6 +32,7 @@ export default function ResourceTrigger({
     visibleColumns,
     planetId,
 }: ResourceTriggerProps): React.ReactElement {
+    const locale = useLocale();
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -37,25 +41,33 @@ export default function ResourceTrigger({
         const qtyUnit = resource ? resourceFormToUnit(resource.form) : 'units';
         switch (columnId) {
             case 'currentStorage':
-                return storageQuantity !== undefined ? formatNumberWithUnit(storageQuantity, qtyUnit) : null;
+                return storageQuantity !== undefined
+                    ? formatNumberWithUnit(storageQuantity, qtyUnit, undefined, locale)
+                    : null;
             case 'clearingPrice':
-                return overviewRow ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.clearingPrice, 'currency', planetId, locale)
+                    : null;
             case 'totalProduction':
                 if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     return null;
                 }
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.totalProduction, qtyUnit, undefined, locale)
+                    : null;
             case 'totalConsumption':
                 if (name.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                     return null;
                 }
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit) : null;
+                return overviewRow
+                    ? formatNumberWithUnit(overviewRow.totalConsumption, qtyUnit, undefined, locale)
+                    : null;
             case 'totalSupply':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSupply, qtyUnit, undefined, locale) : null;
             case 'totalDemand':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalDemand, qtyUnit, undefined, locale) : null;
             case 'totalSold':
-                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit) : null;
+                return overviewRow ? formatNumberWithUnit(overviewRow.totalSold, qtyUnit, undefined, locale) : null;
             case 'priceCostRatio': {
                 if (!overviewRow) {
                     return null;

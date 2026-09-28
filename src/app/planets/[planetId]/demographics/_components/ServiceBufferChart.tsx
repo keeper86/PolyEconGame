@@ -12,6 +12,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_WEALTH } from './demographicsTypes';
+import { useLocale } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -60,6 +61,7 @@ function makeTooltip(
         payload?: { payload: ChartRow }[];
         label?: number;
     }) {
+        const locale = useLocale();
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -85,7 +87,7 @@ function makeTooltip(
                             </span>
                             <span className='ml-auto pl-2 text-muted-foreground'>
                                 {(ratio * 100).toFixed(0)}%{' · '}
-                                {formatNumberWithUnit(ratio * bufferTargetTicks, 'days')}
+                                {formatNumberWithUnit(ratio * bufferTargetTicks, 'days', undefined, locale)}
                             </span>
                         </div>
                     );
@@ -183,6 +185,7 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 }
 
 export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Props): React.ReactElement {
+    const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
@@ -257,7 +260,7 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
                 <YAxis
                     width={40}
                     tick={{ fontSize: 10 }}
-                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons')}
+                    tickFormatter={(v) => formatNumberWithUnit(v as number, 'persons', undefined, locale)}
                     domain={yDomain}
                 />
                 {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}

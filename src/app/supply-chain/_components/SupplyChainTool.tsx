@@ -27,6 +27,7 @@ import { solveSupplyChain, type SolverResult, type SolverObjective } from './sol
 import { computeBottlenecks } from './bottleneck';
 import { LiveStateTab } from './LiveStateTab';
 import PricingLab from './pricingLab/PricingLab';
+import { useLocale } from 'next-intl';
 function fmt(n: number): string {
     if (Math.abs(n) >= 1_000_000) {
         return `${(n / 1_000_000).toFixed(1)}M`;
@@ -657,6 +658,7 @@ function SolverTab({
 }
 
 export default function SupplyChainTool() {
+    const locale = useLocale();
     const [scales, setScales] = useState<Record<string, number>>({});
     const [population, setPopulation] = useState<number>(100_000);
     const [levelFilter, setLevelFilter] = useState<string>('all');
@@ -734,7 +736,8 @@ export default function SupplyChainTool() {
                     />
                 </div>
                 <span className='text-sm text-muted-foreground'>
-                    Service demand: {formatNumberWithUnit(population, 'units')} units/tick per service
+                    Service demand: {formatNumberWithUnit(population, 'units', undefined, locale)} units/tick per
+                    service
                 </span>
                 <div className='ml-auto flex items-center gap-2'>
                     <Button variant='outline' size='sm' onClick={incrementAllScales}>
