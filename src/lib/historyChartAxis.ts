@@ -64,7 +64,7 @@ export function blendLive(previous: number | undefined, live: number, progress: 
         return live;
     }
     const weight = Math.min(1, Math.max(0, progress));
-    return previous * (1 - weight) + live * weight;
+    return previous * (1 - weight) + live;
 }
 
 export function yearCentre(bucket: number): number {

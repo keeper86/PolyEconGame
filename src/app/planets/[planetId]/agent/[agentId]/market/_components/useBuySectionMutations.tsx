@@ -335,23 +335,23 @@ export function useBuySectionMutations({
     );
 
     const buyAutomationOverlay = buyAutomationSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingBuyAutomationAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
-    const buyPriceOverlay = buyPriceSaving ? 'Saving…' : pendingBuyPriceAction ? 'Awaiting next day…' : null;
+    const buyPriceOverlay = buyPriceSaving ? t('saving') : pendingBuyPriceAction ? t('awaitingNextDay') : null;
 
     const buyPricingConfigOverlay = buyPricingConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingBuyPricingConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     const buyVolumeConfigOverlay = buyVolumeConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingBuyVolumeConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     return {

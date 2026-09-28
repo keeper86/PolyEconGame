@@ -312,23 +312,23 @@ export function useSellSectionMutations({
     );
 
     const sellAutomationOverlay = sellAutomationSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellAutomationAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
-    const sellPriceOverlay = sellPriceSaving ? 'Saving…' : pendingSellPriceAction ? 'Awaiting next day…' : null;
+    const sellPriceOverlay = sellPriceSaving ? t('saving') : pendingSellPriceAction ? t('awaitingNextDay') : null;
 
     const sellPricingConfigOverlay = sellPricingConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellPricingConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     const sellVolumeConfigOverlay = sellVolumeConfigSaving
-        ? 'Saving…'
+        ? t('saving')
         : pendingSellVolumeConfigAction
-          ? 'Awaiting next day…'
+          ? t('awaitingNextDay')
           : null;
 
     return {

@@ -65,7 +65,7 @@ import {
     type PricingPresetType,
 } from './StrategyPresets';
 import { useBuySectionMutations } from './useBuySectionMutations';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type BuyStatusKind =
     | 'filled'
@@ -192,6 +192,7 @@ export default function BuySection({
     ships,
 }: BuySectionProps): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Market');
     const {
         saveBuy: onSaveBuy,
         resetBuy: onResetBuy,
@@ -677,7 +678,7 @@ export default function BuySection({
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || buyPricingConfigSaving
                                             }
                                         >
-                                            {buyPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                            {buyPricingConfigSaving ? tr('saving') : tr('saveConfig')}
                                         </Button>
                                     </div>
 
@@ -757,7 +758,7 @@ export default function BuySection({
                                                 onClick={onSaveBuy}
                                                 disabled={!hasDirtyBuyFields || !!hasValidationErrors || buyPriceSaving}
                                             >
-                                                {buyPriceSaving ? 'Setting…' : 'Set'}
+                                                {buyPriceSaving ? tr('setting') : tr('set')}
                                             </Button>
                                         </div>
 
@@ -1030,7 +1031,7 @@ export default function BuySection({
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || buyVolumeConfigSaving
                                             }
                                         >
-                                            {buyVolumeConfigSaving ? 'Saving…' : 'Save Config'}
+                                            {buyVolumeConfigSaving ? tr('saving') : tr('saveConfig')}
                                         </Button>
                                     </div>
 

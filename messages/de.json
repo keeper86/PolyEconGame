@@ -154,7 +154,17 @@
         "invalidBidPrice": "Kaufprüfung fehlgeschlagen: Ungültiger Gebotspreis.",
         "invalidOfferPrice": "Verkaufsprüfung fehlgeschlagen: Ungültiger Angebotspreis.",
         "depositBorrowPrefix": "Du kannst Geld aufnehmen auf der ",
-        "depositBorrowLink": "Finanzseite"
+        "depositBorrowLink": "Finanzseite",
+        "saving": "Speichern…",
+        "awaitingNextDay": "Warte auf nächsten Tag…"
+    },
+    "Market": {
+        "saveConfig": "Konfiguration speichern",
+        "saving": "Speichern…",
+        "setting": "Setze…",
+        "set": "Setzen",
+        "orderBooks": "Orderbücher",
+        "resource": "Ressource"
     },
     "Common": {
         "waitingForData": "Warte auf Simulationsdaten…",

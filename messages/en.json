@@ -154,7 +154,17 @@
         "invalidBidPrice": "Buy validation failed: Invalid bid price.",
         "invalidOfferPrice": "Sell validation failed: Invalid offer price.",
         "depositBorrowPrefix": "You can borrow funds on the ",
-        "depositBorrowLink": "Financial page"
+        "depositBorrowLink": "Financial page",
+        "saving": "Saving…",
+        "awaitingNextDay": "Awaiting next day…"
+    },
+    "Market": {
+        "saveConfig": "Save Config",
+        "saving": "Saving…",
+        "setting": "Setting…",
+        "set": "Set",
+        "orderBooks": "Order Books",
+        "resource": "Resource"
     },
     "Common": {
         "waitingForData": "Waiting for simulation data…",

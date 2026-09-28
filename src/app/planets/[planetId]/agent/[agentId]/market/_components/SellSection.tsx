@@ -48,7 +48,7 @@ import {
     type SellVolumePresetType,
 } from './StrategyPresets';
 import { useSellSectionMutations } from './useSellSectionMutations';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { termFor } from '@/i18n/terms';
 
 type SellStatusKind =
@@ -151,6 +151,7 @@ export default function SellSection({
     planetId,
 }: SellSectionProps): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Market');
     const {
         saveSell: onSaveSell,
         resetSell: onResetSell,
@@ -642,7 +643,7 @@ export default function SellSection({
                                                 !hasPricingConfigDirty || !hasAnyPricingValue || sellPricingConfigSaving
                                             }
                                         >
-                                            {sellPricingConfigSaving ? 'Saving…' : 'Save Config'}
+                                            {sellPricingConfigSaving ? tr('saving') : tr('saveConfig')}
                                         </Button>
                                     </div>
 
@@ -724,7 +725,7 @@ export default function SellSection({
                                                     !hasDirtySellFields || !!hasValidationErrors || sellPriceSaving
                                                 }
                                             >
-                                                {sellPriceSaving ? 'Setting…' : 'Set'}
+                                                {sellPriceSaving ? tr('setting') : tr('set')}
                                             </Button>
                                         </div>
 
@@ -855,7 +856,7 @@ export default function SellSection({
                                                 !hasVolumeConfigDirty || !hasAnyVolumeValue || sellVolumeConfigSaving
                                             }
                                         >
-                                            {sellVolumeConfigSaving ? 'Saving…' : 'Save Config'}
+                                            {sellVolumeConfigSaving ? tr('saving') : tr('saveConfig')}
                                         </Button>
                                     </div>
 
