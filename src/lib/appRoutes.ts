@@ -1,10 +1,12 @@
 import {
     type LucideIcon,
+    Building2,
     EuroIcon,
     FileText,
     FlaskConical,
     Gamepad,
     Home,
+    Landmark,
     Mail,
     Network,
     Package,
@@ -13,14 +15,18 @@ import {
     Users,
     Warehouse,
 } from 'lucide-react';
+import { GiAxeInStump } from 'react-icons/gi';
 import { GoRocket } from 'react-icons/go';
 
 import type { Route } from 'nextjs-routes';
 import type { IconType } from 'react-icons';
+import type en from '../../messages/en.json';
+
+export type NavLabel = keyof typeof en.Nav;
 
 export type RouteMetadata = {
     path: Exclude<Route['pathname'], `/api/${string}`>;
-    label: string;
+    label: NavLabel;
     icon?: LucideIcon | IconType;
     isPublic?: boolean;
     description?: string;
@@ -148,8 +154,8 @@ export function getSecondaryNavRoutes(): RouteMetadata[] {
 
 export type AgentSubPage = {
     segment: string;
-    label: string;
-    icon: LucideIcon | typeof GoRocket;
+    label: NavLabel;
+    icon: LucideIcon | IconType;
 };
 
 export const AGENT_SUB_PAGES: AgentSubPage[] = [
@@ -159,4 +165,11 @@ export const AGENT_SUB_PAGES: AgentSubPage[] = [
     { segment: 'storage', label: 'Storage', icon: Warehouse },
     { segment: 'market', label: 'Market', icon: ShoppingCartIcon },
     { segment: 'ships', label: 'Ships', icon: GoRocket },
+];
+
+export const PLANET_SUB_PAGES: AgentSubPage[] = [
+    { segment: 'demographics', label: 'Demographics', icon: Users },
+    { segment: 'central-bank', label: 'Central Bank', icon: Landmark },
+    { segment: 'claims', label: 'Resources', icon: GiAxeInStump },
+    { segment: 'companies', label: 'Companies', icon: Building2 },
 ];

@@ -1,12 +1,41 @@
 import { describe, expect, it } from 'vitest';
 import de from '../../messages/terms.de.json';
 import en from '../../messages/terms.en.json';
+import { ALL_PRODUCTION_FACILITY_ENTRIES, facilityByName } from '@/simulation/planet/productionFacilities';
+import {
+    HR_DEPARTMENT_NAME,
+    LOGISTICS_DEPARTMENT_NAME,
+    researchAndDevelopmentFacilityType,
+    shipConstructionFacilityType,
+    TRAINING_CENTER_NAME,
+} from '@/simulation/planet/specialFacilities';
 import { RESOURCES_BY_NAME } from '@/simulation/planet/resourceCatalog';
 import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
+import { constructionShipType, shiptypes } from '@/simulation/ships/ships';
 import { termFor } from './terms';
 
 const SHIP_CATEGORIES = ['transport', 'construction', 'passenger'];
+const LICENSE_TYPES = ['commercial', 'workforce'];
+
+const productionFacilityNames: string[] = Object.values(ALL_PRODUCTION_FACILITY_ENTRIES).map(
+    (entry) => entry.template.name,
+);
+
+const specialFacilityNames = [
+    HR_DEPARTMENT_NAME,
+    LOGISTICS_DEPARTMENT_NAME,
+    TRAINING_CENTER_NAME,
+    researchAndDevelopmentFacilityType('catalog', 'preview').name,
+    shipConstructionFacilityType('catalog', 'preview').name,
+];
+
+const shipTypeNames = [
+    constructionShipType.name,
+    ...Object.values(shiptypes).flatMap((category) =>
+        Object.values(category).map((shipType) => (shipType as { name: string }).name),
+    ),
+];
 
 describe('term catalogs', () => {
     it('keeps every locale in sync with the default locale', () => {
@@ -23,6 +52,23 @@ describe('term catalogs', () => {
         const missing = [...OCCUPATIONS, ...educationLevelKeys, ...SHIP_CATEGORIES].filter((name) => !(name in de));
 
         expect(missing).toEqual([]);
+    });
+
+    it('translates every facility name', () => {
+        const missing = [...productionFacilityNames, ...specialFacilityNames].filter((name) => !(name in de));
+
+        expect(missing).toEqual([]);
+    });
+
+    it('translates every ship type and license type', () => {
+        const missing = [...shipTypeNames, ...LICENSE_TYPES].filter((name) => !(name in de));
+
+        expect(missing).toEqual([]);
+    });
+
+    it('resolves facility names through the catalog rather than falling back', () => {
+        expect(facilityByName.has('Oil Well')).toBe(true);
+        expect(termFor('de', 'Oil Well')).toBe('Ölquelle');
     });
 
     it('falls back to the untranslated name', () => {

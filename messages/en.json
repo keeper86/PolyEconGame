@@ -38,5 +38,50 @@
     "Units": {
         "day": "day",
         "days": "days"
+    },
+    "Nav": {
+        "Enterprise Engine": "Enterprise Engine",
+        "Paddle War": "Paddle War",
+        "Account": "Account",
+        "Messages": "Messages",
+        "Imprint": "Imprint",
+        "Simulation Model": "Simulation Model",
+        "Supply Chain Simulator": "Supply Chain Simulator",
+        "Finances": "Finances",
+        "Workforce": "Workforce",
+        "Production": "Production",
+        "Storage": "Storage",
+        "Market": "Market",
+        "Ships": "Ships",
+        "Planets": "Planets",
+        "Demographics": "Demographics",
+        "Central Bank": "Central Bank",
+        "Resources": "Resources",
+        "Companies": "Companies"
+    },
+    "Sidebar": {
+        "login": "Login",
+        "logout": "Log out",
+        "loading": "Loading…"
+    },
+    "ThemeToggle": {
+        "toggle": "Toggle theme",
+        "light": "Light",
+        "dark": "Dark",
+        "system": "System"
+    },
+    "Login": {
+        "pageTitle": "Login",
+        "title": "Sign in to play",
+        "action": "Login / Register"
+    },
+    "Footer": {
+        "ticker": "Simulation event ticker",
+        "enterFullscreen": "Enter fullscreen",
+        "exitFullscreen": "Exit fullscreen"
+    },
+    "Metadata": {
+        "title": "Enterprise Engine",
+        "description": "Simulate and manage a company in a dynamic economic environment."
     }
 }

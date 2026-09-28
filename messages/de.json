@@ -38,5 +38,50 @@
     "Units": {
         "day": "Tag",
         "days": "Tage"
+    },
+    "Nav": {
+        "Enterprise Engine": "Enterprise Engine",
+        "Paddle War": "Paddle War",
+        "Account": "Konto",
+        "Messages": "Nachrichten",
+        "Imprint": "Impressum",
+        "Simulation Model": "Simulationsmodell",
+        "Supply Chain Simulator": "Lieferketten-Simulator",
+        "Finances": "Finanzen",
+        "Workforce": "Arbeitskräfte",
+        "Production": "Produktion",
+        "Storage": "Lager",
+        "Market": "Markt",
+        "Ships": "Schiffe",
+        "Planets": "Planeten",
+        "Demographics": "Demografie",
+        "Central Bank": "Zentralbank",
+        "Resources": "Ressourcen",
+        "Companies": "Unternehmen"
+    },
+    "Sidebar": {
+        "login": "Anmelden",
+        "logout": "Abmelden",
+        "loading": "Lädt…"
+    },
+    "ThemeToggle": {
+        "toggle": "Design wechseln",
+        "light": "Hell",
+        "dark": "Dunkel",
+        "system": "System"
+    },
+    "Login": {
+        "pageTitle": "Anmeldung",
+        "title": "Zum Spielen anmelden",
+        "action": "Anmelden / Registrieren"
+    },
+    "Footer": {
+        "ticker": "Simulationsereignis-Ticker",
+        "enterFullscreen": "Vollbild aktivieren",
+        "exitFullscreen": "Vollbild beenden"
+    },
+    "Metadata": {
+        "title": "Enterprise Engine",
+        "description": "Simuliere und führe ein Unternehmen in einem dynamischen wirtschaftlichen Umfeld."
     }
 }

@@ -4,6 +4,7 @@ import { LoginCard } from '@/components/client/LoginCard';
 import { Page } from '@/components/client/Page';
 import { resolveBankruptcyForUser } from '@/server/bankruptcy';
 import { db } from '@/server/db';
+import { getTranslations } from 'next-intl/server';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
 
@@ -11,8 +12,9 @@ export default async function LandingPage() {
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.id) {
+        const t = await getTranslations('Login');
         return (
-            <Page title='Login'>
+            <Page title={t('pageTitle')}>
                 <LoginCard />
             </Page>
         );

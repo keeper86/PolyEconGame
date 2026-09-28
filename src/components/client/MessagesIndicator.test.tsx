@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const h = vi.hoisted(() => ({
@@ -27,19 +28,19 @@ describe('MessagesIndicator', () => {
     it('renders nothing when logged out', () => {
         h.status.current = 'unauthenticated';
 
-        const { container } = render(<MessagesIndicator />);
+        const { container } = renderWithIntl(<MessagesIndicator />);
 
         expect(container).toBeEmptyDOMElement();
     });
 
     it('links to the messages page', () => {
-        render(<MessagesIndicator />);
+        renderWithIntl(<MessagesIndicator />);
 
         expect(screen.getByRole('link', { name: 'Messages' })).toHaveAttribute('href', '/messages');
     });
 
     it('hides the badge when there are no unread messages', () => {
-        render(<MessagesIndicator />);
+        renderWithIntl(<MessagesIndicator />);
 
         expect(screen.queryByText('0')).not.toBeInTheDocument();
     });
@@ -47,7 +48,7 @@ describe('MessagesIndicator', () => {
     it('shows the number of unread messages', () => {
         h.unread.current = 3;
 
-        render(<MessagesIndicator />);
+        renderWithIntl(<MessagesIndicator />);
 
         expect(screen.getByText('3')).toBeInTheDocument();
     });
@@ -55,7 +56,7 @@ describe('MessagesIndicator', () => {
     it('clamps the badge to 99+', () => {
         h.unread.current = 250;
 
-        render(<MessagesIndicator />);
+        renderWithIntl(<MessagesIndicator />);
 
         expect(screen.getByText('99+')).toBeInTheDocument();
     });

@@ -6,13 +6,16 @@ import de from '../../messages/de.json';
 import en from '../../messages/en.json';
 import { useErrorMessage } from './errors';
 
-const wrapper =
-    (locale: 'en' | 'de') =>
-    ({ children }: { children: ReactNode }) => (
-        <NextIntlClientProvider locale={locale} timeZone='UTC' messages={locale === 'de' ? de : en}>
-            {children}
-        </NextIntlClientProvider>
-    );
+const wrapper = (locale: 'en' | 'de') => {
+    function Wrapper({ children }: { children: ReactNode }) {
+        return (
+            <NextIntlClientProvider locale={locale} timeZone='UTC' messages={locale === 'de' ? de : en}>
+                {children}
+            </NextIntlClientProvider>
+        );
+    }
+    return Wrapper;
+};
 
 const domainError = (code: string, params: Record<string, string | number> = {}) =>
     ({ data: { domainError: { code, params } } }) as unknown as Error;
@@ -50,4 +53,3 @@ describe('useErrorMessage', () => {
         expect(result.current('nonsense')).toBe('Ein unerwarteter Fehler ist aufgetreten');
     });
 });
-import { screen } from '@testing-library/react';

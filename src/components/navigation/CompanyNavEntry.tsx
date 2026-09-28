@@ -3,6 +3,7 @@ import { usePlanetId } from '@/hooks/usePlanetId';
 import { AGENT_SUB_PAGES } from '@/lib/appRoutes';
 import { useTRPC } from '@/lib/trpc';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,6 +17,7 @@ export function CompanyNavEntry() {
     const activePlanetId = usePlanetId();
     const { isMobile, setOpenMobile } = useSidebar();
     const trpc = useTRPC();
+    const t = useTranslations('Nav');
 
     const { agentId } = useAgentId();
 
@@ -90,12 +92,12 @@ export function CompanyNavEntry() {
                                 {href ? (
                                     <Link href={href}>
                                         <Icon width={14} height={14} />
-                                        {label}
+                                        {t(label)}
                                     </Link>
                                 ) : (
                                     <span className='flex items-center gap-2 text-muted-foreground'>
                                         <Icon width={14} height={14} />
-                                        {label}
+                                        {t(label)}
                                     </span>
                                 )}
                             </SidebarMenuButton>

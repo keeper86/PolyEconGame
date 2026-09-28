@@ -13,7 +13,7 @@ import BackToTopButton from '@/components/ui/BackToTopButton';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
 import { getServerSession } from 'next-auth';
 import { Geist, Geist_Mono } from 'next/font/google';
 import type { ReactNode } from 'react';
@@ -34,10 +34,13 @@ const geistMono = Geist_Mono({
     display: 'swap',
 });
 
-export const metadata: Metadata = {
-    title: 'Enterprise Engine',
-    description: 'Simulate and manage a company in a dynamic economic environment.',
-};
+export async function generateMetadata(): Promise<Metadata> {
+    const t = await getTranslations('Metadata');
+    return {
+        title: t('title'),
+        description: t('description'),
+    };
+}
 
 export default async function RootLayout({
     children,

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useMessageCountPolling, useUnreadMessageCount } from '@/hooks/useMessages';
 import { APP_ROUTES } from '@/lib/appRoutes';
 import { Mail } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 
@@ -11,6 +12,7 @@ export function MessagesIndicator() {
     const loggedIn = useSession().status === 'authenticated';
     const unreadCount = useUnreadMessageCount();
     useMessageCountPolling();
+    const t = useTranslations('Nav');
 
     if (!loggedIn) {
         return null;
@@ -19,7 +21,7 @@ export function MessagesIndicator() {
     return (
         <Link
             href={APP_ROUTES.messages.path}
-            aria-label='Messages'
+            aria-label={t('Messages')}
             className='relative flex items-center rounded-md p-1 hover:bg-muted'
         >
             <Mail className='h-5 w-5 text-muted-foreground' />

@@ -50,7 +50,8 @@ export default function Footer() {
     const params = useParams();
     const planetId = typeof params?.planetId === 'string' ? params.planetId : undefined;
     const locale = useLocale();
-    const t = useTranslations('Events');
+    const tEvents = useTranslations('Events');
+    const tFooter = useTranslations('Footer');
 
     const toggleFullscreen = useCallback(async () => {
         try {
@@ -186,7 +187,7 @@ export default function Footer() {
         }
 
         const dateStr = mapTickToDate(nextEvent.tick, false, locale);
-        const message = renderTickerEventMessage(nextEvent.details, nextEvent.agentName ?? '', t, locale);
+        const message = renderTickerEventMessage(nextEvent.details, nextEvent.agentName ?? '', tEvents, locale);
         const width = measureTextWidth(dateStr, message);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
@@ -215,7 +216,7 @@ export default function Footer() {
             ...prev,
             { id: nextEvent.id, event: nextEvent, duration, startX: containerWidth },
         ]);
-    }, [computeSpeed, findNextEvent, measureTextWidth, locale, t]);
+    }, [computeSpeed, findNextEvent, measureTextWidth, locale, tEvents]);
 
     useEffect(() => {
         const intervalId = setInterval(trySpawn, 50);
@@ -245,7 +246,7 @@ export default function Footer() {
                     ref={containerRef}
                     className='relative flex-1 min-w-0 overflow-hidden bg-muted/50'
                     style={{ '--ticker-play-state': isPaused ? 'paused' : 'running' } as React.CSSProperties}
-                    aria-label='Simulation event ticker'
+                    aria-label={tFooter('ticker')}
                     onMouseEnter={pause}
                     onMouseLeave={resume}
                 >
@@ -287,7 +288,7 @@ export default function Footer() {
                                     {mapTickToDate(event.tick, false, locale)}
                                 </span>
                                 <span className='text-foreground/90'>
-                                    {renderTickerEventMessage(event.details, event.agentName ?? '', t, locale)}
+                                    {renderTickerEventMessage(event.details, event.agentName ?? '', tEvents, locale)}
                                 </span>
                             </span>
                         </div>
@@ -297,8 +298,8 @@ export default function Footer() {
                 <button
                     onClick={toggleFullscreen}
                     className='shrink-0 h-full px-3 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border-l border-border z-20'
-                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-                    title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    aria-label={isFullscreen ? tFooter('exitFullscreen') : tFooter('enterFullscreen')}
+                    title={isFullscreen ? tFooter('exitFullscreen') : tFooter('enterFullscreen')}
                 >
                     {isFullscreen ? <Minimize className='h-4 w-4' /> : <Maximize className='h-4 w-4' />}
                 </button>

@@ -1,8 +1,9 @@
 import AppProviders from '@/app/AppProviders';
 import { getMainNavRoutes, getProtectedRoutes, getPublicRoutes } from '@/lib/appRoutes';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import type { Session } from 'next-auth';
 import React from 'react';
+import { renderWithIntl } from 'tests/vitest/renderWithIntl';
 import { describe, expect, it } from 'vitest';
 import { NavMain } from './navMain';
 import { SidebarProvider } from '../ui/sidebar';
@@ -17,7 +18,7 @@ const MOCK_SESSION: Session = {
 
 describe('NavMain', () => {
     it('renders all main navigation routes from APP_ROUTES and their icons', () => {
-        render(
+        renderWithIntl(
             <AppProviders session={MOCK_SESSION}>
                 <SidebarProvider>
                     <NavMain />
@@ -36,8 +37,23 @@ describe('NavMain', () => {
         }
     });
 
+    it('translates navigation labels into the active locale', () => {
+        renderWithIntl(
+            <AppProviders session={MOCK_SESSION}>
+                <SidebarProvider>
+                    <NavMain />
+                    <NavSecondary />
+                </SidebarProvider>
+            </AppProviders>,
+            { locale: 'de' },
+        );
+
+        expect(screen.getByText('Simulationsmodell')).toBeInTheDocument();
+        expect(screen.getByText('Lieferketten-Simulator')).toBeInTheDocument();
+    });
+
     it('shows only public routes when not logged in', () => {
-        render(
+        renderWithIntl(
             <AppProviders session={null}>
                 <SidebarProvider>
                     <NavMain />

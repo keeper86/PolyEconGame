@@ -17,6 +17,7 @@ import UserAvatar from '@/components/client/UserAvatar';
 import { useTRPC } from '@/lib/trpc';
 import { useQuery } from '@tanstack/react-query';
 import { APP_ROUTES } from '@/lib/appRoutes';
+import { useTranslations } from 'next-intl';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import Link from 'next/link';
 
@@ -25,6 +26,8 @@ export function NavUser() {
     const { data: session, status } = useSession();
     const loggedIn = status === 'authenticated';
     const trpc = useTRPC();
+    const t = useTranslations('Sidebar');
+    const tNav = useTranslations('Nav');
 
     const { data: userData } = useQuery({
         ...trpc.getUser.queryOptions({ userId: undefined }),
@@ -48,7 +51,7 @@ export function NavUser() {
                                 </svg>
                             </AvatarFallback>
                         </Avatar>
-                        <span className='font-semibold'>Login</span>
+                        <span className='font-semibold'>{t('login')}</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -94,13 +97,13 @@ export function NavUser() {
                             <DropdownMenuItem asChild>
                                 <Link href={APP_ROUTES.account.root.path} className='flex items-center gap-2'>
                                     {APP_ROUTES.account.root.icon && <APP_ROUTES.account.root.icon />}
-                                    Account
+                                    {tNav('Account')}
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                                 <Link href={APP_ROUTES.pong.path} className='flex items-center gap-2'>
                                     {APP_ROUTES.pong.icon && <APP_ROUTES.pong.icon />}
-                                    Paddle War
+                                    {tNav('Paddle War')}
                                 </Link>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
@@ -110,7 +113,7 @@ export function NavUser() {
                             className='text-destructive'
                         >
                             <LogOut />
-                            Log out
+                            {t('logout')}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
