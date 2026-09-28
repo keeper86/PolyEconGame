@@ -1,10 +1,9 @@
 import Footer from '@/app/Footer';
 import AgentConditionIndicators from '@/components/client/AgentConditionIndicators';
 import KeyStatDisplay from '@/components/client/KeyStatDisplay';
-import { LocaleSwitcher } from '@/components/client/LocaleSwitcher';
 import { MessagesIndicator } from '@/components/client/MessagesIndicator';
+import { SettingsMenu } from '@/components/client/SettingsMenu';
 import TickDisplay from '@/components/client/TickDisplay';
-import { ModeToggle } from '@/components/modeToggle';
 import { AppSidebar } from '@/components/navigation/appSidebar';
 import { ThemeProvider } from '@/components/themeProvider';
 import ThemeWrapper from '@/components/themeWrapper';
@@ -71,9 +70,7 @@ export default async function RootLayout({
 
                                                 <TickDisplay />
 
-                                                <LocaleSwitcher />
-
-                                                <ModeToggle />
+                                                <SettingsMenu />
                                             </div>
                                         </header>
                                         <main className='flex-1 p-2 sm:p-4 overflow-y-auto overflow-x-hidden break-words'>

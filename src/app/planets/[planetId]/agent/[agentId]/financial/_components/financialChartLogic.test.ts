@@ -11,7 +11,7 @@ import {
     type FinancialLive,
     type FinancialPoint,
 } from './financialChartLogic';
-import { PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
+import { DECADE_YEARS, MONTHS_PER_YEAR, PREVIOUS_DECEMBER_IDX } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 
 const isLivePoint = (point: { monthIdx: number }): boolean =>
@@ -49,27 +49,28 @@ describe('computeFinancialMonthlyData live point', () => {
         sumWealthTaxPaid: 8,
     };
 
-    it('appends the live point at the fractional month index, mixed with the previous point', () => {
+    it('appends the live point at the fractional month index, blended with the previous point', () => {
         const result = computeFinancialMonthlyData(data, live.tick, live);
         const livePoint = result.find(isLivePoint);
-        const fraction = 5 / TICKS_PER_MONTH;
+        const progress = 6 / TICKS_PER_MONTH;
         expect(livePoint).toBeDefined();
-        expect(livePoint?.avgNetBalance).toBeCloseTo(200 + (1111 - 200) * fraction, 6);
-        expect(livePoint?.avgAssetValue).toBeCloseTo(400 + (2222 - 400) * fraction, 6);
-        expect(livePoint?.avgMonthlyNetIncome).toBeCloseTo(100 + (3333 - 100) * fraction, 6);
-        expect(livePoint?.avgWages).toBeCloseTo(50 + (444 - 50) * fraction, 6);
-        expect(livePoint?.sumPurchases).toBeCloseTo(25 + (55 - 25) * fraction, 6);
-        expect(livePoint?.sumClaimPayments).toBeCloseTo(12.5 + (6 - 12.5) * fraction, 6);
+        expect(livePoint?.avgNetBalance).toBeCloseTo(200 * (1 - progress) + 1111, 6);
+        expect(livePoint?.avgAssetValue).toBeCloseTo(400 * (1 - progress) + 2222, 6);
+        expect(livePoint?.avgMonthlyNetIncome).toBeCloseTo(100 * (1 - progress) + 3333, 6);
+        expect(livePoint?.avgWages).toBeCloseTo(50 * (1 - progress) + 444, 6);
+        expect(livePoint?.sumPurchases).toBeCloseTo(25 * (1 - progress) + 55, 6);
+        expect(livePoint?.sumClaimPayments).toBeCloseTo(12.5 * (1 - progress) + 6, 6);
         expect(livePoint?.monthIdx).toBeCloseTo(3 + 5 / TICKS_PER_MONTH, 5);
     });
 
-    it('starts the live point at the previous value on the first tick of a month', () => {
+    it('adds the live extrapolation from the first tick of a month', () => {
         const firstDay = { ...live, tick: gameTickFor(1, 3, 1) };
         const result = computeFinancialMonthlyData(data, firstDay.tick, firstDay);
         const livePoint = result.find(isLivePoint);
-        expect(livePoint?.avgNetBalance).toBeCloseTo(200, 6);
-        expect(livePoint?.avgAssetValue).toBeCloseTo(400, 6);
-        expect(livePoint?.sumPurchases).toBeCloseTo(25, 6);
+        const progress = 1 / TICKS_PER_MONTH;
+        expect(livePoint?.avgNetBalance).toBeCloseTo(200 * (1 - progress) + 1111, 6);
+        expect(livePoint?.avgAssetValue).toBeCloseTo(400 * (1 - progress) + 2222, 6);
+        expect(livePoint?.sumPurchases).toBeCloseTo(25 * (1 - progress) + 55, 6);
     });
 
     it('omits the live point when no live data is provided', () => {
@@ -166,7 +167,7 @@ describe('computeExpensesRevenueBuckets', () => {
         expect(rows.map((r) => r.misc)).toEqual([3]);
     });
 
-    it('mixes the live monthly purchases and claims without dividing by the bucket length', () => {
+    it('adds the live monthly figures on top of the previous bucket share without dividing by the bucket length', () => {
         const live: FinancialLive = {
             tick: gameTickFor(2, 6, 1),
             avgNetBalance: 0,
@@ -180,14 +181,15 @@ describe('computeExpensesRevenueBuckets', () => {
         };
         const rows = computeExpensesRevenueBuckets([expensesPoint(1, 1200, 240)], 'yearly', 'linear', live);
         const liveRow = rows[rows.length - 1];
-        expect(liveRow.revenue).toBeCloseTo(650, 6);
-        expect(liveRow.wages).toBeCloseTo(325, 6);
-        expect(liveRow.purchases).toBeCloseTo(1300 - (1300 - 100) * 0.5, 6);
-        expect(liveRow.claimPayments).toBeCloseTo(260 - (260 - 20) * 0.5, 6);
-        expect(liveRow.misc).toBeCloseTo(180, 6);
+        const progress = (6 + 1 / TICKS_PER_MONTH) / MONTHS_PER_YEAR;
+        expect(liveRow.revenue).toBeCloseTo(600 * (1 - progress) + 700, 6);
+        expect(liveRow.wages).toBeCloseTo(300 * (1 - progress) + 350, 6);
+        expect(liveRow.purchases).toBeCloseTo(100 * (1 - progress) + 1300, 6);
+        expect(liveRow.claimPayments).toBeCloseTo(20 * (1 - progress) + 260, 6);
+        expect(liveRow.misc).toBeCloseTo(360, 6);
     });
 
-    it('mixes the live monthly purchases and claims on a decade view without dividing by 120', () => {
+    it('adds the live monthly figures on a decade view without dividing by 120', () => {
         const live: FinancialLive = {
             tick: gameTickFor(5, 0, 1),
             avgNetBalance: 0,
@@ -201,9 +203,10 @@ describe('computeExpensesRevenueBuckets', () => {
         };
         const rows = computeExpensesRevenueBuckets([expensesPoint(0, 1200, 240)], 'decade', 'linear', live);
         const liveRow = rows[rows.length - 1];
-        expect(liveRow.purchases).toBeCloseTo(1300 - (1300 - 10) * 0.5, 6);
-        expect(liveRow.claimPayments).toBeCloseTo(260 - (260 - 2) * 0.5, 6);
-        expect(liveRow.misc).toBeCloseTo(180, 6);
+        const progress = (5 + 1 / TICKS_PER_MONTH / MONTHS_PER_YEAR) / DECADE_YEARS;
+        expect(liveRow.purchases).toBeCloseTo(10 * (1 - progress) + 1300, 6);
+        expect(liveRow.claimPayments).toBeCloseTo(2 * (1 - progress) + 260, 6);
+        expect(liveRow.misc).toBeCloseTo(360, 6);
     });
 
     it('sorts unordered buckets so the live point mixes with the most recent one', () => {

@@ -63,11 +63,6 @@
             "passenger": "passenger"
         }
     },
-    "LocaleSwitcher": {
-        "label": "Language",
-        "en": "English",
-        "de": "German"
-    },
     "Units": {
         "day": "day",
         "days": "days",
@@ -117,11 +112,15 @@
         "logout": "Log out",
         "loading": "Loading…"
     },
-    "ThemeToggle": {
-        "toggle": "Toggle theme",
+    "Settings": {
+        "title": "Settings",
+        "theme": "Theme",
         "light": "Light",
         "dark": "Dark",
-        "system": "System"
+        "system": "System",
+        "language": "Language",
+        "en": "English",
+        "de": "German"
     },
     "Login": {
         "pageTitle": "Login",

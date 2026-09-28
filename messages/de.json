@@ -63,11 +63,6 @@
             "passenger": "Passagiere"
         }
     },
-    "LocaleSwitcher": {
-        "label": "Sprache",
-        "en": "Englisch",
-        "de": "Deutsch"
-    },
     "Units": {
         "day": "Tag",
         "days": "Tage",
@@ -117,11 +112,15 @@
         "logout": "Abmelden",
         "loading": "Lädt…"
     },
-    "ThemeToggle": {
-        "toggle": "Design wechseln",
+    "Settings": {
+        "title": "Einstellungen",
+        "theme": "Design",
         "light": "Hell",
         "dark": "Dunkel",
-        "system": "System"
+        "system": "System",
+        "language": "Sprache",
+        "en": "Englisch",
+        "de": "Deutsch"
     },
     "Login": {
         "pageTitle": "Anmeldung",

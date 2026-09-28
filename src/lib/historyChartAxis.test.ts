@@ -139,27 +139,42 @@ describe('historyChartAxis', () => {
         expect(isLiveMonthPoint(3.4667)).toBe(true);
     });
 
-    it('reports how far a live tick is into its month, year or decade bucket', () => {
-        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'monthly')).toBe(0);
-        expect(bucketProgress(tickFor(START_YEAR, 0, 15), 'monthly')).toBeCloseTo(14 / TICKS_PER_MONTH, 6);
-        expect(bucketProgress(tickFor(START_YEAR, 0, 30), 'monthly')).toBeCloseTo(29 / TICKS_PER_MONTH, 6);
+    it('reports how far a live tick is into its month, year or decade bucket, counting the current day', () => {
+        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'monthly')).toBeCloseTo(1 / TICKS_PER_MONTH, 6);
+        expect(bucketProgress(tickFor(START_YEAR, 0, 15), 'monthly')).toBeCloseTo(15 / TICKS_PER_MONTH, 6);
+        expect(bucketProgress(tickFor(START_YEAR, 0, 30), 'monthly')).toBeCloseTo(1, 6);
 
-        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'yearly')).toBe(0);
-        expect(bucketProgress(tickFor(START_YEAR, 6, 1), 'yearly')).toBeCloseTo(0.5, 6);
-        expect(bucketProgress(tickFor(START_YEAR, 11, 30), 'yearly')).toBeCloseTo((11 + 29 / TICKS_PER_MONTH) / 12, 6);
+        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'yearly')).toBeCloseTo(
+            1 / TICKS_PER_MONTH / MONTHS_PER_YEAR,
+            6,
+        );
+        expect(bucketProgress(tickFor(START_YEAR, 6, 1), 'yearly')).toBeCloseTo(
+            (6 + 1 / TICKS_PER_MONTH) / MONTHS_PER_YEAR,
+            6,
+        );
+        expect(bucketProgress(tickFor(START_YEAR, 11, 30), 'yearly')).toBeCloseTo(1, 6);
 
-        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'decade')).toBe(0);
-        expect(bucketProgress(tickFor(START_YEAR + 5, 0, 1), 'decade')).toBeCloseTo(0.5, 6);
-        expect(bucketProgress(tickFor(START_YEAR + 2, 6, 1), 'decade')).toBeCloseTo(0.25, 6);
+        expect(bucketProgress(tickFor(START_YEAR, 0, 1), 'decade')).toBeCloseTo(
+            1 / TICKS_PER_MONTH / MONTHS_PER_YEAR / DECADE_YEARS,
+            6,
+        );
+        expect(bucketProgress(tickFor(START_YEAR + 5, 0, 1), 'decade')).toBeCloseTo(
+            (5 + 1 / TICKS_PER_MONTH / MONTHS_PER_YEAR) / DECADE_YEARS,
+            6,
+        );
+        expect(bucketProgress(tickFor(START_YEAR + 2, 6, 1), 'decade')).toBeCloseTo(
+            (2 + (6 + 1 / TICKS_PER_MONTH) / MONTHS_PER_YEAR) / DECADE_YEARS,
+            6,
+        );
     });
 
-    it('mixes the live value toward the previous value by the bucket progress', () => {
+    it('retains the remaining share of the previous bucket and adds the live bucket', () => {
         expect(blendLive(undefined, 5, 0.3)).toBe(5);
-        expect(blendLive(10, 20, 0)).toBe(10);
-        expect(blendLive(10, 20, 0.5)).toBe(15);
+        expect(blendLive(10, 20, 0)).toBe(30);
+        expect(blendLive(10, 20, 0.5)).toBe(25);
         expect(blendLive(10, 20, 1)).toBe(20);
         expect(blendLive(10, 20, 2)).toBe(20);
-        expect(blendLive(10, 20, -1)).toBe(10);
+        expect(blendLive(10, 20, -1)).toBe(30);
     });
 
     it('clamps fetched history buckets to the same windows the axes use', () => {
