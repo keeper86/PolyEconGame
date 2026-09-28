@@ -119,5 +119,8 @@
     "tertiary": "Tertiär",
     "solid": "Feststoff",
     "liquid": "Flüssigkeit",
-    "pieces": "Stückgut"
+    "pieces": "Stückgut",
+    "Silo": "Silo",
+    "Tank": "Tank",
+    "Warehouse": "Lagerhaus"
 }

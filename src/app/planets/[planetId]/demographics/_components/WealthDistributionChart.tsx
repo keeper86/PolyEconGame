@@ -5,9 +5,8 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 
 import {
     EDU_COLORS,
-    EDU_LABELS,
     OCC_COLORS,
-    OCC_LABELS,
+    useCohortLabels,
 } from '@/app/planets/[planetId]/demographics/_components/CohortFilter';
 import { useIsSmallScreen } from '@/hooks/useMobile';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -111,9 +110,10 @@ function EmptyChart({ height = 180 }: { height?: number }) {
 export default function WealthDistributionChart({ rows, groupMode }: Props): React.ReactElement {
     const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
 
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const labels: Record<string, string> = groupMode === 'occupation' ? occLabels : eduLabels;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
 
     const { data, yDomain } = useMemo(() => {

@@ -567,9 +567,8 @@ export const setSellOffers = () => {
                     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
                         resource = getCurrencyResource(resourceName.slice(CURRENCY_RESOURCE_PREFIX.length));
                     } else {
-                        throw new TRPCError({
-                            code: 'BAD_REQUEST',
-                            message: `Unknown resource: ${resourceName}`,
+                        throw domainError('BAD_REQUEST', 'unknownResource', `Unknown resource: ${resourceName}`, {
+                            resourceName,
                         });
                     }
                 }
@@ -581,18 +580,22 @@ export const setSellOffers = () => {
                 const validation = validateSellOffer(offer.offerPrice, inventoryQty);
 
                 if (!validation.isValid) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Invalid sell offer for ${resourceName}: ${validation.error}`,
-                    });
+                    throw domainError(
+                        'BAD_REQUEST',
+                        'invalidSellOffer',
+                        `Invalid sell offer for ${resourceName}: ${validation.error}`,
+                        { resourceName, detail: String(validation.error ?? '') },
+                    );
                 }
 
                 const targetValidation = validateAutoConfigTargets(offer.autoConfig, resource);
                 if (!targetValidation.isValid) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Invalid sell offer for ${resourceName}: ${targetValidation.error}`,
-                    });
+                    throw domainError(
+                        'BAD_REQUEST',
+                        'invalidSellOffer',
+                        `Invalid sell offer for ${resourceName}: ${targetValidation.error}`,
+                        { resourceName, detail: String(targetValidation.error ?? '') },
+                    );
                 }
             }
 
@@ -834,9 +837,8 @@ export const setBuyBids = () => {
 
                         resource = getCurrencyResource(issuingPlanetId);
                     } else {
-                        throw new TRPCError({
-                            code: 'BAD_REQUEST',
-                            message: `Unknown resource: ${resourceName}`,
+                        throw domainError('BAD_REQUEST', 'unknownResource', `Unknown resource: ${resourceName}`, {
+                            resourceName,
                         });
                     }
                 }
@@ -844,18 +846,22 @@ export const setBuyBids = () => {
                 const validation = validateBuyBid(bid, resource, bidAssets);
 
                 if (!validation.isValid) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Invalid buy bid for ${resourceName}: ${validation.error}`,
-                    });
+                    throw domainError(
+                        'BAD_REQUEST',
+                        'invalidBuyBid',
+                        `Invalid buy bid for ${resourceName}: ${validation.error}`,
+                        { resourceName, detail: String(validation.error ?? '') },
+                    );
                 }
 
                 const targetValidation = validateAutoConfigTargets(bid.autoConfig, resource);
                 if (!targetValidation.isValid) {
-                    throw new TRPCError({
-                        code: 'BAD_REQUEST',
-                        message: `Invalid buy bid for ${resourceName}: ${targetValidation.error}`,
-                    });
+                    throw domainError(
+                        'BAD_REQUEST',
+                        'invalidBuyBid',
+                        `Invalid buy bid for ${resourceName}: ${targetValidation.error}`,
+                        { resourceName, detail: String(targetValidation.error ?? '') },
+                    );
                 }
             }
 

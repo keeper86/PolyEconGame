@@ -321,7 +321,7 @@ export function BalanceFlowChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='cashBalance'
-                            name='Cash Balance'
+                            name={t('cashBalance')}
                             stroke='#4f46e5'
                             strokeWidth={2}
                             fill='url(#gradCashBalance2)'
@@ -334,7 +334,7 @@ export function BalanceFlowChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='netPosition'
-                            name='Net Position'
+                            name={t('netPosition')}
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gradNetPosition2)'
@@ -347,7 +347,7 @@ export function BalanceFlowChart({
                             yAxisId='right'
                             type='monotone'
                             dataKey='netIncome'
-                            name='Net Income'
+                            name={t('netIncome')}
                             stroke='#06b6d4'
                             strokeWidth={2}
                             fill='url(#gradIncome2)'

@@ -21,6 +21,12 @@ export const useErrorMessage = () => {
                 resourceName: termFor(locale, String(domainError.params.resourceName)),
             });
         }
+        if (domainError.code === 'invalidBuyBid' || domainError.code === 'invalidSellOffer') {
+            return t(domainError.code, {
+                resourceName: termFor(locale, String(domainError.params.resourceName)),
+                detail: String(domainError.params.detail),
+            });
+        }
         return t(domainError.code);
     };
 };

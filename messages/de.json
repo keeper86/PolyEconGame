@@ -30,7 +30,10 @@
         "invalidResourceNameInCargoGoal": "Ungültiger Ressourcenname im Frachtziel",
         "avatarPngFile": "Bitte lade eine PNG-Bilddatei hoch",
         "avatarFileTooLarge": "Die Dateigröße muss unter 1 MB liegen",
-        "operationFailed": "Vorgang fehlgeschlagen"
+        "operationFailed": "Vorgang fehlgeschlagen",
+        "invalidBuyBid": "Ungültiges Kaufgebot für {resourceName}: {detail}",
+        "invalidSellOffer": "Ungültiges Verkaufsangebot für {resourceName}: {detail}",
+        "noAccountOnIssuingPlanet": "Kein Konto auf dem ausgebenden Planeten. Besuche diesen Planeten zuerst, um ein Konto zu eröffnen."
     },
     "Bankruptcy": {
         "liquidated": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst und das Vermögen verwertet",
@@ -102,7 +105,12 @@
         "logoAlt": "Enterprise Engine Logo",
         "brandLine1": "Enterprise",
         "brandLine2": "Engine",
-        "pongFrameTitle": "Pong-Spiel"
+        "pongFrameTitle": "Pong-Spiel",
+        "Ship Management": "Schiffsverwaltung",
+        "Production Management": "Produktionsverwaltung",
+        "Storage Overview": "Lagerübersicht",
+        "Financial Overview": "Finanzübersicht",
+        "Workforce Management": "Personalverwaltung"
     },
     "Sidebar": {
         "login": "Anmelden",
@@ -309,18 +317,18 @@
         "supply": "Angebot",
         "demand": "Nachfrage",
         "totalSold": "Verkauft gesamt",
-        "bandDepressed": "defizitär",
-        "bandLossy": "verlustbringend",
-        "bandMarginal": "grenzwertig",
-        "bandProfitable": "profitabel",
-        "bandExceptional": "außergewöhnlich",
-        "bandInsane": "extrem hoch",
+        "bandDepressed": "Defizit",
+        "bandLossy": "Verlust",
+        "bandMarginal": "Knapp",
+        "bandProfitable": "Profit",
+        "bandExceptional": "Stark",
+        "bandInsane": "Extrem",
         "colStock": "Bestand",
         "colPrice": "Preis",
         "colProd": "Prod.",
         "colCons": "Verbr.",
         "colSupply": "Angebot",
-        "colDemand": "Nachfrage",
+        "colDemand": "Nachfr.",
         "colSold": "Verkauft",
         "colPriceCost": "Preis/Kosten",
         "colStockTitle": "Aktueller Lagerbestand",
@@ -330,7 +338,72 @@
         "colSupplyTitle": "Gesamtangebot",
         "colDemandTitle": "Gesamtnachfrage",
         "colSoldTitle": "Verkauft gesamt",
-        "colPriceCostTitle": "Erlös / Kosten"
+        "colPriceCostTitle": "Erlös / Kosten",
+        "nowValue": "(jetzt {value})",
+        "currentRange": "(aktuell: {low} — {high})",
+        "currentPair": "(aktuell: {low} / {high})",
+        "buyStatus": {
+            "off": "Aus.",
+            "not_placed": "Nicht platziert. Kein Lager oder keine Vorkommen.",
+            "no_bid": "Kein Gebot.",
+            "target_met": "Inaktiv. Ziel erreicht.",
+            "filled": "Erfüllt.",
+            "partial_no_supply": "Teilweise. Unzureichendes Angebot",
+            "partial_low_price": "Teilweise. Preis zu niedrig",
+            "partial": "Teilweise erfüllt.",
+            "not_filled_no_supply": "Nicht erfüllt. Unzureichendes Angebot",
+            "not_filled_low_price": "Nicht erfüllt. Preis zu niedrig",
+            "not_filled": "Nicht erfüllt."
+        },
+        "sellStatus": {
+            "no_offer": "Kein Angebot.",
+            "sold": "Verkauft.",
+            "partial_no_demand": "Teilweise. Keine Nachfrage.",
+            "partial_high_price": "Teilweise. Hoher Preis.",
+            "partial": "Teilweise verkauft.",
+            "not_sold_no_demand": "Nicht verkauft. Keine Nachfrage.",
+            "not_sold_high_price": "Nicht verkauft. Hoher Preis.",
+            "not_sold": "Nicht verkauft."
+        },
+        "presetVolume": {
+            "just-in-time": "Schlank",
+            "balanced": "Ausgeglichen",
+            "stockpile": "Hamstern",
+            "dump": "Abstoßen",
+            "reserve": "Reserve",
+            "custom": "⚙️"
+        },
+        "presetPricing": {
+            "patient": "Geduldig",
+            "market-rate": "Marktpreis",
+            "urgent": "Dringend",
+            "liquidation": "Liquidation",
+            "premium": "Premium",
+            "custom": "⚙️"
+        },
+        "priceLabels": {
+            "avgPrice": "Ø Preis",
+            "minPrice": "Min. Preis",
+            "maxPrice": "Max. Preis",
+            "estimatedCost": "Geschätzte Kosten",
+            "rescaledPrice": "Skalierter Preis",
+            "rescaledMinPrice": "Skalierter Min. Preis",
+            "rescaledMaxPrice": "Skalierter Max. Preis",
+            "rescaledEstCost": "Skal. gesch. Kosten (1)"
+        },
+        "legend": {
+            "scaPrice": "Skal. Preis",
+            "scaMinMax": "Skal. min/max",
+            "scaCost": "Skal. Kosten",
+            "avgPrice": "Ø Preis",
+            "minMaxPrice": "Min/max Preis",
+            "estCost": "Gesch. Kosten",
+            "scaledPrice": "Skalierter Preis",
+            "scaledMinMax": "Skaliertes min/max",
+            "scaledCost": "Skalierte Kosten",
+            "averagePrice": "Durchschnittspreis",
+            "estimatedCost": "Geschätzte Kosten"
+        }
     },
     "Levels": {
         "resourceRaw": "Roh",
@@ -473,7 +546,20 @@
         "destination": "Zielplanet",
         "selectDestination": "Ziel auswählen…",
         "resource": "Ressource",
-        "quantity": "Menge"
+        "quantity": "Menge",
+        "statusLabels": {
+            "idle": "Leerlauf",
+            "listed": "Zum Verkauf angeboten",
+            "derelict": "Wrack",
+            "lost": "Verloren",
+            "inTransit": "Unterwegs",
+            "loading": "Beladen",
+            "unloading": "Entladen",
+            "preFabrication": "Vorfertigung",
+            "reconstruction": "Wiederaufbau",
+            "boarding": "An Bord gehen",
+            "provisioning": "Ausrüstung"
+        }
     },
     "Financial": {
         "balanceFlowTitle": "Kassabestand & Nettoposition",
@@ -517,7 +603,29 @@
         "improveCashFlow": "Verbessere deinen Cashflow (erhöhe den Erlös oder senke die Kosten) oder steigere deine Vermögensbewertung, um weitere Kredite freizuschalten.",
         "fundsCredited": "Die Mittel werden deinem Konto gutgeschrieben, sobald der aktuelle Tick abgeschlossen ist.",
         "outstandingLoansCount": "Ausstehende Kredite ({count})",
-        "payBackEarly": "Vorzeitig zurückzahlen:"
+        "payBackEarly": "Vorzeitig zurückzahlen:",
+        "loanTypes": {
+            "starter": "Startkredit",
+            "discretionary": "Ermessen",
+            "wageCoverage": "Lohnabsicherung",
+            "emergency": "Notfall",
+            "governmentSupport": "Staatliche Unterstützung",
+            "rollover": "Umschuldung",
+            "bufferCoverage": "Pufferabsicherung",
+            "claimCoverage": "Förderstättenabsicherung",
+            "shipPenaltyCoverage": "Schiffsstrafe",
+            "licenseBootstrap": "Lizenzstarthilfe",
+            "forexWorkingCapital": "Devisen-Betriebskapital",
+            "shipbuilderBootstrap": "Werftstarthilfe",
+            "consolidated": "Konsolidiert"
+        },
+        "sendingRequest": "Anfrage wird gesendet…",
+        "awaitingNextDay": "Warte auf den nächsten Tag…",
+        "takeInitialLoan": "Startkredit aufnehmen {amount}",
+        "cashBalance": "Kassenbestand",
+        "netPosition": "Nettoposition",
+        "netIncome": "Nettoeinkommen",
+        "interestAndTax": "Zinsen & Steuern"
     },
     "Production": {
         "operatingScale": "Betriebsskalierung",
@@ -615,7 +723,8 @@
         "retry": "Erneut versuchen",
         "simulationOffline": "Simulationsdaten nicht verfügbar — {count, plural, one {# Abfrage} other {# Abfragen}} haben das Abrufen eingestellt.",
         "resetToNoExperience": "Auf keine Erfahrung zurücksetzen",
-        "setLevel": "Stufe auf {level} setzen"
+        "setLevel": "Stufe auf {level} setzen",
+        "userAvatarAlt": "Benutzeravatar"
     },
     "Charts": {
         "year": "Jahr {year}",
@@ -630,7 +739,10 @@
         "productionValue": "Produktionswert",
         "consumptionValue": "Verbrauchswert",
         "wages": "Löhne",
-        "totalWorkers": "Arbeitskräfte gesamt"
+        "totalWorkers": "Arbeitskräfte gesamt",
+        "endOfMonth": "Ende {month} {year}",
+        "yearLabel": "Jahr {year}",
+        "yearShort": "J{year}"
     },
     "Guards": {
         "unsavedChanges": "Du hast ungespeicherte Änderungen.",
@@ -959,7 +1071,72 @@
         "selectPlanet": "{planetName} auswählen",
         "showGuidedTour": "Geführte Tour anzeigen",
         "registering": "Registriere…",
-        "register": "Neues Unternehmen registrieren"
+        "register": "Neues Unternehmen registrieren",
+        "loading": {
+            "serious": [
+                "Analyse der planetaren makroökonomischen Liquiditätskorridore.",
+                "Synchronisierung der suborbitalen Lieferketten-Telemetrie.",
+                "Überprüfung der kryptografischen Multi-Signatur-Treuhandtresore.",
+                "Aufbau sicherer, quantenverschlüsselter planetarer VPN-Pipelines.",
+                "Strukturierung der Besicherungsrahmen für Unternehmensanleihen.",
+                "Durchführung von Machbarkeitsanalysen zur Marktdurchdringung im Tiefraum.",
+                "Anmeldung bei den lokalen planetaren Gewerkschaften.",
+                "Unterzeichnung digitaler Eigentumsurkunden.",
+                "Bewertung der Marktbedingungen."
+            ],
+            "funny": [
+                "Bestechung planetarer Zollbeamter (Schmiergeldfonds wird zugewiesen).",
+                "Optimierung der Haftungsausschlüsse für versehentliche Luftschleusen-Druckabfälle.",
+                "Umleitung des Startkapitals über drei verschiedene Offshore-Asteroidengürtel.",
+                "Einreichung planetarer Umweltverträglichkeitsformulare in dreifacher Ausfertigung.",
+                "Verhandlung der Mindestanforderungen an Nährstoffpaste mit lokalen Gewerkschaftsvertretern.",
+                "Entfernung von Weltraum-Seepocken von den Unternehmensservern.",
+                "Entwurf von Geheimhaltungsvereinbarungen für empfindungsfähige planetare Flora.",
+                "Planung verpflichtender, unbezahlter virtueller Synergieseminare.",
+                "Anwerbung unbezahlter Praktikanten aus regionalen Kryolagern.",
+                "Räucherung der Mainframe-Serverracks mit Weihrauch, um den Maschinengeist zu besänftigen.",
+                "Betäubung der Rechtsabteilung.",
+                "Übersetzung der Unternehmenssatzung ins Neo-Sumerische für lokale Beamte.",
+                "Neukalibrierung der Quanten-Pausenraum-Mikrowelle.",
+                "Einreichung von Formular 1040-Z (Interstellare Steuererklärung für nicht-biologische Einheiten).",
+                "Glaubhafte Bestreitung erster Insiderhandelsvorwürfe.",
+                "Umleitung giftiger Abfallleitungen weg von den Führungsparkplätzen.",
+                "Sicherstellung, dass Mindestverstöße gegen den CO₂-Fußabdruck erfüllt werden.",
+                "Ersetzung des Vorstands durch etwas kooperativere synthetische Klone.",
+                "Einpumpen von Frischsauerstoff (95 % Luft, 5 % Loyalitätsmischung) in die Büros.",
+                "Auszahlung lokaler Weltraumpiraten-Schutzsyndikate.",
+                "Erzeugung synergistischer, paradigmenschiebender Unternehmens-Modewörter.",
+                "Abschluss einer Versicherung gegen lokalisierte temporale Anomalien.",
+                "Vertuschung eines kleineren Atmosphären-Zündvorfalls beim Serverstart."
+            ],
+            "meta": [
+                "Beratung durch einen authentischen, anpassungsfähigen KI-Kollaborateur mit einem Hauch von Witz.",
+                "Injektion von CSS-Resets direkt in das lokale Raum-Zeit-Gewebe.",
+                "Prüfung, ob der Entwickler versehentlich die API-Schlüssel auf GitHub hochgeladen hat.",
+                "Der Datenbank die Schuld geben. Es ist immer die Datenbank.",
+                "Garbage Collection ungenutzter existenzieller Bewusstseins-Threads.",
+                "Ausführung von npm install --force auf der planetaren Infrastruktur.",
+                "Versuch herauszufinden, warum useEffect beim Start zweimal ausgeführt wird.",
+                "Parsen von stringifizierten JSON-Payloads mit leichtem existenziellem Grauen.",
+                "Anwendung von Notfall-Hotfixes direkt in der Produktion (sag es niemandem)."
+            ],
+            "firstSteps": [
+                "Registrierung der Unternehmenseinheit.",
+                "Sicherung der anfänglichen Finanzrechte.",
+                "Eröffnung von Reservekonten bei der Zentralbank.",
+                "Sicherung der anfänglichen Arbeitsrechte.",
+                "Einreichung der Unternehmenssatzung bei der planetaren Verwaltung."
+            ],
+            "lastSteps": [
+                "Warte auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
+                "Aber normalerweise…",
+                "…nicht so lange.",
+                "Warte weiterhin auf die endgültige Genehmigung des planetaren Registers (dies kann eine Weile dauern)…",
+                "Vielleicht versuchst du, die Seite neu zu laden?",
+                "An diesem Punkt kann ich nicht versprechen, dass etwas passieren wird.",
+                "Warten… Warten… Warten…"
+            ]
+        }
     },
     "Imprint": {
         "intro": "Dies ist das Impressum für Enterprise Engine.",
@@ -1014,7 +1191,14 @@
         "writtenOffDebt": "Abgeschriebene Schulden (gesamt)",
         "loanRateNewLoans": "Kreditzins (neue Kredite, p.a.)",
         "interestCollected": "Vereinnahmte Zinsen",
-        "details": "Details"
+        "details": "Details",
+        "costOfLivingSeries": "Lebenshaltungskosten",
+        "gdpSeries": "BIP",
+        "moneySupplySeries": "Geldmenge",
+        "wageNone": "Lohn Keine",
+        "wagePrimary": "Lohn Primär",
+        "wageSecondary": "Lohn Sekundär",
+        "wageTertiary": "Lohn Tertiär"
     },
     "Agent": {
         "facilities": "Anlagen",
@@ -1291,6 +1475,15 @@
             "education": "Bildung",
             "retail": "Einzelhandel",
             "construction": "Wohnraum"
-        }
+        },
+        "eduNone": "Keine",
+        "eduPrimary": "Primär",
+        "eduSecondary": "Sekundär",
+        "eduTertiary": "Tertiär",
+        "occUnoccupied": "Nicht erwerbstätig",
+        "occEmployed": "Erwerbstätig",
+        "occEducation": "Bildung",
+        "occUnableToWork": "Arbeitsunfähig",
+        "populationTitle": "Bevölkerung {value}"
     }
 }

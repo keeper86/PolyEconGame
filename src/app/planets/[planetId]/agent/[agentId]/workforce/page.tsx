@@ -22,6 +22,7 @@ export default function WorkforcePage() {
     const locale = useLocale();
     const tr = useTranslations('Workforce');
     const tCohort = useTranslations('Demographics');
+    const tNav = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -40,7 +41,7 @@ export default function WorkforcePage() {
     const planetWagePerEdu = economyData?.economy?.wagePerEdu ?? null;
 
     return (
-        <Page title={`Workforce Management`}>
+        <Page title={tNav('Workforce Management')}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}

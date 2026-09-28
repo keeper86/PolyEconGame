@@ -6,8 +6,10 @@ import StorageShellsPanel from '@/app/planets/[planetId]/agent/[agentId]/storage
 import { ResourceMicroCardGrid } from '@/app/planets/[planetId]/agent/[agentId]/storage/_components/ResourceMicroCardGrid';
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import { Page } from '@/components/client/Page';
+import { useTranslations } from 'next-intl';
 
 export default function StoragePage() {
+    const t = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -22,7 +24,7 @@ export default function StoragePage() {
     } = useAgentPlanetDetail();
 
     return (
-        <Page title={`Storage Overview`}>
+        <Page title={t('Storage Overview')}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}

@@ -292,7 +292,7 @@ export function ExpensesRevenueChart({
                         <Area
                             type='monotone'
                             dataKey='misc'
-                            name='interest&tax'
+                            name={t('interestAndTax')}
                             stroke='#ec4899'
                             strokeWidth={1.5}
                             fill='url(#gradMisc)'

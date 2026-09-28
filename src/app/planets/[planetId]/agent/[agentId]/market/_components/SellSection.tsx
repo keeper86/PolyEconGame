@@ -40,9 +40,7 @@ import {
     detectVolumeSellPreset,
     getPricingSellPreset,
     getVolumeSellPreset,
-    SELL_PRICING_PRESET_LABELS,
     SELL_PRICING_PRESET_ORDER,
-    SELL_VOLUME_PRESET_LABELS,
     SELL_VOLUME_PRESET_ORDER,
     type SellPricingPresetType,
     type SellVolumePresetType,
@@ -52,7 +50,6 @@ import { useLocale, useTranslations } from 'next-intl';
 import { termFor } from '@/i18n/terms';
 
 type SellStatusKind =
-    | 'offering'
     | 'sold'
     | 'partial_no_demand'
     | 'partial_high_price'
@@ -67,11 +64,10 @@ function sellStatus(
     diagnostics: import('@/simulation/planet/planet').SellDiagnostics | undefined,
     lastSold: number | undefined,
     overviewRow: { totalDemand: number } | undefined,
-): { kind: SellStatusKind; text: string; className: string } {
+): { kind: SellStatusKind; className: string } {
     if (!automated || !diagnostics) {
         return {
             kind: 'no_offer',
-            text: 'No offer.',
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
@@ -82,7 +78,6 @@ function sellStatus(
     if (lastSold && lastSold > 0 && sellThroughRate >= diagnostics.targetSellThrough) {
         return {
             kind: 'sold',
-            text: 'Sold.',
             className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
         };
     }
@@ -90,40 +85,34 @@ function sellStatus(
         if (noDemand) {
             return {
                 kind: 'partial_no_demand',
-                text: 'Partial. No demand.',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         if (highPrice) {
             return {
                 kind: 'partial_high_price',
-                text: 'Partial. High price.',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         return {
             kind: 'partial',
-            text: 'Partially sold.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }
     if (noDemand) {
         return {
             kind: 'not_sold_no_demand',
-            text: 'Not sold. No demand.',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     if (highPrice) {
         return {
             kind: 'not_sold_high_price',
-            text: 'Not sold. High price.',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     return {
         kind: 'not_sold',
-        text: 'Not sold.',
         className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
     };
 }
@@ -152,6 +141,9 @@ export default function SellSection({
 }: SellSectionProps): React.ReactElement {
     const locale = useLocale();
     const tr = useTranslations('Market');
+    const tSellStatus = useTranslations('Market.sellStatus');
+    const tVolumePreset = useTranslations('Market.presetVolume');
+    const tPricingPreset = useTranslations('Market.presetPricing');
     const tc = useTranslations('Common');
     const {
         saveSell: onSaveSell,
@@ -458,7 +450,7 @@ export default function SellSection({
                         <span
                             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${status.className}`}
                         >
-                            {status.text}
+                            {tSellStatus(status.kind)}
                         </span>
                     </div>
                 </div>
@@ -541,7 +533,7 @@ export default function SellSection({
                                                         disabled={sellPricingConfigSaving}
                                                         onClick={() => handlePricingPresetSelect(preset)}
                                                     >
-                                                        {SELL_PRICING_PRESET_LABELS[preset] ?? preset}
+                                                        {tPricingPreset(preset)}
                                                     </Button>
                                                 );
                                             })}
@@ -781,7 +773,7 @@ export default function SellSection({
                                                         disabled={sellVolumeConfigSaving}
                                                         onClick={() => handleVolumePresetSelect(preset)}
                                                     >
-                                                        {SELL_VOLUME_PRESET_LABELS[preset] ?? preset}
+                                                        {tVolumePreset(preset)}
                                                     </Button>
                                                 );
                                             })}

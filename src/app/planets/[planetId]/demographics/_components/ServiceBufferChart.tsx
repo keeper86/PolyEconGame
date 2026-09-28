@@ -9,7 +9,7 @@ import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useMemo } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_WEALTH } from './demographicsTypes';
 import { useLocale, useTranslations } from 'next-intl';
@@ -190,8 +190,9 @@ export default function ServiceBufferChart({ rows, groupMode, serviceKey }: Prop
     const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
     const keys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const labels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const labels: Record<string, string> = groupMode === 'occupation' ? occLabels : eduLabels;
     const colors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
     const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 

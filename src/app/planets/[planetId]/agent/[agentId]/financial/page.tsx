@@ -7,6 +7,7 @@ import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/
 import { Page } from '@/components/client/Page';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { useTranslations } from 'next-intl';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { totalOutstandingLoans } from '@/simulation/financial/loanTypes';
@@ -14,6 +15,7 @@ import LoanPanel from './_components/LoanPanel';
 import ProductResolutionPanel from './_components/ProductResolutionPanel';
 
 export default function FinancialPage() {
+    const t = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -47,7 +49,7 @@ export default function FinancialPage() {
     };
 
     return (
-        <Page title={`Financial Overview`}>
+        <Page title={t('Financial Overview')}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}

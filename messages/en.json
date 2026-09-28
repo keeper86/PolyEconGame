@@ -30,7 +30,10 @@
         "invalidResourceNameInCargoGoal": "Invalid resource name in cargo goal",
         "avatarPngFile": "Please upload a PNG image file",
         "avatarFileTooLarge": "File size must be less than 1MB",
-        "operationFailed": "Operation failed"
+        "operationFailed": "Operation failed",
+        "invalidBuyBid": "Invalid buy bid for {resourceName}: {detail}",
+        "invalidSellOffer": "Invalid sell offer for {resourceName}: {detail}",
+        "noAccountOnIssuingPlanet": "No account on the issuing planet. Visit that planet first to open an account."
     },
     "Bankruptcy": {
         "liquidated": "{agentName} bankrupt; company dissolved and assets liquidated by the receiver",
@@ -102,7 +105,12 @@
         "logoAlt": "Enterprise Engine logo",
         "brandLine1": "Enterprise",
         "brandLine2": "Engine",
-        "pongFrameTitle": "Pong game"
+        "pongFrameTitle": "Pong game",
+        "Ship Management": "Ship Management",
+        "Production Management": "Production Management",
+        "Storage Overview": "Storage Overview",
+        "Financial Overview": "Financial Overview",
+        "Workforce Management": "Workforce Management"
     },
     "Sidebar": {
         "login": "Login",
@@ -330,7 +338,72 @@
         "colSupplyTitle": "Total supply",
         "colDemandTitle": "Total demand",
         "colSoldTitle": "Total sold",
-        "colPriceCostTitle": "Revenue / cost"
+        "colPriceCostTitle": "Revenue / cost",
+        "nowValue": "(now {value})",
+        "currentRange": "(current: {low} — {high})",
+        "currentPair": "(current: {low} / {high})",
+        "buyStatus": {
+            "off": "Off.",
+            "not_placed": "Not placed. No storage or deposits.",
+            "no_bid": "No bid.",
+            "target_met": "Inactive. Target met.",
+            "filled": "Filled.",
+            "partial_no_supply": "Partial. Insufficient supply",
+            "partial_low_price": "Partial. Price too low",
+            "partial": "Partially filled.",
+            "not_filled_no_supply": "Not filled. Insufficient supply",
+            "not_filled_low_price": "Not filled. Price too low",
+            "not_filled": "Not filled."
+        },
+        "sellStatus": {
+            "no_offer": "No offer.",
+            "sold": "Sold.",
+            "partial_no_demand": "Partial. No demand.",
+            "partial_high_price": "Partial. High price.",
+            "partial": "Partially sold.",
+            "not_sold_no_demand": "Not sold. No demand.",
+            "not_sold_high_price": "Not sold. High price.",
+            "not_sold": "Not sold."
+        },
+        "presetVolume": {
+            "just-in-time": "Lean",
+            "balanced": "Balanced",
+            "stockpile": "Hoard",
+            "dump": "Dump",
+            "reserve": "Reserve",
+            "custom": "⚙️"
+        },
+        "presetPricing": {
+            "patient": "Patient",
+            "market-rate": "Market Rate",
+            "urgent": "Urgent",
+            "liquidation": "Liquidation",
+            "premium": "Premium",
+            "custom": "⚙️"
+        },
+        "priceLabels": {
+            "avgPrice": "Avg price",
+            "minPrice": "Min price",
+            "maxPrice": "Max price",
+            "estimatedCost": "Estimated Cost",
+            "rescaledPrice": "Rescaled price",
+            "rescaledMinPrice": "Rescaled Min price",
+            "rescaledMaxPrice": "Rescaled Max price",
+            "rescaledEstCost": "Resc.est. cost (1)"
+        },
+        "legend": {
+            "scaPrice": "Sca. price",
+            "scaMinMax": "Sca. min/max",
+            "scaCost": "Sca. Cost",
+            "avgPrice": "Avg Price",
+            "minMaxPrice": "Min/max Price",
+            "estCost": "Est. Cost",
+            "scaledPrice": "Scaled price",
+            "scaledMinMax": "Scaled min/max",
+            "scaledCost": "Scaled Cost",
+            "averagePrice": "Average Price",
+            "estimatedCost": "Estimated Cost"
+        }
     },
     "Levels": {
         "resourceRaw": "Raw",
@@ -473,7 +546,20 @@
         "destination": "Destination Planet",
         "selectDestination": "Select destination…",
         "resource": "Resource",
-        "quantity": "Quantity"
+        "quantity": "Quantity",
+        "statusLabels": {
+            "idle": "Idle",
+            "listed": "Listed for sale",
+            "derelict": "Derelict",
+            "lost": "Lost",
+            "inTransit": "In transit",
+            "loading": "Loading",
+            "unloading": "Unloading",
+            "preFabrication": "Pre-fabrication",
+            "reconstruction": "Reconstruction",
+            "boarding": "Boarding",
+            "provisioning": "Provisioning"
+        }
     },
     "Financial": {
         "balanceFlowTitle": "Cash Balance & Net Position",
@@ -517,7 +603,29 @@
         "improveCashFlow": "Improve your cash flow (increase revenue or reduce costs) or raise your asset evaluation to unlock further borrowing.",
         "fundsCredited": "The funds will be credited to your account after the current tick completes.",
         "outstandingLoansCount": "Outstanding loans ({count})",
-        "payBackEarly": "Pay back early:"
+        "payBackEarly": "Pay back early:",
+        "loanTypes": {
+            "starter": "Starter",
+            "discretionary": "Discretionary",
+            "wageCoverage": "Wage coverage",
+            "emergency": "Emergency",
+            "governmentSupport": "Government support",
+            "rollover": "Rollover",
+            "bufferCoverage": "Buffer coverage",
+            "claimCoverage": "Claim coverage",
+            "shipPenaltyCoverage": "Ship penalty",
+            "licenseBootstrap": "License bootstrap",
+            "forexWorkingCapital": "Forex working capital",
+            "shipbuilderBootstrap": "Shipbuilder bootstrap",
+            "consolidated": "Consolidated"
+        },
+        "sendingRequest": "Sending request…",
+        "awaitingNextDay": "Awaiting next day…",
+        "takeInitialLoan": "Take initial loan {amount}",
+        "cashBalance": "Cash Balance",
+        "netPosition": "Net Position",
+        "netIncome": "Net Income",
+        "interestAndTax": "Interest & tax"
     },
     "Production": {
         "operatingScale": "Operating scale",
@@ -615,7 +723,8 @@
         "retry": "Retry",
         "simulationOffline": "Simulation data unavailable — {count, plural, one {# query} other {# queries}} stopped polling.",
         "resetToNoExperience": "Reset to no experience",
-        "setLevel": "Set level to {level}"
+        "setLevel": "Set level to {level}",
+        "userAvatarAlt": "User Avatar"
     },
     "Charts": {
         "year": "Year {year}",
@@ -630,7 +739,10 @@
         "productionValue": "Production Value",
         "consumptionValue": "Consumption Value",
         "wages": "Wages",
-        "totalWorkers": "Total Workers"
+        "totalWorkers": "Total Workers",
+        "endOfMonth": "End of {month} {year}",
+        "yearLabel": "Year {year}",
+        "yearShort": "Y{year}"
     },
     "Guards": {
         "unsavedChanges": "You have unsaved changes.",
@@ -959,7 +1071,72 @@
         "selectPlanet": "Select {planetName}",
         "showGuidedTour": "Show a guided tour",
         "registering": "Registering…",
-        "register": "Register new Company"
+        "register": "Register new Company",
+        "loading": {
+            "serious": [
+                "Analyzing planetary macro-economic liquidity corridors.",
+                "Syncing sub-orbital supply chain telemetry.",
+                "Verifying multi-signature cryptographic escrow vaults.",
+                "Establishing secure, quantum-encrypted planetary VPN pipelines.",
+                "Structuring corporate bond collateralization frameworks.",
+                "Conducting deep-space market penetration feasibility sweeps.",
+                "Registering with local planetary labor unions.",
+                "Signing digital ownership deeds.",
+                "Evaluating market conditions."
+            ],
+            "funny": [
+                "Bribing planetary customs officials (allocating slush fund).",
+                "Optimizing corporate liability waivers for accidental airlock depressurization.",
+                "Routing initial capital through three different offshore asteroid belts.",
+                "Filing planetary environmental impact forms in triplicate.",
+                "Negotiating minimum nutrient-paste requirements with local union reps.",
+                "Purging space-barnacles from the corporate servers.",
+                "Drafting non-disclosure agreements for sentient planetary flora.",
+                "Scheduling mandatory, unpaid virtual synergy seminars.",
+                "Sourcing unpaid interns from regional cryogenic storage facilities.",
+                "Bathing the mainframe server racks in holy incense to appease the machine spirit.",
+                "Anesthetizing the legal department.",
+                "Translating corporate bylaws into Neo-Sumerian for local magistrates.",
+                "Re-calibrating the quantum breakroom microwave.",
+                "Filing form 1040-Z (Interstellar Tax Return for Non-Biological Entities).",
+                "Plausibly denying initial insider trading allegations.",
+                "Rerouting toxic waste pipelines away from executive parking lots.",
+                "Ensuring minimum carbon-footprint violations are met.",
+                "Replacing Board of Directors with slightly more cooperative synthetic clones.",
+                "Pumping fresh oxygen (95% air, 5% loyalty blend) into offices.",
+                "Paying off local space-pirate protection syndicates.",
+                "Generating synergistic, paradigm-shifting corporate buzzwords.",
+                "Securing insurance policy against localized temporal anomalies.",
+                "Covering up minor atmospheric ignition incident during server startup."
+            ],
+            "meta": [
+                "Consulting an authentic, adaptive AI collaborator with a touch of wit.",
+                "Injecting CSS resets directly into the local fabric of space-time.",
+                "Checking if the developer accidentally committed the API keys to GitHub.",
+                "Blaming the database. It’s always the database.",
+                "Garbage collecting unused existential consciousness threads.",
+                "Running npm install --force on the planetary infrastructure.",
+                "Trying to figure out why useEffect is running twice on startup.",
+                "Parsing stringified JSON payloads with mild existential dread.",
+                "Applying emergency hotfixes directly in production (don't tell anyone)."
+            ],
+            "firstSteps": [
+                "Registering Corporate Entity.",
+                "Securing initial financial rights.",
+                "Opening reserve accounts with Central Bank.",
+                "Securing initial labor rights.",
+                "Submitting corporate charter to planetary administration."
+            ],
+            "lastSteps": [
+                "Awaiting final planetary registry approval (this may take a while)...",
+                "But usually...",
+                "...not that long.",
+                "Still awaiting final planetary registry approval (this may take a while)...",
+                "Maybe you try to reload the page?",
+                "At this point, I cannot promise that something will happen.",
+                "Waiting... Waiting... Waiting..."
+            ]
+        }
     },
     "Imprint": {
         "intro": "This is the legal imprint for Enterprise Engine.",
@@ -1014,7 +1191,14 @@
         "writtenOffDebt": "Written-off debt (total)",
         "loanRateNewLoans": "Loan rate (new loans, p.a.)",
         "interestCollected": "Interest collected",
-        "details": "Details"
+        "details": "Details",
+        "costOfLivingSeries": "Cost of Living",
+        "gdpSeries": "GDP",
+        "moneySupplySeries": "Money Supply",
+        "wageNone": "Wage None",
+        "wagePrimary": "Wage Primary",
+        "wageSecondary": "Wage Secondary",
+        "wageTertiary": "Wage Tertiary"
     },
     "Agent": {
         "facilities": "Facilities",
@@ -1291,6 +1475,15 @@
             "education": "Education",
             "retail": "Retail",
             "construction": "Housing"
-        }
+        },
+        "eduNone": "None",
+        "eduPrimary": "Primary",
+        "eduSecondary": "Secondary",
+        "eduTertiary": "Tertiary",
+        "occUnoccupied": "Unoccupied",
+        "occEmployed": "Employed",
+        "occEducation": "Education",
+        "occUnableToWork": "Unable to work",
+        "populationTitle": "Population {value}"
     }
 }

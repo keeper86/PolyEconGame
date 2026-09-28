@@ -42,6 +42,17 @@ describe('useErrorMessage', () => {
         );
     });
 
+    it('resolves resource names and details in order errors', () => {
+        const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
+
+        expect(
+            result.current(domainError('invalidSellOffer', { resourceName: 'Crude Oil', detail: 'negative price' })),
+        ).toBe('Ungültiges Verkaufsangebot für Rohöl: negative price');
+        expect(result.current(domainError('noAccountOnIssuingPlanet'))).toBe(
+            'Kein Konto auf dem ausgebenden Planeten. Besuche diesen Planeten zuerst, um ein Konto zu eröffnen.',
+        );
+    });
+
     it('falls back to the message for errors without a packet', () => {
         const { result } = renderHook(() => useErrorMessage(), { wrapper: wrapper('de') });
 

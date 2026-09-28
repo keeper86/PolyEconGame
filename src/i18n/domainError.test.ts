@@ -7,6 +7,9 @@ describe('domainCodeForMessage', () => {
         expect(domainCodeForMessage('Message not found')).toBe('messageNotFound');
         expect(domainCodeForMessage('You do not own this agent')).toBe('notOwner');
         expect(domainCodeForMessage('Invalid resource name')).toBe('invalidResourceName');
+        expect(
+            domainCodeForMessage('No account on the issuing planet. Visit that planet first to open an account.'),
+        ).toBe('noAccountOnIssuingPlanet');
     });
 
     it('returns null for unknown messages', () => {

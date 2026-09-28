@@ -28,6 +28,9 @@ export const DOMAIN_ERROR_CODES = [
     'workforceExpandLicenseRequired',
     'invalidResourceName',
     'invalidResourceNameInCargoGoal',
+    'invalidBuyBid',
+    'invalidSellOffer',
+    'noAccountOnIssuingPlanet',
 ] as const;
 
 export type DomainErrorCode = (typeof DOMAIN_ERROR_CODES)[number];
@@ -67,6 +70,7 @@ const CODE_BY_MESSAGE: Record<string, DomainErrorCode> = {
     'An active workforce license is required to expand facilities on this planet': 'workforceExpandLicenseRequired',
     'Invalid resource name': 'invalidResourceName',
     'Invalid resource name in cargo goal': 'invalidResourceNameInCargoGoal',
+    'No account on the issuing planet. Visit that planet first to open an account.': 'noAccountOnIssuingPlanet',
 };
 
 export const domainCodeForMessage = (message: string): DomainErrorCode | null => CODE_BY_MESSAGE[message] ?? null;

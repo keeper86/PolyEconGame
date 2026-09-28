@@ -42,6 +42,16 @@ const isDebugFile = (rel) => [...DEBUG_FILES].some((file) => rel.endsWith(file))
 const DEBUG_MARKERS = new Set(['TEMP DEBUG']);
 const isEntityOnly = (text) => /^(&#?\w+;|\u00a0|\s)+$/.test(text);
 
+const staticTextOf = (node) => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    if (ts.isTemplateExpression(node)) {
+        return [node.head.text, ...node.templateSpans.map((span) => span.literal.text)].join(' ');
+    }
+    return null;
+};
+
+const isDataKey = (text) => /^[a-z][a-zA-Z0-9_-]*$/.test(text);
+
 const findText = (file) => {
     const rel = path.relative(target, file);
     const source = ts.createSourceFile(
@@ -63,7 +73,12 @@ const findText = (file) => {
             const name = node.name.text;
             const init = node.initializer;
             const isText = TEXT_ATTRS.has(name) || name === 'aria-label' || name === 'aria-description';
-            if (isText && init && ts.isStringLiteral(init)) add(node, name, init.text);
+            if (init) {
+                const expr = ts.isJsxExpression(init) ? init.expression : init;
+                const value = expr ? staticTextOf(expr) : null;
+                if (value !== null && isText) add(node, name, value);
+                else if (value !== null && name === 'name' && !isDataKey(value.trim())) add(node, name, value);
+            }
         }
         ts.forEachChild(node, visit);
     };

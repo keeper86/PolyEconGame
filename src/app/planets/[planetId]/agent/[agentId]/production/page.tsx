@@ -4,8 +4,10 @@ import { AgentAccessGuard } from '@/app/planets/[planetId]/agent/_component/Agen
 import { useAgentPlanetDetail } from '@/app/planets/[planetId]/agent/_component/useAgentPlanetDetail';
 import ProductionFacilitiesPanel from './_component/ProductionFacilitiesPanel';
 import { Page } from '@/components/client/Page';
+import { useTranslations } from 'next-intl';
 
 export default function ProductionPage() {
+    const t = useTranslations('Nav');
     const {
         agentId,
         planetId,
@@ -19,7 +21,7 @@ export default function ProductionPage() {
     } = useAgentPlanetDetail();
 
     return (
-        <Page title={`Production Management`}>
+        <Page title={t('Production Management')}>
             <AgentAccessGuard
                 isLoading={myAgentId.isLoading}
                 isOwnAgent={isOwnAgent}

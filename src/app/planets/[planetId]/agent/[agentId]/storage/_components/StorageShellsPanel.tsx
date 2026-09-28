@@ -149,6 +149,7 @@ export default function StorageShellsPanel({
     planetId: string;
 }): React.ReactElement {
     const trpc = useTRPC();
+    const locale = useLocale();
     const { data: constructionMarket } = useSimulationQuery(
         trpc.simulation.getPlanetMarket.queryOptions({ planetId, resourceName: constructionServiceResourceType.name }),
     );
@@ -176,7 +177,7 @@ export default function StorageShellsPanel({
                         otherConstructionCosts={otherConstructionCosts}
                         headerBadge={
                             <Badge variant='outline' className='text-[10px] px-1.5 py-0'>
-                                {STORAGE_SHELL_FORM_NAMES[form]}
+                                {termFor(locale, STORAGE_SHELL_FORM_NAMES[form])}
                             </Badge>
                         }
                         dataTour={`storage-shell-${form}`}

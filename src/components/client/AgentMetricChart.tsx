@@ -3,6 +3,7 @@
 import { tickToDate } from '@/components/client/TickDisplay';
 import { Card, CardContent } from '@/components/ui/card';
 import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuery';
+import { monthShortName } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { START_YEAR, TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
@@ -68,8 +69,6 @@ const CHART_CONFIGS: Record<AgentMetric, ChartConfig> = {
     wages: { titleKey: 'wages', color: '#ef4444', gradId: 'gradWages', dataKey: 'avgWages' },
     totalWorkers: { titleKey: 'totalWorkers', color: '#06b6d4', gradId: 'gradWorkers', dataKey: 'avgTotalWorkers' },
 };
-
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 type MonthlyMergedPoint = {
     monthIdx: number;
@@ -193,12 +192,12 @@ function MonthlyMetricChart({
     );
     const monthTooltipLabel = (monthIdx: number): string => {
         if (!Number.isInteger(monthIdx) || monthIdx === 0) {
-            return `${MONTH_NAMES[11]} ${currentYear - 1}`;
+            return `${monthShortName(locale, 11)} ${currentYear - 1}`;
         }
-        return `End of ${MONTH_NAMES[(monthIdx + 11) % 12]} ${currentYear}`;
+        return t('endOfMonth', { month: monthShortName(locale, (monthIdx + 11) % 12), year: currentYear });
     };
     const xTicks = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
-    const formatMonthTick = (monthIdx: number): string => MONTH_NAMES[(Math.ceil(monthIdx) + 11) % 12] ?? '';
+    const formatMonthTick = (monthIdx: number): string => monthShortName(locale, (Math.ceil(monthIdx) + 11) % 12);
 
     return (
         <Card>
@@ -350,7 +349,9 @@ function NonMonthlyMetricChart({
     const xdomain = useMemo(() => [firstYear, firstYear + 11], [firstYear]);
     const formatYearTick = (year: number): string => `${Math.floor(year)}`;
     const tooltipLabel = (year: number): string =>
-        granularity === 'yearly' ? `Year ${Math.floor(year)}` : `Y${Math.round(year)}`;
+        granularity === 'yearly'
+            ? t('yearLabel', { year: Math.floor(year) })
+            : t('yearShort', { year: Math.round(year) });
 
     return (
         <Card>

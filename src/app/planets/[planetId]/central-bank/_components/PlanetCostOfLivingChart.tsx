@@ -376,7 +376,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='costOfLiving'
-                            name='Cost of Living'
+                            name={t('costOfLivingSeries')}
                             stroke='#ef4444'
                             strokeWidth={2}
                             fill='#ef4444'
@@ -391,7 +391,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='costOfLivingRichDiff'
-                            name='Cost of Living'
+                            name={t('costOfLivingSeries')}
                             stroke='#ef4444'
                             strokeWidth={2}
                             fill='url(#colRichGrad)'
@@ -404,7 +404,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu0'
-                            name='Wage None'
+                            name={t('wageNone')}
                             stroke={WAGE_COLORS[0]}
                             strokeWidth={1.5}
                             fill='none'
@@ -416,7 +416,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu1'
-                            name='Wage Primary'
+                            name={t('wagePrimary')}
                             stroke={WAGE_COLORS[1]}
                             strokeWidth={1.5}
                             fill='none'
@@ -428,7 +428,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu2'
-                            name='Wage Secondary'
+                            name={t('wageSecondary')}
                             stroke={WAGE_COLORS[2]}
                             strokeWidth={1.5}
                             fill='none'
@@ -440,7 +440,7 @@ export function PlanetCostOfLivingChart({
                         <Area
                             type='monotone'
                             dataKey='wageEdu3'
-                            name='Wage Tertiary'
+                            name={t('wageTertiary')}
                             stroke={WAGE_COLORS[3]}
                             strokeWidth={1.5}
                             fill='none'

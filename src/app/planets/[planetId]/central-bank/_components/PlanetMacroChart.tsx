@@ -321,7 +321,7 @@ export function PlanetMacroChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='gdp'
-                            name='GDP'
+                            name={t('gdpSeries')}
                             stroke='#10b981'
                             strokeWidth={2}
                             fill='url(#gdpGrad)'
@@ -334,7 +334,7 @@ export function PlanetMacroChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='bankEquity'
-                            name='Bank Equity'
+                            name={t('bankEquity')}
                             stroke='#4f46e5'
                             strokeWidth={1.5}
                             fill='url(#equityGrad)'
@@ -347,7 +347,7 @@ export function PlanetMacroChart({
                             yAxisId='left'
                             type='monotone'
                             dataKey='moneySupply'
-                            name='Money Supply'
+                            name={t('moneySupplySeries')}
                             stroke='#f59e0b'
                             strokeWidth={1.5}
                             fill='url(#moneyGrad)'

@@ -53,9 +53,7 @@ import {
     type BuySectionProps,
 } from './marketTypes';
 import {
-    BUY_PRICING_PRESET_LABELS,
     BUY_PRICING_PRESET_ORDER,
-    BUY_VOLUME_PRESET_LABELS,
     BUY_VOLUME_PRESET_ORDER,
     detectPricingBuyPreset,
     detectVolumeBuyPreset,
@@ -86,32 +84,28 @@ function buyStatus(
     lastBought: number | undefined,
     overviewRow: { totalSupply: number } | undefined,
     notPlaced: boolean | undefined,
-): { kind: BuyStatusKind; text: string; className: string } {
+): { kind: BuyStatusKind; className: string } {
     if (!automated) {
         return {
             kind: 'off',
-            text: 'Off.',
             className: '',
         };
     }
     if (notPlaced) {
         return {
             kind: 'not_placed',
-            text: 'Not placed. No storage or deposits.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }
     if (!diagnostics) {
         return {
             kind: 'no_bid',
-            text: 'No bid.',
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
     if (diagnostics.shortfall === 0) {
         return {
             kind: 'target_met',
-            text: 'Inactive. Target met.',
             className: 'bg-muted text-muted-foreground border-muted-foreground/30',
         };
     }
@@ -122,7 +116,6 @@ function buyStatus(
     if (lastBought && lastBought > 0 && fillRate >= diagnostics.targetFillRate) {
         return {
             kind: 'filled',
-            text: 'Filled.',
             className: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border-emerald-500/30',
         };
     }
@@ -130,40 +123,34 @@ function buyStatus(
         if (noSupply) {
             return {
                 kind: 'partial_no_supply',
-                text: 'Partial. Insufficient supply',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         if (lowPrice) {
             return {
                 kind: 'partial_low_price',
-                text: 'Partial. Price too low',
                 className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
             };
         }
         return {
             kind: 'partial',
-            text: 'Partially filled.',
             className: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/30',
         };
     }
     if (noSupply) {
         return {
             kind: 'not_filled_no_supply',
-            text: 'Not filled. Insufficient supply',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     if (lowPrice) {
         return {
             kind: 'not_filled_low_price',
-            text: 'Not filled. Price too low',
             className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
         };
     }
     return {
         kind: 'not_filled',
-        text: 'Not filled.',
         className: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
     };
 }
@@ -195,6 +182,9 @@ export default function BuySection({
     const tr = useTranslations('Market');
     const tu = useTranslations('Units');
     const tc = useTranslations('Common');
+    const tBuyStatus = useTranslations('Market.buyStatus');
+    const tVolumePreset = useTranslations('Market.presetVolume');
+    const tPricingPreset = useTranslations('Market.presetPricing');
     const {
         saveBuy: onSaveBuy,
         resetBuy: onResetBuy,
@@ -501,7 +491,7 @@ export default function BuySection({
                         <span
                             className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-medium ${status.className}`}
                         >
-                            {status.text}
+                            {tBuyStatus(status.kind)}
                         </span>
                     </div>
                 </div>
@@ -575,7 +565,7 @@ export default function BuySection({
                                                         disabled={buyPricingConfigSaving}
                                                         onClick={() => handlePricingPresetSelect(preset)}
                                                     >
-                                                        {BUY_PRICING_PRESET_LABELS[preset] ?? preset}
+                                                        {tPricingPreset(preset)}
                                                     </Button>
                                                 );
                                             })}
@@ -853,7 +843,7 @@ export default function BuySection({
                                                         disabled={buyVolumeConfigSaving}
                                                         onClick={() => handleVolumePresetSelect(preset)}
                                                     >
-                                                        {BUY_VOLUME_PRESET_LABELS[preset] ?? preset}
+                                                        {tVolumePreset(preset)}
                                                     </Button>
                                                 );
                                             })}

@@ -8,8 +8,7 @@ const EXCLUDED_DIRS = ['app/simulation', 'app/supply-chain', 'server', 'app/api'
 const DEBUG_FILES = new Set(['FacilitiesMaintenanceDebug.tsx']);
 const KEY_REF_FILES = new Set(['lib/appRoutes.ts']);
 const TOAST_METHODS = new Set(['success', 'error', 'info', 'warning', 'loading', 'message', 'custom']);
-const LABEL_ATTRS = new Set(['pendingLabel', 'actionLabel', 'errorLabel', 'loadingLabel', 'emptyLabel']);
-const TEXT_PROP_NAMES = new Set([
+const TEXT_ATTRS = new Set([
     'label',
     'title',
     'tooltip',
@@ -23,7 +22,44 @@ const TEXT_PROP_NAMES = new Set([
     'legend',
     'helpText',
     'emptyText',
+    'text',
+    'confirmLabel',
+    'cancelLabel',
+    'actionLabel',
+    'pendingLabel',
+    'errorLabel',
+    'loadingLabel',
+    'emptyLabel',
+    'aria-label',
+    'aria-description',
 ]);
+const TEXT_KEYS = new Set([
+    'label',
+    'labels',
+    'text',
+    'title',
+    'message',
+    'description',
+    'placeholder',
+    'heading',
+    'caption',
+    'subtitle',
+    'legend',
+    'tooltip',
+    'helpText',
+    'emptyText',
+    'alt',
+    'confirmLabel',
+    'cancelLabel',
+    'actionLabel',
+    'pendingLabel',
+    'errorLabel',
+    'loadingLabel',
+    'emptyLabel',
+]);
+const TEXT_SUFFIX_RE = /(?:Labels?|Text|Title|Message|Description|Placeholder|Caption|Subtitle|Heading|Legend|Tooltip)$/;
+const MAP_NAME_RE = /(LABELS?|_TEXTS?|_NAMES|_POOL|_STEPS)$/;
+const SKIP_DECLARATIONS = new Set(['PLANET_NAMES', 'FACILITY_LEVEL_LABELS', 'STORAGE_SHELL_FORM_NAMES']);
 
 const collect = (dir, out) => {
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -59,6 +95,7 @@ const isTranslatable = (text) => {
     if (!trimmed || /^[\W_0-9]+$/.test(trimmed)) return false;
     if (/^(&#?\w+;|\u00a0|\s)+$/.test(trimmed)) return false;
     if (trimmed === 'true' || trimmed === 'false') return false;
+    if (/^[a-z]$/i.test(trimmed)) return false;
     if (/^(text-|bg-|border-|fill-|stroke-|hover:|dark:)/.test(trimmed)) return false;
     if (trimmed.includes('/') && !trimmed.includes(' ')) return false;
     if (trimmed.includes('[') || trimmed.includes(']')) return false;
@@ -67,14 +104,27 @@ const isTranslatable = (text) => {
     return true;
 };
 
-const reportLiteral = (hits, node, source, kind, literal) => {
-    if (!isTranslatable(literal.text)) return;
+const staticTextOf = (node) => {
+    const expr = unwrap(node);
+    if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) return expr.text;
+    if (ts.isTemplateExpression(expr)) {
+        return [expr.head.text, ...expr.templateSpans.map((span) => span.literal.text)].join(' ');
+    }
+    return null;
+};
+
+const isDataKey = (text) => /^[a-z][a-zA-Z0-9_-]*$/.test(text);
+
+const reportText = (hits, node, source, kind, text) => {
+    if (text === null || !isTranslatable(text)) return;
     hits.push({
         line: source.getLineAndCharacterOfPosition(node.getStart()).line + 1,
         kind,
-        text: literal.text.replace(/\s+/g, ' ').trim(),
+        text: text.replace(/\s+/g, ' ').trim(),
     });
 };
+
+const reportValue = (hits, node, source, kind) => reportText(hits, node, source, kind, staticTextOf(node));
 
 const findLiterals = (file) => {
     const rel = path.relative(target, file);
@@ -89,19 +139,16 @@ const findLiterals = (file) => {
 
     const reportConditional = (node) => {
         const expr = unwrap(node);
-        if (ts.isStringLiteral(expr)) {
-            reportLiteral(hits, node, source, 'jsx-literal', expr);
+        if (ts.isStringLiteral(expr) || ts.isNoSubstitutionTemplateLiteral(expr)) {
+            reportValue(hits, node, source, 'jsx-literal');
             return;
         }
         if (ts.isConditionalExpression(expr)) {
-            for (const branch of [expr.whenTrue, expr.whenFalse]) {
-                const inner = unwrap(branch);
-                if (ts.isStringLiteral(inner)) reportLiteral(hits, branch, source, 'jsx-ternary', inner);
-            }
+            for (const branch of [expr.whenTrue, expr.whenFalse]) reportValue(hits, branch, source, 'jsx-ternary');
             return;
         }
-        if (ts.isBinaryExpression(expr) && ts.isStringLiteral(unwrap(expr.right))) {
-            reportLiteral(hits, expr.right, source, 'jsx-logical', unwrap(expr.right));
+        if (ts.isBinaryExpression(expr) && staticTextOf(expr.right) !== null) {
+            reportValue(hits, expr.right, source, 'jsx-logical');
         }
     };
 
@@ -112,24 +159,61 @@ const findLiterals = (file) => {
                 ts.isIdentifier(callee.expression) &&
                 callee.expression.text === 'toast' &&
                 TOAST_METHODS.has(callee.name.text) &&
-                node.arguments.length > 0 &&
-                ts.isStringLiteral(unwrap(node.arguments[0]))
+                node.arguments.length > 0
             ) {
-                reportLiteral(hits, node.arguments[0], source, 'toast', unwrap(node.arguments[0]));
+                reportValue(hits, node.arguments[0], source, 'toast');
             }
         }
-        if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name) && LABEL_ATTRS.has(node.name.text)) {
+        if (ts.isJsxAttribute(node) && ts.isIdentifier(node.name)) {
+            const name = node.name.text;
             const init = node.initializer;
-            if (init && ts.isStringLiteral(init)) reportLiteral(hits, node, source, node.name.text, init);
-        }
-        if (ts.isPropertyAssignment(node) && ts.isIdentifier(node.name) && TEXT_PROP_NAMES.has(node.name.text)) {
-            const init = node.initializer;
-            if (ts.isStringLiteral(init)) {
-                reportLiteral(hits, node, source, `prop:${node.name.text}`, init);
-            } else if (ts.isArrowFunction(init) || ts.isFunctionExpression(init)) {
-                const body = unwrap(init.body);
-                if (ts.isStringLiteral(body)) reportLiteral(hits, body, source, `prop:${node.name.text}`, body);
+            if (init) {
+                const expr = ts.isJsxExpression(init) ? init.expression : init;
+                const text = expr ? staticTextOf(expr) : null;
+                if (text !== null && TEXT_ATTRS.has(name)) reportText(hits, expr, source, name, text);
+                else if (text !== null && name === 'name' && !isDataKey(text.trim()))
+                    reportText(hits, expr, source, name, text);
             }
+        }
+        if (
+            ts.isPropertyAssignment(node) &&
+            ts.isIdentifier(node.name) &&
+            TEXT_KEYS.has(node.name.text) &&
+            !(node.parent && ts.isJsxAttributes(node.parent))
+        ) {
+            reportValue(hits, node.initializer, source, `prop:${node.name.text}`);
+        }
+        if (ts.isAssignmentPattern(node) && node.left && ts.isIdentifier(node.left)) {
+            const text = staticTextOf(node.right);
+            if (text !== null && (TEXT_KEYS.has(node.left.text) || /\s/.test(text.trim()))) {
+                reportText(hits, node.right, source, `default:${node.left.text}`, text);
+            }
+        }
+        if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
+            const name = node.name.text;
+            if (
+                !SKIP_DECLARATIONS.has(name) &&
+                (MAP_NAME_RE.test(name) || TEXT_KEYS.has(name) || TEXT_SUFFIX_RE.test(name))
+            ) {
+                const init = unwrap(node.initializer);
+                if (ts.isObjectLiteralExpression(init)) {
+                    for (const prop of init.properties) {
+                        if (ts.isPropertyAssignment(prop)) reportValue(hits, prop.initializer, source, `map:${name}`);
+                    }
+                } else if (ts.isArrayLiteralExpression(init)) {
+                    for (const element of init.elements) reportValue(hits, element, source, `array:${name}`);
+                } else {
+                    reportValue(hits, init, source, `const:${name}`);
+                }
+            }
+        }
+        if (
+            ts.isBinaryExpression(node) &&
+            node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+            ts.isIdentifier(node.left) &&
+            (TEXT_SUFFIX_RE.test(node.left.text) || TEXT_KEYS.has(node.left.text))
+        ) {
+            reportValue(hits, node.right, source, `assign:${node.left.text}`);
         }
         if (
             node.kind === ts.SyntaxKind.JsxExpression &&

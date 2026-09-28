@@ -9,7 +9,7 @@ import { SERVICE_DEFINITIONS } from '@/simulation/market/populationDemand';
 import { educationLevelKeys } from '@/simulation/population/education';
 import type { ServiceName } from '@/simulation/population/population';
 import { OCCUPATIONS } from '@/simulation/population/population';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
 import { useLocale, useTranslations } from 'next-intl';
@@ -232,8 +232,9 @@ export default function NutritionHeatmapChart({ rows, groupMode, serviceKey = 'g
     const locale = useLocale();
     const isVerySmall = useIsSmallScreen();
 
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
     const groupKeys: readonly string[] = groupMode === 'occupation' ? OCCUPATIONS : educationLevelKeys;
-    const groupLabels: Record<string, string> = groupMode === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const groupLabels: Record<string, string> = groupMode === 'occupation' ? occLabels : eduLabels;
     const groupColors: Record<string, string> = groupMode === 'occupation' ? OCC_COLORS : EDU_COLORS;
     const targetPerPerson = SERVICE_DEFINITIONS[serviceKey].bufferTargetTicks;
 

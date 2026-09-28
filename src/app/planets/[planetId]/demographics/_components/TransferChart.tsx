@@ -7,7 +7,7 @@ import type { PopulationTransferMatrix } from '@/simulation/population/populatio
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -15,9 +15,6 @@ type Props = {
     matrix: PopulationTransferMatrix | undefined;
     viewMode: GroupMode;
 };
-
-const OCC_MERGE_KEYS = [...OCCUPATIONS.map((occ) => OCC_LABELS[occ]), '_total'];
-const EDU_MERGE_KEYS = [...educationLevelKeys.map((edu) => EDU_LABELS[edu]), '_total'];
 
 function mergePairs(rows: Record<string, number>[], keys: string[]): Record<string, number>[] {
     const result: Record<string, number>[] = [];
@@ -41,6 +38,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
     const locale = useLocale();
     const t = useTranslations('Demographics');
     const isSmallScreen = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
 
     const lastOccData = useRef<Record<string, number>[]>([]);
     const lastEduData = useRef<Record<string, number>[]>([]);
@@ -64,7 +62,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                 for (const edu of educationLevelKeys) {
                     sum += cohort?.[edu]?.[occ] ?? 0;
                 }
-                occRow[OCC_LABELS[occ]] = sum;
+                occRow[occLabels[occ]] = sum;
                 ageTotal += sum;
             }
             occRow._total = ageTotal;
@@ -77,7 +75,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                 for (const occ of OCCUPATIONS) {
                     sum += cohort?.[edu]?.[occ] ?? 0;
                 }
-                eduRow[EDU_LABELS[edu]] = sum;
+                eduRow[eduLabels[edu]] = sum;
                 eduAgeTotal += sum;
             }
             eduRow._total = eduAgeTotal;
@@ -85,7 +83,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
         }
 
         return { occData: occRows, eduData: eduRows };
-    }, [matrix]);
+    }, [matrix, occLabels, eduLabels]);
 
     useEffect(() => {
         if (occData.length > 0) {
@@ -96,13 +94,16 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
         }
     }, [occData, eduData]);
 
+    const occMergeKeys = useMemo(() => [...OCCUPATIONS.map((occ) => occLabels[occ]), '_total'], [occLabels]);
+    const eduMergeKeys = useMemo(() => [...educationLevelKeys.map((edu) => eduLabels[edu]), '_total'], [eduLabels]);
+
     const displayOccData = useMemo(
-        () => (isSmallScreen ? mergePairs(occData, OCC_MERGE_KEYS) : occData),
-        [occData, isSmallScreen],
+        () => (isSmallScreen ? mergePairs(occData, occMergeKeys) : occData),
+        [occData, isSmallScreen, occMergeKeys],
     );
     const displayEduData = useMemo(
-        () => (isSmallScreen ? mergePairs(eduData, EDU_MERGE_KEYS) : eduData),
-        [eduData, isSmallScreen],
+        () => (isSmallScreen ? mergePairs(eduData, eduMergeKeys) : eduData),
+        [eduData, isSmallScreen, eduMergeKeys],
     );
 
     const chartData = viewMode === 'occupation' ? displayOccData : displayEduData;
@@ -176,7 +177,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                     ? OCCUPATIONS.map((occ) => (
                           <Bar
                               key={occ}
-                              dataKey={OCC_LABELS[occ]}
+                              dataKey={occLabels[occ]}
                               stackId='a'
                               fill={OCC_COLORS[occ]}
                               isAnimationActive={false}
@@ -185,7 +186,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                     : educationLevelKeys.map((edu) => (
                           <Bar
                               key={edu}
-                              dataKey={EDU_LABELS[edu]}
+                              dataKey={eduLabels[edu]}
                               stackId='a'
                               fill={EDU_COLORS[edu]}
                               isAnimationActive={false}

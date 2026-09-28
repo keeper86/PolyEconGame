@@ -11,7 +11,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './_components/CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './_components/CohortFilter';
 import type { GroupMode } from './_components/demographicsTypes';
 import { GV_POP, GV_WEALTH } from './_components/demographicsTypes';
 import ServiceSection from './_components/ServiceSection';
@@ -34,6 +34,7 @@ export default function PlanetDemographicsPage() {
     const trpc = useTRPC();
 
     const isSmallScreen = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
 
     const [group, setGroup] = useState<GroupMode>('occupation');
 
@@ -59,7 +60,7 @@ export default function PlanetDemographicsPage() {
 
     const groupKeys = group === 'occupation' ? OCCUPATIONS : educationLevelKeys;
     const groupColors: Record<string, string> = group === 'occupation' ? OCC_COLORS : EDU_COLORS;
-    const groupLabels: Record<string, string> = group === 'occupation' ? OCC_LABELS : EDU_LABELS;
+    const groupLabels: Record<string, string> = group === 'occupation' ? occLabels : eduLabels;
 
     const groupPop = [0, 0, 0, 0];
     const groupAgeWeightedSum = [0, 0, 0, 0];

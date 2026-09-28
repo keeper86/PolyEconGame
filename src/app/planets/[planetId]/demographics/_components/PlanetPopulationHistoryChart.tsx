@@ -598,7 +598,9 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
             <CardContent className='px-4 pt-2 pb-4'>
                 <div className={isLoading ? 'opacity-40 animate-pulse pointer-events-none select-none' : undefined}>
                     <GranularityHeader
-                        title={`Population ${formatNumberWithUnit(live?.population, 'persons', undefined, locale)}`}
+                        title={tr('populationTitle', {
+                            value: formatNumberWithUnit(live?.population, 'persons', undefined, locale),
+                        })}
                         granularity={granularity}
                         onGranularityChange={setGranularity}
                         currentTick={currentTick}

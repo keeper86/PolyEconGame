@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import de from '../../messages/terms.de.json';
 import en from '../../messages/terms.en.json';
 import { ALL_PRODUCTION_FACILITY_ENTRIES, facilityByName } from '@/simulation/planet/productionFacilities';
+import { STORAGE_SHELL_FORM_NAMES } from '@/simulation/planet/facility';
 import {
     HR_DEPARTMENT_NAME,
     LOGISTICS_DEPARTMENT_NAME,
@@ -76,6 +77,12 @@ describe('term catalogs', () => {
 
     it('translates every ship cargo type', () => {
         const missing = cargoTypes.filter((name) => !(name in de));
+
+        expect(missing).toEqual([]);
+    });
+
+    it('translates every storage shell form name', () => {
+        const missing = Object.values(STORAGE_SHELL_FORM_NAMES).filter((name) => !(name in de));
 
         expect(missing).toEqual([]);
     });

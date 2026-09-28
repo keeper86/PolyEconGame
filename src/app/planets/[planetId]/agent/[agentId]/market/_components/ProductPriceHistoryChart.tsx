@@ -106,30 +106,44 @@ function usesLogScale(points: ChartPoint[]): boolean {
     return lo > 0 && hi / lo >= 10;
 }
 
+type PriceLabelKey =
+    | 'avgPrice'
+    | 'minPrice'
+    | 'maxPrice'
+    | 'estimatedCost'
+    | 'rescaledPrice'
+    | 'rescaledMinPrice'
+    | 'rescaledMaxPrice'
+    | 'rescaledEstCost';
+
+const PRICE_LABEL_KEYS: Record<string, PriceLabelKey> = {
+    avgPrice: 'avgPrice',
+    minPrice: 'minPrice',
+    maxPrice: 'maxPrice',
+    priceFloor: 'estimatedCost',
+};
+
+const RESCALED_PRICE_LABEL_KEYS: Record<string, PriceLabelKey> = {
+    avgPrice: 'rescaledPrice',
+    minPrice: 'rescaledMinPrice',
+    maxPrice: 'rescaledMaxPrice',
+    priceFloor: 'rescaledEstCost',
+};
+
 const tooltipValueFormatter = (
     value: number,
     _name: string,
     rescaleMode: PriceScaleMode,
     planetId: string,
     locale: Locale,
+    t: (key: PriceLabelKey) => string,
 ): [string, string] => {
-    const labels: Record<string, string> = {
-        avgPrice: 'Avg price',
-        minPrice: 'Min price',
-        maxPrice: 'Max price',
-        priceFloor: 'Estimated Cost',
-    };
     if (rescaleMode === 'relative') {
-        const labelMap: Record<string, string> = {
-            avgPrice: 'Rescaled price',
-            minPrice: 'Rescaled Min price',
-            maxPrice: 'Rescaled Max price',
-            priceFloor: 'Resc.est. cost (1)',
-        };
-        const label = labelMap[_name] ?? _name;
-        return [`${value.toFixed(2)}×`, label];
+        const key = RESCALED_PRICE_LABEL_KEYS[_name];
+        return [`${value.toFixed(2)}×`, key ? t(key) : _name];
     }
-    return [formatNumberWithUnit(value, 'currency', planetId, locale), labels[_name] ?? _name];
+    const key = PRICE_LABEL_KEYS[_name];
+    return [formatNumberWithUnit(value, 'currency', planetId, locale), key ? t(key) : _name];
 };
 
 type MergedPoint = {
@@ -180,6 +194,8 @@ function SimplePriceAreaChart({
     xAllowDataOverflow?: boolean;
 }) {
     const locale = useLocale();
+    const tPriceLabels = useTranslations('Market.priceLabels');
+    const tLegend = useTranslations('Market.legend');
     const smallScreen = useIsSmallScreen();
     const mergedData = useMemo((): MergedPoint[] => {
         if (!ghostData || ghostData.length === 0) {
@@ -311,6 +327,7 @@ function SimplePriceAreaChart({
                                         rescaleMode,
                                         planetId,
                                         locale,
+                                        tPriceLabels,
                                     );
                                     return (
                                         <div key={p.name} style={{ color: seriesColor[p.name as string] ?? '#e2e8f0' }}>
@@ -333,23 +350,23 @@ function SimplePriceAreaChart({
                         let costLabel: string;
                         if (smallScreen) {
                             if (rescaleMode === 'relative') {
-                                priceLabel = 'Sca. price';
-                                minMaxLabel = 'Sca. min/max';
-                                costLabel = 'Sca. Cost';
+                                priceLabel = tLegend('scaPrice');
+                                minMaxLabel = tLegend('scaMinMax');
+                                costLabel = tLegend('scaCost');
                             } else {
-                                priceLabel = 'Avg Price';
-                                minMaxLabel = 'Min/max Price';
-                                costLabel = 'Est. Cost';
+                                priceLabel = tLegend('avgPrice');
+                                minMaxLabel = tLegend('minMaxPrice');
+                                costLabel = tLegend('estCost');
                             }
                         } else {
                             if (rescaleMode === 'relative') {
-                                priceLabel = 'Scaled price';
-                                minMaxLabel = 'Scaled min/max';
-                                costLabel = 'Scaled Cost';
+                                priceLabel = tLegend('scaledPrice');
+                                minMaxLabel = tLegend('scaledMinMax');
+                                costLabel = tLegend('scaledCost');
                             } else {
-                                priceLabel = 'Average Price';
-                                minMaxLabel = 'Min/max Price';
-                                costLabel = 'Estimated Cost';
+                                priceLabel = tLegend('averagePrice');
+                                minMaxLabel = tLegend('minMaxPrice');
+                                costLabel = tLegend('estimatedCost');
                             }
                         }
                         const entries = [

@@ -25,30 +25,51 @@ type Props = {
     deposits: number;
 };
 
-const LOAN_TYPE_LABELS: Record<Loan['type'], string> = {
-    starter: 'Starter',
-    discretionary: 'Discretionary',
-    wageCoverage: 'Wage coverage',
-    emergency: 'Emergency',
-    governmentSupport: 'Government support',
-    rollover: 'Rollover',
-    bufferCoverage: 'Buffer coverage',
-    claimCoverage: 'Claim coverage',
-    shipPenaltyCoverage: 'Ship penalty',
-    licenseBootstrap: 'License bootstrap',
-    forexWorkingCapital: 'Forex working capital',
-    shipbuilderBootstrap: 'Shipbuilder bootstrap',
-    consolidated: 'Consolidated',
+type LoanTypeKey =
+    | 'starter'
+    | 'discretionary'
+    | 'wageCoverage'
+    | 'emergency'
+    | 'governmentSupport'
+    | 'rollover'
+    | 'bufferCoverage'
+    | 'claimCoverage'
+    | 'shipPenaltyCoverage'
+    | 'licenseBootstrap'
+    | 'forexWorkingCapital'
+    | 'shipbuilderBootstrap'
+    | 'consolidated';
+
+const LOAN_TYPE_LABEL_KEYS: Record<Loan['type'], LoanTypeKey> = {
+    starter: 'starter',
+    discretionary: 'discretionary',
+    wageCoverage: 'wageCoverage',
+    emergency: 'emergency',
+    governmentSupport: 'governmentSupport',
+    rollover: 'rollover',
+    bufferCoverage: 'bufferCoverage',
+    claimCoverage: 'claimCoverage',
+    shipPenaltyCoverage: 'shipPenaltyCoverage',
+    licenseBootstrap: 'licenseBootstrap',
+    forexWorkingCapital: 'forexWorkingCapital',
+    shipbuilderBootstrap: 'shipbuilderBootstrap',
+    consolidated: 'consolidated',
 };
 
 const LOAN_REQUEST_PENDING_KEY = '__loan_request__';
 
-function overlayMessage(isSending: boolean, isAwaitingTick: boolean): string | null {
+type OverlayMessageKey = 'sendingRequest' | 'awaitingNextDay';
+
+function overlayMessage(
+    t: (key: OverlayMessageKey) => string,
+    isSending: boolean,
+    isAwaitingTick: boolean,
+): string | null {
     if (isSending) {
-        return 'Sending request…';
+        return t('sendingRequest');
     }
     if (isAwaitingTick) {
-        return 'Awaiting next day…';
+        return t('awaitingNextDay');
     }
     return null;
 }
@@ -81,6 +102,7 @@ function LoanRow({
 }) {
     const locale = useLocale();
     const t = useTranslations('Financial');
+    const tLoanType = useTranslations('Financial.loanTypes');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const addPending = useAddPendingAction();
@@ -119,14 +141,16 @@ function LoanRow({
 
     const isSending = repayMutation.isPending;
     const isAwaitingTick = hasPendingRepay && !isSending;
-    const overlayMsg = overlayMessage(isSending, isAwaitingTick);
+    const overlayMsg = overlayMessage(t, isSending, isAwaitingTick);
 
     return (
         <div className='space-y-2 relative'>
             <div className='text-xs'>
                 <div className='flex items-center justify-between gap-2'>
                     <span className='flex items-center'>
-                        <span className='font-medium text-foreground'>{LOAN_TYPE_LABELS[loan.type]}</span>
+                        <span className='font-medium text-foreground'>
+                            {tLoanType(LOAN_TYPE_LABEL_KEYS[loan.type])}
+                        </span>
                     </span>
                     <span>
                         {t('loanRate', {
@@ -228,7 +252,7 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
 
     const isSendingLoan = requestLoanMutation.isPending;
     const isAwaitingLoan = hasPendingLoanRequest && !isSendingLoan;
-    const loanOverlayMsg = overlayMessage(isSendingLoan, isAwaitingLoan);
+    const loanOverlayMsg = overlayMessage(tf, isSendingLoan, isAwaitingLoan);
 
     return (
         <div className='space-y-3' data-tour='financial-loan-panel'>
@@ -260,7 +284,14 @@ export default function LoanPanel({ agentId, planetId, deposits }: Props): React
                                     variant='starter'
                                     planetId={planetId}
                                     isFull={true}
-                                    label={`Take initial loan ${formatNumberWithUnit(conditions.maxLoanAmount, 'units', planetId, locale)}`}
+                                    label={tf('takeInitialLoan', {
+                                        amount: formatNumberWithUnit(
+                                            conditions.maxLoanAmount,
+                                            'units',
+                                            planetId,
+                                            locale,
+                                        ),
+                                    })}
                                     isPending={requestLoanMutation.isPending}
                                     disabled={conditions.maxLoanAmount === 0}
                                     onClick={() => {

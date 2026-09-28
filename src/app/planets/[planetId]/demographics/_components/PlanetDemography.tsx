@@ -6,7 +6,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import React from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
+import { EDU_COLORS, OCC_COLORS, useCohortLabels } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -43,6 +43,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
     const locale = useLocale();
     const t = useTranslations('Demographics');
     const isVerySmall = useIsSmallScreen();
+    const { edu: eduLabels, occ: occLabels } = useCohortLabels();
     if (!rows || rows.length === 0) {
         return <EmptyChart />;
     }
@@ -80,7 +81,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
     const keys = group === 'education' ? educationLevelKeys : OCCUPATIONS;
     const finalChartData = isVerySmall ? mergePairs(chartData, keys) : chartData;
     const colors = group === 'education' ? EDU_COLORS : OCC_COLORS;
-    const labels = group === 'education' ? EDU_LABELS : OCC_LABELS;
+    const labels = group === 'education' ? eduLabels : occLabels;
 
     return (
         <ResponsiveContainer width='100%' height={240}>
