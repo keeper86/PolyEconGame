@@ -176,6 +176,7 @@
         "hideAutomatedAgents": "Automatisierte Agenten ausblenden",
         "company": "Unternehmen",
         "netWorth": "Nettovermögen",
+        "netWorthShort": "Vermögen",
         "home": "Heimat",
         "none": "Keine Unternehmen gefunden."
     },

@@ -124,7 +124,7 @@ export default function PlanetAgentsLeaderboardPage() {
                         <TableHead>{t('company')}</TableHead>
                         <TableHead className='text-right'>
                             <DataTableColumnHeader
-                                title={t('netWorth')}
+                                title={smallScreen ? t('netWorthShort') : t('netWorth')}
                                 className='justify-end'
                                 {...col('normalizedBalance')}
                             />

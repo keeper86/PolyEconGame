@@ -176,6 +176,7 @@
         "hideAutomatedAgents": "Hide automated agents",
         "company": "Company",
         "netWorth": "Net Worth",
+        "netWorthShort": "Worth",
         "home": "Home",
         "none": "No companies found."
     },
