@@ -300,7 +300,12 @@
         "onlyRelevantResources": "Nur relevante Ressourcen",
         "emptyPlaceholder": "-leer-",
         "dailyClearanceChart": "Tägliches Markträumungs-Diagramm",
-        "full": "voll"
+        "full": "voll",
+        "outOfStock": "Nicht vorrätig",
+        "storageScaled": "Lager",
+        "noSpace": "kein Platz",
+        "depositScaled": "Einlage",
+        "noFunds": "keine Mittel"
     },
     "Ships": {
         "tabs": {
@@ -705,7 +710,9 @@
         "workerEfficiencyTooltip": "{name}-Arbeitskräfte: {percent} Effizienz",
         "chooseCompanyLogoAria": "Firmenlogo wählen",
         "chooseCompanyLogo": "Firmenlogo wählen",
-        "alreadyTaken": "Bereits von einem anderen Unternehmen belegt"
+        "alreadyTaken": "Bereits von einem anderen Unternehmen belegt",
+        "facilityWorkerEfficiency": "Arbeitseffizienz",
+        "facilityWorkerRequirement": "Arbeitskräftebedarf"
     },
     "Storage": {
         "volumeUsed": "Volumen genutzt",
@@ -742,7 +749,8 @@
         "heldResources": "Gehaltene Ressourcen",
         "newBadge": "neu",
         "sendingBuild": "Bau wird gesendet…",
-        "noMatchingResources": "Keine passenden Ressourcen im Lager"
+        "noMatchingResources": "Keine passenden Ressourcen im Lager",
+        "max": "max"
     },
     "Workforce": {
         "education": "Bildung",
@@ -767,6 +775,7 @@
         "autoEnabled": "Automatische Arbeitskräfteverteilung ist aktiviert.",
         "setHeadcount": "Lege die gewünschte Anzahl pro Bildungsstufe fest.",
         "totalTarget": "Gesamtziel:",
+        "applyTargets": "Ziele anwenden",
         "target": "Ziel",
         "currentTotalLabel": "Aktuell gesamt",
         "workerShortage": "Arbeitskräftemangel",

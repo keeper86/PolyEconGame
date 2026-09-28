@@ -300,7 +300,12 @@
         "onlyRelevantResources": "Only relevant resources",
         "emptyPlaceholder": "-empty-",
         "dailyClearanceChart": "Daily market clearance chart",
-        "full": "full"
+        "full": "full",
+        "outOfStock": "Out of stock",
+        "storageScaled": "storage",
+        "noSpace": "no space",
+        "depositScaled": "deposit",
+        "noFunds": "no funds"
     },
     "Ships": {
         "tabs": {
@@ -705,7 +710,9 @@
         "workerEfficiencyTooltip": "{name} workers: {percent} efficiency",
         "chooseCompanyLogoAria": "Choose company logo",
         "chooseCompanyLogo": "Choose Company Logo",
-        "alreadyTaken": "Already taken by another company"
+        "alreadyTaken": "Already taken by another company",
+        "facilityWorkerEfficiency": "Worker efficiency",
+        "facilityWorkerRequirement": "Worker Requirement"
     },
     "Storage": {
         "volumeUsed": "Volume used",
@@ -742,7 +749,8 @@
         "heldResources": "Held resources",
         "newBadge": "new",
         "sendingBuild": "Sending build…",
-        "noMatchingResources": "No matching resources in storage"
+        "noMatchingResources": "No matching resources in storage",
+        "max": "max"
     },
     "Workforce": {
         "education": "Education",
@@ -767,6 +775,7 @@
         "autoEnabled": "Automatic worker allocation is enabled.",
         "setHeadcount": "Set the desired headcount per education level.",
         "totalTarget": "Total target:",
+        "applyTargets": "Apply targets",
         "target": "Target",
         "currentTotalLabel": "Current total",
         "workerShortage": "Worker shortage",

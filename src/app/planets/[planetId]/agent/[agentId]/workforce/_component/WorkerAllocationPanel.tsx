@@ -39,6 +39,7 @@ export default function WorkerAllocationPanel({
 }: Props): React.ReactElement {
     const locale = useLocale();
     const tr = useTranslations('Workforce');
+    const tc = useTranslations('Common');
     const trpc = useTRPC();
     const queryClient = useQueryClient();
 
@@ -139,7 +140,7 @@ export default function WorkerAllocationPanel({
                         </span>
                     </span>
                     <Button size='sm' onClick={handleSave} disabled={automateWorkerAllocation || mutation.isPending}>
-                        {mutation.isPending ? 'Saving…' : 'Apply targets'}
+                        {mutation.isPending ? tc('saving') : tr('applyTargets')}
                     </Button>
                 </div>
 

@@ -165,7 +165,7 @@ export default function ResourceTrigger({
                                 variant='outline'
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
-                                {bid.storageScaleWarning === 'scaled' ? 'storage' : 'no space'}
+                                {bid.storageScaleWarning === 'scaled' ? t('storageScaled') : t('noSpace')}
                             </Badge>
                         )}
                         {bid?.depositScaleWarning && (
@@ -173,7 +173,7 @@ export default function ResourceTrigger({
                                 variant='outline'
                                 className='text-[9px] px-1 py-0 h-3.5 bg-amber-500 text-amber-950 border-amber-600'
                             >
-                                {bid.depositScaleWarning === 'scaled' ? 'deposit' : 'no funds'}
+                                {bid.depositScaleWarning === 'scaled' ? t('depositScaled') : t('noFunds')}
                             </Badge>
                         )}
                     </div>

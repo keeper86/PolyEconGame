@@ -156,7 +156,7 @@ function AgentInfoCard({
             >
                 <span>
                     {meta.quantity === 0
-                        ? 'Out of stock'
+                        ? t('outOfStock')
                         : `${formatNumberWithUnit(meta.quantity, qtyUnit, undefined, locale)}`}
                 </span>
                 <span>{formatNumberWithUnit(meta.price, 'currency', planetId, locale)}</span>

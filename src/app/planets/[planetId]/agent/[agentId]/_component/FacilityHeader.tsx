@@ -5,7 +5,7 @@ import React from 'react';
 import { CardHeaderBlock } from './CardHeaderBlock';
 import { WorkerBars } from './WorkerBars';
 import { termFor } from '@/i18n/terms';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export const limitingEfficiency = (results: LastTickResults | undefined): number =>
     results
@@ -31,6 +31,7 @@ export function FacilityHeader({
     titleClassName?: string;
 }): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Agent');
     const active = results !== undefined;
     const workerScale = active ? facility.scale : (facility.construction?.constructionTargetMaxScale ?? facility.scale);
 
@@ -41,7 +42,7 @@ export function FacilityHeader({
             badge={badge}
             details={
                 <>
-                    {active ? 'Worker efficiency' : 'Worker Requirement'}
+                    {active ? t('facilityWorkerEfficiency') : t('facilityWorkerRequirement')}
                     <WorkerBars
                         workerRequirement={facility.workerRequirement}
                         scale={workerScale}
