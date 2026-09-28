@@ -52,6 +52,14 @@ function groupResourcesByLevel(resources: { name: string }[]): Map<string, { nam
 
 const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services', 'currency'] as const;
 
+const LEVEL_LABEL_KEYS = {
+    raw: 'resourceRaw',
+    refined: 'resourceRefined',
+    manufactured: 'resourceManufactured',
+    services: 'resourceServices',
+    currency: 'resourceCurrency',
+} as const;
+
 function getLevelForResource(resourceName: string): string {
     if (resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)) {
         return 'currency';
@@ -68,6 +76,8 @@ export default function MarketPanel({
     dataTick,
 }: MarketPanelProps): React.ReactElement {
     const t = useTranslations('Market');
+    const tl = useTranslations('Levels');
+    const tc = useTranslations('Common');
     const [showRelevant, setShowRelevant] = useOnlyRelevantResourcesPreference();
     const showAll = !showRelevant;
     const cardRef = useRef<HTMLDivElement>(null);
@@ -114,24 +124,16 @@ export default function MarketPanel({
     const resourceGroups = useMemo(() => {
         const groups = groupResourcesByLevel(resources);
 
-        const levelLabels: Record<string, string> = {
-            raw: t('levelRaw'),
-            refined: t('levelRefined'),
-            manufactured: t('levelManufactured'),
-            services: t('levelServices'),
-            currency: t('levelCurrency'),
-        };
-
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: levelLabels[level] ?? level,
+            label: tl(LEVEL_LABEL_KEYS[level]),
             resources: groups.get(level) ?? [],
         }));
         if (resources.length > 0) {
-            return [{ level: 'all', label: t('levelAll'), resources }, ...levelGroups];
+            return [{ level: 'all', label: tc('all'), resources }, ...levelGroups];
         }
         return levelGroups;
-    }, [resources, t]);
+    }, [resources, tl, tc]);
 
     const [activeTab, setActiveTab] = useState<string>(() => {
         if (typeof window === 'undefined') {

@@ -27,7 +27,7 @@ describe('selectPendingShipyardBuilds', () => {
         expect(builds).toHaveLength(1);
     });
 
-    it('falls back to a default name when none was submitted', () => {
-        expect(selectPendingShipyardBuilds([action({ facilityId: 'f1' })])[0].name).toBe('New shipyard');
+    it('leaves the name empty when none was submitted', () => {
+        expect(selectPendingShipyardBuilds([action({ facilityId: 'f1' })])[0].name).toBe(null);
     });
 });

@@ -3,12 +3,13 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { termFor } from '@/i18n/terms';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTRPC } from '@/lib/trpc';
 import type { TransportShip } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Contract = {
     id: string;
@@ -32,6 +33,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const t = useTranslations('Ships');
+    const locale = useLocale();
     const [shipId, setShipId] = useState('');
 
     const mutation = useMutation(
@@ -92,7 +94,7 @@ export function AcceptTransportContractDialog({ agentId, planetId, contract, eli
                             <SelectContent>
                                 {eligibleShips.map((s) => (
                                     <SelectItem key={s.id} value={s.id}>
-                                        {s.name} ({s.type.name})
+                                        {s.name} ({termFor(locale, s.type.name)})
                                     </SelectItem>
                                 ))}
                             </SelectContent>

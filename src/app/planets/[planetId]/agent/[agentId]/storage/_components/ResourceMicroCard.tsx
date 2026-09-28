@@ -5,6 +5,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { FlowRates, ResourceFlowData } from './resourceFlowNormalizer';
 import { ResourceFlowTooltip } from './ResourceFlowTooltip';
+import { termFor } from '@/i18n/terms';
 import { useLocale, useTranslations } from 'next-intl';
 
 type StatusLevel = 'green' | 'yellow' | 'red';
@@ -87,7 +88,7 @@ export function ResourceMicroCard({ entry }: { entry: MicroCardEntry }): React.R
             {/* Header */}
             <div className='flex items-center gap-1.5 min-w-0'>
                 <ProductIcon productName={entry.name} size={20} />
-                <span className='text-[10px] font-medium truncate flex-1'>{entry.name}</span>
+                <span className='text-[10px] font-medium truncate flex-1'>{termFor(locale, entry.name)}</span>
                 {statusDot(status)}
             </div>
 

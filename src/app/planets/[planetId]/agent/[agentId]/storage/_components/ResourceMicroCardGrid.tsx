@@ -9,7 +9,14 @@ import { useTranslations } from 'next-intl';
 import { type MicroCardEntry, ResourceMicroCard } from './ResourceMicroCard';
 import { computeResourceFlowData, elapsedTicksThisMonth } from './resourceFlowNormalizer';
 
-const LEVEL_ORDER: string[] = ['raw', 'refined', 'manufactured', 'services'];
+const LEVEL_ORDER = ['raw', 'refined', 'manufactured', 'services'] as const;
+
+const LEVEL_LABEL_KEYS = {
+    raw: 'resourceRaw',
+    refined: 'resourceRefined',
+    manufactured: 'resourceManufactured',
+    services: 'resourceServices',
+} as const;
 
 function aggregateProduction(assets: AgentPlanetAssets): Record<string, number> {
     const result: Record<string, number> = {};
@@ -205,26 +212,22 @@ type Props = {
 // TODO: consolidate and unify storage related functions. Use same logic anywhere.
 export function ResourceMicroCardGrid({ assets, tick }: Props): React.ReactElement {
     const tr = useTranslations('Storage');
+    const tl = useTranslations('Levels');
+    const tc = useTranslations('Common');
     const entries = useMemo(() => buildMicroCardEntries(assets, tick), [assets, tick]);
 
     const resourceGroups = useMemo(() => {
         const groups = groupEntriesByLevel(entries);
-        const levelLabels: Record<string, string> = {
-            raw: tr('levelRaw'),
-            refined: tr('levelRefined'),
-            manufactured: tr('levelManufactured'),
-            services: tr('levelServices'),
-        };
         const levelGroups = LEVEL_ORDER.map((level) => ({
             level,
-            label: levelLabels[level] ?? level,
+            label: tl(LEVEL_LABEL_KEYS[level]),
             resources: groups.get(level) ?? [],
         }));
         if (entries.length > 0) {
-            return [{ level: 'all', label: tr('all'), resources: entries }, ...levelGroups];
+            return [{ level: 'all', label: tc('all'), resources: entries }, ...levelGroups];
         }
         return levelGroups;
-    }, [entries, tr]);
+    }, [entries, tl, tc]);
 
     const [activeTab, setActiveTab] = useState<string>('all');
 

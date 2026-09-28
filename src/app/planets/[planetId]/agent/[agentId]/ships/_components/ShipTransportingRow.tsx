@@ -3,6 +3,7 @@
 import { formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { TransportShipStatusTransporting } from '@/simulation/ships/ships';
+import { termFor } from '@/i18n/terms';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
 import { planetName, ShipEta, type PlanetSummary } from './shipFormatting';
@@ -28,7 +29,7 @@ export function ShipTransportingRow({
                         <span className='tabular-nums text-foreground'>
                             {formatNumberWithUnit(state.cargo.quantity, 'units', undefined, locale)}
                         </span>{' '}
-                        {state.cargo.resource.name}
+                        {termFor(locale, state.cargo.resource.name)}
                     </span>
                 </>
             ) : (

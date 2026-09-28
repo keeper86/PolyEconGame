@@ -330,15 +330,22 @@
         "colSupplyTitle": "Gesamtangebot",
         "colDemandTitle": "Gesamtnachfrage",
         "colSoldTitle": "Verkauft gesamt",
-        "colPriceCostTitle": "Erlös / Kosten",
-        "levelRaw": "Roh",
-        "levelRefined": "Veredelt",
-        "levelManufactured": "Gefertigt",
-        "levelServices": "Dienste",
-        "levelCurrency": "Währung",
-        "levelAll": "Alle"
+        "colPriceCostTitle": "Erlös / Kosten"
+    },
+    "Levels": {
+        "resourceRaw": "Roh",
+        "resourceRefined": "Veredelt",
+        "resourceManufactured": "Gefertigt",
+        "resourceServices": "Dienste",
+        "resourceCurrency": "Währung",
+        "facilityRaw": "Rohstoffförderung",
+        "facilityRefined": "Veredelung",
+        "facilityManufactured": "Fertigung",
+        "facilityServices": "Dienste",
+        "facilityInternal": "Intern"
     },
     "Ships": {
+        "newShipyard": "Neue Werft",
         "tabs": {
             "shipyards": "Werften",
             "myShips": "Meine Schiffe",
@@ -1054,7 +1061,6 @@
         "lastTick": "Letzter Tick",
         "vsMtd": "ggü. lfd. M.",
         "vsPrevMo": "ggü. Vormon.",
-        "all": "Alle",
         "productionLabel": "Produktion",
         "demandLabel": "Bedarf",
         "bufferLabel": "Puffer",
@@ -1080,10 +1086,6 @@
         "sendingBuild": "Bau wird gesendet…",
         "noMatchingResources": "Keine passenden Ressourcen im Lager",
         "max": "max",
-        "levelRaw": "Roh",
-        "levelRefined": "Veredelt",
-        "levelManufactured": "Gefertigt",
-        "levelServices": "Dienste",
         "statusOptimal": "Optimal",
         "statusStable": "Stabil",
         "statusStrained": "Angespannt",

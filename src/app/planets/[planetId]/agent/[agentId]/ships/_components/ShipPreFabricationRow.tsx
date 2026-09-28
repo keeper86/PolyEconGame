@@ -2,10 +2,11 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Progress } from '@/components/ui/progress';
+import { termFor } from '@/i18n/terms';
 import type { ConstructionShipStatusLoading } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { planetName, type PlanetSummary } from './shipFormatting';
 
 export function ShipPreFabricationRow({
@@ -16,6 +17,7 @@ export function ShipPreFabricationRow({
     planetSummaries: PlanetSummary[];
 }): React.ReactElement {
     const t = useTranslations('Ships');
+    const locale = useLocale();
     const construction = state.buildingTarget?.construction ?? null;
     const pct =
         construction && construction.totalConstructionServiceRequired > 0
@@ -28,7 +30,7 @@ export function ShipPreFabricationRow({
                 {state.buildingTarget ? (
                     <>
                         <FacilityOrShipIcon facilityOrShipName={state.buildingTarget.name} size={18} />
-                        <span className='text-foreground'>{state.buildingTarget.name}</span>
+                        <span className='text-foreground'>{termFor(locale, state.buildingTarget.name)}</span>
                     </>
                 ) : (
                     <span>{t('status.repositioning')}</span>

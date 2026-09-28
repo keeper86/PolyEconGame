@@ -2,6 +2,7 @@
 
 import { ProductIcon } from '@/components/client/ProductIcon';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
+import { termFor } from '@/i18n/terms';
 import type { TransportShipStatusLoading } from '@/simulation/ships/ships';
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
@@ -42,7 +43,7 @@ export function ShipLoadingRow({
                             <span className='tabular-nums'>
                                 {formatNumberWithUnit(cargo.goal.quantity, cargo.unit, undefined, locale)}
                             </span>{' '}
-                            {cargo.goal.resource.name}
+                            {termFor(locale, cargo.goal.resource.name)}
                         </span>
                     </>
                 ) : (

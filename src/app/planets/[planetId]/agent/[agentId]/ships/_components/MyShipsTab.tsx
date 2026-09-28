@@ -12,7 +12,8 @@ import { ShipConditionRow } from './ShipConditionRow';
 import { ShipStatusBadge } from './ShipStatusBadge';
 import { ShipStatusDetail } from './ShipStatusDetail';
 import type { ShipListing, ShipPlanetSummary } from './shipTypes';
-import { useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function MyShipsTab({
     agentId,
@@ -35,6 +36,7 @@ export function MyShipsTab({
     const t = useTranslations('Ships');
     const tc = useTranslations('Common');
     const tt = useTranslations('Toasts');
+    const locale = useLocale();
 
     const shipsHere = ships
         .filter(
@@ -72,7 +74,10 @@ export function MyShipsTab({
                                     details={
                                         <>
                                             <span>
-                                                {t('myShips.summary', { name: ship.type.name, speed: ship.type.speed })}
+                                                {t('myShips.summary', {
+                                                    name: termFor(locale, ship.type.name),
+                                                    speed: ship.type.speed,
+                                                })}
                                             </span>
                                             {ship.type.type === 'transport' && (
                                                 <span className='flex flex-wrap'>

@@ -2,6 +2,7 @@
 
 import { FacilityOrShipIcon } from '@/components/client/FacilityOrShipIcon';
 import { Badge } from '@/components/ui/badge';
+import { termFor } from '@/i18n/terms';
 import { getAssetPath } from '@/lib/assetManifest';
 import { formatNumberWithUnit } from '@/lib/utils';
 import type { ConstructionShipType, PassengerShipType, TransportShipType } from '@/simulation/ships/ships';
@@ -31,7 +32,7 @@ export function ShipTypeButton({
         >
             <FacilityOrShipIcon facilityOrShipName={shipType.name} size={80} />
             <span className='flex flex-row items-center gap-1 text-xs font-medium text-center leading-tight'>
-                {shipType.name}{' '}
+                {termFor(locale, shipType.name)}{' '}
                 {shipType.type === 'transport' ? (
                     <Image
                         src={getAssetPath(`form_${shipType.cargoSpecification.type}`)}

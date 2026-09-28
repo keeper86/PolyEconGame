@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { termFor } from '@/i18n/terms';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTRPC } from '@/lib/trpc';
 import { shiptypes } from '@/simulation/ships/ships';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const allShipTypeEntries = Object.values(shiptypes).flatMap((cat) => Object.entries(cat)) as [
     string,
@@ -26,6 +27,7 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const t = useTranslations('Ships');
+    const locale = useLocale();
     const [open, setOpen] = useState(false);
 
     const [shipType, setShipType] = useState('');
@@ -71,7 +73,7 @@ export function PostShipBuyingOfferDialog({ agentId, planetId, children }: Props
                             <SelectContent>
                                 {allShipTypeEntries.map(([key, def]) => (
                                     <SelectItem key={key} value={key}>
-                                        {def.name}
+                                        {termFor(locale, def.name)}
                                     </SelectItem>
                                 ))}
                             </SelectContent>

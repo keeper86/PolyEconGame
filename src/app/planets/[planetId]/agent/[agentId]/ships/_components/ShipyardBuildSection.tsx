@@ -9,9 +9,10 @@ import { useAddPendingAction, usePendingActions } from '@/hooks/useActionOverlay
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useErrorMessage } from '@/i18n/errors';
+import { termFor } from '@/i18n/terms';
 import { useMutation } from '@tanstack/react-query';
 import { HardHat } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { ActionPendingOverlay } from '../../_component/ActionPendingOverlay';
@@ -21,9 +22,11 @@ import { FacilityCardShell } from '../../production/_component/FacilityCardShell
 import { FacilityConstructionPanel } from '../../production/_component/FacilityConstructionPanel';
 import { selectPendingShipyardBuilds } from './shipyardHelpers';
 
-function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
+function PendingShipyardCard({ name }: { name: string | null }): React.ReactElement {
     const tc = useTranslations('Common');
     const tt = useTranslations('Toasts');
+    const ts = useTranslations('Ships');
+    const locale = useLocale();
     return (
         <FacilityCardShell
             className='max-w-[600px]'
@@ -31,7 +34,7 @@ function PendingShipyardCard({ name }: { name: string }): React.ReactElement {
             icon={<FacilityOrShipIcon facilityOrShipName='Shipyard' buildProgress={0} />}
             headerContent={
                 <CardHeaderBlock
-                    title={name}
+                    title={name ? termFor(locale, name) : ts('newShipyard')}
                     titleClassName='text-amber-600 dark:text-amber-400'
                     badge={
                         <Badge

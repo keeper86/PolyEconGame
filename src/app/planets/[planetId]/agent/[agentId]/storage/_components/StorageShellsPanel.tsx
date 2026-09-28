@@ -25,6 +25,7 @@ import { RiArrowRightBoxFill } from 'react-icons/ri';
 import { StorageBalanceRow } from './StorageBalanceRow';
 import { StorageBufferGauge } from './StorageBufferGauge';
 import { StorageStarvationBar } from './StorageStarvationBar';
+import { termFor } from '@/i18n/terms';
 import { useLocale, useTranslations } from 'next-intl';
 
 function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.ReactElement {
@@ -71,7 +72,7 @@ function ShellCapacitySection({ shell }: { shell: StorageFacility }): React.Reac
                     </div>
                     {held.map(([name, entry]) => (
                         <div key={name} className='flex flex-row items-center justify-between text-xs'>
-                            <span>{name}</span>
+                            <span>{termFor(locale, name)}</span>
                             <span className='tabular-nums text-muted-foreground'>
                                 {formatNumberWithUnit(entry.quantity, 'units', undefined, locale)}
                             </span>

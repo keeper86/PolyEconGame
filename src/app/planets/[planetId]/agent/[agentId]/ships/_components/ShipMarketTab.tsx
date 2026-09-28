@@ -24,6 +24,7 @@ import { ShipConditionRow } from './ShipConditionRow';
 import type { PlanetSummary } from './shipFormatting';
 import type { ShipBuyingOffer, ShipListing, TransportContract } from './shipTypes';
 import { useLocale, useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 const allShipTypesByKey = Object.fromEntries(Object.values(shiptypes).flatMap((cat) => Object.entries(cat))) as Record<
     string,
@@ -371,7 +372,7 @@ export function ShipMarketTab({
                                         }
                                         headerContent={
                                             <CardHeaderBlock
-                                                title={shipTypeDef?.name ?? offer.shipType}
+                                                title={termFor(locale, shipTypeDef?.name ?? offer.shipType)}
                                                 titleClassName=''
                                                 badge={
                                                     isMyOffer ? (
@@ -419,7 +420,9 @@ export function ShipMarketTab({
                                                             </span>
                                                         </TooltipTrigger>
                                                         <TooltipContent>
-                                                            {t('market.noIdleShipType', { shipType: offer.shipType })}
+                                                            {t('market.noIdleShipType', {
+                                                                shipType: termFor(locale, offer.shipType),
+                                                            })}
                                                         </TooltipContent>
                                                     </Tooltip>
                                                 </TooltipProvider>

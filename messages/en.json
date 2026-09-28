@@ -330,15 +330,22 @@
         "colSupplyTitle": "Total supply",
         "colDemandTitle": "Total demand",
         "colSoldTitle": "Total sold",
-        "colPriceCostTitle": "Revenue / cost",
-        "levelRaw": "Raw",
-        "levelRefined": "Refined",
-        "levelManufactured": "Manufactured",
-        "levelServices": "Services",
-        "levelCurrency": "Currency",
-        "levelAll": "All"
+        "colPriceCostTitle": "Revenue / cost"
+    },
+    "Levels": {
+        "resourceRaw": "Raw",
+        "resourceRefined": "Refined",
+        "resourceManufactured": "Manufactured",
+        "resourceServices": "Services",
+        "resourceCurrency": "Currency",
+        "facilityRaw": "Raw Extraction",
+        "facilityRefined": "Refinement",
+        "facilityManufactured": "Manufacturing",
+        "facilityServices": "Services",
+        "facilityInternal": "Internal"
     },
     "Ships": {
+        "newShipyard": "New shipyard",
         "tabs": {
             "shipyards": "Shipyards",
             "myShips": "My Ships",
@@ -1054,7 +1061,6 @@
         "lastTick": "Last Tick",
         "vsMtd": "vs MTD",
         "vsPrevMo": "vs Prev. Mo",
-        "all": "All",
         "productionLabel": "production",
         "demandLabel": "demand",
         "bufferLabel": "buffer",
@@ -1080,10 +1086,6 @@
         "sendingBuild": "Sending build…",
         "noMatchingResources": "No matching resources in storage",
         "max": "max",
-        "levelRaw": "Raw",
-        "levelRefined": "Refined",
-        "levelManufactured": "Manufactured",
-        "levelServices": "Services",
         "statusOptimal": "Optimal",
         "statusStable": "Stable",
         "statusStrained": "Strained",

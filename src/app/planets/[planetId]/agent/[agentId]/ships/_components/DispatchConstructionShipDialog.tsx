@@ -6,12 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useTRPC } from '@/lib/trpc';
-import { FACILITY_LEVELS, FACILITY_LEVEL_LABELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
+import { termFor } from '@/i18n/terms';
+import { FACILITY_LEVELS, facilitiesByLevel } from '@/simulation/planet/productionFacilities';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { PlanetDestinationSelect } from './PlanetDestinationSelect';
 import { useShipDispatch } from './useShipDispatch';
+
+const FACILITY_LEVEL_LABEL_KEYS = {
+    raw: 'facilityRaw',
+    refined: 'facilityRefined',
+    manufactured: 'facilityManufactured',
+    services: 'facilityServices',
+    internal: 'facilityInternal',
+} as const;
 
 type Props = {
     agentId: string;
@@ -26,6 +35,8 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
     const markDispatched = useShipDispatch(agentId, planetId, shipId);
     const t = useTranslations('Ships');
     const tc = useTranslations('Common');
+    const tl = useTranslations('Levels');
+    const locale = useLocale();
     const [open, setOpen] = useState(false);
 
     const [toPlanetId, setToPlanetId] = useState('');
@@ -68,7 +79,7 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
                             <Accordion type='single' collapsible className='px-3'>
                                 {FACILITY_LEVELS.map((level) => (
                                     <AccordionItem key={level} value={level}>
-                                        <AccordionTrigger>{FACILITY_LEVEL_LABELS[level]}</AccordionTrigger>
+                                        <AccordionTrigger>{tl(FACILITY_LEVEL_LABEL_KEYS[level])}</AccordionTrigger>
                                         <AccordionContent>
                                             <div className='grid grid-cols-2 gap-3 pb-2'>
                                                 {facilitiesByLevel[level].map((entry) => {
@@ -82,7 +93,9 @@ export function DispatchConstructionShipDialog({ agentId, planetId, shipId, ship
                                                             className={`flex flex-col items-center gap-2 rounded-md border p-2 text-center transition-colors hover:bg-accent ${selected ? 'border-primary bg-accent' : 'border-transparent'}`}
                                                         >
                                                             <FacilityOrShipIcon facilityOrShipName={name} size={120} />
-                                                            <span className='text-xs leading-tight'>{name}</span>
+                                                            <span className='text-xs leading-tight'>
+                                                                {termFor(locale, name)}
+                                                            </span>
                                                         </button>
                                                     );
                                                 })}

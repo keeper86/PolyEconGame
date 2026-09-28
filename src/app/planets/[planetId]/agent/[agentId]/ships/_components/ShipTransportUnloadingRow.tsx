@@ -3,6 +3,7 @@
 import { formatNumberWithUnit } from '@/lib/utils';
 import { ProductIcon } from '@/components/client/ProductIcon';
 import type { TransportShipStatusUnloading } from '@/simulation/ships/ships';
+import { termFor } from '@/i18n/terms';
 import React from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 
@@ -17,7 +18,7 @@ export function ShipTransportUnloadingRow({ state }: { state: TransportShipStatu
                 <span className='tabular-nums text-foreground'>
                     {formatNumberWithUnit(state.cargo.quantity, 'units', undefined, locale)}
                 </span>{' '}
-                {state.cargo.resource.name}
+                {termFor(locale, state.cargo.resource.name)}
             </span>
         </div>
     );

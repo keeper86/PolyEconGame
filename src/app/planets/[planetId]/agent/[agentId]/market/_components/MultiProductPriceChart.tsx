@@ -73,10 +73,10 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { useLocale, useTranslations } from 'next-intl';
 
 const LEVEL_LABEL_KEYS = {
-    raw: 'levelRaw',
-    refined: 'levelRefined',
-    manufactured: 'levelManufactured',
-    services: 'levelServices',
+    raw: 'resourceRaw',
+    refined: 'resourceRefined',
+    manufactured: 'resourceManufactured',
+    services: 'resourceServices',
 } as const;
 
 const RESOURCE_COLOR_MAP: Record<string, string> = {
@@ -261,7 +261,7 @@ function ProductSelector({
     selected: string[];
     onChange: (names: string[]) => void;
 }) {
-    const t = useTranslations('Market');
+    const tl = useTranslations('Levels');
     const toggle = (name: string) => {
         if (selected.includes(name)) {
             onChange(selected.filter((s) => s !== name));
@@ -288,7 +288,7 @@ function ProductSelector({
             {groups.map(({ level, names }) => (
                 <div key={level}>
                     <div className='text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-1 select-none'>
-                        {t(LEVEL_LABEL_KEYS[level])}
+                        {tl(LEVEL_LABEL_KEYS[level])}
                     </div>
                     <div className='flex flex-wrap gap-2 w-[325px]'>
                         {names.map((name) => (
