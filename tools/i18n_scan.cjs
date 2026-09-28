@@ -50,6 +50,20 @@ const staticTextOf = (node) => {
     return null;
 };
 
+const staticTextsOf = (node) => {
+    if (!node) return [];
+    if (ts.isConditionalExpression(node)) return [...staticTextsOf(node.whenTrue), ...staticTextsOf(node.whenFalse)];
+    if (
+        ts.isBinaryExpression(node) &&
+        (node.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+            node.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+    ) {
+        return staticTextsOf(node.right);
+    }
+    const text = staticTextOf(node);
+    return text === null ? [] : [text];
+};
+
 const isDataKey = (text) => /^[a-z][a-zA-Z0-9_-]*$/.test(text);
 
 const findText = (file) => {
@@ -75,9 +89,12 @@ const findText = (file) => {
             const isText = TEXT_ATTRS.has(name) || name === 'aria-label' || name === 'aria-description';
             if (init) {
                 const expr = ts.isJsxExpression(init) ? init.expression : init;
-                const value = expr ? staticTextOf(expr) : null;
-                if (value !== null && isText) add(node, name, value);
-                else if (value !== null && name === 'name' && !isDataKey(value.trim())) add(node, name, value);
+                if (isText) {
+                    for (const text of staticTextsOf(expr)) add(node, name, text);
+                } else if (name === 'name') {
+                    const value = staticTextOf(expr);
+                    if (value !== null && !isDataKey(value.trim())) add(node, name, value);
+                }
             }
         }
         ts.forEachChild(node, visit);

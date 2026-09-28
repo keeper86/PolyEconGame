@@ -10,6 +10,7 @@ import { getResourceByName } from './marketHelpers';
 import type { ResourceTriggerProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
 import { useLocale, useTranslations } from 'next-intl';
+import { termFor } from '@/i18n/terms';
 
 function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
     for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
@@ -130,12 +131,14 @@ export default function ResourceTrigger({
         }
     };
 
+    const displayLabel = termFor(locale, displayName ?? name);
+
     return (
         <div className='flex flex-1 items-center gap-2 min-w-0 overflow-hidden'>
-            <ProductIcon productName={name} label={displayName ?? name} />
+            <ProductIcon productName={name} label={displayLabel} />
 
             <div className={cn('flex-1 min-w-0 flex items-center gap-1')}>
-                <span className='text-sm font-medium truncate'>{displayName ?? name}</span>
+                <span className='text-sm font-medium truncate'>{displayLabel}</span>
                 {(hasActiveBid ||
                     hasActiveOffer ||
                     bid?.automated ||
@@ -146,13 +149,13 @@ export default function ResourceTrigger({
                         {hasActiveBid && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-blue-500'
-                                title={bid?.automated ? 'Buying' : 'Active buy bid'}
+                                title={bid?.automated ? t('buying') : t('activeBuyBid')}
                             />
                         )}
                         {hasActiveOffer && (
                             <span
                                 className='h-1.5 w-1.5 rounded-full bg-green-500'
-                                title={offer?.automated ? 'Selling' : 'Active sell offer'}
+                                title={offer?.automated ? t('selling') : t('activeSellOffer')}
                             />
                         )}
                         {bid?.storageFullWarning && (

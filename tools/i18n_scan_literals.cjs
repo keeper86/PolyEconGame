@@ -113,6 +113,21 @@ const staticTextOf = (node) => {
     return null;
 };
 
+const staticTextsOf = (node) => {
+    const expr = unwrap(node);
+    if (!expr) return [];
+    if (ts.isConditionalExpression(expr)) return [...staticTextsOf(expr.whenTrue), ...staticTextsOf(expr.whenFalse)];
+    if (
+        ts.isBinaryExpression(expr) &&
+        (expr.operatorToken.kind === ts.SyntaxKind.QuestionQuestionToken ||
+            expr.operatorToken.kind === ts.SyntaxKind.BarBarToken)
+    ) {
+        return staticTextsOf(expr.right);
+    }
+    const text = staticTextOf(expr);
+    return text === null ? [] : [text];
+};
+
 const isDataKey = (text) => /^[a-z][a-zA-Z0-9_-]*$/.test(text);
 
 const reportText = (hits, node, source, kind, text) => {
@@ -169,10 +184,12 @@ const findLiterals = (file) => {
             const init = node.initializer;
             if (init) {
                 const expr = ts.isJsxExpression(init) ? init.expression : init;
-                const text = expr ? staticTextOf(expr) : null;
-                if (text !== null && TEXT_ATTRS.has(name)) reportText(hits, expr, source, name, text);
-                else if (text !== null && name === 'name' && !isDataKey(text.trim()))
-                    reportText(hits, expr, source, name, text);
+                if (TEXT_ATTRS.has(name)) {
+                    for (const text of staticTextsOf(expr)) reportText(hits, expr, source, name, text);
+                } else if (name === 'name') {
+                    const text = staticTextOf(expr);
+                    if (text !== null && !isDataKey(text.trim())) reportText(hits, expr, source, name, text);
+                }
             }
         }
         if (
