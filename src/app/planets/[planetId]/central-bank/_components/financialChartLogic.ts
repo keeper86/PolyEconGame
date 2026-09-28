@@ -1,21 +1,11 @@
 import { tickToDate } from '@/components/client/TickDisplay';
-import {
-    DECADE_WINDOW,
-    PREVIOUS_DECEMBER_IDX,
-    ghostMonthVisible,
-    monthAxis,
-    monthCentre,
-} from '@/lib/historyChartAxis';
+import { DECADE_WINDOW, PREVIOUS_DECEMBER_IDX, ghostMonthVisible, monthCentre } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
 
 export type { Granularity } from '@/components/client/GranularityButtonGroup';
-export { MONTH_NAMES, formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
+export { formatDecadeLabel, formatYearLabel } from '@/lib/historyChartAxis';
 export { decadeCentre as bucketDecadeMid, yearCentre as bucketYearMid } from '@/lib/historyChartAxis';
-
-const MONTHLY_AXIS = monthAxis();
-
-export const MONTHLY_X_TICKS = MONTHLY_AXIS.ticks;
-export const MONTHLY_GRID_VALUES = MONTHLY_AXIS.gridValues;
+export { MONTHLY_GRID_VALUES, MONTHLY_TICKS as MONTHLY_X_TICKS } from '@/lib/historyChartAxis';
 
 export function decadeDisplayRows<T extends { bucket: number }>(data: T[]): T[] {
     return [...data].sort((a, b) => a.bucket - b.bucket).slice(-DECADE_WINDOW);

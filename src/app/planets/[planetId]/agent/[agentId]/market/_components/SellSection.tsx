@@ -152,6 +152,7 @@ export default function SellSection({
 }: SellSectionProps): React.ReactElement {
     const locale = useLocale();
     const tr = useTranslations('Market');
+    const tc = useTranslations('Common');
     const {
         saveSell: onSaveSell,
         resetSell: onResetSell,
@@ -222,7 +223,7 @@ export default function SellSection({
         () => (
             <div className='space-y-0.5'>
                 <Stat
-                    label='Production'
+                    label={tr('production')}
                     value={`${isFacilityOutput ? formatNumberWithUnit(producedPerTick, unit, undefined, locale) : '-'}/day`}
                     bold
                 />
@@ -449,7 +450,7 @@ export default function SellSection({
                             htmlFor={`offer-auto-${resourceName}`}
                             className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
                         >
-                            <Tag className='h-3.5 w-3.5 text-muted-foreground' /> Sell
+                            <Tag className='h-3.5 w-3.5 text-muted-foreground' /> {tr('sell')}
                         </Label>
                     </div>
 
@@ -469,7 +470,7 @@ export default function SellSection({
                     <div className='space-y-3 pt-3'>
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
-                                label='Stock'
+                                label={tr('stock')}
                                 value={
                                     isFacilityOutput && producedPerTick > 0
                                         ? `${formatNumberWithUnit(inventoryQty / producedPerTick, 'days', undefined, locale)}`
@@ -479,7 +480,7 @@ export default function SellSection({
                             />
 
                             <Stat
-                                label='Last offered'
+                                label={tr('lastOffered')}
                                 value={formatNumberWithUnit(
                                     offer?.diagnostics?.effectiveQuantity,
                                     unit,
@@ -488,7 +489,7 @@ export default function SellSection({
                                 )}
                             />
                             <Stat
-                                label='Production'
+                                label={tr('production')}
                                 value={
                                     isFacilityOutput
                                         ? `${formatNumberWithUnit(producedPerTick, unit, undefined, locale)}/day`
@@ -496,11 +497,11 @@ export default function SellSection({
                                 }
                             />
                             <Stat
-                                label='Last sold'
+                                label={tr('lastSold')}
                                 value={formatNumberWithUnit(offer?.lastSold, unit, undefined, locale)}
                             />
                             <Stat
-                                label='Smoothed sell-through'
+                                label={tr('smoothedSellThrough')}
                                 value={
                                     offer?.diagnostics?.smoothedSellThrough !== undefined
                                         ? `${(offer.diagnostics.smoothedSellThrough * 100).toFixed(0)}%`
@@ -508,7 +509,7 @@ export default function SellSection({
                                 }
                             />
                             <Stat
-                                label='Last revenue'
+                                label={tr('lastRevenue')}
                                 value={formatNumberWithUnit(offer?.lastRevenue, 'currency', planetId, locale)}
                             />
                         </div>
@@ -520,7 +521,7 @@ export default function SellSection({
                         >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                    Pricing Strategy
+                                    {tr('pricingStrategy')}
                                 </span>
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
@@ -566,7 +567,7 @@ export default function SellSection({
                                             />
                                         )}
                                         <ConfigRangeSlider
-                                            label='Adjustment speed'
+                                            label={tr('adjustmentSpeed')}
                                             valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
                                             valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
                                             committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
@@ -584,7 +585,7 @@ export default function SellSection({
                                             disabled={sellPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Soft min ask (in est. cost)'
+                                            label={tr('softMinAsk')}
                                             value={sliderVal('automatedCostFloorBuffer', AUTOMATED_COST_FLOOR_BUFFER)}
                                             committed={committedVal(committedConfig, 'automatedCostFloorBuffer')}
                                             min={0}
@@ -598,7 +599,7 @@ export default function SellSection({
                                         />
 
                                         <ConfigSlider
-                                            label='Cost spring strength'
+                                            label={tr('costSpringStrength')}
                                             value={sliderVal('costSpringStrength', DEFAULT_COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
@@ -609,7 +610,7 @@ export default function SellSection({
                                         />
                                         <Separator />
                                         <ConfigSlider
-                                            label='Target sell-through'
+                                            label={tr('targetSellThrough')}
                                             value={sliderVal(
                                                 'targetSellThrough',
                                                 isService ? TARGET_SELL_THROUGH_SERVICES : TARGET_SELL_THROUGH,
@@ -633,7 +634,7 @@ export default function SellSection({
                                             disabled={sellPricingConfigSaving || !canResetPricing}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
-                                            Reset
+                                            {tc('reset')}
                                         </Button>
                                         <Button
                                             size='sm'
@@ -654,7 +655,7 @@ export default function SellSection({
 
                                 <div className='pt-1 relative'>
                                     <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                        Set Price
+                                        {tr('setPrice')}
                                     </Label>
                                     <div className='relative'>
                                         <div className='flex flex-row flex-grow gap-2 items-center py-2'>
@@ -732,7 +733,7 @@ export default function SellSection({
                                         {local.validationErrors.offerPrice && (
                                             <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
                                                 <AlertCircle className='h-3 w-3' />
-                                                Price: {local.validationErrors.offerPrice}
+                                                {tr('priceLabel')} {local.validationErrors.offerPrice}
                                             </div>
                                         )}
                                     </div>
@@ -760,7 +761,7 @@ export default function SellSection({
                         >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                    Volume Strategy
+                                    {tr('volumeStrategy')}
                                 </span>
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
@@ -789,7 +790,7 @@ export default function SellSection({
 
                                     <div className='rounded-md bg-muted/50 px-2.5 py-1.5 mb-1'>
                                         <div className='space-y-0.5'>
-                                            {productionBreakdown ?? <Stat label='Production' value='-' />}
+                                            {productionBreakdown ?? <Stat label={tr('production')} value='-' />}
                                         </div>
                                     </div>
 
@@ -804,10 +805,10 @@ export default function SellSection({
                                         {/* Retainment group */}
                                         <div className='space-y-2'>
                                             <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                                Retainment
+                                                {tr('retainment')}
                                             </Label>
                                             <ConfigSlider
-                                                label='Free retainment (total)'
+                                                label={tr('freeRetainmentTotal')}
                                                 value={sliderVal('freeRetainment', 0)}
                                                 committed={committedVal(committedConfig, 'freeRetainment')}
                                                 min={0}
@@ -817,7 +818,7 @@ export default function SellSection({
                                                 disabled={sellVolumeConfigSaving || activeVolumePreset !== 'custom'}
                                             />
                                             <ConfigSlider
-                                                label='Sell-off smoothing (days)'
+                                                label={tr('sellOffSmoothingDays')}
                                                 value={sliderVal(
                                                     'freeRetainmentSmoothingMaxExtra',
                                                     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -846,7 +847,7 @@ export default function SellSection({
                                             disabled={sellVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
-                                            Reset
+                                            {tc('reset')}
                                         </Button>
                                         <Button
                                             size='sm'

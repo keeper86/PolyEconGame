@@ -8,7 +8,7 @@ import React from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type DemographyRow = {
     age: number;
@@ -28,18 +28,20 @@ function safeNumber(v: unknown): number {
 }
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
 export default function PlanetDemography({ rows, group }: Props): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Demographics');
     const isVerySmall = useIsSmallScreen();
     if (!rows || rows.length === 0) {
         return <EmptyChart />;
@@ -96,7 +98,7 @@ export default function PlanetDemography({ rows, group }: Props): React.ReactEle
                         }
                         return (
                             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[140px]'>
-                                <div className='font-medium mb-1'>Age {label}</div>
+                                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(label) })}</div>
                                 {payload.map((entry) => (
                                     <div key={entry.dataKey as string} style={{ color: entry.color }}>
                                         {entry.name}:{' '}

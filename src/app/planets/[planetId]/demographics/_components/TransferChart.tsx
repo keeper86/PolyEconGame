@@ -9,7 +9,7 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { Bar, BarChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { GroupMode } from './demographicsTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type Props = {
     matrix: PopulationTransferMatrix | undefined;
@@ -39,6 +39,7 @@ function mergePairs(rows: Record<string, number>[], keys: string[]): Record<stri
 
 export default function TransferChart({ matrix, viewMode }: Props): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Demographics');
     const isSmallScreen = useIsSmallScreen();
 
     const lastOccData = useRef<Record<string, number>[]>([]);
@@ -149,7 +150,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                         const ageTotal = Number(row._total ?? 0);
                         return (
                             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
-                                <div className='font-medium mb-1'>Age {label}</div>
+                                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(label) })}</div>
                                 {payload.map((entry) => {
                                     const val = Number(entry.value ?? 0);
                                     if (Math.abs(val) < 1e-6) {
@@ -163,7 +164,7 @@ export default function TransferChart({ matrix, viewMode }: Props): React.ReactE
                                     );
                                 })}
                                 <div className='mt-1 pt-1 border-t text-muted-foreground'>
-                                    Total: {ageTotal > 0 ? '+' : ''}
+                                    {t('totalLabel')} {ageTotal > 0 ? '+' : ''}
                                     {formatNumberWithUnit(ageTotal, 'persons', undefined, locale)}
                                 </div>
                             </div>

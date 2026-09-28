@@ -41,7 +41,7 @@ describe('historyChartAxis', () => {
     });
 
     it('puts month ticks under the averages and gridlines on the month starts', () => {
-        const axis = monthAxis();
+        const axis = monthAxis('en');
         expect(axis.domain).toEqual([0, 12]);
         expect(axis.ticks).toEqual([0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5]);
         expect(axis.gridValues).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);

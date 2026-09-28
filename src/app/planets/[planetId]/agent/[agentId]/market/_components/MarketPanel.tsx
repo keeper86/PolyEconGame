@@ -9,6 +9,7 @@ import { useSimulationQuery, useSimulationTick } from '@/hooks/useSimulationQuer
 import { useTRPC } from '@/lib/trpc';
 import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import { LayoutGroup, motion } from 'motion/react';
+import { useTranslations } from 'next-intl';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Label } from '@/components/ui/label';
@@ -73,6 +74,7 @@ export default function MarketPanel({
     ships,
     dataTick,
 }: MarketPanelProps): React.ReactElement {
+    const t = useTranslations('Market');
     const [showRelevant, setShowRelevant] = useOnlyRelevantResourcesPreference();
     const showAll = !showRelevant;
     const cardRef = useRef<HTMLDivElement>(null);
@@ -354,14 +356,14 @@ export default function MarketPanel({
         <Tabs value={activeTab} onValueChange={handleTabChange} className='space-y-3'>
             <Separator />
             <div className='flex items-baseline justify-between py-1'>
-                <h2 className='font-semibold'>Order Books</h2>
+                <h2 className='font-semibold'>{t('orderBooks')}</h2>
                 <div className='flex items-center gap-2'>
                     <Label
                         htmlFor='show-all-resources'
                         className='text-xs text-muted-foreground cursor-pointer'
                         data-tour='market-relevant-toggle'
                     >
-                        Only relevant resources
+                        {t('onlyRelevantResources')}
                     </Label>
                     <Switch id='show-all-resources' checked={showRelevant} onCheckedChange={setShowRelevant} />
                 </div>
@@ -387,7 +389,7 @@ export default function MarketPanel({
                     {resourceGroups.map(({ level, resources: levelResources }) => (
                         <TabsContent key={level} value={level} className='mt-0'>
                             {levelResources.length === 0 ? (
-                                <p className='text-sm text-muted-foreground py-4 text-center'>-empty-</p>
+                                <p className='text-sm text-muted-foreground py-4 text-center'>{t('emptyPlaceholder')}</p>
                             ) : (
                                 <>
                                     <div className='flex items-center px-1 pb-1.5 mb-0.5 border-b'>
@@ -397,7 +399,7 @@ export default function MarketPanel({
                                                 onClick={() => handleColumnSort('name')}
                                                 className='flex flex-1 min-w-0 items-center gap-0.5 cursor-pointer hover:text-muted-foreground truncate'
                                             >
-                                                <span className='truncate'>Resource</span>
+                                                <span className='truncate'>{t('resource')}</span>
                                                 {sortConfig.column === 'name' ? (
                                                     sortConfig.direction === 'asc' ? (
                                                         <ChevronUp className='w-2.5 h-2.5 shrink-0' />

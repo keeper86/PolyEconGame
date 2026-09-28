@@ -2,7 +2,7 @@
 
 import { tickToDate } from '@/components/client/TickDisplay';
 import { liveYearX } from '@/lib/chartTime';
-import { decadeStart, decadeWindowAxis, formatMonthLabel, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
+import { decadeStart, decadeWindowAxis, formatMonthLabel, monthShortName, yearStart, yearWindowAxis } from '@/lib/historyChartAxis';
 import { formatNumberWithUnit } from '@/lib/utils';
 import { useMemo } from 'react';
 import {
@@ -20,7 +20,6 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    MONTH_NAMES,
     bucketDecadeMid,
     bucketYearMid,
     computeMacroMonthlyData,
@@ -32,7 +31,7 @@ import {
     type MacroLive,
     type Granularity,
 } from './financialChartLogic';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export type { EconomyPoint };
 
@@ -50,6 +49,7 @@ export function PlanetMacroChart({
     live?: MacroLive;
 }) {
     const locale = useLocale();
+    const t = useTranslations('CentralBank');
     const liveRow: MacroChartPoint | null = useMemo(
         () =>
             live && live.tick > 0
@@ -148,7 +148,7 @@ export function PlanetMacroChart({
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) + 11) % 12] ?? '',
+                tickFormatter: (v: number) => monthShortName(locale, (Math.ceil(v) + 11) % 12),
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -187,23 +187,25 @@ export function PlanetMacroChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, decadeDisplayData, liveRow]);
+    }, [granularity, data, decadeDisplayData, liveRow, locale]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(locale, p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
-    }, [granularity, chartData]);
+        return granularity === 'decade'
+            ? (v: number) => formatDecadeLabel(locale, v)
+            : (v: number) => formatYearLabel(locale, v);
+    }, [granularity, chartData, locale]);
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Macroeconomic Indicators</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('macroIndicators')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: -20, left: 0, bottom: 0 }}>

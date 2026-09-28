@@ -13,6 +13,7 @@ import {
     HISTORY_BUCKET_LIMIT,
     MONTHS_PER_YEAR,
     YEAR_WINDOW,
+    monthShortName,
 } from '@/lib/historyChartAxis';
 import { useTRPC } from '@/lib/trpc';
 import { formatNumberWithUnit } from '@/lib/utils';
@@ -69,7 +70,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const RESOURCE_COLOR_MAP: Record<string, string> = {
     // -------------------------------------------------------------
@@ -162,8 +163,6 @@ function resourceColor(name: string): string {
     return RESOURCE_COLOR_MAP[name] ?? '#a0a0a0';
 }
 
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-
 type Row = { bucket: number; avgPrice: number; priceFloor: number };
 
 type MergedPoint = {
@@ -185,6 +184,7 @@ export function MultiProductPriceChartTrigger({
     isOpen: boolean;
     onToggle: () => void;
 }): React.ReactElement {
+    const t = useTranslations('Market');
     return (
         <Button
             type='button'
@@ -194,7 +194,7 @@ export function MultiProductPriceChartTrigger({
             aria-expanded={isOpen}
         >
             {isOpen ? <ChevronUp className='w-4 h-4 shrink-0' /> : <ChevronDown className='w-4 h-4 shrink-0' />}
-            Price Comparison
+            {t('priceComparison')}
         </Button>
     );
 }
@@ -459,6 +459,7 @@ export default function MultiProductPriceChart({
     onOpenChange,
 }: Props): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const { granularity, setGranularity, currentTick } = useGranularity();
     const trpc = useTRPC();
 
@@ -531,7 +532,7 @@ export default function MultiProductPriceChart({
                         const totalMonths = Math.floor(tick / 30);
                         const year = START_YEAR + Math.floor(totalMonths / 12);
                         const monthIdx = totalMonths % 12;
-                        bucketToYearLabel.set(bucket, `${MONTH_NAMES[monthIdx] ?? ''} ${year}`);
+                        bucketToYearLabel.set(bucket, `${monthShortName(locale, monthIdx)} ${year}`);
                     } else if (granularity === 'yearly') {
                         const year = Math.floor(tick / 360);
                         bucketToYearLabel.set(bucket, `${START_YEAR + year}`);
@@ -558,7 +559,7 @@ export default function MultiProductPriceChart({
                 allBuckets.set(liveTick, livePoint);
                 const { monthIndex, year } = tickToDate(liveTick);
                 if (granularity === 'monthly') {
-                    bucketToYearLabel.set(liveTick, `${MONTH_NAMES[monthIndex] ?? ''} ${year}`);
+                    bucketToYearLabel.set(liveTick, `${monthShortName(locale, monthIndex)} ${year}`);
                 } else {
                     bucketToYearLabel.set(liveTick, `${year}`);
                 }
@@ -578,7 +579,7 @@ export default function MultiProductPriceChart({
             p.yearLabel = bucketToYearLabel.get(p.bucket);
         }
         return sorted;
-    }, [results, selectedProducts, granularity, rescaleMode, liveTick, livePrices]);
+    }, [results, selectedProducts, granularity, rescaleMode, liveTick, livePrices, locale]);
 
     const scale = useMemo(() => {
         if (mergedData.length === 0) {
@@ -604,12 +605,12 @@ export default function MultiProductPriceChart({
     const xTickFormatter = (bucket: number) => {
         if (bucket === liveTick) {
             const { monthIndex, year } = tickToDate(bucket);
-            return granularity === 'monthly' ? (MONTH_NAMES[monthIndex] ?? '') : `${year}`;
+            return granularity === 'monthly' ? monthShortName(locale, monthIndex) : `${year}`;
         }
         if (granularity === 'monthly') {
             const totalMonths = Math.floor(bucket / 30);
             const monthIdx = totalMonths % 12;
-            return MONTH_NAMES[monthIdx] ?? '';
+            return monthShortName(locale, monthIdx);
         }
         return `${START_YEAR + Math.floor(bucket / 360)}`;
     };
@@ -683,13 +684,13 @@ export default function MultiProductPriceChart({
                                                         value='absolute'
                                                         className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                                     >
-                                                        Price
+                                                        {t('price')}
                                                     </TabsTrigger>
                                                     <TabsTrigger
                                                         value='relative'
                                                         className='text-xs px-2 bg-muted/50 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
                                                     >
-                                                        Price/Cost
+                                                        {t('priceOverCost')}
                                                     </TabsTrigger>
                                                 </TabsList>
                                             </Tabs>
@@ -699,7 +700,7 @@ export default function MultiProductPriceChart({
                                                 onClick={() => setSelectedProducts([])}
                                                 className='px-2 py-0.5 text-xs rounded h-6 cursor-pointer'
                                             >
-                                                Clear
+                                                {t('clear')}
                                             </Button>
                                         </div>
                                         <GranularityButtonGroup
@@ -803,7 +804,7 @@ export default function MultiProductPriceChart({
                                     </div>
                                     {selectedProducts.length === 0 && (
                                         <div className='absolute inset-0 flex items-center justify-center text-sm text-muted-foreground pointer-events-none text-outline-strong'>
-                                            Select products to compare price trends
+                                            {t('selectProductsPrompt')}
                                         </div>
                                     )}
                                 </span>

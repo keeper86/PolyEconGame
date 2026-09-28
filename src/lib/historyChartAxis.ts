@@ -1,26 +1,26 @@
 import { tickToDate } from '@/components/client/TickDisplay';
+import { type Locale } from '@/i18n/config';
 import { START_YEAR, TICKS_PER_MONTH } from '@/simulation/constants';
+import de from '../../messages/de.json';
+import en from '../../messages/en.json';
 
-export const MONTH_NAMES = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-] as const;
+const catalogs = { en, de } as const;
+
+const MONTH_FORMATTERS: Record<Locale, Intl.DateTimeFormat> = {
+    en: new Intl.DateTimeFormat('en', { month: 'short' }),
+    de: new Intl.DateTimeFormat('de', { month: 'short' }),
+};
+
+export const monthShortName = (locale: Locale, monthIndex: number): string =>
+    MONTH_FORMATTERS[locale].format(new Date(Date.UTC(2000, monthIndex, 1)));
 
 export const MONTHS_PER_YEAR = 12;
 export const YEAR_WINDOW = 11;
 export const DECADE_WINDOW = 50;
 export const DECADE_YEARS = 10;
 export const PREVIOUS_DECEMBER_IDX = -0.5;
+export const MONTHLY_TICKS = Array.from({ length: MONTHS_PER_YEAR }, (_, i) => i + 0.5);
+export const MONTHLY_GRID_VALUES = Array.from({ length: MONTHS_PER_YEAR + 1 }, (_, i) => i);
 export const HISTORY_BUCKET_LIMIT = {
     monthly: MONTHS_PER_YEAR + 1,
     yearly: YEAR_WINDOW,
@@ -83,12 +83,12 @@ export function decadeStart(bucket: number): number {
     return Math.floor(tickToDate(bucket).year / DECADE_YEARS) * DECADE_YEARS;
 }
 
-export function monthAxis(): HistoryAxis {
+export function monthAxis(locale: Locale): HistoryAxis {
     return {
         domain: [0, MONTHS_PER_YEAR],
-        ticks: Array.from({ length: MONTHS_PER_YEAR }, (_, i) => i + 0.5),
-        tickFormatter: (value) => MONTH_NAMES[Math.floor(value)] ?? '',
-        gridValues: Array.from({ length: MONTHS_PER_YEAR + 1 }, (_, i) => i),
+        ticks: MONTHLY_TICKS,
+        tickFormatter: (value) => monthShortName(locale, Math.floor(value)),
+        gridValues: MONTHLY_GRID_VALUES,
     };
 }
 
@@ -137,17 +137,18 @@ export function decadeWindowAxis(firstDecade: number | undefined, endYear: numbe
     return decadeAxis(start, endYear);
 }
 
-export function formatYearLabel(value: number): string {
-    return `Year ${Math.floor(value)}`;
+export function formatYearLabel(locale: Locale, value: number): string {
+    return catalogs[locale].Charts.year.replace('{year}', String(Math.floor(value)));
 }
 
-export function formatDecadeLabel(value: number): string {
-    return `${Math.floor(value / DECADE_YEARS) * DECADE_YEARS}s`;
+export function formatDecadeLabel(locale: Locale, value: number): string {
+    const decade = Math.floor(value / DECADE_YEARS) * DECADE_YEARS;
+    return catalogs[locale].Charts.decade.replace('{decade}', String(decade));
 }
 
-export function formatMonthLabel(monthIdx: number, year: number): string {
+export function formatMonthLabel(locale: Locale, monthIdx: number, year: number): string {
     if (monthIdx === PREVIOUS_DECEMBER_IDX) {
-        return 'Previous December';
+        return catalogs[locale].Charts.previousDecember;
     }
-    return `${MONTH_NAMES[Math.floor(monthIdx)] ?? ''} ${year}`;
+    return `${monthShortName(locale, Math.floor(monthIdx))} ${year}`;
 }

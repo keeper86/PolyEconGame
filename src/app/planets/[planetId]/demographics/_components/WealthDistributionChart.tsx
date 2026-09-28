@@ -15,7 +15,7 @@ import { educationLevelKeys } from '@/simulation/population/education';
 import { OCCUPATIONS } from '@/simulation/population/population';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_POP, GV_WEALTH } from './demographicsTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -30,13 +30,14 @@ function makeTooltip(keys: readonly string[], labels: Record<string, string>, co
         label?: number;
     }) {
         const locale = useLocale();
+        const t = useTranslations('Demographics');
         if (!active || !payload || payload.length === 0) {
             return null;
         }
         const row = payload[0].payload;
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[180px]'>
-                <div className='font-medium mb-1'>Age {label}</div>
+                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(label) })}</div>
                 {keys.map((key) => {
                     const pop = row[`${key}_pop`] ?? 0;
                     if (pop === 0) {
@@ -96,12 +97,13 @@ type Props = {
 };
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }

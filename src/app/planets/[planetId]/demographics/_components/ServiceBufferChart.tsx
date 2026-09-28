@@ -12,7 +12,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_WEALTH } from './demographicsTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type ChartRow = Record<string, number>;
 
@@ -62,6 +62,7 @@ function makeTooltip(
         label?: number;
     }) {
         const locale = useLocale();
+        const t = useTranslations('Demographics');
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -69,7 +70,7 @@ function makeTooltip(
         const age = label ?? 0;
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[160px]'>
-                <div className='font-medium mb-1'>Age {age}</div>
+                <div className='font-medium mb-1'>{t('tooltipAge', { age: String(age) })}</div>
                 {keys.map((key) => {
                     const pop = row[`${key}_pop`] ?? 0;
                     if (pop === 0) {
@@ -174,12 +175,13 @@ type Props = {
 };
 
 function EmptyChart({ height = 180 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }

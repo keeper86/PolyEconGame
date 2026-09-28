@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import type { TooltipProps } from 'recharts';
 import {
     Area,
@@ -37,6 +38,7 @@ function percent(v: number): string {
 }
 
 function CurveTooltip({ active, payload }: TooltipProps<number, string>) {
+    const t = useTranslations('Market');
     if (!active || !payload || payload.length === 0) {
         return null;
     }
@@ -55,9 +57,9 @@ function CurveTooltip({ active, payload }: TooltipProps<number, string>) {
                 color: '#94a3b8',
             }}
         >
-            <div>Price/Cost: {point.ratio.toFixed(2)}</div>
-            <div style={{ color: GHOST_COLOR }}>Saved push: {percent(point.ghost)}</div>
-            <div style={{ color: ACTIVE_COLOR }}>Draft push: {percent(point.active)}</div>
+            <div>{t('priceOverCostLabel')} {point.ratio.toFixed(2)}</div>
+            <div style={{ color: GHOST_COLOR }}>{t('savedPush')} {percent(point.ghost)}</div>
+            <div style={{ color: ACTIVE_COLOR }}>{t('draftPush')} {percent(point.active)}</div>
         </div>
     );
 }
@@ -134,6 +136,7 @@ export function CostSpringCurve({
     currentRatio?: number;
     ownRatio?: number;
 }): React.ReactElement {
+    const t = useTranslations('Market');
     const { min: domainMin, max: domainMax } = useMemo(
         () => computeSpringDomain(mode, ghost, active, currentRatio, ownRatio),
         [mode, ghost, active, currentRatio, ownRatio],
@@ -179,7 +182,7 @@ export function CostSpringCurve({
         [xTicks, topTicks],
     );
 
-    const title = mode === 'buy' ? 'Ceiling spring curve' : 'Cost spring curve';
+    const title = mode === 'buy' ? t('ceilingSpringCurve') : t('costSpringCurve');
 
     return (
         <div className='py-1'>
@@ -190,11 +193,11 @@ export function CostSpringCurve({
                 <div className='flex items-center gap-3 text-[10px] text-slate-400'>
                     <span className='flex items-center gap-1'>
                         <span className='inline-block w-2.5 h-0.5 bg-slate-400' />
-                        Saved
+                        {t('saved')}
                     </span>
                     <span className='flex items-center gap-1'>
                         <span className='inline-block w-2.5 h-0.5 bg-sky-400' />
-                        Draft
+                        {t('draft')}
                     </span>
                 </div>
             </div>
@@ -378,19 +381,19 @@ export function CostSpringCurve({
             <div className='flex items-center justify-end gap-3 text-[10px] text-slate-400 pt-1'>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-slate-400' />
-                    Market
+                    {t('market')}
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-amber-400' />
-                    Own
+                    {t('own')}
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-sky-400' />
-                    Soft max
+                    {t('softMax')}
                 </span>
                 <span className='flex items-center gap-1'>
                     <span className='inline-block w-2.5 h-2.5 rounded-full bg-red-400' />
-                    Hard cap
+                    {t('hardCap')}
                 </span>
             </div>
         </div>

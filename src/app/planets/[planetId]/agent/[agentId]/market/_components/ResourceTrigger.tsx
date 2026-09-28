@@ -9,7 +9,7 @@ import { getColumnClasses } from './columnConfig';
 import { getResourceByName } from './marketHelpers';
 import type { ResourceTriggerProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 function getPriceCostRatioBand(ratio: number): (typeof BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST)[number] {
     for (const band of BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST) {
@@ -33,6 +33,7 @@ export default function ResourceTrigger({
     planetId,
 }: ResourceTriggerProps): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const hasActiveBid = bid?.bidPrice !== undefined || bid?.bidStorageTarget !== undefined;
     const hasActiveOffer = offer?.offerPrice !== undefined || offer?.offerRetainment !== undefined;
 
@@ -156,7 +157,7 @@ export default function ResourceTrigger({
                         )}
                         {bid?.storageFullWarning && (
                             <Badge variant='destructive' className='text-[9px] px-1 py-0 h-3.5'>
-                                full
+                                {t('full')}
                             </Badge>
                         )}
                         {bid?.storageScaleWarning && (

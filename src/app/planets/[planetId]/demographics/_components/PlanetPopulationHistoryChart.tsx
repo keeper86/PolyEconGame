@@ -169,6 +169,7 @@ function populationTooltipContent(
     label: string,
     value: number | undefined | null,
     locale: Locale,
+    populationLabel: string,
 ): React.ReactElement | null {
     if (value == null) {
         return null;
@@ -185,7 +186,7 @@ function populationTooltipContent(
         >
             <div style={{ color: '#94a3b8', marginBottom: 4 }}>{label}</div>
             <div style={{ color: '#e2e8f0' }}>
-                Population: {formatNumberWithUnit(value, 'persons', undefined, locale)}
+                {populationLabel} {formatNumberWithUnit(value, 'persons', undefined, locale)}
             </div>
         </div>
     );
@@ -242,14 +243,14 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 
     const yDomain = useMemo(() => yDomainFor(data), [data]);
 
-    const monthlyX = monthAxis();
+    const monthlyX = monthAxis(locale);
     const monthTooltipLabel = (monthIdx: number): string => {
         if (isLiveMonthPoint(monthIdx)) {
             return tr('live');
         }
         const pt = data.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
-        return formatMonthLabel(monthIdx, yearInt);
+        return formatMonthLabel(locale, monthIdx, yearInt);
     };
 
     return (
@@ -358,6 +359,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
 
 function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[]; live?: LiveData }) {
     const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo((): ChartPoint[] => {
         const rows = [...yearlyPoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -420,9 +422,10 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatYearLabel(label as number),
+                                formatYearLabel(locale, label as number),
                                 p?.value as number | undefined,
                                 locale,
+                                tr('populationLabel'),
                             );
                         }}
                     />
@@ -445,6 +448,7 @@ function YearlyChart({ yearlyPoints, live }: { yearlyPoints: PopulationRawPoint[
 
 function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint[]; live?: LiveData }) {
     const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo((): ChartPoint[] => {
         const rows = [...decadePoints]
             .sort((a, b) => a.bucket - b.bucket)
@@ -510,9 +514,10 @@ function DecadesChart({ decadePoints, live }: { decadePoints: PopulationRawPoint
                             }
                             const p = payload.find((e) => e.dataKey === 'value');
                             return populationTooltipContent(
-                                formatDecadeLabel(label as number),
+                                formatDecadeLabel(locale, label as number),
                                 p?.value as number | undefined,
                                 locale,
+                                tr('populationLabel'),
                             );
                         }}
                     />

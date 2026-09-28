@@ -21,7 +21,7 @@ import {
     YAxis,
 } from 'recharts';
 import { clampArea, getResourceByName } from './marketHelpers';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,7 @@ function AgentInfoCard({
     small?: boolean;
 }) {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const minW = small ? 'auto' : '140px';
     const labelFs = small ? '10px' : '11px';
     const nameFs = small ? '11px' : '13px';
@@ -92,7 +93,7 @@ function AgentInfoCard({
         return (
             <div style={{ minWidth: minW }}>
                 <div style={{ fontWeight: 600, fontSize: labelFs, color, marginBottom: '2px' }}>{sideLabel}</div>
-                <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>Population</div>
+                <div style={{ fontWeight: 600, fontSize: nameFs, color: '#e2e8f0' }}>{t('population')}</div>
                 <div
                     style={{
                         display: 'flex',
@@ -138,7 +139,7 @@ function AgentInfoCard({
                             letterSpacing: '0.03em',
                         }}
                     >
-                        ← You
+                        {t('youMarker')}
                     </span>
                 )}
             </div>
@@ -176,13 +177,13 @@ function AgentInfoCard({
 
             {/* Clearing indicator for own position */}
             {meta.isOwn && meta.fillRate >= 0.99 && (
-                <div style={{ fontSize: clearFs, color: '#4ade80', fontWeight: 600 }}>✓ Fully cleared</div>
+                <div style={{ fontSize: clearFs, color: '#4ade80', fontWeight: 600 }}>{t('fullyCleared')}</div>
             )}
             {meta.isOwn && meta.fillRate > 0 && meta.fillRate < 0.99 && (
-                <div style={{ fontSize: clearFs, color: '#fbbf24', fontWeight: 600 }}>⏳ Partially cleared</div>
+                <div style={{ fontSize: clearFs, color: '#fbbf24', fontWeight: 600 }}>{t('partiallyCleared')}</div>
             )}
             {meta.isOwn && meta.fillRate === 0 && (
-                <div style={{ fontSize: clearFs, color: '#ef4444', fontWeight: 600 }}>✗ Not cleared</div>
+                <div style={{ fontSize: clearFs, color: '#ef4444', fontWeight: 600 }}>{t('notCleared')}</div>
             )}
         </div>
     );
@@ -198,6 +199,7 @@ function ChartTooltip({
     resourceName,
 }: TooltipProps<number, string> & { planetId: string; resourceName: string }) {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const isSmallScreen = useIsSmallScreen();
 
     if (!active || !payload || payload.length === 0) {
@@ -228,7 +230,7 @@ function ChartTooltip({
                 }}
             >
                 <div>
-                    Volume: {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
+                    {t('volumeLabel')} {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
                 </div>
             </div>
         );
@@ -251,7 +253,7 @@ function ChartTooltip({
                     textAlign: 'center' as const,
                 }}
             >
-                Volume: {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
+                {t('volumeLabel')} {formatNumberWithUnit(vol, 'none', undefined, locale)} {qtyUnit}
             </div>
 
             {/* Layout: side-by-side on desktop, stacked on small screens */}

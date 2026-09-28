@@ -20,7 +20,7 @@ import SellSection from './SellSection';
 import { getResourceByName, resourceNameToSlug } from './marketHelpers';
 import type { ResourceAccordionItemProps } from './marketTypes';
 import { BANDS_FOR_RATIO_CLEARING_PRICE_TO_PRODUCTION_COST } from './marketTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const TOUR_BUY_RESOURCES = new Set(['Construction', 'Administration', 'Logistics', 'Maintenance']);
 
@@ -37,6 +37,7 @@ export default function ResourceAccordionItem({
     ships,
 }: ResourceAccordionItemProps): React.ReactElement {
     const locale = useLocale();
+    const t = useTranslations('Market');
     const bid = assets.market.buy[resourceName];
     const offer = assets.market.sell[resourceName];
     const inventoryQty = resourceName.startsWith(CURRENCY_RESOURCE_PREFIX)
@@ -243,7 +244,7 @@ export default function ResourceAccordionItem({
 
                     <Separator />
                     <div className='flex flex-col gap-4'>
-                        <span className='text-xs font-medium text-muted-foreground'>Daily market clearance chart</span>
+                        <span className='text-xs font-medium text-muted-foreground'>{t('dailyClearanceChart')}</span>
 
                         <MarketStepChart
                             market={marketData?.market ?? undefined}

@@ -21,7 +21,7 @@ import {
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
 import { TICKS_PER_MONTH } from '@/simulation/constants';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
@@ -279,6 +279,7 @@ function BufferAreaChart({
 }) {
     const chartData = useMemo(() => mergeMonthlyChartData(data, ghostData), [data, ghostData]);
     const tr = useTranslations('Demographics');
+    const locale = useLocale();
 
     return (
         <div style={{ width: '100%', height: 240 }}>
@@ -332,10 +333,10 @@ function BufferAreaChart({
                             const point = payload[0]?.payload as ChartPoint | undefined;
                             const pointLabel =
                                 granularity === 'monthly'
-                                    ? formatMonthLabel(label as number, point?.year ?? 0)
+                                    ? formatMonthLabel(locale, label as number, point?.year ?? 0)
                                     : granularity === 'yearly'
-                                      ? formatYearLabel(label as number)
-                                      : formatDecadeLabel(label as number);
+                                      ? formatYearLabel(locale, label as number)
+                                      : formatDecadeLabel(locale, label as number);
                             return (
                                 <div
                                     style={{
@@ -486,6 +487,7 @@ export default function PlanetBufferChart({
     live,
 }: Props): React.ReactElement {
     const isLoading = externalLoading ?? false;
+    const locale = useLocale();
 
     const monthlyChartData = useMemo(
         () => computeMonthlyData(monthlyPoints, currentTick, live),
@@ -511,7 +513,7 @@ export default function PlanetBufferChart({
         return liveRow ? [...rows, liveRow] : rows;
     }, [decadePoints, liveRow]);
 
-    const monthlyX = monthAxis();
+    const monthlyX = monthAxis(locale);
     const yearlyX =
         yearlyChartData.length > 0
             ? yearWindowAxis(yearStart(yearlyChartData[0].tick), yearlyChartData[yearlyChartData.length - 1].year)

@@ -193,6 +193,8 @@ export default function BuySection({
 }: BuySectionProps): React.ReactElement {
     const locale = useLocale();
     const tr = useTranslations('Market');
+    const tu = useTranslations('Units');
+    const tc = useTranslations('Common');
     const {
         saveBuy: onSaveBuy,
         resetBuy: onResetBuy,
@@ -492,7 +494,7 @@ export default function BuySection({
                             htmlFor={`bid-auto-${resourceName}`}
                             className='flex items-center gap-1.5 py-2 text-xs font-semibold text-left cursor-pointer'
                         >
-                            <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> Buy
+                            <ShoppingCart className='h-3.5 w-3.5 text-muted-foreground' /> {tr('buy')}
                         </Label>
                     </div>
                     <div className='flex items-center gap-2'>
@@ -511,16 +513,16 @@ export default function BuySection({
                     <div className='space-y-3 pt-3'>
                         <div className='grid grid-cols-2 gap-x-4 gap-y-1'>
                             <Stat
-                                label='Stock'
-                                value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' days' : '—'}`}
+                                label={tr('stock')}
+                                value={`${inventoryInBuyTicks !== null ? inventoryInBuyTicks.toFixed(1) + ' ' + tu('days') : '—'}`}
                                 bold
                             />
                             <Stat
-                                label='Last wanted'
+                                label={tr('lastWanted')}
                                 value={formatNumberWithUnit(bid?.diagnostics?.shortfall, unit, undefined, locale)}
                             />
                             <Stat
-                                label='Required'
+                                label={tr('required')}
                                 value={
                                     isFacilityInput
                                         ? `${formatNumberWithUnit(consumedPerTick, unit, undefined, locale)}/day`
@@ -529,11 +531,11 @@ export default function BuySection({
                             />
 
                             <Stat
-                                label='Last bought'
+                                label={tr('lastBought')}
                                 value={formatNumberWithUnit(bid?.lastBought, unit, planetId, locale)}
                             />
                             <Stat
-                                label='Smoothed fill rate'
+                                label={tr('smoothedFillRate')}
                                 value={
                                     bid?.diagnostics?.smoothedFillRate !== undefined
                                         ? `${(bid.diagnostics.smoothedFillRate * 100).toFixed(0)}%`
@@ -541,7 +543,7 @@ export default function BuySection({
                                 }
                             />
                             <Stat
-                                label='Last spent'
+                                label={tr('lastSpent')}
                                 value={formatNumberWithUnit(bid?.lastSpent, 'currency', planetId, locale)}
                             />
                         </div>
@@ -553,7 +555,7 @@ export default function BuySection({
                         >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                    Pricing Strategy
+                                    {tr('pricingStrategy')}
                                 </span>
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
@@ -600,7 +602,7 @@ export default function BuySection({
                                             />
                                         )}
                                         <ConfigRangeSlider
-                                            label='Adjustment speed'
+                                            label={tr('adjustmentSpeed')}
                                             valueLow={sliderVal('priceAdjustMaxDown', PRICE_ADJUST_MAX_DOWN)}
                                             valueHigh={sliderVal('priceAdjustMaxUp', PRICE_ADJUST_MAX_UP)}
                                             committedLow={committedVal(committedConfig, 'priceAdjustMaxDown')}
@@ -618,7 +620,7 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Soft max bid (in est. cost)'
+                                            label={tr('softMaxBid')}
                                             value={sliderVal(
                                                 'bidOfferMaxCostMultiplier',
                                                 BID_OFFER_MAX_COST_MULTIPLIER,
@@ -633,7 +635,7 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || activePricingPreset !== 'custom'}
                                         />
                                         <ConfigSlider
-                                            label='Ceiling spring strength'
+                                            label={tr('ceilingSpringStrength')}
                                             value={sliderVal('costSpringStrength', DEFAULT_COST_SPRING_STRENGTH)}
                                             committed={committedVal(committedConfig, 'costSpringStrength')}
                                             min={0}
@@ -644,7 +646,7 @@ export default function BuySection({
                                         />
                                         <Separator />
                                         <ConfigSlider
-                                            label='Target fill rate'
+                                            label={tr('targetFillRate')}
                                             value={sliderVal(
                                                 'targetFillRate',
                                                 isService ? TARGET_FILL_RATE_SERVICES : TARGET_FILL_RATE,
@@ -668,7 +670,7 @@ export default function BuySection({
                                             disabled={buyPricingConfigSaving || !canResetPricing}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
-                                            Reset
+                                            {tc('reset')}
                                         </Button>
                                         <Button
                                             size='sm'
@@ -689,7 +691,7 @@ export default function BuySection({
 
                                 <div className='pt-1 relative'>
                                     <Label className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                        Set Price
+                                        {tr('setPrice')}
                                     </Label>
                                     <div className='relative'>
                                         <div className='flex flex-row flex-grow gap-2 items-center py-2'>
@@ -766,10 +768,20 @@ export default function BuySection({
                                             <Alert variant='destructive' className='py-2'>
                                                 <AlertCircle className='h-3.5 w-3.5' />
                                                 <AlertDescription className='text-xs'>
-                                                    Bid cost (
-                                                    {formatNumberWithUnit(totalBidCost, 'currency', planetId, locale)})
-                                                    exceeds available deposits (
-                                                    {formatNumberWithUnit(deposits, 'currency', planetId, locale)}).
+                                                    {tr('bidCostWarning', {
+                                                        bidCost: formatNumberWithUnit(
+                                                            totalBidCost,
+                                                            'currency',
+                                                            planetId,
+                                                            locale,
+                                                        ),
+                                                        deposits: formatNumberWithUnit(
+                                                            deposits,
+                                                            'currency',
+                                                            planetId,
+                                                            locale,
+                                                        ),
+                                                    })}
                                                 </AlertDescription>
                                             </Alert>
                                         )}
@@ -784,8 +796,8 @@ export default function BuySection({
                                                 <AlertCircle className='h-3.5 w-3.5' />
                                                 <AlertDescription className='text-xs'>
                                                     {bid.depositScaleWarning === 'dropped'
-                                                        ? 'No deposits available — bid was not placed last tick.'
-                                                        : 'Bid was proportionally scaled down due to insufficient deposits.'}
+                                                        ? tr('noDepositsBidNotPlaced')
+                                                        : tr('bidScaledDown')}
                                                 </AlertDescription>
                                             </Alert>
                                         )}
@@ -793,7 +805,7 @@ export default function BuySection({
                                         {local.validationErrors.bidPrice && (
                                             <div className='text-xs text-red-600 dark:text-red-400 flex items-center gap-1'>
                                                 <AlertCircle className='h-3 w-3' />
-                                                Price: {local.validationErrors.bidPrice}
+                                                {tr('priceLabel')} {local.validationErrors.bidPrice}
                                             </div>
                                         )}
                                     </div>
@@ -821,7 +833,7 @@ export default function BuySection({
                         >
                             <CollapsibleTrigger className='flex items-center justify-between w-full p-2.5 hover:bg-muted/50 cursor-pointer [&[data-state=open]>svg]:rotate-180'>
                                 <span className='text-[11px] font-semibold text-muted-foreground uppercase tracking-wider'>
-                                    Volume Strategy
+                                    {tr('volumeStrategy')}
                                 </span>
                                 <ChevronDown className='h-3.5 w-3.5 transition-transform duration-200' />
                             </CollapsibleTrigger>
@@ -853,7 +865,7 @@ export default function BuySection({
                                             {isFacilityInput ? (
                                                 <div className='space-y-0.5'>
                                                     <Stat
-                                                        label='Required'
+                                                        label={tr('required')}
                                                         value={`${formatNumberWithUnit(consumedPerTick, unit, undefined, locale)}/day`}
                                                         bold
                                                     />
@@ -888,7 +900,7 @@ export default function BuySection({
                                                     })}
                                                 </div>
                                             ) : (
-                                                <Stat label='Consumption' value='-' />
+                                                <Stat label={tr('consumption')} value='-' />
                                             )}
                                         </div>
                                     </div>
@@ -904,11 +916,11 @@ export default function BuySection({
                                         {/* Combined Needs group */}
                                         <div className='space-y-2'>
                                             <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                                Combined Needs
+                                                {tr('combinedNeeds')}
                                             </Label>
                                             <div className={'space-y-2'}>
                                                 <ConfigSlider
-                                                    label='Input buffer (days)'
+                                                    label={tr('inputBufferDays')}
                                                     value={sliderVal(
                                                         'inputBufferTargetTicks',
                                                         isService
@@ -925,7 +937,7 @@ export default function BuySection({
                                                     disabled={buyVolumeConfigSaving || activeVolumePreset !== 'custom'}
                                                 />
                                                 <ConfigSlider
-                                                    label='Max buy rate (days)'
+                                                    label={tr('maxBuyRateDays')}
                                                     value={sliderVal(
                                                         'inventorySmoothingMaxExtra',
                                                         INVENTORY_SMOOTHING_MAX_EXTRA,
@@ -951,12 +963,12 @@ export default function BuySection({
                                         {/* Free quantity group */}
                                         <div className='space-y-2'>
                                             <Label className='text-[10px] text-muted-foreground/70 uppercase tracking-wider'>
-                                                Free quantity
+                                                {tr('freeQuantity')}
                                             </Label>
                                             <div className='space-y-1'>
                                                 <div className='flex items-center justify-between'>
                                                     <Label className='text-[11px] text-muted-foreground'>
-                                                        Free buy quantity (total)
+                                                        {tr('freeBuyQuantityTotal')}
                                                     </Label>
                                                     <span className='text-[11px] tabular-nums font-medium'>
                                                         {formatNumberWithUnit(
@@ -992,7 +1004,7 @@ export default function BuySection({
                                                 />
                                             </div>
                                             <ConfigSlider
-                                                label='Free buy fill days'
+                                                label={tr('freeBuyFillDays')}
                                                 value={sliderVal(
                                                     'freeBuyQuantitySmoothingMaxExtra',
                                                     FREE_QUANTITY_SMOOTHING_MAX_EXTRA,
@@ -1021,7 +1033,7 @@ export default function BuySection({
                                             disabled={buyVolumeConfigSaving || !canResetVolume}
                                         >
                                             <RotateCcw className='h-3 w-3 mr-1' />
-                                            Reset
+                                            {tc('reset')}
                                         </Button>
                                         <Button
                                             size='sm'

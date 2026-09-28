@@ -156,7 +156,8 @@ export default function PlanetDemographicsPage() {
                             {populationTotal > 0 ? ((groupPop[i] / populationTotal) * 100).toFixed(1) + '%' : '0%'}
                         </p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
-                            Ø age <span className='font-medium text-foreground'>{groupMeanAge[i].toFixed(1)}</span>
+                            {tr('averageAge')}{' '}
+                            <span className='font-medium text-foreground'>{groupMeanAge[i].toFixed(1)}</span>
                         </p>
                     </CardContent>
                 </Card>
@@ -177,7 +178,7 @@ export default function PlanetDemographicsPage() {
                         {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                     </div>
                     <div className='text-[9px] text-muted-foreground leading-tight'>
-                        {wealthShare[i].toFixed(1)}% of wealth
+                        {tr('percentOfWealth', { percent: wealthShare[i].toFixed(1) })}
                     </div>
                 </div>
             ))}
@@ -195,9 +196,9 @@ export default function PlanetDemographicsPage() {
                         <p className='text-lg font-semibold leading-tight'>
                             {formatNumberWithUnit(wealthMean[i], 'currency', planetId, locale)}
                         </p>
-                        <p className='text-xs text-muted-foreground'>Ø wealth / person</p>
+                        <p className='text-xs text-muted-foreground'>{tr('averageWealthPerPerson')}</p>
                         <p className='text-[11px] text-muted-foreground pt-1'>
-                            Wealth share{' '}
+                            {tr('wealthShare')}{' '}
                             <span className='font-medium text-foreground'>{wealthShare[i].toFixed(1)}%</span>
                         </p>
                     </CardContent>

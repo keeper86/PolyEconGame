@@ -8,6 +8,7 @@ import {
     decadeStart,
     decadeWindowAxis,
     formatMonthLabel,
+    monthShortName,
     yearStart,
     yearWindowAxis,
 } from '@/lib/historyChartAxis';
@@ -18,7 +19,6 @@ import { FinancialTooltip } from './FinancialTooltip';
 import {
     MONTHLY_GRID_VALUES,
     MONTHLY_X_TICKS,
-    MONTH_NAMES,
     bucketDecadeMid,
     computeExpensesRevenueBuckets,
     formatDecadeLabel,
@@ -28,7 +28,7 @@ import {
     type FinancialPoint,
     type Granularity,
 } from './financialChartLogic';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export function ExpensesRevenueChart({
     data,
@@ -42,6 +42,7 @@ export function ExpensesRevenueChart({
     live?: FinancialLive;
 }) {
     const locale = useLocale();
+    const t = useTranslations('Financial');
     const yDomain = (vals: number[]): [number, number] | ['auto', 'auto'] => {
         const finite = vals.filter(Number.isFinite);
         if (finite.length === 0) {
@@ -142,7 +143,7 @@ export function ExpensesRevenueChart({
                 type: 'number' as const,
                 domain: [0, 12] as [number, number],
                 ticks: MONTHLY_X_TICKS,
-                tickFormatter: (v: number) => MONTH_NAMES[(Math.ceil(v) + 11) % 12] ?? '',
+                tickFormatter: (v: number) => monthShortName(locale, (Math.ceil(v) + 11) % 12),
                 gridVertical: true,
                 gridValues: MONTHLY_GRID_VALUES,
             };
@@ -178,23 +179,25 @@ export function ExpensesRevenueChart({
             gridVertical: true,
             gridValues: decade.gridValues,
         };
-    }, [granularity, data, liveX]);
+    }, [granularity, data, liveX, locale]);
 
     const tooltipLabelFormatter = useMemo(() => {
         if (granularity === 'monthly') {
             const byMonthIdx = new Map(
                 chartData
                     .filter((p): p is { monthIdx: number; year: number } & typeof p => 'monthIdx' in p)
-                    .map((p) => [p.monthIdx, formatMonthLabel(p.monthIdx, p.year)]),
+                    .map((p) => [p.monthIdx, formatMonthLabel(locale, p.monthIdx, p.year)]),
             );
             return (label: number) => byMonthIdx.get(label) ?? '';
         }
-        return granularity === 'decade' ? formatDecadeLabel : formatYearLabel;
-    }, [granularity, chartData]);
+        return granularity === 'decade'
+            ? (v: number) => formatDecadeLabel(locale, v)
+            : (v: number) => formatYearLabel(locale, v);
+    }, [granularity, chartData, locale]);
 
     return (
         <div className='flex flex-col items-start gap-1'>
-            <p className='text-xs font-semibold text-muted-foreground mb-2'>Expenses & Revenue</p>
+            <p className='text-xs font-semibold text-muted-foreground mb-2'>{t('expensesRevenueTitle')}</p>
             <div style={{ width: '100%', height: 200 }}>
                 <ResponsiveContainer width='100%' height='100%'>
                     <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -10, bottom: 0 }}>
