@@ -750,15 +750,18 @@ export const getUsedLogos = () =>
             return { usedLogos };
         });
 
-const bankruptcyRecordSchema = z.object({
+const bankruptcyBaseSchema = z.object({
     agentId: z.string(),
     agentName: z.string(),
     planetId: z.string(),
     planetName: z.string().nullable(),
     tick: z.number(),
-    outcome: z.enum(['restructured', 'liquidated']),
-    message: z.string(),
 });
+
+const bankruptcyRecordSchema = z.discriminatedUnion('outcome', [
+    bankruptcyBaseSchema.extend({ outcome: z.literal('liquidated') }),
+    bankruptcyBaseSchema.extend({ outcome: z.literal('restructured'), successorAgentName: z.string() }),
+]);
 
 export const getMyBankruptcy = () =>
     protectedProcedure

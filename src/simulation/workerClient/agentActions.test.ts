@@ -108,7 +108,6 @@ describe('handleAcknowledgeBankruptcy', () => {
                 planetId: 'p',
                 tick: 5,
                 outcome: 'liquidated',
-                message: 'Gone Co bankrupt; company dissolved',
             },
             {
                 agentId: 'other-co',
@@ -116,7 +115,7 @@ describe('handleAcknowledgeBankruptcy', () => {
                 planetId: 'p',
                 tick: 6,
                 outcome: 'restructured',
-                message: 'Other Co bankrupt; restructured',
+                successorAgentName: 'Other Co 2',
             },
         ];
 

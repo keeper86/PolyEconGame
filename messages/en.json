@@ -1,4 +1,8 @@
 {
+    "Bankruptcy": {
+        "liquidated": "{agentName} bankrupt; company dissolved and assets liquidated by the receiver",
+        "restructured": "{agentName} bankrupt; restructured as {successorName} under automated administration"
+    },
     "Events": {
         "agentCreated": "{agentName} founded on {planetName}",
         "licenseAcquired": "{agentName} acquired {licenseType} license on {planetName}",

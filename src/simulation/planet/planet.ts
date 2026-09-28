@@ -418,9 +418,7 @@ export type BankruptcyRecord = {
     agentName: string;
     planetId: string;
     tick: number;
-    outcome: 'restructured' | 'liquidated';
-    message: string;
-};
+} & ({ outcome: 'restructured'; successorAgentName: string } | { outcome: 'liquidated' });
 
 export type Agent = {
     id: string;

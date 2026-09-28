@@ -1,4 +1,8 @@
 {
+    "Bankruptcy": {
+        "liquidated": "{agentName} ist insolvent; das Unternehmen wurde aufgelöst und das Vermögen verwertet",
+        "restructured": "{agentName} ist insolvent; als {successorName} unter Zwangsverwaltung umstrukturiert"
+    },
     "Events": {
         "agentCreated": "{agentName} gegründet auf {planetName}",
         "licenseAcquired": "{agentName} erwarb eine Lizenz für {licenseType} auf {planetName}",

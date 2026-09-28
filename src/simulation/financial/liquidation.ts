@@ -170,7 +170,6 @@ export function liquidateAgent(gameState: GameState, planet: Planet, agent: Agen
         planetId: planet.id,
         tick,
         outcome: 'liquidated',
-        message: `${agent.name} bankrupt; company dissolved and assets liquidated by the receiver`,
     });
 
     pushTickerEvent(gameState, {

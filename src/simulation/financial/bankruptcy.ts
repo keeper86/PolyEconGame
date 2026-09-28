@@ -98,7 +98,7 @@ export function processBankruptcy(gameState: GameState, planet: Planet, agent: A
             planetId: planet.id,
             tick,
             outcome: 'restructured',
-            message: `${agent.name} bankrupt; restructured as ${refound.name} under automated administration`,
+            successorAgentName: refound.name,
         });
 
         return refound;

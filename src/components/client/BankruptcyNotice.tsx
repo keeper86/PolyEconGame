@@ -6,6 +6,7 @@ import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Landmark } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -19,6 +20,7 @@ function tickToYear(tick: number): number {
 export function BankruptcyNotice() {
     const trpc = useTRPC();
     const router = useRouter();
+    const t = useTranslations('Bankruptcy');
     const { update: updateSession } = useSession();
     const queryClient = useQueryClient();
 
@@ -80,7 +82,9 @@ export function BankruptcyNotice() {
                 </p>
 
                 <div className='rounded-md border border-border p-3 text-sm text-muted-foreground'>
-                    {record.message}
+                    {record.outcome === 'restructured'
+                        ? t('restructured', { agentName: record.agentName, successorName: record.successorAgentName })
+                        : t('liquidated', { agentName: record.agentName })}
                 </div>
 
                 <div>
