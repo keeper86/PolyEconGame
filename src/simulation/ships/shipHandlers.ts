@@ -257,8 +257,6 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     const storage = storageAgent.assets[s.planetId]?.storage;
 
     if (!s.cargoGoal || !s.currentCargo || !storage) {
-        const toPlanet = ctx.planets.get(s.to);
-        const fromPlanet = ctx.planets.get(s.planetId);
         pushTickerEvent(ctx, {
             category: 'shipDispatched',
             planetId: s.planetId,
@@ -267,8 +265,8 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
             details: {
                 kind: 'shipDispatched',
                 shipName: ship.name,
-                from: fromPlanet?.name ?? s.planetId,
-                to: toPlanet?.name ?? s.to,
+                fromPlanetId: s.planetId,
+                toPlanetId: s.to,
                 load:
                     s.currentCargo != null && s.currentCargo.quantity > 0
                         ? {
@@ -299,8 +297,6 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
     s.currentCargo.quantity += removedQuantity;
 
     if (removedQuantity === missingCargo) {
-        const toPlanet = ctx.planets.get(s.to);
-        const fromPlanet = ctx.planets.get(s.planetId);
         pushTickerEvent(ctx, {
             category: 'shipDispatched',
             planetId: s.planetId,
@@ -309,8 +305,8 @@ function handleTransportLoading(ship: TransportShip, ctx: GameState, agent: Agen
             details: {
                 kind: 'shipDispatched',
                 shipName: ship.name,
-                from: fromPlanet?.name ?? s.planetId,
-                to: toPlanet?.name ?? s.to,
+                fromPlanetId: s.planetId,
+                toPlanetId: s.to,
                 load: {
                     kind: 'cargoRange',
                     current: s.currentCargo.quantity,
@@ -344,8 +340,6 @@ function handleTransporting(ship: TransportShip, ctx: GameState, agent: Agent): 
         return STAY;
     }
 
-    const toPlanet = ctx.planets.get(s.to);
-    const fromPlanet = ctx.planets.get(s.from);
     pushTickerEvent(ctx, {
         category: 'shipArrived',
         planetId: s.to,
@@ -354,8 +348,8 @@ function handleTransporting(ship: TransportShip, ctx: GameState, agent: Agent): 
         details: {
             kind: 'shipArrived',
             shipName: ship.name,
-            from: fromPlanet?.name ?? s.from,
-            to: toPlanet?.name ?? s.to,
+            fromPlanetId: s.from,
+            toPlanetId: s.to,
         },
         tick: ctx.tick,
     });
@@ -459,8 +453,6 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
     }
 
     if (!s.buildingTarget) {
-        const toPlanet = ctx.planets.get(s.to);
-        const fromPlanet = ctx.planets.get(s.planetId);
         pushTickerEvent(ctx, {
             category: 'shipDispatched',
             planetId: s.planetId,
@@ -469,8 +461,8 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
             details: {
                 kind: 'shipDispatched',
                 shipName: ship.name,
-                from: fromPlanet?.name ?? s.planetId,
-                to: toPlanet?.name ?? s.to,
+                fromPlanetId: s.planetId,
+                toPlanetId: s.to,
                 load: { kind: 'construction' },
             },
             tick: ctx.tick,
@@ -489,8 +481,6 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
 
     const target = s.buildingTarget;
     if (target.construction === null) {
-        const toPlanet = ctx.planets.get(s.to);
-        const fromPlanet = ctx.planets.get(s.planetId);
         pushTickerEvent(ctx, {
             category: 'shipDispatched',
             planetId: s.planetId,
@@ -499,8 +489,8 @@ function handlePreFabrication(ship: ConstructionShip, ctx: GameState, agent: Age
             details: {
                 kind: 'shipDispatched',
                 shipName: ship.name,
-                from: fromPlanet?.name ?? s.planetId,
-                to: toPlanet?.name ?? s.to,
+                fromPlanetId: s.planetId,
+                toPlanetId: s.to,
                 load: { kind: 'construction' },
             },
             tick: ctx.tick,
@@ -538,8 +528,6 @@ function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState, 
         return STAY;
     }
 
-    const toPlanet = ctx.planets.get(s.to);
-    const fromPlanet = ctx.planets.get(s.from);
     pushTickerEvent(ctx, {
         category: 'shipArrived',
         planetId: s.to,
@@ -548,8 +536,8 @@ function handleConstructionTransporting(ship: ConstructionShip, ctx: GameState, 
         details: {
             kind: 'shipArrived',
             shipName: ship.name,
-            from: fromPlanet?.name ?? s.from,
-            to: toPlanet?.name ?? s.to,
+            fromPlanetId: s.from,
+            toPlanetId: s.to,
         },
         tick: ctx.tick,
     });
@@ -664,8 +652,8 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
             details: {
                 kind: 'shipDispatched',
                 shipName: ship.name,
-                from: shipState.planetId,
-                to: shipState.to,
+                fromPlanetId: shipState.planetId,
+                toPlanetId: shipState.to,
                 load: { kind: 'passenger' },
             },
             tick: gameState.tick,
@@ -735,8 +723,8 @@ function handlePassengerProvisioning(ship: PassengerShip, gameState: GameState, 
         details: {
             kind: 'shipDispatched',
             shipName: ship.name,
-            from: shipState.planetId,
-            to: shipState.to,
+            fromPlanetId: shipState.planetId,
+            toPlanetId: shipState.to,
             load: { kind: 'passenger' },
         },
         tick: gameState.tick,
@@ -775,7 +763,6 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent:
     const unloadAgent = s.posterAgentId ? (ctx.agents.get(s.posterAgentId) ?? agent) : agent;
     unloadPassengersToWorkforce(unloadAgent, destPlanet, s.to, s.manifest);
 
-    const fromPlanet = ctx.planets.get(s.from);
     pushTickerEvent(ctx, {
         category: 'shipArrived',
         planetId: s.to,
@@ -784,8 +771,8 @@ function handlePassengerTransporting(ship: PassengerShip, ctx: GameState, agent:
         details: {
             kind: 'shipArrived',
             shipName: ship.name,
-            from: fromPlanet?.name ?? s.from,
-            to: destPlanet.name,
+            fromPlanetId: s.from,
+            toPlanetId: s.to,
         },
         tick: ctx.tick,
     });

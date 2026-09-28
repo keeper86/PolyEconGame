@@ -1,10 +1,13 @@
 import type { useTranslations } from 'next-intl';
+import { PLANET_NAMES } from '@/lib/planetAssets';
 import { formatNumberWithUnit, resourceFormToUnit } from '@/lib/utils';
 import type { TickerEventDetails } from '@/server/controller/simulation';
 import type { Locale } from './config';
 import { termFor } from './terms';
 
 export type EventTranslator = ReturnType<typeof useTranslations<'Events'>>;
+
+const planetName = (planetId: string): string => PLANET_NAMES[planetId] ?? planetId;
 
 type ShipDispatchedDetails = Extract<TickerEventDetails, { kind: 'shipDispatched' }>;
 type ShipLoad = ShipDispatchedDetails['load'];
@@ -68,16 +71,16 @@ export const renderTickerEventMessage = (
             return t('shipDispatched', {
                 agentName,
                 shipName: details.shipName,
-                from: details.from,
-                to: details.to,
+                from: planetName(details.fromPlanetId),
+                to: planetName(details.toPlanetId),
                 load: renderLoad(details.load, t, locale),
             });
         case 'shipArrived':
             return t('shipArrived', {
                 agentName,
                 shipName: details.shipName,
-                from: details.from,
-                to: details.to,
+                from: planetName(details.fromPlanetId),
+                to: planetName(details.toPlanetId),
             });
         case 'companyDissolved':
             return t('companyDissolved', { agentName });

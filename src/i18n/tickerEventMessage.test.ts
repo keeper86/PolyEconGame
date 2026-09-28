@@ -14,34 +14,40 @@ const eventVariants: TickerEventDetails[] = [
     { kind: 'facilityCompleted', planetName: 'Gune', facilityName: 'Iron Mine' },
     { kind: 'facilityScrapped', planetName: 'Gune', facilityName: 'Iron Mine' },
     { kind: 'shipCompleted', planetName: 'Gune', shipName: 'SS Test', shipType: 'transport' },
-    { kind: 'shipArrived', shipName: 'Ferry', from: 'Origin', to: 'Destination' },
-    { kind: 'shipDispatched', shipName: 'Ferry', from: 'Origin', to: 'Destination', load: { kind: 'empty' } },
+    { kind: 'shipArrived', shipName: 'Ferry', fromPlanetId: 'gune', toPlanetId: 'icedonia' },
     {
         kind: 'shipDispatched',
         shipName: 'Ferry',
-        from: 'Origin',
-        to: 'Destination',
+        fromPlanetId: 'gune',
+        toPlanetId: 'icedonia',
+        load: { kind: 'empty' },
+    },
+    {
+        kind: 'shipDispatched',
+        shipName: 'Ferry',
+        fromPlanetId: 'gune',
+        toPlanetId: 'icedonia',
         load: { kind: 'cargo', quantity: 1500, resourceForm: 'solid' },
     },
     {
         kind: 'shipDispatched',
         shipName: 'Ferry',
-        from: 'Origin',
-        to: 'Destination',
+        fromPlanetId: 'gune',
+        toPlanetId: 'icedonia',
         load: { kind: 'cargoRange', current: 100, goal: 200, resourceForm: 'liquid', resourceName: 'Crude Oil' },
     },
     {
         kind: 'shipDispatched',
         shipName: 'Ferry',
-        from: 'Origin',
-        to: 'Destination',
+        fromPlanetId: 'gune',
+        toPlanetId: 'icedonia',
         load: { kind: 'construction' },
     },
     {
         kind: 'shipDispatched',
         shipName: 'Ferry',
-        from: 'Origin',
-        to: 'Destination',
+        fromPlanetId: 'gune',
+        toPlanetId: 'icedonia',
         load: { kind: 'passenger' },
     },
     { kind: 'companyDissolved' },
@@ -76,13 +82,26 @@ describe('renderTickerEventMessage', () => {
         const details: TickerEventDetails = {
             kind: 'shipDispatched',
             shipName: 'Ferry',
-            from: 'Origin',
-            to: 'Destination',
+            fromPlanetId: 'gune',
+            toPlanetId: 'icedonia',
             load: { kind: 'cargo', quantity: 1500, resourceForm: 'solid' },
         };
 
         expect(renderTickerEventMessage(details, 'Acme', translator('en'), 'en')).toContain('1.5kt');
         expect(renderTickerEventMessage(details, 'Acme', translator('de'), 'de')).toContain('1,5kt');
+    });
+
+    it('resolves planet names from the registry', () => {
+        const details: TickerEventDetails = {
+            kind: 'shipArrived',
+            shipName: 'Ferry',
+            fromPlanetId: 'gune',
+            toPlanetId: 'icedonia',
+        };
+
+        expect(renderTickerEventMessage(details, 'Acme', translator('en'), 'en')).toBe(
+            "Acme's Ferry arrived at Icedonia from Gune",
+        );
     });
 
     it('leaves no unresolved placeholder in any locale', () => {

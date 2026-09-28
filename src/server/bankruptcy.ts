@@ -1,4 +1,3 @@
-import type { BankruptcyRecord } from '../simulation/planet/planet';
 import { getBankruptciesSync, getPlanetSync } from '../simulation/workerClient/syncQueries';
 
 export type ResolvedBankruptcy = {

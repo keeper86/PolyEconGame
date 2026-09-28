@@ -1157,7 +1157,7 @@ describe('shipArrived ticker events', () => {
         expect(ev.planetId).toBe('p2');
         expect(ev.agentId).toBe('a1');
         expect(ev.tick).toBe(10);
-        expect(ev.details).toMatchObject({ kind: 'shipArrived', to: 'Destination', from: 'Origin' });
+        expect(ev.details).toMatchObject({ kind: 'shipArrived', fromPlanetId: 'p1', toPlanetId: 'p2' });
         expect(ev.id).toBeTypeOf('number');
     });
 
