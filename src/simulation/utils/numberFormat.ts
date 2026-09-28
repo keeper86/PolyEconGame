@@ -41,8 +41,3 @@ export function formatNumbers(n: number | null | undefined, decimalSeparator = '
             .replace('.', decimalSeparator) + currentSuffix
     );
 }
-
-export function formatCargoQty(n: number, form: string): string {
-    const s = formatNumbers(n);
-    return form === 'liquid' ? `${s}ℓ` : `${s}t`;
-}

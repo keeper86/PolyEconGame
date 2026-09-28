@@ -169,7 +169,7 @@ export function processFacilityContraction(
         planetId: planet.id,
         agentId: agent.id,
         agentName: agent.name,
-        message: `${agent.name} reduced ${facility.name} on ${planet.name}`,
+        details: { kind: 'facilityScrapped', planetName: planet.name, facilityName: facility.name },
         tick: gameState.tick,
     });
 

@@ -48,6 +48,18 @@ This will format, lint, build and run all tests. The CI pipeline runs this comma
 3. Examine worker logs
 4. Use test helpers in `src/simulation/utils/testHelper.ts`
 
+## Bulk refactors (codemods)
+
+When one change touches a shared signature or pattern across dozens of files, write a throwaway TypeScript-AST codemod. Regex is not good enough here and hand-editing is unverifiable.
+
+- Regex matches declarations, imports, comments and string literals, and `[^)]*` silently breaks on nested calls like `f(g(x), 'units')` — which makes any count or edit derived from it wrong. Match node kinds instead: `ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX)`, then recurse with `ts.forEachChild` for `ts.isCallExpression` where `ts.isIdentifier(node.expression)`.
+- Syntax only. Do not build a `Program` or a type checker — nodes already carry the positions (`getStart()` / `getEnd()`) you need, for a fraction of the cost.
+- Put the script in `tools/` (not `/tmp`) so `require('typescript')` resolves. Run it once without `--apply` and print both the files that would change and the call sites it cannot handle — that report is what identifies the files needing manual work, before anything is written.
+- Collect edits as `{ pos, text }` and apply them sorted by descending position; text splicing invalidates every later offset.
+- Never rebuild a file by re-printing the AST — that reformats everything and buries the real change in diff noise.
+- Keep the codemod dumb and let it fail loudly. Do not teach it scope resolution: `tsc` (name resolution + arity), `eslint` (react-hooks rules) and the test suite are the verification loop. `Cannot find name 'locale'` is the desired output — it points at the handful of sites needing a human. Expect test failures like `No intl context found` to reveal which tests need the new provider.
+- Hooks can only be inserted at an enclosing component, never at the nearest function — an inline `tickFormatter={(v) => ...}` callback is not a component. Walk `.parent` upward and keep the outermost function-like node whose name starts uppercase.
+
 ## Memory
 
 You find something so important you wished knew earlier:

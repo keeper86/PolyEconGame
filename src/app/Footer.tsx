@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { renderTickerEventMessage } from '@/i18n/tickerEventMessage';
 import { useSimulationQuery } from '@/hooks/useSimulationQuery';
 import { useTRPC } from '@/lib/trpc';
 import type { TickerEvent } from '@/server/controller/simulation';
@@ -8,7 +9,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Maximize, Minimize } from 'lucide-react';
 import { mapTickToDate } from '@/components/client/TickDisplay';
 import { useIsSmallScreen } from '@/hooks/useMobile';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useParams } from 'next/navigation';
 
 const MAX_LOCAL_EVENTS = 60;
@@ -49,6 +50,7 @@ export default function Footer() {
     const params = useParams();
     const planetId = typeof params?.planetId === 'string' ? params.planetId : undefined;
     const locale = useLocale();
+    const t = useTranslations('Events');
 
     const toggleFullscreen = useCallback(async () => {
         try {
@@ -184,7 +186,8 @@ export default function Footer() {
         }
 
         const dateStr = mapTickToDate(nextEvent.tick, false, locale);
-        const width = measureTextWidth(dateStr, nextEvent.message);
+        const message = renderTickerEventMessage(nextEvent.details, nextEvent.agentName ?? '', t, locale);
+        const width = measureTextWidth(dateStr, message);
         const containerWidth = containerWidthRef.current;
         const speed = speedRef.current;
         const prevSpeed = lastSpawnSpeedRef.current;
@@ -212,7 +215,7 @@ export default function Footer() {
             ...prev,
             { id: nextEvent.id, event: nextEvent, duration, startX: containerWidth },
         ]);
-    }, [computeSpeed, findNextEvent, measureTextWidth, locale]);
+    }, [computeSpeed, findNextEvent, measureTextWidth, locale, t]);
 
     useEffect(() => {
         const intervalId = setInterval(trySpawn, 50);
@@ -283,7 +286,9 @@ export default function Footer() {
                                 <span className={cn('text-muted-foreground text-xs', textColor(event.category))}>
                                     {mapTickToDate(event.tick, false, locale)}
                                 </span>
-                                <span className='text-foreground/90'>{event.message}</span>
+                                <span className='text-foreground/90'>
+                                    {renderTickerEventMessage(event.details, event.agentName ?? '', t, locale)}
+                                </span>
                             </span>
                         </div>
                     ))}

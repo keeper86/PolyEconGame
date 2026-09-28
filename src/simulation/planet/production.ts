@@ -159,7 +159,7 @@ export function constructionTick(gameState: GameState, planet: Planet): void {
                     planetId: planet.id,
                     agentId: agent.id,
                     agentName: agent.name,
-                    message: `${agent.name} completed ${facility.name} on ${planet.name}`,
+                    details: { kind: 'facilityCompleted', planetName: planet.name, facilityName: facility.name },
                     tick: gameState.tick,
                 });
             }
@@ -554,7 +554,12 @@ function processShipConstructionFacility(params: ShipConstructionParameters, gam
                     planetId: planet.id,
                     agentId: agent.id,
                     agentName: agent.name,
-                    message: `${agent.name} completed ${newShip.name} (${newShip.type.type}) on ${planet.name}`,
+                    details: {
+                        kind: 'shipCompleted',
+                        planetName: planet.name,
+                        shipName: newShip.name,
+                        shipType: newShip.type.type,
+                    },
                     tick: gameState.tick,
                 });
                 facility.progress = 0;

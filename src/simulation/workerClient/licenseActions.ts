@@ -102,7 +102,7 @@ export function handleAcquireLicense(
         planetId,
         agentId,
         agentName: agent.name,
-        message: `${agent.name} acquired ${licenseType} license on ${planet.name}`,
+        details: { kind: 'licenseAcquired', planetName: planet.name, licenseType },
         tick: state.tick,
     });
 

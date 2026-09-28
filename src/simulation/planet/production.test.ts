@@ -899,7 +899,10 @@ describe('constructionTick — facilityCompleted ticker events', () => {
         expect(ev.agentId).toBe(agent.id);
         expect(ev.agentName).toBe(agent.name);
         expect(ev.tick).toBe(5);
-        expect(ev.message).toContain('Iron Mine');
+        expect(ev.details).toMatchObject({
+            kind: 'facilityCompleted',
+            facilityName: expect.stringContaining('Iron Mine'),
+        });
         expect(ev.id).toBeTypeOf('number');
     });
 
@@ -1426,7 +1429,7 @@ describe('productionTick — shipCompleted ticker events', () => {
         expect(ev.planetId).toBe(planet.id);
         expect(ev.agentId).toBe(agent.id);
         expect(ev.tick).toBe(10);
-        expect(ev.message).toContain('SS Test');
+        expect(ev.details).toMatchObject({ kind: 'shipCompleted', shipName: expect.stringContaining('SS Test') });
         expect(ev.id).toBeTypeOf('number');
 
         expect(agent.ships).toHaveLength(1);

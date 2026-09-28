@@ -1,4 +1,23 @@
 {
+    "Events": {
+        "agentCreated": "{agentName} founded on {planetName}",
+        "licenseAcquired": "{agentName} acquired {licenseType} license on {planetName}",
+        "facilityCompleted": "{agentName} completed {facilityName} on {planetName}",
+        "facilityScrapped": "{agentName} reduced {facilityName} on {planetName}",
+        "shipCompleted": "{agentName} completed {shipName} ({shipType}) on {planetName}",
+        "shipDispatched": "{agentName}'s {shipName} departed {from} → {to} ({load})",
+        "shipArrived": "{agentName}'s {shipName} arrived at {to} from {from}",
+        "companyDissolved": "{agentName} bankrupt; company dissolved",
+        "companyRefounded": "{agentName} bankrupt; refounded as {successorName}",
+        "companyRestructured": "{agentName} bankrupt; restructured as {successorName} under automated administration",
+        "load": {
+            "empty": "empty",
+            "cargo": "cargo {quantity}",
+            "cargoRange": "cargo {current}/{goal} {resourceName}",
+            "construction": "construction",
+            "passenger": "passenger"
+        }
+    },
     "LocaleSwitcher": {
         "label": "Language",
         "en": "English",

@@ -43,7 +43,7 @@ export function handleCreateAgent(
         planetId,
         agentId,
         agentName,
-        message: `${agentName} founded on ${planet?.name ?? planetId}`,
+        details: { kind: 'agentCreated', planetName: planet?.name ?? planetId },
         tick: state.tick,
     });
 

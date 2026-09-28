@@ -1157,8 +1157,7 @@ describe('shipArrived ticker events', () => {
         expect(ev.planetId).toBe('p2');
         expect(ev.agentId).toBe('a1');
         expect(ev.tick).toBe(10);
-        expect(ev.message).toContain('Destination');
-        expect(ev.message).toContain('Origin');
+        expect(ev.details).toMatchObject({ kind: 'shipArrived', to: 'Destination', from: 'Origin' });
         expect(ev.id).toBeTypeOf('number');
     });
 
@@ -1184,7 +1183,10 @@ describe('shipArrived ticker events', () => {
 
         expect(state.tickerEvents).toHaveLength(1);
         expect(state.tickerEvents[0]!.category).toBe('shipArrived');
-        expect(state.tickerEvents[0]!.message).toContain('Ferry');
+        expect(state.tickerEvents[0]!.details).toMatchObject({
+            kind: 'shipArrived',
+            shipName: expect.stringContaining('Ferry'),
+        });
     });
 
     it('emits shipArrived event when construction ship transitions to reconstruction', () => {

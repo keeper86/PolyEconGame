@@ -178,7 +178,7 @@ export function liquidateAgent(gameState: GameState, planet: Planet, agent: Agen
         planetId: planet.id,
         agentId: agent.id,
         agentName: agent.name,
-        message: `${agent.name} bankrupt; company dissolved`,
+        details: { kind: 'companyDissolved' },
         tick,
     });
 

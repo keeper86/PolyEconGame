@@ -173,7 +173,7 @@ export function terminateAndRefound(gameState: GameState, planet: Planet, agent:
         planetId: planet.id,
         agentId: oldId,
         agentName: agent.name,
-        message: `${agent.name} bankrupt; refounded as ${refound.name}`,
+        details: { kind: 'companyRefounded', successorName: refound.name },
         tick,
     });
 
