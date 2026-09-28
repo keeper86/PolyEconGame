@@ -19,6 +19,7 @@ export const YEAR_WINDOW = 11;
 export const DECADE_WINDOW = 50;
 export const DECADE_YEARS = 10;
 export const PREVIOUS_DECEMBER_IDX = -0.5;
+export const PREVIOUS_DECEMBER_END_IDX = 0;
 export const MONTHLY_TICKS = Array.from({ length: MONTHS_PER_YEAR }, (_, i) => i + 0.5);
 export const MONTHLY_GRID_VALUES = Array.from({ length: MONTHS_PER_YEAR + 1 }, (_, i) => i);
 export const HISTORY_BUCKET_LIMIT = {
@@ -36,6 +37,10 @@ export type HistoryAxis = {
 
 export function monthCentre(bucket: number): number {
     return tickToDate(bucket).monthIndex + 0.5;
+}
+
+export function monthEnd(bucket: number): number {
+    return tickToDate(bucket).monthIndex + 1;
 }
 
 export function ghostMonthVisible(bucket: number, livePosition: number): boolean {
@@ -60,6 +65,14 @@ export function bucketProgress(tick: number, granularity: 'monthly' | 'yearly' |
 }
 
 export function blendLive(previous: number | undefined, live: number, progress: number): number {
+    if (previous === undefined) {
+        return live;
+    }
+    const weight = Math.min(1, Math.max(0, progress));
+    return previous * (1 - weight) + live * weight;
+}
+
+export function extrapolateLive(previous: number | undefined, live: number, progress: number): number {
     if (previous === undefined) {
         return live;
     }

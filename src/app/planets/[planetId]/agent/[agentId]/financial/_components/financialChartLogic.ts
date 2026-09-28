@@ -6,6 +6,7 @@ import {
     blendLive,
     bucketProgress,
     decadeCentre,
+    extrapolateLive,
     ghostMonthVisible,
     monthCentre,
     yearCentre,
@@ -137,12 +138,12 @@ export function computeFinancialMonthlyData(
             ...liveFinancialPoint(live),
             avgNetBalance: blendLive(previous?.avgNetBalance, live.avgNetBalance, progress),
             avgAssetValue: blendLive(previous?.avgAssetValue, live.avgAssetValue, progress),
-            avgMonthlyNetIncome: blendLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
-            avgWages: blendLive(previous?.avgWages, live.avgWages, progress),
-            sumPurchases: blendLive(previous?.sumPurchases, live.sumPurchases, progress),
-            sumClaimPayments: blendLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
-            sumInterestPaid: blendLive(previous?.sumInterestPaid, live.sumInterestPaid, progress),
-            sumWealthTaxPaid: blendLive(previous?.sumWealthTaxPaid, live.sumWealthTaxPaid, progress),
+            avgMonthlyNetIncome: extrapolateLive(previous?.avgMonthlyNetIncome, live.avgMonthlyNetIncome, progress),
+            avgWages: extrapolateLive(previous?.avgWages, live.avgWages, progress),
+            sumPurchases: extrapolateLive(previous?.sumPurchases, live.sumPurchases, progress),
+            sumClaimPayments: extrapolateLive(previous?.sumClaimPayments, live.sumClaimPayments, progress),
+            sumInterestPaid: extrapolateLive(previous?.sumInterestPaid, live.sumInterestPaid, progress),
+            sumWealthTaxPaid: extrapolateLive(previous?.sumWealthTaxPaid, live.sumWealthTaxPaid, progress),
         });
     }
 

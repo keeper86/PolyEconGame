@@ -11,7 +11,7 @@ export default getRequestConfig(async () => {
     return {
         locale,
         timeZone: 'UTC',
-        messages: (await import(`../../messages/${locale}.json`)).default,
+        messages: (await import(`./messages/${locale}.json`)).default,
         formats,
         onError(error) {
             if (error.code === IntlErrorCode.MISSING_MESSAGE) {

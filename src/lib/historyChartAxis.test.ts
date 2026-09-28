@@ -5,6 +5,7 @@ import {
     DECADE_YEARS,
     HISTORY_BUCKET_LIMIT,
     MONTHS_PER_YEAR,
+    PREVIOUS_DECEMBER_END_IDX,
     PREVIOUS_DECEMBER_IDX,
     YEAR_WINDOW,
     blendLive,
@@ -17,6 +18,7 @@ import {
     isLiveMonthPoint,
     monthAxis,
     monthCentre,
+    monthEnd,
     yearAxis,
     yearCentre,
     yearStart,
@@ -38,6 +40,12 @@ describe('historyChartAxis', () => {
         expect(yearStart(tickFor(START_YEAR + 1, 2, 15))).toBe(START_YEAR + 1);
         expect(decadeStart(tickFor(START_YEAR + 1, 2, 15))).toBe(START_YEAR);
         expect(decadeCentre(tickFor(START_YEAR + 1, 2, 15))).toBe(START_YEAR + 5);
+    });
+
+    it('places end-value month buckets at the interval end and anchors the previous December end', () => {
+        expect(monthEnd(tickFor(START_YEAR + 1, 2, 15))).toBe(3);
+        expect(monthEnd(tickFor(START_YEAR + 1, 11, 30))).toBe(12);
+        expect(PREVIOUS_DECEMBER_END_IDX).toBe(0);
     });
 
     it('puts month ticks under the averages and gridlines on the month starts', () => {
