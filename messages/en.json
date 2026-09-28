@@ -225,5 +225,75 @@
         "yourDeposits": "Your deposits",
         "yourCashFlow": "Your cash flow",
         "runningCostExceeds": "Running cost exceeds current cash flow"
+    },
+    "Demographics": {
+        "loading": "Loading demographics…",
+        "notFound": "Planet not found.",
+        "heading": "Demographics",
+        "byOccupation": "By occupation",
+        "byEducation": "By education",
+        "overview": "Overview",
+        "wealthDistribution": "Wealth distribution",
+        "populationWealthTransfers": "Population Wealth Transfers",
+        "shareOfMovement": "Share of movement",
+        "ofMovement": "% of movement",
+        "netWealthGain": "net wealth gain",
+        "netWealthLoss": "net wealth loss",
+        "noNetTransfer": "no net transfer",
+        "deprivationMap": "Deprivation map",
+        "ofTarget": "of target",
+        "deprivation": "deprivation",
+        "serviceBuffers": "Service Buffers",
+        "live": "Live",
+        "noData": "No data",
+        "tooltipAge": "Age {age}",
+        "starvation": "starvation",
+        "buffer": "buffer",
+        "rating": {
+            "fullyStocked": "fully stocked",
+            "wellStocked": "well stocked",
+            "belowTarget": "below target",
+            "lowSupply": "low supply",
+            "veryLow": "very low",
+            "criticallyEmpty": "critically empty",
+            "wellSupplied": "well-supplied",
+            "lightDeprivation": "light deprivation",
+            "moderateDeprivation": "moderate deprivation",
+            "severeDeprivation": "severe deprivation"
+        },
+        "services": {
+            "grocery": "Grocery Buffers",
+            "healthcare": "Healthcare Buffers",
+            "logistics": "Logistics Buffers",
+            "retail": "Retail Buffers",
+            "education": "Education Buffers",
+            "construction": "Housing Buffers"
+        },
+        "cohorts": {
+            "none": "None",
+            "primary": "Primary",
+            "secondary": "Secondary",
+            "tertiary": "Tertiary",
+            "unoccupied": "Unoccupied",
+            "employed": "Employed",
+            "education": "Education",
+            "unableToWork": "Unable to work"
+        },
+        "bands": {
+            "fatalStarvation": "Fatal",
+            "severeStarvation": "Severe",
+            "seriousStarvation": "Serious",
+            "moderateStarvation": "Moderate",
+            "lightStarvation": "Light",
+            "noStarvation": "None"
+        },
+        "buffers": {
+            "grocery": "Grocery",
+            "healthcare": "Healthcare",
+            "logistics": "Logistics",
+            "education": "Education",
+            "retail": "Retail",
+            "construction": "Housing"
+        }
     }
 }

@@ -12,15 +12,15 @@ import { OCCUPATIONS } from '@/simulation/population/population';
 import { EDU_COLORS, EDU_LABELS, OCC_COLORS, OCC_LABELS } from './CohortFilter';
 import type { AggRow, GroupMode } from './demographicsTypes';
 import { GV_FOOD, GV_POP, GV_STARV } from './demographicsTypes';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 const BANDS = [
-    { key: 'fatalStarvation', label: 'Fatal', color: '#7f1d1d' },
-    { key: 'severeStarvation', label: 'Severe', color: '#b91c1c' },
-    { key: 'seriousStarvation', label: 'Serious', color: '#ea580c' },
-    { key: 'moderateStarvation', label: 'Moderate', color: '#f59e0b' },
-    { key: 'lightStarvation', label: 'Light', color: '#d9e70eff' },
-    { key: 'noStarvation', label: 'None', color: '#16a34a' },
+    { key: 'fatalStarvation', color: '#7f1d1d' },
+    { key: 'severeStarvation', color: '#b91c1c' },
+    { key: 'seriousStarvation', color: '#ea580c' },
+    { key: 'moderateStarvation', color: '#f59e0b' },
+    { key: 'lightStarvation', color: '#d9e70eff' },
+    { key: 'noStarvation', color: '#16a34a' },
 ] as const;
 
 function classifyBand(starvationLevel: number): number {
@@ -141,6 +141,7 @@ function makeTooltip(
         label?: number;
     }) {
         const locale = useLocale();
+        const tr = useTranslations('Demographics');
         if (!active || !payload || payload.length === 0) {
             return null;
         }
@@ -149,7 +150,8 @@ function makeTooltip(
         return (
             <div className='rounded-lg border bg-card p-2 text-xs shadow-md min-w-[210px]'>
                 <div className='font-medium mb-1'>
-                    Age {label} · {formatNumberWithUnit(totalPop, 'persons', undefined, locale)}
+                    {tr('tooltipAge', { age: label ?? 0 })} ·{' '}
+                    {formatNumberWithUnit(totalPop, 'persons', undefined, locale)}
                 </div>
                 {groupKeys.map((gk) => {
                     const pop = row[`${gk}_total`] ?? 0;
@@ -168,7 +170,7 @@ function makeTooltip(
                                 {groupLabels[gk]} · {formatNumberWithUnit(pop, 'persons', undefined, locale)}
                             </div>
                             <div className='pl-3 text-muted-foreground'>
-                                starvation {formatPct(avgStarvation)} · buffer {formatPct(avgBuffer)}
+                                {tr('starvation')} {formatPct(avgStarvation)} · {tr('buffer')} {formatPct(avgBuffer)}
                             </div>
                             <div className='pl-3 flex flex-wrap gap-x-1'>
                                 {BANDS.map((b) => {
@@ -178,7 +180,7 @@ function makeTooltip(
                                     }
                                     return (
                                         <span key={b.key} style={{ color: b.color }}>
-                                            {b.label.split(' ')[0]}{' '}
+                                            {tr(`bands.${b.key}`).split(' ')[0]}{' '}
                                             {formatNumberWithUnit(cnt, 'persons', undefined, locale)}
                                         </span>
                                     );
@@ -193,6 +195,7 @@ function makeTooltip(
 }
 
 function BandLegend() {
+    const tr = useTranslations('Demographics');
     return (
         <div className='flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-muted-foreground mt-1'>
             {BANDS.slice()
@@ -200,7 +203,7 @@ function BandLegend() {
                 .map((b) => (
                     <span key={b.key} className='flex items-center gap-0.5'>
                         <span className='inline-block w-2.5 h-2.5 rounded-sm' style={{ backgroundColor: b.color }} />
-                        {b.label}
+                        {tr(`bands.${b.key}`)}
                     </span>
                 ))}
         </div>
@@ -214,12 +217,13 @@ type Props = {
 };
 
 function EmptyChart({ height = 200 }: { height?: number }) {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }

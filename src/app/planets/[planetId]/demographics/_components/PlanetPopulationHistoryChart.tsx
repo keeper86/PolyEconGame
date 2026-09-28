@@ -32,7 +32,7 @@ import { TICKS_PER_MONTH, TICKS_PER_YEAR } from '@/simulation/constants';
 import React, { useMemo } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import PlanetBufferChart from './PlanetBufferChart';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 type BufferRawPoint = {
     bucket: number;
@@ -192,18 +192,20 @@ function populationTooltipContent(
 }
 
 function EmptyChart() {
+    const t = useTranslations('Demographics');
     return (
         <div
             className='w-full rounded border border-dashed border-muted flex items-center justify-center text-xs text-muted-foreground'
             style={{ height: 240 }}
         >
-            No data
+            {t('noData')}
         </div>
     );
 }
 
 function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoint[]; live?: LiveData }) {
     const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const data = useMemo(
         () =>
             computeMonthlyData(
@@ -243,7 +245,7 @@ function MonthlyChart({ monthlyPoints, live }: { monthlyPoints: PopulationRawPoi
     const monthlyX = monthAxis();
     const monthTooltipLabel = (monthIdx: number): string => {
         if (isLiveMonthPoint(monthIdx)) {
-            return 'Live';
+            return tr('live');
         }
         const pt = data.find((p) => p.monthIdx === monthIdx);
         const { year: yearInt } = pt ? tickToDate(pt.tick) : { year: 0 };
@@ -538,6 +540,7 @@ type Props = {
 
 export default function PlanetPopulationHistoryChart({ planetId, live }: Props): React.ReactElement {
     const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const trpc = useTRPC();
     const { granularity, setGranularity, currentTick } = useGranularity();
 
@@ -614,7 +617,7 @@ export default function PlanetPopulationHistoryChart({ planetId, live }: Props):
                     <Separator />
 
                     <div className='my-3'>
-                        <span className='text-md text-slate-400'>Service Buffers</span>
+                        <span className='text-md text-slate-400'>{tr('serviceBuffers')}</span>
                     </div>
                     <PlanetBufferChart
                         monthlyPoints={bufferMonthlyPoints}

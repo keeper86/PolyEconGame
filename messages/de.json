@@ -225,5 +225,75 @@
         "yourDeposits": "Deine Einlagen",
         "yourCashFlow": "Dein Cashflow",
         "runningCostExceeds": "Laufende Kosten übersteigen den aktuellen Cashflow"
+    },
+    "Demographics": {
+        "loading": "Demografie wird geladen…",
+        "notFound": "Planet nicht gefunden.",
+        "heading": "Demografie",
+        "byOccupation": "Nach Beschäftigung",
+        "byEducation": "Nach Bildung",
+        "overview": "Übersicht",
+        "wealthDistribution": "Vermögensverteilung",
+        "populationWealthTransfers": "Vermögenstransfers der Bevölkerung",
+        "shareOfMovement": "Anteil an der Bewegung",
+        "ofMovement": "% der Bewegung",
+        "netWealthGain": "Netto-Vermögenszuwachs",
+        "netWealthLoss": "Netto-Vermögensverlust",
+        "noNetTransfer": "kein Nettotransfer",
+        "deprivationMap": "Unterversorgungskarte",
+        "ofTarget": "des Ziels",
+        "deprivation": "Unterversorgung",
+        "serviceBuffers": "Service-Puffer",
+        "live": "Live",
+        "noData": "Keine Daten",
+        "tooltipAge": "Alter {age}",
+        "starvation": "Unterversorgung",
+        "buffer": "Puffer",
+        "rating": {
+            "fullyStocked": "voll bestückt",
+            "wellStocked": "gut bestückt",
+            "belowTarget": "unter Ziel",
+            "lowSupply": "geringe Versorgung",
+            "veryLow": "sehr gering",
+            "criticallyEmpty": "kritisch leer",
+            "wellSupplied": "gut versorgt",
+            "lightDeprivation": "leichte Unterversorgung",
+            "moderateDeprivation": "mäßige Unterversorgung",
+            "severeDeprivation": "schwere Unterversorgung"
+        },
+        "services": {
+            "grocery": "Lebensmittel-Puffer",
+            "healthcare": "Gesundheits-Puffer",
+            "logistics": "Logistik-Puffer",
+            "retail": "Einzelhandels-Puffer",
+            "education": "Bildungs-Puffer",
+            "construction": "Wohnraum-Puffer"
+        },
+        "cohorts": {
+            "none": "Keine",
+            "primary": "Primar",
+            "secondary": "Sekundär",
+            "tertiary": "Tertiär",
+            "unoccupied": "Unbeschäftigt",
+            "employed": "Beschäftigt",
+            "education": "Ausbildung",
+            "unableToWork": "Arbeitsunfähig"
+        },
+        "bands": {
+            "fatalStarvation": "Tödlich",
+            "severeStarvation": "Schwer",
+            "seriousStarvation": "Ernst",
+            "moderateStarvation": "Mäßig",
+            "lightStarvation": "Leicht",
+            "noStarvation": "Keine"
+        },
+        "buffers": {
+            "grocery": "Lebensmittel",
+            "healthcare": "Gesundheit",
+            "logistics": "Logistik",
+            "education": "Bildung",
+            "retail": "Einzelhandel",
+            "construction": "Wohnraum"
+        }
     }
 }

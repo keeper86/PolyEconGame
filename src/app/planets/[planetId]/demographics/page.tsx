@@ -24,10 +24,11 @@ import PlanetDemography from './_components/PlanetDemography';
 import PlanetPopulationHistoryChart from './_components/PlanetPopulationHistoryChart';
 import TransferChart from './_components/TransferChart';
 import WealthDistributionChart from './_components/WealthDistributionChart';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 export default function PlanetDemographicsPage() {
     const locale = useLocale();
+    const tr = useTranslations('Demographics');
     const params = useParams();
     const planetId = (params?.planetId as string) ?? '';
     const trpc = useTRPC();
@@ -48,10 +49,10 @@ export default function PlanetDemographicsPage() {
     const planetName = data?.data?.planetName ?? planetId;
 
     if (!data) {
-        return <div className='text-sm text-muted-foreground'>Loading demographics…</div>;
+        return <div className='text-sm text-muted-foreground'>{tr('loading')}</div>;
     }
     if (data.data === null) {
-        return <div className='text-sm text-muted-foreground'>Planet not found.</div>;
+        return <div className='text-sm text-muted-foreground'>{tr('notFound')}</div>;
     }
 
     const { rows } = data.data;
@@ -111,10 +112,10 @@ export default function PlanetDemographicsPage() {
         <Tabs value={group} onValueChange={(v) => setGroup(v as GroupMode)}>
             <TabsList className='h-7'>
                 <TabsTrigger value='occupation' className='text-[10px] px-2 py-0.5'>
-                    By occupation
+                    {tr('byOccupation')}
                 </TabsTrigger>
                 <TabsTrigger value='education' className='text-[10px] px-2 py-0.5'>
-                    By education
+                    {tr('byEducation')}
                 </TabsTrigger>
             </TabsList>
         </Tabs>
@@ -228,7 +229,7 @@ export default function PlanetDemographicsPage() {
                             {totalAbsoluteTransfer > 0
                                 ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
                                 : '0.0'}
-                            % of movement
+                            {tr('ofMovement')}
                         </div>
                     </div>
                 );
@@ -240,7 +241,7 @@ export default function PlanetDemographicsPage() {
                 const t = transferTotals[i];
                 const sign = t > 0 ? '+' : '';
                 const valueColor = t > 0 ? 'text-green-600' : t < 0 ? 'text-red-500' : 'text-muted-foreground';
-                const label = t > 0 ? 'net wealth gain' : t < 0 ? 'net wealth loss' : 'no net transfer';
+                const label = t > 0 ? tr('netWealthGain') : t < 0 ? tr('netWealthLoss') : tr('noNetTransfer');
                 return (
                     <Card
                         key={key}
@@ -255,7 +256,7 @@ export default function PlanetDemographicsPage() {
                             </p>
                             <p className='text-xs text-muted-foreground'>{label}</p>
                             <p className='text-[11px] text-muted-foreground pt-1'>
-                                Share of movement{' '}
+                                {tr('shareOfMovement')}{' '}
                                 <span className='font-medium text-foreground'>
                                     {totalAbsoluteTransfer > 0
                                         ? ((Math.abs(t) / totalAbsoluteTransfer) * 100).toFixed(1)
@@ -287,7 +288,7 @@ export default function PlanetDemographicsPage() {
             />
 
             <div className='flex justify-between gap-1 my-3 pt-3 items-center'>
-                <span className='text-md text-slate-400'>Demographics</span>
+                <span className='text-md text-slate-400'>{tr('heading')}</span>
                 {groupTabs}
             </div>
 
@@ -296,7 +297,7 @@ export default function PlanetDemographicsPage() {
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName='demography_overview' size={36} />
-                            Overview
+                            {tr('overview')}
                         </span>
                     </AccordionTrigger>
                     <AccordionContent>
@@ -309,13 +310,13 @@ export default function PlanetDemographicsPage() {
                     <AccordionTrigger>
                         <span className='font-semibold flex items-center gap-3'>
                             <ProductIcon productName={getCurrencyResourceName(planetId)} size={36} />
-                            Wealth distribution
+                            {tr('wealthDistribution')}
                         </span>
                     </AccordionTrigger>
                     <AccordionContent>
                         {wealthCards}
                         <WealthDistributionChart rows={rows} groupMode={group} />
-                        <p className='py-4 text-sm font-medium'>Population Wealth Transfers</p>
+                        <p className='py-4 text-sm font-medium'>{tr('populationWealthTransfers')}</p>
                         {transferCards}
                         <TransferChart matrix={data.data.lastTransferMatrix} viewMode={group} />
                     </AccordionContent>
