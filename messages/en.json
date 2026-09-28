@@ -191,6 +191,17 @@
         "loading": "Loading economy data…",
         "notFound": "Planet or agent not found."
     },
+    "Agent": {
+        "facilities": "Facilities",
+        "ships": "Ships",
+        "noShips": "No ships (on {planetId})",
+        "management": "Management",
+        "serviceDepartments": "Service Departments",
+        "notBuilt": "Not built",
+        "company": "Company",
+        "basedOn": "Based on {planetId}",
+        "founded": "Founded {date}"
+    },
     "Claims": {
         "title": "Land Claims",
         "loading": "Loading claims data…",

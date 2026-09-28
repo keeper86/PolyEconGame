@@ -14,12 +14,15 @@ import { FacilitiesMaintenanceDebug } from './_component/FacilitiesMaintenanceDe
 import AgentFinancialCharts from './financial/_components/AgentFinancialCharts';
 import type { AgentPlanetAssets } from '@/simulation/planet/planet';
 import { computeStorageThroughputMass } from '@/simulation/planet/facility';
+import { HR_DEPARTMENT_NAME, LOGISTICS_DEPARTMENT_NAME } from '@/simulation/planet/specialFacilities';
+import { termFor } from '@/i18n/terms';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { formatNumberWithUnit } from '@/lib/utils';
-import { useLocale } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 
 function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
+    const tr = useTranslations('Agent');
     const groups = useMemo(() => {
         const map = new Map<string, number>();
         for (const f of facilities) {
@@ -30,7 +33,7 @@ function FacilityBreakdown({ facilities }: { facilities: Facility[] }) {
 
     return (
         <div className='space-y-2'>
-            <p className='text-xs font-semibold text-muted-foreground'>Facilities</p>
+            <p className='text-xs font-semibold text-muted-foreground'>{tr('facilities')}</p>
             <div className='flex items-center gap-3 flex-wrap'>
                 {groups.map(([name, count]) => (
                     <FacilityOrShipListCard key={name} name={name} count={count} />
@@ -48,6 +51,7 @@ function ShipFleet({
     planetId: string;
     ships: { id: string; type: { type: string; name: string }; state: { type: string; planetId: string } }[];
 }) {
+    const tr = useTranslations('Agent');
     const groups = useMemo(() => {
         const map = new Map<string, number>();
         for (const ship of ships) {
@@ -58,13 +62,13 @@ function ShipFleet({
 
     return (
         <div className='space-y-2'>
-            <p className='text-xs font-semibold text-muted-foreground'>Ships</p>
+            <p className='text-xs font-semibold text-muted-foreground'>{tr('ships')}</p>
             <div className='flex items-center flex-wrap gap-3'>
                 {groups.map(([name, count]) => (
                     <FacilityOrShipListCard key={name} name={name} count={count} />
                 ))}
                 {groups.length === 0 && (
-                    <FacilityOrShipListCard key={'no_ships'} name={'No ships (on ' + planetId + ')'} unknown />
+                    <FacilityOrShipListCard key={'no_ships'} name={tr('noShips', { planetId })} unknown />
                 )}
             </div>
         </div>
@@ -77,6 +81,7 @@ function pct(n: number): string {
 
 function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
     const locale = useLocale();
+    const tr = useTranslations('Agent');
     const fmt = (n: number) => formatNumberWithUnit(n, 'units', undefined, locale);
     const hr = assets.humanResourcesDepartment;
     const stoDept = assets.storage.department;
@@ -98,13 +103,15 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
                 <Badge variant='outline' className='border-orange-400 text-orange-600 text-[10px] font-bold'>
                     TEMP DEBUG
                 </Badge>
-                <span className='font-semibold text-orange-700 dark:text-orange-400'>Service Departments</span>
+                <span className='font-semibold text-orange-700 dark:text-orange-400'>{tr('serviceDepartments')}</span>
             </div>
 
             <div>
-                <h3 className='font-bold uppercase text-muted-foreground mb-1'>HR Department</h3>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>
+                    {termFor(locale, HR_DEPARTMENT_NAME)}
+                </h3>
                 {!hr ? (
-                    <p className='italic text-muted-foreground'>Not built</p>
+                    <p className='italic text-muted-foreground'>{tr('notBuilt')}</p>
                 ) : (
                     <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
                         {entry('Scale', `${fmt(hr.scale)} / ${fmt(hr.maxScale)}`)}
@@ -127,9 +134,11 @@ function ServiceDepartmentsDebug({ assets }: { assets: AgentPlanetAssets }) {
             <Separator />
 
             <div>
-                <h3 className='font-bold uppercase text-muted-foreground mb-1'>Logistics Department</h3>
+                <h3 className='font-bold uppercase text-muted-foreground mb-1'>
+                    {termFor(locale, LOGISTICS_DEPARTMENT_NAME)}
+                </h3>
                 {!stoDept ? (
-                    <p className='italic text-muted-foreground'>Not built</p>
+                    <p className='italic text-muted-foreground'>{tr('notBuilt')}</p>
                 ) : (
                     <div className='flex flex-wrap gap-x-4 gap-y-0.5'>
                         {entry('Scale', `${fmt(stoDept.scale)} / ${fmt(stoDept.maxScale)}`)}
@@ -167,6 +176,9 @@ export default function AgentPlanetOverviewPage() {
         myAgentId,
     } = useAgentPlanetDetail();
 
+    const tr = useTranslations('Agent');
+    const locale = useLocale();
+
     const subPageHref = (segment: string) =>
         `/planets/${encodeURIComponent(planetId)}/agent/${encodeURIComponent(agentId)}/${segment}` as unknown as '/';
 
@@ -176,12 +188,13 @@ export default function AgentPlanetOverviewPage() {
             {/* ── Public profile section (always visible) ── */}
             <div className='space-y-4'>
                 <div>
-                    <h1 className='text-2xl font-bold tracking-tight'>{detail?.agentName ?? 'Company'}</h1>
+                    <h1 className='text-2xl font-bold tracking-tight'>{detail?.agentName ?? tr('company')}</h1>
                     <p className='text-sm text-muted-foreground'>
-                        Based on {planetId}
+                        {tr('basedOn', { planetId })}
                         {detail && detail.foundedTick > 0 && (
                             <>
-                                {' · '}Founded {mapTickToDate(detail.foundedTick)}
+                                {' · '}
+                                {tr('founded', { date: mapTickToDate(detail.foundedTick, false, locale) })}
                             </>
                         )}
                     </p>
@@ -218,7 +231,7 @@ export default function AgentPlanetOverviewPage() {
                 <div className='space-y-6 border-t pt-6'>
                     <div className='flex items-center gap-2'>
                         <Globe className='h-4 w-4 text-muted-foreground' />
-                        <h2 className='text-lg font-semibold'>Management</h2>
+                        <h2 className='text-lg font-semibold'>{tr('management')}</h2>
                     </div>
 
                     <div className='grid grid-cols-2 sm:grid-cols-3 gap-3'>

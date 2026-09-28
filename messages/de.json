@@ -191,6 +191,17 @@
         "loading": "Wirtschaftsdaten werden geladen…",
         "notFound": "Planet oder Agent nicht gefunden."
     },
+    "Agent": {
+        "facilities": "Anlagen",
+        "ships": "Schiffe",
+        "noShips": "Keine Schiffe (auf {planetId})",
+        "management": "Verwaltung",
+        "serviceDepartments": "Serviceabteilungen",
+        "notBuilt": "Nicht gebaut",
+        "company": "Unternehmen",
+        "basedOn": "Ansässig auf {planetId}",
+        "founded": "Gegründet {date}"
+    },
     "Claims": {
         "title": "Landansprüche",
         "loading": "Anspruchsdaten werden geladen…",
